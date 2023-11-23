@@ -202,9 +202,22 @@ class KeggYAML(PathwayYAML):
     def __init__(self, file_path: str, run = run, progress = progress):
         self.run = run
         self.progress = progress
-
+        
         self.file_path = file_path
         filesnpaths.is_file_exists(self.file_path)
+
+        self.source = "KEGG"
+
+        # we will fill these in later
+        self.id = None
+        self.type = None
+        self.name = None
+        self.functional_definition = []
+        self.definition_string = None
+        self.functions = None
+        self.dict = {}
+
+        self.load_data_from_modules_file()
 
     def data_vals_sanity_check(self, data_vals: str, current_data_name: str, current_module_num: str):
         """This function checks if the data values were correctly parsed from a line in a KEGG module file.
