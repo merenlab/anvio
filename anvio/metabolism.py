@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 """This file contains classes related to metabolism estimation, especially for user-defined metabolic pathways."""
+import os
 
 import anvio
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.utils as utils
 
 from anvio.errors import ConfigError
 
@@ -427,7 +428,7 @@ class KeggYAML(PathwayYAML):
     def load_data_from_modules_file(self):
         """This function extracts data from the KEGG module file and builds the YAML file dictionary from it."""
 
-        mnum = os.basename(self.file_path)
+        mnum = os.path.basename(self.file_path)
         with open(self.file_path, 'r') as f:
             prev_data_name_field = None
             
