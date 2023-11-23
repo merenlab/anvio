@@ -387,7 +387,7 @@
                                     </div>
                                     <br />
                                     <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
-                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                        <button id="btn_redraw_samples_layer" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
                                     </div>
                                 </div>
                             </div>
@@ -502,7 +502,37 @@
                                             </div>
                                     </div>
                             </div>
-
+                            <div class="ml-3">
+                                <span class="settings-secondary-header">Cosmetics</span>
+                                <div class="collapse multi-collapse show" id="layer-collapse-option">
+                                    <div class="form-group form-margin d-flex pt-1">
+                                        <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
+                                        <div class="col-6 d-flex">
+                                            <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
+                                            <div class="col-6 d-flex align-items-center input-align">
+                                                <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
+                                            </div>
+                                    </div>
+                                    <div class="max-font-size-input" style="display: none;">
+                                        <div class="form-group form-margin align-items-center d-flex">
+                                                <label class="col-2 settings-label" for="max_font_size" data-help="max-font-size">Maximum Font Size: </label>
+                                                <div class="col-6 d-flex align-items-center input-align">
+                                                    <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs col-3">
+                                                </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
+                                            </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="ml-3">
                                 <span class="settings-secondary-header">Dendrogram</span>
                                 <div id="tree_type_circlephylogram">
@@ -651,31 +681,6 @@
                                 Layers
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                             </span>
-                            <div class="collapse multi-collapse show" id="layer-collapse-option">
-                                <div class="form-group form-margin d-flex pt-1">
-                                    <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
-                                    <div class="col-6 d-flex">
-                                        <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
-                                    </div>
-                                </div>
-                                <div class="form-group form-margin d-flex align-items-center">
-                                        <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
-                                        <div class="col-6 d-flex align-item-center input-align">
-                                            <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin max-font-size-input">
-                                        <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin d-flex align-items-center">
-                                        <label class="col-2 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
-                                        <div class="col-6 d-flex input-align">
-                                            <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
-                                        </div>
-                                </div>
                                 <div class="ml-3">
                                     <div>
                                         <span class="settings-secondary-header">Tree/Dendrogram</span>
@@ -705,8 +710,10 @@
                                                 <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
                                             </div>
                                     </div>
+                                    <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
+                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                    </div>
                                 </div>
-                            </div>
                         </div>
                     </div>
 

@@ -52,6 +52,7 @@ function get_newick_leaf_order(newick)
 $(document).ready(function() {
     $('#samples_order').change(function() {
         $('#btn_redraw_samples').prop('disabled', true);
+        $('#btn_redraw_samples_layer').prop('disabled', true);
 
         if (samples_order_dict.hasOwnProperty(this.value)) {
             samplesClusteringData = samples_order_dict[this.value];

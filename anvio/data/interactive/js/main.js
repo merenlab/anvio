@@ -1747,6 +1747,7 @@ function drawTree() {
 
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
+                $('#btn_redraw_samples_layer').prop('disabled', false);
 
                 if (settings['tree-radius'] == 0)
                 {
