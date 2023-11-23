@@ -341,14 +341,14 @@ class KeggYAML(PathwayYAML):
 
         return is_ok, corrected_vals, corrected_def, parsing_error_type
 
-    def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None):
+    def parse_kegg_modules_line(self, line: str, current_module: str, line_num: int=None, current_data_name:str=None):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
         Lines for pathway module files can have between 1 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
         which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
 
-        Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
+        Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple lines by this function.
 
         PARAMETERS
         ==========
@@ -359,14 +359,12 @@ class KeggYAML(PathwayYAML):
         line_num : int
             which line number we are working on. We need this to keep track of which entities come from the same line of the file.
         current_data_name : str
-            which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+            which data name we are working on. If this is None, we need to parse this info from the first field in the line
 
         RETURNS
         =======
         line_entries : list
-            tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
-            Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
-            the missing information before being added to the database.
+            tuples, each containing information for one data entry, namely data name, data value, data definition, and line number.
         """
 
         if anvio.DEBUG:
