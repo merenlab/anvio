@@ -11,16 +11,16 @@
     <meta http-equiv="pragma" content="no-cache" />
     <meta name="google" value="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    <link rel="stylesheet" href="lib/bootstrap/bootstrap-icons-1.11.1/bootstrap-icons.min.css" type="text/css">
+    <link rel="stylesheet" href="lib/bootstrap-icons/font/bootstrap-icons.min.css" type="text/css">
     <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
     <script type="text/javascript" src="js/error.js"></script>
 
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <script type="text/javascript" src="lib/bootstrap/js/bootstrap.bundle.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -120,7 +120,7 @@
                             </li>
                             <li id="sample_settings_tab" role="presentation" class="nav-item">
                                 <a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
-                                    <i class="nav-icon fa-2x bi bi-gear"></i><i class="nav-icon-fill fa-2x bi bi-gear-fill"></i><span class="d-block">Option</span>
+                                    <i class="nav-icon fa-2x bi bi-gear"></i><i class="nav-icon-fill fa-2x bi bi-gear-fill"></i><span class="d-block">Options</span>
                                 </a>
                             </li>
                             <li id="bin_settings_tab" role="presentation" class="nav-item">
@@ -287,7 +287,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <span id="toggle-chevron-layer" class="settings-header btn d-flex chart-icon-padding mt-3 align-items-center" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                            <span id="toggle-chevron-layer" class="settings-header btn d-flex chart-icon-padding mt-5 align-items-center" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
                                 <img src="images/layer-chart.svg" alt="Layer Icon"/>
                                 Layers
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
@@ -392,7 +392,7 @@
                                 </div>
                             </div>
 
-                            <span id="toggle-chevron-legend" class="settings-header btn d-flex chart-icon-padding mt-3 align-items-center" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-legend').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                            <span id="toggle-chevron-legend" class="settings-header btn d-flex chart-icon-padding mt-5 align-items-center" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-legend').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
                                 <img src="images/legend-chart.svg" alt="Item Icon"/>
                                 Legends
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
@@ -414,7 +414,7 @@
                             </span>
                             <div class="collapse multi-collapse show" id="item-collapse-option">
                                 <div class="ml-3">
-                                    <span class="settings-secondary-header">Selected Bins</span>
+                                    <span class="settings-secondary-header">Bins Selection</span>
                                     <div class="form-group form-margin d-flex pt-1 mt-3 align-items-center">
                                             <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
                                             <div class="col-6 d-flex align-item-center input-align">
@@ -646,7 +646,7 @@
                             </div>
                             </div>
 
-                            <span id="toggle-chevron-layer-option" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                            <span id="toggle-chevron-layer-option" class="settings-header btn d-flex chart-icon-padding align-items-center mt-5" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
                                 <img src="images/layer-chart.svg" alt="Layer Icon"/>
                                 Layers
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
@@ -664,7 +664,7 @@
                                             <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
                                         </div>
                                 </div>
-                                <div class="form-group form-margin max-font-size-input" style="display: none;">
+                                <div class="form-group form-margin max-font-size-input">
                                         <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
                                         <div class="col-md-8">
                                             <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
