@@ -38,6 +38,7 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'workflow-metagenomics' : ['run_workflow_tests_for_metagenomics.sh'],
          'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
          'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh'],
+         'workflow-ecophylo'     : ['run_workflow_tests_for_ecophylo.sh'],
          'database-migrations'   : ['run_migration_tests_for_ancient_anvio_databases.sh'],
          'workflow-sra-download' : ['run_workflow_tests_for_sra_download.sh'],
          'run-cazymes'           : ['run_component_tests_for_cazymes.sh'],
