@@ -94,7 +94,9 @@ $(document).ready(function() {
         var new_val = this.value;
         if (new_val == "")
             return;
-        var target_selector = '.' + this.getAttribute('class').replace('_multiple', '');
+        // get last item of class name, which is the target selector
+        // Make sure to remove _multiple from the class name
+        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('_multiple', '');
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(
