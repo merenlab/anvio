@@ -1718,6 +1718,9 @@ function drawTree() {
     // clear existing diagram, if any
     document.getElementById('svg').innerHTML = "";
 
+    // Drawing time toasted to the user
+    toastr.success("<span id='draw_delta_time'></span>");
+
     waitingDialog.show('Drawing ...',
         {
             dialogSize: 'sm',
