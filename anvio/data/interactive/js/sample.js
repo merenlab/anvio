@@ -360,10 +360,10 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="{margin}"></input></td>' +
-                '<td><input class="input-min form-control form-control-sm" type="text" size="4" value="{min}"></input></td>' +
-                '<td><input class="input-max form-control form-control-sm" type="text" size="4" value="{max}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-min" type="text" size="4" value="{min}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-max" type="text" size="4" value="{max}"></input></td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -412,8 +412,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -450,8 +450,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +

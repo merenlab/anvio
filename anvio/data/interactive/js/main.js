@@ -1217,8 +1217,8 @@ function buildLayersTable(order, settings)
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin form-control form-control-sm" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1269,8 +1269,8 @@ function buildLayersTable(order, settings)
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin form-control form-control-sm" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1361,8 +1361,8 @@ function buildLayersTable(order, settings)
                     '    </select>' +
                     '</td>' +
                     '<td style="width:55px;">n/a</td>' +
-                    '<td><input class="input-height form-control form-control-sm" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin form-control form-control-sm" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                     '<td style="width:55px;">n/a</td>' +
                     '<td style="width:55px;">n/a</td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1434,23 +1434,23 @@ function buildLayersTable(order, settings)
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
-                    '    <select id="type{id}" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm" onChange="togglePickerStart(this);">' +
+                    '    <select id="type{id}" style="width: 50px;" class="form-control form-control-sm col-12 select-sm type" onChange="togglePickerStart(this);">' +
                     '        <option value="bar"{option-type-bar}>Bar</option>' +
                     '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                     '        <option value="line"{option-type-line}>Line</option>' +
                     '    </select>' +
                     '</td>' +
                     '<td>' +
-                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization type type_multiple form-control form-control-sm col-12 select-sm">' +
+                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                     '        <option value="none"{option-none}>none</option>' +
                     '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                     '        <option value="log"{option-log}>log</option>' +
                     '    </select>' +
                     '</td>' +
-                    '<td><input class="input-height form-control form-control-sm" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin form-control form-control-sm" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                    '<td><input class="input-min form-control form-control-sm" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
-                    '<td><input class="input-max form-control form-control-sm" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin " type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td><input class="form-control form-control-sm input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 

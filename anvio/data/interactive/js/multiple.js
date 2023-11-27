@@ -79,7 +79,7 @@ $(document).ready(function() {
 
     $('.input-height-multiple, .input-margin-multiple, .input-min-multiple, .input-max-multiple').on('change', function() {
         var new_val = this.value;
-        var target_selector = '.' + this.getAttribute('class').replace('-multiple', '') + ':enabled';
+        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('-multiple', '') + ':enabled';
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(
