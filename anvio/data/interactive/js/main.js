@@ -337,8 +337,6 @@ function initData() {
 
             if (response.autodraw)
             {
-                $('#btn_draw_tree').removeClass('glowing-button');
-
                 $.when()
                  .then(drawTree)
                  .then(function() {
