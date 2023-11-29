@@ -973,9 +973,15 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 @media only screen and (min-width: 768px) {
+    .fa-2x {
+        font-size: 1.5em !important;
+    }
 }
 
 @media only screen and (min-width: 992px) {
+    .fa-2x {
+        font-size: 1.5em !important;
+    }
 }    
 
 @media only screen and (min-width:1280px){
