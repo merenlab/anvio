@@ -374,7 +374,7 @@ function switchUserInterfaceMode(project, title) {
     console.log("The running mode for the interface: " + mode);
 
     $('.' + mode + '-mode').show();
-    $('<b>' + mode + '-mode' + '<b/>').appendTo('#title-panel');
+    $('<b title="This info shows your Anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');

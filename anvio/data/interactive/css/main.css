@@ -132,8 +132,8 @@ html, body, #wrapper {
     top: 0px;
     display: inline-block;
     min-width: 460px;
-    left: calc(50% - 230px);
-    height: 44px;
+    left: calc(50% - 395px);
+    height: 70px;
     text-align: center;
     border-radius: 0px 0px 10px 10px;
     border: 1px solid var(--border);
@@ -141,6 +141,14 @@ html, body, #wrapper {
     padding-right: 20px;
     opacity: 0.9;
     background-color: #fff;
+}
+
+#title-panel:hover {
+    box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.75);
+}
+
+#title-panel:hover > .title-mode {
+    text-decoration: underline;
 }
 
 #title-panel-first-line {
@@ -915,16 +923,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .default-bin-icon{
     color: var(--secondary-600);
     cursor: pointer; 
-}
-
-#title-panel {
-    min-width: 720px;
-    left: calc(50% - 360px);
-    height: 70px;
-}
-
-#title-panel-first-line {
-    font-size: 26px;
 }
 
 .titles{
