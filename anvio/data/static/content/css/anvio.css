@@ -124,3 +124,7 @@ footer {
   text-align: center;
   font-size: 12px;
 }
+
+.card-title{
+    margin-bottom: 0px;
+}
