@@ -130,13 +130,13 @@
                                             <tbody>
                                                 <tr>
                                                     <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"source"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"contig"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"length"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"direction"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"start"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"stop"|pretty }}</td>
-                                                    <td>{{ gene|lookup:"call_type"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"source"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"contig"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"length"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"direction"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"start"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"stop"|pretty }}</td>
+                                                    <td class="popover-hover-table">{{ gene|lookup:"call_type"|pretty }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -443,6 +443,17 @@
         width: fit-content;
         display: flex;
         justify-content: left;
+    }
+    .popover-hover-table{
+        max-width: 145px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .popover-hover-table:hover{
+        overflow: visible;
+        cursor: pointer;
+        white-space: normal;
     }
 </style>
 <script type="text/javascript">
