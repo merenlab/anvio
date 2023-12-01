@@ -35,6 +35,7 @@ from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
 
+from anvio.genomedescriptions import GenomeDescriptions
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
@@ -51,11 +52,102 @@ __email__ = "a.murat.eren@gmail.com"
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 pp = terminal.pretty_print
 aligners = Aligners()
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
+
+class PanCollapser:
+    """A class to 'collapse' pangenomes into a single FASTA file for read recruitment analyses"""
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.base_genome = A('base_genome')
+        self.external_genomes_txt_path = A('external_genomes')
+        self.output_dir = A('output_dir')
+
+        # key data structures that will be populated during init
+        self.genomes = None
+        self.pan_db = None
+
+        self.init()
+
+
+    def init(self):
+        """Initialize all key data and perform sanity checks"""
+
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
+
+        filesnpaths.is_output_dir_writable(self.output_dir, ok_if_not_there=True)
+
+        # just be 100% sure
+        if not self.base_genome:
+            raise ConfigError("You can't initialize this class without a 'base genome' name.")
+
+        # we are reading the internal/external genomes. these are going to be the
+        # genomes that we will focus on.
+        self.genomes = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
+        self.genomes.load_genomes_descriptions(skip_functions=True, init=False)
+
+        # make sure there are more than one genomes in the external genomes file
+        if len(self.genomes.genomes) < 2:
+            raise ConfigError("You seem to have only one genome mentioned in your external genomes file :/ This makes "
+                              "zero sense. If you have only one genome to focus on, why go through all this trouble?")
+
+        # open the pangenome so we can take a look at the genomes found in it
+        pangenome = dbops.PanDatabase(self.pan_db_path, quiet=True)
+
+        # are there any genomes in the int/ext genomes that are missing in the pan database?
+        genomes_missing_in_pan = [g for g in self.genomes.genomes if g not in pangenome.genomes]
+        if len(genomes_missing_in_pan):
+            raise ConfigError(f"The pan database you have provided does not seem to have any record of the "
+                              f"{P('genome', len(genomes_missing_in_pan))} you have listed in your external genomes "
+                              f"file: {', '.join(genomes_missing_in_pan)}. Please make sure you are using the correct "
+                              f"pan database. You can always use the program `anvi-db-info` to see the genome names in "
+                              f"the pan databse and compare them to the names you have in the external genomes file.")
+
+        # is the base genome is actually a genome in the external genomes file?
+        if self.base_genome not in self.genomes.genomes:
+            raise ConfigError(f"The base genome name '{self.base_genome}' does not seem to match any of the genomes you "
+                              f"have in your external genomes file :/ This is not working for us.")
+
+        # is every genome found in the pan-db mentioned in the external genomes file?
+        genomes_only_in_pan = [g for g in pangenome.genomes if g not in self.genomes.genomes]
+        if len(genomes_only_in_pan):
+            self.run.warning(f"While the pan-db seems to contain a total of {P('genome', len(pangenome.genomes))}, you "
+                             f"mentioned only {P('genome', len(self.genomes.genomes))} in your external genomes file. That "
+                             f"is fine as anvi'o will ignore the rest of the genomes in the pan-db and collapse only those "
+                             f"mentioned in the external genomes file. But we wanted to make sure you know about that and "
+                             f"it is not actually a mistake or something.", header="THE MORE YOU KNOW 🌈", lc="green")
+
+        # initialize the pan-db and the gene clusters for later use.
+        self.pan_db = dbops.PanSuperclass(args=self.args, r=terminal.Run(verbose=False), p=self.progress)
+        self.pan_db.init_gene_clusters()
+
+        self.run.warning(None, header="INIT: EVERYTHING SEEMS TO BE IN ORDER 🎊", lc="green")
+        self.run.info_single(f"A pan-db with {len(self.pan_db.gene_clusters)} gene clusters is initialized.")
+        self.run.info_single(f"An external genomes file with {len(self.genomes.genomes)} genomes is found and sanity-checked.")
+        self.run.info_single(f"The base genome '{self.base_genome}' is A-OK.", nl_after=1)
+
+
+    def collapse(self):
+        """The purpose of this function is find all gene clusters in the pangenome that do not occur in the base
+        genome, recover gene sequences for those gene clusters, create a chimeric contig sequence with all of them
+        stitched together, and report the new FASTA file as well as the contigs-db for downstream analyses. Fancy.
+        """
+
+        # next, get the gene clusters and do everything.
+        pass
+
+
 
 class Pangenome(object):
     def __init__(self, args=None, run=run, progress=progress):
