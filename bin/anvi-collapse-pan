@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Collapser of pangenomes"""
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.panops import PanCollapser
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['meren']
+__requires__ = ['external-genomes', 'pan-db', 'genomes-storage-db']
+__provides__ = ['contigs-db', 'contigs-fasta']
+__description__ = "Collapse a pangenome into a single representative FASTA file for comprehensive read recruitment analyses"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('PANGENOME', "The pangeome files.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+
+    groupB = parser.add_argument_group("GENOMES", "Genomes that you wish to collapse. The list of genomes here do not have to "
+                                                  "include every genome in the pangenome, but they must reprsent the set of "
+                                                  "genomes you wish to collapse into a single one based on the pangenome.")
+    groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupC = parser.add_argument_group("BASE GENOME", "A singular genome name that you wish to use as the primary unit in the "
+                                                      "pangenome. See the documentation for more information")
+    groupC.add_argument(*anvio.A('base-genome'), **anvio.K('base-genome'))
+
+    groupD = parser.add_argument_group("OUTPUT", "An output directory where all the key files will be stored.")
+    groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+
+    args = parser.get_args(parser)
+
+    try:
+        collapser = PanCollapser(args)
+        collapser.collapse()
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
