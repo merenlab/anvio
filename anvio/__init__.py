@@ -181,6 +181,13 @@ D = {
                      "You can provide these names as a comma-separated list of names, or you can put them in a file, "
                      "where you have a single genome name in each line, and provide the file path."}
                 ),
+    'base-genome': (
+            ['--base-genome'],
+            {'metavar': "GENOME NAME",
+             'required': True,
+             'help': "Genome name to use as the base genome. The downstream analyses will take this genome into consideration "
+                     "and process everything else in consideration to it."}
+                ),
     'blank-profile': (
             ['--blank-profile'],
             {'default': False,
