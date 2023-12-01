@@ -4275,8 +4275,8 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
 
 def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
-    pdb = dbi(pan_db_path)
-    gdb = dbi(genomes_storage_path)
+    pdb = dbi(pan_db_path, expecting='pan')
+    gdb = dbi(genomes_storage_path, expecting='genomestorage')
 
     if pdb.hash != gdb.hash:
         raise ConfigError(f"The pan database and the genomes storage database do not seem to "
