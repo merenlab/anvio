@@ -171,13 +171,20 @@ def is_output_file_writable(file_path, ok_if_exists=True):
     return True
 
 
-def is_output_dir_writable(dir_path):
+def is_output_dir_writable(dir_path, ok_if_not_there=False):
     if not dir_path:
         raise FilesNPathsError("No output directory path is declared...")
-    if not os.path.isdir(dir_path):
-        raise FilesNPathsError("'%s' is not a directory..." % dir_path)
-    if not os.access(os.path.abspath(dir_path), os.W_OK):
-        raise FilesNPathsError("You do not have permission to generate files in '%s'" % dir_path)
+
+    if ok_if_not_there:
+        parent_dir = os.path.dirname(os.path.abspath(dir_path))
+        if not os.access(parent_dir, os.W_OK):
+            raise FilesNPathsError("You do not have permission to generate files under '%s'" % parent_dir)
+    else:
+        if not os.path.isdir(dir_path):
+            raise FilesNPathsError("'%s' is not a directory..." % dir_path)
+
+        if not os.access(os.path.abspath(dir_path), os.W_OK):
+            raise FilesNPathsError("You do not have permission to generate files under '%s'" % dir_path)
     return True
 
 
