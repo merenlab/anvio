@@ -119,6 +119,10 @@ class PanCollapser:
             raise ConfigError(f"The base genome name '{self.base_genome}' does not seem to match any of the genomes you "
                               f"have in your external genomes file :/ This is not working for us.")
 
+        # let's determine the target genome names. these are the genomes that are mentioned in the external
+        # genomes file excluding the base genome:
+        self.target_genomes = set([g for g in self.genomes.genomes if g != self.base_genome])
+
         # is every genome found in the pan-db mentioned in the external genomes file?
         genomes_only_in_pan = [g for g in pangenome.genomes if g not in self.genomes.genomes]
         if len(genomes_only_in_pan):
