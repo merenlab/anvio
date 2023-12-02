@@ -148,9 +148,48 @@ class PanCollapser:
         stitched together, and report the new FASTA file as well as the contigs-db for downstream analyses. Fancy.
         """
 
-        # next, get the gene clusters and do everything.
+        # we first will identify the accessory gene clusters of interest that should be added
+        # to the base genome in the process of collapsing the pangenome
+        accessory_gene_clusters = self.get_accessory_gene_clusters_missing_in_base_genome()
+
+        # the next step is to process these gene clusters, pick which gene sequences from which genomes should
+        # represent them in the final chimeric contig, and start producing that final data.
         pass
 
+
+    def get_accessory_gene_clusters_missing_in_base_genome(self):
+        """Process the pangenome, and find accessory gene clusters not represented by the base genome"""
+
+        # first, identify the gene clusters in the pan-db that are missing in the base genome so we
+        # know the inital set of accessory gene clusters of interest
+        initial_set_of_accessory_gene_clusters_missing_in_base_genome = [gc for gc in self.pan_db.gene_clusters if not len(self.pan_db.gene_clusters[gc][self.base_genome])]
+
+        # the initial set of accessory gene clusters missing in the base genome now contains all the
+        # gene clusters that are accessory. but there is one more step of filtering we need since the
+        # pangenome may contain genomes that are not included in the external genomes file, and thus
+        # some gene clusters that match to the first criterion may still be irrelevant to the final
+        # analysis needs due to their absence in genomes of interest (which is explicitly defined by
+        # the user-provided external genomes file). next, we need to go through this reduced list and
+        # remove them from further consideration by making sure each gene cluster in this list is also
+        # in at least one of the genomes in the external genomes file.
+        accessory_gene_clusters_of_interest = set([])
+        for gene_cluster in initial_set_of_accessory_gene_clusters_missing_in_base_genome:
+            if len([g for g in self.target_genomes if self.pan_db.gene_clusters[gene_cluster][g]]):
+                accessory_gene_clusters_of_interest.add(gene_cluster)
+
+        self.run.warning(None, header="IDENTIFYING GENE CLUSTERS OF INTEREST", lc="green")
+        if len(accessory_gene_clusters_of_interest) == len(initial_set_of_accessory_gene_clusters_missing_in_base_genome):
+            self.run.info_single(f"{len(initial_set_of_accessory_gene_clusters_missing_in_base_genome)} of {len(self.pan_db.gene_clusters)} "
+                                 f"gene clusters in the pan-db was missing in the base genome, and anvi'o will process them "
+                                 f"further to report a single genome that contains the base genome and all missing gene clusters.")
+        else:
+            self.run.info_single(f"{len(initial_set_of_accessory_gene_clusters_missing_in_base_genome)} of {len(self.pan_db.gene_clusters)} "
+                                 f"gene clusters in the pan-db was missing in the base genome. ")
+            self.run.info_single(f"But of the {len(initial_set_of_accessory_gene_clusters_missing_in_base_genome)} gene clusters "
+                                 f"that were missing the base genome, only {len(accessory_gene_clusters_of_interest)} occurred any "
+                                 f"of the genomes of interest. Anvi'o will continue to work with this final set.")
+
+        return accessory_gene_clusters_of_interest
 
 
 class Pangenome(object):
