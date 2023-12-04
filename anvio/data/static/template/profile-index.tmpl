@@ -19,7 +19,7 @@
     <link href=".html/css/anvio.css" rel="stylesheet">
 
     <!-- Bootstrap Icon CSS -->
-    <link href=".html/css/bootstrap-icons.min.css" rel="stylesheet">
+    <link href=".html/css/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -59,7 +59,7 @@
 
     <div class="container mt-5 pt-5">
         <div class="alert alert-primary d-flex" role="alert">
-            <i class="fa-3x text-primary bi bi-info-circle"></i>
+            <i class="d-flex align-items-center mr-3 text-primary bi bi-info-circle" style="font-size: 3em;"></i>
             <div class="text-secondary">
                 Bins that were identified in the <b class="text-primary">{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
                 merged {% else %} single {% endif %}{% endif %}</b> profile database '<b class="text-primary">{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
@@ -72,7 +72,7 @@
     </div>
 
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
@@ -152,7 +152,7 @@
 
 
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
@@ -170,7 +170,7 @@
 
     <!-- SUMMARY of BINS PANEL -->
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-info" id="bins_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
@@ -369,7 +369,7 @@
     <!-- BINS ACROSS SAMPLES PANEL -->
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
-    <div class="container mt-2">
+    <div class="container mt-3">
         <div class="card border-info" id="bins_across_samples_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
@@ -446,7 +446,7 @@
     <!-- BINS PERCENT RECRUITMENT PANEL -->
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-info" id="bins_percent_recruitment_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
@@ -506,7 +506,7 @@
     {% if meta|lookup:"contigs"|lookup:"genes_are_called" %}
     <!-- GENES PANEL -->
     <section>
-    <div class="container mt-2">
+    <div class="container mt-3">
         <div class="card border-info" id="genes_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
@@ -560,7 +560,7 @@
     </section>
     {% else %}
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-warning">
                 <div class="card-header"><h3 class="card-title">No gene calls are found</h3></div>
             </div>
@@ -572,7 +572,7 @@
     {% if meta|lookup:"non_single_copy_gene_hmm_data_available" %}
     <!-- NON-SINLGE-COPY HMMs PANEL -->
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-info" id="hmms_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
@@ -683,7 +683,7 @@
     </section>
     {% else %}
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-warning">
                 <div class="card-header"><h3 class="card-title">Hidden Markov Model Hits <small>(none found)</small></h3></div>
             </div>
@@ -694,7 +694,7 @@
 
     <!-- MISC DATA PANEL -->
     <section>
-        <div class="container mt-2">
+        <div class="container mt-3">
             <div class="card border-info" id="misc_data_panel">
                 <div class="card-header">
                     <h1 class="card-title">Misc Data</h1>
