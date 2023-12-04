@@ -17,57 +17,62 @@
 
     <!-- Custom CSS -->
     <link href=".html/css/anvio.css" rel="stylesheet">
+
+    <!-- Bootstrap Icon CSS -->
+    <link href=".html/css/bootstrap-icons.min.css" rel="stylesheet">
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <nav class="navbar navbar-dark navbar-expand-lg fixed-top bg-dark" role="navigation">
         <div class="container">
-            <!-- Collect the nav links, forms, and other content for toggling -->
-            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                <ul class="nav navbar-nav">
-                    <li>
-                        <a href="http://anvio.org">Anvi'o Project Page</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio">Anvi'o Repository</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio/issues">Report an Issue</a>
-                    </li>
-                    <li>
-                        <a href="http://anvio.org/#people">Contact</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
-                    </li>
-                </ul>
-            </div>
-            <!-- /.navbar-collapse -->
+            <a class="navbar-brand" href="#" style="width: 50px;">        
+                <img class="img-fluid img-left"src=".html/pics/logo-simple.png" alt="">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse align-items-center justify-content-center" id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item ml-5 mr-5">
+                            <a class="text-secondary" href="http://anvio.org">Anvi'o Project Page</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio">Anvi'o Repository</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio/issues">Report an Issue</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="http://anvio.org/#people">Contact</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
+                        </li>
+                    </ul>
+                </div>
         </div>
-        <!-- /.container -->
+            <!-- /.navbar-collapse -->
     </nav>
 
 
-    <header class="image-bg-fluid-height">
-        <div class="header-summary-div">
-            <div style="width: 200px;">
-                <img class="img-fluid img-left"src=".html/pics/logo.png" alt="">
-            </div>
-            <div class="header-text">
-                Bins that were identified in the <b>{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
-                merged {% else %} single {% endif %}{% endif %}</b> profile database '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
-                database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accounting for
-                <b>{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b>{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b>
+    <div class="container mt-5 pt-5">
+        <div class="alert alert-primary d-flex" role="alert">
+            <i class="fa-3x text-primary bi bi-info-circle"></i>
+            <div class="text-secondary">
+                Bins that were identified in the <b class="text-primary">{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
+                merged {% else %} single {% endif %}{% endif %}</b> profile database '<b class="text-primary">{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
+                database as "<b class="text-primary">{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b class="text-primary">{{ meta|lookup:"num_bins"|pretty }}</b> bins accounting for
+                <b class="text-primary">{{ meta|lookup:"total_nts_in_collection"|pretty }}</b> nucleotides, which represent <b class="text-primary">{{ meta|lookup:"percent_contigs_nts_described_by_collection" }}%</b>
                 of all nucleotides stored in the contigs database{% if not meta|lookup:"profile"|lookup:"blank" %}, and
-                <b>{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database{% endif %}.
+                <b class="text-primary">{{ meta|lookup:"percent_profile_nts_described_by_collection" }}%</b> of nucleotides stored in the profile database{% endif %}.
             </div>
         </div>
-    </header>
-
+    </div>
 
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
@@ -75,18 +80,20 @@
 
                 <div id="collapse-basics" class="panel-collapse in">
 
-                <div class="well" style="margin: 10px;">The {% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %} merged {% else %} single {% endif %}{% endif %} profile database that was generated
-                                                        with the minimum contig length of <b>{{ meta|lookup:"profile"|lookup:"min_contig_length"|pretty }}</b>
-                                                        contained <b>{{ meta|lookup:"profile"|lookup:"num_contigs"|pretty }}</b> contigs, which correspond to
-                                                        <b>{{ meta|lookup:"percent_contigs_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
-                                                        <b>{{ meta|lookup:"percent_contigs_nts_described_by_profile"|pretty }}%</b> of all nucleotides found
-                                                        in the contigs database.
-                                                        </div>
+                    <div class="card m-2">
+                        <div class="card-body bg-light">The {% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %} merged {% else %} single {% endif %}{% endif %} profile database that was generated
+                                                                with the minimum contig length of <b class="text-primary">{{ meta|lookup:"profile"|lookup:"min_contig_length"|pretty }}</b>
+                                                                contained <b class="text-primary">{{ meta|lookup:"profile"|lookup:"num_contigs"|pretty }}</b> contigs, which correspond to
+                                                                <b class="text-primary">{{ meta|lookup:"percent_contigs_contigs_described_by_profile"|pretty }}%</b> of all contigs, and
+                                                                <b class="text-primary">{{ meta|lookup:"percent_contigs_nts_described_by_profile"|pretty }}%</b> of all nucleotides found
+                                                                in the contigs database.
+                        </div>
+                    </div>
 
                 <div class="row">
                     {% if not meta|lookup:"profile"|lookup:"blank" %}
-                    <div class="col-lg-12 col-md-12 col-sm-12">
-                        <div class="card" style="margin-right:10px; margin-left:10px;">
+                    <div class="col-12">
+                        <div class="card m-2">
                             <div class="card-header">
                                 Profile DB (<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b> w/ {{ meta|lookup:"profile"|lookup:"samples"|length|pretty }} samples).
                             </div>
@@ -112,8 +119,8 @@
                     </div>
                     {% endif %}
 
-                    <div class="col-lg-12 col-md-12 col-sm-12">
-                        <div class="card" style="margin-right:10px; margin-left:10px;">
+                    <div class="col-12">
+                        <div class="card m-2">
                             <div class="card-header">
                                 Contigs DB (<b>{{ meta|lookup:"contigs"|lookup:"project_name"|humanize }}</b>)
                             </div>
@@ -145,7 +152,7 @@
 
 
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
@@ -153,7 +160,7 @@
 
                 <div id="collapse-description" class="panel-collapse">
 
-                <div class="well" style="margin: 10px;">{% autoescape off %}{{ basics_pretty|lookup:"description" }}{% endautoescape %}</div>
+                <div class="card-body text-secondary">{% autoescape off %}{{ basics_pretty|lookup:"description" }}{% endautoescape %}</div>
 
                 </div>
             </div>
@@ -163,7 +170,7 @@
 
     <!-- SUMMARY of BINS PANEL -->
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-info" id="bins_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
@@ -171,11 +178,11 @@
 
                 <div id="collapse-bins" class="panel-collapse">
                     <div class="card-body">
-                        <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
+                        <p class="m-2 text-secondary">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
                         <div class="card ">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th data-defaultsort='disabled' class="text-center"></th>
@@ -362,7 +369,7 @@
     <!-- BINS ACROSS SAMPLES PANEL -->
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
-    <div class="container">
+    <div class="container mt-2">
         <div class="card border-info" id="bins_across_samples_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
@@ -374,20 +381,20 @@
                     <!-- Nav tabs -->
                     <ul class="nav nav-tabs" role="tablist">
                     {% for item in collection_profile_items %}
-                      <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ item }}" aria-controls="{{ item }}" role="tab" data-toggle="tab">{{ item|humanize }}</a></li>
+                      <li role="presentation" class="nav-item"><a {% if forloop.first %} class="nav-link active"{% endif %} class="nav-link" href="#{{ item }}" aria-controls="{{ item }}" role="tab" data-toggle="tab">{{ item|humanize }}</a></li>
                     {% endfor %}
                     </ul>
                 
                     <!-- Tab panes -->
                     <div class="tab-content">
                     {% for item in collection_profile_items %}
-                        <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ item }}">
+                        <div role="tabpanel" class="tab-pane fade show {% if forloop.first %} in active{% endif %}" id="{{ item }}">
 
-                            <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
+                            <p class="text-secondary p-2 mt-3">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
 
-                            <div class="card ">
+                            <div class="card">
                                 <div class="card-body">
-                                    <table class="table table-striped sortable" style="margin: 10px;">
+                                    <table class="table table-striped sortable table-responsive" style="margin: 10px;">
                                         <thead id="tblHead_bin">
                                            <tr>
                                                <th data-defaultsort='disabled' class="text-center"></th>
@@ -439,7 +446,7 @@
     <!-- BINS PERCENT RECRUITMENT PANEL -->
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-info" id="bins_percent_recruitment_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
@@ -447,13 +454,13 @@
 
                 <div id="collapse-bins-percent-recruitment" class="panel-collapse">
                     <div class="card-body">
-                        <p style="color: #AAAAAA; padding: 0px 20px;">This card shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
-                        <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
+                        <p class="pb-2 text-secondary">This card shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
+                        <p class="p-2 text-secondary">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
 
 
                         <div class="card ">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th>Sample</th>
@@ -499,7 +506,7 @@
     {% if meta|lookup:"contigs"|lookup:"genes_are_called" %}
     <!-- GENES PANEL -->
     <section>
-    <div class="container">
+    <div class="container mt-2">
         <div class="card border-info" id="genes_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
@@ -508,11 +515,11 @@
             <div id="collapse-functions" class="panel-collapse">
                 <div class="card-body">
 
-                    <p style="color: #AAAAAA; padding: 20px;">An overview of genes and functions based on the information found in the contigs database. If you haven't assigned any functions, these tables will only contain coverages of ORFs across samples.</a></p>
+                    <p class="m-2 text-secondary">An overview of genes and functions based on the information found in the contigs database. If you haven't assigned any functions, these tables will only contain coverages of ORFs across samples.</a></p>
 
                     <div class="card ">
                         <div class="card-body">
-                            <table class="table table-striped sortable" id="tblGrid_bin">
+                            <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
                                 <thead id="tblHead_bin">
                                     <tr>
                                         <th data-defaultsort='disabled' class="text-center"></th>
@@ -553,7 +560,7 @@
     </section>
     {% else %}
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-warning">
                 <div class="card-header"><h3 class="card-title">No gene calls are found</h3></div>
             </div>
@@ -565,7 +572,7 @@
     {% if meta|lookup:"non_single_copy_gene_hmm_data_available" %}
     <!-- NON-SINLGE-COPY HMMs PANEL -->
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-info" id="hmms_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
@@ -574,13 +581,13 @@
                 <div id="collapse-hmms" class="panel-collapse">
 
                     <div class="card-body">
-                        <p style="color: #AAAAAA; padding: 20px;">This card shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
+                        <p class="m-2 text-secondary">This card shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
 
 
                         <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER HMM PROFILE: -->
                         <div class="card ">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                        <tr>
                                            <th data-defaultsort='disabled' class="text-center"></th>
@@ -608,27 +615,27 @@
                             </div>
                         </div>
 
-                        <p style="color: #AAAAAA; padding: 20px;">The distribution of each HMM item found in your HMM collections is shown below. Different search types will be presented in their cognate tabs.</p>
+                        <p class="m-3 text-secondary">The distribution of each HMM item found in your HMM collections is shown below. Different search types will be presented in their cognate tabs.</p>
 
                         <div role="tabpanel" style="margin: 10px;">
                             <!-- Nav tabs -->
                             <ul class="nav nav-tabs" role="tablist">
                             {% for hmm_profile in meta|lookup:'hmm_items' %}
-                              <li role="presentation"{% if forloop.first %} class="active"{% endif %}><a href="#{{ hmm_profile }}" aria-controls="{{ hmm_profile }}" role="tab" data-toggle="tab">{{ hmm_profile|humanize }}</a></li>
+                              <li role="presentation" class="nav-item"><a {% if forloop.first %} class="nav-link active"{% endif %} class="nav-link" href="#{{ hmm_profile }}" aria-controls="{{ hmm_profile }}" role="tab" data-toggle="tab">{{ hmm_profile|humanize }}</a></li>
                             {% endfor %}
                             </ul>
                         
                             <!-- TABS -->
                             <div class="tab-content">
                             {% for hmm_profile in meta|lookup:'hmm_items' %}
-                            <div role="tabpanel" class="tab-pane fade{% if forloop.first %} in active{% endif %}" id="{{ hmm_profile }}">
+                            <div role="tabpanel" class="tab-pane fade show {% if forloop.first %} in active{% endif %}" id="{{ hmm_profile }}">
 
-                                    <p style="color: #AAAAAA; padding: 20px;">HMM hits in bins for {{ hmm_profile }} (<a href="{{ files|lookup:'hmms'|lookup:hmm_profile }}">from {{ files|lookup:'hmms'|lookup:hmm_profile }}</a>):</p>
+                                    <p class="m-3 text-secondary">HMM hits in bins for {{ hmm_profile }} (<a href="{{ files|lookup:'hmms'|lookup:hmm_profile }}">from {{ files|lookup:'hmms'|lookup:hmm_profile }}</a>):</p>
 
                                     <!-- INDIVIDUAL TABLES PER HMM ITEM and HMM PROFILE -->
                                     <div class="card ">
                                         <div class="card-body">
-                                        <table class="table table-striped sortable" style="margin: 10px;">
+                                        <table class="table table-striped sortable table-responsive" style="margin: 10px;">
                                             <thead id="tblHead_bin">
                                                <tr>
                                                    <th data-defaultsort='disabled' class="text-center"></th>
@@ -676,7 +683,7 @@
     </section>
     {% else %}
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-warning">
                 <div class="card-header"><h3 class="card-title">Hidden Markov Model Hits <small>(none found)</small></h3></div>
             </div>
@@ -687,7 +694,7 @@
 
     <!-- MISC DATA PANEL -->
     <section>
-        <div class="container">
+        <div class="container mt-2">
             <div class="card border-info" id="misc_data_panel">
                 <div class="card-header">
                     <h1 class="card-title">Misc Data</h1>
@@ -721,6 +728,9 @@
 
     <!-- jQuery -->
     <script src=".html/js/jquery.min.js"></script>
+
+    <!-- POPPERjs will change with local package -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
 
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/bootstrap.min.js"></script>
