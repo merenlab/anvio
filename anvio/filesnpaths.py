@@ -5,7 +5,6 @@
 import os
 import json
 import time
-import pysam
 import shutil
 import tarfile
 import tempfile
@@ -305,8 +304,10 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
 
     is_file_exists(file_path)
 
+    from pysam import AlignmentFile
+
     try:
-        bam_file = pysam.AlignmentFile(file_path, "rb")
+        bam_file = AlignmentFile(file_path, "rb")
     except Exception as e:
         if dont_raise:
             return False
