@@ -798,7 +798,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #inner-sidebar {
-    min-width: 60px !important;
+    min-width: 65px !important;
     color: var(--bg-color) !important;
     background: var(--bg-color);
     height: fit-content;
@@ -972,17 +972,124 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
 }
 
-@media only screen and (min-width: 768px) {
+.glow-on-hover {
+    border: none;
+    outline: none;
+    color: #fff;
+    background: rgb(250, 250, 250) ;
+    cursor: pointer;
+    position: relative;
+    z-index: 0;
+    border-radius: 10px;
+}
+
+.glow-on-hover:before {
+    content: '';
+    background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+    position: absolute;
+    top: -2px;
+    left:-2px;
+    background-size: 300%;
+    z-index: -1;
+    filter: blur(5px);
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    animation: glowing 20s linear infinite;
+    opacity: 0;
+    transition: opacity .3s ease-in-out;
+    border-radius: 10px;
+}
+
+.glow-on-hover:active {
+    color: #000
+}
+
+.glow-on-hover:active:after {
+    background: transparent;
+}
+
+.glow-on-hover:hover:before {
+    opacity: 1;
+}
+
+.glow-on-hover:after {
+    z-index: -1;
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(250, 250, 250, 0.6) ;
+    left: 0;
+    top: 0;
+    border-radius: 10px;
+}
+
+@keyframes glowing {
+    0% { background-position: 0 0; }
+    50% { background-position: 400% 0; }
+    100% { background-position: 0 0; }
+}
+
+@mixin btn-border-drawing($color: #ccc, $hover: black, $width: 2px, $vertical: top, $horizontal: left, $duration: 0.25s) {
+box-shadow: inset 0 0 0 $width $color;
+color: $color;
+transition: color $duration $duration/3;
+position: relative;
+
+&::before,
+&::after {
+    border: 0 solid transparent;
+    box-sizing: border-box;
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    width: 0; height: 0;
+    
+    #{$vertical}: 0; 
+    #{$horizontal}: 0;
+}
+
+&::before {
+    $h-side: if($horizontal == 'left', 'right', 'left');
+    
+    border-#{$vertical}-width: $width;
+    border-#{$h-side}-width: $width;
+}
+
+&::after {
+    $v-side: if($vertical == 'top', 'bottom', 'top');
+    
+    border-#{$v-side}-width: $width;
+    border-#{$horizontal}-width: $width;
+}
+
+&:hover {
+    color: $hover;
+    
+    &::before,
+    &::after {
+    border-color: $hover;
+    transition: border-color 0s, width $duration, height $duration;
+    width: 100%;
+    height: 100%;
+    }
+    
+    &::before { transition-delay: 0s, 0s, $duration; }
+    
+    &::after { transition-delay: 0s, $duration, 0s; }
+}
+}
+
+.draw-border {
+@include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
+}
+
+
+@media only screen and (min-width: 768px) and (max-width: 992px) {
     .fa-2x {
         font-size: 1.5em !important;
     }
 }
-
-@media only screen and (min-width: 992px) {
-    .fa-2x {
-        font-size: 1.5em !important;
-    }
-}    
 
 @media only screen and (min-width:1280px){
     /* styles for browsers larger than 1280px; */
