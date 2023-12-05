@@ -57,12 +57,12 @@
     </nav>
 
     <div class="container mt-5 pt-5">
-        <div class="alert alert-primary d-flex" role="alert">
+        <div class="alert alert-primary d-flex mt-3" role="alert">
             <i class="d-flex align-items-center mr-3 text-primary bi bi-info-circle" style="font-size: 3em;"></i>
             <div class="text-secondary">
-                The <b>{{ meta|lookup:"num_bins"|pretty }}</b> gene cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
-                under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
-                gene clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+                The <b class="text-primary">{{ meta|lookup:"num_bins"|pretty }}</b> gene cluster 'bins' that were sotred in the anvi'o pan database for '<b class="text-primary">{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
+                under the collection name "<b class="text-primary">{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b class="text-primary">{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
+                gene clusters with <b class="text-primary">{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes that were identified in <b class="text-primary">{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
             </div>
         </div>
     </div>
