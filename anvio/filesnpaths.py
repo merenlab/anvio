@@ -73,7 +73,7 @@ def is_proper_external_gene_calls_file(file_path):
     headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence']
     call_types_allowed = set(list(constants.gene_call_types.values()))
 
-    with open(file_path, 'rU') as input_file:
+    with open(file_path, 'r') as input_file:
         headers = input_file.readline().strip().split('\t')
 
         if len(headers) == 10:
@@ -196,7 +196,7 @@ def is_file_empty(file_path):
 
 def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, dont_raise=False):
     is_file_exists(file_path)
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     try:
         while True:
@@ -246,7 +246,7 @@ def is_file_json_formatted(file_path):
     is_file_exists(file_path)
 
     try:
-        json.load(open(file_path, 'rU'))
+        json.load(open(file_path, 'r'))
     except ValueError as e:
         raise FilesNPathsError("File '%s' does not seem to be a properly formatted JSON "
                            "file ('%s', cries the library)." % (file_path, e))
@@ -272,7 +272,7 @@ def is_file_plain_text(file_path, dont_raise=False):
     is_file_exists(file_path)
 
     try:
-        open(os.path.abspath(file_path), 'rU').read(512)
+        open(os.path.abspath(file_path), 'r').read(512)
     except IsADirectoryError:
         if dont_raise:
             return False

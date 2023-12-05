@@ -850,7 +850,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
-    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'rU').readlines()]
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'r').readlines()]
 
     output_file = open(output_file_path, 'w')
     for entry in zip(*file_content):
@@ -1048,7 +1048,7 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
     for index in column_indices:
         d[index] = []
 
-    with open(input_file_path, "rU") as input_file:
+    with open(input_file_path, "r") as input_file:
         for line in input_file.readlines():
             fields = line.strip('\n').split(separator)
 
@@ -1066,9 +1066,9 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     filesnpaths.is_file_exists(file_path)
 
     if include_first_column:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')
+        return open(file_path, 'r').readline().strip('\n').split('\t')
     else:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
+        return open(file_path, 'r').readline().strip('\n').split('\t')[1:]
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
@@ -1081,9 +1081,23 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False, run=run):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
+
+    run.warning("Anvi'o is recovering your data from your TAB-delimited file, and it is"
+                "instructed to pad your input vectors with 0 values probably because you "
+                "used the flag `--pad-input-with-zeros` somewhere. Just so you know.")
+
+    if cols_to_return and pad_with_zeros:
+        raise ConfigError("Dear developer, you can't use `cols_to_return` and `pad_with_zeros` at the same "
+                          "time with this function. The `pad_with_zeros` header variable in this function "
+                          "is a mystery at this point. But the only way to be able to use it requires one "
+                          "to not use `cols_to_return`. More mystery .. but essentially this is a necessity "
+                          "because we have to update fields_of_interest value if pad_with_zeros is true, so "
+                          "anvi'o clustering step DOES NOT IGNORE THE LAST SAMPLE IN THE MATRIX BECUASE PAD "
+                          "WITH ZEROS SHIFT EVERYTHING, and we can't do it blindly if the programmer requests "
+                          "only specific columnts to be returned with `cols_to_return` :/")
 
     if transpose:
         transposed_file_path = filesnpaths.get_temp_file_path()
@@ -1095,7 +1109,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_to_sample_dict = {}
     sample_to_id_dict = {}
 
-    input_matrix = open(file_path, 'rU')
+    input_matrix = open(file_path, 'r')
     columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
@@ -1114,19 +1128,23 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
+
         if rows_to_return and row_name not in rows_to_return:
-                continue
+            continue
+
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip('\n').split('\t')[1:]
 
-        # long story.
+        # because stupid stuff. see warning above.
         if pad_with_zeros:
             fields = [0] + fields + [0]
+            fields_of_interest = list(range(0, len(fields)))
 
         try:
             if fields_of_interest:
                 vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
+                # the code will literally never enter here:
                 vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
@@ -1489,7 +1507,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
-            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'r').readlines()])
         else:
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
@@ -1764,7 +1782,7 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
-        for line in open(chunk_path, 'rU'):
+        for line in open(chunk_path, 'r'):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
@@ -3306,13 +3324,21 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
-def get_bams_and_profiles_txt_as_data(file_path):
+def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok=False):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
 
     Updates to this function may require changes in the artifact description at
     anvio/docs/artifacts/bams-and-profiles-txt.md
+
+    Parameters
+    ==========
+    no_profile_and_bam_column_is_ok : bool
+        In some specific instances (e.g., as specific as wanting to compute
+        inversion activities in new metagenomes for pre-computed inversion sites),
+        downstream analyses may not require profile-db files or BAM files. In such,
+        cases the programmer can use this parameter to relax the sanity checks
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3321,13 +3347,19 @@ def get_bams_and_profiles_txt_as_data(file_path):
         raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
                           f"The file you have at '{file_path}' is nothing of that sorts.")
 
-    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+    if no_profile_and_bam_column_is_ok:
+        expected_columns = ['name', 'contigs_db_path']
+    else:
+        expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
 
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
         raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
                           f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
+
+    has_profile_db_column = 'profile_db_path' in columns_found
+    has_bam_file_column = 'bam_file_path' in columns_found
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3340,20 +3372,26 @@ def get_bams_and_profiles_txt_as_data(file_path):
                           "contigs database. Meaning, you have to use the same contigs database path for "
                           "every entry. Confusing? Yes. Still a rule? Yes.")
 
-    profile_db_paths = COLUMN_DATA('profile_db_path')
-    if len(set(profile_db_paths)) != len(profile_db_paths):
-        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+    if not has_profile_db_column:
+        pass
+    else:
+        profile_db_paths = COLUMN_DATA('profile_db_path')
+        if len(set(profile_db_paths)) != len(profile_db_paths):
+            raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
 
-    bam_file_paths = COLUMN_DATA('bam_file_path')
-    if len(set(bam_file_paths)) != len(bam_file_paths):
-        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+        bam_file_paths = COLUMN_DATA('bam_file_path')
+        if len(set(bam_file_paths)) != len(bam_file_paths):
+            raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
 
     contigs_db_path = contigs_db_paths[0]
     profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
     for sample_name in profiles_and_bams:
         profiles_and_bams[sample_name].pop('contigs_db_path')
-        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
-        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+        if has_bam_file_column:
+            filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+
+        if has_profile_db_column:
+            is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
     # this file can optionally contain `r1` and `r2` for short reads
     for raw_reads in ['r1', 'r2']:
@@ -3547,7 +3585,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     failed_lines = []
     column_mapping_for_line_failed = None
 
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     # learn the number of fields and reset the file:
     num_fields = len(f.readline().strip('\n').split(separator))
@@ -4235,6 +4273,18 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+
+def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
+    pdb = dbi(pan_db_path)
+    gdb = dbi(genomes_storage_path)
+
+    if pdb.hash != gdb.hash:
+        raise ConfigError(f"The pan database and the genomes storage database do not seem to "
+                          f"be compatible. More specifically, the genomes storage database is "
+                          f"not the one that was used when the pangenome was created. "
+                          f"({pdb.hash} != {gdb.hash})")
+
+    return True
 
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):

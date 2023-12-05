@@ -14,8 +14,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "21"
-profile_db_version = "38"
+contigs_db_version = "22"
+profile_db_version = "39"
 genes_db_version = "6"
 pan_db_version = "17"
 auxiliary_data_version = "2"

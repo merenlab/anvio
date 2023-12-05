@@ -71,7 +71,7 @@ def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
         raise ConfigError("GFF output is only relevant if you are working with a contigs database :/")
 
     g = genomestorage.GenomeStorage(genomes_storage_db_path)
-    g.gen_combined_aa_sequences_FASTA(output_file_path)
+    g.gen_combined_aa_sequences_FASTA(output_file_path, report_with_genome_name=True)
 
 
 def main(args):

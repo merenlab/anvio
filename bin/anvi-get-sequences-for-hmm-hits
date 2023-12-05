@@ -66,6 +66,7 @@ __resources__ = [("A tutorial on anvi'o phylogenomics workflow", "http://merenla
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 
 
 def main(args):
@@ -160,33 +161,36 @@ def main(args):
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
     CHK()
 
-
     run.info('Sources', f"{', '.join(hmm_sources)}")
     run.info('Hits', '%d HMM hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
+    # keep track of bins removed from the analysis results due to various filters:
+    bins_removed_for_any_reason = set([])
+
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
     if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
-        gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
+        gene_names = [g.strip() for g in open(args.gene_names, 'r').readlines()] if args.gene_names else []
     else:
         gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
 
     run.info('Genes of interest', f"{', '.join(gene_names) if gene_names else None}")
 
     if len(gene_names):
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
-        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+        hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_to_only_include_specific_genes(hmm_sequences_dict, gene_names)
         CHK()
+
+        if len(bins_removed):
+            bins_removed_for_any_reason.update(bins_removed)
+
+        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
 
     if args.max_num_genes_missing_from_bin is not None:
         hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
         CHK()
 
         if len(bins_removed):
+            bins_removed_for_any_reason.update(bins_removed)
             run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' % (len(hmm_sequences_dict)))
-
-            run.warning('The `--max-num-genes-missing-from-bin` flag caused the removal of %d bins (or genomes, whatever) '
-                        'from your analysis. This is the list of bins that will live in our memories: %s' % \
-                                                (len(bins_removed), ', '.join(bins_removed)))
 
     if args.min_num_bins_gene_occurs is not None:
         hmm_sequences_dict, genes_removed = s.filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(hmm_sequences_dict, int(args.min_num_bins_gene_occurs))
@@ -229,6 +233,12 @@ def main(args):
         CHK()
 
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple models' % (len(hmm_sequences_dict)))
+
+    if len(bins_removed_for_any_reason):
+            run.warning(f"Please note that a total of {P('bin', len(bins_removed_for_any_reason))} from your final results "
+                        f"were removed while anvi'o was applying all the filters to your HMM hits. Please carefully "
+                        f"review the logs above to make sure you have a good grasp on what happened, and you're happy "
+                        f"with the reults.", header='CONDOLENCES FROM DAAN TO YOU FOR YOUR BINS THAT WENT 💀')
 
     if args.separator:
         separator = args.separator

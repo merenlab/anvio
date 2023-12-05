@@ -921,5 +921,10 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    }, "contig-rename-report-txt": {
+        "name": "CONTIG RENAME REPORT TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
 }

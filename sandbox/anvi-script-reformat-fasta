@@ -22,7 +22,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl', 'vinisalazar']
 __requires__ = ["fasta"]
-__provides__ = ["contigs-fasta"]
+__provides__ = ["contigs-fasta", "contig-rename-report-txt"]
 __description__ =  ("Reformat FASTA file (remove contigs based on length, or based on a given list of "
                     "deflines, and/or generate an output with simpler names)")
 
@@ -41,6 +41,13 @@ def reformat_FASTA(args):
         raise ConfigError(f"You can't ask your reads to be an exact lenght of {args.exact_length} "
                           f"and longer than {args.min_len} at the same time. It just doesn't make "
                           f"any sense and that's why.")
+
+    if args.output_file == args.contigs_fasta:
+        raise ConfigError("You can't set the same path for both your input file name and output "
+                          "file name. It makes no sense UNLESS you wish to 'overwrite' your input "
+                          "file in-place. But anvi'o not only has a flag for that (`--overwrite-input`) "
+                          "but also has means to track those who do not read the help menu for "
+                          "programs. Just so you know.")
 
     if args.output_file and args.overwrite_input:
         raise ConfigError("You can't ask anvi'o to overwrite your input file, and also provide an "
@@ -91,19 +98,19 @@ def reformat_FASTA(args):
         exclude_ids = set([l.split('\t')[0].strip() for l in open(args.exclude_ids, 'r').readlines()])
         run.info('Input IDs to remove', '%d found' % len(exclude_ids))
     else:
-        exclude_ids = set([])
+        exclude_ids = None
 
     if args.keep_ids:
         filesnpaths.is_file_exists(args.keep_ids)
         keep_ids = set([l.split('\t')[0].strip() for l in open(args.keep_ids, 'r').readlines()])
         run.info('Input IDs to consider', '%d found' % len(keep_ids))
     else:
-        keep_ids = set([])
+        keep_ids = None
 
     if args.seq_type is not None:
         replace_chars = True
         if args.seq_type == 'AA':
-            acceptable_chars = set(constants.amino_acids)
+            acceptable_chars = set(sorted(list(constants.AA_to_single_letter_code.values())))
             replacement = 'X'
         else:
             acceptable_chars = set(constants.nucleotides)

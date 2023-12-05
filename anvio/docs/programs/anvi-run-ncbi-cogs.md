@@ -2,7 +2,7 @@ This program **annotates genes in your %(contigs-db)s with functions using NCBI'
 
 This program assumes that the user has successfully set up the COGs database on their computer using the anvi'o program %(anvi-setup-ncbi-cogs)s.
 
-The only critical parameter to %(anvi-run-ncbi-cogs)s is a %(contigs-db)s. The program will store its output in the %(contigs-db) sas a %(functions)s artifact.
+This program requires one of two possible inputs a %(contigs-db)s or a %(fasta)s file of amino acid sequences. When a %(contigs-db)s is provided, the program will store its output in the %(contigs-db)s as a %(functions)s artifact. Otherwise you must specify an output file path using `-o`, to which the program will write a TAB-delimited file containing all the annotatons found in the input %(fasta)s file.
 
 If the %(cogs-data)s was stored at a specific path when %(anvi-setup-ncbi-cogs)s was run, then providing that path using the `--cog-data-dir` parameter is also necessary.
 

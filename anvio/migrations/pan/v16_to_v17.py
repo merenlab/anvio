@@ -7,7 +7,6 @@ import argparse
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 
-from anvio.dbinfo import PanDBInfo
 from anvio.errors import ConfigError
 
 run = terminal.Run()
