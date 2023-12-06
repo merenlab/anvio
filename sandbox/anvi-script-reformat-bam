@@ -96,9 +96,8 @@ def reformat_BAM(args):
     # Load the list (tsv file, two columns, new name TAB old name)
     run.warning(None, header='WHAT WAS THERE', lc="cyan")
     rename_dict = load_dict_from_tsv(args.report_file)
-    run.info(f"Loaded {args.report_file}", f"{len(rename_dict):,}", mc="green")
+    run.info(f"Sequences in {args.report_file}", f"{len(rename_dict):,}", mc="green")
 
-    run.warning(None, header='WHAT WAS DONE', lc="cyan")
     # Open the BAM file with pysam and rename all the contigs in header and alignment records
     with pysam.AlignmentFile(args.bam_file, "rb") as bam:
         with pysam.AlignmentFile(args.bam_file, "rb") as bam:
@@ -129,6 +128,7 @@ def reformat_BAM(args):
                 updated_read = update_read(read, new_header)
                 out_bam.write(updated_read)
 
+    run.warning(None, header='WHAT WAS DONE', lc="cyan")
     run.info("Output BAM file created", output_filename)
     
 
