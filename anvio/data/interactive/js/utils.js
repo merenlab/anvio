@@ -324,13 +324,13 @@ function showTaxonomyTableDialog(title, content)
     var randomID = title.hashCode();
 
     var template = `
-    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
-        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
+        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
             <div class="modal-content">
 
                 <div class="modal-header">
+                    <h4 class="modal-title">` + title + `</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                     <h4 class="modal-title">` + title + `</h4>
                 </div>
 
                 <div class="modal-body">
@@ -338,7 +338,7 @@ function showTaxonomyTableDialog(title, content)
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -360,13 +360,13 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     var randomID = title.hashCode();
 
     var template = `
-    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
-        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
+        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
             <div class="modal-content">
 
                 <div class="modal-header">
+                    <h4 class="modal-title">` + title + `</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                     <h4 class="modal-title">` + title + `</h4>
                 </div>
 
                 <p style="margin: 20px; font-style: italic;">Please note that this is just a quick view of the functions associated with your gene clusters. A much more appropriate way to summarize this information and more is to use the program <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">anvi-summarize</a>, and inspect the resulting TAB-delimited output file</p>
@@ -376,7 +376,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

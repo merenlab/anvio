@@ -695,6 +695,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     width: 320px;
 }
 
+.taxonomy-modal-dialog{
+    max-width: fit-content !important;
+}
+
 .menu-disabled {
     pointer-events:none;
     opacity:0.4;
