@@ -900,6 +900,10 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
+    if(legends.length == 0){
+        $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
+    }
+
     $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
