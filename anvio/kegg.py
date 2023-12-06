@@ -1903,6 +1903,7 @@ class RunKOfams(KeggContext):
                               f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
         utils.is_contigs_db(self.contigs_db_path)
+        filesnpaths.is_output_file_writable(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
