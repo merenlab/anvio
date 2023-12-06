@@ -2992,7 +2992,7 @@ function showTaxonomy()
                 let d = response[bin_name];
 
                 content += `<tr>
-                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
+                    <td><a data-toggle="collapse" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
                     <td class="text-center">${ d['total_scgs'] }</td>
                     <td class="text-center">${ d['supporting_scgs'] }</td>`;
 
@@ -3010,7 +3010,7 @@ function showTaxonomy()
                 content += `</tr>`;
 
                 // Building an inner table for each individual SCG within a given bin.
-                let scg_table_content = `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+                let scg_table_content = `<tr id="collapse-${ bin_name }" class="fade collapse" style="background: #acaf3330;"><td colspan="10">
 
                 <table class="table table-striped sortable" id="tblGrid_${ bin_name }">
 
