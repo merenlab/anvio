@@ -80,7 +80,7 @@ button,
 input,
 select,
 textarea {
-    font-family: "Montserrat";
+    font-family: Helvetica,Arial,sans-serif;
 }
 
 /*
@@ -210,8 +210,8 @@ pre,
 code,
 kbd,
 samp {
-    font-family: "Montserrat",monospace, serif;
-    _font-family: "Montserrat",'courier new', monospace;
+    font-family: Helvetica,Arial,sans-serif;
+    _font-family: Helvetica,Arial,sans-serif;
     font-size: 1em;
 }
 

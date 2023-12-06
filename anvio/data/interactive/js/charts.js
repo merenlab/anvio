@@ -950,7 +950,7 @@ function display_nucleotides() {
   var dna_seq_height = contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
   var nucl_text_y = .75*dna_seq_height;
                    nucl_sequence.attr("y", nucl_text_y)
-                                .attr("font-family", 'Montserrat', "monospace")
+                                .attr("font-family", "Helvetica", "Arial")
                                 .attr("transform", "translate(" + (margin.left) + ", 10)");
 
   var show_AAs = false;
@@ -1023,7 +1023,7 @@ function display_nucleotides() {
         aa_sequence.append("text")
                   .text(aa_string)
                   .attr('font-size', nucl_text_font)
-                  .attr("font-family", 'Montserrat', "monospace")
+                  .attr("font-family", 'Helvetica', "Arial")
                   .attr("fill", "white")
                   .attr("x", buffer*textWidth)
                   .attr("y", dna_seq_height + .67*dna_seq_height + offset_y);

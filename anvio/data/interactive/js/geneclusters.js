@@ -178,7 +178,7 @@ function createDisplay(){
             text.setAttribute('x', 0);
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
             text.setAttribute('font-size', "24px");
-            text.setAttribute('font-family', 'Montserrat',"Lato, Arial");
+            text.setAttribute('font-family', 'Helvetica', 'Arial');
             text.setAttribute('font-weight', '300');
             text.setAttribute('style', 'alignment-baseline:central');
             text.setAttribute('class', 'genomeTitle');
@@ -192,7 +192,7 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family', 'Montserrat',"Lato, Arial");
+                text.setAttribute('font-family', 'Helvetica','Arial');
                 text.setAttribute('font-weight', '300');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
                 text.setAttribute('class', 'callerTitle');
@@ -215,7 +215,7 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family','Montserrat',"monospace");
+                text.setAttribute('font-family','Helvetica','Arial');
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
