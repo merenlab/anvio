@@ -102,17 +102,26 @@ def reformat_BAM(args):
     # Open the BAM file with pysam and rename all the contigs in header and alignment records
     with pysam.AlignmentFile(args.bam_file, "rb") as bam:
         with pysam.AlignmentFile(args.bam_file, "rb") as bam:
-            # Convert header to dictionary, update contig names, and create new header
+            # Convert header to dictionary
             header_dict = bam.header.to_dict()
+
+            # sanity check for matching number of sequences
+            run.info("Sequences in BAM file", len(header_dict['SQ']))
+            if len(rename_dict) != len(header_dict['SQ']):
+                mismatching_bam = [x for x in header_dict['SQ'] if x not in rename_dict]
+                mismatching_rename = [x for x in rename_dict if x not in header_dict['SQ']]
+                raise ConfigError(f"ERROR: The number of sequences in the BAM file ({len(header_dict['SQ'])}) does "
+                                  f"not match to the number of sequences in the reformat report ({len(rename_dict)}). "
+                                  f"For example, here are the sequences that are only in the BAM file and not in the "
+                                  f"reformat report (if any): {', '.join(mismatching_bam)} . And here are the sequences that "
+                                  f"are only in the reformat report and not in the BAM file (if any):  {', '.join(mismatching_rename)}")
+
+            # update contig names, and create new header
             for sq in header_dict['SQ']:
                 old_name = sq['SN']
                 if old_name in rename_dict:
                     sq['SN'] = rename_dict[old_name]
             new_header = pysam.AlignmentHeader.from_dict(header_dict)
-            run.info("Sequences in BAM file", len(header_dict['SQ']))
-            
-            if len(rename_dict) != len(header_dict['SQ']):
-                raise ConfigError(f"ERROR: The number of sequences in the BAM file ({len(header_dict['SQ'])}) ")
 
         # Create a new BAM file with the new header and updated records
         with pysam.AlignmentFile(args.bam_file, "rb") as bam, pysam.AlignmentFile(output_filename, "wb", header=new_header) as out_bam:
