@@ -4274,6 +4274,18 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     return True
 
 
+def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
+    pdb = dbi(pan_db_path)
+    gdb = dbi(genomes_storage_path)
+
+    if pdb.hash != gdb.hash:
+        raise ConfigError(f"The pan database and the genomes storage database do not seem to "
+                          f"be compatible. More specifically, the genomes storage database is "
+                          f"not the one that was used when the pangenome was created. "
+                          f"({pdb.hash} != {gdb.hash})")
+
+    return True
+
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 

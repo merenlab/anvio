@@ -177,7 +177,8 @@ class Split:
 
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
-                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
+                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
+                 min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -190,6 +191,7 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
+        self.skip_edges = skip_edges
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -482,6 +484,14 @@ class Auxiliary:
         read_count = 0
         for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
             aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
+
+            # if the user is asking some nucleotides to be excluded from the calculation of
+            # single-nucleotide variants due to DNA damage or other reasons, don't take them
+            # into consideration:
+            if self.skip_edges > 0:
+                aligned_sequence_as_ord = aligned_sequence_as_ord[self.skip_edges:-self.skip_edges]
+                reference_positions = reference_positions[self.skip_edges:-self.skip_edges]
+
             aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
 
@@ -524,7 +534,8 @@ class Auxiliary:
 
             read_count += 1
 
-        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG:
+            self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
@@ -553,8 +564,9 @@ class Auxiliary:
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
-        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
-        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG:
+            self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:

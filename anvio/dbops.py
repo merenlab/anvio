@@ -1938,10 +1938,14 @@ class PanSuperclass(object):
         return gene_clusters_functions_summary_dict
 
 
-    def init_gene_clusters_functions_summary_dict(self):
+    def init_gene_clusters_functions_summary_dict(self, source_list = None, gene_clusters_of_interest = None):
         """ A function to initialize the `gene_clusters_functions_summary_dict` by calling
             the atomic function `get_gene_clusters_functions_summary_dict` for all the
-            functional annotaiton sources.
+            functional annotation sources.
+
+            You can restrict which sources to use and which gene clusters to initialize using the `source_list` and
+            `gene_clusters_of_interest` parameters, respectively. Use this ability with caution as it is possible that
+            downstream code may expect all sources and/or all gene clusters to be initialized.
         """
 
         if not self.functions_initialized:
@@ -1953,17 +1957,38 @@ class PanSuperclass(object):
                              "on without any summary dict for functions and/or drama about it to let the downstream analyses "
                              "decide how to punish the unlucky.")
             return
+        
+        gene_clusters_to_init = self.gene_clusters_functions_dict.keys()
+        if gene_clusters_of_interest:
+            gene_clusters_to_init = gene_clusters_of_interest
 
-        self.progress.new('Generating a gene cluster functions summary dict', progress_total_items=len(self.gene_clusters_functions_dict))
+            # make sure that all of the requested gene clusters exist
+            for cluster_id in gene_clusters_of_interest:
+                if cluster_id not in self.gene_clusters:
+                    raise ConfigError(f"Someone requested the function `init_gene_clusters_functions_summary_dict()` "
+                                      f"to work on a gene cluster called {cluster_id} but it does not exist in the "
+                                      f"pangenome. :/")
+
+        sources_to_summarize = self.gene_clusters_function_sources
+        if source_list:
+            sources_to_summarize = source_list
+
+            # make sure that all of the requested sources are in the pangenome
+            for s in source_list:
+                if s not in self.gene_clusters_function_sources:
+                    raise ConfigError(f"Someone requested the function `init_gene_clusters_functions_summary_dict()` "
+                                      f"to use the annotation source {s}, but that source is not found in the pangenome.")
+
+        self.progress.new('Generating a gene cluster functions summary dict', progress_total_items=len(gene_clusters_to_init))
         counter = 0
-        for gene_cluster_id in self.gene_clusters_functions_dict:
+        for gene_cluster_id in gene_clusters_to_init:
             if counter % 100 == 0:
                 self.progress.increment(increment_to=counter)
                 self.progress.update(f'{gene_cluster_id} ...')
 
             self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
 
-            for functional_annotation_source in self.gene_clusters_function_sources:
+            for functional_annotation_source in sources_to_summarize:
                 accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source, discard_ties=self.discard_ties, consensus_threshold=self.consensus_threshold)
                 self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
 
@@ -3808,7 +3833,8 @@ class ProfileDatabase:
 
         for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'min_coverage_for_variability', 'max_contig_length', 'num_splits', 'total_length']:
+                    'min_coverage_for_variability', 'max_contig_length', 'num_splits',
+                    'total_length', 'skip_edges_for_variant_profiling']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
