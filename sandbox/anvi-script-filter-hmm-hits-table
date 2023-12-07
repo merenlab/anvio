@@ -60,8 +60,8 @@ class FilterHmmHitsTable(object):
             sys.exit()
 
         if self.hmm_source not in anvio.data.hmm.sources and not self.hmm_profile_dir:
-            raise ConfigError(f"Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "
-                              f"with the parameter --hmm-profile-dir")
+            raise ConfigError("Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "
+                              "with the parameter --hmm-profile-dir")
 
         # Grab HMM sources from internal or external HMMs
         if args.hmm_profile_dir:
@@ -311,7 +311,7 @@ class FilterHmmHitsTable(object):
         Filter the hmm_hits table based on HMM model coverage, gene coverage, or open reading frame completeness.
 
         Returns:
-            CSV: Filtered domtblout file from hmmsearch. 
+            CSV: Filtered domtblout file from hmmsearch.
             str: The file path of the temporary file where the filtered DataFrame is saved.
         """
 
