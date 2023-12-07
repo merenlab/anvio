@@ -811,7 +811,7 @@ function buildLegendTables() {
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
-        var template = '<div class="legend-box mb-3 p-3"><span class="header">';
+        var template = '<div class="shadow-box mb-3 p-3"><span class="header">';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
             template += '<span class="label label-default header mb-2">Layer</span> '
@@ -3179,4 +3179,26 @@ function toggleTaxonomyEstimation() {
     if (bins) {
         bins.UpdateBinsWindow();
     }
+}
+
+function ShadowBoxSelection(type) {
+        var result = document.getElementById('result-box');
+        if (type == "search_contigs"){
+            result.classList.remove('border-primary');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(40,167,69,0.25), 0 10px 10px rgba(40,167,69,0.22)';
+            result.classList.add('border-success');
+        }
+        else if (type == "search_functions"){
+            result.classList.remove('border-success');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(0,123,255,0.25), 0 10px 10px rgba(0,123,255,0.22)';
+            result.classList.add('border-primary');
+        }
+        else {
+            result.classList.remove('border-primary');
+            result.classList.remove('border-success');
+            result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
+            result.classList.add('border-warning');
+        }
 }
