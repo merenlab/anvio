@@ -307,7 +307,7 @@
                                                     <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
                                                     <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
                                                 </div>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="fa fa-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="bi bi-plus" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                             </div>
                                     </div>
                                     
@@ -388,7 +388,7 @@
                                     </div>
                                     <br />
                                     <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
-                                        <button id="btn_redraw_samples_layer" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                        <button id="btn_redraw_samples_layer" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="bi bi-globe-americas" aria-hidden="true"></span> Redraw layer data</button>
                                     </div>
                                 </div>
                             </div>
@@ -587,7 +587,7 @@
                                     </div>
                                 </div>
                                 <div id="max_branch_support_value_seen_is_zero_warning" class="pt-1 alert alert-info" style="display: none;" >
-                                    <span class="fa fa-info-circle mr-1" aria-hidden="true"></span> You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                    <span class="bi bi-info-circle-fill mr-1" aria-hidden="true"></span> You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
                                     tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
                                 </div>
                                 <div id="support_value_params">
@@ -712,7 +712,7 @@
                                             </div>
                                     </div>
                                     <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
-                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="bi bi-globe-americas" aria-hidden="true"></span> Redraw layer data</button>
                                     </div>
                                 </div>
                         </div>
@@ -908,7 +908,7 @@
                                                 </tr>
                                                 <tr>
                                                     <td></td>
-                                                    <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterGeneClusters();" disabled><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
+                                                    <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterGeneClusters();" disabled><span class="bi bi-search" aria-hidden="true"></span> Search</button></td>
                                                     <td></td>
                                                 </tr>
                                                 <tr>
@@ -937,13 +937,13 @@
                                 <button type="button" class="btn btn-outline-secondary btn-md" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="mr-1 bi bi-table" aria-hidden="true"></span><b>List Results</b></button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="fa fa-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="bi bi-highlighter" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-outline-secondary btn-md" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="fa fa-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="bi bi-eraser-fill" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="fa fa-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
-                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="fa fa-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="bi bi-plus-circle-fill" aria-hidden="true"></span> Append splits to selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="bi bi-dash-circle-fill" aria-hidden="true"></span> Remove splits from selected bin</button>
                             </div>
 
                             <span id="search-results-table-header" class="col-md-12"></span>
