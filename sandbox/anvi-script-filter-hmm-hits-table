@@ -315,6 +315,29 @@ class FilterHmmHitsTable(object):
             str: The file path of the temporary file where the filtered DataFrame is saved.
         """
 
+        # FIXME: Down below, we allow the user to filter ALL hits in the DOM table based on
+        # a single min model coveage value and/or a single min gene coverage value. But
+        # different models in a list of HMMs and different genes they target will have
+        # different min mode/gene coverage cutoff optimals. As an additional option,
+        # we could allow users to pass a YAML file where for each model name gene/model
+        # min coverage cutoffs are explicitly defined, which cuold look like this:
+        #
+        #    >>> MODEL_NAME_X:
+        #    >>>   min_model_coverage: 0.7
+        #    >>>   min_gene_coverage: 0.6
+        #    >>> MODEL_NAME_Y:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.9
+        #    >>> MODEL_NAME_Z:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.25
+        #    >>> (...)
+        #
+        # Whenever a model name matches to a model name mentioned in this file, the
+        # values defined under would take priority over the defaults. Such a solution
+        # would dramatically increase the utility of the approach and its suitability
+        # to more complex filtering tasks.
+
         # Alignment coverage filtering conditions
         if self.model_coverage and self.gene_coverage:
             df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) &
