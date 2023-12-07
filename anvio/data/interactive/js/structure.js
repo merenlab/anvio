@@ -1511,7 +1511,7 @@ function showPymolWindow() {
 function gen_pymol_script_html(script) {
     var pymol_script_html = `
     <div class="modal-body">
-        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>${script}</textarea>
+        <textarea class="form-control" style="width: 100%; height: 100%; font-family: "Roboto", Helvetica, Arial;" rows="16" onclick="$(this).select();" readonly>${script}</textarea>
     </div>
     `
 

@@ -89,7 +89,7 @@
 /* Text Style */
 .header{
     color: var(--body-text);
-    font-family: Helvetica,Arial,sans-serif;
+    font-family: 'Roboto',Helvetica,Arial,sans-serif;
     flex: 1 0 0;
     font-size: 1.4rem; 
     font-weight: 500; 
@@ -99,7 +99,7 @@
 
 .paragraph{
     color: var(--body-text);
-    font-family: Helvetica,Arial,sans-serif;
+    font-family: 'Roboto',Helvetica,Arial,sans-serif;
     flex: 1 0 0;
     font-size: 1rem; 
     font-weight: 400; 

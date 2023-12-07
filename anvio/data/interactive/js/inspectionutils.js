@@ -261,7 +261,7 @@ function show_sequence_modal(title, content) {
                   <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
               </div> \
               <div class="modal-body"> \
-                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: "Roboto", Helvetica, Arial;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
                   <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button> \
