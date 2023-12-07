@@ -811,7 +811,7 @@ function buildLegendTables() {
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
-        var template = '<div class="shadow-box mb-3 p-3"><span class="header">';
+        var template = '<div class="shadow-box mb-3 p-3 rounded"><span class="header">';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
             template += '<span class="label label-default header mb-2">Layer</span> '
