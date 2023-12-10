@@ -784,7 +784,7 @@ def get_workflow_module_dict():
                       'phylogenomics': PhylogenomicsWorkflow,
                       'trnaseq': TRNASeqWorkflow,
                       'ecophylo': EcoPhyloWorkflow,
-                      'sra-download': SRADownloadWorkflow}
+                      'sra_download': SRADownloadWorkflow}
 
     return workflows_dict
 

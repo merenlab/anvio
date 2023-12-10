@@ -27,12 +27,12 @@ run = terminal.Run()
 
 class SRADownloadWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='sra-download')
+        self.init_workflow_super_class(args, workflow_name='sra_download')
 
         # check that NCBI SRA Toolkit is installed
         if not utils.is_program_exists("prefetch", dont_raise=True) or not utils.is_program_exists("fasterq-dump", dont_raise=True):
             raise ConfigError("'prefetch' and 'fasterq-dump' from the NCBI SRA toolkit must be installed for the "
-                              "sra-download workflow to work. Please check out the installation instructions here: "
+                              "sra_download workflow to work. Please check out the installation instructions here: "
                               "https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
 
         # Snakemake rules
