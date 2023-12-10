@@ -64,7 +64,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
     def init(self):
         """Load the SRA_accession_list and creates a list of target files for the Snakemake workflow."""
-        
+
         super().init()
 
         # Load SRA_accession_list
