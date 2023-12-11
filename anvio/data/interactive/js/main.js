@@ -829,18 +829,19 @@ function buildLegendTables() {
                 <div>
                     <table class="col-md-12 table-spacing table-striped" style="margin-bottom: 10px;">
                         <tr>
-                            <td class="col-md-auto" style="white-space: nowrap;">For <input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
+                            <td class="col-8 d-flex mr-1" style="white-space: nowrap; width: 160px;"><span class="d-flex align-middle mr-1 mt-2">For</span><input class="form-control" type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-2" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-2 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto">For all categories</td>
                             <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
                         </tr>
                         <tr>
-                            <td class="col-md-auto" colspan="2">For all categories</td>
-                            <td class="col-md-10"><button type="button" class="btn btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                            <td class="col-md-auto">For all categories</td>
+                            <td class="col-md-auto d-flex justify-content-center align-middle mt-2">Color: <div class="d-flex justify-content-center align-middle">Random</div></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Set</button></td>
                         </tr>
                     </table>
 
