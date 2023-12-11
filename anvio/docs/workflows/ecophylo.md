@@ -31,7 +31,7 @@ anvi-run-workflow -w ecophylo \
 The first step to removing bad %(hmm-hits)s is to filter out hits with low quality alignment coverage. This is done with the rule `filter_hmm_hits_by_model_coverage` which leverages %(anvi-script-filter-hmm-hits-table)s. This tool uses the output of hmmsearch to filter out hits basedon the model and/or gene coverage. We recommend 80%% model coverage filter for most cases. However, it is always recommended to explore the distribution of model coverage with any new HMM which will help you determine a proper cutoff (citation). To adjust this parameter, go to the `filter_hmm_hits_by_model_coverage` rule and change the parameter `--min-model-coverage`. You can also adjust the gene coverage by change the parameter `--min-gene-coverage`. This can help remove ORFs with outlier lengths but completely depends on the HMM you are using.
 
 {:.notice}
-Please consider exploring the distribution of alignment coverage values before choosing HMM alignment coverage filtering values. [Interproscan](https://www.ebi.ac.uk/interpro/) is a great way to visualize how publicly available HMMs align to proteins. Additionally, you can parse the domaintblout files from hmmsearch to explore these values in high throughput. 
+Please consider exploring the distribution of alignment coverages before choosing HMM alignment coverage filtering values. [Interproscan](https://www.ebi.ac.uk/interpro/) is a great way to visualize how publicly available HMMs align to proteins. Additionally, you can parse the domtblout files from hmmsearch to explore these values in high throughput. 
 
 ```bash
 {
