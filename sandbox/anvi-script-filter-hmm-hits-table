@@ -54,6 +54,7 @@ class FilterHmmHitsTable(object):
         self.hmm_profile_dir=A("hmm_profile_dir")
         self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
         self.filter_out_partial_gene_calls = A('filter_out_partial_gene_calls')
+        self.report_gene_and_model_coverage = A('report_gene_and_model_coverage')
 
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
@@ -305,6 +306,13 @@ class FilterHmmHitsTable(object):
         self.df['min_model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
         self.df['min_gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
+        # Report gene and model coverage distribution from hmmsearch domtblout
+        if self.report_gene_and_model_coverage:
+            domtblout_dir = os.path.dirname(self.domtblout)
+            out_path = os.path.join(domtblout_dir, "hmm_domtabl_alignment_coverage.tsv")
+            self.df.to_csv(out_path, sep="\t", index=False, header=True)
+            self.run.info("Domain table output gene and model coverage distribution", out_path)
+
 
     def filter_domtblout(self):
         """
@@ -354,11 +362,6 @@ class FilterHmmHitsTable(object):
         self.run.info("Num hmm-hits after alignment filtering", df_filtered.shape[0])
         self.run.info("Num hmm-hits filtered from alignment coverage", self.df.shape[0] - df_filtered.shape[0])
 
-        # Report gene and model coverage distribution from hmmsearch domtblout
-        domtblout_dir = os.path.dirname(self.domtblout)
-        out_path = os.path.join(domtblout_dir, "hmm_domtabl_alignment_coverage.tsv")
-        self.df.to_csv(out_path, sep="\t", index=False, header=True)
-        self.run.info("Domain table output gene and model coverage distribution", out_path)
 
         # Reformat domtblout back to the original format by dropping 'min_model_coverage' and 'min_gene_coverage' columns
         df_final = df_filtered.drop(columns=['min_model_coverage', 'min_gene_coverage'])
@@ -463,6 +466,10 @@ if __name__ == '__main__':
                         "and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. "
                         "Using this flag you can instruct anvi'o to only keep HMM hits from open reading frames that represent complete "
                         "genes (i.e., genes that are not partial and that start with a start codon and end with a stop codon).")
+    parser.add_argument('--report-gene-and-model-coverage', action='store_true', help="This flag will report a modified domtblout "
+                        "file from hmmsearch that includes the gene and model coverage for each hit. You can use it to explore "
+                        "the distribution of coverage values so you can pick the best for you :) This file will be saved in "
+                        "the same directory as the domtblout file and called 'hmm_domtabl_alignment_coverage.tsv'.")
 
     args = parser.get_args(parser)
 
