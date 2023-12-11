@@ -354,6 +354,12 @@ class FilterHmmHitsTable(object):
         self.run.info("Num hmm-hits after alignment filtering", df_filtered.shape[0])
         self.run.info("Num hmm-hits filtered from alignment coverage", self.df.shape[0] - df_filtered.shape[0])
 
+        # Report gene and model coverage distribution from hmmsearch domtblout
+        domtblout_dir = os.path.dirname(self.domtblout)
+        out_path = os.path.join(domtblout_dir, "hmm_domtabl_alignment_coverage.tsv")
+        self.df.to_csv(out_path, sep="\t", index=False, header=True)
+        self.run.info("Domain table output gene and model coverage distribution", out_path)
+
         # Reformat domtblout back to the original format by dropping 'min_model_coverage' and 'min_gene_coverage' columns
         df_final = df_filtered.drop(columns=['min_model_coverage', 'min_gene_coverage'])
 
