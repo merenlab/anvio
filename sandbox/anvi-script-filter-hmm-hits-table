@@ -303,8 +303,8 @@ class FilterHmmHitsTable(object):
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
 
-        self.df['min_model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
-        self.df['min_gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+        self.df['model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
         # Report gene and model coverage distribution from hmmsearch domtblout
         if self.report_gene_and_model_coverage:
@@ -348,12 +348,12 @@ class FilterHmmHitsTable(object):
 
         # Alignment coverage filtering conditions
         if self.min_model_coverage and self.min_gene_coverage:
-            df_filtered = self.df[(self.df['min_model_coverage'] > float(self.min_model_coverage)) &
-                                (self.df['min_gene_coverage'] > float(self.min_gene_coverage))]
+            df_filtered = self.df[(self.df['model_coverage'] > float(self.min_model_coverage)) &
+                                (self.df['gene_coverage'] > float(self.min_gene_coverage))]
         elif self.min_gene_coverage:
-            df_filtered = self.df[self.df['min_gene_coverage'] > float(self.min_gene_coverage)]
+            df_filtered = self.df[self.df['gene_coverage'] > float(self.min_gene_coverage)]
         elif self.min_model_coverage:
-            df_filtered = self.df[self.df['min_model_coverage'] > float(self.min_model_coverage)]
+            df_filtered = self.df[self.df['model_coverage'] > float(self.min_model_coverage)]
         else:
             df_filtered = self.df.copy()
 
@@ -364,7 +364,7 @@ class FilterHmmHitsTable(object):
 
 
         # Reformat domtblout back to the original format by dropping 'min_model_coverage' and 'min_gene_coverage' columns
-        df_final = df_filtered.drop(columns=['min_model_coverage', 'min_gene_coverage'])
+        df_final = df_filtered.drop(columns=['model_coverage', 'gene_coverage'])
 
         # Additional filtering for partial gene calls if required
         if self.filter_out_partial_gene_calls:
