@@ -19,7 +19,7 @@ For example, following the command above, the command below will remove %(hmm-hi
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \
                                   --hmm-source Bacteria_71 \
                                   --domain-hits-table path/to/dir/hmm.domtable \
-                                  --model-coverage 0.9
+                                  --min-model-coverage 0.9
 {{ codestop }}
 
 ### HMMs with multiple hits to one gene
@@ -30,7 +30,7 @@ Some HMM profiles align multiple times to the same gene at different coordinates
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \
                                   --hmm-source Bacteria_71 \
                                   --domain-hits-table path/to/dir/hmm.domtable \
-                                  --model-coverage 0.9 \
+                                  --min-model-coverage 0.9 \
                                   --merge-partial-hits-within-X-nts
 {{ codestop }}
 

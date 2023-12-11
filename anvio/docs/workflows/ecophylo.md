@@ -28,7 +28,7 @@ anvi-run-workflow -w ecophylo \
 
 ### HMM alignment coverage filtering
 
-The first step to removing bad %(hmm-hits)s is to filter out hits with low quality alignment coverage. This is done with the rule `filter_hmm_hits_by_model_coverage` which leverages %(anvi-script-filter-hmm-hits-table)s. We recommend 80%% model coverage filter for most cases. However, it is always recommended to explore the distribution of model coverage with any new HMM which will help you determine a proper cutoff (citation). To adjust this parameter, go to the `filter_hmm_hits_by_model_coverage` rule and change the parameter `--model-coverage`.
+The first step to removing bad %(hmm-hits)s is to filter out hits with low quality alignment coverage. This is done with the rule `filter_hmm_hits_by_model_coverage` which leverages %(anvi-script-filter-hmm-hits-table)s. We recommend 80%% model coverage filter for most cases. However, it is always recommended to explore the distribution of model coverage with any new HMM which will help you determine a proper cutoff (citation). To adjust this parameter, go to the `filter_hmm_hits_by_model_coverage` rule and change the parameter `--min-model-coverage`.
 
 {:.notice}
 Some full gene length HMM models align to a single hmm-hit independently at different coordinates when there should only be one annotation. To merge these independent alignment into one HMM alignment coverage stat, set `--merge-partial-hits-within-X-nts` to any distance between the hits for which you would like to merge and add it to the rule `filter_hmm_hits_by_model_coverage` under `additional_params`.
@@ -46,7 +46,7 @@ What is below is the default settings in the ecophylo %(workflow-config)s file.
 {
     "filter_hmm_hits_by_model_coverage": {
         "threads": 5,
-        "--model-coverage": 0.8,
+        "--min-model-coverage": 0.8,
         "--filter-out-partial-gene-calls": true,
         "additional_params": ""
     },
@@ -64,7 +64,7 @@ Simultaneously exploring complete and partial ORFs will increase the distributio
 {
     "filter_hmm_hits_by_model_coverage": {
         "threads": 5,
-        "--model-coverage": 0.8,
+        "--min-model-coverage": 0.8,
         "--filter-out-partial-gene-calls": false,
         "additional_params": ""
     },
