@@ -831,16 +831,16 @@ function buildLegendTables() {
                         <tr>
                             <td class="col-md-auto" style="white-space: nowrap;">For <input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
                             <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
+                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto">For all categories</td>
                             <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
+                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto" colspan="2">For all categories</td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-outline-secondary" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
                         </tr>
                     </table>
 
