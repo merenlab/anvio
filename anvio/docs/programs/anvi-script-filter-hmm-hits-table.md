@@ -2,7 +2,7 @@ This program allows you to remove low quality HMM alignments from a %(hmm-source
 
 ## Filter with HMM alignment parameters
 
-Similar to query coverage in BLAST, we can also use HMM alignment coverage to help determine if an hmm-hit is homologous. A small coverage value means only a small proportion of the query/target is aligning. Before anvi'o can filter out %(hmm-hits)s with alignment coverage, you must run %(anvi-run-hmms)s and report a domain hits table by including `--domain-hits-table` flag in your command:
+Similar to query coverage in BLAST, we can also use HMM alignment coverage to help determine if an hmm-hit is homologous. A small alignment coverage value means only a small proportion of the query/target is aligning. Before anvi'o can filter out %(hmm-hits)s with alignment coverage, you must run %(anvi-run-hmms)s and report a domain hits table by including `--domain-hits-table` flag in your command. This will write the [domtblout](http://eddylab.org/software/hmmer3/3.1b2/Userguide.pdf) file from hmmsearch:
 
 {{ codestart }}
 anvi-run-hmms -c %(contigs-db)s \
@@ -11,15 +11,16 @@ anvi-run-hmms -c %(contigs-db)s \
               --domain-hits-table
 {{ codestop }}
 
-After the command above, your HMM hits will be stored in your %(contigs-db)s as usual. However, with the domain hits table, you can filter out hits from your %(contigs-db)s using thresholds for model or gene coverage of each hit i.e. you can filter out %(hmm-hits)s where the profile HMM and gene align well to each other.
+After the command above, your %(hmm-hits)s will be stored in your %(contigs-db)s as usual. However, with the domain hits table, you can filter out hits from your %(contigs-db)s using thresholds for `--min-model-coverage` or `--min-model-coverage` of each hit i.e. you can filter out %(hmm-hits)s where the profile HMM and gene align well to each other.
 
-For example, following the command above, the command below will remove %(hmm-hits)s from your %(contigs-db)s for profile HMMs that had less than 90%% coverage of the target genes:
+For example, following the command above, the command below will remove %(hmm-hits)s from your %(contigs-db)s for profile HMMs that had less than 90%% model coverage and 50%% gene coverage:
 
 {{ codestart }}
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \
                                   --hmm-source Bacteria_71 \
                                   --domain-hits-table path/to/dir/hmm.domtable \
-                                  --min-model-coverage 0.9
+                                  --min-model-coverage 0.9 \
+                                  --min-gene-coverage 0.5
 {{ codestop }}
 
 ### HMMs with multiple hits to one gene
@@ -30,7 +31,6 @@ Some HMM profiles align multiple times to the same gene at different coordinates
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \
                                   --hmm-source Bacteria_71 \
                                   --domain-hits-table path/to/dir/hmm.domtable \
-                                  --min-model-coverage 0.9 \
                                   --merge-partial-hits-within-X-nts
 {{ codestop }}
 
@@ -39,7 +39,7 @@ The input domtblout file for %(anvi-script-filter-hmm-hits-table)s will be saved
 
 ## Filter out hmm-hits from partial genes
 
-HMMs are able to detect partial genes (i.e., genes that are not partial and that start with a start codon and end with a stop codon) with good alignment coverage and homology statistics. However, partial genes can lead to spurious phylogenetic branches and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. Using `--filter-out-partial-gene-calls`, you can remove partial gene hmm-hits.
+HMMs are able to detect partial genes (i.e., genes that do not contain start and/or stop codons) with good alignment coverage and homology statistics. However, partial genes can lead to spurious phylogenetic branches and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. Using `--filter-out-partial-gene-calls`, you can remove partial gene hmm-hits.
 
 {{ codestart }}
 anvi-script-filter-hmm-hits-table -c %(contigs-db)s \

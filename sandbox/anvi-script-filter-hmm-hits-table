@@ -109,7 +109,7 @@ class FilterHmmHitsTable(object):
         filesnpaths.is_file_exists(self.domtblout)
         self.run.info("Domtblout Path", self.domtblout)
 
-        if not self.min_model_coverage or self.min_gene_coverage:
+        if not self.min_model_coverage and not self.min_gene_coverage:
             raise ConfigError("You didn't provide anvi-script-filter-hmm-hits-table with either a "
                               "--min-model-coverage or --min-gene-coverage. Please provide at least one "
                               "so anvi'o can filter hmm_hits for you :)")
@@ -129,6 +129,15 @@ class FilterHmmHitsTable(object):
             if self.min_gene_coverage > 1:
                 raise ConfigError(f"--min-gene-coverage must be a percentage between 0 and 1 "
                                   f"and you put a a value larger than 100%: {self.min_gene_coverage}")
+
+        if self.min_gene_coverage and self.min_model_coverage:
+            self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            self.run.info("Minimum model coverage", self.min_model_coverage)
+        else:
+            if self.min_gene_coverage:
+                self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            if self.min_model_coverage:
+                self.run.info("Minimum model coverage", self.min_model_coverage)
 
         if not self.hmm_source:
             raise ConfigError("Please provide a hmm-source :)")
