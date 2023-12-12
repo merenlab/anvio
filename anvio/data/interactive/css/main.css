@@ -130,7 +130,6 @@ html, body, #wrapper {
     position: absolute;
     top: 0px;
     display: inline-block;
-    min-width: 460px;
     left: calc(50% - 395px);
     height: 70px;
     text-align: center;
@@ -140,6 +139,10 @@ html, body, #wrapper {
     padding-right: 20px;
     opacity: 0.9;
     background-color: #fff;
+}
+
+#title-alter-panel{
+    min-width: 700px;
 }
 
 #title-panel:hover {
