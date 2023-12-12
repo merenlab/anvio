@@ -29,11 +29,20 @@ class SRADownloadWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='sra_download')
 
-        # check that NCBI SRA Toolkit is installed
-        if not utils.is_program_exists("prefetch", dont_raise=True) or not utils.is_program_exists("fasterq-dump", dont_raise=True):
-            raise ConfigError("'prefetch' and 'fasterq-dump' from the NCBI SRA toolkit must be installed for the "
-                              "sra_download workflow to work. Please check out the installation instructions here: "
-                              "https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
+        # check that NCBI SRA Toolkit and other programs are installed
+        NCBI_sra_tool_programs = ['prefetch', 'fasterq-dump']
+        other_programs = ['pigz']
+
+        for program in NCBI_sra_tool_programs:
+            if not utils.is_program_exists(program, dont_raise=True):
+                raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. "
+                                  f"'prefetch' and 'fasterq-dump'  are from the NCBI SRA toolkit and must be installed for the "
+                                  f"sra_download workflow to work. Please check out the installation instructions here: "
+                                  f"https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
+        for program in other_programs:
+            if not utils.is_program_exists(program, dont_raise=True):
+                raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. Please "
+                                  f"double check you installed all of the programs listed in the anvio'o installation tutorial: https://anvio.org/install/")
 
         # Snakemake rules
         self.rules.extend(['prefetch',
@@ -81,6 +90,18 @@ class SRADownloadWorkflow(WorkflowSuperClass):
             except IndexError as e:
                 raise ConfigError(f"Looks like your SRA accession list file, {self.SRA_accession_list}, is not properly formatted. "
                                   f"This is what we know: {e}")
+
+        for accession in self.accessions_list:
+            if not accession.startswith(('SRR', 'ERR', 'DRR')):
+                if accession.startswith('SAMEA'):
+                    raise ConfigError(f"anvi'o found an NCBI BioSample in your {self.SRA_accession_list}: {accession}. "
+                                      f"The anvi'o sra-download workflow only processes sequencing accessions that start with the prefix: ERR, SRR, or DRR. "
+                                      f"Search for the BioSample accession '{accession}' on the [NCBI SRA website](https://www.ncbi.nlm.nih.gov/sra) "
+                                      f"and find the sequencing accessions.")
+                else:
+                    raise ConfigError(f"Looks like one of your \"SRA accessions\", {accession}, is not an SRA accession :( "
+                                      f"anvi'o asks that you kindly double check your SRA_accession_list.txt ({self.SRA_accession_list}) to confirm you "
+                                      f"are using the correct accessions. Hint: SRA accessions start with the prefix: ERR, SRR, or DRR")
 
         self.target_files = self.get_target_files()
 
