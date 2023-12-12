@@ -30,7 +30,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         self.init_workflow_super_class(args, workflow_name='sra_download')
 
         # check that NCBI SRA Toolkit and other programs are installed
-        NCBI_sra_tool_programs = ['prefetch', 'fasterq-dump', 'pigz']
+        NCBI_sra_tool_programs = ['prefetch', 'fasterq-dump']
         other_programs = ['pigz']
 
         for program in NCBI_sra_tool_programs:
