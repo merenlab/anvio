@@ -1,0 +1,275 @@
+.container {
+    width: 95%;
+    align-content: center;
+    margin: 0 auto 20px auto;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+    padding: 20px 30px;
+    touch-action: none;
+}
+
+svg {
+    font-family: 'Lato', Arial, serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+g.scale g.brush rect.background {
+    fill: rgba(0, 0, 0, .1);
+}
+
+g.scale g.axis path {
+    stroke-opacity: 0;
+}
+
+g.scale g.axis line {
+    stroke-opacity: .5;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #aaa;
+    shape-rendering: crispEdges;
+}
+
+.brush .extent {
+    stroke: black;
+    fill-opacity: .125;
+    shape-rendering: crispEdges;
+}
+
+g.scale rect.background {
+    fill: rgb(200, 200, 255);
+    visibility: visible !important;
+    pointer-events: all;
+}
+
+#tooltip-body {
+    background-color: white;
+    opacity: 100%;
+    border-style: solid;
+    border-width: 3px;
+    padding: 10px;
+}
+
+#deepdive-tooltip-body {
+    background-color: white;
+    opacity: 100%;
+    border-style: solid;
+    border-width: 3px;
+    padding: 10px;
+}
+
+
+#toggle-panel-settings {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(40%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#toggle-panel-query {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(55%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#toggle-panel-mouseover {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(70%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#settings-panel {
+    display: none;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.97;
+    width: 530px;
+    padding: 20px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    overflow-y: scroll;
+    z-index: 999;
+    color: black;
+}
+
+#query-panel {
+    display: none;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.97;
+    width: 530px;
+    padding: 20px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    overflow-y: scroll;
+    z-index: 999;
+    color: black;
+}
+
+#mouseover-panel {
+    display: none;
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.97;
+    width: 530px;
+    padding: 20px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    overflow-y: scroll;
+    z-index: 999;
+    color: black;
+}
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+.settings-section-info {
+    background: #e7f3381a;
+    padding: 3px 6px 5px 10px;
+    border: 1px dashed #a9a9a9;
+    border-radius: 9px;
+    font-size: 12px;
+}
+
+#settings-section-info-SNV-warning {
+    display: none;
+    color: red;
+}
+
+#settings-panel code {
+    padding: 1.4px 2px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f3f3f3;
+    border-radius: 2px;
+}
+
+.settings-info-line {
+    text-align: center;
+    border: 1px dashed #c5c5c5;
+    background: #f3f3f3;
+    width: 40%;
+    margin: auto;
+    border-radius: 7px;
+    font-style: italic;
+}
+
+.toggle-panel-settings-pos {
+    right: 530px !important;
+}
+
+.toggle-panel-query-pos {
+    right: 530px !important;
+}
+
+.toggle-panel-mouseover-pos {
+    right: 530px !important;
+}
+
+#settings-panel .btn {
+    margin-bottom: 5px !important;
+}
+
+.sidebar-footer {
+    position: fixed;
+    background-color: white;
+    width: 420px;
+    bottom: -0px;
+    border-top: 1px solid #D3D3D3;
+    border-right: 1px solid #D3D3D3;
+}
+
+.sidebar-footer>.btn {
+    width: 50%;
+}
+
+body {
+    font-family: 'Lato', Arial, serif;
+    font-weight: 300;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: #722;
+    text-decoration: none;
+}
+
+#labelAndMainContainer {
+    display: flex;
+    flex-direction: row;
+}
+
+#labelAndDropdownContainer {
+    border-style: solid;
+    border-width: 1;
+    padding: 15px;
+    margin: 5px;
+}
+
+#scaleContainer {
+    border-style: solid;
+    border-width: 3px;
+    background: white;
+    padding: 15px;
+    margin: 5px;
+    position: fixed;
+    bottom: 25px;
+    background-color: rgba(255, 255, 255, 1);
+}
+
+#tabular-modal-body {
+    overflow-y: scroll;
+}
+
+.modal-multiselect-col {
+    display: flex;
+    flex-direction: column;
+    width: 40%;
+    margin: 15px;
+}

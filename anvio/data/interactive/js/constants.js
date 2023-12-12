@@ -18,32 +18,45 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-var COG_categories = {
-    'A': '[A] RNA processing and modification',
-    'B': '[B] Chromatin Structure and dynamics',
-    'C': '[C] Energy production and conversion',
-    'D': '[D] Cell cycle control and mitosis',
-    'E': '[E] Amino Acid metabolism and transport',
-    'F': '[F] Nucleotide metabolism and transport',
-    'G': '[G] Carbohydrate metabolism and transport',
-    'H': '[H] Coenzyme metabolis',
-    'I': '[I] Lipid metabolism',
-    'J': '[J] Translation',
-    'K': '[K] Transcription',
-    'L': '[L] Replication and repair',
-    'M': '[M] Cell wall/membrane/envelop biogenesis',
-    'N': '[N] Cell motility',
-    'O': '[O] Post-translational modification, protein turnover, chaperone functions',
-    'P': '[P] Inorganic ion transport and metabolism',
-    'Q': '[Q] Secondary Structure',
-    'T': '[T] Signal Transduction',
-    'U': '[U] Intracellular trafficing and secretion',
-    'V': '[V] Defense mechanisms',
-    'W': '[W] Extracellular structures',
-    'Y': '[Y] Nuclear structure',
-    'Z': '[Z] Cytoskeleton',
-    'R': '[R] General Functional Prediction only',
-    'S': '[S] Function Unknown'
+ var COG_categories = {
+     'A': '[A] RNA processing and modification',
+     'B': '[B] Chromatin Structure and dynamics',
+     'C': '[C] Energy production and conversion',
+     'D': '[D] Cell cycle control and mitosis',
+     'E': '[E] Amino Acid metabolism and transport',
+     'F': '[F] Nucleotide metabolism and transport',
+     'G': '[G] Carbohydrate metabolism and transport',
+     'H': '[H] Coenzyme metabolis',
+     'I': '[I] Lipid metabolism',
+     'J': '[J] Translation',
+     'K': '[K] Transcription',
+     'L': '[L] Replication and repair',
+     'M': '[M] Cell wall/membrane/envelop biogenesis',
+     'N': '[N] Cell motility',
+     'O': '[O] Post-translational modification, protein turnover, chaperone functions',
+     'P': '[P] Inorganic ion transport and metabolism',
+     'Q': '[Q] Secondary Structure',
+     'T': '[T] Signal Transduction',
+     'U': '[U] Intracellular trafficing and secretion',
+     'V': '[V] Defense mechanisms',
+     'W': '[W] Extracellular structures',
+     'Y': '[Y] Nuclear structure',
+     'Z': '[Z] Cytoskeleton',
+     'R': '[R] General Functional Prediction only',
+     'S': '[S] Function Unknown'
+ }
+
+ var KEGG_categories = {
+  'C': 'Carbohydrate metabolism',
+  'E': 'Energy metabolism',
+  'L': 'Lipid metabolism',
+  'N': 'Nucleotide metabolism',
+  'A': 'Amino acid metabolism',
+  'G': 'Glycan biosynthesis and metabolism',
+  'V': 'Metabolism of cofactors and vitamins',
+  'T': 'Metabolism of terpenoids and polyketides',
+  'S': 'Biosynthesis of other secondary metabolites',
+  'X': 'Xenobiotics biodegradation and metabolism'
 }
 
 var default_COG_colors = {
@@ -72,19 +85,6 @@ var default_COG_colors = {
   'Z': '#933215',
   'R': '#ff9a92',
   'S': '#81402e'
-}
-
-var KEGG_categories = {
-  'C': 'Carbohydrate metabolism',
-  'E': 'Energy metabolism',
-  'L': 'Lipid metabolism',
-  'N': 'Nucleotide metabolism',
-  'A': 'Amino acid metabolism',
-  'G': 'Glycan biosynthesis and metabolism',
-  'V': 'Metabolism of cofactors and vitamins',
-  'T': 'Metabolism of terpenoids and polyketides',
-  'S': 'Biosynthesis of other secondary metabolites',
-  'X': 'Xenobiotics biodegradation and metabolism'
 }
 
 var default_KEGG_colors = {

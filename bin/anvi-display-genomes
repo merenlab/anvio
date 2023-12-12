@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Entry point to the interactive interface for genome view.
+
+The massage of the data is being taken care of in the interactive module,
+and this file implements the bottle callbacks.
+"""
+
+import sys
+from anvio.argparse import ArgumentParser
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+from anvio.bottleroutes import BottleApplication
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2021, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
+__provides__ = ['genome-view']
+__description__ = "Start an anvi'o interactive interface for 'genome view'"
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('GENOMES', "Tell anvi'o where to find your contigs-dbs.")
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+
+    groupB = parser.add_argument_group('GENOME VIEW DB', "This is an anvi'o database to store genome-view the display settings, bookmarks, etc. If "
+                                                         "there is no database at the path specified, it will be AUTOMATICALLY generated.")
+    groupB.add_argument(*anvio.A('genome-view-db'), **anvio.K('genome-view-db', {'required': True}))
+
+    groupC = parser.add_argument_group("PRO STUFF", "Tell anvi'o which gene caller to use.")
+    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+
+    groupD = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but nice to have).")
+    groupD.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupD.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupD.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+
+    groupE = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupE.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupE.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupE.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupE.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupE.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupE.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupE.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
+
+    args = parser.get_args(parser)
+
+    try:
+        d = interactive.GenomeView(args)
+
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+    if args.dry_run:
+        run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
+        sys.exit()
+
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)

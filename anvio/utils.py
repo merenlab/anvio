@@ -1643,6 +1643,36 @@ def get_GC_content_for_sequence(sequence):
     return Composition(sequence).GC_content
 
 
+def get_GC_content_for_sequence_as_an_array(sequence, sliding_window_length=100, interval=5):
+    """Unlike `get_GC_content_for_sequence`, this function returns an array for each nt position"""
+
+    if len(sequence) < sliding_window_length:
+        raise ConfigError("The sequence you are try to compute GC content for is shorter than the "
+                          "sliding window length set for this calculation. This is not OK.")
+
+    if interval < 1 or interval > sliding_window_length:
+        raise ConfigError("Your interval can't be smaller than 1 or longer than the sliding window "
+                          "length.")
+
+    sequence = sequence.upper()
+
+    gc_array = []
+    for i in range(0, len(sequence) - sliding_window_length, interval):
+        window = sequence[i:i+sliding_window_length]
+
+        gc = sum(window.count(x) for x in ["G", "C"])
+        at = sum(window.count(x) for x in ["A", "T"])
+
+        try:
+            gc_content = gc / (gc + at)
+        except ZeroDivisionError:
+            gc_content = 0.0
+
+        gc_array.extend([gc_content] * interval)
+
+    return gc_array
+
+
 def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_it=False):
     """
     When calculating pN/pS or dN/dS, the number of variants classified as synonymous or non

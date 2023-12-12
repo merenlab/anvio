@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title id="window-title">Genome View</title>
+  <meta name="google" value="notranslate">
+  <meta charset="UTF-8" />
+
+  <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
+  <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+  <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" onerror='alertDependencyError("bootstrap")' />
+  <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" onerror='alertDependencyError("colpick-css")' />
+  <link rel="stylesheet" type="text/css" href="./css/genomeview.css" />
+  <!-- main css file imported for color picker functionality -->
+  <link rel="stylesheet" type="text/css" href="./css/main.css" />
+  <link rel="stylesheet" type="text/css" href="./css/loading.css" />
+
+  <link rel="shortcut icon" href="#">
+
+  <script type="text/javascript" src="js/error.js"></script>
+
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"
+    onerror='alertDependencyError("jquery-core")'></script>
+  <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"
+    onerror='alertDependencyError("bootstrap-core")'></script>
+  <script type="text/javascript" src="./lib/fabric/dist/fabric.js" onerror='alertDependencyError("fabric")'></script>
+  <script type="text/javascript" src="lib/d3.js/d3.min.js" onerror='alertDependencyError("d3")'></script>
+  <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js"
+    onerror='alertDependencyError("jquery-svg")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/widget.js"
+    onerror='alertDependencyError("jquery-widget")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js"
+    onerror='alertDependencyError("jquery-mouse")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js"
+    onerror='alertDependencyError("jquery-sortable")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js"
+    onerror='alertDependencyError("jquery-draggable")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js"
+    onerror='alertDependencyError("jquery-accordian")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js"
+    onerror='alertDependencyError("jquery-resizable")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/button.js"
+    onerror='alertDependencyError("jquery-button")'></script>
+  <script type="text/javascript" src="lib/jquery-ui/ui/position.js"
+    onerror='alertDependencyError("jquery-position")'></script>
+  <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
+  <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick", true)'
+    onload='alertDependencyError(null, true)'></script>
+
+  <script type="text/javascript" src="./js/constants.js"></script>
+  <script type="text/javascript" src="./js/utils.js"></script>
+  <script type="text/javascript" src="./js/genomeview/main.js"></script>
+  <script type="text/javascript" src="./js/genomeview/drawer.js"></script>
+  <script type="text/javascript" src="./js/genomeview/navigation.js"></script>
+  <script type="text/javascript" src="./js/genomeview/test.js"></script>
+  <script type="text/javascript" src="./js/genomeview/ui.js"></script>
+  <script type="text/javascript" src="./js/genomeview/utils.js"></script>
+
+</head>
+
+<body>
+  <div class="loading-screen">
+    <div class="spinner-container">
+      <div class="loader"></div>
+      <br />Loading...
+    </div>
+  </div>
+  <div class="container" style="display:flex; justify-content:center">
+    <div id='labelAndMainContainer'>
+      <canvas id="genomeLabelCanvas" height="700px"></canvas>
+      <canvas id="myCanvas" height="700px"></canvas>
+    </div>
+    <div id='scaleContainer'>
+      <div id="scaleBox" height="140px">
+        <svg id="scaleSvg" height="120px"></svg>
+      </div>
+      <button data-toggle="modal" data-target="#tabular-modal-body" class="btn btn-default btn-lg" id="toggle-tabular-modal-button">Display Viewport
+        Data</button>
+      <button id="zoom-out" onclick="zoomOut()" style="float:right">-</button>
+      <button id="zoom-in" onclick="zoomIn()" style="float:right; margin-right:5px">+</button>
+      <input type="text" class="form-control input-sm" id="brush_start"
+        style="width: 60px; float:left; margin-right:10px" value="0"></input>
+      <input type="text" class="form-control input-sm" id="brush_end" style="width: 60px; float:left" value="0"></input>
+      <select id='bookmarks-select' style="width: 120px; float:left; margin-left:10px">
+        <option selected="true" disabled="disabled">Bookmarks</option>
+      </select>
+      <p id='bookmark-description' style="width: 300px; height: 45px; float:left; margin-left:10px; margin-right: 10px; margin-bottom: 0px; padding-left: 5px; font-size: large; overflow: scroll"></p>
+    </div>
+    <div id='tooltip-body' display='none'></div>
+    <div id='deepdive-modal-body' class="modal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Deepdive Tooltip</h4>
+          </div>
+          <div class="modal-body">
+            <div class="container-fluid">
+              <div id="deepdive-modal-tab-content" class="tab-content" role="dialog"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id='tabular-modal-body' class="modal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Genomic Data Viewport</h4>
+        </div>
+        <div class="modal-body">
+          <div class="container-fluid">
+            <ul class="nav nav-tabs" id="tabular-modal-nav-tabs"></ul>
+            <div id="modal-multiselect-content" class="tab-content" role="dialog">
+              <div class="modal-multiselect-col">
+                <button class="btn btn-default p-3" onclick="gatherTabularModalSelectedItems('glow')">Glow selected in
+                  sequence</button>
+                <button class="btn btn-default p-3">Export selected as contig.db</button>
+                <button class="btn btn-default p-3" id="export-tabular-modal-csv"
+                  onclick="exportTabularModalToTSV()">Export table as TSV</button>
+              </div>
+              <div id="tabular-modal-sequence-checkboxes"></div>
+              <div>
+                <input type='text' placeholder='Metadata tag' id='metadata-tag-multiselect' />
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('metadata')">Add metadata tag to selected</button>
+              </div>
+              <div>
+                <input type='text' placeholder='User-defined annotation' id='metadata-annotation-multiselect' />
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('annotation')">Add user-defined annotation to selected</button>
+              </div>
+              <div>
+                <div id="multiselect-picker-tabular-modal" class="colorpicker" color="#808080"
+                  background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px">
+                </div>
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('color')">Color selected</button>
+              </div>
+              <div id="tabular-modal-annotation-checkboxes"></div>
+            </div>
+            <div id="modal-tab-content" class="tab-content" role="dialog"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id='lasso-modal-body'>
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Lasso</h4>
+        </div>
+        <div class="modal-body" id="lasso-modal-content">
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id='centering-options-modal-body'>
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <!-- <button type="button" class="close" data-dismiss="modal">&times;</button> -->
+          <h4 id="centering-options-title" class="modal-title">Select an Anchor Gene</h4>
+        </div>
+        <div class="modal-body" id="centering-options-modal-content">
+
+        </div>
+        <!-- <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div> -->
+      </div>
+    </div>
+  </div>
+
+  <div id="toggle-panel-settings" onclick="toggleRightPanel('#settings-panel')">
+    <span id="toggle-panel-settings-inner">&#9664;</span><span
+      style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+  </div>
+  <div id="settings-panel">
+    <div id="sidebar">
+      <div class="tab-content"></div>
+
+      <span class="settings-header">Genome Arrangement</span>
+      <table id="genome-arrangement" style="margin-bottom: 20px;">
+        <tbody>
+          <tr>
+            <td>Genome spacing:</td>
+            <td><input type="text" class="form-control input-sm" id="genome_spacing" value="30"></td>
+          </tr>
+          <tr>
+            <td>Genome margin:</td>
+            <td><input type="text" class="form-control input-sm" id="genome_margin" value="100"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="settings-header">Genomes</span>
+
+      <div id="table_layers_container" style="margin-top: 15px;">
+        <table id="table_genomes" class='sortable'>
+          <thead>
+            <tr>
+              <td></td>
+              <td data-help="layer-name">Name</td>
+            </tr>
+          </thead>
+          <tbody id="tbody_genomes"></tbody>
+        </table>
+      </div>
+
+      <span class="settings-header">Group Layers</span>
+      <table id="additionalDataLayersTable" class='sortable' style="margin-bottom: 20px;">
+        <thead>
+          <tr>
+            <td></td>
+            <td data-help="layer-name">Name</td>
+            <td data-help="layer-color">
+              <div style="width: 32px;">Color</div>
+            </td>
+            <!-- <td data-help="layer-height">Height</td>
+                                <td data-help="layer-margin" class="column-margin">Margin</td> -->
+            <td data-help="layer-min">Show</td>
+          </tr>
+        </thead>
+        <tbody id='tbody_additionalDataLayers'>
+        </tbody>
+      </table>
+      <table id="adlCustomizationTable" style="margin-bottom: 20px;">
+        <tbody>
+          <tr>
+            <td>Display up to N data points for numeric layers: N = </td>
+            <td><input id="adl_pts_per_layer" class="form-control input-sm" type="text" value="10000" size="6"></td>
+          </tr>
+          <tr>
+            <td><button id="showAllADLPtsBtn" type="button" class="btn btn-primary btn-xs" onclick="drawer.showAllADLPts()"
+                class="btn btn-outline-primary">Show all data points</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="settings-header">Scale</span>
+      <table id="scaleTable" style="margin-bottom: 20px;">
+        <tbody>
+          <tr id="dynamic_scale">
+            <td>Dynamic scale interval</td>
+            <td style="float: right">
+              <div style="width: 20px;"><input id="show_dynamic_scale_box" type="checkbox">
+              </div>
+            </td>
+          </tr>
+          <tr id="scale_interval">
+            <td>Genome scale interval: </td>
+            <td><input id="genome_scale_interval" class="form-control input-sm" type="text" value="100" size="4"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="settings-header">Genome Alignment</span>
+      <table id="genomeAlignmentTable" style="margin-bottom: 20px;">
+        <tbody>
+          <tr>
+            <td>Category: </td>
+            <td>
+              <select class="type_multiple" id='center_genomes_category' style="width: 100px;" class="type"></select>
+            </td>
+          </tr>
+          <tr>
+            <td>Value:</td>
+            <td><input type="text" class="form-control input-sm" id="center_genes_prop_value" placeholder="e.g. 'lipid transport'">
+            </td>
+          </tr>
+          <tr>
+            <td>Center to gene start:</td>
+            <td >
+              <div style="width: 20px;"><input id="center_to_gene_start_box" type="checkbox">
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Always use first hit:</td>
+            <td>
+              <div style="width: 20px;"><input id="always_use_first_hit_box" type="checkbox">
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <button onclick='drawer.centerGenesFromPropUI()' style="margin-bottom:10px;">Let's Go!</button>
+            </td>
+          </tr>
+          <tr>
+            <td><button id="alignRulerBtn" type="button" class="btn btn-primary btn-xs" onclick="drawer.alignRulers()"
+                class="btn btn-outline-primary">Align genome rulers</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <span class="settings-header">Gene arrows</span>
+      <p class="settings-section-info">Change colors of genes based on their functional annotations. You can also
+        manually color genes temporarily. First, right-click on a gene. It will add the gene into the list below with
+        a default color. Then, you can use the color picker next to it to set a color manually.</p>
+      <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+        <label id="arrow_style_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="arrow_style"
+          data-original-title="" title="">Arrow style:</label>
+        <div class="col-md-8">
+          <select id="arrow_style" style="margin-bottom: 10px" class="form-control input-xs">
+            <option value=1>Arrows</option>
+            <option value=2>Pentagon</option>
+            <option value=3>Pentagon (Wide)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
+        <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label"
+          data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
+        <div class="col-md-8">
+          <select id="gene_color_order" style="margin-bottom: 10px" class="form-control input-xs"></select>
+        </div>
+      </div>
+
+      <tbody>
+        <tr>
+          <td style="margin-bottom: 10px;">Apply user-defined gene colors:</td>
+          <td><input type="checkbox" id="user_defined_colors" value="unchecked" style="margin-bottom: 10px;">
+          </td>
+        </tr>
+        <br>
+        <tr>
+          <td style="margin-bottom: 10px;">Only show categories in the selected nucleotide range:</td>
+          <td><input type="checkbox" id="show_only_cags_in_window" value="unchecked" style="margin-bottom: 10px;">
+          </td>
+        </tr>
+        <br>
+        <tr>
+          <td style="margin-bottom: 10px;">Filter to functional annotations with frequency n > X: X = </td>
+          <td><input type="text" class="form-control input-sm" id="thresh_count" value="4" size="4" style="margin-bottom: 10px;">
+          </td>
+        </tr>
+      </tbody>
+
+      <div class="ui-accordion-content ui-helper-reset ui-corner-bottom ui-accordion-content-active"
+        id="ui-id-2" aria-labelledby="ui-id-1" role="tabpanel" style="display: block;" aria-hidden="false">Sort: <div
+          class="btn-group" role="group">
+          <button type="button" class="btn btn-default" onclick="orderColorTable('alphabetical');"><span
+              class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+          <button type="button" class="btn btn-default" onclick="orderColorTable('count');"><span
+              class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+        </div>
+        <div class="btn-group" role="group">
+          <button type="button" class="btn btn-default" style="margin-left: 10px;"
+            onclick="$('#batch_coloring').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch
+            coloring</button>
+        </div>
+
+        <div id="batch_coloring" style="margin: 10px; display: none;">
+          <table class="col-md-12 table-spacing">
+            <tbody>
+              <tr>
+                <td class="col-md-2">Rule: </td>
+                <td class="col-md-10">
+                  <input type="radio" name="batch_rule" value="all" checked=""> All <br>
+                  <input type="radio" name="batch_rule" value="name"> Name contains <input type="text" id="name_rule"
+                    size="8"><br>
+                  <input type="radio" name="batch_rule" value="count"> Count
+                  <select id="count_rule">
+                    <option selected="">==</option>
+                    <option>&lt;</option>
+                    <option>&gt;</option>
+                  </select>
+                  <input type="text" id="count_rule_value" size="3">
+                  <br>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-md-2">Color: </td>
+                <td class="col-md-10">
+                  <div id="batch_colorpicker" class="colorpicker" color="#FFFFFF"
+                    style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-md-2"></td>
+                <td class="col-md-10"><input id="batch_randomcolor" type="checkbox"> Assign random color</td>
+              </tr>
+              <tr>
+                <td class="col-md-2"></td>
+                <td class="col-md-10"><button type="button" class="btn btn-default"
+                    onclick="batchColor();">Apply</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="table_function_colors_container" style="margin-top: 20px; color:black">
+          <table id="table_function_colors">
+            <thead id="thead_function_colors">
+              <td></td>
+              <td data-help="function-color">
+                <div style="width: 32px;"><b>Color</b></div>
+              </td>
+              <td data-help="function-category"><b>Annotation</b></td>
+            </thead>
+            <tbody id="tbody_function_colors"></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()"
+          class="btn btn-outline-primary" style="margin-top: 10px; margin-bottom: 10px">Reset Function colors</button>
+
+        <span class="settings-header">Labels</span>
+
+        <table id="labels-table">
+          <tbody>
+            <tr><td><strong style="font-size:12px">Genome Labels</strong></td></tr>
+            <tr id="show_genome_labels">
+              <td>Show genome labels</td>
+              <td style="float: right">
+                <div style="width: 20px;"><input id="show_genome_labels_box" type="checkbox" class="layer_selectors">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Rotate labels</td>
+              <td style="float: right">
+                <div style="width: 20px;"><input id="rotate_genome_labels_box" type="checkbox" class="layer_selectors">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Genome label size:</td>
+              <td><input type="text" class="form-control input-sm" id="genome_label" value="15"
+                  style="margin-bottom: 10px"></td>
+            </tr>
+            <tr>
+              <td>Genome label color:</td>
+              <td>
+                <div class="colorpicker" id="genome_label_color" color="#000000"
+                  style="background-color: #000000; margin-bottom: 10px"></div>
+              </td>
+            </tr>
+            <tr><td><br></td></tr>
+            <tr><td><strong style="font-size:12px">Gene Labels</strong></td></tr>
+            <tr id="show_gene_labels">
+              <td>Show gene labels:</td>
+              <td style="float: right">
+                <div style="width: 20px;"><input id="show_gene_labels_box" type="checkbox" class="layer_selectors">
+                </div>
+              </td>
+            </tr>
+            <tr id="link_gene_label_color_source">
+              <td>Link gene label/color source:</td>
+              <td style="float: right">
+                <div style="width: 20px;"><input id="link_gene_label_color_source_box" type="checkbox"
+                    class="layer_selectors"></div>
+              </td>
+            </tr>
+            <tr>
+              <td>Gene label source:</td>
+              <td>
+                <div class="col-md-8">
+                  <select id="gene_label_source" style="margin-bottom: 10px; margin-left: 0px"
+                    class="form-control input-xs">
+                    <option value='default'>Default</option>
+                    <option value='user'>User-Defined</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Gene label size:</td>
+              <td><input type="text" class="form-control input-sm" id="gene_label" value="40"
+                  style="margin-bottom: 10px"></td>
+            </tr>
+            <tr>
+              <td>Gene label color:</td>
+              <td>
+                <div class="colorpicker" id="gene_label_color" color="#000000"
+                  style="background-color: #000000; margin-bottom: 10px"></div>
+              </td>
+            </tr>
+            <tr>
+              <td>Gene label position:</td>
+              <td>
+                <div class="col-md-8">
+                  <select id="gene_text_pos" style="margin-bottom: 10px; margin-left: 0px"
+                    class="form-control input-xs">
+                    <option value='above'>Above</option>
+                    <option value='inside'>Inside</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Gene label angle:</td>
+              <td><input type="text" class="form-control input-sm" id="gene_text_angle" value="0"
+                  style="margin-bottom: 10px"></td>
+            </tr>
+        </tbody>
+        <tr><td><br><br></td></tr>
+        <table style="margin-bottom: 180px;">
+            <tr>
+              <td><button onclick="showAllHiddenGenes()">Show all hidden genes</button></td>
+            </tr>
+            <tr>
+              <td><button onclick="exportToSVG()" style="margin-top: 10px; margin-bottom: 10px">Export as SVG</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+
+      <div class="btn-group sidebar-footer" role="group"
+        style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px; height:40px">
+        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px"
+          onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span
+            class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px"
+          onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"
+          data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span>
+          Save State</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toggle-panel-query" onclick="toggleRightPanel('#query-panel')">
+    <span id="toggle-panel-query-inner">&#9664;</span><span
+      style="display: block; font-size: 11px; transform: rotate(90deg);"><u>Q</u>UERY</span>
+  </div>
+  <div id="query-panel">
+    <span class="settings-header">Search!</span>
+    <table style="margin-bottom: 20px;">
+      <tbody>
+        <tr>
+          <td>Category: </td>
+          <td>
+            <select class="type_multiple" id='function_search_category' style="width: 100px;" class="type">
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Value:</td>
+          <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="e.g. 'lipid transport'">
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <button onclick='drawer.queryFunctions()'>Let's Go!</button>
+            <button onclick='drawer.removeAllGeneGlows()'>Clear All Gene Glows</button>
+            <button onclick='drawer.showAllMetadata("tag")'>Show All Tags</button>
+            <button onclick='drawer.showAllMetadata("note")'>Show All Notes</button>
+            <button onclick='drawer.showAllUserDefined()'>Show All User-Defined Annotations</button>
+            <button onclick='$("#query-results-head, #query-results-table").empty()'>Clear Results</button>
+          </td>
+          <br>
+          <td>
+            <p id='function-query-results-statement'></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <span id="query-results-span"></span>
+    <table class="table table-striped" style="width: 100%; text-align: center;">
+      <thead id="query-results-head">
+        <th>Gene ID</th>
+        <th>Genome</th>
+        <th>Start</th>
+        <th>Stop</th>
+        <th>Go To</th>
+      </thead>
+      <tbody id="query-results-table">
+      </tbody>
+    </table>
+    <span id="bookmarks-header" class="settings-header">Bookmarks</span>
+    <table id="bookmarksTable" style="margin-bottom: 20px;">
+      <tbody>
+        <tr id="create_bookmark">
+          <td><input id="create_bookmark_input" class="form-control input-sm" type="text"
+              placeholder="New bookmark title" style="margin-bottom: 15px;" size="4"></td>
+        <tr id="show_scale">
+          <td><textarea id="create_bookmark_description" class="form-control input-sm" type="text"
+              placeholder="New bookmark description" style="margin-bottom: 15px; height: 85px;" size="8"></textarea>
+          </td>
+        </tr>
+        <tr id="show_scale">
+          <td style="float: right"><button id="createBookmarkBtn" onclick='createBookmark()'>New Bookmark from Current Position</button>
+          </td>
+        </tr>
+        <tr>
+          <p hidden id="bookmarks-disabled-warning-info" class="settings-section-info" style="color:red">Bookmarks are disabled while genome sliding is active. To reenable bookmarks, press "Align genome rulers" in the settings panel.</p>
+        </tr>
+      </tbody>
+    </table>
+    <table id="currBookmarksTable" class="table table-striped" style="width: 100%; text-align: center;">
+      <thead id="currBookmarksTableHead"></thead>
+      <tbody id="curr-bookmarks-table"></tbody>
+    </table>
+  </div>
+
+  <div id="toggle-panel-mouseover" onclick="toggleRightPanel('#mouseover-panel')">
+    <span id="toggle-panel-mouseover-inner">&#9664;</span><span
+      style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
+  </div>
+  <div id="mouseover-panel">
+    <h3 id='mouseover-panel-genome' style="font-size: 20px; word-wrap: break-word;"></h3>
+    <h2>Gene Call</h2>
+    <table class="table table-striped" style="width: 100%; text-align: center;">
+      <thead>
+        <th>ID</th>
+        <th>Source</th>
+        <th>Length</th>
+        <th>Direction</th>
+        <th>Start</th>
+        <th>Stop</th>
+        <th>Call type</th>
+      </thead>
+      <tbody id='mouseover-panel-table-body'>
+      </tbody>
+    </table>
+    <h2>Annotations</h2>
+    <table class="table table-striped" style="width: 100%; text-align: center;">
+      <thead>
+        <th>Source</th>
+        <th>Accession</th>
+        <th>Annotation</th>
+      </thead>
+      <tbody id="mouseover-panel-annotations-table-body">
+      </tbody>
+    </table>
+  </div>
+  <!-- LOAD STATE -->
+  <div class="modal fade" id="modLoadState" style="display: none">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+          <h4 class="modal-title">Load State</h4>
+        </div>
+
+        <div class="modal-body">
+          <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();"
+            onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+          <br />
+          <div id="loadState_lastmodified">Last modified: n/a</div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+          <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVE STATE -->
+  <div class="modal fade" id="modSaveState" style="display: none">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+          <h4 class="modal-title">Save State</h4>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);"
+              ondblclick="saveState();"></select>
+          </div>
+          <div class="form-group">
+            <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>
+            <div class="col-md-10">
+              <input type="text" id="saveState_name" class="form-control" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+          <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

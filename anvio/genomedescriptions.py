@@ -871,6 +871,239 @@ class MetagenomeDescriptions(object):
         return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
+class AggregateGenomes(object):
+    """Aggregate information related to a group of genomes from anywhere.
+    The purpose of this class is to collect all relevant information about
+    a group of genomes comprehensively for downstream analyses. The primary
+    client of this class is genome view.
+    Please note that despite similar names, the use of this class and the class
+    AggregateFunctions is quite different.
+    """
+
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+        self.initialized = False
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.external_genomes_file = A('external_genomes')
+        self.internal_genomes_file = A('internal_genomes')
+        self.pan_db_path = A('pan_db')
+
+        if self.pan_db_path:
+            utils.is_pan_db(self.pan_db_path)
+
+
+        self.genome_descriptions = GenomeDescriptions(args, progress=terminal.Progress(verbose=False))
+        self.genome_descriptions.load_genomes_descriptions()
+
+        # critical items for genome view bottleroutes:
+        self.genomes = {}
+        self.gene_associations = {}
+
+        # things to fill in optionally
+        self.continuous_data_layers = {'layers': [], 'data': {}}
+
+        # let's have this ready for convenience:
+        self.genome_names = list(self.genome_descriptions.genomes.keys())
+
+        if not skip_init:
+            self.init()
+
+
+    def init(self, populate_continuous_data=True):
+        """Learn everything about genomes of interest.
+        Calling this funciton will populate multiple critical dictionaries this class
+        designed to give access to, including `self.genomes` and `self.gene_associations`.
+        """
+
+        # before going through all the gneomes, we will recover gene associations. the reason
+        # we want to do it early on to make sure if there are incompatibilities between genome
+        # names of interest and reosurces provided to learn gene-gene associations (such as the
+        # pan database), they are discovered earlier than later:
+        self.gene_associations = self.get_gene_associations()
+
+      # now we will go through genomes of interest, and build our gigantic dictionary
+        for genome_name in self.genome_names:
+            self.genomes[genome_name] = {}
+
+            # learn all about genes:
+            self.genomes[genome_name]['genes'] = self.get_genes_dict(genome_name)
+
+            # learn all about contigs:
+            self.genomes[genome_name]['contigs'] = self.get_contigs_dict(genome_name)
+
+        self.initialized = True
+
+        if populate_continuous_data:
+            self.populate_genome_continuous_data_layers()
+
+
+    def get_gene_associations(self):
+        """Recovers gene assoctiations through gene clusters found in a pan database.
+        FIXME/TODO: also recover gene associations through user-provided input files.
+        """
+
+        d = {}
+
+        # if we have a pan database, we will start with that, first, and learn gene clusters in it:
+        if self.pan_db_path:
+            pan_db = dbops.PanDatabase(self.pan_db_path)
+
+            genome_names_missing_in_pan_db = [g for g in self.genome_names if g not in pan_db.genomes]
+            if len(genome_names_missing_in_pan_db):
+                raise ConfigError(f"You have provided a pan database to recover assocaitions between genes across "
+                                  f"your genomes, but not all genome names in your list of genomes occur in this "
+                                  f"pan database :/ Here is the list of genome names that you are missing: "
+                                  f"{', '.join(genome_names_missing_in_pan_db)}")
+            else:
+                self.run.warning("Anvi'o found each of the genome name you are interested in the pan database you "
+                                 "have provided. Which means the gene cluster information will be recovered for "
+                                 "downstream magic.", header="PAN DATABASE LOOKS GOOD 🚀", lc="green")
+
+            pan_db.disconnect()
+
+
+            pan_db = dbops.PanSuperclass(self.args)
+            pan_db.init_gene_clusters()
+
+            d['anvio-pangenome'] = {}
+            d['anvio-pangenome']['gene-cluster-name-to-genomes-and-genes'] = pan_db.gene_clusters
+            d['anvio-pangenome']['genome-and-gene-names-to-gene-clusters'] = pan_db.gene_callers_id_to_gene_cluster
+
+        return d
+
+
+    def get_genes_dict(self, genome_name):
+        """Learn everything about genes in a genome"""
+
+        contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
+
+        d = {}
+
+        # learn gene calls, start-stop positions, and so on
+        d['gene_calls'] = db.DB(contigs_db_path, None, ignore_version=True).smart_get(t.genes_in_contigs_table_name, 'gene_callers_id', self.genome_descriptions.genomes[genome_name]['gene_caller_ids'])
+
+        # learn gene functions as well as gene amino acid and DNA sequences
+        d['functions'], d['aa'], d['dna'] = self.genome_descriptions.get_functions_and_sequences_dicts_from_contigs_db(genome_name)
+
+        return d
+
+
+    def populate_continuous_GC_content_data(self):
+        """Add sliding window GC-content change per contig"""
+
+        if not self.initialized:
+            raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
+
+        if 'GC_content' not in self.continuous_data_layers['layers']:
+            self.continuous_data_layers['layers'].append('GC_content')
+
+        self.progress.new('Populating continuous data', progress_total_items=len(self.genomes))
+        for genome_name in self.genomes:
+            self.progress.update(f"GC-content for {genome_name}", increment=True)
+
+            if genome_name not in self.continuous_data_layers['data']:
+                self.continuous_data_layers['data'][genome_name] = {}
+
+            self.continuous_data_layers['data'][genome_name]['GC_content'] = {}
+
+            for contig_name in self.genomes[genome_name]['contigs']['info']:
+                contig_sequence = self.genomes[genome_name]['contigs']['dna'][contig_name]['sequence']
+                self.continuous_data_layers['data'][genome_name]['GC_content'][contig_name] = utils.get_GC_content_for_sequence_as_an_array(contig_sequence)
+
+        self.progress.end()
+
+
+    def populate_genome_continuous_data_layers(self, skip_GC_content=False):
+        """Function to populate continuous data layers.
+        Calling this function will poupulate the `self.continuous_data_layers` data structure, which will
+        look something like this:
+            >>> {
+            >>>   "layers": [
+            >>>     "GC_content",
+            >>>     "Another_layer"
+            >>>   ],
+            >>>   "data": {
+            >>>     "GENOME_01": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_A": [(...)],
+            >>>         "CONTIG_B": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_A": [(...)],
+            >>>         "CONTIG_B": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     },
+            >>>     "GENOME_02": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_C": [(...)],
+            >>>         "CONTIG_D": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_C": [(...)],
+            >>>         "CONTIG_D": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     },
+            >>>     "GENOME_03": {
+            >>>       "GC_content": {
+            >>>         "CONTIG_E": [(...)],
+            >>>         "CONTIG_F": [(...)],
+            >>>          (...)
+            >>>       },
+            >>>       "Another_layer": {
+            >>>         "CONTIG_E": [(...)],
+            >>>         "CONTIG_F": [(...)],
+            >>>          (...)
+            >>>       }
+            >>>     }
+            >>>   }
+            >>> }
+        Please note: The number of data points in continuous data layers for a given contig will always
+        be equal or less than the number of nucleotides in the same contig. When displaying htese data,
+        one should always assume that the first data point matches to teh first nucleotide position, and
+        cut the information in the layer short when necessary.
+        """
+
+        if not self.initialized:
+            raise ConfigError("You can't populate continuous data layers unless the class is properly initialized.")
+
+        # reset in case it was previously populated
+        self.continuous_data_layers = {'layers': [], 'data': {}}
+
+        for genome_name in self.genomes:
+            self.continuous_data_layers['data'][genome_name] = {}
+
+        # add GC-content
+        if not skip_GC_content:
+            self.populate_continuous_GC_content_data()
+
+
+    def get_contigs_dict(self, genome_name):
+        """Learn everything about contigs associated with a genome"""
+
+        contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
+
+        d = {}
+
+        # get contig sequences
+        if genome_name in self.genome_descriptions.internal_genome_names:
+            raise ConfigError("This is not yet implemented :( Someone needs to find a rapid way to get contig "
+                              "associated with a set of gene caller ids without having to create an instance "
+                              "of ContigsSuperclass :/")
+        else:
+            d['info'] = db.DB(contigs_db_path, None, ignore_version=True).get_table_as_dict(t.contigs_info_table_name)
+            d['dna'] = db.DB(contigs_db_path, None, ignore_version=True).get_table_as_dict(t.contig_sequences_table_name)
+
+        return d
+
+
 class AggregateFunctions:
     """Aggregate functions from anywhere.
 

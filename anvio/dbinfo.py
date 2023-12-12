@@ -297,6 +297,13 @@ class ModulesDBInfo(DBInfo):
         DBInfo.__init__(self, path)
 
 
+class GenomeViewDBInfo(DBInfo):
+    db_type = 'genome-view'
+    hash_name = 'genome_view_db_hash'
+    def __init__(self, path, *args, **kwargs):
+        DBInfo.__init__(self, path)
+
+
 class FindAnvioDBs(object):
     """A helper class to traverse a directory to find anvi'o databases.
 
@@ -395,4 +402,5 @@ dbinfo_classes = {
     'pan': PanDBInfo,
     'trnaseq': TRNADBInfo,
     'modules': ModulesDBInfo,
+    'genome-view': GenomeViewDBInfo,
 }

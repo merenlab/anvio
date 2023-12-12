@@ -604,6 +604,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "genome-view": {
+        "name": "GENOME VIEW",
+        "type": "DISPLAY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "view-data": {
         "name": "VIEW DATA",
         "type": "TXT",

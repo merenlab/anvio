@@ -31,10 +31,10 @@ from anvio.tables.views import TablesForViews
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
-from anvio.genomedescriptions import AggregateFunctions
+from anvio.genomedescriptions import AggregateFunctions, AggregateGenomes
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase, GenomeViewDatabase
 
 from anvio.tables.miscdata import (
     TableForItemAdditionalData,
@@ -1908,6 +1908,84 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.anvio_news = utils.get_anvio_news()
             except:
                 pass
+
+
+class GenomeView(AggregateGenomes):
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+        self.mode = 'genome-view'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.genome_view_db_path = A('genome_view_db')
+        self.tree = A('tree')
+        self.title = A('title')
+        self.skip_auto_ordering = A('skip_auto_ordering')
+        self.skip_news = A('skip_news')
+        self.dry_run = A('dry-run')
+
+        if not self.genome_view_db_path:
+            raise ConfigError("It is OK if you don't have a profile database, but you still should provide a "
+                              "profile database path so anvi'o can generate a new one for you. The profile "
+                              "database in this mode only used to read or store the 'state' of the display "
+                              "for visualization purposes, or to allow you to create and store collections. "
+                              "Still very useful.")
+
+        # critical items for genome view bottleroutes, which will be filled
+        # by `AggregateGenomes` upon initialization:
+        self.genomes = {}
+        self.initialized = False
+
+        if not skip_init:
+            AggregateGenomes.__init__(self, self.args, run=self.run, progress=self.progress)
+
+            self.init_genome_view_db()
+
+
+
+    def init_genome_view_db(self):
+        """Dealings with the genome view database.
+        This function will 'create' a genome view database if there is no such database
+        exists at the path provided. If there is one already, it will ensure
+        that it matches to the list of genomes aggregated during init.
+        """
+
+        for name in self.genome_names:
+            num_contigs = len(self.get_contigs_dict(name)['info'].keys())
+            if num_contigs > 1:
+                raise ConfigError(f"The genome-view only works with contigs-dbs that have a single contig. "
+                                  f"The genome {name} has {num_contigs} contigs. "
+                                  f"anvi'o is sorry about this limitation and will try to fix it in the future. "
+                                  f"Meanwhile, you can use the `anvi-export-contigs` program to split up your contigs-db. "
+                                  f"Common scenarios: (1) You might have a sneaky plasmid contig in your contigs-db :) "
+                                  f"(2) You might be trying to visualize a MAG that that contains multiple contigs.")
+
+        if not len(self.genomes):
+            raise ConfigError("Someone asked anvi'o to initialize a genome view databse, but then "
+                              "the class has aggregated zero genomes :( Something is wrong here.")
+
+        if os.path.exists(self.genome_view_db_path):
+            genome_view_db = GenomeViewDatabase(self.genome_view_db_path)
+
+
+            if not set(genome_view_db.genomes) == set(self.genomes.keys()):
+                raise ConfigError("The list of genomes names stored in your genome view database do not "
+                                  "match to the list of genome names anvi'o recovered from your input "
+                                  "files. If you have updated your input genomes for genome view, you "
+                                  "can remove this database and start over with a fresh one, or you can "
+                                  "simply provide a new genome view database path, so a new one matching "
+                                  "to your current list of genomes can be created.")
+        else:
+            genome_view_db = GenomeViewDatabase(self.genome_view_db_path)
+            genome_names = sorted(self.genomes.keys())
+            genome_view_db.create({'db_type': 'genome-view',
+                                   'db_variant': None,
+                                   'genomes': ','.join(genome_names)})
+
+        # states
+        self.states_table = TablesForStates(self.genome_view_db_path)
 
 
 class StructureInteractive(VariabilitySuper, ContigsSuperclass):

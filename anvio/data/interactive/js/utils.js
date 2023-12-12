@@ -57,8 +57,8 @@ function getKeyByValue(object, value) {
  *  @returns target gene's category code for a given functional annotation type.
  */
 function getCagForType(geneFunctions, fn_type) {
-  let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
-  if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+  let out = (geneFunctions != null && geneFunctions[fn_type] != null) ? geneFunctions[fn_type][1] : null;
+  if(out && out.indexOf(', ') != -1) out = out.substr(0,out.indexOf(', ')); // take first cag in case of a comma-separated list
   if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
   if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
   return out;
@@ -93,7 +93,7 @@ function appendColorRow(label, cagCode, color, prepend=false) {
 
 function getCleanCagCode(code) {
   if(!isNaN(code)) return code;
-  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_').split('.').join('_').split('\'').join('_').split('\"').join('_');
+  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_').split('.').join('_').split('\'').join('_').split('\"').join('_').split(',').join('_');
 }
 
 //-----------------------------------------------------------------------------

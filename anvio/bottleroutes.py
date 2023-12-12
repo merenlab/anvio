@@ -188,6 +188,8 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/get_genome_view_data',               callback=self.get_genome_view_data, method='POST')
+        self.route('/data/get_genome_view_adl',                callback=self.get_genome_view_continuous_data_layers, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
@@ -264,6 +266,8 @@ class BottleApplication(Bottle):
             homepage = 'metabolism.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
+        elif self.interactive.mode == 'genome-view':
+            homepage = 'genomeview.html'
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -469,8 +473,12 @@ class BottleApplication(Bottle):
 
     def get_state(self, state_name):
         if state_name in self.interactive.states_table.states:
+
             state = self.interactive.states_table.states[state_name]
             state_dict = json.loads(state['content'])
+
+            if self.interactive.mode == 'genome-view':
+                return json.dumps({'content' : state_dict})
 
             if self.interactive.mode == 'structure':
                 return json.dumps({'content': state['content']})
@@ -1361,6 +1369,24 @@ class BottleApplication(Bottle):
         return json.dumps(self.interactive.get_initial_data())
 
 
+    def get_genome_view_data(self):
+        try:
+            return json.dumps({'genomes': self.interactive.genomes,
+                               'gene_associations': self.interactive.gene_associations})
+        except Exception as e:
+            return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
+
+
+    def get_genome_view_continuous_data_layers(self):
+        """populate continuous data layers, and send them back to the frontend"""
+
+        try:
+            self.interactive.populate_genome_continuous_data_layers()
+            return json.dumps(self.interactive.continuous_data_layers)
+        except Exception as e:
+            return json.dumps({'error': f"Something went wrong at the backend :( Here is the error message: '{e}'"})
+
+
     def get_column_info(self):
         gene_callers_id = int(request.forms.get('gene_callers_id'))
         engine = request.forms.get('engine')
@@ -1481,7 +1507,7 @@ class BottleApplication(Bottle):
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
+
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
