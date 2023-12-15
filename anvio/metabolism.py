@@ -437,6 +437,61 @@ class KeggYAML(PathwayYAML):
 
         return line_entries
 
+    def generate_pathway_dict_from_attributes(self):
+        """Uses the class attributes to create a new self.dict."""
+
+        if self.dict:
+            self.run.warning(f"Somebody called the function generate_pathway_dict_from_attributes() for module "
+                             f"{self.id} and it is overwriting an existing self.dict attribute.")
+            self.dict = {}
+        
+        self.dict['name'] = self.name
+        self.dict['type'] = self.type
+        self.dict['source'] = self.source
+        self.dict['functional_definition'] = self.functional_definition
+        self.dict['functions'] = self.functions
+
+    def kegg_tuple_to_yaml_data(self, kegg_tuple: tuple):
+        """This function accepts a tuple of KEGG modules data and uses it to fill in the PathwayYAML attributes.
+
+        PARAMETERS
+        ==========
+        kegg_tuple : tuple
+            Contains (data name, data value, data definition, line number) parsed from one line in a KEGG module file
+        """
+
+        data_name, data_value, data_definition, line_num = kegg_tuple
+
+        if data_name == "ENTRY":
+            self.id = data_value
+            if data_definition == "Pathway":
+                self.type = "pathway"
+            elif data_definition == "Signature Module":
+                self.type = "function_set"
+            else:
+                raise ConfigError(f"We don't recognize the 'type' of KEGG module {self.id}, which is "
+                                  f"described as {data_definition} in the module file (line {line_num}).")
+        elif data_name == "NAME":
+            self.name = data_value
+        elif data_name == "DEFINITION":
+            # TODO convert this definition into one using ANDs and ORs (and split on multiple lines)
+            self.functional_definition.append(data_value)
+        elif data_name == "ORTHOLOGY":
+            if data_value in self.functions:
+                raise ConfigError(f"We found a duplicate ORTHOLOGY line for enzyme {data_value} in KEGG "
+                                  f"module {self.id} ")
+            self.functions[] = 
+        elif data_name == "CLASS":
+            pass
+        elif data_name == "PATHWAY":
+            pass
+        elif data_name == "REACTION":
+            pass
+        elif data_name == "COMPOUND":
+            pass
+        else:
+            pass
+
     def load_data_from_modules_file(self):
         """This function extracts data from the KEGG module file and builds the YAML file dictionary from it."""
 
@@ -467,5 +522,10 @@ class KeggYAML(PathwayYAML):
                         # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
                         # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
                         if not (entry[0] == "ORTHOLOGY" and entry[1][0] == '('):
+                            print(entry)
+                            #self.kegg_tuple_to_yaml_data(entry)
                         else:
                             line -= 1
+        
+        self.definition_string = " and ".join(['('+step+')' for step in self.functional_definition])
+        self.generate_pathway_dict_from_attributes() # to fill in self.dict
