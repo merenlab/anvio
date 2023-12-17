@@ -95,5 +95,5 @@ class AnvioAuthors:
         self.run.warning(f"Some authors in the YAML file didn't have any avatars defined for them, so anvi'o will "
                          f"assign a generic profile image for these people: {', '.join(authors_missing_avatars_in_yaml)}. "
                          f"You could make these people much prettier by adding an `avatar` key for them, and put the "
-                         f"corresponding file under the the '{self.author_avatars_directory}' directory. JUST SAYING.",
+                         f"corresponding file under the '{self.author_avatars_directory}' directory. JUST SAYING.",
                          header="MISSING AVATARS IN THE YAML FILE")

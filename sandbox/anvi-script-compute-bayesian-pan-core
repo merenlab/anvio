@@ -105,7 +105,7 @@ def main(args):
 
         # let the user know what just happened
         run.warning(f"Missing completion values for {len(genomes_with_missing_completeness_data)} genomes are now "
-                    f"recovered based on the the lengths and completion values of these genomes: "
+                    f"recovered based on the lengths and completion values of these genomes: "
                     f"{', '.join(highly_complete_genomes)}", header="MISSING COMPLETION VALUES RECOVERED", lc="green")
 
     # initialize gene clusters
