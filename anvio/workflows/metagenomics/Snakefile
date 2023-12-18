@@ -1225,7 +1225,7 @@ rule import_percent_of_reads_mapped:
                     echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
                     # ok so this whole thing is a terrible hack anyway, so the next two lines
                     # shouldn't surprise you. Basically printing one line with the sample name
-                    # and the the number of reads (which is grepped from the log file)
+                    # and the number of reads (which is grepped from the log file)
                     echo -e "`echo -n "{params.bowtie_log}" | awk 'BEGIN{{FS="-"}}{{printf("%s\t", $2)}}';\
                             grep 'reads; of these:' {params.bowtie_log} | awk '{{print $1 * 2}}'`" >> {output.total_num_reads_txt}
 

@@ -193,7 +193,7 @@ class PrimerSearch:
                     match = re.search(primer_sequence, seq)
 
                     if not match:
-                        # no match here. but how about the the reverse complement of it?
+                        # no match here. but how about the reverse complement of it?
                         seq = utils.rev_comp(seq)
 
                         match = re.search(primer_sequence, seq)

@@ -46,7 +46,7 @@ If this is the first time using an anvi'o Snakemake workflow, check out [Alon's 
 
 Feel free to adjust anything in the config file! Here are some to consider:
 - `threads`: this can be optimized for any of the steps depending on the size and number of SRA accessions you are downloaded.
-- `prefetch` `--max-size`: The default is 40g but maybe you need more! For reference, this `--max-size` can download TARA Ocean metagenomes. You can use `vdb-dump --info` to learn how much the the `prefetch` step will download e.g. `vdb-dump SRR000001 --info`. Read more about that [here](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool).
+- `prefetch` `--max-size`: The default is 40g but maybe you need more! For reference, this `--max-size` can download TARA Ocean metagenomes. You can use `vdb-dump --info` to learn how much the `prefetch` step will download e.g. `vdb-dump SRR000001 --info`. Read more about that [here](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump#check-the-maximum-size-limit-of-the-prefetch-tool).
 
 ### List of SRA accessions
 
