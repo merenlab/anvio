@@ -1266,7 +1266,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         kos_to_remove : Iterable[str]
-            list of KO IDs identifying KOs to remove
+            KOs to remove by ID.
 
         Returns
         =======
