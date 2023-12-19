@@ -1601,7 +1601,7 @@ class GenomicNetwork(ReactionNetwork):
         GenomicNetwork
             New subsetted reaction network.
         """
-        subsetted_network = GenomicNetwork()
+        subnetwork = GenomicNetwork()
 
         for gcid in gcids:
             try:
@@ -1611,29 +1611,27 @@ class GenomicNetwork(ReactionNetwork):
                 continue
 
             subsetted_gene = Gene()
-            subsetted_gene.gcid = gene.gcid
+            subsetted_gene.gcid = gcid
             subsetted_gene.e_values = gene.e_values.copy()
 
             # Add KOs annotating the gene to the subsetted network as new objects, and then
             # reference these objects in the gene object.
             ko_ids = list(gene.kos)
-            subsetted_network = self._subset_network_by_kos(
-                ko_ids, subsetted_network=subsetted_network
-            )
-            subsetted_gene.kos = {ko_id: subsetted_network.kos[ko_id] for ko_id in ko_ids}
+            subnetwork = self._subset_network_by_kos(ko_ids, subnetwork=subnetwork)
+            subsetted_gene.kos = {ko_id: subnetwork.kos[ko_id] for ko_id in ko_ids}
 
-            subsetted_network.genes[gcid] = subsetted_gene
-        self._subset_proteins(subsetted_network)
+            subnetwork.genes[gcid] = subsetted_gene
+        self._subset_proteins(subnetwork)
 
-        return subsetted_network
+        return subnetwork
 
-    def _subset_proteins(self, subsetted_network: GenomicNetwork) -> None:
+    def _subset_proteins(self, subnetwork: GenomicNetwork) -> None:
         """
         Add protein abundance data to the subsetted network.
 
         Parameters
         ==========
-        subsetted_network : GenomicNetwork
+        subnetwork : GenomicNetwork
             The subsetted reaction network under construction.
 
         Returns
@@ -1642,13 +1640,13 @@ class GenomicNetwork(ReactionNetwork):
         """
         if not self.proteins:
             # Protein abundance profile data is not present in the source network.
-            return subsetted_network
+            return subnetwork
 
         # Parse each protein with abundance data.
         for protein_id, protein in self.proteins.items():
             subsetted_gcids: List[int] = []
             for gcid in protein.genes:
-                if gcid in subsetted_network.genes:
+                if gcid in subnetwork.genes:
                     # A subsetted gene encodes the protein.
                     subsetted_gcids.append(gcid)
             if not subsetted_gcids:
@@ -1659,16 +1657,16 @@ class GenomicNetwork(ReactionNetwork):
             subsetted_protein.id = protein_id
             subsetted_protein.abundances = protein.abundances.copy()
             for gcid in subsetted_gcids:
-                subsetted_gene = subsetted_network.genes[gcid]
+                subsetted_gene = subnetwork.genes[gcid]
                 subsetted_gene.protein = subsetted_protein
                 subsetted_protein.genes[gcid] = subsetted_gene
 
-            subsetted_network.proteins[protein_id] = subsetted_protein
+            subnetwork.proteins[protein_id] = subsetted_protein
 
     def _subset_network_by_kos(
         self,
         ko_ids: Iterable[str],
-        subsetted_network: GenomicNetwork = None
+        subnetwork: GenomicNetwork = None
     ) -> GenomicNetwork:
         """
         Subset the network by KOs with requested KO IDs.
@@ -1678,22 +1676,22 @@ class GenomicNetwork(ReactionNetwork):
         ko_ids : Iterable[str]
             List of KOs to subset by KO ID.
 
-        subsetted_network : GenomicNetwork, None
+        subnetwork : GenomicNetwork, None
             This network under construction is provided when the KOs being added to the network
             annotate already subsetted genes.
 
         Returns
         =======
         GenomicNetwork
-            If a 'subsetted_network' argument is provided, then that network is returned after
+            If a 'subnetwork' argument is provided, then that network is returned after
             modification. Otherwise, a new subsetted reaction network is returned.
         """
-        if subsetted_network is None:
-            subsetted_network = GenomicNetwork()
+        if subnetwork is None:
+            subnetwork = GenomicNetwork()
             # Signify that genes annotated by subsetted KOs are to be added to the network.
             subset_referencing_genes = True
         else:
-            assert isinstance(subsetted_network, GenomicNetwork)
+            assert isinstance(subnetwork, GenomicNetwork)
             # Signify that the KOs being added to the network annotate subsetted genes that were
             # already added to the network.
             subset_referencing_genes = False
@@ -1714,26 +1712,23 @@ class GenomicNetwork(ReactionNetwork):
             # Add reactions annotating the KO to the subsetted network as new objects, and then
             # reference these objects in the KO object.
             reaction_ids = [reaction_id for reaction_id in ko.reactions]
-            subsetted_network = self._subset_network_by_reactions(
-                reaction_ids, subsetted_network=subsetted_network
-            )
+            subnetwork = self._subset_network_by_reactions(reaction_ids, subnetwork=subnetwork)
             subsetted_ko.reactions = {
-                reaction_id: subsetted_network.reactions[reaction_id]
-                for reaction_id in reaction_ids
+                reaction_id: subnetwork.reactions[reaction_id] for reaction_id in reaction_ids
             }
 
-            subsetted_network.kos[ko_id] = subsetted_ko
+            subnetwork.kos[ko_id] = subsetted_ko
 
         if subset_referencing_genes:
             # Add genes that are annotated by the subsetted KOs to the network.
-            self._subset_genes_via_kos(subsetted_network)
+            self._subset_genes_via_kos(subnetwork)
 
-        return subsetted_network
+        return subnetwork
 
     def _subset_network_by_reactions(
         self,
         reaction_ids: Iterable[str],
-        subsetted_network: GenomicNetwork = None
+        subnetwork: GenomicNetwork = None
     ) -> GenomicNetwork:
         """
         Subset the network by reactions with ModelSEED reaction IDs.
@@ -1743,22 +1738,22 @@ class GenomicNetwork(ReactionNetwork):
         reaction_ids : Iterable[str]
             List of reactions to subset by ModelSEED reaction ID.
 
-        subsetted_network : GenomicNetwork, None
+        subnetwork : GenomicNetwork, None
             This network under construction is provided when the reactions being added to the
             network annotate already subsetted KOs.
 
         Returns
         =======
         GenomicNetwork
-            If a 'subsetted_network' argument is provided, then that network is returned after
+            If a 'subnetwork' argument is provided, then that network is returned after
             modification. Otherwise, a new subsetted reaction network is returned.
         """
-        if subsetted_network is None:
-            subsetted_network = GenomicNetwork()
+        if subnetwork is None:
+            subnetwork = GenomicNetwork()
             # Signify that KOs annotated by subsetted reactions are to be added to the network.
             subset_referencing_kos = True
         else:
-            assert isinstance(subsetted_network, GenomicNetwork)
+            assert isinstance(subnetwork, GenomicNetwork)
             # Signify that the reactions being added to the network annotate subsetted KOs that were
             # already added to the network.
             subset_referencing_kos = False
@@ -1773,19 +1768,19 @@ class GenomicNetwork(ReactionNetwork):
             # Copy the reaction object, including referenced metabolite objects, from the source
             # network.
             subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
-            subsetted_network.reactions[reaction_id] = subsetted_reaction
+            subnetwork.reactions[reaction_id] = subsetted_reaction
             # Record the metabolites involved in the reaction, and add them to the network.
             for metabolite in subsetted_reaction.compounds:
                 compound_id = metabolite.modelseed_id
-                subsetted_network.metabolites[compound_id] = metabolite
+                subnetwork.metabolites[compound_id] = metabolite
 
         if subset_referencing_kos:
             # Add KOs that are annotated by the subsetted reactions to the network.
-            self._subset_kos_via_reactions(subsetted_network)
+            self._subset_kos_via_reactions(subnetwork)
 
-        return subsetted_network
+        return subnetwork
 
-    def _subset_genes_via_kos(self, subsetted_network: GenomicNetwork) -> None:
+    def _subset_genes_via_kos(self, subnetwork: GenomicNetwork) -> None:
         """
         Add genes that are annotated with subsetted KOs to the subsetted network.
 
@@ -1794,14 +1789,14 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        subsetted_network : GenomicNetwork
+        subnetwork : GenomicNetwork
             The subsetted reaction network under construction.
 
         Returns
         =======
         None
         """
-        subsetted_ko_ids = list(subsetted_network.kos)
+        subsetted_ko_ids = list(subnetwork.kos)
         for gcid, gene in self.genes.items():
             # Check all genes in the source network for subsetted KOs.
             subsetted_gene = None
@@ -1816,13 +1811,13 @@ class GenomicNetwork(ReactionNetwork):
                     # gene.
                     subsetted_gene = Gene()
                     subsetted_gene.gcid = gcid
-                subsetted_gene.kos[ko_id] = subsetted_network.kos[ko_id]
+                subsetted_gene.kos[ko_id] = subnetwork.kos[ko_id]
                 subsetted_gene.e_values[ko_id] = gene.e_values[ko_id]
 
             if subsetted_gene:
-                subsetted_network.genes[gcid] = subsetted_gene
+                subnetwork.genes[gcid] = subsetted_gene
 
-    def _subset_kos_via_reactions(self, subsetted_network: GenomicNetwork) -> None:
+    def _subset_kos_via_reactions(self, subnetwork: GenomicNetwork) -> None:
         """
         Add KOs that are annotated with subsetted reactions to the subsetted network.
 
@@ -1830,14 +1825,14 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        subsetted_network : GenomicNetwork
+        subnetwork : GenomicNetwork
             The subsetted reaction network under construction.
 
         Returns
         =======
         None
         """
-        subsetted_reaction_ids = list(subsetted_network.reactions)
+        subsetted_reaction_ids = list(subnetwork.reactions)
         for ko_id, ko in self.kos.items():
             # Check all KOs in the source network for subsetted reactions.
             subsetted_ko = None
@@ -1853,15 +1848,15 @@ class GenomicNetwork(ReactionNetwork):
                     subsetted_ko = KO()
                     subsetted_ko.id = ko_id
                     subsetted_ko.name = ko.name
-                subsetted_ko.reactions[reaction_id] = subsetted_network.reactions[reaction_id]
+                subsetted_ko.reactions[reaction_id] = subnetwork.reactions[reaction_id]
                 subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
                 subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
 
             if subsetted_ko:
-                subsetted_network.kos[ko_id] = subsetted_ko
+                subnetwork.kos[ko_id] = subsetted_ko
 
         # Add genes that are annotated with the added KOs to the subsetted network.
-        self._subset_genes_via_kos(subsetted_network)
+        self._subset_genes_via_kos(subnetwork)
 
     def _subset_network_by_metabolites(self, compound_ids: Iterable[str]) -> GenomicNetwork:
         """
@@ -1877,7 +1872,7 @@ class GenomicNetwork(ReactionNetwork):
         GenomicNetwork
             New subsetted reaction network.
         """
-        subsetted_network = GenomicNetwork()
+        subnetwork = GenomicNetwork()
 
         for reaction_id, reaction in self.reactions.items():
             # Check all reactions in the source network for subsetted metabolites.
@@ -1891,20 +1886,18 @@ class GenomicNetwork(ReactionNetwork):
             # Copy the reaction object, including referenced metabolite objects, from the source
             # network.
             subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
-            subsetted_network.reactions[reaction_id] = subsetted_reaction
+            subnetwork.reactions[reaction_id] = subsetted_reaction
 
             # Add the metabolites involved in the reaction to the subsetted network. (There can be
             # unavoidable redundancy here in readding previously encountered metabolites.)
             for subsetted_metabolite in subsetted_reaction.compounds:
-                subsetted_network.metabolites[
-                    subsetted_metabolite.modelseed_id
-                ] = subsetted_metabolite
+                subnetwork.metabolites[subsetted_metabolite.modelseed_id] = subsetted_metabolite
 
         # Add KOs that are annotated with the added reactions to the subsetted network, and then add
         # genes annotated with the added KOs to the subsetted network.
-        self._subset_kos_via_reactions(subsetted_network)
+        self._subset_kos_via_reactions(subnetwork)
 
-        return subsetted_network
+        return subnetwork
 
     def merge_network(self, network: GenomicNetwork) -> GenomicNetwork:
         """
