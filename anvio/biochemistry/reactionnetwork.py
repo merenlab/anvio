@@ -1509,22 +1509,22 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         kegg_modules_to_subset : Iterable[str], None
-            List of KEGG module IDs to subset.
+            KEGG module IDs to subset.
 
         brite_categories_to_subset : Iterable[str], None
-            List of BRITE categories to subset.
+            BRITE categories to subset.
 
         genes_to_subset : Iterable[int], None
-            List of gene callers IDs to subset.
+            Gene callers IDs to subset.
 
         kos_to_subset : Iterable[str], None
-            List of KO IDs to subset.
+            KO IDs to subset.
 
         reactions_to_subset : Iterable[str], None
-            List of ModelSEED reaction IDs to subset.
+            ModelSEED reaction IDs to subset.
 
         metabolites_to_subset : Iterable[str], None
-            List of ModelSEED metabolite IDs to subset.
+            ModelSEED metabolite IDs to subset.
 
         Returns
         =======
