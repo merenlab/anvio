@@ -836,7 +836,8 @@ class GenomicNetwork(ReactionNetwork):
 
         metabolites_to_remove = []
         for modelseed_compound_id, metabolite in self.metabolites.items():
-            # ModelSEED compounds without a formula have a formula value of None in the network object.
+            # ModelSEED compounds without a formula have a formula value of None in the network
+            # object.
             if metabolite.formula is None:
                 metabolites_to_remove.append(modelseed_compound_id)
         removed = self.purge_metabolites(metabolites_to_remove)
@@ -855,6 +856,8 @@ class GenomicNetwork(ReactionNetwork):
             self.progress.new("Writing output files of removed network items")
             self.progress.update("...")
 
+        # Record the reactions removed as a consequence of involving formulaless metabolites, and
+        # record the formulaless metabolites involved in removed reactions.
         metabolite_removed_reactions: Dict[str, List[str]] = {}
         reaction_removed_metabolites: Dict[str, List[str]] = {}
         for reaction in removed['reaction']:
