@@ -1959,8 +1959,11 @@ class GenomicNetwork(ReactionNetwork):
 
         Otherwise, object attributes should be consistent between the networks. For instance, the
         same ModelSEED reactions and metabolites in both networks should have identical attributes.
-        If applicable, both networks should have been annotated with the same protein abundance
-        data.
+        If applicable, both networks should have been annotated with the same protein and metabolite
+        abundance data.
+
+        The purpose of this method is to combine different, but potentially overlapping, subnetworks
+        from the same pangenome.
 
         Parameters
         ==========
