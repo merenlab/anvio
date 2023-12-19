@@ -1335,7 +1335,7 @@ class AggregateFunctions:
     def do_functional_enrichment_analysis(self):
         """Performs functional enrichment analysis if user defined layer groups.
 
-        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        This function fills in the variable `self.functional_enrichment_stats_dict` so
         the downstream analyses can use it to do fancy things.
         """
 

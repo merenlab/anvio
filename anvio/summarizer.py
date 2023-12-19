@@ -776,7 +776,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             try:
                 markdown = mistune.create_markdown(escape=False)
             except Exception as e:
-                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the the error "
+                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the error "
                                   f"we got from the downstream library: '{e}'. Probably this needs a developer "
                                   f"to take a look. Meanwhile, we are turning off the rendering of markdown "
                                   f"descriptions. Things will look ugly in some places in the interface and "

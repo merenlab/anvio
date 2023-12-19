@@ -7571,6 +7571,12 @@ class ModulesDatabase(KeggContext):
                                   "into 2 parts. Here is what the split looks like: {split_rxn}")
             rxn_inputs = [x.strip() for x in split_rxn[0].split('+')]
             rxn_outputs = [x.strip() for x in split_rxn[1].split('+')]
+            # as of December 2023, some REACTION lines now include stoichiometry, like this:
+            # C00390 + 2 C00125 -> C00399 + 2 C00126 + 2 C00080
+            # to make sure we don't keep the stoichiometric numbers, we need to split each compound substring one more time
+            # on a space and keep only the last element
+            rxn_inputs = [x.split()[-1] for x in rxn_inputs]
+            rxn_outputs = [x.split()[-1] for x in rxn_outputs]
             inputs = inputs.union(set(rxn_inputs))
             outputs = outputs.union(set(rxn_outputs))
 

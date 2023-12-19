@@ -107,8 +107,9 @@ def reformat_BAM(args):
             # sanity check for matching number of sequences
             run.info("Sequences in BAM file", len(header_dict['SQ']))
             if len(rename_dict) != len(header_dict['SQ']):
-                mismatching_bam = [x for x in header_dict['SQ'] if x not in rename_dict]
-                mismatching_rename = [x for x in rename_dict if x not in header_dict['SQ']]
+                all_seqs_in_bam = [x['SN'] for x in header_dict['SQ']]
+                mismatching_bam = [x for x in all_seqs_in_bam if x not in rename_dict]
+                mismatching_rename = [x for x in rename_dict if x not in all_seqs_in_bam]
                 raise ConfigError(f"ERROR: The number of sequences in the BAM file ({len(header_dict['SQ'])}) does "
                                   f"not match to the number of sequences in the reformat report ({len(rename_dict)}). "
                                   f"For example, here are the sequences that are only in the BAM file and not in the "

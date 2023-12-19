@@ -462,7 +462,7 @@ class MetagenomeCentricGeneClassifier:
         """
 
         if gene_specificity:
-            # return True if the the gene occurs in all positive samples.
+            # return True if the gene occurs in all positive samples.
             return self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == len(self.positive_samples)
         else:
             # return True if the gene occurs in all positive AND all negative samples

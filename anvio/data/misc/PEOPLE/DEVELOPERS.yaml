@@ -89,10 +89,13 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Seeking Employment
+      inst: LinkedIn
+      inst_link: https://www.linkedin.com/in/ekiefl/
+      current: true
     - title: Bioinformatician
       inst: AbCellera
       inst_link: https://www.abcellera.com/
-      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/

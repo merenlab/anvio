@@ -173,11 +173,19 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               --no-progress \
               $thread_controller
 
+INFO "Filtering hmm_hits using query coverage"
+anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
+                                  --domain-hits-table $output_dir/hmm.domtable \
+                                  --hmm-source Bacteria_71 \
+                                  --min-model-coverage 0.9 \
+                                  --no-progress \
+                                  --filter-out-partial-gene-calls
+
 INFO "Filtering hmm_hits using target coverage"
 anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
                                   --domain-hits-table $output_dir/hmm.domtable \
                                   --hmm-source Bacteria_71 \
-                                  --model-coverage 0.9 \
+                                  --min-gene-coverage 0.5 \
                                   --no-progress \
                                   --filter-out-partial-gene-calls
 
