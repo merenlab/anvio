@@ -1247,7 +1247,11 @@ class GenomicNetwork(ReactionNetwork):
         else:
             removed_cascading_up = {'ko': [], 'gene': []}
 
-        removed = {'reaction': removed_reactions, 'kegg_reaction': removed_kegg_reactions, 'ec_number': removed_ec_numbers}
+        removed = {
+            'reaction': removed_reactions,
+            'kegg_reaction': removed_kegg_reactions,
+            'ec_number': removed_ec_numbers
+        }
         removed.update(removed_cascading_down)
         removed.update(removed_cascading_up)
         return removed
