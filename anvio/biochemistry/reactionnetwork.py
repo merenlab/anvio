@@ -10,6 +10,7 @@ import glob
 import json
 import math
 import time
+import random
 import shutil
 import hashlib
 import tarfile
@@ -60,6 +61,8 @@ run_quiet = terminal.Run(verbose=False)
 # "classes" of network statistics. Keys in the inner dictionary are statistics themselves.
 GenomicNetworkStats = Dict[str, Dict[str, Any]]
 PangenomicNetworkStats = Dict[str, Dict[str, Any]]
+
+RANDOM_SEED = 1066
 
 
 @dataclass
@@ -7351,6 +7354,573 @@ class Constructor:
 
         hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
         return hashed_ko_annotations
+
+class Tester:
+    """
+    This class tests reaction network construction and operations.
+
+    Attributes
+    ==========
+    ko_dir : str, None
+        The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. This
+        attribute is assigned the argument of the same name upon initialization.
+
+    modelseed_dir : str, None
+        The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. This
+        attribute is assigned the argument of the same name upon initialization.
+
+    test_dir : str, None
+        The directory storing test files, including copied input files and output files. With the
+        default value of None, temporary directories are created and deleted as needed by methods.
+        None of the test files in a provided directory, in contrast, are deleted. This attribute is
+        assigned the argument of the same name upon initialization.
+
+    run : anvio.terminal.Run, anvio.terminal.Run()
+        This object prints run information to the terminal. This attribute is assigned the argument
+        of the same name upon initialization.
+
+    progress : anvio.terminal.Progress, anvio.terminal.Progress()
+        This object prints transient progress information to the terminal. This attribute is
+        assigned the argument of the same name upon initialization.
+    """
+    def __init__(
+        self,
+        ko_dir: str = None,
+        modelseed_dir: str = None,
+        test_dir: str = None,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
+        """
+        Parameters
+        ==========
+        ko_dir : str, None
+            The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. The
+            default argument of None expects KO data to be set up in the default anvi'o directory
+            used by the program `anvi-setup-kegg-data`.
+
+        modelseed_dir : str, None
+            The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. The
+            default argument of None expects ModelSEED data to be set up in the default anvi'o
+            directory used by the program `anvi-setup-modelseed-database`.
+
+        test_dir : str, None
+            The directory storing test files. With the default value of None, temporary test
+            directories are created and deleted by Tester methods; these methods operate on copies
+            of input files in the test directories. In contrast, a provided directory will not be
+            deleted, which can be useful for further work on output files.
+
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object prints transient progress information to the terminal.
+        """
+        self.ko_dir = ko_dir
+        self.modelseed_dir = modelseed_dir
+        self.test_dir = test_dir
+        self.run = run
+        self.progress = progress
+
+    def test_contigs_database_network(self, contigs_db: str) -> None:
+        """
+        Test the construction of a reaction network from a contigs database, and test that network
+        methods are able to run and do not fail certain basic (by no means comprehensive) tests.
+
+        Parameters
+        ==========
+        contigs_db : str
+            Path to a contigs database. The database can represent different types of samples,
+            including a single genome, metagenome, or transcriptome. The network is derived from
+            gene KO annotations stored in the database.
+
+        Returns
+        =======
+        None
+        """
+        if self.test_dir is None:
+            test_dir = filesnpaths.get_temp_directory_path()
+        else:
+            test_dir = self.test_dir
+        self.run.info("Test directory", test_dir, nl_after=1)
+
+        self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
+        network, temp_dir = self.make_contigs_database_network(contigs_db)
+
+        self.run.info_single(
+            "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
+        )
+        network.copy().remove_metabolites_without_formula(
+            output_path=os.path.join(test_dir, "removed.tsv")
+        )
+        print()
+
+        self.progress.new("Testing network purge methods")
+        self.progress.update("...")
+        # Network pruning tests use a random sample of half the network items (nodes) of each type.
+        random.seed(RANDOM_SEED)
+        metabolite_sample = set(random.sample(
+            list(network.metabolites), math.ceil(len(network.metabolites) / 2)
+        ))
+        random.seed(RANDOM_SEED)
+        reaction_sample = set(random.sample(
+            list(network.reactions), math.ceil(len(network.reactions) / 2)
+        ))
+        random.seed(RANDOM_SEED)
+        ko_sample = set(random.sample(list(network.kos), math.ceil(len(network.kos) / 2)))
+        random.seed(RANDOM_SEED)
+        gene_sample = set(random.sample(list(network.genes), math.ceil(len(network.genes) / 2)))
+
+        copied_network = network.copy()
+        # The basic tests of the copy method check that the network-level attributes appear to
+        # contain the same items. What remains untested is that all of the references between nodes
+        # are identical, e.g., the reactions referenced by each KO.
+        assert list(network.metabolites) == list(copied_network.metabolites)
+        assert list(network.reactions) == list(copied_network.reactions)
+        assert list(network.kos) == list(copied_network.kos)
+        assert list(network.genes) == list(copied_network.genes)
+        assert list(network.proteins) == list(copied_network.proteins)
+        assert network.kegg_modelseed_aliases == copied_network.kegg_modelseed_aliases
+        assert network.modelseed_kegg_aliases == copied_network.modelseed_kegg_aliases
+        assert network.ec_number_modelseed_aliases == copied_network.ec_number_modelseed_aliases
+        assert network.modelseed_ec_number_aliases == copied_network.modelseed_ec_number_aliases
+        removed = copied_network.purge_metabolites(metabolite_sample)
+        # The most basic test of the purge (pruning) method is that the network no longer contains
+        # the items that were requested to be removed. What remains untested, and would require a
+        # curated test dataset, is the removal of certain other "upstream" and "downstream" nodes
+        # associated with the nodes requested to be removed, e.g., KOs and genes upstream and
+        # metabolites downstream of requested reactions.
+        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
+        assert not metabolite_sample.difference(
+            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        )
+
+        copied_network = network.copy()
+        removed = copied_network.purge_reactions(reaction_sample)
+        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
+        assert not reaction_sample.difference(
+            set([reaction.modelseed_id for reaction in removed['reaction']])
+        )
+
+        copied_network = network.copy()
+        removed = copied_network.purge_kos(ko_sample)
+        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
+        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+
+        copied_network = network.copy()
+        removed = copied_network.purge_genes(gene_sample)
+        assert gene_sample.difference(set(copied_network.genes)) == gene_sample
+        assert not gene_sample.difference(set([gene.gcid for gene in removed['gene']]))
+        self.progress.end()
+
+        self.progress.new("Testing network subset methods")
+        self.progress.update("...")
+        subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
+        # The most basic test of the subset method is that the new network contains the requested
+        # items. What remains untested, and would require a curated test dataset, is the inclusion
+        # of certain other "upstream" and "downstream" nodes associated with the nodes requested to
+        # be removed, e.g., KOs and genes upstream and metabolites downstream of requested
+        # reactions.
+        assert not metabolite_sample.difference(set(subnetwork.metabolites))
+
+        subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
+        assert not reaction_sample.difference(set(subnetwork.reactions))
+
+        subnetwork = network.subset_network(kos_to_subset=ko_sample)
+        assert not ko_sample.difference(set(subnetwork.kos))
+
+        subnetwork = network.subset_network(genes_to_subset=gene_sample)
+        assert not gene_sample.difference(set(subnetwork.genes))
+
+        # Network merging functionality is tested within the following command.
+        subnetwork = network.subset_network(
+            genes_to_subset=gene_sample,
+            kos_to_subset=ko_sample,
+            reactions_to_subset=reaction_sample,
+            metabolites_to_subset=metabolite_sample
+        )
+        assert not metabolite_sample.difference(set(subnetwork.metabolites))
+        assert not reaction_sample.difference(set(subnetwork.reactions))
+        assert not ko_sample.difference(set(subnetwork.kos))
+        assert not gene_sample.difference(set(subnetwork.genes))
+        self.progress.end()
+
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir)
+
+        self.run.info_single(
+            "All tests passed for the contigs database reaction network", mc='magenta', level=0
+        )
+        self.run.info_single("Network construction and storage in the contigs database")
+        self.run.info_single("Purge metabolites without formula")
+        self.run.info_single("Purge select metabolites")
+        self.run.info_single("Purge select reactions")
+        self.run.info_single("Purge select KOs")
+        self.run.info_single("Purge select genes")
+        self.run.info_single("Subset select metabolites")
+        self.run.info_single("Subset select reactions")
+        self.run.info_single("Subset select KOs")
+        self.run.info_single("Subset select genes")
+        self.run.info_single("Subset select metabolites, reactions, KOs, and genes")
+
+
+    def make_contigs_database_network(
+        self,
+        contigs_db: str,
+        store: bool = True,
+        overwrite_existing_network: bool = True,
+        stats_file: str = "contigs_db_network_stats.tsv"
+    ) -> Tuple[GenomicNetwork, str]:
+        """
+        Test reaction network construction from a contigs database.
+
+        Parameters
+        ==========
+        contigs_db : str
+            Path to a contigs database. The database can represent different types of samples,
+            including a single genome, metagenome, or transcriptome. The network is derived from
+            gene KO annotations stored in the database.
+
+        store : bool, True
+            Save the network to a copy of the contigs database, stored with the same filename in the
+            test directory. If a contigs database already exists at this location, it is retained
+            and the network is saved to it, rather than overwriting the file with a copy.
+
+        overwrite_existing_network : bool, True
+            Overwrite an existing network stored in the copy of the contigs database in the test
+            directory. 'store' is also required.
+
+        stats_file : str, 'stats.tsv'
+            Write network overview statistics to a tab-delimited file with this filename in the test
+            directory. If this file already exists, it is overwritten.
+
+        Returns
+        =======
+        GenomicNetwork
+            The network derived from the contigs database.
+
+        str
+            The path to the temporary directory in which a copy of the input contigs database and
+            output stats files are stored. If no temporary directory is created, then this return
+            value is None.
+        """
+        utils.is_contigs_db(contigs_db)
+
+        if self.test_dir is None:
+            test_dir = temp_dir = filesnpaths.get_temp_directory_path()
+        else:
+            test_dir = self.test_dir
+            temp_dir = None
+
+        if store:
+            # Store the network in a copy of the input database.
+            contigs_db_target = os.path.join(test_dir, os.path.basename(contigs_db))
+            if filesnpaths.is_file_exists(contigs_db_target, dont_raise=True):
+                raise ConfigError(
+                    f"""\
+                    The contigs database will not be copied to a location in the test directory with
+                    an existing file: {contigs_db_target}\
+                    """
+                )
+            shutil.copy(contigs_db, contigs_db_target)
+        else:
+            # The network is not stored, so the input file is used and remains unmodified.
+            contigs_db_target = contigs_db
+
+        con = Constructor(
+            ko_dir=self.ko_dir,
+            modelseed_dir=self.modelseed_dir,
+            run=self.run,
+            progress=self.progress
+        )
+
+        if stats_file:
+            stats_file_target = os.path.join(test_dir, stats_file)
+        else:
+            stats_file_target = None
+
+        network = con.make_contigs_database_network(
+            contigs_db=contigs_db_target,
+            store=store,
+            overwrite_existing_network=overwrite_existing_network,
+            stats_file=stats_file_target
+        )
+        return network, temp_dir
+
+    def test_pan_database_network(
+        self,
+        pan_db: str,
+        genomes_storage_db: str,
+        consensus_threshold: float = None,
+        discard_ties: bool = False
+    ) -> None:
+        """
+        Test the construction of a reaction network from a pan database, and test that network
+        methods are able to run and do not fail certain basic (by no means comprehensive) tests.
+
+        Parameters
+        ==========
+        pan_db : str
+            Path to a pan database. The pangenomic network is determined for gene clusters stored in
+            the database.
+
+        genomes_storage_db : str
+            Path to a genomes storage database. The pangenomic network is derived from gene KO
+            annotations stored in the database.
+
+        consensus_threshold : float, None
+            With the default of None, the protein annotation most frequent among genes in a cluster
+            is assigned to the cluster itself. If a non-default argument is provided (a value on [0,
+            1]), at least this proportion of genes in the cluster must have the most frequent
+            annotation for the cluster to be annotated.
+
+        discard_ties : bool, False
+            If multiple protein annotations are most frequent among genes in a cluster, then do not
+            assign an annotation to the cluster itself when this argument is True. By default, this
+            argument is False, so one of the most frequent annotations would be arbitrarily chosen.
+
+        Returns
+        =======
+        None
+        """
+        if self.test_dir is None:
+            test_dir = filesnpaths.get_temp_directory_path()
+        else:
+            test_dir = self.test_dir
+        self.run.info("Test directory", test_dir, nl_after=1)
+
+        self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
+        network, temp_dir = self.make_pan_database_network(
+            pan_db,
+            genomes_storage_db,
+            consensus_threshold=consensus_threshold,
+            discard_ties=discard_ties
+        )
+
+        self.run.info_single(
+            "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
+        )
+        network.copy().remove_metabolites_without_formula(
+            output_path=os.path.join(test_dir, "removed.tsv")
+        )
+        print()
+
+        self.progress.new("Testing network purge methods")
+        self.progress.update("...")
+        # Network pruning tests use a random sample of half the network items (nodes) of each type.
+        random.seed(RANDOM_SEED)
+        metabolite_sample = set(random.sample(
+            list(network.metabolites), math.ceil(len(network.metabolites) / 2)
+        ))
+        random.seed(RANDOM_SEED)
+        reaction_sample = set(random.sample(
+            list(network.reactions), math.ceil(len(network.reactions) / 2)
+        ))
+        random.seed(RANDOM_SEED)
+        ko_sample = set(random.sample(list(network.kos), math.ceil(len(network.kos) / 2)))
+        random.seed(RANDOM_SEED)
+        gene_cluster_sample = set(random.sample(
+            list(network.gene_clusters), math.ceil(len(network.gene_clusters) / 2)
+        ))
+
+        copied_network = network.copy()
+        # The basic tests of the copy method check that the network-level attributes appear to
+        # contain the same items. What remains untested is that all of the references between nodes
+        # are identical, e.g., the reactions referenced by each KO.
+        assert list(network.metabolites) == list(copied_network.metabolites)
+        assert list(network.reactions) == list(copied_network.reactions)
+        assert list(network.kos) == list(copied_network.kos)
+        assert list(network.gene_clusters) == list(copied_network.gene_clusters)
+        assert network.kegg_modelseed_aliases == copied_network.kegg_modelseed_aliases
+        assert network.modelseed_kegg_aliases == copied_network.modelseed_kegg_aliases
+        assert network.ec_number_modelseed_aliases == copied_network.ec_number_modelseed_aliases
+        assert network.modelseed_ec_number_aliases == copied_network.modelseed_ec_number_aliases
+        removed = copied_network.purge_metabolites(metabolite_sample)
+        # The most basic test of the purge (pruning) method is that the network no longer contains
+        # the items that were requested to be removed. What remains untested, and would require a
+        # curated test dataset, is the removal of certain other "upstream" and "downstream" nodes
+        # associated with the nodes requested to be removed, e.g., KOs and gene clusters upstream
+        # and metabolites downstream of requested reactions.
+        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
+        assert not metabolite_sample.difference(
+            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        )
+
+        copied_network = network.copy()
+        removed = copied_network.purge_reactions(reaction_sample)
+        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
+        assert not reaction_sample.difference(
+            set([reaction.modelseed_id for reaction in removed['reaction']])
+        )
+
+        copied_network = network.copy()
+        removed = copied_network.purge_kos(ko_sample)
+        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
+        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+
+        copied_network = network.copy()
+        removed = copied_network.purge_gene_clusters(gene_cluster_sample)
+        assert (
+            gene_cluster_sample.difference(set(copied_network.gene_clusters)) ==
+            gene_cluster_sample
+        )
+        assert not gene_cluster_sample.difference(
+            set([gene_cluster.gene_cluster_id for gene_cluster in removed['gene_cluster']])
+        )
+        self.progress.end()
+
+        self.progress.new("Testing network subset methods")
+        self.progress.update("...")
+        subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
+        # The most basic test of the subset method is that the new network contains the requested
+        # items. What remains untested, and would require a curated test dataset, is the inclusion
+        # of certain other "upstream" and "downstream" nodes associated with the nodes requested to
+        # be removed, e.g., KOs and gene clusters upstream and metabolites downstream of requested
+        # reactions.
+        assert not metabolite_sample.difference(set(subnetwork.metabolites))
+
+        subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
+        assert not reaction_sample.difference(set(subnetwork.reactions))
+
+        subnetwork = network.subset_network(kos_to_subset=ko_sample)
+        assert not ko_sample.difference(set(subnetwork.kos))
+
+        subnetwork = network.subset_network(gene_clusters_to_subset=gene_cluster_sample)
+        assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
+
+        # Network merging functionality is tested within the following command.
+        subnetwork = network.subset_network(
+            gene_clusters_to_subset=gene_cluster_sample,
+            kos_to_subset=ko_sample,
+            reactions_to_subset=reaction_sample,
+            metabolites_to_subset=metabolite_sample
+        )
+        assert not metabolite_sample.difference(set(subnetwork.metabolites))
+        assert not reaction_sample.difference(set(subnetwork.reactions))
+        assert not ko_sample.difference(set(subnetwork.kos))
+        assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
+        self.progress.end()
+
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir)
+
+        self.run.info_single(
+            "All tests passed for the pan database reaction network", mc='magenta', level=0
+        )
+        self.run.info_single("Network construction and storage in the pan database")
+        self.run.info_single("Purge metabolites without formula")
+        self.run.info_single("Purge select metabolites")
+        self.run.info_single("Purge select reactions")
+        self.run.info_single("Purge select KOs")
+        self.run.info_single("Purge select gene clusters")
+        self.run.info_single("Subset select metabolites")
+        self.run.info_single("Subset select reactions")
+        self.run.info_single("Subset select KOs")
+        self.run.info_single("Subset select gene clusters")
+        self.run.info_single("Subset select metabolites, reactions, KOs, and gene clusters")
+
+    def make_pan_database_network(
+        self,
+        pan_db: str,
+        genomes_storage_db: str,
+        store: bool = True,
+        overwrite_existing_network: bool = True,
+        consensus_threshold: float = None,
+        discard_ties: bool = False,
+        stats_file: str = "pan_db_network_stats.tsv"
+    ) -> Tuple[PangenomicNetwork, str]:
+        """
+        Test reaction network construction from a pan database.
+
+        Parameters
+        ==========
+        pan_db : str
+            Path to a pan database. The pangenomic network is determined for gene clusters stored in
+            the database.
+
+        genomes_storage_db : str
+            Path to a genomes storage database. The pangenomic network is derived from gene KO
+            annotations stored in the database.
+
+        store : bool, True
+            Save the network to a copy of the pan database, stored with the same filename in the
+            test directory. If this file copy already exists, it is retained and used.
+
+        overwrite_existing_network : bool, False
+            Overwrite an existing network stored in the copy of the pan database in the test
+            directory. 'store' is also required.
+
+        consensus_threshold : float, None
+            With the default of None, the protein annotation most frequent among genes in a cluster
+            is assigned to the cluster itself. If a non-default argument is provided (a value on [0,
+            1]), at least this proportion of genes in the cluster must have the most frequent
+            annotation for the cluster to be annotated.
+
+        discard_ties : bool, False
+            If multiple protein annotations are most frequent among genes in a cluster, then do not
+            assign an annotation to the cluster itself when this argument is True. By default, this
+            argument is False, so one of the most frequent annotations would be arbitrarily chosen.
+
+        stats_file : str, None
+            Write network overview statistics to a tab-delimited file with this filename in the test
+            directory. If this file already exists, it is overwritten.
+
+        Returns
+        =======
+        PangenomicNetwork
+            The network derived from the pangenomic databases.
+
+        str
+            The path to the temporary directory in which a copy of the input pan database and output
+            stats files are stored. If no temporary directory is created, then this return value is
+            None.
+        """
+        utils.is_pan_db(pan_db)
+        utils.is_genome_storage(genomes_storage_db)
+
+        if self.test_dir is None:
+            test_dir = temp_dir = filesnpaths.get_temp_directory_path()
+        else:
+            test_dir = self.test_dir
+            temp_dir = None
+
+        if store:
+            # Store the network in a copy of the input database.
+            pan_db_target = os.path.join(test_dir, os.path.basename(pan_db))
+            if filesnpaths.is_file_exists(pan_db_target, dont_raise=True):
+                raise ConfigError(
+                    f"""\
+                    The pan database will not be copied to a location in the test directory with an
+                    existing file: {pan_db_target}\
+                    """
+                )
+            shutil.copy(pan_db, pan_db_target)
+        else:
+            # The network is not stored, so the input file is used and remains unmodified.
+            pan_db_target = pan_db
+
+        con = Constructor(
+            ko_dir=self.ko_dir,
+            modelseed_dir=self.modelseed_dir,
+            run=self.run,
+            progress=self.progress
+        )
+
+        if stats_file:
+            stats_file_target = os.path.join(test_dir, stats_file)
+        else:
+            stats_file_target = None
+
+        network = con.make_pangenomic_network(
+            pan_db=pan_db_target,
+            genomes_storage_db=genomes_storage_db,
+            store=store,
+            overwrite_existing_network=overwrite_existing_network,
+            consensus_threshold=consensus_threshold,
+            discard_ties=discard_ties,
+            stats_file=stats_file_target
+        )
+        return network, temp_dir
 
 def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
