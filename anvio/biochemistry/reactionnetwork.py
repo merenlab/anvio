@@ -3317,6 +3317,505 @@ class PangenomicNetwork(ReactionNetwork):
         removed.update(removed_cascading_down)
         return removed
 
+    def subset_network(
+        self,
+        kegg_modules_to_subset: Iterable[str] = None,
+        brite_categories_to_subset: Iterable[str] = None,
+        gene_clusters_to_subset: Iterable[int] = None,
+        kos_to_subset: Iterable[str] = None,
+        reactions_to_subset: Iterable[str] = None,
+        metabolites_to_subset: Iterable[str] = None
+    ) -> PangenomicNetwork:
+        """
+        Subset a smaller network from the metabolic network.
+
+        If requested KEGG modules, BRITE categories, gene clusters, KOs, reactions, or metabolites
+        are not present in the network, no error is raised.
+
+        Subsetted items are not represented by the same objects as in the source network, i.e., new
+        gene cluster, KO, reaction, and metabolite objects are created and added to the subsetted
+        network.
+
+        Network items (i.e., gene clusters, KOs, reactions, and metabolites) that reference
+        requested items (e.g., gene clusters in the network referencing requested KOs; KOs in the
+        network referencing requested reactions) are added to the subsetted network. KOs (and by
+        extension, gene clusters referencing KOs) that are added to the subsetted network due to
+        references to requested reactions will be missing references to any other unrequested
+        reactions. In other words, certain reaction annotations can be selected to the exclusion of
+        others, e.g., a KO encoding two reactions can be "redefined" or "pruned" to encode one
+        requested reaction in the subsetted network; a KO encoding multiple reactions can be pruned
+        to encode only those reactions involving requested metabolites.
+
+        If the 'verbose' attribute of the source 'PangenomicNetwork' object is True, then report to
+        the terminal the identities of requested KEGG modules, BRITE categories, gene clusters, KOs,
+        reactions, and metabolites that are not present in the network.
+
+        Parameters
+        ==========
+        kegg_modules_to_subset : List[str], None
+            KEGG modules (of KOs) to subset by ID.
+
+        brite_categories_to_subset : List[str], None
+            KEGG BRITE hierarchy categories (of KOs) to subset.
+
+        gene_clusters_to_subset : List[int], None
+            Gene clusters to subset by ID.
+
+        kos_to_subset : List[str], None
+            KOs to subset by ID.
+
+        reactions_to_subset : List[str], None
+            ModelSEED reactions to subset by ID.
+
+        metabolites_to_subset : List[str], None
+            ModelSEED metabolites to subset by ID.
+
+        Returns
+        =======
+        PangenomicNetwork
+            New subsetted reaction network.
+        """
+        # Sequentially subset the network for each type of request. Upon generating two subsetted
+        # networks from two types of request, merge the networks into a single subsetted network;
+        # repeat.
+        first_subnetwork = None
+        for items_to_subset, subset_network_method in (
+            (kegg_modules_to_subset, self._subset_network_by_modules),
+            (brite_categories_to_subset, self._subset_network_by_brite),
+            (gene_clusters_to_subset, self._subset_network_by_gene_clusters),
+            (kos_to_subset, self._subset_network_by_kos),
+            (reactions_to_subset, self._subset_network_by_reactions),
+            (metabolites_to_subset, self._subset_network_by_metabolites)
+        ):
+            if not items_to_subset:
+                continue
+
+            second_subnetwork = subset_network_method(items_to_subset)
+
+            if first_subnetwork is None:
+                first_subnetwork = second_subnetwork
+            else:
+                first_subnetwork = first_subnetwork.merge_network(second_subnetwork)
+
+        return first_subnetwork
+
+    def _subset_network_by_modules(self, kegg_modules: Iterable[str]) -> PangenomicNetwork:
+        """
+        Subset the network by KOs in requested KEGG modules.
+
+        Parameters
+        ==========
+        kegg_modules : Iterable[str]
+            KEGG modules (of KOs) to subset by ID.
+
+        Returns
+        =======
+        PangenomicNetwork
+            New subsetted reaction network.
+        """
+        pass
+
+    def _subset_network_by_brite(self, brite_categories: Iterable[str]) -> PangenomicNetwork:
+        """
+        Subset the network by KOs in requested KEGG BRITE hierarchy categories.
+
+        Parameters
+        ==========
+        brite_categories : Iterable[str]
+            KEGG BRITE hierarchy categories (of KOs) to subset.
+
+        Returns
+        =======
+        PangenomicNetwork
+            New subsetted reaction network.
+        """
+        pass
+
+    def _subset_network_by_gene_clusters(
+        self,
+        gene_cluster_ids: Iterable[int]
+    ) -> PangenomicNetwork:
+        """
+        Subset the network by gene clusters with requested IDs.
+
+        Parameters
+        ==========
+        gene_cluster_ids : Iterable[int]
+            Gene clusters to subset by ID.
+
+        Returns
+        =======
+        PangenomicNetwork
+            New subsetted reaction network.
+        """
+        subnetwork = PangenomicNetwork()
+
+        for gene_cluster_id in gene_cluster_ids:
+            try:
+                cluster = self.gene_clusters[gene_cluster_id]
+            except KeyError:
+                # This occurs if the requested gene cluster ID is not in the source network.
+                continue
+
+            subsetted_cluster = GeneCluster()
+            subsetted_cluster.gene_cluster_id = gene_cluster_id
+            subsetted_cluster.genomes = cluster.genomes.copy()
+
+            # Add KOs annotating the gene cluster to the subsetted network as new objects, and then
+            # reference these objects in the cluster object.
+            ko_id = cluster.ko.id
+            subnetwork = self._subset_network_by_kos([ko_id], subnetwork=subnetwork)
+            subsetted_cluster.ko = subnetwork.kos[ko_id]
+
+            subnetwork.gene_clusters[gene_cluster_id] = subsetted_cluster
+
+        return subnetwork
+
+    def _subset_network_by_kos(
+        self,
+        ko_ids: Iterable[str],
+        subnetwork: PangenomicNetwork = None
+    ) -> PangenomicNetwork:
+        """
+        Subset the network by KOs with requested KO IDs.
+
+        Parameters
+        ==========
+        ko_ids : Iterable[str]
+            KOs to subset by ID.
+
+        subnetwork : PangenomicNetwork, None
+            This network under construction is provided when the KOs being added to the network
+            annotate already subsetted gene clusters.
+
+        Returns
+        =======
+        PangenomicNetwork
+            If a 'subnetwork' argument is provided, then that network is returned after
+            modification. Otherwise, a new subsetted reaction network is returned.
+        """
+        if subnetwork is None:
+            subnetwork = PangenomicNetwork()
+            # Signify that gene clusters annotated by subsetted KOs are to be added to the network.
+            subset_referencing_gene_clusters = True
+        else:
+            assert isinstance(subnetwork, PangenomicNetwork)
+            # Signify that the KOs being added to the network annotate subsetted gene clusters that
+            # were already added to the network.
+            subset_referencing_gene_clusters = False
+
+        for ko_id in ko_ids:
+            try:
+                ko = self.kos[ko_id]
+            except KeyError:
+                # This occurs if the requested KO ID is not in the source network.
+                continue
+
+            subsetted_ko = KO()
+            subsetted_ko.id = ko.id
+            subsetted_ko.name = ko.name
+            subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
+            subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+
+            # Add reactions annotating the KO to the subsetted network as new objects, and then
+            # reference these objects in the KO object.
+            reaction_ids = [reaction_id for reaction_id in ko.reactions]
+            subnetwork = self._subset_network_by_reactions(reaction_ids, subnetwork=subnetwork)
+            subsetted_ko.reactions = {
+                reaction_id: subnetwork.reactions[reaction_id] for reaction_id in reaction_ids
+            }
+
+            subnetwork.kos[ko_id] = subsetted_ko
+
+        if subset_referencing_gene_clusters:
+            # Add gene clusters that are annotated by the subsetted KOs to the network.
+            self._subset_gene_clusters_via_kos(subnetwork)
+
+        return subnetwork
+
+    def _subset_network_by_reactions(
+        self,
+        reaction_ids: Iterable[str],
+        subnetwork: PangenomicNetwork = None
+    ) -> PangenomicNetwork:
+        """
+        Subset the network by reactions with ModelSEED reaction IDs.
+
+        Parameters
+        ==========
+        reaction_ids : Iterable[str]
+            Reactions to subset by ModelSEED reaction ID.
+
+        subnetwork : PangenomicNetwork, None
+            This network under construction is provided when the reactions being added to the
+            network annotate already subsetted KOs.
+
+        Returns
+        =======
+        PangenomicNetwork
+            If a 'subnetwork' argument is provided, then that network is returned after
+            modification. Otherwise, a new subsetted reaction network is returned.
+        """
+        if subnetwork is None:
+            subnetwork = PangenomicNetwork()
+            # Signify that KOs annotated by subsetted reactions are to be added to the network.
+            subset_referencing_kos = True
+        else:
+            assert isinstance(subnetwork, PangenomicNetwork)
+            # Signify that the reactions being added to the network annotate subsetted KOs that were
+            # already added to the network.
+            subset_referencing_kos = False
+
+        # Copy the network attributes mapping reaction aliases.
+        kegg_modelseed_aliases: Dict[str, List[str]] = {}
+        ec_number_modelseed_aliases: Dict[str, List[str]] = {}
+
+        for reaction_id in reaction_ids:
+            try:
+                reaction = self.reactions[reaction_id]
+            except KeyError:
+                # This occurs if the requested reaction is not in the source network.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subnetwork.reactions[reaction_id] = subsetted_reaction
+            # Record the metabolites involved in the reaction, and add them to the network.
+            for metabolite in subsetted_reaction.compounds:
+                compound_id = metabolite.modelseed_id
+                subnetwork.metabolites[compound_id] = metabolite
+
+            try:
+                subnetwork.modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+            except KeyError:
+                subnetwork.modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+
+            try:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] += list(
+                    reaction.ec_number_aliases
+                )
+            except KeyError:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] = list(
+                    reaction.ec_number_aliases
+                )
+
+            for kegg_id in reaction.kegg_aliases:
+                try:
+                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                except KeyError:
+                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
+
+            for ec_number in reaction.ec_number_aliases:
+                try:
+                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
+                except KeyError:
+                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+
+        if subnetwork.kegg_modelseed_aliases:
+            for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
+                try:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] += modelseed_ids
+                except KeyError:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] = modelseed_ids
+        else:
+            subnetwork.kegg_modelseed_aliases = kegg_modelseed_aliases
+
+        if subnetwork.ec_number_modelseed_aliases:
+            for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
+                try:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] += modelseed_ids
+                except KeyError:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] = modelseed_ids
+        else:
+            subnetwork.ec_number_modelseed_aliases = ec_number_modelseed_aliases
+
+        if subset_referencing_kos:
+            # Add KOs that are annotated by the subsetted reactions to the network.
+            self._subset_kos_via_reactions(subnetwork)
+
+        return subnetwork
+
+    def _subset_gene_clusters_via_kos(self, subnetwork: PangenomicNetwork) -> None:
+        """
+        Add gene clusters that are annotated with subsetted KOs to the subsetted network.
+
+        Parameters
+        ==========
+        subnetwork : PangenomicNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        subsetted_ko_ids = list(subnetwork.kos)
+        for gene_cluster_id, cluster in self.gene_clusters.items():
+            # Check all gene clusters in the source network for subsetted KOs.
+            if cluster.ko.id in subsetted_ko_ids:
+                # Create a new gene cluster object for the subsetted cluster.
+                subsetted_cluster = GeneCluster()
+                subsetted_cluster.gene_cluster_id = gene_cluster_id
+                subsetted_cluster.genomes = cluster.genomes.copy()
+                subsetted_cluster.ko = subnetwork.kos[cluster.ko.id]
+                subnetwork.gene_clusters[gene_cluster_id] = subsetted_cluster
+
+    def _subset_kos_via_reactions(self, subnetwork: PangenomicNetwork) -> None:
+        """
+        Add KOs that are annotated with subsetted reactions to the subsetted network.
+
+        Then add gene clusters that are annotated with these added KOs to the subsetted network.
+
+        Parameters
+        ==========
+        subnetwork : PangenomicNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        subsetted_reaction_ids = list(subnetwork.reactions)
+        for ko_id, ko in self.kos.items():
+            # Check all KOs in the source network for subsetted reactions.
+            subsetted_ko = None
+            for reaction_id in ko.reactions:
+                if reaction_id not in subsetted_reaction_ids:
+                    # The KO is not annotated by the subsetted reaction.
+                    continue
+
+                if not subsetted_ko:
+                    # Create a new KO object for the subsetted KO. The subsetted KO object would
+                    # already have been created had another subsetted reaction been among the
+                    # reactions annotating the KO.
+                    subsetted_ko = KO()
+                    subsetted_ko.id = ko_id
+                    subsetted_ko.name = ko.name
+                subsetted_ko.reactions[reaction_id] = subnetwork.reactions[reaction_id]
+                subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
+                subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+
+            if subsetted_ko:
+                subnetwork.kos[ko_id] = subsetted_ko
+
+        # Add gene clusters that are annotated with the added KOs to the subsetted network.
+        self._subset_gene_clusters_via_kos(subnetwork)
+
+    def _subset_network_by_metabolites(self, compound_ids: List[str]) -> PangenomicNetwork:
+        """
+        Subset the network by metabolites with ModelSEED compound IDs.
+
+        Parameters
+        ==========
+        compound_ids : List[str]
+            List of metabolites to subset by ModelSEED compound ID.
+
+        Returns
+        =======
+        PangenomicNetwork
+            New subsetted reaction network.
+        """
+        subnetwork = PangenomicNetwork()
+
+        for reaction_id, reaction in self.reactions.items():
+            # Check all reactions in the source network for subsetted metabolites.
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in compound_ids:
+                    break
+            else:
+                # The reaction does not involve any of the requested metabolites.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subnetwork.reactions[reaction_id] = subsetted_reaction
+
+            # Add the metabolites involved in the reaction to the subsetted network. (There can be
+            # unavoidable redundancy here in readding previously encountered metabolites.)
+            for subsetted_metabolite in subsetted_reaction.compounds:
+                subnetwork.metabolites[subsetted_metabolite.modelseed_id] = subsetted_metabolite
+
+        # Add KOs that are annotated with the added reactions to the subsetted network, and then add
+        # gene_clusters annotated with the added KOs to the subsetted network.
+        self._subset_kos_via_reactions(subnetwork)
+
+        return subnetwork
+
+    def merge_network(self, network: PangenomicNetwork) -> PangenomicNetwork:
+        """
+        Merge the pangenomic reaction network with another pangenomic reaction network.
+
+        Each network can contain different gene clusters, KOs, and reactions/metabolites. Merging
+        nonredundantly incorporates all of this data as new objects in the new network.
+
+        Objects representing KOs in both networks can have different sets of references: KOs can be
+        annotated by different reactions.
+
+        However, the same gene cluster in each network should have the same consensus KO annotation:
+        the method of annotation should have been the same in each network. This reflects the
+        purpose of the method, which is to combine different, but potentially overlapping,
+        subnetworks from the same pangenome.
+
+        ModelSEED reactions and metabolites in both networks should have identical attributes.
+
+        Parameters
+        ==========
+        network : PangenomicNetwork
+            The other pangenomic reaction network being merged.
+
+        Returns
+        =======
+        PangenomicNetwork
+            The merged pangenomic reaction network.
+        """
+        merged_network = PangenomicNetwork()
+
+        self._merge_network(network, merged_network)
+
+        # Add gene clusters to the merged network, first adding clusters present in both source
+        # networks, and then adding clusters present exclusively in each source network.
+        first_gene_cluster_ids = set(self.gene_clusters)
+        second_gene_cluster_ids = set(network.gene_clusters)
+
+        for gene_cluster_id in first_gene_cluster_ids.intersection(second_gene_cluster_ids):
+            first_cluster = self.gene_clusters[gene_cluster_id]
+            second_cluster = network.gene_clusters[gene_cluster_id]
+
+            # The new object representing the gene cluster in the merged network should have all KO
+            # annotations from each source cluster object, as these objects can have different KO
+            # references.
+            merged_cluster = GeneCluster()
+            merged_cluster.gene_cluster_id = gene_cluster_id
+            assert first_cluster.genomes == second_cluster.genomes
+            merged_cluster.genomes = first_cluster.genomes.copy()
+            assert first_cluster.ko.id == second_cluster.ko.id
+            merged_cluster.ko = merged_network.kos[first_cluster.ko.id]
+
+            merged_network.gene_clusters[gene_cluster_id] = merged_cluster
+
+        for gene_cluster_id in first_gene_cluster_ids.difference(second_gene_cluster_ids):
+            first_cluster = self.gene_clusters[gene_cluster_id]
+
+            cluster = GeneCluster()
+            cluster.gene_cluster_id = gene_cluster_id
+            cluster.genomes = first_cluster.genomes.copy()
+            cluster.ko = merged_network.kos[first_cluster.ko.id]
+
+            merged_network.gene_clusters[gene_cluster_id] = cluster
+
+        for gene_cluster_id in second_gene_cluster_ids.difference(first_gene_cluster_ids):
+            second_cluster = network.gene_clusters[gene_cluster_id]
+
+            cluster = GeneCluster()
+            cluster.gene_cluster_id = gene_cluster_id
+            cluster.genomes = second_cluster.genomes.copy()
+            cluster.ko = merged_network.kos[second_cluster.ko.id]
+
+            merged_network.gene_clusters[gene_cluster_id] = cluster
+
+        return merged_network
+
     def get_overview_statistics(
         self,
         precomputed_counts: Dict[str, int] = None
