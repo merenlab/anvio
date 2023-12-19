@@ -5143,6 +5143,8 @@ class Constructor:
         """
         Load abundance data for proteins that can be expressed by genes in the metabolic network.
 
+        Protein isoforms are not supported.
+
         Parameters
         ==========
         profile_database : ProfileDatabase
