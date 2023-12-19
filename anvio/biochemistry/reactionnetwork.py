@@ -1336,7 +1336,8 @@ class GenomicNetwork(ReactionNetwork):
             for modelseed_reaction_id in ko.reactions:
                 for idx, modelseed_reaction_id_to_remove in enumerate(reactions_to_remove):
                     if modelseed_reaction_id == modelseed_reaction_id_to_remove:
-                        # The reaction is associated with a retained KO, so do not remove the reaction.
+                        # The reaction is associated with a retained KO, so do not remove the
+                        # reaction.
                         reactions_to_spare.append(idx)
             for idx in sorted(reactions_to_spare, reverse=True):
                 reactions_to_remove.pop(idx)
@@ -1345,6 +1346,8 @@ class GenomicNetwork(ReactionNetwork):
             removed_cascading_down.pop('ko')
         else:
             # This method must have been called from the method, 'purge_reactions', because the
+            # reactions that are only associated with the removed KOs were already removed from the
+            # network.
             removed_cascading_down = {
                 'reaction': [],
                 'kegg_reaction': [],
