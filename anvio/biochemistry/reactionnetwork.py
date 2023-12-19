@@ -25,7 +25,7 @@ import multiprocessing as mp
 from copy import deepcopy
 from argparse import Namespace
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union, Iterable
 
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
@@ -939,7 +939,7 @@ class GenomicNetwork(ReactionNetwork):
             ]
         ).to_csv(gene_path, sep='\t', index=False)
 
-    def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
+    def purge_metabolites(self, metabolites_to_remove: Iterable[str]) -> Dict[str, List]:
         """
         Remove any trace of the given metabolites from the network.
 
@@ -952,7 +952,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        metabolites_to_remove : list
+        metabolites_to_remove : Iterable[str]
             list of ModelSEED compound IDs identifying metabolites to remove
 
         Returns
@@ -1036,7 +1036,7 @@ class GenomicNetwork(ReactionNetwork):
         removed.update(removed_cascading_up)
         return removed
 
-    def purge_reactions(self, reactions_to_remove: List[str]) -> Dict[str, List]:
+    def purge_reactions(self, reactions_to_remove: Iterable[str]) -> Dict[str, List]:
         """
         Remove any trace of the given reactions from the network.
 
@@ -1046,7 +1046,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        reactions_to_remove : list
+        reactions_to_remove : Iterable[str]
             list of ModelSEED reaction IDs identifying reactions to remove
 
         Returns
@@ -1217,7 +1217,7 @@ class GenomicNetwork(ReactionNetwork):
         removed.update(removed_cascading_up)
         return removed
 
-    def purge_kos(self, kos_to_remove: List[str]) -> Dict[str, List]:
+    def purge_kos(self, kos_to_remove: Iterable[str]) -> Dict[str, List]:
         """
         Remove any trace of the given KOs from the network.
 
@@ -1226,7 +1226,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        kos_to_remove : list
+        kos_to_remove : Iterable[str]
             list of KO IDs identifying KOs to remove
 
         Returns
@@ -1330,7 +1330,7 @@ class GenomicNetwork(ReactionNetwork):
         removed.update(removed_cascading_up)
         return removed
 
-    def purge_genes(self, genes_to_remove: List[str]) -> Dict[str, List]:
+    def purge_genes(self, genes_to_remove: Iterable[str]) -> Dict[str, List]:
         """
         Remove any trace of the given genes from the network.
 
@@ -1338,7 +1338,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        genes_to_remove : List[str]
+        genes_to_remove : Iterable[str]
             list of gene callers IDs identifying genes to remove
 
         Returns
@@ -1415,12 +1415,12 @@ class GenomicNetwork(ReactionNetwork):
 
     def subset_network(
         self,
-        kegg_modules_to_subset: List[str] = None,
-        brite_categories_to_subset: List[str] = None,
-        genes_to_subset: List[int] = None,
-        kos_to_subset: List[str] = None,
-        reactions_to_subset: List[str] = None,
-        metabolites_to_subset: List[str] = None
+        kegg_modules_to_subset: Iterable[str] = None,
+        brite_categories_to_subset: Iterable[str] = None,
+        genes_to_subset: Iterable[int] = None,
+        kos_to_subset: Iterable[str] = None,
+        reactions_to_subset: Iterable[str] = None,
+        metabolites_to_subset: Iterable[str] = None
     ) -> GenomicNetwork:
         """
         Subset a smaller network from the metabolic network.
@@ -1449,22 +1449,22 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        kegg_modules_to_subset : List[str], None
+        kegg_modules_to_subset : Iterable[str], None
             List of KEGG module IDs to subset.
 
-        brite_categories_to_subset : List[str], None
+        brite_categories_to_subset : Iterable[str], None
             List of BRITE categories to subset.
 
-        genes_to_subset : List[int], None
+        genes_to_subset : Iterable[int], None
             List of gene callers IDs to subset.
 
-        kos_to_subset : List[str], None
+        kos_to_subset : Iterable[str], None
             List of KO IDs to subset.
 
-        reactions_to_subset : List[str], None
+        reactions_to_subset : Iterable[str], None
             List of ModelSEED reaction IDs to subset.
 
-        metabolites_to_subset : List[str], None
+        metabolites_to_subset : Iterable[str], None
             List of ModelSEED metabolite IDs to subset.
 
         Returns
@@ -1498,13 +1498,13 @@ class GenomicNetwork(ReactionNetwork):
 
         return first_subsetted_network
 
-    def _subset_network_by_modules(self, kegg_modules: List[str]) -> GenomicNetwork:
+    def _subset_network_by_modules(self, kegg_modules: Iterable[str]) -> GenomicNetwork:
         """
         Subset the network by KOs in requested KEGG modules.
 
         Parameters
         ==========
-        kegg_modules : List[str]
+        kegg_modules : Iterable[str]
             List of KEGG module IDs to subset.
 
         Returns
@@ -1514,13 +1514,13 @@ class GenomicNetwork(ReactionNetwork):
         """
         pass
 
-    def _subset_network_by_brite(self, brite_categories: List[str]) -> GenomicNetwork:
+    def _subset_network_by_brite(self, brite_categories: Iterable[str]) -> GenomicNetwork:
         """
         Subset the network by KOs in requested KEGG BRITE hierarchy categories.
 
         Parameters
         ==========
-        brite_categories : List[str]
+        brite_categories : Iterable[str]
             List of KEGG BRITE hierarchy categories to subset.
 
         Returns
@@ -1530,13 +1530,13 @@ class GenomicNetwork(ReactionNetwork):
         """
         pass
 
-    def _subset_network_by_genes(self, gcids: List[int]) -> GenomicNetwork:
+    def _subset_network_by_genes(self, gcids: Iterable[int]) -> GenomicNetwork:
         """
         Subset the network by genes with requested gene callers IDs.
 
         Parameters
         ==========
-        gcids : List[int]
+        gcids : Iterable[int]
             List of genes to subset by gene callers ID.
 
         Returns
@@ -1610,7 +1610,7 @@ class GenomicNetwork(ReactionNetwork):
 
     def _subset_network_by_kos(
         self,
-        ko_ids: List[str],
+        ko_ids: Iterable[str],
         subsetted_network: GenomicNetwork = None
     ) -> GenomicNetwork:
         """
@@ -1618,7 +1618,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        ko_ids : List[str]
+        ko_ids : Iterable[str]
             List of KOs to subset by KO ID.
 
         subsetted_network : GenomicNetwork, None
@@ -1675,7 +1675,7 @@ class GenomicNetwork(ReactionNetwork):
 
     def _subset_network_by_reactions(
         self,
-        reaction_ids: List[str],
+        reaction_ids: Iterable[str],
         subsetted_network: GenomicNetwork = None
     ) -> GenomicNetwork:
         """
@@ -1683,7 +1683,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        reaction_ids : List[str]
+        reaction_ids : Iterable[str]
             List of reactions to subset by ModelSEED reaction ID.
 
         subsetted_network : GenomicNetwork, None
@@ -1806,13 +1806,13 @@ class GenomicNetwork(ReactionNetwork):
         # Add genes that are annotated with the added KOs to the subsetted network.
         self._subset_genes_via_kos(subsetted_network)
 
-    def _subset_network_by_metabolites(self, compound_ids: List[str]) -> GenomicNetwork:
+    def _subset_network_by_metabolites(self, compound_ids: Iterable[str]) -> GenomicNetwork:
         """
         Subset the network by metabolites with ModelSEED compound IDs.
 
         Parameters
         ==========
-        compound_ids : List[str]
+        compound_ids : Iterable[str]
             List of metabolites to subset by ModelSEED compound ID.
 
         Returns
@@ -5143,8 +5143,8 @@ class Constructor:
         self,
         network: ReactionNetwork,
         ko: KO,
-        ko_kegg_reaction_ids: List[str],
-        ko_ec_numbers: List[str]
+        ko_kegg_reaction_ids: Iterable[str],
+        ko_ec_numbers: Iterable[str]
     ) -> List[str]:
         """
         Parse KEGG reactions associated with a KO in the process of building a reaction network.
@@ -5162,10 +5162,10 @@ class Constructor:
         ko : KO
             The representation of the KO being processed
 
-        ko_kegg_reaction_ids : list
+        ko_kegg_reaction_ids : Iterable[str]
             KEGG REACTION IDs associated with the KO
 
-        ko_ec_numbers: list
+        ko_ec_numbers: Iterable[str]
             EC numbers associated with the KO
 
         Returns
@@ -5213,8 +5213,8 @@ class Constructor:
         self,
         network: ReactionNetwork,
         ko: KO,
-        ko_ec_numbers: List[str],
-        ko_kegg_reaction_ids: List[str]
+        ko_ec_numbers: Iterable[str],
+        ko_kegg_reaction_ids: Iterable[str]
     ) -> List[str]:
         """
         Parse EC numbers associated with a KO in the process of building a reaction network.
@@ -5232,10 +5232,10 @@ class Constructor:
         ko : KO
             The representation of the KO being processed
 
-        ko_ec_numbers: list
+        ko_ec_numbers: Iterable[str]
             EC numbers associated with the KO
 
-        ko_kegg_reaction_ids : list
+        ko_kegg_reaction_ids : Iterable[str]
             KEGG REACTION IDs associated with the KO
 
         Returns
@@ -5836,14 +5836,14 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
 
     return equation.rstrip('+ ')
 
-def to_lcm_denominator(floats: List[float]) -> Tuple[int]:
+def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
     Convert a list of floats to a list of integers, with a list containing fractional numbers
     transformed to a list of lowest common integer multiples.
 
     Parameters
     ==========
-    floats : List[float]
+    floats : Iterable[float]
         List of numbers to convert.
 
     Returns
