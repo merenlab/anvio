@@ -149,6 +149,9 @@ class Pangenome(object):
                        'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
                        'project_name': self.project_name,
                        'items_ordered': False,
+                       'reaction_network_ko_annotations_hash': None,
+                       'reaction_network_kegg_database_release': None,
+                       'reaction_network_modelseed_database_sha': None,
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
