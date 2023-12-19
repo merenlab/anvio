@@ -2666,6 +2666,163 @@ class PangenomicNetwork(ReactionNetwork):
 
         return copied_network
 
+    def remove_metabolites_without_formula(self, output_path: str = None) -> None:
+        """
+        Remove metabolites without a formula in the ModelSEED database from the network.
+
+        Other items can be removed from the network by association: reactions that involve a
+        formulaless metabolite; other metabolites with formulas that are exclusive to such
+        reactions; KOs predicted to exclusively catalyze such reactions; and gene clusters annotated
+        with such KOs. Removed metabolites with a formula are reported alongside formulaless
+        metabolites to the output table of removed metabolites.
+
+        output_path : str, None
+            If not None, write four tab-delimited files of metabolites, reactions, KEGG Orthologs,
+            and gene clusters removed from the network to file locations based on the provided path.
+            For example, if the argument, 'removed.tsv', is provided, then the following files will
+            be written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv', and
+            'removed-gene-clusters.tsv'.
+        """
+        if output_path:
+            path_basename, path_extension = os.path.splitext(output_path)
+            metabolite_path = f"{path_basename}-metabolites{path_extension}"
+            reaction_path = f"{path_basename}-reactions{path_extension}"
+            ko_path = f"{path_basename}-kos{path_extension}"
+            gene_cluster_path = f"{path_basename}-gene-clusters{path_extension}"
+            for path in (metabolite_path, reaction_path, ko_path, gene_cluster_path):
+                filesnpaths.is_output_file_writable(path)
+
+        metabolites_to_remove = []
+        for modelseed_compound_id, metabolite in self.metabolites.items():
+            # ModelSEED compounds without a formula have a formula value of None in the network
+            # object.
+            if metabolite.formula is None:
+                metabolites_to_remove.append(modelseed_compound_id)
+        removed = self.purge_metabolites(metabolites_to_remove)
+
+        if self.verbose:
+            self.run.info("Removed metabolites", len(removed['metabolite']))
+            self.run.info("Removed reactions", len(removed['reaction']))
+            self.run.info("Removed KOs", len(removed['ko']))
+            self.run.info("Removed gene clusters", len(removed['gene_cluster']))
+
+        if not output_path:
+            return
+
+        # Record the reactions removed as a consequence of involving formulaless metabolites, and
+        # record the formulaless metabolites involved in removed reactions.
+        metabolite_removed_reactions: Dict[str, List[str]] = {}
+        reaction_removed_metabolites: Dict[str, List[str]] = {}
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            reaction_removed_metabolites[reaction.modelseed_id] = metabolite_ids = []
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in metabolites_to_remove:
+                    try:
+                        metabolite_removed_reactions[metabolite.modelseed_id].append(
+                            reaction.modelseed_id
+                        )
+                    except KeyError:
+                        metabolite_removed_reactions[metabolite.modelseed_id] = [
+                            reaction.modelseed_id
+                        ]
+                    metabolite_ids.append(metabolite.modelseed_id)
+
+        metabolite_table = []
+        for metabolite in removed['metabolite']:
+            metabolite: ModelSEEDCompound
+            row = []
+            row.append(metabolite.modelseed_id)
+            row.append(metabolite.modelseed_name)
+            row.append(metabolite.formula)
+            try:
+                # The metabolite did not have a formula.
+                removed_reaction_ids = metabolite_removed_reactions[metabolite.modelseed_id]
+            except KeyError:
+                # The metabolite had a formula but was removed as a consequence of all the reactions
+                # involving the metabolite being removed due to them containing formulaless
+                # metabolites: the metabolite did not cause any reactions to be removed.
+                row.append("")
+                continue
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus the reaction is recorded multiple times.
+            row.append(", ".join(sorted(set(removed_reaction_ids))))
+
+        reaction_table = []
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            row = []
+            row.append(reaction.modelseed_id)
+            row.append(reaction.modelseed_name)
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus is recorded multiple times.
+            row.append(
+                ", ".join(set(reaction_removed_metabolites[reaction.modelseed_id]))
+            )
+            row.append(", ".join([metabolite.modelseed_id for metabolite in reaction.compounds]))
+            row.append(get_chemical_equation(reaction))
+            reaction_table.append(row)
+
+        ko_table = []
+        for ko in removed['ko']:
+            ko: KO
+            row = []
+            row.append(ko.id)
+            row.append(ko.name)
+            row.append(", ".join(ko.reactions))
+            ko_table.append(row)
+
+        gene_cluster_table = []
+        for cluster in removed['gene_cluster']:
+            cluster: GeneCluster
+            row = []
+            row.append(cluster.gene_cluster_id)
+            row.append(cluster.ko.id)
+            row.append(", ".join(cluster.genomes))
+            gene_cluster_table.append(row)
+
+        pd.DataFrame(
+            metabolite_table,
+            columns=[
+                "ModelSEED compound ID",
+                "ModelSEED compound name",
+                "Formula",
+                "Removed reaction ModelSEED IDs"
+            ]
+        ).to_csv(metabolite_path, sep='\t', index=False)
+        pd.DataFrame(
+            reaction_table,
+            columns=[
+                "ModelSEED reaction ID",
+                "ModelSEED reaction name",
+                "Removed ModelSEED compound IDs",
+                "Reaction ModelSEED compound IDs",
+                "Equation"
+            ]
+        ).to_csv(reaction_path, sep='\t', index=False)
+        pd.DataFrame(
+            ko_table,
+            columns=[
+                "KO ID",
+                "KO name",
+                "KO ModelSEED reaction IDs"
+            ]
+        ).to_csv(ko_path, sep='\t', index=False)
+        pd.DataFrame(
+            gene_cluster_table,
+            columns=[
+                "Gene cluster ID",
+                "KO ID",
+                "Gene cluster genomes"
+            ]
+        ).to_csv(gene_cluster_path, sep='\t', index=False)
+
+        if self.verbose:
+            self.run.info("Table of removed metabolites", metabolite_path)
+            self.run.info("Table of removed reactions", reaction_path)
+            self.run.info("Table of removed KOs", ko_path)
+            self.run.info("Table of removed gene clusters", gene_cluster_path)
+
     def get_overview_statistics(
         self,
         precomputed_counts: Dict[str, int] = None
