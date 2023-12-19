@@ -513,6 +513,253 @@ class ReactionNetwork:
                 """
             )
 
+    def _merge_network(
+        self,
+        network: Union[GenomicNetwork, PangenomicNetwork],
+        merged_network: Union[GenomicNetwork, PangenomicNetwork]
+    ) -> None:
+        """
+        In merging reaction networks, merge the attributes of the network besides genes
+        (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
+        be stored in a GenomicNetwork).
+
+        Parameters
+        ==========
+        network : Union[GenomicNetwork, PangenomicNetwork]
+            The other reaction network being merged.
+
+        merged_network : Union[GenomicNetwork, PangenomicNetwork]
+            The merged reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        if isinstance(network, GenomicNetwork):
+            assert isinstance(merged_network, GenomicNetwork)
+        else:
+            assert isinstance(merged_network, PangenomicNetwork)
+
+        # Add metabolites to the merged network, starting with metabolites in the first network and
+        # continuing with metabolites exclusive to the second network. Assume objects representing
+        # the same metabolites in both networks properly have identical attributes.
+        for metabolite_id, first_metabolite in self.metabolites.items():
+            merged_metabolite = ModelSEEDCompound()
+            merged_metabolite.modelseed_id = metabolite_id
+            merged_metabolite.modelseed_name = first_metabolite.modelseed_name
+            merged_metabolite.kegg_aliases = first_metabolite.kegg_aliases
+            merged_metabolite.charge = first_metabolite.charge
+            merged_metabolite.formula = first_metabolite.formula
+            abundances: Dict[str, float] = getattr(first_metabolite, 'abundances', None)
+            if abundances is None:
+                continue
+            merged_metabolite.abundances = abundances.copy()
+
+            merged_network.metabolites[metabolite_id] = merged_metabolite
+
+        for metabolite_id in set(network.metabolites).difference(self.metabolites):
+            second_metabolite = network.metabolites[metabolite_id]
+
+            merged_metabolite = ModelSEEDCompound()
+            merged_metabolite.modelseed_id = metabolite_id
+            merged_metabolite.modelseed_name = second_metabolite.modelseed_name
+            merged_metabolite.kegg_aliases = second_metabolite.kegg_aliases
+            merged_metabolite.charge = second_metabolite.charge
+            merged_metabolite.formula = second_metabolite.formula
+            abundances: Dict[str, float] = getattr(second_metabolite, 'abundances', None)
+            if abundances is None:
+                continue
+            merged_metabolite.abundances = abundances.copy()
+
+            merged_network.metabolites[metabolite_id] = merged_metabolite
+
+        # Add reactions to the merged network, starting with reactions in the first network and
+        # continuing with reactions exclusive to the second network. Assume objects representing the
+        # same reactions in both networks properly have identical attributes.
+
+        # Determine network attributes mapping reaction aliases.
+        kegg_modelseed_aliases: Dict[str, List[str]] = {}
+        ec_number_modelseed_aliases: Dict[str, List[str]] = {}
+
+        for reaction_id, first_reaction in self.reactions.items():
+            merged_reaction = ModelSEEDReaction()
+            merged_reaction.modelseed_id = reaction_id
+            merged_reaction.modelseed_name = first_reaction.modelseed_name
+            merged_reaction.kegg_aliases = first_reaction.kegg_aliases
+            merged_reaction.ec_number_aliases = first_reaction.ec_number_aliases
+            metabolites = []
+            for metabolite in first_reaction.compounds:
+                metabolites.append(merged_network.metabolites[metabolite.modelseed_id])
+            merged_reaction.compounds = tuple(metabolites)
+            merged_reaction.coefficients = first_reaction.coefficients
+            merged_reaction.compartments = first_reaction.compartments
+            merged_reaction.reversibility = first_reaction.reversibility
+
+            merged_network.reactions[reaction_id] = merged_reaction
+
+            try:
+                merged_network.modelseed_kegg_aliases[reaction_id] += list(
+                    first_reaction.kegg_aliases
+                )
+            except KeyError:
+                merged_network.modelseed_kegg_aliases[reaction_id] = list(
+                    first_reaction.kegg_aliases
+                )
+
+            try:
+                merged_network.modelseed_ec_number_aliases[reaction_id] += list(
+                    first_reaction.ec_number_aliases
+                )
+            except KeyError:
+                merged_network.modelseed_ec_number_aliases[reaction_id] = list(
+                    first_reaction.ec_number_aliases
+                )
+
+            for kegg_id in first_reaction.kegg_aliases:
+                try:
+                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                except KeyError:
+                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
+
+            for ec_number in first_reaction.ec_number_aliases:
+                try:
+                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
+                except KeyError:
+                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+
+        for reaction_id in set(network.reactions).difference(self.reactions):
+            second_reaction = network.reactions[reaction_id]
+
+            merged_reaction = ModelSEEDReaction()
+            merged_reaction.modelseed_id = reaction_id
+            merged_reaction.modelseed_name = second_reaction.modelseed_name
+            merged_reaction.kegg_aliases = second_reaction.kegg_aliases
+            merged_reaction.ec_number_aliases = second_reaction.ec_number_aliases
+            metabolites = []
+            for metabolite in second_reaction.compounds:
+                metabolites.append(merged_network.metabolites[metabolite.modelseed_id])
+            merged_reaction.compounds = tuple(metabolites)
+            merged_reaction.coefficients = second_reaction.coefficients
+            merged_reaction.compartments = second_reaction.compartments
+            merged_reaction.reversibility = second_reaction.reversibility
+
+            merged_network.reactions[reaction_id] = merged_reaction
+
+            try:
+                merged_network.modelseed_kegg_aliases[reaction_id] += list(
+                    second_reaction.kegg_aliases
+                )
+            except KeyError:
+                merged_network.modelseed_kegg_aliases[reaction_id] = list(
+                    second_reaction.kegg_aliases
+                )
+
+            try:
+                merged_network.modelseed_ec_number_aliases[reaction_id] += list(
+                    second_reaction.ec_number_aliases
+                )
+            except KeyError:
+                merged_network.modelseed_ec_number_aliases[reaction_id] = list(
+                    second_reaction.ec_number_aliases
+                )
+
+            for kegg_id in second_reaction.kegg_aliases:
+                try:
+                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                except KeyError:
+                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
+
+            for ec_number in second_reaction.ec_number_aliases:
+                try:
+                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
+                except KeyError:
+                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+
+        if merged_network.kegg_modelseed_aliases:
+            for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
+                try:
+                    merged_network.kegg_modelseed_aliases[kegg_id] += modelseed_ids
+                except KeyError:
+                    merged_network.kegg_modelseed_aliases[kegg_id] = modelseed_ids
+        else:
+            merged_network.kegg_modelseed_aliases = kegg_modelseed_aliases
+
+        if merged_network.ec_number_modelseed_aliases:
+            for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
+                try:
+                    merged_network.ec_number_modelseed_aliases[ec_number] += modelseed_ids
+                except KeyError:
+                    merged_network.ec_number_modelseed_aliases[ec_number] = modelseed_ids
+        else:
+            merged_network.ec_number_modelseed_aliases = ec_number_modelseed_aliases
+
+        # Add KOs to the merged network, first adding KOs present in both source networks, and then
+        # adding KOs present exclusively in each source network.
+        first_ko_ids = set(self.kos)
+        second_ko_ids = set(network.kos)
+
+        for ko_id in first_ko_ids.intersection(second_ko_ids):
+            first_ko = self.kos[ko_id]
+            second_ko = network.kos[ko_id]
+
+            # The new object representing the KO in the merged network should have all reaction
+            # annotations from both source KO objects, as these objects can have different reaction
+            # references.
+            merged_ko = KO()
+            merged_ko.id = ko_id
+            merged_ko.name = first_ko.name
+            reaction_ids = set(first_ko.reactions).union(set(second_ko.reactions))
+            merged_ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id] for reaction_id in reaction_ids
+            }
+            for reaction_id in reaction_ids:
+                try:
+                    merged_ko.kegg_reaction_aliases[reaction_id] = first_ko.kegg_reaction_aliases[
+                        reaction_id
+                    ]
+                except KeyError:
+                    # The reaction has no KO KEGG REACTION aliases.
+                    pass
+                try:
+                    merged_ko.ec_number_aliases[reaction_id] = first_ko.ec_number_aliases[
+                        reaction_id
+                    ]
+                except KeyError:
+                    # The reaction has no KO KEGG REACTION aliases.
+                    pass
+
+            merged_network.kos[ko_id] = merged_ko
+
+        for ko_id in first_ko_ids.difference(second_ko_ids):
+            first_ko = self.kos[ko_id]
+
+            ko = KO()
+            ko.id = ko_id
+            ko.name = first_ko.name
+            ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id]
+                for reaction_id in first_ko.reactions
+            }
+            ko.kegg_reaction_aliases = deepcopy(first_ko.kegg_reaction_aliases)
+            ko.ec_number_aliases = deepcopy(first_ko.ec_number_aliases)
+
+            merged_network.kos[ko_id] = ko
+
+        for ko_id in second_ko_ids.difference(first_ko_ids):
+            second_ko = network.kos[ko_id]
+
+            ko = KO()
+            ko.id = ko_id
+            ko.name = second_ko.name
+            ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id]
+                for reaction_id in second_ko.reactions
+            }
+            ko.kegg_reaction_aliases = deepcopy(second_ko.kegg_reaction_aliases)
+            ko.ec_number_aliases = deepcopy(second_ko.ec_number_aliases)
+
+            merged_network.kos[ko_id] = ko
+
     def _get_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
