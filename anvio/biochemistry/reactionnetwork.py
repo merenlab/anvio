@@ -1562,7 +1562,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         kegg_modules : Iterable[str]
-            List of KEGG module IDs to subset.
+            KEGG modules (of KOs) to subset by ID.
 
         Returns
         =======
@@ -1674,7 +1674,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         ko_ids : Iterable[str]
-            List of KOs to subset by KO ID.
+            KOs to subset by KO ID.
 
         subnetwork : GenomicNetwork, None
             This network under construction is provided when the KOs being added to the network
@@ -1736,7 +1736,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         reaction_ids : Iterable[str]
-            List of reactions to subset by ModelSEED reaction ID.
+            Reactions to subset by ModelSEED reaction ID.
 
         subnetwork : GenomicNetwork, None
             This network under construction is provided when the reactions being added to the
