@@ -1077,7 +1077,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         reactions_to_remove : Iterable[str]
-            list of ModelSEED reaction IDs identifying reactions to remove
+            Reactions to remove by ModelSEED reaction ID.
 
         Returns
         =======
