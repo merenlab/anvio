@@ -1012,7 +1012,7 @@ class GenomicNetwork(ReactionNetwork):
                 'gene': []
             }
         """
-        removed_metabolites = []
+        removed_metabolites: List[ModelSEEDCompound] = []
         for modelseed_compound_id in metabolites_to_remove:
             try:
                 removed_metabolites.append(self.metabolites.pop(modelseed_compound_id))
