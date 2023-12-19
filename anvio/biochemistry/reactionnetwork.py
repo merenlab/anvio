@@ -6085,9 +6085,10 @@ class Constructor:
         if undefined_ko_ids:
             self.run.info_single(
                 f"""\
-                Certain genes matched KOs that were not found in the KO database. It could be that
-                the KOfams used to annotate genes were not from the same KEGG database version as
-                the KO files. Here are the unrecognized KO IDs from the contigs database:
+                Certain genes matched KOs that were not found in the reference KO database. These
+                KOs will not be used in network construction. It could be that the KOfams used to
+                annotate genes were not from the same KEGG database version as the reference KO
+                files. Here are the unrecognized KO IDs from the contigs database:
                 {','.join(undefined_ko_ids)}\
                 """
             )
@@ -6435,9 +6436,10 @@ class Constructor:
         if undefined_ko_ids:
             self.run.info_single(
                 f"""\
-                Certain gene clusters were assigned consensus KOs that were not found in the KO
-                database. It could be that the KOfams used to annotate gene clusters were not from
-                the same KEGG database version as the KO files. Here are the unrecognized KO IDs
+                Certain gene clusters were assigned consensus KOs that were not found in the
+                reference KO database. These consensus KOs will not be used in network construction.
+                It could be that the KOfams used to annotate gene clusters were not from the same
+                KEGG database version as the reference KO files. Here are the unrecognized KO IDs
                 from the pan database: {', '.join(undefined_ko_ids)}\
                 """
             )
