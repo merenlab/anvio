@@ -6823,7 +6823,10 @@ class Constructor:
             network.metabolites[modelseed_compound_id] = compound
         reaction.compounds = tuple(reaction_compounds)
 
-    def _get_modelseed_reaction(self, modelseed_reaction_data: Dict) -> Tuple[ModelSEEDReaction, List[str]]:
+    def _get_modelseed_reaction(
+        self,
+        modelseed_reaction_data: Dict
+    ) -> Tuple[ModelSEEDReaction, List[str]]:
         """
         Generate a ModelSEED reaction object and list of associated ModelSEED compound IDs from the
         ModelSEED reaction table entry. The reaction object is not populated with metabolite objects
