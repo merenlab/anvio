@@ -1392,7 +1392,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         genes_to_remove : Iterable[str]
-            list of gene callers IDs identifying genes to remove
+            Genes to remove by gene callers ID.
 
         Returns
         =======
