@@ -1594,7 +1594,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         gcids : Iterable[int]
-            List of genes to subset by gene callers ID.
+            Genes to subset by gene callers ID.
 
         Returns
         =======
