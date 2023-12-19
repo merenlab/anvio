@@ -381,6 +381,73 @@ class ReactionNetwork:
         self.progress = progress
         self.verbose = verbose
 
+    def _copy(self, copied_network: Union[GenomicNetwork, PangenomicNetwork]) -> None:
+        """
+        In copying a reaction network, copy the attributes of the network besides genes
+        (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
+        be stored in a GenomicNetwork).
+
+        Parameters
+        ==========
+        copied_network : Union[GenomicNetwork, PangenomicNetwork]
+            The network copy under construction.
+        """
+        for modelseed_id, metabolite in self.metabolites.items():
+            copied_metabolite = ModelSEEDCompound()
+            copied_metabolite.modelseed_id = modelseed_id
+            copied_metabolite.modelseed_name = metabolite.modelseed_name
+            copied_metabolite.kegg_aliases = metabolite.kegg_aliases
+            copied_metabolite.charge = metabolite.charge
+            copied_metabolite.formula = metabolite.formula
+            abundances: Dict[str, float] = getattr(metabolite, 'abundances', None)
+            if abundances is None:
+                # Metabolite sample abundances cannot be recorded in a pangenomic network.
+                continue
+            copied_metabolite.abundances = abundances.copy()
+
+            copied_network.metabolites[modelseed_id] = copied_metabolite
+
+        for modelseed_id, reaction in self.reactions.items():
+            copied_reaction = ModelSEEDReaction()
+            copied_reaction.modelseed_id = modelseed_id
+            copied_reaction.modelseed_name = reaction.modelseed_name
+            copied_reaction.kegg_aliases = reaction.kegg_aliases
+            copied_reaction.ec_number_aliases = reaction.ec_number_aliases
+            metabolites = []
+            for metabolite in reaction.compounds:
+                metabolites.append(copied_network.metabolites[metabolite.modelseed_id])
+            copied_reaction.compounds = tuple(metabolites)
+            copied_reaction.coefficients = reaction.coefficients
+            copied_reaction.compartments = reaction.compartments
+            copied_reaction.reversibility = reaction.reversibility
+
+            copied_network.reactions[modelseed_id] = copied_reaction
+
+        for ko_id, ko in self.kos.items():
+            copied_ko = KO()
+            copied_ko.id = ko_id
+            copied_ko.name = ko.name
+            for modelseed_id in ko.reactions:
+                copied_ko.reactions[modelseed_id] = copied_network.reactions[modelseed_id]
+            for modelseed_id, kegg_ids in ko.kegg_reaction_aliases.items():
+                copied_ko.kegg_reaction_aliases[modelseed_id] = kegg_ids.copy()
+            for modelseed_id, ec_numbers in ko.ec_number_aliases.items():
+                copied_ko.ec_number_aliases[modelseed_id] = ec_numbers.copy()
+
+            copied_network.kos[ko_id] = copied_ko
+
+        for kegg_id, modelseed_ids in self.kegg_modelseed_aliases.items():
+            copied_network.kegg_modelseed_aliases[kegg_id] = modelseed_ids.copy()
+
+        for ec_number, modelseed_ids in self.ec_number_modelseed_aliases.items():
+            copied_network.ec_number_modelseed_aliases[ec_number] = modelseed_ids.copy()
+
+        for modelseed_id, kegg_ids in self.modelseed_kegg_aliases.items():
+            copied_network.modelseed_kegg_aliases[modelseed_id] = kegg_ids.copy()
+
+        for modelseed_id, ec_numbers in self.modelseed_ec_number_aliases.items():
+            copied_network.modelseed_ec_number_aliases[modelseed_id] = ec_numbers.copy()
+
     def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
         """
         Remove metabolites from a biomass objective dictionary that are not produced or consumed by
@@ -803,6 +870,42 @@ class GenomicNetwork(ReactionNetwork):
         self.bins: Dict[str, GeneBin] = {}
         self.collection: BinCollection = None
         self.proteins: Dict[int, Protein] = {}
+
+    def copy(self) -> GenomicNetwork:
+        """
+        Create a deep copy of the reaction network.
+
+        Returns
+        =======
+        GenomicNetwork
+            Deep copy of the reaction network.
+        """
+        copied_network = GenomicNetwork()
+
+        self._copy(copied_network)
+
+        for gcid, gene in self.genes.items():
+            copied_gene = Gene()
+            copied_gene.gcid = gcid
+            for ko_id, ko in gene.kos.items():
+                copied_gene.kos[ko_id] = ko
+            for ko_id, e_value in gene.e_values.items():
+                copied_gene.e_values[ko_id] = e_value
+
+            copied_network.genes[gcid] = copied_gene
+
+        if self.proteins:
+            for protein_id, protein in self.proteins.items():
+                copied_protein = Protein()
+                copied_protein.id = protein_id
+                for gcid, gene in protein.genes.items():
+                    copied_protein.genes[gcid] = gene = copied_network.genes[gcid]
+                    gene.protein = copied_protein
+                copied_protein.abundances = protein.abundances.copy()
+
+                copied_network.proteins[protein_id] = copied_protein
+
+        return copied_network
 
     def remove_metabolites_without_formula(self, output_path: str = None) -> None:
         """
@@ -2539,6 +2642,29 @@ class PangenomicNetwork(ReactionNetwork):
         self.gene_clusters: Dict[str, GeneCluster] = {}
         self.bins: Dict[str, GeneClusterBin] = {}
         self.collection: BinCollection = None
+
+    def copy(self) -> PangenomicNetwork:
+        """
+        Create a deep copy of the reaction network.
+
+        Returns
+        =======
+        PangenomicNetwork
+            Deep copy of the reaction network.
+        """
+        copied_network = PangenomicNetwork()
+
+        self._copy(copied_network)
+
+        for cluster_id, cluster in self.gene_clusters.items():
+            copied_cluster = GeneCluster()
+            copied_cluster.gene_cluster_id = cluster_id
+            copied_cluster.genomes = cluster.genomes.copy()
+            copied_cluster.ko = copied_network.kos[cluster.ko.id]
+
+            copied_network.gene_clusters[cluster_id] = copied_cluster
+
+        return copied_network
 
     def get_overview_statistics(
         self,
