@@ -1534,7 +1534,7 @@ class GenomicNetwork(ReactionNetwork):
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
         # repeat.
-        first_subsetted_network = None
+        first_subnetwork = None
         for items_to_subset, subset_network_method in (
             (kegg_modules_to_subset, self._subset_network_by_modules),
             (brite_categories_to_subset, self._subset_network_by_brite),
@@ -1546,16 +1546,14 @@ class GenomicNetwork(ReactionNetwork):
             if not items_to_subset:
                 continue
 
-            second_subsetted_network = subset_network_method(items_to_subset)
+            second_subnetwork = subset_network_method(items_to_subset)
 
-            if first_subsetted_network is None:
-                first_subsetted_network = second_subsetted_network
+            if first_subnetwork is None:
+                first_subnetwork = second_subnetwork
             else:
-                first_subsetted_network = first_subsetted_network.merge_network(
-                    second_subsetted_network
-                )
+                first_subnetwork = first_subnetwork.merge_network(second_subnetwork)
 
-        return first_subsetted_network
+        return first_subnetwork
 
     def _subset_network_by_modules(self, kegg_modules: Iterable[str]) -> GenomicNetwork:
         """
