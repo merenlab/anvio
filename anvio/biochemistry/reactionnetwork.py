@@ -1913,7 +1913,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         compound_ids : Iterable[str]
-            List of metabolites to subset by ModelSEED compound ID.
+            Metabolites to subset by ModelSEED compound ID.
 
         Returns
         =======
