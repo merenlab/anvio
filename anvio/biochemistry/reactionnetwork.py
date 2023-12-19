@@ -1758,6 +1758,10 @@ class GenomicNetwork(ReactionNetwork):
             # already added to the network.
             subset_referencing_kos = False
 
+        # Copy the network attributes mapping reaction aliases.
+        kegg_modelseed_aliases: Dict[str, List[str]] = {}
+        ec_number_modelseed_aliases: Dict[str, List[str]] = {}
+
         for reaction_id in reaction_ids:
             try:
                 reaction = self.reactions[reaction_id]
@@ -1773,6 +1777,50 @@ class GenomicNetwork(ReactionNetwork):
             for metabolite in subsetted_reaction.compounds:
                 compound_id = metabolite.modelseed_id
                 subnetwork.metabolites[compound_id] = metabolite
+
+            try:
+                subnetwork.modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+            except KeyError:
+                subnetwork.modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+
+            try:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] += list(
+                    reaction.ec_number_aliases
+                )
+            except KeyError:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] = list(
+                    reaction.ec_number_aliases
+                )
+
+            for kegg_id in reaction.kegg_aliases:
+                try:
+                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                except KeyError:
+                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
+
+            for ec_number in reaction.ec_number_aliases:
+                try:
+                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
+                except KeyError:
+                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+
+        if subnetwork.kegg_modelseed_aliases:
+            for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
+                try:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] += modelseed_ids
+                except KeyError:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] = modelseed_ids
+        else:
+            subnetwork.kegg_modelseed_aliases = kegg_modelseed_aliases
+
+        if subnetwork.ec_number_modelseed_aliases:
+            for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
+                try:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] += modelseed_ids
+                except KeyError:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] = modelseed_ids
+        else:
+            subnetwork.ec_number_modelseed_aliases = ec_number_modelseed_aliases
 
         if subset_referencing_kos:
             # Add KOs that are annotated by the subsetted reactions to the network.
