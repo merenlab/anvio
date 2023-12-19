@@ -6538,16 +6538,16 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network object being built
+            The reaction network object being built.
 
         ko : KO
-            The representation of the KO being processed
+            The representation of the KO being processed.
 
         ko_kegg_reaction_ids : Iterable[str]
-            KEGG REACTION IDs associated with the KO
+            KEGG REACTION IDs associated with the KO.
 
         ko_ec_numbers: Iterable[str]
-            EC numbers associated with the KO
+            EC numbers associated with the KO.
 
         Returns
         =======
@@ -6608,21 +6608,21 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network object being built
+            The reaction network object being built.
 
         ko : KO
-            The representation of the KO being processed
+            The representation of the KO being processed.
 
         ko_ec_numbers: Iterable[str]
-            EC numbers associated with the KO
+            EC numbers associated with the KO.
 
         ko_kegg_reaction_ids : Iterable[str]
-            KEGG REACTION IDs associated with the KO
+            KEGG REACTION IDs associated with the KO.
 
         Returns
         =======
         list
-            Newly encountered EC numbers not associated with previously processed KOs
+            Newly encountered EC numbers not associated with previously processed KOs.
         """
         # As before with KEGG reactions, if an EC number has already been encountered, then aliased
         # ModelSEED reactions have also been processed and added as ModelSEEDReaction objects to the
@@ -6678,24 +6678,24 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network object being built
+            The reaction network object being built.
 
-        new_kegg_reaction_ids : list
-            Newly encountered KEGG REACTION IDs not associated with previously processed KOs
+        new_kegg_reaction_ids : List[str]
+            Newly encountered KEGG REACTION IDs not associated with previously processed KOs.
 
-        new_ec_numbers : list
-            Newly encountered EC numbers not associated with previously processed KOs
+        new_ec_numbers : List[str]
+            Newly encountered EC numbers not associated with previously processed KOs.
 
         modelseed_kegg_reactions_table : pd.DataFrame
-            Loaded ModelSEED Biochemistry reactions database structured by KEGG REACTION ID
+            Loaded ModelSEED Biochemistry reactions database structured by KEGG REACTION ID.
 
         modelseed_ec_reactions_table : pd.DataFrame
-            Loaded ModelSEED Biochemistry reactions database structured by EC number
+            Loaded ModelSEED Biochemistry reactions database structured by EC number.
 
         Returns
         =======
         dict
-            Data on the reaction sourced from the ModelSEED Biochemistry database
+            Data on the reaction sourced from the ModelSEED Biochemistry database.
         """
         modelseed_reactions_data = {}
         if new_kegg_reaction_ids:
@@ -6761,25 +6761,25 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network object being built
+            The reaction network object being built.
 
         ko : KO
-            The representation of the KO being processed
+            The representation of the KO being processed.
 
         reaction : ModelSEEDReaction
-            The representation of the reaction with data sourced from ModelSEED Biochemistry
+            The representation of the reaction with data sourced from ModelSEED Biochemistry.
 
-        new_kegg_reaction_ids : list
-            Newly encountered KEGG REACTION IDs not associated with previously processed KOs
+        new_kegg_reaction_ids : List[str]
+            Newly encountered KEGG REACTION IDs not associated with previously processed KOs.
 
-        new_ec_numbers : list
-            Newly encountered EC numbers not associated with previously processed KOs
+        new_ec_numbers : List[str]
+            Newly encountered EC numbers not associated with previously processed KOs.
 
-        modelseed_compound_ids : list
-            ModelSEED compound IDs of the reactants and products in the reaction
+        modelseed_compound_ids : List[str]
+            ModelSEED compound IDs of the reactants and products in the reaction.
 
         modelseed_compounds_table : pd.DataFrame
-            Loaded ModelSEED Biochemistry compounds database
+            Loaded ModelSEED Biochemistry compounds database.
 
         Returns
         =======
