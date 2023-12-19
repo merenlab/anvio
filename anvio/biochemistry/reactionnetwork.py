@@ -1317,7 +1317,14 @@ class GenomicNetwork(ReactionNetwork):
                 pass
 
         if not removed_kos:
-            return {'metabolite': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
+            return {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
 
         reactions_to_remove: List[str] = []
         for ko in removed_kos:
@@ -1338,8 +1345,12 @@ class GenomicNetwork(ReactionNetwork):
             removed_cascading_down.pop('ko')
         else:
             # This method must have been called from the method, 'purge_reactions', because the
-            # reactions that are only associated with the removed KOs were already removed from the network.
-            removed_cascading_down = {'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'metabolite': []}
+            removed_cascading_down = {
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'metabolite': []
+            }
 
         genes_to_remove: List[str] = []
         for gcid, gene in self.genes.items():
