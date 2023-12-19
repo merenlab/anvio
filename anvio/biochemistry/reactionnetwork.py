@@ -821,6 +821,10 @@ class GenomicNetwork(ReactionNetwork):
             written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv', and
             'removed-genes.tsv'.
         """
+        if self.verbose:
+            self.progress.new("Removing metabolites without a formula in the network")
+            self.progress.update("...")
+
         if output_path:
             path_basename, path_extension = os.path.splitext(output_path)
             metabolite_path = f"{path_basename}-metabolites{path_extension}"
@@ -837,11 +841,20 @@ class GenomicNetwork(ReactionNetwork):
                 metabolites_to_remove.append(modelseed_compound_id)
         removed = self.purge_metabolites(metabolites_to_remove)
 
+        if self.verbose:
+            self.progress.end()
+            self.run.info("Removed metabolites", len(removed['metabolite']))
+            self.run.info("Removed reactions", len(removed['reaction']))
+            self.run.info("Removed KOs", len(removed['ko']))
+            self.run.info("Removed genes", len(removed['gene']))
+
         if not output_path:
             return
 
-        # Record the reactions removed as a consequence of involving formulaless metabolites, and record
-        # the formulaless metabolites involved in removed reactions.
+        if self.verbose:
+            self.progress.new("Writing output files of removed network items")
+            self.progress.update("...")
+
         metabolite_removed_reactions: Dict[str, List[str]] = {}
         reaction_removed_metabolites: Dict[str, List[str]] = {}
         for reaction in removed['reaction']:
@@ -938,6 +951,13 @@ class GenomicNetwork(ReactionNetwork):
                 "KO IDs"
             ]
         ).to_csv(gene_path, sep='\t', index=False)
+
+        if self.verbose:
+            self.progress.end()
+            self.run.info("Table of removed metabolites", metabolite_path)
+            self.run.info("Table of removed reactions", reaction_path)
+            self.run.info("Table of removed KOs", ko_path)
+            self.run.info("Table of removed genes", gene_path)
 
     def purge_metabolites(self, metabolites_to_remove: Iterable[str]) -> Dict[str, List]:
         """
