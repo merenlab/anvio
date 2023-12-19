@@ -882,11 +882,18 @@ class GenomicNetwork(ReactionNetwork):
             row.append(metabolite.modelseed_id)
             row.append(metabolite.modelseed_name)
             row.append(metabolite.formula)
+            try:
+                # The metabolite did not have a formula.
+                removed_reaction_ids = metabolite_removed_reactions[metabolite.modelseed_id]
+            except KeyError:
+                # The metabolite had a formula but was removed as a consequence of all the reactions
+                # involving the metabolite being removed due to them containing formulaless
+                # metabolites: the metabolite did not cause any reactions to be removed.
+                row.append("")
+                continue
             # The set accounts for the theoretical possibility that a compound is present on both
             # sides of the reaction equation and thus the reaction is recorded multiple times.
-            row.append(
-                ", ".join(sorted(set(metabolite_removed_reactions[metabolite.modelseed_id])))
-            )
+            row.append(", ".join(sorted(set(removed_reaction_ids))))
 
         reaction_table = []
         for reaction in removed['reaction']:
