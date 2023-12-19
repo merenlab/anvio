@@ -983,7 +983,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         metabolites_to_remove : Iterable[str]
-            list of ModelSEED compound IDs identifying metabolites to remove
+            Metabolites to remove by ModelSEED compound ID.
 
         Returns
         =======
@@ -1002,7 +1002,7 @@ class GenomicNetwork(ReactionNetwork):
             }
 
             If this method is called from the method, 'purge_reactions', then the dictionary will
-            only contain one entry:
+            only contain one significant entry:
             {
                 'metabolite': [<removed ModelSEEDCompound objects>],
                 'reaction': [],
