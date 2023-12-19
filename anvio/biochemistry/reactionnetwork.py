@@ -1148,6 +1148,7 @@ class GenomicNetwork(ReactionNetwork):
                 'gene': []
             }
 
+        # Remove KEGG reaction aliases of ModelSEED reactions in the network.
         kegg_reactions_to_remove = []
         for kegg_reaction_id, modelseed_reaction_ids in self.kegg_modelseed_aliases.items():
             aliases_to_remove: List[int] = []
@@ -1166,6 +1167,7 @@ class GenomicNetwork(ReactionNetwork):
         for kegg_reaction_id in kegg_reactions_to_remove:
             removed_kegg_reactions.append(self.kegg_modelseed_aliases.pop(kegg_reaction_id))
 
+        # Remove EC number aliases of ModelSEED reactions in the network.
         ec_numbers_to_remove = []
         for ec_number, modelseed_reaction_ids in self.ec_number_modelseed_aliases.items():
             aliases_to_remove: List[int] = []
@@ -1173,7 +1175,8 @@ class GenomicNetwork(ReactionNetwork):
                 if modelseed_reaction_id in reactions_to_remove:
                     aliases_to_remove.append(idx)
             if len(aliases_to_remove) == len(modelseed_reaction_ids):
-                # All ModelSEED reactions aliased by the EC number were removed, so remove the EC number as well.
+                # All ModelSEED reactions aliased by the EC number were removed, so remove the EC
+                # number as well.
                 ec_numbers_to_remove.append(ec_number)
                 continue
             for idx in sorted(aliases_to_remove, reverse=True):
@@ -1193,7 +1196,8 @@ class GenomicNetwork(ReactionNetwork):
             for metabolite in reaction.compounds:
                 for idx, modelseed_compound_id in enumerate(metabolites_to_remove):
                     if modelseed_compound_id == metabolite.modelseed_id:
-                        # Do not remove the metabolite, because it participates in a retained reaction.
+                        # Do not remove the metabolite, because it participates in a retained
+                        # reaction.
                         metabolites_to_spare.append(idx)
             for idx in sorted(metabolites_to_spare, reverse=True):
                 metabolites_to_remove.pop(idx)
@@ -1233,7 +1237,8 @@ class GenomicNetwork(ReactionNetwork):
         # If this method was called from 'purge_kos' then the KOs that are only associated with
         # reactions removed here were already removed from the network, and 'kos_to_remove' would be
         # empty. In contrast, if this method was not called from 'purge_kos', but zero KOs are
-        # exclusively associated with reactions removed here, then 'kos_to_remove' would likewise be empty.
+        # exclusively associated with reactions removed here, then 'kos_to_remove' would likewise be
+        # empty.
         if kos_to_remove:
             removed_cascading_up = self.purge_kos(kos_to_remove)
             removed_cascading_up.pop('reaction')
