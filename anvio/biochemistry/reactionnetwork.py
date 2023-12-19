@@ -1456,9 +1456,8 @@ class GenomicNetwork(ReactionNetwork):
             removed_cascading_down = self.purge_kos(kos_to_remove)
             removed_cascading_down.pop('gene')
         else:
-            # This method must have been called from the method, 'purge_kos', because the
-            # KOs that are only associated with the removed genes were already removed from the network.
-            removed_cascading_down = {'ko': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'metabolite': []}
+            # This method must have been called from the method, 'purge_kos', because the KOs that
+            # are only associated with the removed genes were already removed from the network.
 
         # TODO: remove genes from self.bins
 
