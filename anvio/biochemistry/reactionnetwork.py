@@ -1458,6 +1458,13 @@ class GenomicNetwork(ReactionNetwork):
         else:
             # This method must have been called from the method, 'purge_kos', because the KOs that
             # are only associated with the removed genes were already removed from the network.
+            removed_cascading_down = {
+                'ko': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'metabolite': []
+            }
 
         # TODO: remove genes from self.bins
 
