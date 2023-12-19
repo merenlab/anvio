@@ -6972,12 +6972,12 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network generated from gene or gene cluster KO annotations
+            The reaction network generated from gene or gene cluster KO annotations.
 
         Returns
         =======
         pd.DataFrame
-            The table of reactions data to be stored in the contigs or pan database
+            The table of reactions data to be stored in the contigs or pan database.
         """
         assert tables.gene_function_reactions_table_structure == tables.pan_gene_cluster_function_reactions_table_structure
         assert tables.gene_function_reactions_table_types == tables.pan_gene_cluster_function_reactions_table_types
@@ -7071,12 +7071,12 @@ class Constructor:
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network generated from gene or gene cluster KO annotations
+            The reaction network generated from gene or gene cluster KO annotations.
 
         Returns
         =======
         pd.DataFrame
-            The table of metabolites data to be stored in the contigs or pan database
+            The table of metabolites data to be stored in the contigs or pan database.
         """
         assert tables.gene_function_metabolites_table_structure == tables.pan_gene_cluster_function_metabolites_table_structure
         assert tables.gene_function_metabolites_table_types == tables.pan_gene_cluster_function_metabolites_table_types
@@ -7109,7 +7109,7 @@ class Constructor:
         Returns
         =======
         str
-            Hash representation of all gene KO annotations
+            Hash representation of all gene KO annotations.
         """
         ko_annotations = []
         for gcid, gene_dict in gene_function_calls_dict.items():
@@ -7157,7 +7157,7 @@ class Constructor:
         =======
         str
             Hash representation of all gene cluster consensus KO annotations and the parameters used
-            to select consensus KOs
+            to select consensus KOs.
         """
         gsdb = dbinfo.GenomeStorageDBInfo(genomes_storage_db).load_db()
         functions_table = gsdb.get_table_as_dataframe('gene_function_calls', where_clause='source = "KOfam"')
@@ -7228,7 +7228,7 @@ def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     Parameters
     ==========
     floats : Iterable[float]
-        List of numbers to convert.
+        Numbers to convert.
 
     Returns
     =======
