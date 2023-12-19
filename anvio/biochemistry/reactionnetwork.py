@@ -1578,7 +1578,7 @@ class GenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         brite_categories : Iterable[str]
-            List of KEGG BRITE hierarchy categories to subset.
+            KEGG BRITE hierarchy categories (of KOs) to subset.
 
         Returns
         =======
