@@ -20,6 +20,7 @@ from anvio.workflows import WorkflowSuperClass
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.genomedescriptions import MetagenomeDescriptions
 
+import anvio.constants as constants
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -96,7 +97,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'filter_hmm_hits_by_model_coverage': {'threads': 5, '--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
@@ -410,6 +410,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
+
+        
         
         try:
             hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
@@ -444,6 +446,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
+                if hmm not in constants.default_scgs_for_taxonomy:
+                    raise ConfigError(f"EcoPhylo currently does not support the HMM {hmm} in {hmm_source} because it is incompatible with anvi-estimate-scg-taxonomy. "
+                                      f"anvi'o is really sorry about this and hopes one of these other HMMs in {hmm_source} will be adequate to profile "
+                                      f"your dataset: {constants.default_scgs_for_taxonomy}")
 
             if not filesnpaths.is_file_exists(hmm_path, dont_raise=True):
                 if hmm_path == 'INTERNAL':
