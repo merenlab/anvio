@@ -2969,6 +2969,17 @@ class MetabolismInteractive():
         return self.estimator.get_metabolism_data_for_visualization()
 
 
+class PangraphInteractive():
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "pangraph"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        PanSuperclass.__init__(self, self.args)
+
+
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
