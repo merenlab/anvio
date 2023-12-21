@@ -262,6 +262,8 @@ class BottleApplication(Bottle):
             homepage = 'structure.html'
         elif self.interactive.mode == 'metabolism':
             homepage = 'metabolism.html'
+        elif self.interactive.mode == 'pangraph':
+            homepage = 'pangraph.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
