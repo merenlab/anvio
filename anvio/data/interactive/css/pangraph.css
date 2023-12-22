@@ -1,0 +1,86 @@
+#svgbox {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  .offcanvas-btn {
+      visibility: visible;
+  }
+  
+  .offcanvas-btn span:last-child,
+  .offcanvas.show .offcanvas-btn span:first-child {
+    display: none;
+  }
+  
+  .offcanvas.show .offcanvas-btn span:last-child {
+    display: inline;
+  }
+  
+  h5 {
+    border-bottom: 1px solid #ccc; /* This is the line replacing the hr*/
+    margin-bottom: 10px; /* This is the space below the line */
+    margin-top: 20px; /* This is the space below the line */
+    padding-bottom: 15px; /* This is the space between the heading text and the line */
+  }
+  
+  #leftoffcanvas-button {
+    left: 400px;
+  }
+  
+  #rightoffcanvas-button {
+    right: 200px;
+  }
+  
+  #rightoffcanvas {
+    width: 200px;
+  }
+  
+  #left {
+    overflow-y: auto; 
+    /* max-height: calc(100vh - 128px); */
+    height: calc(100vh - 128px);
+  }
+  
+  .dropdown-toggle::after { 
+    content: none; 
+  } 
+  
+  .offcanvas-body {
+    overflow: hidden;
+  }
+  
+  .dropdown-menu {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .modal-dialog,
+  .modal-content {
+    /* 80% of window height */
+    height: 80%;
+  }
+  
+  .modal-body {
+    /* 100% = dialog height, 120px = header + footer */
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+  }
+  
+  #right {
+    overflow-y: auto;
+    max-height: 100%;
+  }
+  
+  
+  .btn-bot{
+    position: absolute;
+    top:0px;
+    left:50%;
+    -ms-transform: translateX(-50%);
+    transform: translateX(-50%);
+  }
+  
+  .right {
+    overflow-y: scroll; 
+  }
