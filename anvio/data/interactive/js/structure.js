@@ -723,9 +723,8 @@ function load_model_info() {
             defer.resolve();
         },
         error: function(xhr, status, error) {
-            // defer.resolve() is must change with defer.reject() to show error message!!
             console.error("Error loading model info:", status, error);
-            defer.resolve();
+            defer.reject();
         }
     });
 
