@@ -193,7 +193,9 @@ class BottleApplication(Bottle):
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
-
+        self.route('/pangraph/settings',                       callback=self.get_settings, method="POST")
+        self.route('/pangraph/get_json',                       callback=self.get_json_file, method="POST")
+        self.route('/pangraph/alignment',                      callback=self.get_alignment, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1487,3 +1489,26 @@ class BottleApplication(Bottle):
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+
+
+    def get_json_file(self):
+        return json.load(open('/home/ahenoch/Desktop/result.json'))
+
+
+    def get_settings(self):
+        pass
+        # Rerun function
+
+    def get_alignment(self):
+
+        payload = request.json
+        result = {}
+
+        for genome in payload.keys():
+            genecall, name = payload[genome]
+            gene_cluster_alignment_dict = self.pan_db.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
+            sequence = gene_cluster_alignment_dict[genome][int(genecall)]
+
+            result[genome] = [genecall, sequence]
+
+        return(result)

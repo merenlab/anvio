@@ -84,7 +84,7 @@ function fetchinfo(info) {
       var func_maxEl = ''
       var func_maxCount = ''
     }
-    d[source] = [id_maxEl, id_maxCount, func_maxEl, func_maxCount]
+    d[source] = [id_maxEl, id_maxCount, func_maxEl, func_maxCount] 
   }
 
   return(d);
@@ -150,7 +150,7 @@ async function appendinfo(body, suffix, drop, position, genomes, group, info) {
       $('<b>Value</b>')
     )
   )
-
+    
   var d = fetchinfo(info)
   for (var [source, value]  of Object.entries(d)) {
 
@@ -218,14 +218,14 @@ function fetchgenome(info) {
       var evalue = info[source][2]
     }
 
-    d[source] = [func_id, func, evalue]
+    d[source] = [func_id, func, evalue] 
   }
-  return(d);
+  return(d);  
 }
 
 //ANCHOR - Append genecall functions
 async function appendgenome(bodygenome, name, call, genome, length, direction, paralog, partial, info) {
-
+  
   bodygenome.append(
     $('<div class="row gx-2"></div>').append(
       $('<div class="col-2"></div>').append(
@@ -307,7 +307,7 @@ async function appendgenome(bodygenome, name, call, genome, length, direction, p
       $('<b>e-value</b>')
     )
   )
-
+    
   var d = fetchgenome(info)
   for (var [source, value]  of Object.entries(d)) {
 
@@ -360,9 +360,9 @@ async function appendgenome(bodygenome, name, call, genome, length, direction, p
 
 //ANCHOR - Fetch GC alignment
 function fetchalignment(alignment) {
-
+  
   var d = $.ajax({
-    url: "/alignment",
+    url: "/pangraph/alignment",
     type: "POST",
     data: JSON.stringify(alignment),
     contentType: "application/json",
@@ -398,7 +398,7 @@ async function appendalignment(body, alignment) {
     var size = Object.entries(d)[0][1][1].length;
     var numbers = '';
     var i = 1
-
+    
     while (i < size) {
       var j = i.toString().length
       if (i+50 <= size){
@@ -452,7 +452,7 @@ async function appendalignment(body, alignment) {
         )
       )
     }
-
+  
 
     var div = $('<div class="row g-2"></div>')
     div.append(
@@ -462,7 +462,7 @@ async function appendalignment(body, alignment) {
     )
 
     body.append(div)
-
+  
   }
 
 }
@@ -485,7 +485,7 @@ function marknode(e, data, binid, bins){
   if (e.getAttribute('class') == 'group') {
 
     var node_color = $('#groups')[0].value;
-    var genome_size = data["infos"]["genomes"].length;
+    var genome_size = Object.keys(data["infos"]["genomes"]).length;
 
     var group = data['infos']['groups'][id]
     var node_name = group[0]
@@ -497,7 +497,7 @@ function marknode(e, data, binid, bins){
   } else if (e.getAttribute('class') == 'node') {
 
     var node_color = $('#nodes')[0].value;
-    var genome_size = data["infos"]["genomes"].length;
+    var genome_size = Object.keys(data["infos"]["genomes"]).length;
 
     var node = data['elements']['nodes'][id];
     var genome = Object.keys(node['genome']).length;
@@ -509,15 +509,15 @@ function marknode(e, data, binid, bins){
     e.setAttribute("fill", lighter_color('#ffffff', node_color, genome / genome_size))
     bins[binid] = bins[binid].filter(item => item !== id)
     $('#' + binid + 'value')[0].value = bins[binid].length
-
+    
   } else if (current === '') {
 
     e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
     bins[binid].push(id)
     $('#' + binid + 'value')[0].value = bins[binid].length
-
+    
   } else {
-
+    
     e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
     bins[current] = bins[current].filter(item => item !== id)
     bins[binid].push(id)
@@ -535,7 +535,7 @@ function nodeinfo(e, data) {
   var element = document.getElementById(id);
 
   if (element.getAttribute('class') == 'group') {
-
+    
     var drop = $('<div class="dropdown" id="drop" name="' + id + '"></div>')
 
     drop.append(
@@ -544,9 +544,9 @@ function nodeinfo(e, data) {
       )
     )
 
-    var dropitem = $('<ul class="dropdown-menu pre-scrollable gcchoice"></ul>')
+    var dropitem = $('<ul class="dropdown-menu pre-scrollable gcchoice"></ul>')            
     var grouplist = data['infos']['groups'][id]
-
+    
     for (var listitem of grouplist) {
       dropitem.append(
         $('<li class="caret"></li>').append(
@@ -573,7 +573,7 @@ function nodeinfo(e, data) {
     var info = data['elements']['nodes'][id]['genome']
 
     var alignment = {}
-
+    
     if (id != 'start' && id != 'stop') {
       for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
         alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']]
@@ -608,7 +608,7 @@ function deg2rad(degrees)
 
 //ANCHOR - General download function
 function downloadBlob(blob, name) {
-
+  
   var blobUrl = URL.createObjectURL(blob);
   var link = document.createElement("a");
 
@@ -618,10 +618,10 @@ function downloadBlob(blob, name) {
   document.body.appendChild(link);
 
   link.dispatchEvent(
-    new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-      view: window
+    new MouseEvent('click', { 
+      bubbles: true, 
+      cancelable: true, 
+      view: window 
     })
   );
 
@@ -638,8 +638,10 @@ function int_to_hex(num) {
 
 //ANCHOR - Function to mix two colors
 function lighter_color(color1, color2, percentage, threshold=0.25) {
+  
+  console.log(color1, color2, percentage)
 
-  percentage = threshold + (1 - threshold) * percentage
+  percentage = threshold + (1 - threshold) * percentage 
 
   // var color3 = $.xcolor.gradientlevel(color1, color2, percentage, 1);
 
@@ -649,18 +651,20 @@ function lighter_color(color1, color2, percentage, threshold=0.25) {
   color1 = [parseInt(color1[0] + color1[1], 16), parseInt(color1[2] + color1[3], 16), parseInt(color1[4] + color1[5], 16)];
   color2 = [parseInt(color2[0] + color2[1], 16), parseInt(color2[2] + color2[3], 16), parseInt(color2[4] + color2[5], 16)];
 
-  var color3 = [
-      (1 - percentage) * color1[0] + percentage * color2[0],
-      (1 - percentage) * color1[1] + percentage * color2[1],
+  var color3 = [ 
+      (1 - percentage) * color1[0] + percentage * color2[0], 
+      (1 - percentage) * color1[1] + percentage * color2[1], 
       (1 - percentage) * color1[2] + percentage * color2[2]
   ];
 
   color3 = '#' + int_to_hex(color3[0]) + int_to_hex(color3[1]) + int_to_hex(color3[2]);
 
+  console.log(color3)
+
   return color3
 }
 
-//ANCHOR - Transformation function
+//ANCHOR - Transformation function 
 function transform(x, y, node_distance_y, radius, theta) {
   var circle_x = ((y * node_distance_y) + radius) * Math.sin(deg2rad(theta * x))
   var circle_y = ((y * node_distance_y) + radius) * Math.cos(deg2rad(theta * x))
@@ -668,7 +672,7 @@ function transform(x, y, node_distance_y, radius, theta) {
 }
 
 function pickcolor (edgecoloring, genomes) {
-
+  
   var array = []
 
   for (var name of genomes) {
@@ -685,7 +689,7 @@ function pickcolor (edgecoloring, genomes) {
 async function generate_svg(body, data) {
 
   var edgecoloring = {}
-
+  
   $("#genomecolors :input[type='color']").each((index, element) => {
     edgecoloring[element.id] = [index, element.value]
   })
@@ -695,10 +699,11 @@ async function generate_svg(body, data) {
   var node_distance_x = parseInt($('#distx')[0].value) + node_size + node_thickness;
   var node_distance_y = parseInt($('#disty')[0].value) + node_size;
   var global_x = data["infos"]["meta"]["global_x"];
-  var genome_size = data["infos"]["genomes"].length;
+  var genome_size = Object.keys(data["infos"]["genomes"]).length;
   var global_y = data["infos"]["meta"]["global_y"];
   var group_color = $('#groups')[0].value;
   var node_color = $('#nodes')[0].value;
+
   var startstop_color = $('#startstop')[0].value;
   var theta = 360 / global_x
   var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))
@@ -706,7 +711,6 @@ async function generate_svg(body, data) {
     radius = 1000
   }
   var size = (global_y * node_distance_y + radius);
-
   var svg = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + size + ' -' + size + ' ' + size*2 + ' ' + size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">');
 
   // svg.append(
@@ -734,10 +738,10 @@ async function generate_svg(body, data) {
   var [g_x, g_y] = transform(arrow_stop, - arrow_y_offset, node_distance_y, radius, theta)
 
   svg.append(
-    $('<path d="M ' + c_x + ' ' + c_y +
+    $('<path d="M ' + c_x + ' ' + c_y + 
     ' A ' + (((- arrow_y_offset + (arow_thickness / 2)) * node_distance_y) + radius) + ' ' + (((- arrow_y_offset + (arow_thickness / 2)) * node_distance_y) + radius) + ' 0 1 1 ' + a_x + ' ' + a_y +
     ' L ' + b_x + ' ' + b_y +
-    ' A ' + (((- arrow_y_offset - (arow_thickness / 2)) * node_distance_y) + radius) + ' ' + (((- arrow_y_offset - (arow_thickness / 2)) * node_distance_y) + radius) + ' 0 1 0 ' + d_x + ' ' + d_y +
+    ' A ' + (((- arrow_y_offset - (arow_thickness / 2)) * node_distance_y) + radius) + ' ' + (((- arrow_y_offset - (arow_thickness / 2)) * node_distance_y) + radius) + ' 0 1 0 ' + d_x + ' ' + d_y + 
     ' L ' + f_x + ' ' + f_y +
     ' L ' + g_x + ' ' + g_y +
     ' L ' + e_x + ' ' + e_y + ' Z" stroke="slateGrey" stroke-width="2" fill="slateGrey"></path>')
@@ -745,7 +749,7 @@ async function generate_svg(body, data) {
 
   var l = 1
   while (l < global_x) {
-
+    
     if (l+steps <= global_x){
       var k = steps;
     } else {
@@ -772,7 +776,7 @@ async function generate_svg(body, data) {
 
     var edge = data['elements']['edges'][i];
     var genome = Object.keys(edge['genome']).length;
-
+    
     if ($('#coloredge').prop('checked') == true) {
       var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
       var draw = lighter_color('#ffffff', color, genome / genome_size);
@@ -809,9 +813,9 @@ async function generate_svg(body, data) {
         var bend_n_x = edge['bended'][j]['x']
         var bend_n_y = edge['bended'][j]['y']
         var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
-
+        
         circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
-
+      
       }
 
       circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
@@ -819,9 +823,9 @@ async function generate_svg(body, data) {
       svg.append(
         $(circle_svg)
       )
-    }
+    } 
   };
-
+  
   var group_nodes = [];
   for(var g in groups) {
     var group = data['infos']['groups'][g]
@@ -871,7 +875,7 @@ async function generate_svg(body, data) {
       svg.append(
         $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_x + '" cy="' + circle_y + '" r="' + node_size + '" fill="' + lighter_color('#ffffff', node_color, genome / genome_size) + '" stroke="' + draw + '" stroke-width="2"/>')
       )
-    }
+    }  
   };
 
   for(var l in groups) {
@@ -885,7 +889,7 @@ async function generate_svg(body, data) {
     var right_node = data['elements']['nodes'][right_node_name];
 
     var genome = Object.keys(left_node['genome']).length;
-
+    
     if ($('#colorgenecluster').prop('checked') == true) {
       var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
       var draw = lighter_color('#ffffff', color, genome / genome_size);
@@ -894,10 +898,10 @@ async function generate_svg(body, data) {
     }
 
     var left_pos_x = left_node['position']['x']
-    var left_pos_y = left_node['position']['y']
+    var left_pos_y = left_node['position']['y']      
 
     var right_pos_x = right_node['position']['x']
-    var right_pos_y = right_node['position']['y']
+    var right_pos_y = right_node['position']['y']      
 
     var [circle_t_x, circle_t_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius + 10, theta);
     var [circle_u_x, circle_u_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius - 10, theta);
@@ -935,20 +939,20 @@ async function generate_svg(body, data) {
     if (i in entropy){
       var values = []
       values.push(entropy[i])
-
+      
       for (let j = 1; j <= window; j += 1) {
         if (i-j in entropy) {values.push(entropy[i-j])}
         if (i+j in entropy) {values.push(entropy[i+j])}
       }
-
+      
       mean_entropy[i] = values.reduce((partialSum, a) => partialSum + a, 0) / values.length
     }
   }
 
   var max = Math.max(...Object.values(mean_entropy))
-
+  
   for (var key of Object.keys(mean_entropy)) {
-
+ 
     var [a_x, a_y] = transform(parseInt(key)-0.5, -2, node_distance_y, radius, theta)
     var [b_x, b_y] = transform(parseInt(key)+0.5, -2, node_distance_y, radius, theta)
     var [c_x, c_y] = transform(parseInt(key)-0.5, -14, node_distance_y, radius, theta)
@@ -987,7 +991,7 @@ async function generate_svg(body, data) {
 
 //ANCHOR - Check node
 function checknode(searchpos, positions, node, mingenomes, maxgenomes, minposition, maxposition, searchfunction, expressiondrop, expressioncomparison) {
-
+  
   var append = true
 
   if (searchpos == true) {
@@ -1005,7 +1009,7 @@ function checknode(searchpos, positions, node, mingenomes, maxgenomes, minpositi
 
   if (maxgenomes != '-1'){
     if (eval(Object.keys(node['genome']).length + '>=' + maxgenomes)){
-      append = false
+      append = false            
     }
   }
 
@@ -1033,10 +1037,19 @@ function checknode(searchpos, positions, node, mingenomes, maxgenomes, minpositi
 
 function main () {
 
-  $.getJSON('static/json/result.json?' + new Date().getTime(), function(data) {
+  $.ajax({
+    url: "/pangraph/get_json",
+    type: "POST",
+    cache: false, 
+    //data: JSON.stringify(data),
+    contentType: "application/json",
+    dataType: "json",
+    success: function(data){
 
+  // $.getJSON('static/json/result.json?' + new Date().getTime(), function(data) {
+    
     $('#redraw').on('click', function() {
-
+    
       // [...document.querySelectorAll('*')].forEach(node => {
       //   if (node._tippy) {
       //     node._tippy.destroy();
@@ -1045,36 +1058,36 @@ function main () {
 
       $(document).off().find("*").off();
       main()
-
+  
     })
-
+  
     $('#settings').on('click', function() {
-
+  
       var data = new Object;
-
+  
       data['conntr'] = $('#conntr')[0].value
       data['condtr'] = $('#condtr')[0].value
       data['maxlength'] = $('#maxlength')[0].value
-
+      
       $("#genomecolors :input[type='checkbox']").each((index, element) => {
-
+        
         var genome = $(element).attr('name')
         if ($(element).prop('checked') == true){
-          data[genome] = 'on'
+          data[genome] = 'on' 
         } else {
           data[genome] = 'off'
         }
       })
-
+  
       $.ajax({
-          url: "/settings",
+          url: "/pangraph/settings",
           type: "POST",
           async: false,
           data: JSON.stringify(data),
           contentType: "application/json",
           dataType: "json"
       });
-
+  
       // [...document.querySelectorAll('*')].forEach(node => {
       //   if (node._tippy) {
       //     node._tippy.destroy();
@@ -1084,6 +1097,55 @@ function main () {
       $(document).off().find("*").off();
       main()
     })
+
+    console.log(data)
+
+    $("#conntr")[0].value = -1;
+    $("#condtr")[0].value = data['infos']['max_edge_length_filter']
+    $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
+
+    for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
+
+      var state = ''
+      if (value == 'on') {
+        state = ' checked'
+      }
+
+      $('#genomecolors').append(
+        $('<div class="col-12">').append(
+          $('<div class="row gy-0 align-items-center">').append(
+            $('<div class="col-2">').append(
+              $('<div class="form-switch">').append(
+                $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+              )
+            )
+          ).append(
+            $('<div class="col-7">').append(
+              genome
+            )
+          ).append(
+            $('<div class="col-1">').append(
+              $('<i class="user-handle bi bi-arrows-expand"></i>')
+            )
+          ).append(
+            $('<div class="d-flex col-2">').append(
+              $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+            )
+          )
+        )
+      )
+
+      $('#RightOffcanvasBodyTop').append(
+        $('<div class="col-8">').append(
+          genome
+        )
+      ).append(
+        $('<div class="col-4 text-end" id="number_' + genome + '">').append(
+          0
+        )
+      )
+
+    }
 
     var body = $('#svgbox')
     body.empty()
@@ -1191,11 +1253,11 @@ function main () {
 
     //ANCHOR - Choose genecall
     $(document).on("click", ".genome", function() {
-
+      
       var id = $('#name').attr('name')
       var call = this.innerText;
       var genome = this.parentNode.parentNode.firstChild.innerText;
-
+      
       var name = data['elements']['nodes'][id]['name'];
       var length = data['elements']['nodes'][id]['genome'][genome]['length'];
       var direction = data['elements']['nodes'][id]['genome'][genome]['direction'];
@@ -1203,7 +1265,7 @@ function main () {
       var partial = data['elements']['nodes'][id]['genome'][genome]['partial'];
 
       var info = data['elements']['nodes'][id]['genome'][genome];
-
+    
       $('#GenomeModalBody').empty()
       var bodygenome = $('<div class="card-body overflow-scroll"></div>')
       $('#GenomeModalBody').append(
@@ -1214,7 +1276,7 @@ function main () {
       $('#AlignmentModal').modal('hide');
       $('#GenomeModal').modal('show');
     });
-
+    
     $(document).on("click", ".choice li a", function() {
       var name = $(this).attr('name')
       var dropitem = $(this).parent().parent().parent().children(":first")
@@ -1233,10 +1295,10 @@ function main () {
 
       var id = $(this).attr('name')
       var binid = $(this).attr('bin')
-
+    
       var name = document.getElementById(id);
       bins = marknode(name, data, binid, bins);
-
+    
       $(this).parent().parent().parent().remove()
 
     })
@@ -1268,9 +1330,9 @@ function main () {
         bodyinfo
       )
       appendinfo(bodyinfo, '', drop, position, genomes, group, info)
-
+    
       var alignment = {}
-
+    
       if (id != 'start' && id != 'stop') {
         for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
           alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']]
@@ -1289,10 +1351,10 @@ function main () {
 
     //ANCHOR - Bin dropdown choice function
     $(document).on("click", ".binchoice li a", function() {
-
+      
       var id = $(this).attr('name')
       var drop = $(this).parent().parent().parent()
-      var group = drop.attr('name')
+      var group = drop.attr('name')      
       var name = data['elements']['nodes'][id]['name']
 
       var dropitem = $('#' + group + 'name')
@@ -1349,12 +1411,12 @@ function main () {
 
     //ANCHOR - Remove bin
     $('#binremove').on('click', function() {
-
+      
       var selection = document.querySelector('input[name="binradio"]:checked')
-
+        
       if (selection !== null) {
         var binid = selection.value
-
+        
         for (var node of bins[binid]) {
           var name = document.getElementById(node);
           bins = marknode(name, data, binid, bins);
@@ -1374,16 +1436,16 @@ function main () {
 
     //ANCHOR - Change bin
     $(document).on("change", ".colorchange", function() {
-
+      
       var binid = this.name
       var nodes = bins[binid]
-
+      
       for (var node of nodes) {
-
+        
         bins[binid] = bins[binid].filter(item => item !== node)
         var name = document.getElementById(node);
         bins = marknode(name, data, binid, bins);
-
+      
       }
 
     });
@@ -1392,7 +1454,7 @@ function main () {
     $('#bininfo').on('click', function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
-
+        
       // if (selection !== null) {
       var binid = selection.value
       var appendlist = []
@@ -1401,7 +1463,7 @@ function main () {
       for (var id of bins[binid]) {
         var element = document.getElementById(id);
         if (element.getAttribute('class') == 'group') {
-
+          
           var drop = $('<div class="dropdown" id="' + id + 'drop" name="' + id + '"></div>')
 
           drop.append(
@@ -1410,9 +1472,9 @@ function main () {
             )
           )
 
-          var dropitem = $('<ul class="dropdown-menu pre-scrollable binchoice"></ul>')
+          var dropitem = $('<ul class="dropdown-menu pre-scrollable binchoice"></ul>')            
           var grouplist = data['infos']['groups'][id]
-
+          
           for (var listitem of grouplist) {
             dropitem.append(
               $('<li class="caret"></li>').append(
@@ -1442,41 +1504,41 @@ function main () {
       }
 
       for (var [id, drop, position, genomes, group, info] of appendlist) {
-
+        
         var body = $('<div class="card-body overflow-scroll" id="' + id + 'div"></div>')
 
         $('#BinModalBody').append(
           $('<div class="card border mb-3 w-100" style="height:400px;"></div>').append(
             $('<div class="card-header"></div>').append(
               $('<div class="d-flex justify-content-end align-items-center"></div>').append(
-                $('<button class="btn-close binremove" name="' + id + '" bin="' + binid + '"></button>')
+                $('<button class="btn-close binremove" name="' + id + '" bin="' + binid + '"></button>')                
               )
             )
           ).append(
             body
           )
         )
-
+        
         appendinfo(body, id, drop, position, genomes, group, info)
       }
 
       $('#BinModal').modal('show');
       // }
     })
-
+      
     $('#InfoDownload').on('click', async function() {
-
+      
       var id = $('#name').attr('name')
       var name = $('#name')[0].innerText;
 
       if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
-
+        
         var group = $('#group')[0].innerText;
         var genomes = $('#genomes')[0].innerText;
         var position = $('#position')[0].innerText;
 
         var csv = "Name\t" + name + "\nGroup\t" + group + "\nGenomes\t" + genomes + "\nPosition\t" + position + "\nSource\tAccession\tFunction\tConfidence";
-
+        
         var func = fetchinfo(data['elements']['nodes'][id]['genome']);
 
         for (var [key, value] of Object.entries(func)) {
@@ -1487,7 +1549,7 @@ function main () {
         downloadBlob(blob, name + ".csv");
       }
     });
-
+    
     $('#GenomeDownload').on('click', async function() {
 
 
@@ -1517,12 +1579,12 @@ function main () {
     });
 
     $('#AlignmentDownload').on('click', async function() {
-
+      
       var id = $('#name').attr('name')
       var name = $('#name')[0].innerText;
 
       if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
-
+ 
         var al = {}
         for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
           al[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']]
@@ -1553,15 +1615,15 @@ function main () {
       var blob = new Blob([$('#svgbox')[0].innerHTML]);
       downloadBlob(blob, pass_project_name + ".svg");
     });
-
+    
     $('#searchadd').on('click', function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
       var binid = selection.value
-
+      
       for (var [id, members] of Object.entries(searched)) {
         if (!(id in bins[binid])) {
-
+          
           var e = document.getElementById(id);
           bins = marknode(e, data, binid, bins);
 
@@ -1574,10 +1636,10 @@ function main () {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
       var binid = selection.value
-
+      
       for (var [id, members] of Object.entries(searched)) {
         if (id in bins[binid]) {
-
+          
           var e = document.getElementById(id);
           bins = marknode(e, data, binid, bins);
 
@@ -1586,7 +1648,7 @@ function main () {
     })
 
     $('#searcherase').on('click', function() {
-
+      
       for (var [id, members] of Object.entries(searched)) {
         for (var mem of members) {
           var xpos = data['elements']['nodes'][mem]['position']['x']
@@ -1599,7 +1661,7 @@ function main () {
     })
 
     $('#searchcolor').on('click', function() {
-
+      
       for (var [id, members] of Object.entries(searched)) {
         for (var mem of members) {
           var xpos = data['elements']['nodes'][mem]['position']['x']
@@ -1732,7 +1794,7 @@ function main () {
             if (checknode(searchpos, positions, node, mingenomes, maxgenomes, minposition, maxposition, searchfunction, expressiondrop, expressioncomparison) == true) {
               if (expressiondrop == "Name" && expressionrel != '\u{2264}' && expressionrel != '\u{2265}' && expressionrel != '\u{003C}' && expressionrel != '\u{003E}') {
                 if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
-
+                  
                   if (!(groupid in searched)) {
                     searched[groupid] = [id]
                   } else {
@@ -1778,7 +1840,7 @@ function main () {
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
     for (var el of divs) {
-
+      
       if (el.getAttribute("id").startsWith('GCG_')){
         var id = data["infos"]["groups"][el.getAttribute("id")][0]
         var name = el.getAttribute("id")
@@ -1799,7 +1861,7 @@ function main () {
           var elements = Object.keys(data['elements']['nodes'][id]['genome'])
 
           for (var element of elements) {
-            $('#number_' + element)[0].innerText = '0';
+            $('#number_' + element)[0].innerText = '0'; 
           }
         },
         onShow(instance) {
@@ -1829,10 +1891,10 @@ function main () {
 
     var xpos = 0
     var ypos = 0
-
+    
     var new_xpos = 0
     var new_ypos = 0
-
+      
     $("#svgbox").on('mousedown', function(e) {
       old_xpos = e.offsetX
       old_ypos = e.offsetY
@@ -1843,7 +1905,7 @@ function main () {
       isDown = true
       diff = 0
     })
-
+  
     $("#svgbox").on('mousemove', function(e) {
       if (isDown === true) {
         new_xpos = e.offsetX
@@ -1859,17 +1921,17 @@ function main () {
         ypos = new_ypos
       }
     })
-
+    
     $("#svgbox").on('mouseup', function(e) {
       if (isDown === true) {
 
         var selection = document.querySelector('input[name="binradio"]:checked')
-
+        
         isDown = false
-
+      
         if (diff < 10) {
           if (e.target.getAttribute('class') === 'group' || e.target.getAttribute('class') === 'node') {
-
+            
             if (e.shiftKey && selection !== null) {
 
               var binid = selection.value
@@ -1880,8 +1942,8 @@ function main () {
             }
 
           } else {
-          }
-
+          } 
+        
         } else {
           if (e.shiftKey && selection !== null) {
 
@@ -1896,19 +1958,19 @@ function main () {
             for (var n of nodes) {
 
               var bounding = n.getBoundingClientRect();
-              var left = bounding.left
+              var left = bounding.left 
               var right = bounding.right
               var bottom = bounding.bottom
               var top = bounding.top
 
               if (
                 min_xpos < left &&
-                max_xpos > right &&
-                min_ypos < bottom &&
+                max_xpos > right && 
+                min_ypos < bottom && 
                 max_ypos > top
                 ) {
                 bins = marknode(n, data, binid, bins);
-
+                
               }
             }
 
@@ -1918,17 +1980,17 @@ function main () {
               var group = data['infos']['groups'][g]
               for (var k of group) {
                 var node = document.getElementById(k);
-
+                
                 var bounding = node.getBoundingClientRect();
-                var left = bounding.left
+                var left = bounding.left 
                 var right = bounding.right
                 var bottom = bounding.bottom
                 var top = bounding.top
 
                 if (
                   min_xpos < left &&
-                  max_xpos > right &&
-                  min_ypos < bottom &&
+                  max_xpos > right && 
+                  min_ypos < bottom && 
                   max_ypos > top
                   ) {
                   var name = document.getElementById(g);
@@ -1937,8 +1999,8 @@ function main () {
                 }
                 // if (
                 //   min_xpos < left &&
-                //   max_xpos > right &&
-                //   min_ypos < bottom &&
+                //   max_xpos > right && 
+                //   min_ypos < bottom && 
                 //   max_ypos > top
                 //   ) {
                 // } else {
@@ -1954,70 +2016,15 @@ function main () {
           }
         }
       }
-    })
-  })
+    })  
+  }})
 
 }
 
 //ANCHOR - Main function after loading DOM
 $(document).ready(function() {
-
-  //ANCHOR fetch from backend
-  $.ajax({
-    url: "/template",
-    type: "POST",
-    success: function(result){
-      console.log(result)
-
-      $("#conntr")[0].value = result['conntr'];
-      $("#condtr")[0].value = result['condtr'];
-      $("#maxlength")[0].value = result['maxlength'];
-
-      for (var [genome, value] of Object.entries(result['genome_coloring'])) {
-
-        var state = ''
-        if (value == 'on') {
-          state = ' checked'
-        }
-
-        $('#genomecolors').append(
-          $('<div class="col-12">').append(
-            $('<div class="row gy-0 align-items-center">').append(
-              $('<div class="col-2">').append(
-                $('<div class="form-switch">').append(
-                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
-                )
-              )
-            ).append(
-              $('<div class="col-7">').append(
-                genome
-              )
-            ).append(
-              $('<div class="col-1">').append(
-                $('<i class="user-handle bi bi-arrows-expand"></i>')
-              )
-            ).append(
-              $('<div class="d-flex col-2">').append(
-                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
-              )
-            )
-          )
-        )
-
-        $('#RightOffcanvasBodyTop').append(
-          $('<div class="col-8">').append(
-            genome
-          )
-        ).append(
-          $('<div class="col-4 text-end" id="number_' + genome + '">').append(
-            0
-          )
-        )
-
-      }
-    }
-  })
-
+  
+  console.log('start pangrah layout creation!')
   main()
 
 });

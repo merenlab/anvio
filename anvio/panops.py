@@ -1059,7 +1059,7 @@ class Pangraph():
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
         self.genome_coloring = {}
-        self.genome_size = []
+        # self.genome_size = []
 
         self.initial_graph = nx.DiGraph()
         self.pangenome_graph = nx.DiGraph()
@@ -1316,7 +1316,7 @@ class Pangraph():
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
         for genome in self.gene_synteny_data_dict.keys():
-            self.genome_size.append(genome)
+            # self.genome_size.append(genome)
 
             for contig in self.gene_synteny_data_dict[genome].keys():
 
@@ -1360,8 +1360,8 @@ class Pangraph():
             'start',
             name='start',
             pos=(0, 0),
-            weight=len(self.genome_size),
-            genome={genome: {'draw': 'on'} for genome in self.genome_size}
+            weight=len(self.genome_coloring.keys()),
+            genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()}
         )
 
         add_start = []
@@ -1372,8 +1372,8 @@ class Pangraph():
         for u in add_start:
             self.pangenome_graph.add_edge(
                 *('start', u),
-                genome={genome: {'draw': 'on'} for genome in self.genome_size},
-                weight=len(self.genome_size),
+                genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
+                weight=len(self.genome_coloring.keys()),
                 bended=[],
                 direction='R'
             )
@@ -1433,14 +1433,14 @@ class Pangraph():
             'stop',
             name='stop',
             pos=(0, 0),
-            weight=len(self.genome_size),
-            genome={genome: {'draw': 'on'} for genome in self.genome_size}
+            weight=len(self.genome_coloring.keys()),
+            genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()}
         )
 
         self.edmonds_graph.add_edge(
             *(edmonds_graph_end, 'stop'),
-            genome={genome: {'draw': 'on'} for genome in self.genome_size},
-            weight=len(self.genome_size),
+            genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
+            weight=len(self.genome_coloring.keys()),
             bended=[],
             direction='R'
         )
@@ -1492,8 +1492,8 @@ class Pangraph():
 
             if connected == False and len(list(self.pangenome_graph.successors(current_node))) == 0:
                 pangenome_graph_edge_data = {
-                    'genome':{genome: {'draw': 'on'} for genome in self.genome_size},
-                    'weight':len(self.genome_size),
+                    'genome':{genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
+                    'weight':len(self.genome_coloring.keys()),
                     'bended': [],
                     'direction': 'R'
                 }
@@ -1932,7 +1932,9 @@ class Pangraph():
 
         jsondata["infos"] = {'meta': {'global_x': self.global_x,
                                       'global_y': self.global_y},
-                             'genomes': self.genome_size,
+                             'genomes': self.genome_coloring,
+                             'max_edge_length_filter': self.max_edge_length_filter,
+                             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
                              'original': {'nodes': len(self.pangenome_graph.nodes()),
                                           'edges': len(self.pangenome_graph.edges()),
                                           'instances': instances_pangenome_graph},
