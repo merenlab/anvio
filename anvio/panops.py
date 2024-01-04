@@ -1087,7 +1087,13 @@ class Pangraph():
 
 
     def sanity_check(self):
-        pass
+        if self.skip_storing_in_pan_db and not self.json_output_file_path:
+            raise ConfigError("You are initializing the Pangraph class with `--skip-storing-in-pan-db` without an `--output-file` "
+                              "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
+                              "way to store results.")
+
+        if self.json_output_file_path:
+            filesnpaths.is_output_file_writable(self.json_output_file_path)
 
 
     def process(self):
