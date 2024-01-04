@@ -2011,14 +2011,25 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         templates = structure_db.db.get_table_as_dataframe(
             'templates',
-            columns_of_interest=['pdb_id', 'chain_id', 'percent_similarity', 'align_fraction'],
+            columns_of_interest=['pdb_id', 'chain_id'],
             where_clause='corresponding_gene_call = %d' % gene_callers_id,
         ).rename(columns={
             'pdb_id': 'PDB',
             'chain_id': 'Chain',
-            'percent_similarity': '%Identity',
-            'align_fraction': 'Align fraction',
-        })[['PDB', 'Chain', '%Identity', 'Align fraction']]
+        })
+
+        # Check if the columns exist before accessing them
+        if 'percent_similarity' in templates.columns and 'align_fraction' in templates.columns:
+            templates['%Identity'] = templates['percent_similarity']
+            templates['Align fraction'] = templates['align_fraction']
+            templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
+        else:
+            # Handle the case when columns are not present
+            # You can set default values or handle it in a way that makes sense for your application
+            templates['%Identity'] = 0
+            templates['Align fraction'] = 0
+            templates = templates[['PDB', 'Chain', '%Identity', 'Align fraction']]
+
 
         structure_db.disconnect()
 
