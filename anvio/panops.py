@@ -1055,6 +1055,10 @@ class Pangraph():
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.debug = anvio.DEBUG
 
+        # data storage related variables
+        self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
+        self.json_output_file_path = A('output_file')
+
         # this is the dictionary that wil keep all data that is going to be loaded
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
@@ -1975,8 +1979,22 @@ class Pangraph():
         return(jsondata)
 
     def store_network(self):
-        # FIXME: This will store things in the pan-db:
-        print(json.dumps(self.get_json_dict_for_graph()))
+        """Function to store final graph structure in a pan-db and/or JSON flat text output file"""
+
+        self.run.warning(None, header="Storing the graph structure", lc="green")
+
+        if self.json_output_file_path:
+            with open(self.json_output_file_path, 'w') as output:
+                output.write(json.dumps(self.get_json_dict_for_graph(), indent=2))
+            self.run.info("JSON output file", os.path.abspath(self.json_output_file_path))
+        else:
+            self.run.info("JSON output file", "Skipped (but OK)", mc='red')
+
+        if not self.skip_storing_in_pan_db:
+            raise ConfigError("The storage of graph data in pan-db is not yet implemented :/")
+        else:
+            self.run.info("Into the pan-db", "Skipped (but OK)", mc='red')
+
 
     def get_genome_gc_fused(self):
         return(self.genome_gc_fused)
