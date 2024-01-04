@@ -78,7 +78,7 @@
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
                 </div>
 
-                <div id="collapse-basics" class="panel-collapse in">
+                <div id="collapse-basics" class="collapse show in">
 
                     <div class="card m-2">
                         <div class="card-body bg-light">The {% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %} merged {% else %} single {% endif %}{% endif %} profile database that was generated
@@ -158,7 +158,7 @@
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
                 </div>
 
-                <div id="collapse-description" class="panel-collapse">
+                <div id="collapse-description" class="collapse show in">
 
                 <div class="card-body text-secondary">{% autoescape off %}{{ basics_pretty|lookup:"description" }}{% endautoescape %}</div>
 
@@ -176,7 +176,7 @@
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
-                <div id="collapse-bins" class="panel-collapse">
+                <div id="collapse-bins" class="collapse show in">
                     <div class="card-body">
                         <p class="m-2 text-secondary">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
@@ -375,7 +375,7 @@
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
             </div>
 
-            <div id="collapse-bins-across-samples" class="panel-collapse">
+            <div id="collapse-bins-across-samples" class="collapse show in">
 
                 <div role="tabpanel" style="margin: 10px;">
                     <!-- Nav tabs -->
@@ -452,7 +452,7 @@
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
                 </div>
 
-                <div id="collapse-bins-percent-recruitment" class="panel-collapse">
+                <div id="collapse-bins-percent-recruitment" class="collapse show in">
                     <div class="card-body">
                         <p class="pb-2 text-secondary">This card shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
                         <p class="p-2 text-secondary">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
@@ -512,7 +512,7 @@
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
             </div>
 
-            <div id="collapse-functions" class="panel-collapse">
+            <div id="collapse-functions" class="collapse show in">
                 <div class="card-body">
 
                     <p class="m-2 text-secondary">An overview of genes and functions based on the information found in the contigs database. If you haven't assigned any functions, these tables will only contain coverages of ORFs across samples.</a></p>
@@ -578,7 +578,7 @@
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
                 </div>
 
-                <div id="collapse-hmms" class="panel-collapse">
+                <div id="collapse-hmms" class="collapse show in">
 
                     <div class="card-body">
                         <p class="m-2 text-secondary">This card shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
