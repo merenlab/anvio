@@ -2977,6 +2977,15 @@ class PangraphInteractive():
         self.run = run
         self.progress = progress
 
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.pan_graph_json_path = A('pan_graph_json')
+
+        if self.pan_graph_json_path:
+            filesnpaths.is_file_json_formatted(self.pan_graph_json_path)
+
+        if not self.pan_graph_json_path:
+            raise ConfigError("Unfortunately you can only use this program with the `--pan-graph-json` parameter.")
+
         PanSuperclass.__init__(self, self.args)
 
 
