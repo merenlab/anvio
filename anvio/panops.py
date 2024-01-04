@@ -1094,6 +1094,8 @@ class Pangraph():
         if self.json_output_file_path:
             filesnpaths.is_output_file_writable(self.json_output_file_path)
 
+        if self.external_genomes_txt:
+            filesnpaths.is_file_tab_delimited(self.external_genomes_txt)
 
     def process(self):
         """Primary driver function for the class"""
