@@ -598,6 +598,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-graph-json": {
+        "name": "PAN GRAPH JSON",
+        "type": "JSON",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph": {
+        "name": "PAN GRAPH",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
