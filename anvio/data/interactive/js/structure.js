@@ -169,7 +169,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
             }
 
             tableHtml += `
-                <div class="table-group-checkbox" style="display: inline-block; float: left;">
+                <div class="table-group-checkbox mr-5" style="display: inline-block; float: left;">
                     <input class="form-check-input"
                             id="${category}_${group}_${sample}"
                             type="checkbox"
