@@ -19,7 +19,8 @@ __version__ = anvio.__version__
 __authors__ = ['ahenoch']
 __requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
 __provides__ = []
-__description__ = ("An anvi'o program to compute a graph representation of pangenomes")
+__description__ = ("An anvi'o program to compute a graph representation of pangenomes. It will do its magic, and store it into your "
+                   "pan-db, or report a JSON formatted graph file, for downstream visualization and analyses with `anvi-display-pan-graph`")
 __resources__ = []
 
 
