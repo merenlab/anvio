@@ -639,7 +639,7 @@ function int_to_hex(num) {
 //ANCHOR - Function to mix two colors
 function lighter_color(color1, color2, percentage, threshold=0.25) {
 
-  console.log(color1, color2, percentage)
+  // console.log(color1, color2, percentage)
 
   percentage = threshold + (1 - threshold) * percentage
 
@@ -659,7 +659,7 @@ function lighter_color(color1, color2, percentage, threshold=0.25) {
 
   color3 = '#' + int_to_hex(color3[0]) + int_to_hex(color3[1]) + int_to_hex(color3[2]);
 
-  console.log(color3)
+  // console.log(color3)
 
   return color3
 }
@@ -1098,53 +1098,56 @@ function main () {
       main()
     })
 
-    console.log(data)
+    // console.log(data)
 
-    $("#conntr")[0].value = -1;
-    $("#condtr")[0].value = data['infos']['max_edge_length_filter']
-    $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
+    if (!$('#genomecolors').children().length) {
 
-    for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
+      $("#conntr")[0].value = -1;
+      $("#condtr")[0].value = data['infos']['max_edge_length_filter']
+      $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
 
-      var state = ''
-      if (value == 'on') {
-        state = ' checked'
-      }
+      for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 
-      $('#genomecolors').append(
-        $('<div class="col-12">').append(
-          $('<div class="row gy-0 align-items-center">').append(
-            $('<div class="col-2">').append(
-              $('<div class="form-switch">').append(
-                $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+        var state = ''
+        if (value == 'on') {
+          state = ' checked'
+        }
+
+        $('#genomecolors').append(
+          $('<div class="col-12">').append(
+            $('<div class="row gy-0 align-items-center">').append(
+              $('<div class="col-2">').append(
+                $('<div class="form-switch">').append(
+                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+                )
               )
-            )
-          ).append(
-            $('<div class="col-7">').append(
-              genome
-            )
-          ).append(
-            $('<div class="col-1">').append(
-              $('<i class="user-handle bi bi-arrows-expand"></i>')
-            )
-          ).append(
-            $('<div class="d-flex col-2">').append(
-              $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+            ).append(
+              $('<div class="col-7">').append(
+                genome
+              )
+            ).append(
+              $('<div class="col-1">').append(
+                $('<i class="user-handle bi bi-arrows-expand"></i>')
+              )
+            ).append(
+              $('<div class="d-flex col-2">').append(
+                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+              )
             )
           )
         )
-      )
 
-      $('#RightOffcanvasBodyTop').append(
-        $('<div class="col-8">').append(
-          genome
+        $('#RightOffcanvasBodyTop').append(
+          $('<div class="col-8">').append(
+            genome
+          )
+        ).append(
+          $('<div class="col-4 text-end" id="number_' + genome + '">').append(
+            0
+          )
         )
-      ).append(
-        $('<div class="col-4 text-end" id="number_' + genome + '">').append(
-          0
-        )
-      )
 
+      }
     }
 
     var body = $('#svgbox')
@@ -1826,16 +1829,17 @@ function main () {
     })
 
     var entropy = document.querySelectorAll(".entropy")
-    for (var en of entropy) {
-      tippy(en, {
-        content: '<strong>' + en.getAttribute("name") + '</strong>' + '<br />',
-        allowHTML: true,
-        arrow: true,
-        duration: 0,
-        followCursor: true,
-        theme: "light",
-      });
-    }
+    // for (var en of entropy) {
+    //   tippy(en, {
+    //     content: '<strong>' + en.getAttribute("name") + '</strong>' + '<br />',
+    //     allowHTML: true,
+    //     arrow: true,
+    //     duration: 0,
+    //     followCursor: true,
+    //     theme: "light",
+    //   });
+    // }
+    // }
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
@@ -1849,38 +1853,38 @@ function main () {
         var name = data['elements']['nodes'][el.getAttribute("id")]['name']
       }
 
-      tippy(el, {
-        content: '<strong>' + name + '</strong>' + '<br />',
-        allowHTML: true,
-        onHide(instance) {
-          if (instance.reference.id.startsWith('GCG_')){
-            var id = data["infos"]["groups"][instance.reference.id][0]
-          } else {
-            var id = instance.reference.id
-          }
-          var elements = Object.keys(data['elements']['nodes'][id]['genome'])
+      // tippy(el, {
+      //   content: '<strong>' + name + '</strong>' + '<br />',
+      //   allowHTML: true,
+      //   onHide(instance) {
+      //     if (instance.reference.id.startsWith('GCG_')){
+      //       var id = data["infos"]["groups"][instance.reference.id][0]
+      //     } else {
+      //       var id = instance.reference.id
+      //     }
+      //     var elements = Object.keys(data['elements']['nodes'][id]['genome'])
 
-          for (var element of elements) {
-            $('#number_' + element)[0].innerText = '0';
-          }
-        },
-        onShow(instance) {
-          if (instance.reference.id.startsWith('GCG_')){
-            var id = data["infos"]["groups"][instance.reference.id][0]
-          } else {
-            var id = instance.reference.id
-          }
-          var elements = Object.keys(data['elements']['nodes'][id]['genome'])
+      //     for (var element of elements) {
+      //       $('#number_' + element)[0].innerText = '0';
+      //     }
+      //   },
+      //   onShow(instance) {
+      //     if (instance.reference.id.startsWith('GCG_')){
+      //       var id = data["infos"]["groups"][instance.reference.id][0]
+      //     } else {
+      //       var id = instance.reference.id
+      //     }
+      //     var elements = Object.keys(data['elements']['nodes'][id]['genome'])
 
-          for (var element of elements) {
-            $('#number_' + element)[0].innerText = '1';
-          }
-        },
-        arrow: true,
-        duration: 0,
-        followCursor: true,
-        theme: "light",
-      });
+      //     for (var element of elements) {
+      //       $('#number_' + element)[0].innerText = '1';
+      //     }
+      //   },
+      //   arrow: true,
+      //   duration: 0,
+      //   followCursor: true,
+      //   theme: "light",
+      // });
     };
 
     var isDown = false

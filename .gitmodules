@@ -40,19 +40,9 @@
 [submodule "anvio/data/interactive/lib/pangraph/svg-pan-zoom"]
 	path = anvio/data/interactive/lib/pangraph/svg-pan-zoom
 	url = https://github.com/bumbu/svg-pan-zoom
-[submodule "anvio/data/interactive/lib/pangraph/tippyjs"]
-	path = anvio/data/interactive/lib/pangraph/tippyjs
-	url = https://github.com/atomiks/tippyjs
 [submodule "anvio/data/interactive/lib/pangraph/bootstrap"]
 	path = anvio/data/interactive/lib/pangraph/bootstrap
 	url = https://github.com/twbs/bootstrap
-[submodule "jquery"]
-	path = anvio/data/interactive/lib/pangraph/jquery
-	url = https://github.com/jquery/jquery
-[submodule "anvio/data/interactive/lib/pangraph/popper"]
-	path = anvio/data/interactive/lib/pangraph/popper
-	url = https://github.com/floating-ui/floating-ui
-	branch = v2.x
 [submodule "anvio/data/interactive/lib/pangraph/icons"]
 	path = anvio/data/interactive/lib/pangraph/icons
 	url = https://github.com/twbs/icons
