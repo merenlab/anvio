@@ -1049,7 +1049,7 @@ class Pangraph():
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db = A('pan_db')
-        self.external_genomes = A('external_genomes')
+        self.external_genomes_txt = A('external_genomes')
         self.genomes_storage_db = A('genomes_storage')
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
@@ -1063,7 +1063,6 @@ class Pangraph():
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
         self.genome_coloring = {}
-        # self.genome_size = []
 
         self.initial_graph = nx.DiGraph()
         self.pangenome_graph = nx.DiGraph()
@@ -1141,7 +1140,7 @@ class Pangraph():
         pan_db.init_gene_clusters_functions_summary_dict()
         gene_cluster_dict = pan_db.gene_callers_id_to_gene_cluster
 
-        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
+        external_genomes = pd.read_csv(self.external_genomes_txt, header=0, sep="\t", names=["name","contigs_db_path"])
         external_genomes.set_index("name", inplace=True)
 
         for genome, contigs_db_path in external_genomes.iterrows():
@@ -1326,13 +1325,9 @@ class Pangraph():
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
         for genome in self.gene_synteny_data_dict.keys():
-            # self.genome_size.append(genome)
-
             for contig in self.gene_synteny_data_dict[genome].keys():
-
                 gene_cluster_kmer = []
                 for gene_call in self.gene_synteny_data_dict[genome][contig].keys():
-
                     gene_cluster_kmer.append((self.gene_synteny_data_dict[genome][contig][gene_call]['gene_cluster_id'], self.gene_synteny_data_dict[genome][contig][gene_call]['gene_cluster_name'], {genome: {'contig':contig, 'gene_call':gene_call, **self.gene_synteny_data_dict[genome][contig][gene_call]}}))
 
                 if len(gene_cluster_kmer) > 1:
