@@ -1491,9 +1491,9 @@ class BottleApplication(Bottle):
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
 
 
-        return json.load(open('/home/ahenoch/Desktop/result.json'))
+        
     def get_pangraph_json_data(self):
-
+        return json.load(open('/home/ahenoch/Desktop/result.json'))
 
     def get_pangraph_settings(self):
         pass

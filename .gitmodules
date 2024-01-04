@@ -56,3 +56,9 @@
 [submodule "anvio/data/interactive/lib/pangraph/icons"]
 	path = anvio/data/interactive/lib/pangraph/icons
 	url = https://github.com/twbs/icons
+[submodule "anvio/data/interactive/lib/pangraph/jquery-dist"]
+	path = anvio/data/interactive/lib/pangraph/jquery-dist
+	url = https://github.com/jquery/jquery-dist
+[submodule "anvio/data/interactive/lib/pangraph/jquery-ui"]
+	path = anvio/data/interactive/lib/pangraph/jquery-ui
+	url = https://github.com/jquery/jquery-ui
