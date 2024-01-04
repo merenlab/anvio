@@ -1097,6 +1097,11 @@ class Pangraph():
         if self.external_genomes_txt:
             filesnpaths.is_file_tab_delimited(self.external_genomes_txt)
 
+            if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt, including_first_column=True):
+                raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
+                                  "in an external genomes file :/")
+
+
     def process(self):
         """Primary driver function for the class"""
 
