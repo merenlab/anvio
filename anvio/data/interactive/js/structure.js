@@ -244,7 +244,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
              </div>
              <div class="ngl-group-fullscreen">
                 <button type="button" class="btn btn-link btn-sm" onclick="stages['${group}'].toggleFullscreen();" title="Fullscreen">
-                    <span class="glyphicon glyphicon-fullscreen"></span>
+                    <span class="bi bi-fullscreen"></span>
                  </button>
              </div>
              <div id="ngl_${group}" class="ngl-inner">
@@ -253,6 +253,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         </div>`);
 
     var stage = new NGL.Stage(`ngl_${group}`);
+    stage.setSize('100%', '1000px');
     var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
 
     stage.setParameters({
