@@ -829,7 +829,7 @@ class GenbankToAnvio:
                 else:
                     direction="r"
 
-                # for accession, storing protein id if it has one, else the the locus tag, else "None"
+                # for accession, storing protein id if it has one, else the locus tag, else "None"
                 if "protein_id" in gene.qualifiers:
                     accession = gene.qualifiers["protein_id"][0]
                 elif "locus_tag" in gene.qualifiers:

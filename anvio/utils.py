@@ -3033,7 +3033,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
         raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should "
-                           "be different from the the input file path...")
+                           "be different from the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)

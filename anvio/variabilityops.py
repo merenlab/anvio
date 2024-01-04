@@ -3460,7 +3460,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
 
         if cov <= 0 or comp < 0:
             # No sense talking about synonymity relative to a stop codon or codon containing N,
-            # or deal with positions with no sensible coverage. See the the following issue
+            # or deal with positions with no sensible coverage. See the following issue
             # for the details of what made `cov <= 0` necessary: https://github.com/merenlab/anvio/issues/1948
             num_nonsyns.append(0)
             num_syns.append(0)

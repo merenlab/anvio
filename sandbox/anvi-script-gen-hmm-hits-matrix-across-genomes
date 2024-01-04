@@ -33,10 +33,10 @@ def main(args):
     hmm_source = A('hmm_source') or set([])
     output_file_path = A('output_file')
 
-    s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, set([]))
-
     if not hmm_source:
         raise ConfigError("You need to declare an HMM source for this to work :/")
+
+    s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, hmm_sources=set([hmm_source]))
 
     HMM_sources_common_to_all = s.get_HMM_sources_common_to_all_genomes()
     if not len(HMM_sources_common_to_all):

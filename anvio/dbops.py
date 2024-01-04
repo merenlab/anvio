@@ -2239,7 +2239,7 @@ class PanSuperclass(object):
                 max_combined_homogeneity_index = 1
 
         if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
-            raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected "
+            raise ConfigError("When you ask for a negative value for the minimum or maximum number of genomes a gene cluster is expected "
                               "to be found, you are pushing the boundaries of physics instead of biology. Let's focus on one field of science "
                               "at a time :(")
 
@@ -3878,6 +3878,8 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+        self.db.create_table(t.protein_abundances_table_name, t.protein_abundances_table_structure, t.protein_abundances_table_types)
+        self.db.create_table(t.metabolite_abundances_table_name, t.metabolite_abundances_table_structure, t.metabolite_abundances_table_types)
 
         return self.db
 

@@ -89,10 +89,13 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Seeking Employment
+      inst: LinkedIn
+      inst_link: https://www.linkedin.com/in/ekiefl/
+      current: true
     - title: Bioinformatician
       inst: AbCellera
       inst_link: https://www.abcellera.com/
-      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
@@ -163,6 +166,22 @@
       inst: Marine Biological Laboratory
       inst_link: http://mbl.edu/
       current: true
+
+- github: ahenoch
+  name: Alexander Henoch
+  avatar: ahenoch.jpg
+  email: alexander.henoch@hifmb.de
+  orcid: 0000-0003-3808-576X
+  bio: "I am a biologist-turned-computer scientist interested in understanding the influence of the environmental change on the genetic composition of microbial populations."
+  affiliations:
+  - title: Graduate Student
+    inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+    inst_link: https://hifmb.de
+    current: true
+  - title: Graduate Student
+    inst: Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research
+    inst_link: https://awi.de
+    current: true
 
 - github: isaacfink21
   name: Isaac Fink

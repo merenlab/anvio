@@ -413,7 +413,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
         # of place. that voice is right, but the voice doesn't know the struggles of poor souls that
         # had to resort to a solution like this. You see, we don't want to see any run messages from
-        # ContigsSuper in profiler output. But when we pass a `run=null_run` to the the class, due to
+        # ContigsSuper in profiler output. But when we pass a `run=null_run` to the class, due to
         # inheritance, it also modifies our own `self.run` with the null one, making the profilesuper
         # go all quiet. so here we basically need to re-engage our `self.run`. But then if the user
         # actually ASKED for ProfileSuper to be quiet, then we can't simply just inherit another Run
