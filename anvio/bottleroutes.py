@@ -1491,9 +1491,14 @@ class BottleApplication(Bottle):
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
 
 
-        
     def get_pangraph_json_data(self):
-        return json.load(open('/home/ahenoch/Desktop/result.json'))
+        if self.interactive.pan_graph_json_path:
+            return json.load(open(self.interactive.pan_graph_json_path))
+        else:
+            # FIXME: this is where we will get things from the pan-db, but it
+            #        is not yet implemented
+            raise ConfigError("Not implemented.")
+
 
     def get_pangraph_settings(self):
         pass
