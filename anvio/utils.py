@@ -827,8 +827,8 @@ def add_to_2D_numeric_array(x, y, a, count=1):
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    columns = get_columns_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in columns]) else True
+    columns_in_file = get_columns_of_TAB_delim_file(file_path)
+    return False if len([False for c in columns if c not in columns_in_file]) else True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
