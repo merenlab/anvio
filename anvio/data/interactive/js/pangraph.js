@@ -1100,51 +1100,54 @@ function main () {
 
     // console.log(data)
 
-    $("#conntr")[0].value = -1;
-    $("#condtr")[0].value = data['infos']['max_edge_length_filter']
-    $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
+    if (!$('#genomecolors').children().length) {
 
-    for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
+      $("#conntr")[0].value = -1;
+      $("#condtr")[0].value = data['infos']['max_edge_length_filter']
+      $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
 
-      var state = ''
-      if (value == 'on') {
-        state = ' checked'
-      }
+      for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 
-      $('#genomecolors').append(
-        $('<div class="col-12">').append(
-          $('<div class="row gy-0 align-items-center">').append(
-            $('<div class="col-2">').append(
-              $('<div class="form-switch">').append(
-                $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+        var state = ''
+        if (value == 'on') {
+          state = ' checked'
+        }
+
+        $('#genomecolors').append(
+          $('<div class="col-12">').append(
+            $('<div class="row gy-0 align-items-center">').append(
+              $('<div class="col-2">').append(
+                $('<div class="form-switch">').append(
+                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+                )
               )
-            )
-          ).append(
-            $('<div class="col-7">').append(
-              genome
-            )
-          ).append(
-            $('<div class="col-1">').append(
-              $('<i class="user-handle bi bi-arrows-expand"></i>')
-            )
-          ).append(
-            $('<div class="d-flex col-2">').append(
-              $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+            ).append(
+              $('<div class="col-7">').append(
+                genome
+              )
+            ).append(
+              $('<div class="col-1">').append(
+                $('<i class="user-handle bi bi-arrows-expand"></i>')
+              )
+            ).append(
+              $('<div class="d-flex col-2">').append(
+                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+              )
             )
           )
         )
-      )
 
-      $('#RightOffcanvasBodyTop').append(
-        $('<div class="col-8">').append(
-          genome
+        $('#RightOffcanvasBodyTop').append(
+          $('<div class="col-8">').append(
+            genome
+          )
+        ).append(
+          $('<div class="col-4 text-end" id="number_' + genome + '">').append(
+            0
+          )
         )
-      ).append(
-        $('<div class="col-4 text-end" id="number_' + genome + '">').append(
-          0
-        )
-      )
 
+      }
     }
 
     var body = $('#svgbox')
