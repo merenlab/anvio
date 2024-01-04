@@ -1069,7 +1069,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-        
+
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
@@ -1485,7 +1485,7 @@ class BottleApplication(Bottle):
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
+
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
