@@ -129,7 +129,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     $('#sample_groups').empty();
     $('#sample_groups').attr('created-for-category', category);
 
-    tableHtml = '<table class="table table-condensed"><tr><td><label class="col-md-4 settings-label">Groups</label></td><td><label class="col-md-4 settings-label">Samples</label></td></tr>';
+    tableHtml = '<table class="table table-sm table-responsive"><tr><td><label class="col-md-4 settings-label">Groups</label></td><td><label class="col-md-4 settings-label">Samples</label></td></tr>';
 
     let counter=0;
     for (let group in sample_groups[category]) {
@@ -412,7 +412,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
                     <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
                 `
-                if (residue_info[residue].hasOwnProperty('sec_struct')) {tooltip_HTML_body += `<tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>`}
+                if (residue_info[residue].hasOwnProperty('sec_struct')) {tooltip_HTML_body += `<tr><td>Secondary Structure</td><td class="d-block">${residue_info[residue]['sec_struct']}</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('rel_solvent_acc')) {tooltip_HTML_body += `<tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('phi')) {tooltip_HTML_body += `<tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('contact_numbers')) {tooltip_HTML_body += `<tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>`}
@@ -736,7 +736,7 @@ function get_model_info_table_html(model_data) {
     /* TEMPLATES */
     geneModelHtml += '<div class="widget">'
     geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
-    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+    geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
     var header = '<tr>';
     for (const col_name of Object.keys(templates[0])) {
@@ -771,7 +771,7 @@ function get_model_info_table_html(model_data) {
     /* MODELS */
     geneModelHtml += '<div class="widget">'
     geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
-    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+    geneModelHtml += '<table class="table table-sm table-responsive" id="model_info_table"><tbody>';
 
     var header = '<tr>';
     var row = '<tr>';
@@ -948,7 +948,8 @@ function draw_variability() {
                         }
                     }
                     else
-                    {
+                    {   
+                        debugger;
                         spacefill_options['color'] = color_legend[engine][column][column_value];
                     }
                 } else {
@@ -1143,12 +1144,18 @@ function create_ui() {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
+                            <div class="ml-3 d-flex">
                             ${item['choices'].map((choice) => { return `
-                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
-                                <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
-                            <br />
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
+                                <div>
+                                    <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
+                                    <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
+                                </div>    
+                                <br />
+                                <div>
+                                    <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
+                                    <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
+                                </div>
+                            </div>
                         </div>
                     `);
 
@@ -1409,7 +1416,7 @@ function get_gene_functions_table_html_for_structure(gene){
         return functions_table_html
     }
 
-    functions_table_html  = '<table class="table table-striped">';
+    functions_table_html  = '<table class="table table-striped table-responsive">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
     functions_table_html += '<th>Annotation</th></thead>';
