@@ -43,7 +43,7 @@
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_filters" aria-controls="filters" role="tab" data-toggle="tab"><span class="settings-header"><h4>Filters</h4></span></a></li>
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_views" aria-controls="views" role="tab" data-toggle="tab"><span class="settings-header"><h4>Views</h4></span></a></li>
                   <li role="presentation" class="nav-item"><a class="nav-link" href="#tab_output" aria-controls="output" role="tab" data-toggle="tab"><span class="settings-header"><h4>Output</h4></span></a></li>
-                  <li role="presentation" class="nav-item"><button type="button" class="btn btn-primary nav-link" onclick="create_ngl_views(fetch_variability=true);" style="display: inline-block; margin-top: 16px; float: right"><label class="settings-label" for="scale">Redraw</label></button></li>
+                  <li role="presentation" class="nav-item"><button type="button" class="mt-3 btn btn-primary nav-link" onclick="create_ngl_views(fetch_variability=true);">Redraw</button></li>
                 </ul>
                 <div class="tab-content">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade show active">
@@ -98,8 +98,8 @@
                         </div>
                         <span class="settings-header"><h4>Session</h4></span>
                         <div class="btn-group" role="group" style="margin-bottom: 0px; width: 100%;">
-                        <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                        <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                        <button type="button" class="btn btn-outline-primary btn-sm mr-1" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
                     </div>
                     </div>
                     <div id="tab_filters" role="tabpanel" class="tab-pane fade">
@@ -534,7 +534,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
-                        <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                        <button class="btn btn-primary" data-dismiss="modal" type="button">Close</button>
                     </div>
                 </div>
             </div>
@@ -564,7 +564,7 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
-                        <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                        <button class="btn btn-primary" data-dismiss="modal" type="button">Close</button>
                     </div>
                 </div>
             </div>

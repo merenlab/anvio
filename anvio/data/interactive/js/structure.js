@@ -1157,8 +1157,8 @@ function create_ui() {
                                 </div>    
                                 <br />
                                 <div>
-                                    <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
-                                    <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
+                                    <button class="btn btn-xs btn-primary" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
+                                    <button class="btn btn-xs btn-outline-danger" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
                                 </div>
                             </div>
                         </div>
