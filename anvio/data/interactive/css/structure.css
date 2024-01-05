@@ -198,4 +198,10 @@ body {
     height: 100%;
     width: 66%;
     position: fixed;
+    overflow-x: scroll;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-content: space-around;
+    text-align: center;
 }

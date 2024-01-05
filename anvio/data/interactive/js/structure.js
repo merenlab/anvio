@@ -158,7 +158,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
                         data-group="${group}"
                         value="${group}"
                         ${ group_checked ? `checked="checked"` : `` }>
-                    <label class="form-check-label" for="${category}_${group}">${group}</label>
+                    <label class="form-check-label mr-3" for="${category}_${group}">${group}</label>
                 </td>
                 <td>`;
 
@@ -236,7 +236,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     var defer = $.Deferred();
 
     $('#ngl-container').append(`
-        <div id="ngl_${group}_wrapper"
+        <div id="ngl_${group}_wrapper d-flex"
              class="col-md-${parseInt(12 / num_columns)} nopadding"
              style="height: ${parseFloat(100 / num_rows)}%; ">
              <div class="ngl-group-title">
