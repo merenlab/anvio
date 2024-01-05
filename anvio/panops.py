@@ -10,6 +10,7 @@ import os
 import json
 import math
 import copy
+import time
 import argparse
 import pandas as pd
 import networkx as nx
@@ -1199,6 +1200,7 @@ class Pangraph():
                     genome_gc_order = [(self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"], gene_call) for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
 
                     for i in range(0, len(genome_gc_order)):
+
                         start = (i - self.k) if (i - self.k) >= 0 else 0
                         stop = (i + self.k + 1) if (i + self.k + 1) <= len(genome_gc_order) else len(genome_gc_order)
                         entry = [item[0] for item in genome_gc_order[start:stop]]
@@ -1207,14 +1209,21 @@ class Pangraph():
 
                         if len(entry) == 1 + (2 * self.k):
                             gc_k = tuple(entry)
+                        elif start == 0 and stop == len(genome_gc_order):
+                            gc_k = tuple([""] * (self.k - i) + entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
                         elif start == 0:
-                            gc_k = tuple([""] * (1 + 2 * self.k - len(entry)) + entry)
+                            gc_k = tuple([""] * (self.k - i) + entry)
+                        elif stop == len(genome_gc_order):
+                            gc_k = tuple(entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
-                            gc_k = tuple(entry + [""] * (1 + 2 * self.k - len(entry)))
+                            print("Problem!")
+
+                        if len(gc_k) != 1 + (2 * self.k):
+                            print("Problem^2!")
 
                         gc = gc_k[int(len(gc_k) / 2)]
                         if gc not in solved:
-
+                            
                             if gc_k not in self.genome_gc_occurence.keys() and gc_k[::-1] not in self.genome_gc_occurence.keys():
                                 self.genome_gc_occurence[gc_k] = {genome: 1}
 
@@ -1232,11 +1241,15 @@ class Pangraph():
 
             for gc, genome_gc_frequency in self.genome_gc_occurence.items():
                 if max(genome_gc_frequency.values()) > 1:
+
+                    # print(gc, "\n")
+                    # print(genome_gc_frequency, "\n")   
+
                     unresolved = True
                     drop.add(gc[int(len(gc)/2)])
 
             self.run.info_single(f"Iteration #{str(self.k)}: {pp(len(self.genome_gc_occurence))} GCs containing {len(drop)} paralogs")
-
+            
             if self.k == 0:
                 self.paralog_dict = copy.deepcopy(self.genome_gc_occurence)
 
@@ -1261,12 +1274,16 @@ class Pangraph():
                     gene_call = genome_gc_order[i][1]
                     name = genome_gc_order[i][0]
 
-                    if len(entry) == 1+2*self.k:
+                    if len(entry) == 1 + (2 * self.k):
                         gc_k = tuple(entry)
+                    elif start == 0 and stop == len(genome_gc_order):
+                        gc_k = tuple([""] * (self.k - i) + entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
                     elif start == 0:
-                        gc_k = tuple([""] * (1+2*self.k - len(entry)) + entry)
+                        gc_k = tuple([""] * (self.k - i) + entry)
+                    elif stop == len(genome_gc_order):
+                        gc_k = tuple(entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
                     else:
-                        gc_k = tuple(entry + [""] * (1+2*self.k - len(entry)))
+                        print("Problem!")
 
                     for j in range(0, self.k+1):
 
