@@ -193,3 +193,9 @@ body {
     font-size: 10px;
     color: rgb(230, 230, 230) !important;
 }
+
+#ngl-container {
+    height: 100%;
+    width: 66%;
+    position: fixed;
+}
