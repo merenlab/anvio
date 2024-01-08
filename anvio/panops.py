@@ -1597,7 +1597,7 @@ class Pangraph():
         edmonds_graph_remaining_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0 and x != edmonds_graph_end]
 
         self.run.info_single(f"Current iteration number of leaves {len(edmonds_graph_remaining_leaves)}")
-        self.run.info_single(f"Current iteration acyclic nature {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
+        self.run.info_single(f"Current iteration acyclic nature is {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
 
         for curr_node in edmonds_graph_open:
             predecessor = edmonds_graph_predecessors[curr_node]
@@ -1608,7 +1608,11 @@ class Pangraph():
         edmonds_graph_remaining_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0 and x != edmonds_graph_end]
 
         self.run.info_single(f"Current iteration number of leaves {len(edmonds_graph_remaining_leaves)}")
-        self.run.info_single(f"Current iteration acyclic nature {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
+        self.run.info_single(f"Current iteration acyclic nature is {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
+
+        if not nx.is_directed_acyclic_graph(self.edmonds_graph):
+            print('Sanity Error.')
+            exit()
 
         for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
             nodes = {}
@@ -1673,7 +1677,7 @@ class Pangraph():
 
         self.progress.end()
 
-        self.run.info_single(f"Removed {j} unsolvable nodes.")
+        self.run.info_single(f"Removed {j} unsolvable edges.")
         self.run.info_single("Done.")
 
     # ANCHOR Longest path calculation
