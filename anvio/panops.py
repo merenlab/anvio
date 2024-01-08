@@ -1190,6 +1190,9 @@ class Pangraph():
         unresolved = True
         solved = set()
 
+        genome_gc_order_values = {}
+        genome_gc_order_placeholder = {}
+
         while unresolved:
 
             unresolved = False
@@ -1197,34 +1200,52 @@ class Pangraph():
 
             for genome in self.gene_synteny_data_dict.keys():
                 for contig in self.gene_synteny_data_dict[genome].keys():
-                    genome_gc_order = [(self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"], gene_call) for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
+                    genome_gc_order = [self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"] for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
+
+                    if self.k == 0:
+                        if genome not in genome_gc_order_values:
+                            genome_gc_order_values[genome] = {contig: genome_gc_order}
+                            genome_gc_order_placeholder[genome] = {contig: ''}
+                        else:
+                            items = list(genome_gc_order_values[genome].values())
+                            times = items.count(genome_gc_order)
+                            if times == 0:
+                                genome_gc_order_values[genome][contig] = genome_gc_order
+                                genome_gc_order_placeholder[genome][contig] = ''
+                            else:
+                                genome_gc_order_values[genome][contig] = genome_gc_order
+                                genome_gc_order_placeholder[genome][contig] = chr(ord('a')+times-1)
+
+                    place = genome_gc_order_placeholder[genome][contig]
 
                     for i in range(0, len(genome_gc_order)):
 
                         start = (i - self.k) if (i - self.k) >= 0 else 0
                         stop = (i + self.k + 1) if (i + self.k + 1) <= len(genome_gc_order) else len(genome_gc_order)
-                        entry = [item[0] for item in genome_gc_order[start:stop]]
-                        gene_call = genome_gc_order[i][1]
-                        name = genome_gc_order[i][0]
+                        entry = genome_gc_order[start:stop]
+                        # gene_call = genome_gc_order[i][1]
+                        # name = genome_gc_order[i][0]
 
                         if len(entry) == 1 + (2 * self.k):
                             gc_k = tuple(entry)
                         elif start == 0 and stop == len(genome_gc_order):
-                            gc_k = tuple([""] * (self.k - i) + entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
+                            gc_k = tuple([place] * (self.k - i) + entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                         elif start == 0:
-                            gc_k = tuple([""] * (self.k - i) + entry)
+                            gc_k = tuple([place] * (self.k - i) + entry)
                         elif stop == len(genome_gc_order):
-                            gc_k = tuple(entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
+                            gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
-                            print("Problem!")
+                            print("Sanity Error.")
+                            exit()
 
                         if len(gc_k) != 1 + (2 * self.k):
-                            print("Problem^2!")
+                            print("Sanity Error.")
+                            exit()
 
                         gc = gc_k[int(len(gc_k) / 2)]
                         if gc not in solved:
                             
-                            if gc_k not in self.genome_gc_occurence.keys() and gc_k[::-1] not in self.genome_gc_occurence.keys():
+                            if gc_k not in self.genome_gc_occurence.keys():
                                 self.genome_gc_occurence[gc_k] = {genome: 1}
 
                             elif gc_k in self.genome_gc_occurence.keys():
@@ -1234,16 +1255,15 @@ class Pangraph():
                                     self.genome_gc_occurence[gc_k][genome] += 1
 
                             else:
-                                if genome not in self.genome_gc_occurence[gc_k[::-1]].keys():
-                                    self.genome_gc_occurence[gc_k[::-1]][genome] = 1
-                                else:
-                                    self.genome_gc_occurence[gc_k[::-1]][genome] += 1
+                                # if genome not in self.genome_gc_occurence[gc_k[::-1]].keys():
+                                #     self.genome_gc_occurence[gc_k[::-1]][genome] = 1
+                                # else:
+                                #     self.genome_gc_occurence[gc_k[::-1]][genome] += 1
+                                print('Sanity Error.')
+                                exit()
 
             for gc, genome_gc_frequency in self.genome_gc_occurence.items():
                 if max(genome_gc_frequency.values()) > 1:
-
-                    # print(gc, "\n")
-                    # print(genome_gc_frequency, "\n")   
 
                     unresolved = True
                     drop.add(gc[int(len(gc)/2)])
@@ -1262,10 +1282,13 @@ class Pangraph():
                 solved = set([gc[int(len(gc)/2)] for gc in self.genome_gc_occurence.keys()])
                 self.k += 1
 
+        syn_calls = 0
         for genome in self.gene_synteny_data_dict.keys():
 
             for contig in self.gene_synteny_data_dict[genome].keys():
                 genome_gc_order = [(self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"], gene_call) for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
+
+                place = genome_gc_order_placeholder[genome][contig]
 
                 for i in range(0, len(genome_gc_order)):
                     start = i-self.k if i-self.k >= 0 else 0
@@ -1277,13 +1300,13 @@ class Pangraph():
                     if len(entry) == 1 + (2 * self.k):
                         gc_k = tuple(entry)
                     elif start == 0 and stop == len(genome_gc_order):
-                        gc_k = tuple([""] * (self.k - i) + entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
+                        gc_k = tuple([place] * (self.k - i) + entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                     elif start == 0:
-                        gc_k = tuple([""] * (self.k - i) + entry)
+                        gc_k = tuple([place] * (self.k - i) + entry)
                     elif stop == len(genome_gc_order):
-                        gc_k = tuple(entry + [""] * ((i + self.k + 1) - len(genome_gc_order)))
-                    else:
-                        print("Problem!")
+                        gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
+                    # else:
+                    #     print("Problem!")
 
                     for j in range(0, self.k+1):
 
@@ -1293,19 +1316,27 @@ class Pangraph():
 
                             self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group)
                             self.gene_synteny_data_dict[genome][contig][gene_call]["max_paralog"] = self.paralog_dict[tuple([name])][genome]
+                            syn_calls += 1
                             break
 
-                        elif gc_group[::-1] in self.genome_gc_occurence.keys():
+                        # elif gc_group[::-1] in self.genome_gc_occurence.keys():
 
-                            self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group[::-1])
-                            self.gene_synteny_data_dict[genome][contig][gene_call]["max_paralog"] = self.paralog_dict[tuple([name])][genome]
-                            break
+                        #     self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group[::-1])
+                        #     self.gene_synteny_data_dict[genome][contig][gene_call]["max_paralog"] = self.paralog_dict[tuple([name])][genome]
+                        #     break
 
                         else:
                             pass
 
-        self.run.info_single("Done")
+        num_calls = 0
+        for _, value in self.genome_gc_occurence.items():            
+            num_calls += sum(value.values()) 
 
+        if num_calls != syn_calls:
+            print("Sanity Error.")
+            exit()
+
+        self.run.info_single("Done")
 
     # ANCHOR Node adding
     def add_node_to_graph(self, gene_cluster, name, info):
@@ -1367,6 +1398,8 @@ class Pangraph():
                         self.add_node_to_graph(gene_cluster_pair[1][0], gene_cluster_pair[1][1], gene_cluster_pair[1][2])
                         self.add_edge_to_graph(gene_cluster_pair[0][0], gene_cluster_pair[1][0], gene_cluster_pair[1][2])
 
+                else:
+                    self.add_node_to_graph(gene_cluster_kmer[0][0], gene_cluster_kmer[0][1], gene_cluster_kmer[0][2])
 
         self.run.info_single(f"Adding {pp(len(self.initial_graph.nodes()))} nodes and {pp(len(self.initial_graph.edges()))} edges to G")
         connectivity = nx.is_connected(self.initial_graph.to_undirected())
