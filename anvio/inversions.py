@@ -938,18 +938,20 @@ class Inversions:
 
             for inversion_id in self.summary['inversions']:
                 for sample in self.summary['inversions'][inversion_id]['activity']:
-                    for inversion_id, activity in sum_freq.items():
-                        for oligo_primer, all_oligo in activity.items():
-                            ref_id = all_oligo['reference']
-                            previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width']
-                            for i, x in all_oligo['non_reference']:
-                                i_start = previous_width
-                                if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
-                                    continue
-                                i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
-                                previous_width = i_width
-                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
-                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
+                    for oligo_primer, all_oligo in sum_freq[inversion_id].items():
+                        # check if oligo primer is found in the current sample
+                        if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
+                            continue
+                        ref_id = all_oligo['reference']
+                        previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width'];
+                        for i, x in all_oligo['non_reference']:
+                            i_start = previous_width
+                            if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
+                                continue
+                            i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
+                            previous_width = i_width
+                            self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
+                            self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
 
         # add motif info
         if self.skip_search_for_motifs:
