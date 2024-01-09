@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
+import anvio
 import anvio.terminal as terminal
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,4 +28,4 @@ class DGR_Finder:
         self.args = args
         self.run = run
         self.progress = progress
-        
+
