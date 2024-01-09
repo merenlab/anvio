@@ -22,7 +22,7 @@ run = Run()
 
 @time_program
 def main(args):
-    pass
+    D = dgrs.DGR_Finder(args)
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
@@ -30,11 +30,14 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('INPUT DATA', "Essentially a sequence file and nothing more.")
 
-    groupA.add_argument("-i", "--input_file", required=True, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
+    groupA.add_argument("-i", "--input-file", required=True, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
     
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
-    groupB.add_argument("-s", "--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=50)
-    groupB.add_argument("-ws","--word_size", help="BLASTn word size parameter", type=str, default=8)
+    groupB.add_argument("-s", "--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
+    groupB.add_argument("-ws","--word-size", help="BLASTn word size parameter", type=str, default=8)
+    groupC = parser.add_argument_group('MISCELLANEOUS', "Other options for the fine tuning of this program")
+    groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true')
+    groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true')
 
     args = parser.get_args(parser)
 
