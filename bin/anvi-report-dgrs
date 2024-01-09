@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import anvio
+
+import anvio.dgrs as dgrs
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program, Run
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ["katysloz"]
+__requires__ = []
+__provides__ = []
+__description__ = "A program designed to find Diversity Generating Retroelements based on nucleotide similarity"
+
+run = Run()
+
+@time_program
+def main(args):
+    pass
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+    
