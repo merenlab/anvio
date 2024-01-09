@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
+import sys
 
 import anvio
-
 import anvio.dgrs as dgrs
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -26,4 +26,24 @@ def main(args):
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+    groupA = parser.add_argument_group('INPUT DATA', "Essentially a sequence file and nothing more.")
+
+    groupA.add_argument("-i", "--input_file", required=True, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
     
+    groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
+    groupB.add_argument("-s", "--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=50)
+    groupB.add_argument("-ws","--word_size", help="BLASTn word size parameter", type=str, default=8)
+
+    args = parser.get_args(parser)
+
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
