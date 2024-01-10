@@ -4801,23 +4801,38 @@ class ModelSEEDDatabase:
         sha_path = os.path.join(modelseed_dir, 'sha.txt')
         if not os.path.isfile(sha_path):
             raise ConfigError(
-                f"No required file named 'sha.txt' was found in the ModelSEED directory, '{modelseed_dir}'."
+                f"""\
+                No required file named 'sha.txt' was found in the ModelSEED directory,\
+                '{modelseed_dir}'.\
+                """
             )
         reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
         if not os.path.isfile(reactions_path):
             raise ConfigError(
-                f"No required file named 'reactions.tsv' was found in the ModelSEED directory, '{modelseed_dir}'."
+                f"""\
+                No required file named 'reactions.tsv' was found in the ModelSEED directory,\
+                '{modelseed_dir}'.\
+                """
             )
         compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
         if not os.path.isfile(compounds_path):
             raise ConfigError(
-                f"No required file named 'compounds.tsv' was found in the ModelSEED directory, '{modelseed_dir}'."
+                f"""\
+                No required file named 'compounds.tsv' was found in the ModelSEED directory,\
+                '{modelseed_dir}'.\
+                """
             )
 
         with open(sha_path) as f:
             self.sha = f.read().strip()
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
-        self.compounds_table: pd.DataFrame = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
+        self.compounds_table: pd.DataFrame = pd.read_csv(
+            compounds_path,
+            sep='\t',
+            header=0,
+            index_col='id',
+            low_memory=False
+        )
 
         # Facilitate lookup of reaction data by KEGG REACTION ID via a reorganized reactions table.
         # Remove reactions without KEGG aliases.
@@ -4896,8 +4911,10 @@ class ModelSEEDDatabase:
                 shutil.rmtree(modelseed_dir)
             else:
                 raise ConfigError(
-                    f"The ModelSEED database directory, '{modelseed_dir}', already exists. 'reset' "
-                    "can be used to remove the database at this location and set it up again."
+                    f"""\
+                    The ModelSEED database directory, '{modelseed_dir}', already exists. 'reset'\
+                    can be used to remove the database at this location and set it up again.\
+                    """
                 )
         os.mkdir(modelseed_dir)
 
@@ -4913,8 +4930,11 @@ class ModelSEEDDatabase:
                     num_tries += 1
                     if num_tries > max_num_tries:
                         raise ConnectionResetError(
-                            f"The connection was reset by the peer more than {max_num_tries} times, "
-                            "the maximum number of attempts. Try setting up the ModelSEED database again."
+                            f"""\
+                            The connection was reset by the peer more than {max_num_tries} times,\
+                            the maximum number of attempts. Try setting up the ModelSEED database\
+                            again.\
+                            """
                         )
                     time.sleep(wait_secs)
         # The commit SHA taken from the following file is stored in a text file to track the version
@@ -4932,8 +4952,12 @@ class ModelSEEDDatabase:
         progress.update("Extracting")
         with zipfile.ZipFile(zip_path, 'r') as f:
             f.extractall(modelseed_dir)
-        reactions_path = os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'reactions.tsv')
-        compounds_path = os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'compounds.tsv')
+        reactions_path = os.path.join(
+            modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'reactions.tsv'
+        )
+        compounds_path = os.path.join(
+            modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'compounds.tsv'
+        )
         shutil.move(reactions_path, modelseed_dir)
         shutil.move(compounds_path, modelseed_dir)
         reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
@@ -5099,8 +5123,10 @@ class Constructor:
             )
         else:
             raise ConfigError(
-                "A reaction network must be loaded from a database source. "
-                "Either a contigs database or a genomes storage database and pan database are required."
+                f"""\
+                A reaction network must be loaded from a database source. Either a contigs database\
+                or a genomes storage database and pan database are required.\
+                """
             )
         return network
 
@@ -7151,8 +7177,14 @@ class Constructor:
         pd.DataFrame
             The table of reactions data to be stored in the contigs or pan database.
         """
-        assert tables.gene_function_reactions_table_structure == tables.pan_gene_cluster_function_reactions_table_structure
-        assert tables.gene_function_reactions_table_types == tables.pan_gene_cluster_function_reactions_table_types
+        assert (
+            tables.gene_function_reactions_table_structure ==
+            tables.pan_gene_cluster_function_reactions_table_structure
+        )
+        assert (
+            tables.gene_function_reactions_table_types ==
+            tables.pan_gene_cluster_function_reactions_table_types
+        )
 
         # Transfer data from reaction objects to dictionaries mapping to table entries.
         reactions_data: Dict[str, Dict] = {}
@@ -7160,17 +7192,23 @@ class Constructor:
             reaction_data = {}
             reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
             reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
-            reaction_data['metabolite_modelseed_ids'] = ', '.join([c.modelseed_id for c in reaction.compounds])
+            reaction_data['metabolite_modelseed_ids'] = ', '.join(
+                [c.modelseed_id for c in reaction.compounds]
+            )
             reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
             reaction_data['compartments'] = ', '.join(reaction.compartments)
             reaction_data['reversibility'] = reaction.reversibility
             # Record KEGG REACTION IDs and EC numbers that are aliases of ModelSEED reactions but
             # are *NOT* associated with gene KO annotations; associated aliases are recorded later.
             reaction_data['other_kegg_reaction_ids'] = ', '.join(
-                set(reaction.kegg_aliases).difference(set(network.modelseed_kegg_aliases[modelseed_reaction_id]))
+                set(reaction.kegg_aliases).difference(
+                    set(network.modelseed_kegg_aliases[modelseed_reaction_id])
+                )
             )
             reaction_data['other_ec_numbers'] = ', '.join(
-                set(reaction.ec_number_aliases).difference(set(network.modelseed_ec_number_aliases[modelseed_reaction_id]))
+                set(reaction.ec_number_aliases).difference(
+                    set(network.modelseed_ec_number_aliases[modelseed_reaction_id])
+                )
             )
             reactions_data[modelseed_reaction_id] = reaction_data
 
@@ -7230,7 +7268,9 @@ class Constructor:
                 entry.append(f'{ec_number}: ({", ".join(sorted(ko_ids))})')
             reaction_data['ko_ec_number_source'] = '; '.join(sorted(entry))
 
-        reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
+        reactions_table = pd.DataFrame.from_dict(
+            reactions_data, orient='index'
+        ).reset_index(drop=True).sort_values('modelseed_reaction_id')
         reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
         return reactions_table
 
@@ -7250,15 +7290,23 @@ class Constructor:
         pd.DataFrame
             The table of metabolites data to be stored in the contigs or pan database.
         """
-        assert tables.gene_function_metabolites_table_structure == tables.pan_gene_cluster_function_metabolites_table_structure
-        assert tables.gene_function_metabolites_table_types == tables.pan_gene_cluster_function_metabolites_table_types
+        assert (
+            tables.gene_function_metabolites_table_structure ==
+            tables.pan_gene_cluster_function_metabolites_table_structure
+        )
+        assert (
+            tables.gene_function_metabolites_table_types ==
+            tables.pan_gene_cluster_function_metabolites_table_types
+        )
 
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
         metabolites_data = {}
         for modelseed_compound_id, compound in network.metabolites.items():
             metabolite_data = {}
             metabolite_data['modelseed_compound_id'] = modelseed_compound_id
-            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
+        metabolites_table = pd.DataFrame.from_dict(
+            metabolites_data, orient='index'
+        ).reset_index(drop=True).sort_values('modelseed_compound_id')
             metabolite_data['kegg_aliases'] = ', '.join(compound.kegg_aliases)
             metabolite_data['formula'] = compound.formula
             metabolite_data['charge'] = compound.charge
