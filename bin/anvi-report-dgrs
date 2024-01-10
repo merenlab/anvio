@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 import sys
+import argparse
 
 import anvio
 import anvio.dgrs as dgrs
@@ -27,6 +28,28 @@ def main(args):
     mismatch_hits = D.filter_blastn_for_none_identical(root)
     
 #call function here for filtering hits of blast from root 
+def float_range(mini,maxi):
+    """Return function handle of an argument type function for 
+       ArgumentParser checking a float range: mini <= arg <= maxi
+         mini - minimum acceptable argument
+         maxi - maximum acceptable argument"""
+
+    # Define the function with default arguments
+    def float_range_checker(arg):
+        """New Type function for argparse - a float within predefined range."""
+
+        try:
+            f = float(arg)
+        except ValueError:    
+            raise argparse.ArgumentTypeError("must be a decimal number")
+        if f < mini or f > maxi:
+            raise argparse.ArgumentTypeError("must be in range [" + str(mini) + "-" + str(maxi)+"]")
+        return f
+
+    # Return function handle to checking function
+    return float_range_checker
+
+my_float_range= float_range(0.5,1.0)
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
@@ -42,6 +65,9 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('MISCELLANEOUS', "Other options for the fine tuning of this program")
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
+    groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
+    groupD.add_argument("-pm","--percentage_mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.7)
+    groupD.add_argument("-nm","--number_of_mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
 
     args = parser.get_args(parser)
 
