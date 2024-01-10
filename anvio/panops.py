@@ -1070,6 +1070,9 @@ class Pangraph():
         self.edmonds_graph = nx.DiGraph()
         self.ancest = nx.DiGraph()
 
+        self.fusion_events = 0
+        self.removed_edges = 0
+
         self.leaf_path = []
         self.grouping = {}
 
@@ -1448,6 +1451,14 @@ class Pangraph():
         self.run.info_single(f"Removing {pp(len(self.pangenome_graph.edges()) - len(self.edmonds_graph.edges()))} edges from G to create M")
         self.run.info_single("Done")
 
+    def find_next_branching_point(self, current):
+        if current != 'start':
+            pred = list(self.edmonds_graph.predecessors(current))[0]
+            pred_successors = list(self.edmonds_graph.successors(pred))
+            if len(pred_successors) > 1:
+                return(pred)
+            else:
+                self.find_next_branching_point(pred)
 
     def run_tree_to_flow_network_algorithm(self):
 
@@ -1471,11 +1482,10 @@ class Pangraph():
             node_path = nx.shortest_path(G=self.edmonds_graph, source='start', target=node, weight='weight')
             edmonds_graph_paths[node] = node_path
 
-            # WRONG?
+            # TODO Maybe use mean distance by the number of nodes instead:
             # edmonds_graph_distances[node] = nx.path_weight(G=self.edmonds_graph, path=node_path, weight='weight') / len(node_path)
             edmonds_graph_distances[node] = nx.path_weight(G=self.edmonds_graph, path=node_path, weight='weight')
             edmonds_graph_predecessors[node] = list(self.edmonds_graph.predecessors(node))[0]
-
             pangenome_graph_successors[node] = list(self.pangenome_graph.successors(node))
             pangenome_graph_predecessors[node] = list(self.pangenome_graph.predecessors(node))
 
@@ -1509,46 +1519,34 @@ class Pangraph():
 
         edmonds_graph_closed = set([edmonds_graph_end])
         edmonds_graph_open = set()
-        edmonds_graph_all = set(edmonds_graph_nodes)
-
         current_node = edmonds_graph_end
 
-        while edmonds_graph_closed.union(edmonds_graph_open) != edmonds_graph_all:
-
+        while True:
             current_root = edmonds_graph_predecessors[current_node]
-
             successors_branch_leaves = []
-            blocked_branch_nodes = []
-            # blocked_branch_paths = []
-
             # TODO Decide by connectability of the leaves instead of weight to pick the first leave to connect
             for successors in self.edmonds_graph.successors(current_root):
                 if successors not in edmonds_graph_closed and successors not in edmonds_graph_open and successors != current_node:
                     successors_branch = self.edmonds_graph.subgraph(nx.dfs_tree(self.edmonds_graph, source=successors, depth_limit=None).nodes())
                     successors_branch_leaves += [x for x in successors_branch.nodes() if successors_branch.out_degree(x) == 0]
 
-                elif successors in edmonds_graph_open:
-                    blocked_branch = self.edmonds_graph.subgraph(nx.dfs_tree(self.edmonds_graph, source=successors, depth_limit=None).nodes())
-                    # blocked_branch_paths += [nx.shortest_path(G=self.edmonds_graph, source=current_root, target=x, weight='weight') for x in blocked_branch.nodes() if blocked_branch.out_degree(x) == 0]
-                    blocked_branch_nodes += blocked_branch
-
             if not successors_branch_leaves:
                 current_node = current_root
             else:
                 current_node = max([(edmonds_graph_distances[leaf], leaf) for leaf in successors_branch_leaves])[1]
 
+            if current_node == 'start':
+                break
+
             connected = False
             for node_successor in pangenome_graph_successors[current_node]:
-                if (current_node, node_successor) in edmonds_graph_removed_edges and node_successor not in blocked_branch_nodes:
-                    pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(current_node, node_successor)
+                if (current_node, node_successor) in edmonds_graph_removed_edges:
 
                     if node_successor in edmonds_graph_closed:
+                        pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(current_node, node_successor)
                         edmonds_graph_added_edges.append((current_node, node_successor, pangenome_graph_edge_data))
                         connected = True
-
-                    # elif node_successor in edmonds_graph_open:
-                    #     edmonds_graph_added_edges.append((current_node, node_successor, pangenome_graph_edge_data))
-
+                    
                 elif (current_node, node_successor) in edmonds_graph_edges and node_successor in edmonds_graph_closed:
                     connected = True
 
@@ -1563,35 +1561,54 @@ class Pangraph():
                 connected = True
 
             if connected == True:
+                to_be_closed = set()
                 edmonds_graph_closed.add(current_node)
+
                 for node_predecessor in pangenome_graph_predecessors[current_node]:
-                    if node_predecessor not in blocked_branch_nodes:
-                        if (node_predecessor, current_node) in edmonds_graph_removed_edges:
-                            if node_predecessor in edmonds_graph_open:
+                    if (node_predecessor, current_node) in edmonds_graph_removed_edges:
+
+                        if node_predecessor in edmonds_graph_open:
+
+                            lowest_common_ancestor = nx.lowest_common_ancestor(self.edmonds_graph, node_predecessor, current_node)
+                            first_node_path = nx.shortest_path(self.edmonds_graph, lowest_common_ancestor, node_predecessor, weight="weight")
+                            first_node = first_node_path[1]
+
+                            # if current_node == 'GC_00000766':
+                            #     print("\n", lowest_common_ancestor, "\n", node_predecessor, "\n", current_node, "\n", first_node_path, "\n")
+                            #     if first_node in edmonds_graph_closed:
+                            #         print('closed')
+                            #     elif first_node in edmonds_graph_open:
+                            #         print('open')
+                            #     else:
+                            #         print('bla')
+
+                            if lowest_common_ancestor == current_node:
+                                if first_node in edmonds_graph_open:                            
+                                   print('This is a direct loop A -> B -> C -> A of length ', len(first_node_path))
+                                else:
+                                    pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_predecessor, current_node).items()}
+                                    edmonds_graph_added_edges.append((current_node, node_predecessor, pangenome_graph_edge_data))    
+
+                            elif first_node in edmonds_graph_closed:
+
                                 pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_predecessor, current_node).items()}
                                 edmonds_graph_added_edges.append((current_node, node_predecessor, pangenome_graph_edge_data))
 
-                # TODO Blue Part in the picture
-                # if blocked_branch_paths:
-                #     for blocked_branch_path in blocked_branch_paths:
-                #         for blocked_branch_node in blocked_branch_path:
-                #             for node_successor in pangenome_graph_successors[blocked_branch_node]:
-                #                 if (blocked_branch_node, node_successor) in edmonds_graph_removed_edges and node_successor == current_node:
+                            elif first_node in edmonds_graph_open:
+                                to_be_closed.update(set(first_node_path[1:]))
 
-                #                     pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(blocked_branch_node, node_successor)
-                #                     edmonds_graph_added_edges.append((blocked_branch_node, node_successor, pangenome_graph_edge_data))
+                                pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(node_predecessor, current_node)
+                                edmonds_graph_added_edges.append((node_predecessor, current_node, pangenome_graph_edge_data))
 
-                #                     sub_path = blocked_branch_path[:blocked_branch_path.index(blocked_branch_node)]
-                #                     for sub_path_node in sub_path:
-                #                         if sub_path_node not in edmonds_graph_closed:
-                #                             edmonds_graph_closed.add(sub_path_node)
+                            else:
+                                print('Sanity Error.')
+                                exit()
 
-                #                         if sub_path_node in edmonds_graph_open:
-                #                             edmonds_graph_open.remove(sub_path_node)
+                edmonds_graph_closed.update(to_be_closed)
+                edmonds_graph_open = edmonds_graph_open.difference(to_be_closed)
 
             else:
                 edmonds_graph_open.add(current_node)
-
 
         self.edmonds_graph.add_edges_from(edmonds_graph_added_edges)
         edmonds_graph_remaining_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0 and x != edmonds_graph_end]
@@ -1600,6 +1617,7 @@ class Pangraph():
         self.run.info_single(f"Current iteration acyclic nature is {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
 
         for curr_node in edmonds_graph_open:
+
             predecessor = edmonds_graph_predecessors[curr_node]
             edmonds_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.edmonds_graph.get_edge_data(predecessor, curr_node).items()}
             self.edmonds_graph.remove_edge(predecessor, curr_node)
@@ -1633,6 +1651,7 @@ class Pangraph():
                             self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
 
                             nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
+                            self.fusion_events += 1
                             found = True
                             break
 
@@ -1646,6 +1665,12 @@ class Pangraph():
         for i, j in edmonds_graph_edges:
             if abs(self.position[j][0] - self.position[i][0]) > self.max_edge_length_filter and self.max_edge_length_filter != -1:
                 self.edmonds_graph.remove_edge(i, j)
+                self.removed_edges += 1
+
+        self.run.info_single(f"{self.fusion_events} fusion events.") 
+        self.run.info_single(f"{self.removed_edges} removed edges due to length cutoff.")
+        self.run.info_single(f"Removed long range edges can point to reorganisation events.")
+        self.run.info_single(f"Done.")
 
     # TODO Speed up component path finding (multithreading)
     def calculate_component_paths(self):
@@ -1794,16 +1819,10 @@ class Pangraph():
                     self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
 
             except Exception as error:
-                self.debug = True
-                self.run.info_single(f'Error: Message: {str(error)}')
-                self.run.info_single('Starting debug mode')
-                break
+                print('Sanity Error')
+                exit()
 
         self.progress.end()
-
-        if self.debug == False:
-            self.run.info_single('Sanity check: No errors reported')
-            self.run.info_single('Done')
 
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
@@ -1820,6 +1839,7 @@ class Pangraph():
         self.ancest.remove_edge('start', 'stop')
 
         self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges.")
+        self.run.info_single(f"Done.")
 
     # ANCHOR Gene Cluster grouping
     # TODO Degree is calculated by pangenome graph not edmonds graph probably not a bad idea due
@@ -1861,8 +1881,7 @@ class Pangraph():
             if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
                 self.grouping[label] = condense_nodes
 
-
-        self.run.info_single(f"{str(len(list(self.edmonds_graph.nodes())) - group)} GCs and {str(group)} GCGs")
+        self.run.info_single(f"Created {len(groups.keys())} groups.")
         self.run.info_single("Done")
 
     # ANCHOR y-shifting script
@@ -1995,6 +2014,8 @@ class Pangraph():
             instances_ancest_graph += len(list(attr['genome'].keys()))
 
         self.run.info_single(f"Total fraction of recovered genecall information {round(instances_ancest_graph/instances_pangenome_graph, 3)}%")
+
+        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())+self.fusion_events)/len(self.pangenome_graph.nodes()), 3)}%")
 
         jsondata["infos"] = {'meta': {'global_x': self.global_x,
                                       'global_y': self.global_y},
