@@ -5198,16 +5198,16 @@ class Constructor:
             if check_gene_annotations:
                 raise ConfigError(
                     f"""\
-                    The reaction network stored in the contigs database was made from a different
-                    set of KEGG KO gene annotations than is currently in the database. There are two
-                    solutions to this problem. First, 'anvi-reaction-network' can be run again to
-                    overwrite the existing network stored in the database with a new network from
-                    the new KO gene annotations. Second, 'check_gene_annotations' can be made False
-                    rather than True, allowing the stored network to have been made from a different
-                    set of KO gene annotations than is currently stored in the database. This can
-                    result in different genes being associated with KOs in the returned
-                    GenomicNetwork than in the original network that was stored. The available
-                    version of the KO database that has been set up by anvi'o is used to fill in
+                    The reaction network stored in the contigs database was made from a different\
+                    set of KEGG KO gene annotations than is currently in the database. There are\
+                    two solutions to this problem. First, 'anvi-reaction-network' can be run again\
+                    to overwrite the existing network stored in the database with a new network\
+                    from the new KO gene annotations. Second, 'check_gene_annotations' can be made\
+                    False rather than True, allowing the stored network to have been made from a\
+                    different set of KO gene annotations than is currently stored in the database.\
+                    This can result in different genes being associated with KOs in the returned\
+                    GenomicNetwork than in the original network that was stored. The available\
+                    version of the KO database that has been set up by anvi'o is used to fill in\
                     data for KOs in the network that are not current gene annotations.\
                     """
                 )
@@ -5406,8 +5406,8 @@ class Constructor:
             s = s[: -1]
             raise ConfigError(
                 f"""\
-                Certain genes were unexpectedly associated with multiple proteins with abundance
-                data. These are as follows, with the gene callers ID separated by a comma-separated
+                Certain genes were unexpectedly associated with multiple proteins with abundance\
+                data. These are as follows, with the gene callers ID separated by a comma-separated\
                 list of protein IDs. {s}\
                 """
             )
