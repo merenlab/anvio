@@ -34,6 +34,7 @@ import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.db import DB
 from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import (
@@ -5185,15 +5186,27 @@ class Constructor:
 
         # Load the contigs database.
         utils.is_contigs_db(contigs_db)
-        args = argparse.Namespace()
-        args.contigs_db = contigs_db
-        contigs_super = ContigsSuperclass(args, r=run_quiet)
-        contigs_super.init_functions(requested_sources=['KOfam'])
+        cdb = ContigsDatabase(contigs_db)
+        cdb_db: DB = cdb.db
+        sources: List[str] = cdb.meta['gene_function_sources']
+        if not sources or not 'KOfam' in sources:
+            raise ConfigError(
+                f"""\
+                The contigs database indicates that genes were never annotated with KOs. This is\
+                especially strange since to load a reaction network means that a network had to be\
+                constructed from gene KO annotations in the database.\
+                """
+            )
 
         # Check that the network stored in the contigs database was made from the same set of KO
         # gene annotations as currently in the database.
-        stored_hash = contigs_super.a_meta['reaction_network_ko_annotations_hash']
-        current_hash = self.hash_contigs_db_ko_annotations(contigs_super.gene_function_calls_dict)
+        stored_hash = cdb_db.get_meta_value('reaction_network_ko_annotations_hash')
+        gene_ko_hits_table = cdb_db.get_table_as_dataframe(
+            'gene_functions',
+            where_clause='source = "KOfam"',
+            columns_of_interest=['gene_callers_id', 'accession', 'function', 'e_value']
+        )
+        current_hash = self.hash_contigs_db_ko_hits(gene_ko_hits_table)
         if stored_hash != current_hash:
             if check_gene_annotations:
                 raise ConfigError(
@@ -5224,19 +5237,14 @@ class Constructor:
         network = GenomicNetwork(run=self.run, progress=self.progress)
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
-        cdb = ContigsDatabase(contigs_db)
-
         # Make objects representing all genes with KO annotations in the contigs database, including
         # genes that are not in the network, which are later removed from the network.
-        functions_table = cdb.db.get_table_as_dataframe(
-            'gene_functions', where_clause='source = "KOfam"'
-        )
-        for gcid, ko_id, ko_name, e_value in zip(
-            functions_table['gene_callers_id'],
-            functions_table['accession'],
-            functions_table['function'],
-            functions_table['e_value']
-        ):
+        for row in gene_ko_hits_table.itertuples(index=False):
+            gcid = int(row.gene_callers_id)
+            ko_id = row.accession
+            ko_name = row.function
+            e_value = float(row.e_value)
+
             try:
                 # This is not the first annotation involving the gene, so an object for it already
                 # exists.
@@ -5319,7 +5327,7 @@ class Constructor:
             return network
 
         precomputed_counts = {
-            'total_genes': cdb.db.get_row_counts_from_table('genes_in_contigs'),
+            'total_genes': cdb_db.get_row_counts_from_table('genes_in_contigs'),
             'genes_assigned_kos': len(network.genes) + len(unnetworked_gcids),
             'kos_assigned_genes': len(network.kos) + len(unnetworked_ko_ids)
         }
@@ -7316,36 +7324,32 @@ class Constructor:
         metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
         return metabolites_table
 
-    def hash_contigs_db_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
+    def hash_contigs_db_ko_hits(self, gene_ko_hits_table: pd.DataFrame) -> str:
         """
         To concisely represent the data underlying a reaction network, hash all gene KO annotations
         in the contigs database.
 
         Parameters
         ==========
-        gene_function_calls_dict : str
-            This dictionary is loaded by a contigs superclass and contains gene KO annotations.
+        gene_ko_hits_table : pd.DataFrame
+            This table contains gene KO hit data from the contigs database 'gene_functions' table.
 
         Returns
         =======
         str
             Hash representation of all gene KO annotations.
         """
-        ko_annotations = []
-        for gcid, gene_dict in gene_function_calls_dict.items():
-            ko_data = gene_dict['KOfam']
-            ko_id = ko_data[0]
-            ko_name = ko_data[1]
-            e_value = ko_data[2]
-            ko_annotations.append((str(gcid), ko_id, ko_name, str(e_value)))
-        ko_annotations = sorted(ko_annotations, key=lambda x: (x[0], x[1]))
+        gene_ko_hits_table = gene_ko_hits_table.sort_values(['gene_callers_id', 'accession'])
 
-        ko_annotations_string = ''
-        for ko_annotation in ko_annotations:
-            ko_annotations_string += ''.join(ko_annotation)
+        gene_ko_hits_string = ''
+        for row in gene_ko_hits_table.itertuples(index=False):
+            gene_ko_hits_string += str(row.gene_callers_id)
+            gene_ko_hits_string += row.accession
+            gene_ko_hits_string += row.function
+            gene_ko_hits_string += str(row.e_value)
 
-        hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
-        return hashed_ko_annotations
+        hashed_gene_ko_hits = hashlib.sha1(gene_ko_hits_string.encode('utf-8')).hexdigest()
+        return hashed_gene_ko_hits
 
     def hash_pan_db_ko_annotations(
         self,
