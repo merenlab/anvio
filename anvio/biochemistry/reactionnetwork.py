@@ -7480,14 +7480,15 @@ class Constructor:
         pd.DataFrame
             The table of reactions data to be stored in the contigs or pan database.
         """
-        assert (
-            tables.gene_function_reactions_table_structure ==
-            tables.pan_gene_cluster_function_reactions_table_structure
-        )
-        assert (
-            tables.gene_function_reactions_table_types ==
-            tables.pan_gene_cluster_function_reactions_table_types
-        )
+        if DEBUG:
+            assert (
+                tables.gene_function_reactions_table_structure ==
+                tables.pan_gene_cluster_function_reactions_table_structure
+            )
+            assert (
+                tables.gene_function_reactions_table_types ==
+                tables.pan_gene_cluster_function_reactions_table_types
+            )
 
         # Transfer data from reaction objects to dictionaries mapping to table entries.
         reactions_data: Dict[str, Dict] = {}
@@ -7593,14 +7594,15 @@ class Constructor:
         pd.DataFrame
             The table of metabolites data to be stored in the contigs or pan database.
         """
-        assert (
-            tables.gene_function_metabolites_table_structure ==
-            tables.pan_gene_cluster_function_metabolites_table_structure
-        )
-        assert (
-            tables.gene_function_metabolites_table_types ==
-            tables.pan_gene_cluster_function_metabolites_table_types
-        )
+        if DEBUG:
+            assert (
+                tables.gene_function_metabolites_table_structure ==
+                tables.pan_gene_cluster_function_metabolites_table_structure
+            )
+            assert (
+                tables.gene_function_metabolites_table_types ==
+                tables.pan_gene_cluster_function_metabolites_table_types
+            )
 
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
         metabolites_data = {}
