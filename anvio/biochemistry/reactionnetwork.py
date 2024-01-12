@@ -5551,11 +5551,13 @@ class Constructor:
                     """
                 )
             self.run.warning(
-                "The reaction network stored in the pan database was made from a different set of "
-                "KO gene annotations than is currently in the genomes storage database. This will "
-                "be ignored since 'check_gene_annotations' is False. This can result in different "
-                "consensus KO assignments to gene clusters in the returned PangenomicNetwork than "
-                "in the original network that was stored."
+                f"""\
+                The reaction network stored in the pan database was made from a different set of KO
+                gene annotations than is currently in the genomes storage database. This will be
+                ignored since 'check_gene_annotations' is False. This can result in different
+                consensus KO assignments to gene clusters in the returned PangenomicNetwork than in
+                the original network that was stored.\
+                """
             )
 
         network = PangenomicNetwork(run=self.run, progress=self.progress)
