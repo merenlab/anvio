@@ -16,6 +16,7 @@ import hashlib
 import tarfile
 import zipfile
 import argparse
+import tempfile
 import fractions
 import functools
 import collections
