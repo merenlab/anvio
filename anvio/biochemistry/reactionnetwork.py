@@ -5560,6 +5560,7 @@ class Constructor:
                 """
             )
 
+        # Create the reaction network object.
         network = PangenomicNetwork(run=self.run, progress=self.progress)
         network.pan_db_source_path = os.path.abspath(pan_db)
         network.genomes_storage_db_source_path = os.path.abspath(genomes_storage_db)
