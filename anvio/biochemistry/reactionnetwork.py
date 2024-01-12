@@ -6100,7 +6100,7 @@ class Constructor:
         ):
             raise ConfigError(
                 f"""\
-                The existing reaction network in the contigs database must be explicitly
+                The existing reaction network in the contigs database must be explicitly\
                 overwritten.\
                 """
             )
@@ -6448,8 +6448,8 @@ class Constructor:
         if 'KOfam' not in [source.strip() for source in gs_sources.split(',')]:
             raise ConfigError(
                 f"""\
-                The genomes of the pangenome were not annotated with KOs, which can be rectified
-                by running `anvi-run-kegg-kofams` on the genome contigs databases and remaking
+                The genomes of the pangenome were not annotated with KOs, which can be rectified\
+                by running `anvi-run-kegg-kofams` on the genome contigs databases and remaking\
                 the pangenome.\
                 """
             )
@@ -7024,9 +7024,9 @@ class Constructor:
             except KeyError:
                 raise ConfigError(
                     f"""\
-                    A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected but
-                    not found in the ModelSEED compounds table. This ID was found in the equation
-                    for the ModelSEED reaction, '{modelseed_reaction_id}'.\
+                    A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected\
+                    but not found in the ModelSEED compounds table. This ID was found in the\
+                    equation for the ModelSEED reaction, '{modelseed_reaction_id}'.\
                     """
                 )
             modelseed_compound_series: pd.Series
