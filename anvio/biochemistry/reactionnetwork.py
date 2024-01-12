@@ -5572,6 +5572,7 @@ class Constructor:
             network.consistent_annotations = False
 
         # Make objects representing all gene clusters with consensus KO annotations.
+        num_gene_clusters_assigned_ko = 0
         for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
             # Retrieve the consensus KO across genes in the cluster. Parameterization of the method
             # used to select consensus KOs occurred in pan super initialization. Parameter values
@@ -5581,6 +5582,7 @@ class Constructor:
                 # No KO was assigned to the cluster.
                 continue
             ko_id = gene_cluster_ko_data['accession']
+            num_gene_clusters_assigned_ko += 1
 
             gene_cluster = GeneCluster()
             gene_cluster.gene_cluster_id = cluster_id
@@ -5645,7 +5647,7 @@ class Constructor:
         if network.consistent_annotations:
             precomputed_counts = {
                 'total_gene_clusters': pdb.meta['num_gene_clusters'],
-                'gene_clusters_assigned_ko': len(network.gene_clusters) + len(unnetworked_cluster_ids),
+                'gene_clusters_assigned_ko': num_gene_clusters_assigned_ko,
                 'kos_assigned_gene_clusters': len(network.kos) + len(unnetworked_ko_ids)
             }
         else:
