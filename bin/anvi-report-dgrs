@@ -24,8 +24,10 @@ run = Run()
 @time_program
 def main(args):
     D = dgrs.DGR_Finder(args)
-    root = D.run_blastn()
-    mismatch_hits = D.filter_blastn_for_none_identical(root)
+    blast_output = D.run_blastn()
+    mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
+    DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
+    csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
     
 #call function here for filtering hits of blast from root 
 def float_range(mini,maxi):
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
-    groupD.add_argument("-pm","--percentage_mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.7)
+    groupD.add_argument("-pm","--percentage_mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-nm","--number_of_mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
 
     args = parser.get_args(parser)
