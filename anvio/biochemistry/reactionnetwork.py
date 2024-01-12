@@ -7771,7 +7771,7 @@ class Tester:
         self.run = run
         self.progress = progress
 
-    def test_contigs_database_network(self, contigs_db: str) -> None:
+    def test_contigs_database_network(self, contigs_db: str, copy_db: bool = True) -> None:
         """
         Test the construction of a reaction network from a contigs database, and test that network
         methods are able to run and do not fail certain basic (by no means comprehensive) tests.
@@ -7782,6 +7782,13 @@ class Tester:
             Path to a contigs database. The database can represent different types of samples,
             including a single genome, metagenome, or transcriptome. The network is derived from
             gene KO annotations stored in the database.
+
+        copy_db : bool, True
+            If True, as by default, store the generated reaction network in a copy of the input
+            contigs database. If a test directory has been set, the database copy is placed there
+            with a derived filename, e.g., "my-CONTIGS.db" is copied to a file like
+            "TEST/my-CONTIGS-k2z9jxjd.db". If False, store the reaction network in the input contigs
+            database.
 
         Returns
         =======
@@ -7794,7 +7801,7 @@ class Tester:
         self.run.info("Test directory", test_dir, nl_after=1)
 
         self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
-        network, temp_dir = self.make_contigs_database_network(contigs_db)
+        network, temp_dir = self.make_contigs_database_network(contigs_db, copy_db=copy_db)
 
         self.run.info_single(
             "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
@@ -7918,6 +7925,7 @@ class Tester:
         contigs_db: str,
         store: bool = True,
         overwrite_existing_network: bool = True,
+        copy_db: bool = True,
         stats_file: str = "contigs_db_network_stats.tsv"
     ) -> Tuple[GenomicNetwork, str]:
         """
@@ -7938,6 +7946,13 @@ class Tester:
         overwrite_existing_network : bool, True
             Overwrite an existing network stored in the copy of the contigs database in the test
             directory. 'store' is also required.
+
+        copy_db : bool, True
+            If True, as by default, the reaction network is stored, if applicable, in a copy of the
+            input contigs database. If a test directory has been set, the database copy is placed
+            there with a derived filename, e.g., "my-CONTIGS.db" is copied to a file like
+            "TEST/my-CONTIGS-k2z9jxjd.db". If False, the reaction network is stored, if applicable,
+            in the input contigs database.
 
         stats_file : str, 'stats.tsv'
             Write network overview statistics to a tab-delimited file with this filename in the test
@@ -7961,19 +7976,16 @@ class Tester:
             test_dir = self.test_dir
             temp_dir = None
 
-        if store:
-            # Store the network in a copy of the input database.
-            contigs_db_target = os.path.join(test_dir, os.path.basename(contigs_db))
-            if filesnpaths.is_file_exists(contigs_db_target, dont_raise=True):
-                raise ConfigError(
-                    f"""\
-                    The contigs database will not be copied to a location in the test directory with
-                    an existing file: {contigs_db_target}\
-                    """
-                )
+        if copy_db:
+            # Operations are performed on a copy of the contigs database in the (provided or
+            # temporary) test directory.
+            basename = os.path.basename(contigs_db)
+            prefix, suffix = os.path.splitext(basename)
+            contigs_db_target = tempfile.NamedTemporaryFile(
+                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
+            ).name
             shutil.copy(contigs_db, contigs_db_target)
         else:
-            # The network is not stored, so the input file is used and remains unmodified.
             contigs_db_target = contigs_db
 
         con = Constructor(
@@ -8000,6 +8012,7 @@ class Tester:
         self,
         pan_db: str,
         genomes_storage_db: str,
+        copy_db: bool = True,
         consensus_threshold: float = None,
         discard_ties: bool = False
     ) -> None:
@@ -8016,6 +8029,12 @@ class Tester:
         genomes_storage_db : str
             Path to a genomes storage database. The pangenomic network is derived from gene KO
             annotations stored in the database.
+
+        copy_db : bool, True
+            If True, as by default, store the generated reaction network in a copy of the input pan
+            database. If a test directory has been set, the database copy is placed there with a
+            derived filename, e.g., "my-PAN.db" is copied to a file like "TEST/my-PAN-spiba5e7.db".
+            If False, store the reaction network in the input pan database.
 
         consensus_threshold : float, None
             With the default of None, the protein annotation most frequent among genes in a cluster
@@ -8042,6 +8061,7 @@ class Tester:
         network, temp_dir = self.make_pan_database_network(
             pan_db,
             genomes_storage_db,
+            copy_db=copy_db,
             consensus_threshold=consensus_threshold,
             discard_ties=discard_ties
         )
@@ -8174,6 +8194,7 @@ class Tester:
         genomes_storage_db: str,
         store: bool = True,
         overwrite_existing_network: bool = True,
+        copy_db: bool = True,
         consensus_threshold: float = None,
         discard_ties: bool = False,
         stats_file: str = "pan_db_network_stats.tsv"
@@ -8198,6 +8219,13 @@ class Tester:
         overwrite_existing_network : bool, False
             Overwrite an existing network stored in the copy of the pan database in the test
             directory. 'store' is also required.
+
+        copy_db : bool, True
+            If True, as by default, the reaction network is stored, if applicable, in a copy of the
+            input pan database. If a test directory has been set, the database copy is placed there
+            with a derived filename, e.g., "my-PAN.db" is copied to a file like
+            "TEST/my-PAN-spiba5e7.db". If False, the reaction network is stored, if applicable, in
+            the input pan database.
 
         consensus_threshold : float, None
             With the default of None, the protein annotation most frequent among genes in a cluster
@@ -8233,19 +8261,16 @@ class Tester:
             test_dir = self.test_dir
             temp_dir = None
 
-        if store:
-            # Store the network in a copy of the input database.
-            pan_db_target = os.path.join(test_dir, os.path.basename(pan_db))
-            if filesnpaths.is_file_exists(pan_db_target, dont_raise=True):
-                raise ConfigError(
-                    f"""\
-                    The pan database will not be copied to a location in the test directory with an
-                    existing file: {pan_db_target}\
-                    """
-                )
+        if copy_db:
+            # Operations are performed on a copy of the pan database in the (provided or temporary)
+            # test directory.
+            basename = os.path.basename(pan_db)
+            prefix, suffix = os.path.splitext(basename)
+            pan_db_target = tempfile.NamedTemporaryFile(
+                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
+            ).name
             shutil.copy(pan_db, pan_db_target)
         else:
-            # The network is not stored, so the input file is used and remains unmodified.
             pan_db_target = pan_db
 
         con = Constructor(
