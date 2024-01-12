@@ -2,10 +2,10 @@
 # pylint: disable=line-too-long
 """A module to find Diversity Generating Retroelements"""
 
-import json
 import re
 import xml.etree.ElementTree as ET
 import csv
+import os
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -38,6 +38,8 @@ class DGR_Finder:
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
+        self.number_of_mismatches = A('number_of_mismatches')
+        self.percentage_mismatch = A('percentage_mismatch')
 
         filesnpaths.is_file_fasta_formatted(self.input_path)
         if self.step < 0 or self.word_size < 0:
@@ -49,6 +51,8 @@ class DGR_Finder:
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
     
+
+
     def split_sequences(self, start=0):
         """
         This function splits the sequence given into sections of the step value length.
@@ -84,36 +88,42 @@ class DGR_Finder:
             An xml of BLASTn results
         =======
         """
+        #initialise temporary dictionary
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
         # split sequences output file name 
-        output_file = f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta"
+        shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
         #blast output file name
-        blast_output = f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml"
+        blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
+        target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
+        print(f"cp {self.input_path} {target_file_path}")
+        os.system(f"cp {self.input_path} {target_file_path}")
+        self.run.info('temporary input for blast', target_file_path) 
+
         # Start at half the step size of the output file
         overlap_start = self.step // 2
-        first_sequences = self.split_sequences(0)
+        first_sequences = self.split_sequences()
         second_sequences = self.split_sequences(overlap_start)
 
         all_sequences = first_sequences + second_sequences
 
         # Write combined sequences to output file
-        with open(output_file, "w") as output_handle:
+        with open(shredded_sequence_file, "w") as output_handle:
             SeqIO.write(all_sequences, output_handle, "fasta")
+        #need a temporary directory where intermediate files are written, to call on them. 
         
-        blast = BLAST(output_file, target_fasta =self.input_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+        blast = BLAST(shredded_sequence_file, target_fasta =target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
         blast.evalue = 10 #set Evalue to be same as blastn default
         blast.makedb(dbtype = 'nucl')
-
         blast.blast(outputfmt = '5', word_size = self.word_size)
 
         #blast_command = ["blastn", "-query", output_file, "-subject", self.input_path, "-out", blast_output, 
                          #"-word_size", str(self.word_size), "-dust", "no", "-outfmt", "5"]
         #subprocess.run(blast_command)
-        tree = ET.parse(blast_output)
-        root = tree.getroot()
-        return root
+        return blast_output
+    #need to return blast_output which is a path so next function calls the path. 
         
     #then have new function that takes root as an argument to filter for hits - filter blast hit, with self and root as param. copy in code. 
-    def filter_blastn_for_none_identical(self, root):
+    def filter_blastn_for_none_identical(self, blast_output):
         """
         This function takes the BLASTn xml output and refines the results to those with less than 100% identity.
         
@@ -132,6 +142,9 @@ class DGR_Finder:
         =======
         
         """
+        tree = ET.parse(blast_output)
+        root = tree.getroot()
+        
         max_percent_identity = 100
         mismatch_hits = {}
 
@@ -216,3 +229,164 @@ class DGR_Finder:
                             'subject_frame': subject_frame
                             }
         return mismatch_hits
+    
+    def filter_for_TR_VR(self, mismatch_hits):
+        """
+        This function takes the none identical hits of the BLASTn and filters for template and variable regions.
+
+        This works by filtering for sequences that have an overrepresentation of one base that is mismatching and a certain number 
+        one type of base mismatching within the sequence, defined by the number of mismatches argument. 
+
+        Parameters 
+        ==========
+        mismatch_hits : dict
+            A dictionary of all of the BLASTn hits that are less than 100%
+        
+        Returns
+        =======
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+        
+        """
+        num_DGR = 0
+
+        #possible DGR dictionary 
+        DGRs_found_dict = {}
+
+        for sequence_component, hit_data in mismatch_hits.items():
+            query_mismatch_counts = hit_data['query_mismatch_counts']
+            subject_mismatch_counts = hit_data['subject_mismatch_counts']
+            position = hit_data['position']
+            subject_genome_start_position = hit_data['subject_genome_start_position']
+            subject_genome_end_position = hit_data['subject_genome_end_position']
+            alignment_length = hit_data['alignment_length']
+            subject_sequence = Seq(hit_data['hit_seq'])
+            midline = hit_data['midline']
+            query_sequence = Seq(hit_data['query_seq'])
+            shredded_sequence_name = sequence_component
+            query_genome_start_position = hit_data['query_genome_start_position']
+            query_genome_end_position = hit_data['query_genome_end_position']
+            query_frame = hit_data['query_frame']
+            subject_frame = hit_data['subject_frame']
+            TR_sequence_found = None
+            VR_sequence_found = None
+
+        # get number of mismatches
+            mismatch_length_bp = len(position)
+
+            # if num of mismatches = 0, skip DGR search sanity check 
+            if mismatch_length_bp == 0:
+                continue
+                #old code mismatch_dict[hit_id]['is_DGR'] = False
+            else:
+                # Calculate the percentage identity of each alignment
+                is_TR = False
+                for letter, count in query_mismatch_counts.items():
+                    percentage_of_mismatches = (count / mismatch_length_bp)
+                    if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches): 
+                        #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
+                        is_TR = True
+                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, compare start stop position (likely not equal) 
+                        #take longest one, bit like the FIlter code, replace sequence with longest TR. Check if VR already exsists, 
+                        num_DGR += 1
+                        #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key 
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
+                        if letter == 'T':
+                            #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence.reverse_complement())
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence.reverse_complement())
+                            #overwrite midline string 
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'
+                        else:
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence)
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence)
+                            #overwrite midline string 
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'               
+                        
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = query_genome_start_position
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = query_genome_end_position
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = subject_genome_start_position
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_end_position'] = subject_genome_end_position
+                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
+
+                if not is_TR:
+                    # Calculate the percentage identity of each alignment
+                    for letter, count in subject_mismatch_counts.items():
+                            percentage_of_mismatches = (count / mismatch_length_bp)
+                            if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches): 
+                                #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
+                                is_TR = True
+                                num_DGR += 1
+                                #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key 
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
+                                if letter == 'T':
+                                    #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence.reverse_complement())
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence.reverse_complement())
+                                    #overwrite midline string 
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'subject'
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'query'
+                                else:
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence)
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence)
+                                    #overwrite midline string 
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'subject'
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'query'
+
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = subject_genome_start_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = subject_genome_end_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = query_genome_start_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_end_position'] = query_genome_end_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
+                            
+        print(f'number of DGRs is {num_DGR}')
+        return DGRs_found_dict
+    
+    def create_found_tr_vr_csv(self, DGRs_found_dict):
+        """
+        This function creates a csv tabular format of the template and variable regions that are found from this tool.
+        Parameters 
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+        
+        Returns
+        =======
+        : csv
+            A csv tabular file containing the template and variable regions
+        
+        """
+        base_input_name = os.path.basename(self.input_path)
+        csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
+
+        with open(csv_file_path, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            
+            # Write header
+            csv_writer.writerow(["DGR", "VR_sequence", "Midline","VR_sequence_found", "VR_start_position", "VR_end_position", "Mismatch %",
+                                "TR_sequence", "Base","TR_sequence_found", "Reverse Complement", "TR_start_position", "TR_end_position"])
+            
+            # Write data
+            for dgr, info in DGRs_found_dict.items():
+                vr_data = info['VRs']['VR1']
+                #Print vr_data for debugging
+                print(f'DGR: {dgr}, vr_data: {vr_data}')
+                csv_writer.writerow([dgr, vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_sequence_found'], vr_data['VR_start_position'], vr_data['VR_end_position'],
+                                    vr_data['percentage_of_mismatches'], info['TR_sequence'], info['base'], info['TR_sequence_found'], info['TR_reverse_complement'],
+                                    info['TR_start_position'], info['TR_end_position']])
+                return csv_file_path
+            
