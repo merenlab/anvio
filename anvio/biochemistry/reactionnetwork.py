@@ -7556,16 +7556,16 @@ class Constructor:
         for modelseed_reaction_id, aliases in ko_reaction_aliases.items():
             reaction_data = reactions_data[modelseed_reaction_id]
 
-            # Make the entry for KO KEGG REACTION aliases, which looks akin to the following arbitrary example:
-            # 'R00001: (K00010, K00100); R01234: (K54321)'
+            # Make the entry for KO KEGG REACTION aliases, which looks akin to the following
+            # arbitrary example: 'R00001: (K00010, K00100); R01234: (K54321)'
             kegg_reaction_aliases = aliases[0]
             entry = []
             for kegg_reaction_id, ko_ids in kegg_reaction_aliases.items():
                 entry.append(f'{kegg_reaction_id}: ({", ".join(sorted(ko_ids))})')
             reaction_data['ko_kegg_reaction_source'] = '; '.join(sorted(entry))
 
-            # Make the entry for KO EC number aliases, which looks akin to the following arbitrary example:
-            # '1.1.1.1: (K00010, K00100); 1.2.3.4: (K12345); 6.7.8.99: (K65432)
+            # Make the entry for KO EC number aliases, which looks akin to the following arbitrary
+            # example: '1.1.1.1: (K00010, K00100); 1.2.3.4: (K12345); 6.7.8.99: (K65432)
             ec_number_aliases = aliases[1]
             entry = []
             for ec_number, ko_ids in ec_number_aliases.items():
@@ -7580,9 +7580,9 @@ class Constructor:
 
     def _get_database_metabolites_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
-        Make a metabolites table that can be stored in either a contigs or pan database, as the tables
-        have the same structure. A `ReactionNetwork` can be reconstructed with the same data from
-        the reactions and metabolites tables of the database.
+        Make a metabolites table that can be stored in either a contigs or pan database, as the
+        tables have the same structure. A `ReactionNetwork` can be reconstructed with the same data
+        from the reactions and metabolites tables of the database.
 
         Parameters
         ==========
@@ -7609,15 +7609,15 @@ class Constructor:
         for modelseed_compound_id, compound in network.metabolites.items():
             metabolite_data = {}
             metabolite_data['modelseed_compound_id'] = modelseed_compound_id
-        metabolites_table = pd.DataFrame.from_dict(
-            metabolites_data, orient='index'
-        ).reset_index(drop=True).sort_values('modelseed_compound_id')
+            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
             metabolite_data['kegg_aliases'] = ', '.join(compound.kegg_aliases)
             metabolite_data['formula'] = compound.formula
             metabolite_data['charge'] = compound.charge
             metabolites_data[modelseed_compound_id] = metabolite_data
 
-        metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
+        metabolites_table = pd.DataFrame.from_dict(
+            metabolites_data, orient='index'
+        ).reset_index(drop=True).sort_values('modelseed_compound_id')
         metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
         return metabolites_table
 
