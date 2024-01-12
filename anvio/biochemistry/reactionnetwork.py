@@ -5771,7 +5771,6 @@ class Constructor:
 
             network.modelseed_kegg_aliases[modelseed_reaction_id] = modelseed_kegg_aliases = []
             orphan_ko_ids = []
-            reaction_added_to_ko = False
             for kegg_reaction_id, ko_ids in kegg_reaction_ko_ids.items():
                 # Record the ModelSEED reaction as one of the aliases of the KEGG reaction in the
                 # network.
@@ -5801,10 +5800,9 @@ class Constructor:
                         ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
                         network.kos[ko_id] = ko
                         orphan_ko_ids.append(ko_id)
-                    if not reaction_added_to_ko:
-                        # This is the first encounter with the reaction for the KO.
+                    if not modelseed_reaction_id in ko.reactions:
+                        # This is the first time encountering the reaction as a reference of the KO.
                         ko.reactions[modelseed_reaction_id] = reaction
-                        reaction_added_to_ko = True
                     try:
                         ko.kegg_reaction_aliases[modelseed_reaction_id].append(kegg_reaction_id)
                     except KeyError:
@@ -5829,7 +5827,8 @@ class Constructor:
                 reaction.ec_number_aliases += other_ec_numbers.split(', ')
             reaction.ec_number_aliases = tuple(reaction.ec_number_aliases)
 
-            network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases = []
+            modelseed_ec_number_aliases = []
+            network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases
             for ec_number, ko_ids in ec_number_ko_ids.items():
                 # Record the ModelSEED reaction as one of the aliases of the EC number in the
                 # network.
@@ -5842,17 +5841,17 @@ class Constructor:
                     try:
                         ko = network.kos[ko_id]
                     except KeyError:
-                        # This error arises for the same reason as before (processing KEGG reactions).
+                        # This error arises for the same reason as before (in processing KEGG
+                        # reactions).
                         ko = KO()
                         ko.ko_id = ko_id
                         # The KO name is unknown from the database, so take it from the KO database.
                         ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
                         network.kos[ko_id] = ko
                         orphan_ko_ids.append(ko_id)
-                    if not reaction_added_to_ko:
-                        # This is the first encounter with the reaction for the KO.
+                    if not modelseed_reaction_id in ko.reactions:
+                        # This is the first time encountering the reaction as a reference of the KO.
                         ko.reactions[modelseed_reaction_id] = reaction
-                        reaction_added_to_ko = True
                     try:
                         ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
                     except KeyError:
