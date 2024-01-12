@@ -7905,7 +7905,10 @@ class Tester:
             shutil.rmtree(temp_dir)
 
         self.run.info_single(
-            "All tests passed for the contigs database reaction network", mc='magenta', level=0
+            "All tests passed for the contigs database reaction network",
+            mc='magenta',
+            nl_before=1,
+            level=0
         )
         self.run.info_single("Network construction and storage in the contigs database")
         self.run.info_single("Purge metabolites without formula")
@@ -7917,8 +7920,7 @@ class Tester:
         self.run.info_single("Subset select reactions")
         self.run.info_single("Subset select KOs")
         self.run.info_single("Subset select genes")
-        self.run.info_single("Subset select metabolites, reactions, KOs, and genes")
-
+        self.run.info_single("Subset select metabolites, reactions, KOs, and genes", nl_after=1)
 
     def make_contigs_database_network(
         self,
@@ -8174,7 +8176,10 @@ class Tester:
             shutil.rmtree(temp_dir)
 
         self.run.info_single(
-            "All tests passed for the pan database reaction network", mc='magenta', level=0
+            "All tests passed for the pan database reaction network",
+            mc='magenta',
+            nl_before=1,
+            level=0
         )
         self.run.info_single("Network construction and storage in the pan database")
         self.run.info_single("Purge metabolites without formula")
@@ -8186,7 +8191,9 @@ class Tester:
         self.run.info_single("Subset select reactions")
         self.run.info_single("Subset select KOs")
         self.run.info_single("Subset select gene clusters")
-        self.run.info_single("Subset select metabolites, reactions, KOs, and gene clusters")
+        self.run.info_single(
+            "Subset select metabolites, reactions, KOs, and gene clusters", nl_after=1
+        )
 
     def make_pan_database_network(
         self,
