@@ -5938,7 +5938,7 @@ class Constructor:
             formula: str = row.formula
             compound.formula = formula
             charge: int = row.charge
-            compound.charge = charge if not np.isnan(charge) else None
+            compound.charge = None if np.isnan(charge) else int(charge)
 
     def make_network(
         self,
