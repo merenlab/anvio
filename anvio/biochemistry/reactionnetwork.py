@@ -6266,6 +6266,7 @@ class Constructor:
             ko.name = ko_name
             network.kos[ko_id] = ko
             gene.kos[ko_id] = ko
+            gene.e_values[ko_id] = e_value
 
             # Associate ModelSEED reactions that have been previously added to the network under
             # construction with the newly encountered KO.
