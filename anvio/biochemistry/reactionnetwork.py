@@ -7790,7 +7790,7 @@ class Tester:
             contigs database. If a test directory has been set, the database copy is placed there
             with a derived filename, e.g., "my-CONTIGS.db" is copied to a file like
             "TEST/my-CONTIGS-k2z9jxjd.db". If False, store the reaction network in the input contigs
-            database.
+            database, overwriting any that is already stored.
 
         Returns
         =======
@@ -7803,7 +7803,77 @@ class Tester:
         self.run.info("Test directory", test_dir, nl_after=1)
 
         self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
-        network, temp_dir = self.make_contigs_database_network(contigs_db, copy_db=copy_db)
+        utils.is_contigs_db(contigs_db)
+
+        if copy_db:
+            # Operations are performed on a copy of the contigs database in the (provided or
+            # temporary) test directory.
+            basename = os.path.basename(contigs_db)
+            prefix, suffix = os.path.splitext(basename)
+            contigs_db_target = tempfile.NamedTemporaryFile(
+                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
+            ).name
+            shutil.copy(contigs_db, contigs_db_target)
+        else:
+            contigs_db_target = contigs_db
+
+        con = Constructor(
+            ko_dir=self.ko_dir,
+            modelseed_dir=self.modelseed_dir,
+            run=self.run,
+            progress=self.progress
+        )
+
+        make_stats_file_target = os.path.join(test_dir, "make_contigs_db_network_stats.tsv")
+        network = con.make_contigs_database_network(
+            contigs_db=contigs_db_target,
+            overwrite_existing_network=True,
+            stats_file=make_stats_file_target
+        )
+
+        self.run.info_single("NETWORK LOADING:", mc='magenta', level=0)
+        load_stats_file_target = os.path.join(test_dir, "load_contigs_db_network_stats.tsv")
+        con.load_contigs_database_network(contigs_db_target, stats_file=load_stats_file_target)
+
+        # Check that the statistics on the network constructed and saved in the contigs database are
+        # the same as the statistics on the same network loaded back into memory from the contigs
+        # database.
+        make_stats_table = pd.read_csv(
+            make_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        make_stats_table = make_stats_table.rename({'Value': 'make'}, axis=1)
+        load_stats_table = pd.read_csv(
+            load_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        load_stats_table = load_stats_table.rename({'Value': 'load'}, axis=1)
+        stats_table = pd.merge(
+            make_stats_table, load_stats_table, left_index=True, right_index=True
+        )
+        inconsistent_stats: Dict[str, Tuple[float, float]] = {}
+        for row in stats_table.itertuples():
+            if row.make != row.load:
+                inconsistent_stats[row.Index] = (row.make, row.load)
+        if inconsistent_stats:
+            s = ""
+            for stat, stat_tuple in inconsistent_stats.items():
+                s += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
+            s = s[:-2]
+            raise AssertionError(
+                f"""\
+                Statistics on the network constructed and saved to the contigs database differ from\
+                what should be the same statistics on the same network loaded from the contigs\
+                database. Here are the different statistics, with the value from network\
+                construction before the value from network loading: {s}\
+                """
+            )
 
         self.run.info_single(
             "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
@@ -7903,8 +7973,8 @@ class Tester:
         assert not gene_sample.difference(set(subnetwork.genes))
         self.progress.end()
 
-        if temp_dir is not None:
-            shutil.rmtree(temp_dir)
+        if self.test_dir is None:
+            shutil.rmtree(test_dir)
 
         self.run.info_single(
             "All tests passed for the contigs database reaction network",
@@ -7923,94 +7993,6 @@ class Tester:
         self.run.info_single("Subset select KOs")
         self.run.info_single("Subset select genes")
         self.run.info_single("Subset select metabolites, reactions, KOs, and genes", nl_after=1)
-
-    def make_contigs_database_network(
-        self,
-        contigs_db: str,
-        store: bool = True,
-        overwrite_existing_network: bool = True,
-        copy_db: bool = True,
-        stats_file: str = "contigs_db_network_stats.tsv"
-    ) -> Tuple[GenomicNetwork, str]:
-        """
-        Test reaction network construction from a contigs database.
-
-        Parameters
-        ==========
-        contigs_db : str
-            Path to a contigs database. The database can represent different types of samples,
-            including a single genome, metagenome, or transcriptome. The network is derived from
-            gene KO annotations stored in the database.
-
-        store : bool, True
-            Save the network to a copy of the contigs database, stored with the same filename in the
-            test directory. If a contigs database already exists at this location, it is retained
-            and the network is saved to it, rather than overwriting the file with a copy.
-
-        overwrite_existing_network : bool, True
-            Overwrite an existing network stored in the copy of the contigs database in the test
-            directory. 'store' is also required.
-
-        copy_db : bool, True
-            If True, as by default, the reaction network is stored, if applicable, in a copy of the
-            input contigs database. If a test directory has been set, the database copy is placed
-            there with a derived filename, e.g., "my-CONTIGS.db" is copied to a file like
-            "TEST/my-CONTIGS-k2z9jxjd.db". If False, the reaction network is stored, if applicable,
-            in the input contigs database.
-
-        stats_file : str, 'stats.tsv'
-            Write network overview statistics to a tab-delimited file with this filename in the test
-            directory. If this file already exists, it is overwritten.
-
-        Returns
-        =======
-        GenomicNetwork
-            The network derived from the contigs database.
-
-        str
-            The path to the temporary directory in which a copy of the input contigs database and
-            output stats files are stored. If no temporary directory is created, then this return
-            value is None.
-        """
-        utils.is_contigs_db(contigs_db)
-
-        if self.test_dir is None:
-            test_dir = temp_dir = filesnpaths.get_temp_directory_path()
-        else:
-            test_dir = self.test_dir
-            temp_dir = None
-
-        if copy_db:
-            # Operations are performed on a copy of the contigs database in the (provided or
-            # temporary) test directory.
-            basename = os.path.basename(contigs_db)
-            prefix, suffix = os.path.splitext(basename)
-            contigs_db_target = tempfile.NamedTemporaryFile(
-                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
-            ).name
-            shutil.copy(contigs_db, contigs_db_target)
-        else:
-            contigs_db_target = contigs_db
-
-        con = Constructor(
-            ko_dir=self.ko_dir,
-            modelseed_dir=self.modelseed_dir,
-            run=self.run,
-            progress=self.progress
-        )
-
-        if stats_file:
-            stats_file_target = os.path.join(test_dir, stats_file)
-        else:
-            stats_file_target = None
-
-        network = con.make_contigs_database_network(
-            contigs_db=contigs_db_target,
-            store=store,
-            overwrite_existing_network=overwrite_existing_network,
-            stats_file=stats_file_target
-        )
-        return network, temp_dir
 
     def test_pan_database_network(
         self,
@@ -8038,7 +8020,8 @@ class Tester:
             If True, as by default, store the generated reaction network in a copy of the input pan
             database. If a test directory has been set, the database copy is placed there with a
             derived filename, e.g., "my-PAN.db" is copied to a file like "TEST/my-PAN-spiba5e7.db".
-            If False, store the reaction network in the input pan database.
+            If False, store the reaction network in the input pan database, overwriting any that is
+            already stored.
 
         consensus_threshold : float, None
             With the default of None, the protein annotation most frequent among genes in a cluster
@@ -8062,13 +8045,84 @@ class Tester:
         self.run.info("Test directory", test_dir, nl_after=1)
 
         self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
-        network, temp_dir = self.make_pan_database_network(
-            pan_db,
-            genomes_storage_db,
-            copy_db=copy_db,
-            consensus_threshold=consensus_threshold,
-            discard_ties=discard_ties
+        utils.is_pan_db(pan_db)
+        utils.is_genome_storage(genomes_storage_db)
+
+        if copy_db:
+            # Operations are performed on a copy of the pan database in the (provided or temporary)
+            # test directory.
+            basename = os.path.basename(pan_db)
+            prefix, suffix = os.path.splitext(basename)
+            pan_db_target = tempfile.NamedTemporaryFile(
+                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
+            ).name
+            shutil.copy(pan_db, pan_db_target)
+        else:
+            pan_db_target = pan_db
+
+        con = Constructor(
+            ko_dir=self.ko_dir,
+            modelseed_dir=self.modelseed_dir,
+            run=self.run,
+            progress=self.progress
         )
+
+        make_stats_file_target = os.path.join(test_dir, "make_pan_db_network_stats.tsv")
+        network = con.make_pangenomic_network(
+            pan_db=pan_db_target,
+            genomes_storage_db=genomes_storage_db,
+            overwrite_existing_network=True,
+            consensus_threshold=consensus_threshold,
+            discard_ties=discard_ties,
+            stats_file=make_stats_file_target
+        )
+
+        self.run.info_single("NETWORK LOADING:", mc='magenta', level=0)
+        load_stats_file_target = os.path.join(test_dir, "load_pan_db_network_stats.tsv")
+        con.load_pan_database_network(
+            pan_db_target, genomes_storage_db, stats_file=load_stats_file_target
+        )
+
+        # Check that the statistics on the network constructed and saved in the pan database are the
+        # same as the statistics on the same network loaded back into memory from the pan database.
+        # At the moment, this is used as the best substitute for an equality method that compares
+        # every item in two networks.
+        make_stats_table = pd.read_csv(
+            make_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        make_stats_table = make_stats_table.rename({'Value': 'make'}, axis=1)
+        load_stats_table = pd.read_csv(
+            load_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        load_stats_table = load_stats_table.rename({'Value': 'load'}, axis=1)
+        stats_table = pd.merge(
+            make_stats_table, load_stats_table, left_index=True, right_index=True
+        )
+        inconsistent_stats: Dict[str, Tuple[float, float]] = {}
+        for row in stats_table.itertuples():
+            if row.make != row.load:
+                inconsistent_stats[row.Index] = (row.make, row.load)
+        if inconsistent_stats:
+            s = ""
+            for stat, stat_tuple in inconsistent_stats.items():
+                s += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
+            s = s[:-2]
+            raise AssertionError(
+                f"""\
+                Statistics on the network constructed and saved to the pan database differ from\
+                what should be the same statistics on the same network loaded from the pan\
+                database. Here are the different statistics, with the value from network\
+                construction before the value from network loading: {s}\
+                """
+            )
 
         self.run.info_single(
             "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
@@ -8174,8 +8228,8 @@ class Tester:
         assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
         self.progress.end()
 
-        if temp_dir is not None:
-            shutil.rmtree(temp_dir)
+        if self.test_dir is None:
+            shutil.rmtree(test_dir)
 
         self.run.info_single(
             "All tests passed for the pan database reaction network",
@@ -8196,114 +8250,6 @@ class Tester:
         self.run.info_single(
             "Subset select metabolites, reactions, KOs, and gene clusters", nl_after=1
         )
-
-    def make_pan_database_network(
-        self,
-        pan_db: str,
-        genomes_storage_db: str,
-        store: bool = True,
-        overwrite_existing_network: bool = True,
-        copy_db: bool = True,
-        consensus_threshold: float = None,
-        discard_ties: bool = False,
-        stats_file: str = "pan_db_network_stats.tsv"
-    ) -> Tuple[PangenomicNetwork, str]:
-        """
-        Test reaction network construction from a pan database.
-
-        Parameters
-        ==========
-        pan_db : str
-            Path to a pan database. The pangenomic network is determined for gene clusters stored in
-            the database.
-
-        genomes_storage_db : str
-            Path to a genomes storage database. The pangenomic network is derived from gene KO
-            annotations stored in the database.
-
-        store : bool, True
-            Save the network to a copy of the pan database, stored with the same filename in the
-            test directory. If this file copy already exists, it is retained and used.
-
-        overwrite_existing_network : bool, False
-            Overwrite an existing network stored in the copy of the pan database in the test
-            directory. 'store' is also required.
-
-        copy_db : bool, True
-            If True, as by default, the reaction network is stored, if applicable, in a copy of the
-            input pan database. If a test directory has been set, the database copy is placed there
-            with a derived filename, e.g., "my-PAN.db" is copied to a file like
-            "TEST/my-PAN-spiba5e7.db". If False, the reaction network is stored, if applicable, in
-            the input pan database.
-
-        consensus_threshold : float, None
-            With the default of None, the protein annotation most frequent among genes in a cluster
-            is assigned to the cluster itself. If a non-default argument is provided (a value on [0,
-            1]), at least this proportion of genes in the cluster must have the most frequent
-            annotation for the cluster to be annotated.
-
-        discard_ties : bool, False
-            If multiple protein annotations are most frequent among genes in a cluster, then do not
-            assign an annotation to the cluster itself when this argument is True. By default, this
-            argument is False, so one of the most frequent annotations would be arbitrarily chosen.
-
-        stats_file : str, None
-            Write network overview statistics to a tab-delimited file with this filename in the test
-            directory. If this file already exists, it is overwritten.
-
-        Returns
-        =======
-        PangenomicNetwork
-            The network derived from the pangenomic databases.
-
-        str
-            The path to the temporary directory in which a copy of the input pan database and output
-            stats files are stored. If no temporary directory is created, then this return value is
-            None.
-        """
-        utils.is_pan_db(pan_db)
-        utils.is_genome_storage(genomes_storage_db)
-
-        if self.test_dir is None:
-            test_dir = temp_dir = filesnpaths.get_temp_directory_path()
-        else:
-            test_dir = self.test_dir
-            temp_dir = None
-
-        if copy_db:
-            # Operations are performed on a copy of the pan database in the (provided or temporary)
-            # test directory.
-            basename = os.path.basename(pan_db)
-            prefix, suffix = os.path.splitext(basename)
-            pan_db_target = tempfile.NamedTemporaryFile(
-                prefix=f"{prefix}-", suffix=suffix, dir=test_dir
-            ).name
-            shutil.copy(pan_db, pan_db_target)
-        else:
-            pan_db_target = pan_db
-
-        con = Constructor(
-            ko_dir=self.ko_dir,
-            modelseed_dir=self.modelseed_dir,
-            run=self.run,
-            progress=self.progress
-        )
-
-        if stats_file:
-            stats_file_target = os.path.join(test_dir, stats_file)
-        else:
-            stats_file_target = None
-
-        network = con.make_pangenomic_network(
-            pan_db=pan_db_target,
-            genomes_storage_db=genomes_storage_db,
-            store=store,
-            overwrite_existing_network=overwrite_existing_network,
-            consensus_threshold=consensus_threshold,
-            discard_ties=discard_ties,
-            stats_file=stats_file_target
-        )
-        return network, temp_dir
 
 def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
