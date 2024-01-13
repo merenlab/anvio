@@ -384,21 +384,5 @@ anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
                                   --no-progress
 SHOW_FILE enrichment_ungrouped.txt
 
-## REACTION NETWORK TESTS
-# generate a temporary directory to store anvi-setup-modelseed-database output
-modelseed_data_dir=`mktemp -d`
-INFO "Setting up the ModelSEED Biochemistry database"
-anvi-setup-modelseed-database --dir $modelseed_data_dir
-rm -rf $modelseed_data_dir
-
-INFO "Storing a metabolic reaction network"
-anvi-reaction-network -c B_thetaiotamicron_VPI-5482.db \
-                      --no-progress
-
-INFO "Exporting the reaction network to file"
-anvi-get-metabolic-model-file -c B_thetaiotamicron_VPI-5482.db \
-                              -o reaction_network.json
-
-
 # clean up
 rm -rf $kegg_data_dir
