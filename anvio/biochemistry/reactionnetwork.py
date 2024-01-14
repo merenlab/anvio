@@ -38,13 +38,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.db import DB
 from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
-from anvio.dbops import (
-    ContigsDatabase,
-    ProfileDatabase,
-    PanDatabase,
-    ContigsSuperclass,
-    PanSuperclass
-)
+from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -2432,6 +2426,51 @@ class GenomicNetwork(ReactionNetwork):
             merged_network.proteins[protein_id] = protein
 
         return merged_network
+
+    def export_table(
+        self,
+        path: str
+    ) -> None:
+        d = {}
+        for ko_id, ko in self.kos.items():
+            d[ko_id] = e = {}
+            e['ko_id'] = ko_id
+            e['ko_name'] = ko.name
+            e['gene_count'] = 0
+            e['gene_ids'] = ''
+            e['protein_id'] = ''
+            e['protein_abundance'] = 0
+            e['reaction_ids'] = ''
+            for m in self.metabolites.values():
+                if m.abundances:
+                    e[m.modelseed_name] = np.nan
+        for gcid, gene in self.genes.items():
+            if gene.protein:
+                protein_id = str(gene.protein.id)
+                mean_protein_abund = np.mean(list(gene.protein.abundances.values()))
+            else:
+                protein_id = ''
+                mean_protein_abund = 0
+            for ko_id, ko in gene.kos.items():
+                e = d[ko_id]
+                e['gene_count'] += 1
+                e['gene_ids'] += f', {gcid}'
+                e['protein_id'] = protein_id
+                e['protein_abundance'] = mean_protein_abund
+        for ko_id, ko in self.kos.items():
+            e = d[ko_id]
+            for reaction_id, reaction in ko.reactions.items():
+                e['reaction_ids'] += f'{reaction_id}, '
+                for metabolite in reaction.compounds:
+                    if metabolite.abundances:
+                        e[metabolite.modelseed_name] = np.mean(list(metabolite.abundances.values()))
+        table = []
+        for e in d.values():
+            e: dict
+            e['reaction_ids'] = e['reaction_ids'].strip(' ').strip(',')
+            e['gene_ids'] = e['gene_ids'].strip(' ').strip(',')
+            table.append([v for v in e.values()])
+        pd.DataFrame(table, columns=[key for key in e]).to_csv(path, sep='\t', index=False)
 
     def get_overview_statistics(
         self,
