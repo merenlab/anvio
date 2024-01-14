@@ -1505,7 +1505,7 @@ class BottleApplication(Bottle):
 
         for genome in payload.keys():
             genecall, name = payload[genome]
-            gene_cluster_alignment_dict = self.pan_db.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
+            gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
             sequence = gene_cluster_alignment_dict[genome][int(genecall)]
 
             result[genome] = [genecall, sequence]
