@@ -3018,6 +3018,23 @@ class PangraphInteractive():
             #        is not yet implemented
             raise ConfigError("Not implemented.")
 
+        # make sure the JSON data we have access is compatible with the codebase
+        # we are running.
+        version_we_have = str(json_data['infos']['meta']['version']) if 'version' in json_data['infos']['meta'] else None
+        version_we_want = str(t.pangraph_json_version)
+
+        if version_we_have == None:
+            raise ConfigError("Bad news: the pan-graph data you have is outdated :/ You will have to re-run "
+                              "the program `anvi-pan-graph` on these data to generate an up-to-date "
+                              "pan-graph artifact that your current codebase can work with.")
+
+        if version_we_have != version_we_want:
+            raise ConfigError(f"We have a problem here. The data for your pan-graph is at version {version_we_have}. "
+                              f"Yet the anvi'o codebase you have here can only work with pan-graph version {version_we_want}. "
+                              f"The best solution to address this mismatch is to re-run the program `anvi-pan-graph` "
+                              f"on your dataset.")
+
+        # all good with the version stuff:
         return json_data
 
 
