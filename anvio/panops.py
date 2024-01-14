@@ -2017,7 +2017,11 @@ class Pangraph():
 
         self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())+self.fusion_events)/len(self.pangenome_graph.nodes()), 3)}%")
 
-        jsondata["infos"] = {'meta': {'global_x': self.global_x,
+        # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
+        #       to incrase by one (so that the new code that works with the new structure requires
+        #       previously generated JSON to be recomputed).
+        jsondata["infos"] = {'meta': {'version': anvio.__pangraph__version__,
+                                      'global_x': self.global_x,
                                       'global_y': self.global_y},
                              'genomes': self.genome_coloring,
                              'max_edge_length_filter': self.max_edge_length_filter,
