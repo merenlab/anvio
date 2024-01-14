@@ -1492,13 +1492,7 @@ class BottleApplication(Bottle):
 
 
     def get_pangraph_json_data(self):
-        if self.interactive.pan_graph_json_path:
-            return json.load(open(self.interactive.pan_graph_json_path))
-        else:
-            # FIXME: this is where we will get things from the pan-db, but it
-            #        is not yet implemented
-            raise ConfigError("Not implemented.")
-
+        return self.interactive.pan_graph_json
 
     def get_pangraph_settings(self):
         pass

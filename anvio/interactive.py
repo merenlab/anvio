@@ -5,6 +5,7 @@
 import os
 import sys
 import copy
+import json
 import numpy
 import argparse
 import textwrap
@@ -2998,6 +2999,26 @@ class PangraphInteractive():
             raise ConfigError("Unfortunately you can only use this program with the `--pan-graph-json` parameter.")
 
         PanSuperclass.__init__(self, self.args)
+
+        self.pan_graph_json = self.get_pangraph_json()
+
+
+    def get_pangraph_json(self):
+        """A function to 'get' pangraph JSON data from wherever appropriate.
+
+        Currently this function returns the user-provided JSON data, but it
+        will take into consideration other parameters and pan-db to determine
+        which resource is the most appropriate to retrieve the pangraph data.
+        """
+
+        if self.pan_graph_json_path:
+            json_data = json.load(open(self.pan_graph_json_path))
+        else:
+            # FIXME: this is where we will get things from the pan-db, but it
+            #        is not yet implemented
+            raise ConfigError("Not implemented.")
+
+        return json_data
 
 
 class ContigsInteractive():
