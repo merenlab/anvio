@@ -567,8 +567,8 @@ function nodeinfo(e, data) {
     var drop = $('<div id="name" name="' + id + '"></div>').append(
       data['elements']['nodes'][id]['name']
     )
-    var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
-    var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
+    var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
+    var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
     var group = 'None'
     var info = data['elements']['nodes'][id]['genome']
 
