@@ -2024,6 +2024,7 @@ class Pangraph():
                                       'global_x': self.global_x,
                                       'global_y': self.global_y},
                              'genomes': self.genome_coloring,
+                             'num_genomes': len(self.genome_coloring),
                              'max_edge_length_filter': self.max_edge_length_filter,
                              'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
                              'original': {'nodes': len(self.pangenome_graph.nodes()),
