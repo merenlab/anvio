@@ -1323,8 +1323,8 @@ function main () {
         )
       )
 
-      var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
-      var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
+      var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
+      var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
       var info = data['elements']['nodes'][id]['genome'];
 
       $('#InfoModalBody').empty()
