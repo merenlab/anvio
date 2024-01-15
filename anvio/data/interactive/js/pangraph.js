@@ -52,27 +52,27 @@ function modeString(array) {
       maxCount = modeMap[el];
     }
   }
-  return [maxEl, maxCount/i];
+  return [maxEl, Math.round(maxCount/i * 100)];
 }
 
 //ANCHOR - Fetch GC consensus functions
-function fetchinfo(info) {
+function get_gene_cluster_consensus_functions(gene_cluster_data) {
   var d = new Object();
   for (var source of notation) {
 
     var id = []
     var func = []
 
-    if (info != '') {
-      for (var element of Object.keys(info)) {
-        var entry = info[element][source]
+    if (gene_cluster_data != '') {
+      for (var element of Object.keys(gene_cluster_data)) {
+        var entry = gene_cluster_data[element][source]
 
         if (entry === 'None' || entry === undefined) {
           entry = ['None', 'None', 'None']
         }
 
-        id.push(entry[0])
-        func.push(entry[1])
+        id.push(entry[0].split('!!!')[0]);
+        func.push(entry[1].split('!!!')[0]);
       }
 
       var [id_maxEl, id_maxCount] = modeString(id);
@@ -90,115 +90,143 @@ function fetchinfo(info) {
   return(d);
 }
 
-//ANCHOR - Append GC consensus functions
-async function appendinfo(body, suffix, drop, position, genomes, group, info) {
 
-  body.append(
-    $('<div class="row gx-2"></div>').append(
-      $('<div class="col-2"></div>').append(
-        $('<b>Name</b>')
-      )
-    ).append(
-      $('<div class="col-10"></div>').append(
-        drop
-      )
-    ).append(
-      $('<div class="col-2"></div>').append(
-        $('<b>Group</b>')
-      )
-    ).append(
-      $('<div class="col-10" id="' + suffix + 'group"></div>').append(
-        group
-      )
-    ).append(
-      $('<div class="col-2"></div>').append(
-        $('<b>Genomes</b>')
-      )
-    ).append(
-      $('<div class="col-10" id="' + suffix + 'genomes"></div>').append(
-        genomes
-      )
-    ).append(
-      $('<div class="col-2"></div>').append(
-        $('<b>Position</b>')
-      )
-    ).append(
-      $('<div class="col-10" id="' + suffix + 'position"></div>').append(
-        position
-      )
-    )
-  )
+function get_gene_cluster_basics_table(gene_cluster_id, data) {
+    // first, learn a few basics about the gene cluster to be displayed
+    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
+    var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
 
-  var node = $('<div class="row gx-2"></div>').append(
-    $('<div class="col-2"></div>').append(
-      $('<b>Source</b>')
-    )
-  ).append(
-    $('<div class="col-9"></div>').append(
-      $('<div class="row g-0"></div>').append(
-        $('<div class="col-2"></div>').append(
-          $('<b>Accession</b>')
-        )
-      ).append(
-        $('<div class="col-10"></div>').append(
-          $('<b>Function</b>')
-        )
-      )
-    )
-  ).append(
-    $('<div class="col-1"></div>').append(
-      $('<b>Value</b>')
-    )
-  )
+    basic_info = {'Gene Cluster': gene_cluster_id, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
+    // build the basic information table
+    basic_info_table = `<p class="modal_header">Basics</p>`;
+    basic_info_table += `<table class="table table-striped table-bordered" id="node_basics_table">`;
+    basic_info_table += `<tbody>`;
 
-  var d = fetchinfo(info)
-  for (var [source, value]  of Object.entries(d)) {
+    basic_info_table += `<thead class="thead-light"><tr>`;
+    for (const [key, value] of Object.entries(basic_info)) {
+        basic_info_table += `<th scope="row">` + key + `</th>`;
+    }
+    basic_info_table += `</tr></thead><tbody>`;
 
-    var [id_maxEl, id_maxCount, func_maxEl, func_maxCount] = value
+    basic_info_table += `<tbody><tr>`;
+    for (const [key, value] of Object.entries(basic_info)) {
+        basic_info_table += `<td>` + value + `</td>`;
+    }
+    basic_info_table += `</tbody></tr></table>`;
 
-    node.append(
-      $('<div class="col-2"></div>').append(
-        source
-      )
-    )
+    return basic_info_table;
+}
 
-    var acc = $('<div class="row g-0"></div>')
-    var list_id_maxEl = id_maxEl.split('!!!')
-    var list_func_maxEl = func_maxEl.split('!!!')
 
-    for (var i = 0; i < list_id_maxEl.length; i++) {
-      acc.append(
-        $('<div class="col-2"></div>').append(
-          list_id_maxEl[i]
-        )
-      )
-      acc.append(
-        $('<div class="col-10"></div>').append(
-          list_func_maxEl[i]
-        )
-      )
+function get_gene_cluter_functions_table(gene_cluster_id, data) {
+    functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+    functions_table += `<table class="table table-striped" id="node_functions_table">`;
+    functions_table += `<thead class="thead-dark"><tr>`;
+    functions_table += `<th scope="col">Source</th>`;
+    functions_table += `<th scope="col">Accession</th>`;
+    functions_table += `<th scope="col">Function</th>`;
+    functions_table += `<th scope="col">Agreement</th>`;
+    functions_table += `</tr></thead><tbody>\n\n`;
+
+    var gene_cluster_data = data['elements']['nodes'][gene_cluster_id]['genome']
+    var d = get_gene_cluster_consensus_functions(gene_cluster_data);
+
+    function_sources = Object.keys(d).sort();
+    console.log(function_sources);
+    for (index in function_sources) {
+        source = function_sources[index];
+        value = d[source];
+
+        var [id_maxEl, id_maxCount, func_maxEl, func_maxCount] = value
+
+        functions_table += `<tr>`;
+        functions_table += `<td>` + source + `</td>`;
+        functions_table += `<td>` + id_maxEl + `</td>`;
+        functions_table += `<td>` + func_maxEl + `</td>`;
+        functions_table += `<td>` + func_maxCount + `%</td>`;
+        functions_table += `</tr>`;
+    }
+    functions_table += `</tbody></tr></table>\n\n`;
+
+    return functions_table
+}
+
+
+function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context) {
+    if (gene_cluster_context == null)
+        return '';
+
+    gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+    gene_cluster_context_table += `<div class="gene_cluster_context_items">`;
+    for(index in gene_cluster_context) {
+        gene_cluster_id = gene_cluster_context[index];
+        if (gene_cluster_id == gene_cluster_id_current){
+            gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_id + `</span>`;
+        } else {
+            // FIXME: we will need to find a way to fix this <a> tag below
+            gene_cluster_context_table += `<span class="gene_cluster_id"><a href="#">` + gene_cluster_id + `</a></span>`;
+        }
+    }
+    gene_cluster_context_table += `</div>`;
+
+    return gene_cluster_context_table;
+
+}
+
+
+//ANCHOR - Get tables for GC basic info and functions
+function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data) {
+    // The purpose of this function is to build HTML formatted tables to give access to
+    // the details of a gene cluster. The parameters here are,
+    //
+    //   - `gene_cluster_id`: A singular gene cluster id to be detailed,
+    //   - `gene_cluster_context`: A list of gene cluster ids that occur in the same context
+    //      with `gene_cluster_id` (either they were binned together, or they were in the same
+    //      group of gene clusters).
+    //   - `data`: the primary data object from the JSON input
+    //
+    // If everything goes alright, this function will return a table that can be displayed in
+    // any modal window.
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD CONTEXT
+    // if this is a gene cluster that is a part of a context, then all others are going to be
+    // shown here
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    gene_cluster_context_table = get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD BASIC INFORMATION TABLE
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, data);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD FUNCTIONS TABLE
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    functions_table = get_gene_cluter_functions_table(gene_cluster_id, data);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
+    ///////////////////////////////////////////////////////////////////////////////////////////
+//
+    var alignment = {}
+
+    if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
+      for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
+        alignment[genome] = [data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call'], data['elements']['nodes'][gene_cluster_id]['name']]
+      }
     }
 
-    node.append(
-      $('<div/>', {
-        class: 'col-9'
-      }).append(acc)
-    )
+    gene_cluster_sequence_alignments_table = appendalignment(alignment)
 
-    node.append(
-      $('<div/>', {
-        class: 'col-1 text-end'
-      }).append(func_maxCount === '' ? '' : func_maxCount.toFixed(3))
-    )
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // MERGE ALL AND RETURN
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
-  }
-
-  body.append(
-    $('<hr>')
-  ).append(
-    node
-  )
-
+    return gene_cluster_context_table + basic_info_table + functions_table + gene_cluster_sequence_alignments_table
 }
 
 //ANCHOR - Fetch genecall functions
@@ -374,97 +402,38 @@ function fetchalignment(alignment) {
 };
 
 //ANCHOR - Append GC alignment
-async function appendalignment(body, alignment) {
+async function appendalignment(alignment) {
+    // FIXME: We need to come up with more accurate and explicit function names.
+    if (Object.keys(alignment).length == 0) {
+        return ''
+    }
 
-  if (Object.keys(alignment).length !== 0) {
+    alignments_table = `<p class="modal_header">Sequence alignments</p>`;
+    alignments_table += `<table class="table table-striped" id="node_sequence_alignments_table">`;
+    alignments_table += `<thead><tr>`;
+    alignments_table += `<th scope="col">Genome</th>`;
+    alignments_table += `<th scope="col">Gene Call</th>`;
+    alignments_table += `<th scope="col">Sequence</th>`;
+    alignments_table += `</tr></thead><tbody>\n\n`;
 
-    var divid = $('<div class="col-4"></div>')
-    divid.append(
-      $('<div class="row g-0"></div').append(
-        $('<div class="col-6"></div>').append(
-          $('<b></b>').append('Genome')
-        )
-      ).append(
-        $('<div class="col-6"></div>').append(
-          $('<b></b>').append('Genecall')
-        )
-      )
-    )
-
-    var divalign = $('<div class="col-8 right"></div>')
 
     var d = await fetchalignment(alignment)
-
-    var size = Object.entries(d)[0][1][1].length;
-    var numbers = '';
-    var i = 1
-
-    while (i < size) {
-      var j = i.toString().length
-      if (i+50 <= size){
-        var k = 50;
-      } else {
-        var k = 50 - ((i+50) - size)
-      }
-      if (j > k){
-        numbers += '-'.repeat(k)
-      } else {
-        numbers += String(i).padEnd(k, '-');
-      }
-      i += k
-    };
-    numbers += '-';
-
-    divalign.append(
-      $('<div class="row g-0"></div>').append(
-        $('<div class="col-12"></div>').append(
-          $('<span style="white-space: nowrap; font-family: monospace; line-height: 1;"></span>').append(
-            numbers
-          )
-        )
-      )
-    )
 
     for (var [genome, value] of Object.entries(d)) {
       var colored = value[1].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
-      divid.append(
-        $('<div class="row g-0"></div').append(
-          $('<div class="col-6"></div>').append(
-            genome
-          )
-        ).append(
-          $('<div class="col-6"></div>').append(
-            $('<a class="btn border-0 m-0 p-0 align-baseline genome"></a>').append(
-              value[0]
-            )
-          )
-        )
-      )
-
-      divalign.append(
-        $('<div class="row g-0"></div>').append(
-          $('<div class="col-12"></div>').append(
-            $('<span style="white-space: nowrap; font-family: monospace; line-height: 1;"></span>').append(
-              colored
-            )
-          )
-        )
-      )
+      alignments_table += `<tr>`
+      alignments_table += `<td>` + genome + `</td>`
+      alignments_table += `<td><a class="btn border-0 m-0 p-0 align-baseline genome">` + value[0] + `</a></td>`
+      alignments_table += `<td>` + colored + `</td>`
+      alignments_table += `</tr>`
     }
 
+    alignments_table += `</tbody></table>\n\n`;
 
-    var div = $('<div class="row g-2"></div>')
-    div.append(
-      divid
-    ).append(
-      divalign
-    )
-
-    body.append(div)
-
-  }
-
+    // I guess this shouldn't return anything but insert the results into a context?
+    // lol sorry if I screwed these thigns up badly :) IDK what I'm doing :p
+    return alignments_table;
 }
 
 //ANCHOR - Color node and add/remove from bin
@@ -529,71 +498,49 @@ function marknode(e, data, binid, bins){
   return bins
 }
 
+function get_gene_cluster_functions_table(){
+
+}
+
+function show_node_details_modal(e, data){
+  var id = e.id;
+  var element = document.getElementById(id);
+
+  if (element.getAttribute('class') == 'group') {
+      // this is a group of gene clusters
+  } else {
+      // this is a single gene cluster
+    $('#InfoModal').modal('show');
+  }
+}
+
 // //ANCHOR - Information for the GC
 function nodeinfo(e, data) {
   var id = e.id;
   var element = document.getElementById(id);
 
   if (element.getAttribute('class') == 'group') {
-
-    var drop = $('<div class="dropdown" id="drop" name="' + id + '"></div>')
-
-    drop.append(
-      $('<a class= "btn border-1 m-0 p-0 dropdown-toggle" id="name" name="Choose GC" data-bs-toggle="dropdown" href="#"></a>').append(
-        $('<span class="caret"></span>').append('Choose GC')
-      )
-    )
-
-    var dropitem = $('<ul class="dropdown-menu pre-scrollable gcchoice"></ul>')
-    var grouplist = data['infos']['groups'][id]
-
-    for (var listitem of grouplist) {
-      dropitem.append(
-        $('<li class="caret"></li>').append(
-          $('<a class="dropdown-item" name="' + listitem + '" href="#">' + data['elements']['nodes'][listitem]['name'] + '</a>')
-        )
-      )
+    gene_cluster_context = [];
+    for (item in data['infos']['groups'][id]){
+      gene_cluster_context.push(data['infos']['groups'][id][item])
     }
-    drop.append(dropitem)
-
-    var position = ''
-    var genomes = ''
-    var group = id
-    var info = ''
-    var alignment = {}
-
+    gene_cluster_id = gene_cluster_context[0]
   } else {
-
-    var drop = $('<div id="name" name="' + id + '"></div>').append(
-      data['elements']['nodes'][id]['name']
-    )
-    var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
-    var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
-    var group = 'None'
-    var info = data['elements']['nodes'][id]['genome']
-
-    var alignment = {}
-
-    if (id != 'start' && id != 'stop') {
-      for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
-        alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']]
-      }
-    }
+    gene_cluster_id = id;
+    gene_cluster_context = null;
   }
 
   $('#InfoModalBody').empty()
   var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-  $('#InfoModalBody').append(
-    bodyinfo
-  )
-  appendinfo(bodyinfo, '', drop, position, genomes, group, info)
+  $('#InfoModalBody').append(bodyinfo)
+
+  bodyinfo.append(get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data))
 
   $('#AlignmentModalBody').empty()
   var bodyalign = $('<div class="card-body overflow-scroll"></div>')
   $('#AlignmentModalBody').append(
     bodyalign
   )
-  appendalignment(bodyalign, alignment)
 
   $('#GenomeModalBody').empty()
 
@@ -1025,7 +972,7 @@ function checknode(searchpos, positions, node, mingenomes, maxgenomes, minpositi
     }
   }
 
-  var d = fetchinfo(node['genome'])
+  var d = get_gene_cluster_consensus_functions(node['genome'])
   for (var source of Object.keys(searchfunction)) {
     if (!(d[source][2].includes(searchfunction[source]))) {
       append = false
@@ -1325,14 +1272,16 @@ function main () {
 
       var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
       var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
-      var info = data['elements']['nodes'][id]['genome'];
+      var gene_cluster_data = data['elements']['nodes'][id]['genome'];
 
       $('#InfoModalBody').empty()
       var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
       $('#InfoModalBody').append(
         bodyinfo
       )
-      appendinfo(bodyinfo, '', drop, position, genomes, group, info)
+
+      basic_info = {'Name': id, 'Genomes': genomes, 'Position': position}
+      bodyinfo.append(get_gene_cluster_display_tables('', basic_info, gene_cluster_data))
 
       var alignment = {}
 
@@ -1348,8 +1297,6 @@ function main () {
         bodyalign
       )
       appendalignment(bodyalign, alignment)
-
-
     });
 
     //ANCHOR - Bin dropdown choice function
@@ -1371,12 +1318,13 @@ function main () {
 
       var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
       var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
-      var info = data['elements']['nodes'][id]['genome'];
+      var gene_cluster_data = data['elements']['nodes'][id]['genome'];
 
       var body = $('#' + group + 'div')
       body.empty()
 
-      appendinfo(body, group, drop, position, genomes, group, info)
+      basic_info = {'Name': id, 'Genomes': genomes, 'Position': position}
+      body.append(get_gene_cluster_display_tables(group, basic_info, gene_cluster_data))
     })
 
     //ANCHOR - Bin creation
@@ -1490,9 +1438,9 @@ function main () {
           var position = ''
           var genomes = ''
           var group = id
-          var info = ''
+          var gene_cluster_data = ''
 
-          appendlist.push([id, drop, position, genomes, group, info])
+          appendlist.push([id, drop, position, genomes, group, gene_cluster_data])
         } else {
 
           var drop = $('<div id="' + id + 'name" name="' + id + '"></div>').append(
@@ -1501,12 +1449,12 @@ function main () {
           var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
           var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
           var group = 'None'
-          var info = data['elements']['nodes'][id]['genome']
-          appendlist.push([id, drop, position, genomes, group, info])
+          var gene_cluster_data = data['elements']['nodes'][id]['genome']
+          appendlist.push([id, drop, position, genomes, group, gene_cluster_data])
         }
       }
 
-      for (var [id, drop, position, genomes, group, info] of appendlist) {
+      for (var [id, drop, position, genomes, group, gene_cluster_data] of appendlist) {
 
         var body = $('<div class="card-body overflow-scroll" id="' + id + 'div"></div>')
 
@@ -1522,7 +1470,8 @@ function main () {
           )
         )
 
-        appendinfo(body, id, drop, position, genomes, group, info)
+        basic_info = {'Gene Cluster': id, 'Genomes': genomes, 'Position': position}
+        body.append(get_gene_cluster_display_tables(id, basic_info, gene_cluster_data))
       }
 
       $('#BinModal').modal('show');
@@ -1542,7 +1491,7 @@ function main () {
 
         var csv = "Name\t" + name + "\nGroup\t" + group + "\nGenomes\t" + genomes + "\nPosition\t" + position + "\nSource\tAccession\tFunction\tConfidence";
 
-        var func = fetchinfo(data['elements']['nodes'][id]['genome']);
+        var func = get_gene_cluster_consensus_functions(data['elements']['nodes'][id]['genome']);
 
         for (var [key, value] of Object.entries(func)) {
           csv += "\n" + key + "\t" + value[0] + "\t" + value[1] + "\t" + value[2];
@@ -1942,6 +1891,7 @@ function main () {
               bins = marknode(e.target, data, binid, bins);
 
             } else {
+              //show_node_details_modal(e.target, data);
               nodeinfo(e.target, data);
             }
 
