@@ -84,3 +84,42 @@
   .right {
     overflow-y: scroll; 
   }
+
+  #node_basics_table, #node_functions_table, #node_sequence_alignments_table {
+      font-size: x-small;
+  }
+
+  #node_basics_table {
+      text-align: center;
+  }
+
+  .modal_header {
+    font-variant: small-caps;
+    font-size: x-large;
+    background: linear-gradient(88deg, #fff0f0, #ffffff);
+    padding-left: 10px;
+    margin-top: 20px;
+    margin-bottom: 5px;
+  }
+
+  .gene_cluster_context_items {
+    display: block;
+    border: 1px #dee2e6 solid;
+    padding: 0px 3px;
+    font-size: x-small;
+    background: #f2f2f2;
+  }
+
+  .gene_cluster_id {  
+    display: inline-block;
+    margin: 5px 2px;
+    padding: 3px 5px;
+    border: 1px solid #9c9c9c;
+    border-radius: 6px;
+    font-family: monospace;
+    background: #fff0f1;
+  }
+
+  .gene_cluster_id_current {
+      background: #d8ebde;
+  }
