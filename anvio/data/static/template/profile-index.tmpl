@@ -212,7 +212,7 @@
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"source" }}</td>
 
                                             {% if meta|lookup:"contigs"|lookup:"scg_taxonomy_was_run" %}
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
                                             {% else %}
                                             <td class="text-center">N/A</td>
                                             {% endif %}
@@ -249,8 +249,8 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title">Taxonomy calls for {{ bin|humanize }}</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
             <table class="table table-striped" id="tblGrid_tax_{{ bin }}">
@@ -284,11 +284,11 @@
       <div class="modal-dialog" style="width: 900px;">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title">Static files for {{ bin|humanize }}</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid_files_{{ bin }}">
+            <table class="table table-striped table-responsive" id="tblGrid_files_{{ bin }}">
                 <thead id="tblHead_files_{{ bin }}">
                   <tr>
                     <th>File</th>
@@ -326,8 +326,8 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title">Completeness estimations for "{{ bin|humanize }}"</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
             <table class="table table-striped" id="tblGrid_completeness_{{ bin }}">
