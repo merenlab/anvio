@@ -10,6 +10,7 @@ import yaml
 import gzip
 import time
 import copy
+import json
 import socket
 import shutil
 import smtplib
@@ -824,6 +825,49 @@ def add_to_2D_numeric_array(x, y, a, count=1):
         a[idx, pos] += count
 
     return a
+
+
+def is_all_submodules_present():
+    """A function to test whether all anvi'o submodules are present.
+
+    This check is particularly important for those who run anvi'o from a git clone
+    rather than using it via a regular installation.
+    """
+
+    # find the root directory of anvi'o module
+    anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+
+    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+
+    if not os.path.exists(gitmodules_path):
+        # if this file does not exist, we are likely looking at a case where anvi'o is
+        # installed on the user's computer, so we will let them go.
+        return True
+
+    gitmodules = configparser.ConfigParser()
+
+    try:
+        gitmodules.read(gitmodules_path)
+    except Exception as e:
+        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
+                          "needs an adult :(")
+
+    # figure out missing modules
+    missing_gitmodules = []
+    for gitmodule in gitmodules.sections():
+        for key, value in gitmodules.items(gitmodule):
+            if key == 'path':
+                gitmodule_path = os.path.join(anvio_module_path, '..', value)
+
+                if not os.path.exists(gitmodule_path):
+                    missing_gitmodules.append(value)
+
+    if len(missing_gitmodules):
+        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
+                          "codebase. There is nothing to worry (well, probably). Please run the following "
+                          "command and it should fix this problem: 'git submodule update --init'.")
+    else:
+        return True
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
