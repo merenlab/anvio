@@ -47,7 +47,7 @@ function modeString(array) {
 //ANCHOR - Fetch GC consensus functions
 function get_gene_cluster_consensus_functions(gene_cluster_data) {
   var d = new Object();
-  for (var source of notation) {
+  for (var source of functional_annotation_sources_available) {
 
     var id = []
     var func = []
@@ -222,7 +222,7 @@ function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 
 function fetchgenome(info) {
 
   var d = new Object();
-  for (var source of notation) {
+  for (var source of functional_annotation_sources_available) {
 
     if (info[source] == 'None') {
       var func_id = 'None'
@@ -1658,7 +1658,7 @@ function main () {
         }
       }
 
-      for (var source of notation) {
+      for (var source of functional_annotation_sources_available) {
         if ($("#" + source).prop('checked') == true) {
           searchfunction[source] = $('#functiontext')[0].value
         }
