@@ -1105,6 +1105,9 @@ class Pangraph():
                 raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
                                   "in an external genomes file :/")
 
+        # make sure the pan-db and genomes-storage-db are compatible
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db, self.genomes_storage_db)
+
 
     def process(self):
         """Primary driver function for the class"""
