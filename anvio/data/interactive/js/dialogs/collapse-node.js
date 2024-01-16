@@ -61,7 +61,7 @@ function CollapseNodeDialog(node) {
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" type="button">Collapse</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>`;

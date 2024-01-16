@@ -108,7 +108,7 @@
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"source" }}</td>
 
                                             {% if meta|lookup:"contigs"|lookup:"genes_annotation_source" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"taxon" }}</i></button></td>
                                             {% else %}
                                             <td class="text-center">N/A</td>
                                             {% endif %}
@@ -117,7 +117,7 @@
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}%</td>
                                             {% else %}
                                             <td class="text-center" style="vertical-align: middle;">N\A</td>
@@ -143,8 +143,8 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title">Taxonomy calls for {{ bin|humanize }}</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
             <table class="table table-striped table-responsive" id="tblGrid_tax_{{ bin }}">
@@ -179,8 +179,8 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             <h4 class="modal-title">Completeness estimations for "{{ bin|humanize }}"</h4>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
             <table class="table table-striped table-responsive" id="tblGrid_completeness_{{ bin }}">
