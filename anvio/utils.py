@@ -862,7 +862,7 @@ def is_all_submodules_present():
                     missing_gitmodules.append(value)
 
     if len(missing_gitmodules):
-        run.warning("Please read the error below, and then run the  two commands shown below in your terminal, "
+        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
                     "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
                     lc='yellow')
         run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
