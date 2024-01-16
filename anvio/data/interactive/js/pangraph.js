@@ -12,8 +12,9 @@ const mapAS = {
   'Y': '<span style="color: #00ffff;">Y</span>', 'V': '<span style="color: #00ff00;">V</span>',
   '-': '<span style="color: #000000;">-</span>'
 };
-const notation = ["COG20_PATHWAY", "KEGG_Class", "Transfer_RNAs", "KOfam", "KEGG_Module", "COG20_CATEGORY", "COG20_FUNCTION"];
 
+// we will fill this later from the incoming data
+var functional_annotation_sources_available = [];
 
 // NOTE - From https://stackoverflow.com/questions/1053843/get-the-element-with-the-highest-occurrence-in-an-array
 function modeString(array) {
