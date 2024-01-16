@@ -415,7 +415,6 @@ function switchUserInterfaceMode(project, title) {
 
     if (server_mode) {
         $('.server-mode').show();
-        $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
         $('#multiUser').show();
         $('#multiUser > span').html('<b>' + title + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
         $('#multiUser > img').attr('src', project.user_avatar);
