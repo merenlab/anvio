@@ -74,6 +74,8 @@ if __name__ == '__main__':
     args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
+        utils.is_all_submodules_present()
+
         args.mode = 'pan'
         d = interactive.Interactive(args)
 
