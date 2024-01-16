@@ -1088,6 +1088,10 @@ function main () {
 
     var body = $('#svgbox')
     body.empty()
+
+    // learn about the functional annotation sources
+    functional_annotation_sources_available = data['infos']['functional_annotation_sources_available'];
+
     generate_svg(body, data);
 
     window.zoomSVG = svgPanZoom('#result', {
