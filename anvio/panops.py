@@ -34,6 +34,7 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.tables.miscdata as miscdata
 
+from anvio.dbinfo import DBInfo
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
