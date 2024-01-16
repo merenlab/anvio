@@ -10,6 +10,10 @@ html *
    font-family: 'Roboto',Helvetica,Arial,sans-serif !important;
 }
 
+.fs-2x {
+    font-size: 2em;
+}
+
 .desc {
     font-size: 14px;
     margin-bottom: 15px;
