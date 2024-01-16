@@ -212,17 +212,17 @@
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"source" }}</td>
 
                                             {% if meta|lookup:"contigs"|lookup:"scg_taxonomy_was_run" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
                                             {% else %}
                                             <td class="text-center">N/A</td>
                                             {% endif %}
 
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}%</td>
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"scg_domain" }}</td>
                                             {% else %}
@@ -534,7 +534,7 @@
                                     <tr>
                                         <td style="vertical-align: middle; width: 18px;"><div style="width:18px; height: 18px; background-color: {{ collection|lookup:bin|lookup:"color" }}; fload:left; border-radius: 3px;">&nbsp;</div></td>
                                         <td style="vertical-align: middle;">{{ bin }}</td>
-                                        <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                        <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
                                         <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
                                         <td class="text-center" style="vertical-align: middle;">🔗  
                                                 <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_calls" }}">genes</a> |
