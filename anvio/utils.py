@@ -858,7 +858,7 @@ def is_all_submodules_present():
             if key == 'path':
                 gitmodule_path = os.path.join(anvio_module_path, '..', value)
 
-                if not os.path.exists(gitmodule_path):
+                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
                     missing_gitmodules.append(value)
 
     if len(missing_gitmodules):
