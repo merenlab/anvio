@@ -62,7 +62,7 @@ function SaveTreeDialog(tree_type) {
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" type="button">Save</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>`;

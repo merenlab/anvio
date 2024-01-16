@@ -1172,7 +1172,7 @@ function showSetMaxValuesDialog() {
                 <td style="text-align: center;"><div class="input-group">\
                     <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
                         <span class="input-group-btn"> \
-                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
                         </span> \
                     </div> \
                 </td> \
