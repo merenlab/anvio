@@ -1042,7 +1042,6 @@ class Pangenome(object):
 
 
 class Pangraph():
-
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -1059,6 +1058,9 @@ class Pangraph():
         # data storage related variables
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
+
+        # learn what gene annotation sources are present across all genomes
+        self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
 
         # this is the dictionary that wil keep all data that is going to be loaded
         # from anvi'o artifacts
@@ -1173,7 +1175,7 @@ class Pangraph():
                 caller_id_cluster_df["draw"] = self.genome_coloring[genome]
 
                 contigs_db.init_functions()
-                gene_function_calls_df = pd.DataFrame.from_dict(contigs_db.gene_function_calls_dict, orient="index", columns=["COG20_PATHWAY", "KEGG_Class", "Transfer_RNAs", "KOfam", "KEGG_Module", "COG20_CATEGORY", "COG20_FUNCTION"]).rename_axis("gene_caller_id").reset_index()
+                gene_function_calls_df = pd.DataFrame.from_dict(contigs_db.gene_function_calls_dict, orient="index", columns=self.functional_annotation_sources_available).rename_axis("gene_caller_id").reset_index()
 
                 all_gene_calls = caller_id_cluster_df['gene_caller_id'].values.tolist()
                 genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.get_sequences_for_gene_callers_ids(all_gene_calls, include_aa_sequences=True, simple_headers=True)[1], orient="index", columns=["contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "sequence", "length", "rev_compd", "aa_sequence", "header"]).rename_axis("gene_caller_id").reset_index()
