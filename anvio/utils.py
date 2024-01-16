@@ -858,13 +858,20 @@ def is_all_submodules_present():
             if key == 'path':
                 gitmodule_path = os.path.join(anvio_module_path, '..', value)
 
-                if not os.path.exists(gitmodule_path):
+                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
                     missing_gitmodules.append(value)
 
     if len(missing_gitmodules):
+        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
+                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
         raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
-                          "codebase. There is nothing to worry (well, probably). Please run the following "
-                          "command and it should fix this problem: 'git submodule update --init'.")
+                          "codebase. If you run the commands shown above, you should be golden to try "
+                          "again.")
     else:
         return True
 
