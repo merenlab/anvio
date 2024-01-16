@@ -10,7 +10,6 @@ import yaml
 import gzip
 import time
 import copy
-import json
 import socket
 import shutil
 import smtplib
