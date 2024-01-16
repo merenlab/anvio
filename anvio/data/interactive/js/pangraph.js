@@ -57,7 +57,7 @@ function get_gene_cluster_consensus_functions(gene_cluster_data) {
         var entry = gene_cluster_data[element][source]
 
         if (entry === 'None' || entry === undefined) {
-          entry = ['None', 'None', 'None']
+          entry = ['-', '-', '-']
         }
 
         id.push(entry[0].split('!!!')[0]);
