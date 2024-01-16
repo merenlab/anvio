@@ -14,18 +14,6 @@ const mapAS = {
 };
 const notation = ["COG20_PATHWAY", "KEGG_Class", "Transfer_RNAs", "KOfam", "KEGG_Module", "COG20_CATEGORY", "COG20_FUNCTION"];
 
-for (var source of notation) {
-
-  $('#functiondiv').append(
-    $('<div class="col-2"></div').append(
-      $('<input class="form-check-input" type="checkbox" id="' + source + '" value="" data-bs-toggle="tooltip" data-bs-placement="top"></input>')
-    )
-  ).append(
-    $('<div class="col-10"></div').append(
-      source
-    )
-  )
-}
 
 // NOTE - From https://stackoverflow.com/questions/1053843/get-the-element-with-the-highest-occurrence-in-an-array
 function modeString(array) {
