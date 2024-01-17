@@ -35,10 +35,9 @@ class DGR_Finder:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.input_path = A('input_file')
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path= None
-        self.fasta_file_path = A('fasta_file')
+        self.fasta_file_path = A('input_file')
         self.step = A('step')
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
@@ -51,7 +50,7 @@ class DGR_Finder:
         if self.step < 0 or self.word_size < 0:
             raise ConfigError('The step value and/or word size value you are trying to input should be positive.')
 
-        self.run.info('Input FASTA file', self.input_path)
+        self.run.info('Input FASTA file', self.fasta_file_path)
         self.run.info('Step size', self.step)
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
@@ -442,9 +441,13 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
         
         """
-        base_input_name = os.path.basename(self.input_path)
-        csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
+        base_input_name = None
+        if self.fasta_file_path:
+             base_input_name = os.path.basename(self.fasta_file_path)
+        elif self.contigs_db_path:
+             base_input_name = os.path.basename(self.contigs_db_path)
 
+        csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             
