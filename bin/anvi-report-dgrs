@@ -24,7 +24,7 @@ run = Run()
 @time_program
 def main(args):
     D = dgrs.DGR_Finder(args)
-    blast_output = D.run_blastn()
+    blast_output = D.get_blast_results()
     mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
     DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
     csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
@@ -57,9 +57,10 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupA = parser.add_argument_group('INPUT DATA', "Essentially a sequence file and nothing more.")
+    groupA = parser.add_argument_group('INPUT DATA', "Essentially a sequence file.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 
-    groupA.add_argument("-i", "--input-file", required=True, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
+    groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
     
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
     groupB.add_argument("-s", "--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
