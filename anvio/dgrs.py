@@ -6,6 +6,7 @@ import re
 import xml.etree.ElementTree as ET
 import csv
 import os
+import shutil
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -420,6 +421,11 @@ class DGR_Finder:
                                 DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
                             
         print(f'number of DGRs is {num_DGR}')
+        if anvio.DEBUG:
+            self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
+        else:
+            self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
+            shutil.rmtree(self.temp_dir)
         return DGRs_found_dict
     
     def create_found_tr_vr_csv(self, DGRs_found_dict):
