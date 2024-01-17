@@ -46,15 +46,25 @@ class DGR_Finder:
         self.percentage_mismatch = A('percentage_mismatch')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
 
-        filesnpaths.is_file_fasta_formatted(self.input_path)
+        self.sanity_check()
         if self.step < 0 or self.word_size < 0:
             raise ConfigError('The step value and/or word size value you are trying to input should be positive.')
-        
+
         self.run.info('Input FASTA file', self.input_path)
         self.run.info('Step size', self.step)
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
+        
+
+    def sanity_check(self):
+        if self.contigs_db_path and self.fasta_file_path:
+            raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
+                              "class, not multiple :/")
+        if self.fasta_file_path:
+            # check  fasta input
+            filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
+
     def get_blast_results(self):
         """
         This function runs the BLASTn search, depending on the input file type, running this against the .
