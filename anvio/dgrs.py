@@ -13,6 +13,7 @@ from Bio.Seq import Seq
 
 import anvio
 import anvio.terminal as terminal
+import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
@@ -34,12 +35,16 @@ class DGR_Finder:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.input_path = A('input_file')
+        self.contigs_db_path = A('contigs_db')
+        self.profile_db_path= None
+        self.fasta_file_path = A('fasta_file')
         self.step = A('step')
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
+        self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
 
         filesnpaths.is_file_fasta_formatted(self.input_path)
         if self.step < 0 or self.word_size < 0:
@@ -50,7 +55,58 @@ class DGR_Finder:
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
-    
+    def get_blast_results(self):
+        """
+        This function runs the BLASTn search, depending on the input file type, running this against the .
+        
+        Running the BLASTn generates an xml file of results.
+
+        Returns
+        blast_output : xml file
+            An xml of BLASTn results
+        =======
+        """
+        #initialise temporary dictionary
+        tmp_directory_path = self.temp_dir
+        target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
+        self.run.info('temporary input for blast', target_file_path)
+
+        if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
+            shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
+            blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")      
+            if self.fasta_file_path:
+                os.system(f"cp {self.input_path} {target_file_path}")
+            elif self.contigs_db_path:
+                utils.export_sequence_from_contigs_db(self.contigs_db_path, target_file_path)
+            # Start at half the step size of the output file
+            overlap_start = self.step // 2
+            first_sequences = self.split_sequences()
+            second_sequences = self.split_sequences(overlap_start)
+
+            all_sequences = first_sequences + second_sequences
+
+            # Write combined sequences to output file
+            with open(shredded_sequence_file, "w") as output_handle:
+                SeqIO.write(all_sequences, output_handle, "fasta") 
+            
+            blast = BLAST(shredded_sequence_file, target_fasta =target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+            blast.evalue = 10 #set Evalue to be same as blastn default
+            blast.makedb(dbtype = 'nucl')
+            blast.blast(outputfmt = '5', word_size = self.word_size)
+
+        elif self.contigs_db_path and self.profile_db_path:
+            #contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+                #self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
+                #self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+                #self.genes_are_called_in_contigs_db = contigs_db.meta['genes_are_called']
+                #self.genes_annotated_with_functions_in_contigs_db = contigs_db.meta['gene_function_sources'] is not None and len(contigs_db.meta['gene_function_sources']) > 0
+                #contigs_db.disconnect()
+            #NEED SNV WINDOW MAKER func here that takes SNV info from .db using tables? or tableops? 
+            #then take in these windows outputs nd blast to give blast_output in xaml file. but need to original sequence to comapre the SNV windows to?
+            pass
+
+        return(blast_output)
+                
 
 
     def split_sequences(self, start=0):
