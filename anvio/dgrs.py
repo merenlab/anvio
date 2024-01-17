@@ -78,16 +78,16 @@ class DGR_Finder:
         """
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
-        target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
-        self.run.info('temporary input for blast', target_file_path)
+        self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
+        self.run.info('temporary input for blast', self.target_file_path)
 
         if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
             shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
             blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")      
             if self.fasta_file_path:
-                os.system(f"cp {self.input_path} {target_file_path}")
+                os.system(f"cp {self.fasta_file_path} {self.target_file_path}")
             elif self.contigs_db_path:
-                utils.export_sequence_from_contigs_db(self.contigs_db_path, target_file_path)
+                utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
             # Start at half the step size of the output file
             overlap_start = self.step // 2
             first_sequences = self.split_sequences()
@@ -97,9 +97,9 @@ class DGR_Finder:
 
             # Write combined sequences to output file
             with open(shredded_sequence_file, "w") as output_handle:
-                SeqIO.write(all_sequences, output_handle, "fasta") 
+                SeqIO.write(all_sequences, output_handle, "fasta")
             
-            blast = BLAST(shredded_sequence_file, target_fasta =target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+            blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
@@ -118,7 +118,7 @@ class DGR_Finder:
         return(blast_output)
                 
 
-
+          
     def split_sequences(self, start=0):
         """
         This function splits the sequence given into sections of the step value length.
@@ -134,7 +134,7 @@ class DGR_Finder:
             A list of the split sequences
         """
         section_sequences = []
-        for sequence in SeqIO.parse(self.input_path, "fasta"):
+        for sequence in SeqIO.parse(self.target_file_path, "fasta"):
             for i in range(start, len(sequence.seq) - self.step + 1, self.step):
                 section = sequence.seq[i:i + self.step]
                 section_record = SeqRecord(section, id=f"{sequence.id}_part{i//self.step}_start_bp{i}_end_bp{i + self.step}", description="")
