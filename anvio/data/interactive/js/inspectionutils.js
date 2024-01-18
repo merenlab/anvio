@@ -414,13 +414,21 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
     $('[data-toggle="popover"]').popover({html: true, sanitize: false, "trigger": "click", "container": "body", "viewport": "body", "placement": "top" });
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").tip;      
+      var popover = $(e.target).data("bs.popover").tip;
       $(popover).addClass('d-block');
-      // workaround for known popover bug
-      // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-      // Hard coded event used for known popover bug.
-      window.scrollTo(0, 1);
+
+      // update popover position before scrolling
+      $(popover).popover('update');
+
+      $('div').on('scroll', function () {
+        var $container = $(this);
+        $(this).find('.popover').each(function () {
+            $(this).css({
+                top: - $container.scrollTop()
+            });
+        });
     });
+  });
 }
 
 function getGeneEndpts(_start, _stop) {
