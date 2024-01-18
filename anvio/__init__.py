@@ -1397,6 +1397,20 @@ D = {
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
                 ),
+    'ignore-genes-longer-than': (
+            ['--ignore-genes-longer-than'],
+            {'metavar': 'MAX_LENGTH',
+             'default': 0,
+             'type': int,
+             'help': "In some cases the gene calling step can identify open reading frames that span across extremely long "
+                     "stretches of genomes. Such mistakes can lead to downstream issues, especially when concatenate flag "
+                     "is used, including faliure to align genes. This flag allows anvi'o to ignore extremely long gene calls to "
+                     "avoid unintended issues (i.e., during phylogenomic analyses). If you use this flag, please carefully "
+                     "examine the output messages from the program to see which genes are removed from the analysis. "
+                     "Please note that the length parameter considers the nucleotide lenght of the open reading frame, "
+                     "even if you asked for amino acid sequences to be returned. Setting this parameter to small values, "
+                     "such as less than 10000 nucleotides may lead to the removal of geniune genes, so please use it carefully."}
+                ),
     'align-with': (
             ['--align-with'],
             {'metavar': 'ALIGNER',
