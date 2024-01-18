@@ -323,6 +323,7 @@ if __name__ == '__main__':
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
     groupG.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
