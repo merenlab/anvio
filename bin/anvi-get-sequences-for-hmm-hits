@@ -184,6 +184,16 @@ def main(args):
 
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
 
+    if args.ignore_genes_longer_than > 0:
+        hmm_sequences_dict, gene_calls_removed, bins_removed = s.filter_hmm_sequences_dict_for_genes_that_are_too_long(hmm_sequences_dict, int(args.ignore_genes_longer_than))
+        CHK()
+
+        if len(bins_removed):
+            bins_removed_for_any_reason.update(bins_removed)
+
+        if len(gene_calls_removed):
+            run.info('Filtered hits', '%d hits remain after filtering for %d genes longer than %d' % (len(hmm_sequences_dict), len(gene_calls_removed), args.ignore_genes_longer_than), nl_before=1)
+
     if args.max_num_genes_missing_from_bin is not None:
         hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
         CHK()
