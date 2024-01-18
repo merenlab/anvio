@@ -321,11 +321,11 @@ if __name__ == '__main__':
                                   program with `--concatenate-genes` flag). The default is "XXX" for amino\
                                   acid sequences, and "NNN" for DNA sequences'}))
 
-    groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
-    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
-    groupG.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
-    groupG.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
-    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupH = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
+    groupH.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupH.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
+    groupH.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
+    groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
 
