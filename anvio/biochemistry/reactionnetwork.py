@@ -5455,8 +5455,10 @@ class Constructor:
             raise ConfigError(
                 f"""\
                 Certain genes were unexpectedly associated with multiple proteins with abundance\
-                data. These are as follows, with the gene callers ID separated by a comma-separated\
-                list of protein IDs. {s}\
+                data. Unfortunately, multiple protein products are not currently allowed in anvi'o,\
+                so the protein abundance data must be edited down in the profile database to permit\
+                use with the reaction network. These are as follows, with the gene callers ID\
+                separated by a comma-separated\ list of protein IDs. {s}\
                 """
             )
 
