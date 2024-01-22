@@ -22,9 +22,6 @@
 [submodule "anvio/data/interactive/lib/toastr"]
 	path = anvio/data/interactive/lib/toastr
 	url = https://github.com/CodeSeven/toastr.git
-[submodule "anvio/data/interactive/lib/bootstrap-markdown"]
-	path = anvio/data/interactive/lib/bootstrap-markdown
-	url = https://github.com/toopay/bootstrap-markdown.git
 [submodule "anvio/data/interactive/lib/marked"]
 	path = anvio/data/interactive/lib/marked
 	url = https://github.com/chjj/marked.git
