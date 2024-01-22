@@ -19,9 +19,6 @@
 [submodule "anvio/data/interactive/lib/randomColor"]
 	path = anvio/data/interactive/lib/randomColor
 	url = https://github.com/davidmerfield/randomColor
-[submodule "anvio/data/interactive/lib/bootstrap-waitingfor"]
-	path = anvio/data/interactive/lib/bootstrap-waitingfor
-	url = https://github.com/ehpc/bootstrap-waitingfor.git
 [submodule "anvio/data/interactive/lib/toastr"]
 	path = anvio/data/interactive/lib/toastr
 	url = https://github.com/CodeSeven/toastr.git
