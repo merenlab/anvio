@@ -10,9 +10,6 @@
 [submodule "anvio/data/interactive/lib/d3.js"]
 	path = anvio/data/interactive/lib/d3.js
 	url = https://github.com/mbostock/d3
-[submodule "anvio/data/interactive/lib/jquery"]
-	path = anvio/data/interactive/lib/jquery
-	url = https://github.com/jquery/jquery
 [submodule "anvio/data/interactive/lib/jquery-ui"]
 	path = anvio/data/interactive/lib/jquery-ui
 	url = https://github.com/jquery/jquery-ui
