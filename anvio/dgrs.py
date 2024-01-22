@@ -100,7 +100,7 @@ class DGR_Finder:
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
         self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
-        self.run.info('temporary input for blast', self.target_file_path)
+        self.run.info('Temporary input for blast', self.target_file_path)
 
         if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
             shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
@@ -230,8 +230,8 @@ class DGR_Finder:
 
         Parameters 
         ==========
-        root : xml file 
-            An xml of BLASTn results
+        blast_output : xml file 
+            BLASTn results
         
         Returns
         mismatch_hits : dict
@@ -368,7 +368,7 @@ class DGR_Finder:
             TR_sequence_found = None
             VR_sequence_found = None
 
-        # get number of mismatches
+            # get number of mismatches
             mismatch_length_bp = len(position)
 
             # if num of mismatches = 0, skip DGR search sanity check 
