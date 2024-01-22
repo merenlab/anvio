@@ -7,17 +7,24 @@ import xml.etree.ElementTree as ET
 import csv
 import os
 import shutil
+import argparse
+import json
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
+from collections import OrderedDict
 
 import anvio
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
+
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
+from anvio.variabilityops import NucleotidesEngine
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
