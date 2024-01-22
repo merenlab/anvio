@@ -57,11 +57,10 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupA = parser.add_argument_group('INPUT DATA', "Essentially a sequence file.")
+    groupA = parser.add_argument_group('INPUT DATA', "Three options with varying outputs. 1. fasta file nothing else. 2. Contigs.db. 3. Contigs.db AND Profile.db. option 1 and 2 Search for DGRs in whatever you have given it. Option 3. Searches based on areas of high SNV")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False})) #ADD THAT HAS TO BE MERGED_DB, unless have 
     groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
-    
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
     groupB.add_argument("-s", "--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
     groupB.add_argument("-ws","--word-size", help="BLASTn word size parameter", type=str, default=8)
@@ -71,6 +70,9 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
     groupD.add_argument("-pm","--percentage_mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-nm","--number_of_mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
+    groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
+    groupE.add_argument("-snvd","--distance_between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
+    groupE.add_argument("-vbl","--variable_buffer_length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
 
     args = parser.get_args(parser)
 
