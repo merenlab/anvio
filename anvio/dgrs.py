@@ -123,7 +123,17 @@ class DGR_Finder:
 
         return(blast_output)
                 
+    def get_snvs(self):
+        args = argparse.Namespace(contigs_db=self.contigs_db_path,
+                                profile_db=self.profile_db_path,
+                                splits_of_interest_set= set(self.split_names_unique),
+                                compute_gene_coverage_stats=True)
 
+        n = NucleotidesEngine(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        n.process()
+        
+
+        return n.data
           
     def split_sequences(self, start=0):
         """
