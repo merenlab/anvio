@@ -16,9 +16,6 @@
 [submodule "anvio/data/interactive/lib/toastr"]
 	path = anvio/data/interactive/lib/toastr
 	url = https://github.com/CodeSeven/toastr.git
-[submodule "anvio/data/interactive/lib/marked"]
-	path = anvio/data/interactive/lib/marked
-	url = https://github.com/chjj/marked.git
 [submodule "anvio/data/interactive/lib/JavaScript-MD5"]
 	path = anvio/data/interactive/lib/JavaScript-MD5
 	url = https://github.com/blueimp/JavaScript-MD5.git
