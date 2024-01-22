@@ -62,8 +62,14 @@ class DGR_Finder:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
                               "class, not multiple :/")
         if self.fasta_file_path:
-            # check  fasta input
+            # check fasta input
             filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
+
+        if self.step < 0 or self.word_size < 0:
+            raise ConfigError('The step value and/or word size value you are trying to input should be positive.')
+        
+        if self.variable_buffer_length < 0:
+            raise ConfigError('The variable buffer length value you are trying to input should be positive.')
 
     def get_blast_results(self):
         """
