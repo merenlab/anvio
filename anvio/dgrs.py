@@ -43,7 +43,7 @@ class DGR_Finder:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
-        self.profile_db_path= None
+        self.profile_db_path= A('profile_db')
         self.fasta_file_path = A('input_file')
         self.step = A('step')
         self.word_size = A('word_size')
@@ -52,17 +52,25 @@ class DGR_Finder:
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
+        self.min_dist_bw_snvs = A('distance_between_snv')
+        self.variable_buffer_length = A('variable_buffer_length')
 
         self.sanity_check()
-        if self.step < 0 or self.word_size < 0:
-            raise ConfigError('The step value and/or word size value you are trying to input should be positive.')
-
-        self.run.info('Input FASTA file', self.fasta_file_path)
-        self.run.info('Step size', self.step)
+        
+        if self.fasta_file_path:
+            self.run.info('Input FASTA file', self.fasta_file_path)
+        if self.contigs_db_path:
+            self.run.info('Contigs.db', self.contigs_db_path)
+        if self.profile_db_path:
+            self.run.info('Profile.db', self.profile_db_path)
+        if self.fasta_file_path or self.contigs_db_path and not self.profile_db_path:
+            self.run.info('Step size', self.step)
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
-        
+        if self.profile_db_path and self.contigs_db_path:
+            self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
+            self.run.info('Variable buffer length', self.variable_buffer_length)
 
     def sanity_check(self):
         if self.contigs_db_path and self.fasta_file_path:
