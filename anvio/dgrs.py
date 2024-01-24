@@ -154,15 +154,17 @@ class DGR_Finder:
             
             profile_db.disconnect()
            
+            #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
 
             self.snv_panda['departure_from_reference'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('departure_from_reference', None), axis=1)
 
-            #Sort  pandas frame by 'split_name' and then by 'pos'
-            #self.snvs_sorted = self.snv_panda
-            #self.snvs_sorted_dict = self.snvs_sorted.to_dict()
-            #in split subset extract contig_name and pos_in_contig 
-            self.all_possible_windows = []
+            
+            self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
+            # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
+            #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
+            #                                           ....}
+            # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
             
             for split in self.split_names_unique:
                 for sample in sample_id_list:
@@ -206,62 +208,88 @@ class DGR_Finder:
                             window_start = 0
                         if window_end > contig_len:
                             window_end = contig_len
+
+                        # Add the window to the contig's list
+                        self.all_possible_windows[contig_name].append((window_start, window_end))
                         
-                        # Generate a unique key based on the index of the start and end positions
-                        key = f'{contig_name}_window_{len(self.all_possible_windows[contig_name]) + 1}'
+            
+            all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
+            # loop to merge overlaps within a given contig
+            for contig_name, window_list in self.all_possible_windows.items():
+                # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
+                sorted_windows_in_contig = window_list.sorted(key=lambda x: x[0]) # this list is like the old variable 'all_entries'
+                # at this point, sorted_windows_in_contig contains (start, stop) tuples in order of 'start'
 
-                        # Create a sub-dictionary for the window
-                        window_dict = {
-                            'contig_name': contig_name,
-                            'start_position': window_start,
-                            'end_position': window_end
-                        }
+                merged_windows_in_contig = []
+                while 1:
+                    if not len(sorted_windows_in_contig):
+                        break
+                    
+                    entry = sorted_windows_in_contig.pop(0)
+                    overlapping_entries = [entry]
+                    start, end = entry
+                    matching_entries_indices = []
 
-                        # Add the sub-dictionary to the contig's dictionary using the generated key
-                        self.all_possible_windows[contig_name][key] = window_dict
-          
-            # Initialize an empty list for unique overlapping sequences
-            all_entries = []
+                    for i in range(0, len(sorted_windows_in_contig)):
+                        n_start, n_end = sorted_windows_in_contig[i]
+                        if self.range_overlapping(start, end, n_start, n_end):
+                            matching_entries_indices.append(i)
+                            start = min(start, n_start)
+                            end = max(end, n_end)
+                    
+                    # remove each overlapping window from the list and simultaneously add to list of overlapping entries
+                    # we do this in backwards order so that pop() doesn't change the indices we need to remove
+                    for i in sorted(matching_entries_indices, reverse=True):
+                        overlapping_entries.append(sorted_windows_in_contig.pop(i))
+
+                    merged_ranges = self.combine_ranges(overlapping_entries)
+                    merged_windows_in_contig.append(merged_ranges)
+
+                all_merged_snv_windows[contig_name] = merged_windows_in_contig
+
+            # below is the old version, I've moved it above with minor changes to variable names
+            # # Initialize an empty list for unique overlapping sequences
+            # all_entries = []
         
-            for contig_name, window_dict in self.all_possible_windows.items():
-                for window_name, window_values in window_dict.items():
-                    all_entries.append((contig_name, window_name, window_values['start_position'], window_values['end_position']))
+            # for contig_name, window_dict in self.all_possible_windows.items():
+            #     for window_name, window_values in window_dict.items():
+            #         all_entries.append((contig_name, window_name, window_values['start_position'], window_values['end_position']))
 
-            # now it is time to identify clusters. the following state
-            clusters = []
-            while 1:
-                if not len(all_entries):
-                    break
+            # # now it is time to identify clusters. the following state
+            # clusters = []
+            # while 1:
+            #     if not len(all_entries):
+            #         break
 
-                entry = all_entries.pop(0)
-                cluster = [entry]
-                contig_name, window_number, start, end = entry
-                matching_entries = []
+            #     entry = all_entries.pop(0)
+            #     cluster = [entry]
+            #     contig_name, window_number, start, end = entry
+            #     matching_entries = []
 
-                for i in range(0, len(all_entries)):
-                    contig_name, n_window_number, n_start, n_end = all_entries[i]
-                    if self.range_overlapping(start, end, n_start, n_end):
-                        matching_entries.append(i)
-                        start = min(start, n_start)
-                        end = max(end, n_end)
-                #for i in range(0, len(all_entries)):
-                    #contig_name, n_window_number, n_start, n_end = all_entries[i]
-                    #if self.range_overlapping(start, end, n_start, n_end):
-                        #matching_entries.append(i)
+            #     for i in range(0, len(all_entries)):
+            #         contig_name, n_window_number, n_start, n_end = all_entries[i]
+            #         if self.range_overlapping(start, end, n_start, n_end):
+            #             matching_entries.append(i)
+            #             start = min(start, n_start)
+            #             end = max(end, n_end)
+            #     #for i in range(0, len(all_entries)):
+            #         #contig_name, n_window_number, n_start, n_end = all_entries[i]
+            #         #if self.range_overlapping(start, end, n_start, n_end):
+            #             #matching_entries.append(i)
 
-                # add all matching entries
-                for i in sorted(matching_entries, reverse=True):
-                    cluster.append(all_entries.pop(i))
+            #     # add all matching entries
+            #     for i in sorted(matching_entries, reverse=True):
+            #         cluster.append(all_entries.pop(i))
 
-                # combine ranges of the cluster from entries and then add the combined lsit to the final clusters
-                combined_result = self.combine_ranges(cluster)
-                clusters.append(combined_result)
+            #     # combine ranges of the cluster from entries and then add the combined lsit to the final clusters
+            #     combined_result = self.combine_ranges(cluster)
+            #     clusters.append(combined_result)
 
-                for i in range(len(clusters)):
-                    for j in range(i, len(clusters)):
+                for i in range(len(merged_windows_in_contig)):
+                    for j in range(i, len(merged_windows_in_contig)):
                         if i != j:
-                            if self.range_overlapping(clusters[i][2], clusters[i][3], clusters[j][2], clusters[j][3]):
-                                print(f"overlapping at indices {i} and {j}:\n{clusters[i]}\n{clusters[j]}")
+                            if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
+                                print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
 
         return(blast_output)
     
