@@ -35,6 +35,9 @@ __maintainer__ = "Katy Lambert-Slosarska"
 __email__ = "klambertslosarska@gmail.com"
 __status__ = "Development"
 
+run_quiet = terminal.Run(verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
+
 class DGR_Finder:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
@@ -82,9 +85,10 @@ class DGR_Finder:
             filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
 
         if self.step < 0 or self.word_size < 0:
-            raise ConfigError('The step value and/or word size value you are trying to input should be positive.')
+            raise ConfigError('The step value and/or word size value you are trying to input should be positive integer.')
         
         if self.variable_buffer_length < 0:
+            raise ConfigError('The variable buffer length value you are trying to input should be positive integer.')
 
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
@@ -318,6 +322,15 @@ class DGR_Finder:
                         )
        
     def get_snvs(self):
+        """
+        This function takes the contigs.db and the profile.db and finds the SNVs.
+        
+        Returns 
+        =======
+        n.data : panada df
+            A dataframe with all of the information in the nucleotide variability table of a profile,
+            including the splits, parent contigs, positions of the SNVs, the bases of the SNVs and the coverage.
+        """
         args = argparse.Namespace(contigs_db=self.contigs_db_path,
                                 profile_db=self.profile_db_path,
                                 splits_of_interest_set= set(self.split_names_unique),
