@@ -221,7 +221,7 @@ class DGR_Finder:
             # loop to merge overlaps within a given contig
             for contig_name, window_list in self.all_possible_windows.items():
                 # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
-                sorted_windows_in_contig = window_list.sorted(key=lambda x: x[0]) # this list is like the old variable 'all_entries'
+                sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
                 # at this point, sorted_windows_in_contig contains (start, stop) tuples in order of 'start'
 
                 merged_windows_in_contig = []
@@ -233,7 +233,7 @@ class DGR_Finder:
                     overlapping_entries = [entry]
                     start, end = entry
                     matching_entries_indices = []
-
+                    
                     for i in range(0, len(sorted_windows_in_contig)):
                         n_start, n_end = sorted_windows_in_contig[i]
                         if self.range_overlapping(start, end, n_start, n_end):
@@ -245,13 +245,19 @@ class DGR_Finder:
                     # we do this in backwards order so that pop() doesn't change the indices we need to remove
                     for i in sorted(matching_entries_indices, reverse=True):
                         overlapping_entries.append(sorted_windows_in_contig.pop(i))
-
+                        
                     merged_ranges = self.combine_ranges(overlapping_entries)
                     merged_windows_in_contig.append(merged_ranges)
 
                 all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
-            # below is the old version, I've moved it above with minor changes to variable names
+                for i in range(len(merged_windows_in_contig)):
+                    for j in range(i, len(merged_windows_in_contig)):
+                        if i != j:
+                            if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
+                                print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
+        print(all_merged_snv_windows)
+        # below is the old version, I've moved it above with minor changes to variable names
             # # Initialize an empty list for unique overlapping sequences
             # all_entries = []
         
@@ -289,12 +295,6 @@ class DGR_Finder:
             #     combined_result = self.combine_ranges(cluster)
             #     clusters.append(combined_result)
 
-                for i in range(len(merged_windows_in_contig)):
-                    for j in range(i, len(merged_windows_in_contig)):
-                        if i != j:
-                            if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
-                                print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
-
         return(blast_output)
     
     def combine_ranges(self, entries):
@@ -314,28 +314,29 @@ class DGR_Finder:
         all_start = []
         all_end = []
         contig_name = None
-
-        for contig, key, start, end in entries:
-            contig_name = contig # these should all be the same so it doesn't matter that we overwrite it every iteration of the loop
+        for start, end in entries:
+            #contig_name = contig # these should all be the same so it doesn't matter that we overwrite it every iteration of the loop
             all_start.append(start)
             all_end.append(end)
         # do le math
-        combined_start = min(all_start) # may need to load numpy package to use the min() function
-        combined_end = max(all_end) # same deal with numpy and max()
+        combined_start = min(all_start)
+        combined_end = max(all_end) 
                                 
-        return (contig_name, 'combined', combined_start, combined_end)
+        return (combined_start, combined_end)
     
     def range_overlapping(self, start1, end1, n_start, n_end):
         """
         This function checks if the sections of sequences overlap based on the start and end positions.
-        
+        Parameters 
+        ==========
+        start1, end1, n_start, n_end : integer 
+            Start and end of windows containing SNVs with 20 bp buffer on either side
+
         Returns 
         =======
-        ??
-        """
-        #self.start1, self.end1 = self.start_end_dict1['start_position'], self.start_end_dict1['end_position']
-        #self.start2, self.end2 = self.start_end_dict2['start_position'], self.start_end_dict2['end_position']
+            :boolean
         
+        """
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1)
      
     
