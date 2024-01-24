@@ -773,7 +773,10 @@ class Inversions:
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity,
-                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+                                # if no function source, it says 'the contigs.db' because it fits with the message 
+                                # displayed in the final index.html. See the inversion template, line 215
+                                # if it works, it works
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
 
         self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
@@ -837,7 +840,7 @@ class Inversions:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
-                    if gene['functions']:
+                    if 'functions' in gene.keys():
                         gene['has_functions'] = True
                         gene['COLOR'] = '#008000'
                     else:
