@@ -1064,6 +1064,8 @@ class Pangraph():
         # learn what gene annotation sources are present across all genomes
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
 
+        self.priority_genome = 'wPip'
+
         # this is the dictionary that wil keep all data that is going to be loaded
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
@@ -1372,19 +1374,24 @@ class Pangraph():
     # ANCHOR Edge adding
     def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info):
 
+        if self.priority_genome in info.keys():
+            weight_add = 1000000
+        else:
+            weight_add = 0
+
         draw = {genome: {y: info[genome][y] for y in info[genome].keys() if y == 'draw'} for genome in info.keys()}
 
         if not self.initial_graph.has_edge(*(gene_cluster_i, gene_cluster_j)):
             self.initial_graph.add_edge(
                 *(gene_cluster_i, gene_cluster_j),
-                weight=1,
+                weight=1 + weight_add,
                 genome=draw,
                 bended=[],
                 direction='R'
             )
 
         else:
-            self.initial_graph[gene_cluster_i][gene_cluster_j]['weight'] += 1
+            self.initial_graph[gene_cluster_i][gene_cluster_j]['weight'] += 1 + weight_add
             self.initial_graph[gene_cluster_i][gene_cluster_j]['genome'].update(draw)
 
     # TODO Should reverse genes also be connected in reverse?
@@ -1394,6 +1401,7 @@ class Pangraph():
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
         for genome in self.gene_synteny_data_dict.keys():
+
             for contig in self.gene_synteny_data_dict[genome].keys():
                 gene_cluster_kmer = []
                 for gene_call in self.gene_synteny_data_dict[genome][contig].keys():
@@ -1555,10 +1563,12 @@ class Pangraph():
         edmonds_graph_predecessors = {edmonds_graph_node: list(self.edmonds_graph.predecessors(edmonds_graph_node))[0] for edmonds_graph_node in edmonds_graph_nodes if edmonds_graph_node != 'start'}
         edmonds_graph_successors = {edmonds_graph_node: list(self.edmonds_graph.successors(edmonds_graph_node)) for edmonds_graph_node in edmonds_graph_nodes}
         pangenome_graph_successors = {pangenome_graph_node: list(self.pangenome_graph.successors(pangenome_graph_node)) for pangenome_graph_node in pangenome_graph_nodes}
+        edmonds_graph_distances = {edmonds_graph_node: self.mean_edmonds_graph_path_weight('start', edmonds_graph_node) for edmonds_graph_node in edmonds_graph_nodes}
 
         i = 0
         resolved_nodes = set(['stop'])
 
+        pred = ''
         x = 0
         self.progress.new("Solving complex graph")
         while len(resolved_nodes) != len(pangenome_graph_nodes) + 1 or x < 1:
@@ -1574,8 +1584,12 @@ class Pangraph():
                 self.progress.update(f"{str(len(resolved_nodes)).rjust(len(str(len(pangenome_graph_nodes) + 1)), ' ')} / {len(pangenome_graph_nodes) + 1}")
 
                 # print(i, len(resolved_nodes), "/", len(pangenome_graph_nodes) + 1)
-            
-                current_branch_root = edmonds_graph_predecessors[current_node]
+                if pred:
+                    current_branch_root = pred
+                    pred = ''
+                else:
+                    current_branch_root = edmonds_graph_predecessors[current_node]
+                
                 current_forward_connected = []
                 current_backward_connected = []
                 successor_branch_leaves = set()
@@ -1589,7 +1603,7 @@ class Pangraph():
                 if not successor_branch_leaves:
                     current_node = current_branch_root
                 else:
-                    current_node = max([(self.mean_edmonds_graph_path_weight('start', successor_branch_leaf), successor_branch_leaf) for successor_branch_leaf in successor_branch_leaves])[1]
+                    current_node = max([(edmonds_graph_distances[successor_branch_leaf], successor_branch_leaf) for successor_branch_leaf in successor_branch_leaves])[1]
             
                 if current_node in resolved_nodes:
                     connected = True
@@ -1605,7 +1619,8 @@ class Pangraph():
 
                             # self.edmonds_graphAYBE BOTH?
                             # if current_node_successor in nx.ancestors(self.edmonds_graph, current_node):
-                            if current_node_successor not in visited_nodes:
+                            # if current_node_successor not in visited_nodes:
+                            if current_node_successor in nx.ancestors(self.edmonds_graph, current_node) or current_node_successor not in visited_nodes:
                                 # print('possible reverse')
                                 if (current_node, current_node_successor) in edmonds_graph_removed_edges:
                                     current_backward_connected.append(current_node_successor)
@@ -1655,7 +1670,8 @@ class Pangraph():
                 
                             # print('backward event', current_node, current_backward_connected)
 
-                            number = random.randint(0,len(current_backward_connected)-1)
+                            # number = random.randint(0,len(current_backward_connected)-1)
+                            number = max([(self.pangenome_graph.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
 
                             node_i, node_j, data = self.get_edge(current_node, current_backward_connected[number], reverse = True)
                             # print('add ', node_i, ' to ', node_j)
@@ -1669,19 +1685,24 @@ class Pangraph():
                             edmonds_graph_successors[edmonds_graph_predecessors[current_node]].remove(current_node)
                             edmonds_graph_successors[current_backward_connected[number]] += [current_node]
                 
+                            pred = edmonds_graph_predecessors[current_node]
+
                             edmonds_graph_predecessors.pop(current_node, None)
                             edmonds_graph_predecessors[current_node] = current_backward_connected[number] 
                 
+                            edmonds_graph_distances[current_node] = self.mean_edmonds_graph_path_weight('start', current_node)
+
                             # print("removed", edmonds_graph_removed_edges, "\nsuccessors", edmonds_graph_successors, "\npredecessors", edmonds_graph_predecessors)
                 
                             resolved_nodes.add(current_node)
                             
-                            break
+                            # break
             
                 visited_nodes.add(current_node)
             
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
                     print('Sanity Error.')
+                    print(pred, current_node)
                     exit()
 
         self.progress.end()
