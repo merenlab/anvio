@@ -8,12 +8,10 @@ import csv
 import os
 import shutil
 import argparse
-import json
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
-from collections import OrderedDict
 
 import anvio
 import anvio.dbops as dbops
@@ -126,6 +124,12 @@ class DGR_Finder:
             # Write combined sequences to output file
             with open(shredded_sequence_file, "w") as output_handle:
                 SeqIO.write(all_sequences, output_handle, "fasta")
+            
+            # Reading and printing the contents of the file
+            with open(shredded_sequence_file, "r") as handle:
+                fasta_content = handle.read()
+                print("Contents of input_original.fasta:")
+                print(fasta_content)
             
             blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
             blast.evalue = 10 #set Evalue to be same as blastn default
@@ -256,7 +260,7 @@ class DGR_Finder:
                         if i != j:
                             if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
                                 print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
-        print(all_merged_snv_windows)
+        #print(all_merged_snv_windows)
         # below is the old version, I've moved it above with minor changes to variable names
             # # Initialize an empty list for unique overlapping sequences
             # all_entries = []
@@ -294,8 +298,60 @@ class DGR_Finder:
             #     # combine ranges of the cluster from entries and then add the combined lsit to the final clusters
             #     combined_result = self.combine_ranges(cluster)
             #     clusters.append(combined_result)
+        #print(self.contig_sequences)
+        
+        #dumb katy code for turning dict to fasta see utils.func below
+        #fasta_file_path = os.path.join(self.temp_dir, "input_original.fasta")
+        
+        # Writing to the file
+        #with open(fasta_file_path, "w") as handle:
+            #for contig_name, contig_data in self.contig_sequences.items():
+                #sequence = contig_data.get('sequence', '')  # Get the sequence from the inner dictionary
+                #id = contig_name
+                #SeqIO.write(SeqRecord(Seq(sequence), id=id), handle, "fasta")
+        
+            #export contigs_db to fasta file
+            utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
+
+            #get short sequences from all_merged_snv_window and create new fasta from self.target_file_path
+            contig_records = []
+            for record in SeqIO.parse(self.target_file_path, "fasta"):
+                contig_name = record.id
+                if contig_name in all_merged_snv_windows:
+                    positions = all_merged_snv_windows[contig_name]
+                    for i, (start, end) in enumerate(positions, start):
+                        section_sequence = record.seq[start:end]
+                        section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                        contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+
+            # Write SeqRecord objects to a new FASTA file
+            output_fasta_path = os.path.join(self.temp_dir,"output.fasta")
+            with open(output_fasta_path, "w") as output_handle:
+                SeqIO.write(contig_records, output_handle, "fasta")
+
+            print(f"FASTA file written to {output_fasta_path}")
+
+            # Reading and printing the contents of the file
+            with open(output_fasta_path, "r") as handle:
+                fasta_content = handle.read()
+                print("Contents of input_original.fasta:")
+                print(fasta_content)
+            
+            blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
+
+            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+            blast.evalue = 10 #set Evalue to be same as blastn default
+            blast.makedb(dbtype = 'nucl')
+            blast.blast(outputfmt = '5', word_size = self.word_size)
 
         return(blast_output)
+    
+    def split_sequence_at_given_pos(sequence, positions):
+        sections = []
+        for start, end in positions:
+            section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
+            sections.append(section_sequence)
+        return sections
     
     def combine_ranges(self, entries):
         """
@@ -458,6 +514,7 @@ class DGR_Finder:
         =======
         
         """
+        print(blast_output)
         tree = ET.parse(blast_output)
         root = tree.getroot()
         
