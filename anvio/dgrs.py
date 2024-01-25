@@ -191,6 +191,7 @@ class DGR_Finder:
                         next_pos = pos_list[i + 1]
                         distance = next_pos - current_pos
                         range_start = current_pos
+                        range_end = current_pos
                         
                         while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
                             i += 1
