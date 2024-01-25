@@ -775,9 +775,10 @@ class ReactionNetwork:
 
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
-        In merging reaction networks, merge the attributes of the network besides genes
-        (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
-        be stored in a GenomicNetwork).
+        This method is used in the process of merging the network with another network to produce a
+        merged network, and contains steps common to different types of network: merge the
+        attributes of the networks BESIDES genes (in a GenomicNetwork) / gene clusters (in a
+        PangenomicNetwork) and protein abundances (which can only be stored in a GenomicNetwork).
 
         Parameters
         ==========
