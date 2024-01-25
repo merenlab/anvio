@@ -204,6 +204,146 @@ class KO:
     ec_number_aliases: Dict[str, List[str]] = field(default_factory=dict)
 
 @dataclass
+class KEGGModule:
+    """
+    Representation of a KEGG module with KOs in the reaction network.
+
+    Attributes
+    ==========
+    id : str, None
+        KEGG MODULE ID in the format, 'MXXXXX', where X is a digit, e.g., 'M00001'.
+
+    name : str, None
+        Name of the module, e.g., 'M00001' has the name, 'Glycolysis (Embden-Meyerhof pathway),
+        glucose => pyruvate'.
+
+    kos : Dict[str, KO], dict()
+        Reaction network KOs that are in the module, with keys being KO IDs.
+
+    pathways : Dict[str, KEGGPathway], dict()
+        KEGG pathways containing the module, with keys being KEGG pathway IDs.
+    """
+    id: str = None
+    name: str = None
+    kos: Dict[str, KO] = field(default_factory=dict)
+    pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
+
+@dataclass
+class BRITEHierarchy:
+    """
+    Representation of a KEGG BRITE hierarchy with KOs in the reaction network.
+
+    Attributes
+    ==========
+    id : str, None
+        BRITE hierarchy ID in the format, 'koXXXXX' or 'brXXXXX', where X is a digit, e.g.,
+        'ko00001'.
+
+    name : str, None
+        Name of the hierarchy, e.g., 'ko00001' has the name, 'KEGG Orthology (KO)'.
+
+    categories : List[Tuple[BRITECategory]], list
+        Hierarchical categories containing reaction network KOs. Each tuple is a categorical
+        classification of a KO in the hierarchy: a KO can be classified in more than one category of
+        a hierarchy. For example, 'K00844', hexokinase, is classified multiple ways in the
+        hierarchy, 'ko00001', including '09100 Metabolism >>> 09101 Carbohydrate metabolism >>>
+        00010 Glycolysis / Gluconeogenesis' and '09100 Metabolism >>> 09101 Carbohydrate
+        metabolism >>> 00051 Fructose and mannose metabolism'. The first classification in this
+        example would be represented as a tuple, (<BRITECategory for '09100 Metabolism'>,
+        <BRITECategory for '09101 Carbohydrate metabolism'>, <BRITECategory for '00010 Glycolysis /
+        Gluconeogenesis'>), with each category object containing a reference to the 'K00844' KO
+        object.
+    """
+    id: str = None
+    name: str = None
+    categories: List[Tuple[BRITECategory]] = field(default_factory=list)
+
+@dataclass
+class BRITECategory:
+    """
+    Representation of a KEGG BRITE hierarchy category with KOs in the reaction network.
+
+    Attributes
+    ==========
+    id : str, None
+        ID for the category. Category IDs are only found in certain hierarchies, such as 'ko00001',
+        'KEGG Orthology (KO)', and 'ko01000', 'Enzymes', which is a representation of the EC system.
+        For example, in 'ko00001', there are the categories, '09100 Metabolism' and '00010
+        Glycolysis / Gluconeogenesis', which yield the ID attributes, '09100' and '00010', in their
+        corresponding BRITECategory objects. Likewise, the categories in 'ko01000', '2.
+        Transferases' and '2.7.1.1 hexokinase', yield the ID attributes '2.' and '2.7.1.1' in their
+        corresponding BRITECategory objects.
+
+    name : str, None
+        Name of the category. For example, the category, '09100 Metabolism' in hierarchy 'ko01000'
+        yields the name 'Metabolism', and the category, 'Polyketide synthase (PKS)' in the
+        'Polyketide Biosynthesis Proteins' hierarchy, 'ko01008', does not yield an 'id' attribute
+        and simply yields the name of the category itself.
+
+    hierarchy : BRITEHierarchy, None
+        The BRITE hierarchy containing the category.
+
+    supercategory : BRITECategory, None
+        The encompassing category. This is None if there is no category higher in the hierarchy. For
+        example, the supercategory immediately above the category, '00010 Glycolysis /
+        Gluconeogenesis' in the hierarchy, 'ko00001', is '09101 Carbohydrate metabolism'.
+
+    subcategories : List[BRITECategory], list
+        The encompassed categories containing KOs in the reaction network. This is None if there are
+        no categories lower in the hierarchy. For example, the category, 'Polyketide synthase
+        (PKS) >>> Modular type I PKS' in the hierarchy, 'ko01008' encompasses the categories,
+        'cis-AT PKS' and 'trans-AT PKS'.
+
+    pathway : KEGGPathway, None
+        Certain categories are equivalent to KEGG pathways, such as bottom-most categories in the
+        hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'.
+
+    kos : Dict[str, KO], dict
+        Reaction network KOs in the category (and all subcategories). To reiterate, this does not
+        include KOs in the category that are not in the reaction network. Keys are KO IDs.
+    """
+    id: str = None
+    name: str = None
+    hierarchy: BRITEHierarchy = None
+    supercategory: BRITECategory = None
+    subcategories: List[BRITECategory] = field(default_factory=list)
+    pathway: KEGGPathway = None
+    kos: Dict[str, KO] = field(default_factory=dict)
+
+@dataclass
+class KEGGPathway:
+    """
+    Representation of a KEGG pathway with KOs in the reaction network.
+
+    Attributes
+    ==========
+    id : str, None
+        The KEGG PATHWAY ID in the format, 'XXXXX', where X is a digit, e.g., '00010' represents
+        'Glycolysis / Gluconeogensis', and corresponds to the reference pathway map, 'map00010'.
+
+    name : str, None
+        Name of the pathway, e.g., 'Glycolysis / Gluconeogenesis' for pathway ID '00010'.
+
+    category : BRITECategory, None
+        Certain pathways are equivalent to categories in KEGG BRITE hierarchies, such as bottom-most
+        categories in the hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis
+        [PATH:ko00010]'.
+
+    kos : Dict[str, KO], dict
+        Reaction network KOs in the pathway. To reiterate, this does not include KOs in the pathway
+        that are not in the reaction network. Keys are KO IDs.
+
+    modules : Dict[str, KEGGModule], dict
+        Modules in the pathway that contain reaction network KOs. To reiterate, this does not
+        include modules in the pathway that are not in the reaction network. Keys are module IDs.
+    """
+    id: str = None
+    name: str = None
+    category: BRITECategory = None
+    kos: Dict[str, KO] = field(default_factory=dict)
+    modules: Dict[str, KEGGModule] = field(default_factory=dict)
+
+@dataclass
 class Gene:
     """
     Representation of a gene.
