@@ -463,15 +463,26 @@ class ReactionNetwork:
     Attributes
     ==========
     kos : Dict[str, KO], dict()
-        This dictionary maps the IDs of KOs in the network to object representations of the KOs.
+        KOs in the network, with keys being KO IDs.
+
+    modules : Dict[str, KEGGModule], dict()
+        KEGG modules containing KOs in the network, with keys being module IDs.
+
+    hierarchies : Dict[str, BRITEHierarchy], dict()
+        KEGG BRITE hierarchies containing KOs in the network, with keys being hierarchy IDs.
+
+    categories : Dict[Tuple[str, str], BRITECategory], dict()
+        KEGG BRITE hierarchy categories containing KOs in the network, with keys being tuple pairs
+        of category ID, which is None in certain hierarchies, and category name.
+
+    pathways : Dict[str, KEGGPathway], dict()
+        KEGG pathways containing KOs in the network, with keys being pathway IDs.
 
     reactions : Dict[str, ModelSEEDReaction], dict()
-        This maps the IDs of ModelSEED reactions in the network to object representations of the
-        reactions.
+        ModelSEED reactions in the network, with keys being reaction IDs.
 
     metabolites : Dict[str, ModelSEEDCompound], dict()
-        This maps the IDs of ModelSEED metabolites in the network to object representations of the
-        metabolites.
+        ModelSEED metabolites in the network, with keys being metabolite IDs.
 
     kegg_modelseed_aliases : Dict[str, List[str]], dict()
         This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
@@ -527,6 +538,10 @@ class ReactionNetwork:
         None
         """
         self.kos: Dict[str, KO] = {}
+        self.modules: Dict[str, KEGGModule] = {}
+        self.hierarchies: Dict[str, BRITEHierarchy] = {}
+        self.categories: Dict[Tuple[str, str], BRITECategory] = {}
+        self.pathways: Dict[str, KEGGPathway] = {}
         self.reactions: Dict[str, ModelSEEDReaction] = {}
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
         # The following dictionaries map reaction aliases in the network: as in, not all known
