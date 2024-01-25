@@ -1018,6 +1018,251 @@ class ReactionNetwork:
 
             merged_network.kos[ko_id] = ko
 
+        # Add modules to the merged network, first adding modules present in both source networks,
+        # and then adding modules present exclusively in each source network.
+        first_module_ids = set(self.modules)
+        second_module_ids = set(network.modules)
+
+        for module_id in first_module_ids.intersection(second_module_ids):
+            first_module = self.modules[module_id]
+            second_module = network.modules[module_id]
+
+            merged_module = KEGGModule()
+            merged_module.id = module_id
+            merged_module.name = first_module.name
+            for ko_id in set(first_module.kos).union(set(second_module.kos)):
+                merged_module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.modules[module_id] = merged_module
+
+            merged_network.modules[module_id] = merged_module
+            # TODO: Add merged pathway references to modules.
+
+        for module_id in first_module_ids.difference(second_module_ids):
+            first_module = self.modules[module_id]
+
+            module = KEGGModule()
+            module.id = module_id
+            module.name = first_module.name
+            for ko_id in first_module.kos:
+                module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.modules[module_id] = module
+
+            merged_network.modules[module_id] = module
+
+        for module_id in second_module_ids.difference(first_module_ids):
+            second_module = network.modules[module_id]
+
+            module = KEGGModule()
+            module.id = module_id
+            module.name = second_module.name
+            for ko_id in second_module.kos:
+                module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.modules[module_id] = module
+
+            merged_network.modules[module_id] = module
+
+        # Add hierarchies to the merged network, first adding hierarchies present in the first
+        # network, and then adding hierarchies present exclusively in the second network.
+        for hierarchy_id, first_hierarchy in self.hierarchies.items():
+            hierarchy = BRITEHierarchy()
+            hierarchy.id = hierarchy_id
+            hierarchy.name = first_hierarchy.name
+
+            merged_network.hierarchies[hierarchy_id] = hierarchy
+
+        exclusive_second_hierarchy_ids = set(network.hierarchies).difference(set(self.hierarchies))
+        for hierarchy_id in exclusive_second_hierarchy_ids:
+            second_hierarchy = network.hierarchies[hierarchy_id]
+
+            hierarchy = BRITEHierarchy()
+            hierarchy.id = hierarchy_id
+            hierarchy.name = second_hierarchy.name
+
+            merged_network.hierarchies[hierarchy_id] = hierarchy
+
+        # Add categories to the merged network, first adding categories present in both source
+        # networks, and then adding categories present exclusively in each source network.
+        first_category_ids = set(self.categories)
+        second_category_ids = set(network.categories)
+
+        for category_id in first_category_ids.intersection(second_category_ids):
+            first_category = self.categories[category_id]
+            second_category = network.categories[category_id]
+
+            merged_category = BRITECategory()
+            merged_category.id = first_category.id
+            merged_category.name = first_category.name
+            merged_category.hierarchy = merged_network.hierarchies[first_category.hierarchy.id]
+            for ko_id in set(first_category.kos).union(set(second_category.kos)):
+                merged_category.kos[ko_id] = merged_network.kos[ko_id]
+
+            merged_network.categories[category_id] = merged_category
+
+        for category_id in first_category_ids.difference(second_category_ids):
+            first_category = self.categories[category_id]
+
+            category = BRITECategory()
+            category.id = category_id
+            category.name = first_category.name
+            category.hierarchy = merged_network.hierarchies[first_category.hierarchy.id]
+            for ko_id in first_category.kos:
+                category.kos[ko_id] = merged_network.kos[ko_id]
+
+            merged_network.categories[category_id] = category
+
+        for category_id in second_category_ids.difference(first_category_ids):
+            second_category = network.categories[category_id]
+
+            category = BRITECategory()
+            category.id = category_id
+            category.name = second_category.name
+            category.hierarchy = merged_network.hierarchies[second_category.hierarchy.id]
+            for ko_id in second_category.kos:
+                category.kos[ko_id] = merged_network.kos[ko_id]
+
+            merged_network.categories[category_id] = category
+
+        # Add pathways to the merged network, first adding pathways present in both source networks,
+        # and then adding pathways present exclusively in each source network.
+        first_pathway_ids = set(self.pathways)
+        second_pathway_ids = set(network.pathways)
+
+        for pathway_id in first_pathway_ids.intersection(second_pathway_ids):
+            first_pathway = self.pathways[pathway_id]
+            second_pathway = network.pathways[pathway_id]
+
+            merged_pathway = KEGGPathway()
+            merged_pathway.id = pathway_id
+            merged_pathway.name = first_pathway.name
+            for ko_id in set(first_pathway.kos).intersection(set(second_pathway.kos)):
+                merged_pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.pathways[pathway_id] = merged_pathway
+            if first_pathway.category is not None:
+                merged_pathway.category = merged_network.categories[first_pathway.category.id]
+
+            merged_network.pathways[pathway_id] = merged_pathway
+
+        for pathway_id in first_pathway_ids.difference(second_pathway_ids):
+            first_pathway = self.pathways[pathway_id]
+
+            pathway = KEGGPathway()
+            pathway.id = pathway_id
+            pathway.name = first_pathway.name
+            for ko_id in first_pathway.kos:
+                pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.pathways[pathway_id] = pathway
+            if first_pathway.category is not None:
+                pathway.category = merged_network.categories[first_pathway.category.id]
+
+            merged_network.pathways[pathway_id] = pathway
+
+        for pathway_id in second_pathway_ids.difference(first_pathway_ids):
+            second_pathway = network.pathways[pathway_id]
+
+            pathway = KEGGPathway()
+            pathway.id = pathway_id
+            pathway.name = second_pathway.name
+            for ko_id in second_pathway.kos:
+                pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
+                merged_ko.pathways[pathway_id] = pathway
+            if second_pathway.category is not None:
+                pathway.category = merged_network.categories[second_pathway.category.id]
+
+            merged_network.pathways[pathway_id] = pathway
+
+        # Record BRITE hierarchical categorizations of each KO.
+        for ko_id, first_ko in self.kos.items():
+            merged_ko = merged_network.kos[ko_id]
+            for hierarchy_id, categories in first_ko.hierarchies.items():
+                merged_ko.hierarchies[hierarchy_id] = merged_categories = []
+                for categorization in categories:
+                    merged_categorization = []
+                    for category in categorization:
+                        merged_categorization.append(merged_network.categories[category.id])
+                    merged_categories.append(tuple(merged_categorization))
+
+        for ko_id in second_ko_ids.difference(first_ko_ids):
+            second_ko = network.kos[ko_id]
+            merged_ko = merged_network.kos[ko_id]
+            for hierarchy_id, categories in second_ko.hierarchies.items():
+                merged_ko.hierarchies[hierarchy_id] = merged_categories = []
+                for categorization in categories:
+                    merged_categorization = []
+                    for category in categorization:
+                        merged_categorization.append(merged_network.categories[category.id])
+                    merged_categories.append(tuple(merged_categorization))
+
+        # Record the pathway membership of modules.
+        for pathway_id, pathway in self.pathways.items():
+            merged_pathway = merged_network.pathways[pathway_id]
+            for module_id in pathway.modules:
+                merged_pathway.modules[module_id] = merged_network.modules[module_id]
+
+        for pathway_id in second_pathway_ids.difference(first_pathway_ids):
+            second_pathway = network.pathways[pathway_id]
+            merged_pathway = merged_network.pathways[pathway_id]
+            for module_id in second_pathway.modules:
+                merged_pathway.modules[module_id] = merged_network.modules[module_id]
+
+        for module_id, module in self.modules.items():
+            merged_module = merged_network.modules[module_id]
+            for pathway_id in module.pathways:
+                merged_module.pathways[pathway_id] = merged_network.pathways[pathway_id]
+
+        for module_id in second_module_ids.difference(first_module_ids):
+            second_module = network.modules[module_id]
+            merged_module = merged_network.modules[module_id]
+            for pathway_id in module.pathways:
+                merged_module.pathways[pathway_id] = merged_network.pathways[pathway_id]
+
+        # Record categories of each BRITE hierarchy.
+        for hierarchy_id, hierarchy in self.hierarchies.items():
+            merged_hierarchy = merged_network.hierarchies[hierarchy_id]
+            for categorization in hierarchy.categories:
+                merged_categorization = []
+                for category in categorization:
+                    merged_categorization.append(merged_network.categories[category.id])
+                merged_hierarchy.categories.append(tuple(merged_categorization))
+
+        for hierarchy_id in exclusive_second_hierarchy_ids:
+            second_hierarchy = network.hierarchies[hierarchy_id]
+            merged_hierarchy = merged_network.hierarchies[hierarchy_id]
+            for categorization in second_hierarchy.categories:
+                merged_categorization = []
+                for category in categorization:
+                    merged_categorization.append(merged_network.categories[category.id])
+                merged_hierarchy.categories.append(tuple(merged_categorization))
+
+        # Finish filling out attributes of merged BRITE categories.
+        for category_id, category in self.categories.items():
+            merged_category = merged_network.categories[category_id]
+            # Record any supercategory of the category.
+            supercategory = category.supercategory
+            if supercategory is not None:
+                merged_category.supercategory = merged_network.categories[supercategory.id]
+            # Record any subcategories of the category.
+            for subcategory in category.subcategories:
+                merged_category.subcategories.append(merged_network.categories[subcategory.id])
+            # Record any pathway equivalent to the category.
+            pathway = category.pathway
+            if pathway is not None:
+                merged_category.pathway = merged_network.pathways[pathway.id]
+
+        for category_id in second_category_ids.difference(first_category_ids):
+            second_category = network.categories[category_id]
+            merged_category = merged_network.categories[category_id]
+            # Record any supercategory of the category.
+            supercategory = second_category.supercategory
+            if supercategory is not None:
+                merged_category.supercategory = merged_network.categories[supercategory.id]
+            # Record any subcategories of the category.
+            for subcategory in second_category.subcategories:
+                merged_category.subcategories.append(merged_network.categories[subcategory.id])
+            # Record any pathway equivalent to the category.
+            pathway = second_category.pathway
+            if pathway is not None:
+                merged_category.pathway = merged_network.pathways[pathway.id]
+
     def _get_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
