@@ -773,11 +773,7 @@ class ReactionNetwork:
                 """
             )
 
-    def _merge_network(
-        self,
-        network: Union[GenomicNetwork, PangenomicNetwork],
-        merged_network: Union[GenomicNetwork, PangenomicNetwork]
-    ) -> None:
+    def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         In merging reaction networks, merge the attributes of the network besides genes
         (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
@@ -785,10 +781,10 @@ class ReactionNetwork:
 
         Parameters
         ==========
-        network : Union[GenomicNetwork, PangenomicNetwork]
+        network : ReactionNetwork
             The other reaction network being merged.
 
-        merged_network : Union[GenomicNetwork, PangenomicNetwork]
+        merged_network : ReactionNetwork
             The merged reaction network under construction.
 
         Returns
