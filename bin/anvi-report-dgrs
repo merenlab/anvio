@@ -28,10 +28,10 @@ def main(args):
     mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
     DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
     csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
-    
-#call function here for filtering hits of blast from root 
+
+#call function here for filtering hits of blast from root
 def float_range(mini,maxi):
-    """Return function handle of an argument type function for 
+    """Return function handle of an argument type function for
        ArgumentParser checking a float range: mini <= arg <= maxi
          mini - minimum acceptable argument
          maxi - maximum acceptable argument"""
@@ -42,7 +42,7 @@ def float_range(mini,maxi):
 
         try:
             f = float(arg)
-        except ValueError:    
+        except ValueError:
             raise argparse.ArgumentTypeError("must be a decimal number")
         if f < mini or f > maxi:
             raise argparse.ArgumentTypeError("must be in range [" + str(mini) + "-" + str(maxi)+"]")
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
     groupE.add_argument("-snvd","--distance_between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
     groupE.add_argument("-vbl","--variable_buffer_length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
+    groupE.add_argument("-dfr", "--departure_from_reference_percentage", help="The percentage of SNVs that are a departure from the reference nucleotide", type=float, default=0.1)
 
     args = parser.get_args(parser)
 
