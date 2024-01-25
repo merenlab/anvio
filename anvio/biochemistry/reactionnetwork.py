@@ -555,7 +555,7 @@ class ReactionNetwork:
         self.progress = progress
         self.verbose = verbose
 
-    def _copy(self, copied_network: Union[GenomicNetwork, PangenomicNetwork]) -> None:
+    def _copy(self, copied_network: ReactionNetwork) -> None:
         """
         In copying a reaction network, copy the attributes of the network besides genes
         (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
@@ -563,7 +563,7 @@ class ReactionNetwork:
 
         Parameters
         ==========
-        copied_network : Union[GenomicNetwork, PangenomicNetwork]
+        copied_network : ReactionNetwork
             The network copy under construction.
         """
         for modelseed_id, metabolite in self.metabolites.items():
