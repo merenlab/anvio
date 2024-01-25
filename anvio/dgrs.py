@@ -766,4 +766,5 @@ class DGR_Finder:
                 csv_writer.writerow([dgr, vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_sequence_found'], vr_data['VR_start_position'], vr_data['VR_end_position'],
                                     vr_data['percentage_of_mismatches'], info['TR_sequence'], info['base'], info['TR_sequence_found'], info['TR_reverse_complement'],
                                     info['TR_start_position'], info['TR_end_position']])
-                return csv_file_path
+            return csv_file_path
+

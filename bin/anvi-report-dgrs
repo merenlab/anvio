@@ -68,12 +68,12 @@ if __name__ == '__main__':
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
-    groupD.add_argument("-pm","--percentage_mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
-    groupD.add_argument("-nm","--number_of_mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
+    groupD.add_argument("-pm","--percentage-mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
+    groupD.add_argument("-nm","--number-of-mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-snvd","--distance_between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
-    groupE.add_argument("-vbl","--variable_buffer_length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
-    groupE.add_argument("-dfr", "--departure_from_reference_percentage", help="The percentage of SNVs that are a departure from the reference nucleotide", type=float, default=0.1)
+    groupE.add_argument("-snvd","--distance-between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
+    groupE.add_argument("-vbl","--variable-buffer-length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
+    groupE.add_argument("-dfr","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
 
     args = parser.get_args(parser)
 
