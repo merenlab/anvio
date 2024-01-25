@@ -62,6 +62,11 @@ function searchContigs()
         }
     }
     $('#search_result_message').html(_counter + " result(s) found.");
+
+    // Highlighting Result section if there are results.
+    if (_counter > 0){
+        ShadowBoxSelection('search_contigs');
+    }
 }
 
 function searchFunctions() {
@@ -135,6 +140,11 @@ function searchFunctions() {
             }
 
             $('#search_functions_button').prop( "disabled", false );
+
+            // Highlighting Result section if there are results.
+            if (data['results'].length > 0){
+                ShadowBoxSelection('search_functions');
+            }
         },
         done: function() {
         }
@@ -179,13 +189,17 @@ function filterGeneClusters() {
                 $('.pan-filter-error').html(data['message']);
                 $('#search_result_message_pan_filter').html('');
             };
+
+            if (data['gene_clusters_list'].length > 0){
+                ShadowBoxSelection('search_pan_filter');
+            }
         }
     });
 }
 
 function showSearchResult() {
-    var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
-    $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
+    var clear_link = '<button class="btn btn-sm btn-outline-danger mb-3 align-items-center justify-content-center" href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">Clean Search Results</button>';
+    $("#search-results-table-header").html(clear_link);
     $("#search-results-table-search-name").html('Item Name');
     $("#search-results-table-search-item").html(search_column);
 
