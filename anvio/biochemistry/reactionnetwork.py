@@ -557,9 +557,10 @@ class ReactionNetwork:
 
     def _copy(self, copied_network: ReactionNetwork) -> None:
         """
-        In copying a reaction network, copy the attributes of the network besides genes
-        (GenomicNetwork) or gene clusters (PangenomicNetwork) and protein abundances (which can only
-        be stored in a GenomicNetwork).
+        This method is used in the process of copying a reaction network, and contains steps in
+        common to different types of network: copy the attributes of the network BESIDES genes (in a
+        GenomicNetwork) / gene clusters (in a PangenomicNetwork) and protein abundances (which can
+        only be stored in a GenomicNetwork).
 
         Parameters
         ==========
