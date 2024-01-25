@@ -1125,6 +1125,7 @@ class Pangraph():
         self.get_gene_synteny_data_dict()
 
         # contextualize paralogs
+        # TODO Incorporate gene direction
         self.contextualize_paralogs()
 
         # build graph
@@ -1140,9 +1141,11 @@ class Pangraph():
 
         # process edges and nodes to extract unique paths
         # from the nework
+        # TODO Edge direction overlay
         self.calculate_component_paths()
 
         # run Alex's layout algorithm
+        # TODO Rework the algorithm
         self.run_synteny_layout_algorithm()
 
         # condense gene clusters into groups
@@ -2112,6 +2115,18 @@ class Pangraph():
 
                     self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
 
+                    # if node_stop == 'stop':
+                    #     z -= 1
+                    #     for node in sub_path[::-1]:
+                    #         if node.startswith('Ghost_'):
+                    #             self.x_list[z].remove(node)
+                    #             # print('match')
+                    #             # self.position.pop(node)
+                    #             self.ancest.remove_node(node)
+                    #             z -= 1
+                    #         else:
+                    #             break
+
             except Exception as error:
                 print('Sanity Error')
                 exit()
@@ -2121,6 +2136,7 @@ class Pangraph():
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
         for edge in self.edges:
+            # if edge[-1] != 'stop':
             self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
             self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
             self.ancest.remove_nodes_from(edge[1:-1])
@@ -2319,6 +2335,8 @@ class Pangraph():
 
         self.run.info_single(f"Total fraction of recovered genecall information {round((instances_ancest_graph/instances_pangenome_graph)*100, 3)}%")
         self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())+self.fusion_events-2)/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
+
+        self.ancest.remove_nodes_from(['start', 'stop'])
 
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
