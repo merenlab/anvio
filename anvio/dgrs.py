@@ -58,7 +58,7 @@ class DGR_Finder:
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
 
         self.sanity_check()
-        
+
         if self.fasta_file_path:
             self.run.info('Input FASTA file', self.fasta_file_path)
         if self.contigs_db_path:
@@ -84,7 +84,7 @@ class DGR_Finder:
 
         if self.step < 0 or self.word_size < 0:
             raise ConfigError('The step value and/or word size value you are trying to input should be positive integer.')
-        
+
         if self.variable_buffer_length < 0:
             raise ConfigError('The variable buffer length value you are trying to input should be positive integer.')
 
@@ -94,7 +94,7 @@ class DGR_Finder:
     def get_blast_results(self):
         """
         This function runs the BLASTn search, depending on the input file type, running this against the .
-        
+
         Running the BLASTn generates an xml file of results.
 
         Returns
@@ -124,13 +124,13 @@ class DGR_Finder:
             # Write combined sequences to output file
             with open(shredded_sequence_file, "w") as output_handle:
                 SeqIO.write(all_sequences, output_handle, "fasta")
-            
+
             # Reading and printing the contents of the file
             with open(shredded_sequence_file, "r") as handle:
                 fasta_content = handle.read()
                 print("Contents of input_original.fasta:")
                 print(fasta_content)
-            
+
             blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
@@ -147,11 +147,11 @@ class DGR_Finder:
             #split_path = 'split_of_interest_file.txt
 
             contigs_db.disconnect()
-            
+
             #open merged profile-db and get the variable nucleotide table as a dictionary then acess the split names as a list to use in get_snvs
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
             self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
-       
+
 
             # Use a list comprehension to extract the values associated with the target key
             split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
@@ -159,21 +159,20 @@ class DGR_Finder:
             sample_id_list = [self.variable_nucleotides_dict[key]['sample_id'] for key in self.variable_nucleotides_dict if 'sample_id' in self.variable_nucleotides_dict[key]]
             sample_id_list = list(set(sample_id_list))
             departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
-            
+
             profile_db.disconnect()
-           
+
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
 
             self.snv_panda['departure_from_reference'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('departure_from_reference', None), axis=1)
 
-            
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
             # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
             #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
             #                                           ....}
             # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
-            
+
             for split in self.split_names_unique:
                 for sample in sample_id_list:
                     split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
@@ -196,7 +195,7 @@ class DGR_Finder:
                         distance = next_pos - current_pos
                         range_start = current_pos
                         range_end = current_pos
-                        
+
                         while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
                             i += 1
                             current_pos = pos_list[i]
@@ -210,7 +209,7 @@ class DGR_Finder:
                         if range_end > range_start:
                             window_start = range_start - self.variable_buffer_length
                             window_end = range_end + self.variable_buffer_length
-                        
+
                         contig_len = len(self.contig_sequences[contig_name]['sequence'])
 
                         if window_start <0:
@@ -220,8 +219,7 @@ class DGR_Finder:
 
                         # Add the window to the contig's list
                         self.all_possible_windows[contig_name].append((window_start, window_end))
-                        
-            
+
             all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
             # loop to merge overlaps within a given contig
             for contig_name, window_list in self.all_possible_windows.items():
@@ -233,24 +231,24 @@ class DGR_Finder:
                 while 1:
                     if not len(sorted_windows_in_contig):
                         break
-                    
+
                     entry = sorted_windows_in_contig.pop(0)
                     overlapping_entries = [entry]
                     start, end = entry
                     matching_entries_indices = []
-                    
+
                     for i in range(0, len(sorted_windows_in_contig)):
                         n_start, n_end = sorted_windows_in_contig[i]
                         if self.range_overlapping(start, end, n_start, n_end):
                             matching_entries_indices.append(i)
                             start = min(start, n_start)
                             end = max(end, n_end)
-                    
+
                     # remove each overlapping window from the list and simultaneously add to list of overlapping entries
                     # we do this in backwards order so that pop() doesn't change the indices we need to remove
                     for i in sorted(matching_entries_indices, reverse=True):
                         overlapping_entries.append(sorted_windows_in_contig.pop(i))
-                        
+
                     merged_ranges = self.combine_ranges(overlapping_entries)
                     merged_windows_in_contig.append(merged_ranges)
 
@@ -265,7 +263,7 @@ class DGR_Finder:
         # below is the old version, I've moved it above with minor changes to variable names
             # # Initialize an empty list for unique overlapping sequences
             # all_entries = []
-        
+
             # for contig_name, window_dict in self.all_possible_windows.items():
             #     for window_name, window_values in window_dict.items():
             #         all_entries.append((contig_name, window_name, window_values['start_position'], window_values['end_position']))
@@ -300,17 +298,17 @@ class DGR_Finder:
             #     combined_result = self.combine_ranges(cluster)
             #     clusters.append(combined_result)
         #print(self.contig_sequences)
-        
+
         #dumb katy code for turning dict to fasta see utils.func below
         #fasta_file_path = os.path.join(self.temp_dir, "input_original.fasta")
-        
+
         # Writing to the file
         #with open(fasta_file_path, "w") as handle:
             #for contig_name, contig_data in self.contig_sequences.items():
                 #sequence = contig_data.get('sequence', '')  # Get the sequence from the inner dictionary
                 #id = contig_name
                 #SeqIO.write(SeqRecord(Seq(sequence), id=id), handle, "fasta")
-        
+
             #export contigs_db to fasta file
             utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
 
@@ -337,7 +335,7 @@ class DGR_Finder:
                 fasta_content = handle.read()
                 print("Contents of input_original.fasta:")
                 print(fasta_content)
-            
+
             blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
 
             blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
@@ -346,19 +344,19 @@ class DGR_Finder:
             blast.blast(outputfmt = '5', word_size = self.word_size)
 
         return(blast_output)
-    
+
     def split_sequence_at_given_pos(sequence, positions):
         sections = []
         for start, end in positions:
             section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
             sections.append(section_sequence)
         return sections
-    
+
     def combine_ranges(self, entries):
         """
         This function takes a list of (contig_name, key, start, end) tuples and takes the longest sequence possible - the smallest start and largest end.
-        
-        Returns 
+
+        Returns
         =======
         a tuple containing (contig_name, 'combined', combined_start, combined_end) where the variables are the following:
         contig_name : str
@@ -366,7 +364,7 @@ class DGR_Finder:
         combined_start, combined_end : integers
             A new start and end position for a contig sequence, to get the longest possible string. 
         """
-        
+
         #extract all starts and stops
         all_start = []
         all_end = []
@@ -377,26 +375,25 @@ class DGR_Finder:
             all_end.append(end)
         # do le math
         combined_start = min(all_start)
-        combined_end = max(all_end) 
-                                
+        combined_end = max(all_end)
+
         return (combined_start, combined_end)
-    
+
     def range_overlapping(self, start1, end1, n_start, n_end):
         """
         This function checks if the sections of sequences overlap based on the start and end positions.
-        Parameters 
+        Parameters
         ==========
-        start1, end1, n_start, n_end : integer 
+        start1, end1, n_start, n_end : integer
             Start and end of windows containing SNVs with 20 bp buffer on either side
 
-        Returns 
+        Returns
         =======
             :boolean
-        
+
         """
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1)
-     
-    
+
     def check_overlap(window1, window2):
                         contig_name_1, start_position_1, end_position_1 = window1[0][1], window1[1][1], window1[2][1]
                         contig_name_2, start_position_2, end_position_2 = window2[0][1], window2[1][1], window2[2][1]
@@ -406,12 +403,12 @@ class DGR_Finder:
                             and start_position_1 <= end_position_2
                             and end_position_1 >= start_position_2
                         )
-       
+
     def get_snvs(self):
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
-        
-        Returns 
+
+        Returns
         =======
         n.data : panada df
             A dataframe with all of the information in the nucleotide variability table of a profile,
@@ -424,20 +421,19 @@ class DGR_Finder:
 
         n = NucleotidesEngine(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         n.process()
-        
 
         return n.data
-          
+
     def split_sequences(self, start=0):
         """
         This function splits the sequence given into sections of the step value length.
-        
-        Parameters 
+
+        Parameters
         ==========
-        start : integer 
+        start : integer
             Start index of the first split (Default: 0)
-        
-        Returns 
+
+        Returns
         =======
         section_sequences : list of strings
             A list of the split sequences
@@ -451,15 +447,15 @@ class DGR_Finder:
                 if i + self.step > len(sequence.seq):
                     print(sequence.seq)
         return section_sequences
-    
+
     #def run_blastn(self):
         #"""
         #This function runs the BLASTn search of the split sequences against the original input FASTA to find regions of matching nucleotides.
-        
+
         #Running the BLASTn generates an xml file of results.
 
         #Returns
-        #blast_output : xml file 
+        #blast_output : xml file
             #BLASTn results
         #=======
         #"""
@@ -468,7 +464,7 @@ class DGR_Finder:
         #self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
         #print(f"cp {self.fasta_file_path} {self.target_file_path}")
         #os.system(f"cp {self.fasta_file_path} {self.target_file_path}")
-        #self.run.info('temporary input for blast', self.target_file_path) 
+        #self.run.info('temporary input for blast', self.target_file_path)
 
         # Start at half the step size of the output file
         #overlap_start = self.step // 2
@@ -480,18 +476,18 @@ class DGR_Finder:
         # Write combined sequences to output file
         #with open(shredded_sequence_file, "w") as output_handle:
             #SeqIO.write(all_sequences, output_handle, "fasta")
-        #need a temporary directory where intermediate files are written, to call on them. 
-        
+        #need a temporary directory where intermediate files are written, to call on them.
+
         #blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
         #blast.evalue = 10 #set Evalue to be same as blastn default
         #blast.makedb(dbtype = 'nucl')
         #blast.blast(outputfmt = '5', word_size = self.word_size)
 
-        #blast_command = ["blastn", "-query", output_file, "-subject", self.fasta_file_path, "-out", blast_output, 
+        #blast_command = ["blastn", "-query", output_file, "-subject", self.fasta_file_path, "-out", blast_output,
                          #"-word_size", str(self.word_size), "-dust", "no", "-outfmt", "5"]
         #subprocess.run(blast_command)
         #return blast_output
-     
+
      #def find_SNV_window(self, profile.db)
         #if SNV:
             #for row()
@@ -499,26 +495,26 @@ class DGR_Finder:
     def filter_blastn_for_none_identical(self, blast_output):
         """
         This function takes the BLASTn xml output and refines the results to those with less than 100% identity.
-        
+
         Takes the xml file and filters for hits with less than 100% identity, then gives every hit a name
         with its original position in the sequence, counts the bases that are mismatching and on which strand they occur.
         Finally initialises all of these within a dictionary.
 
-        Parameters 
+        Parameters
         ==========
-        blast_output : xml file 
+        blast_output : xml file
             BLASTn results
-        
+
         Returns
         mismatch_hits : dict
             A dictionary of all of the BLASTn hits that are less than 100%
         =======
-        
+
         """
         print(blast_output)
         tree = ET.parse(blast_output)
         root = tree.getroot()
-        
+
         max_percent_identity = 100
         mismatch_hits = {}
 
@@ -530,7 +526,7 @@ class DGR_Finder:
                     alignment_length = int(hsp.find('Hsp_align-len').text)
 
                     percentage_identity = (identical_positions / alignment_length) * 100
-                    
+
                     # Check if the percentage identity is within the threshold (under 100%)
                     if percentage_identity < max_percent_identity:
                         #need to write in the objects for the list
@@ -546,7 +542,7 @@ class DGR_Finder:
                         # Extract the start and end values from the matched groups
                         query_start_position = int(match.group(1))
                         query_end_position = int(match.group(2))
-                        
+
                         mismatch_hits[hit_identity] = {}
 
                         qseq = str(hsp.find('Hsp_qseq').text)
@@ -586,7 +582,6 @@ class DGR_Finder:
                                 query_mismatch_positions.append(idx)
                                 subject_mismatch_counts[hseq[idx]]+=1
 
-                        
                         mismatch_hits[hit_identity] = {
                             'query_seq': qseq,
                             'hit_seq': hseq,
@@ -603,28 +598,28 @@ class DGR_Finder:
                             'subject_frame': subject_frame
                             }
         return mismatch_hits
-    
+
     def filter_for_TR_VR(self, mismatch_hits):
         """
         This function takes the none identical hits of the BLASTn and filters for template and variable regions.
 
-        This works by filtering for sequences that have an overrepresentation of one base that is mismatching and a certain number 
-        one type of base mismatching within the sequence, defined by the number of mismatches argument. 
+        This works by filtering for sequences that have an overrepresentation of one base that is mismatching and a certain number
+        one type of base mismatching within the sequence, defined by the number of mismatches argument.
 
-        Parameters 
+        Parameters
         ==========
         mismatch_hits : dict
             A dictionary of all of the BLASTn hits that are less than 100%
-        
+
         Returns
         =======
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions
-        
+
         """
         num_DGR = 0
 
-        #possible DGR dictionary 
+        #possible DGR dictionary
         DGRs_found_dict = {}
 
         for sequence_component, hit_data in mismatch_hits.items():
@@ -648,7 +643,7 @@ class DGR_Finder:
             # get number of mismatches
             mismatch_length_bp = len(position)
 
-            # if num of mismatches = 0, skip DGR search sanity check 
+            # if num of mismatches = 0, skip DGR search sanity check
             if mismatch_length_bp == 0:
                 continue
                 #old code mismatch_dict[hit_id]['is_DGR'] = False
@@ -657,19 +652,19 @@ class DGR_Finder:
                 is_TR = False
                 for letter, count in query_mismatch_counts.items():
                     percentage_of_mismatches = (count / mismatch_length_bp)
-                    if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches): 
+                    if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
                         #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
                         is_TR = True
-                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, compare start stop position (likely not equal) 
-                        #take longest one, bit like the FIlter code, replace sequence with longest TR. Check if VR already exsists, 
+                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, compare start stop position (likely not equal)
+                        #take longest one, bit like the FIlter code, replace sequence with longest TR. Check if VR already exsists,
                         num_DGR += 1
-                        #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key 
+                        #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key
                         DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
                         if letter == 'T':
                             #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence.reverse_complement())
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence.reverse_complement())
-                            #overwrite midline string 
+                            #overwrite midline string
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
@@ -678,13 +673,13 @@ class DGR_Finder:
                         else:
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence)
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence)
-                            #overwrite midline string 
+                            #overwrite midline string
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'               
-                        
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'
+
                         DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = query_genome_start_position
                         DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = query_genome_end_position
                         DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = subject_genome_start_position
@@ -695,17 +690,17 @@ class DGR_Finder:
                     # Calculate the percentage identity of each alignment
                     for letter, count in subject_mismatch_counts.items():
                             percentage_of_mismatches = (count / mismatch_length_bp)
-                            if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches): 
+                            if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
                                 #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
                                 is_TR = True
                                 num_DGR += 1
-                                #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key 
+                                #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key
                                 DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
                                 if letter == 'T':
                                     #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence.reverse_complement())
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence.reverse_complement())
-                                    #overwrite midline string 
+                                    #overwrite midline string
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
@@ -714,7 +709,7 @@ class DGR_Finder:
                                 else:
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence)
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence)
-                                    #overwrite midline string 
+                                    #overwrite midline string
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
@@ -726,7 +721,7 @@ class DGR_Finder:
                                 DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = query_genome_start_position
                                 DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_end_position'] = query_genome_end_position
                                 DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
-                            
+
         print(f'number of DGRs is {num_DGR}')
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
@@ -734,20 +729,20 @@ class DGR_Finder:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
         return DGRs_found_dict
-    
+
     def create_found_tr_vr_csv(self, DGRs_found_dict):
         """
         This function creates a csv tabular format of the template and variable regions that are found from this tool.
-        Parameters 
+        Parameters
         ==========
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions
-        
+
         Returns
         =======
         : csv
             A csv tabular file containing the template and variable regions
-        
+
         """
         base_input_name = None
         if self.fasta_file_path:
@@ -758,11 +753,11 @@ class DGR_Finder:
         csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
-            
+
             # Write header
             csv_writer.writerow(["DGR", "VR_sequence", "Midline","VR_sequence_found", "VR_start_position", "VR_end_position", "Mismatch %",
                                 "TR_sequence", "Base","TR_sequence_found", "Reverse Complement", "TR_start_position", "TR_end_position"])
-            
+
             # Write data
             for dgr, info in DGRs_found_dict.items():
                 vr_data = info['VRs']['VR1']
@@ -772,4 +767,3 @@ class DGR_Finder:
                                     vr_data['percentage_of_mismatches'], info['TR_sequence'], info['base'], info['TR_sequence_found'], info['TR_reverse_complement'],
                                     info['TR_start_position'], info['TR_end_position']])
                 return csv_file_path
-            
