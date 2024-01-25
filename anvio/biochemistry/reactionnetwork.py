@@ -623,6 +623,91 @@ class ReactionNetwork:
         for modelseed_id, ec_numbers in self.modelseed_ec_number_aliases.items():
             copied_network.modelseed_ec_number_aliases[modelseed_id] = ec_numbers.copy()
 
+        for module_id, module in self.modules.items():
+            copied_module = KEGGModule()
+            copied_module.id = module_id
+            copied_module.name = module.name
+            for ko_id in module.kos:
+                copied_module.kos[ko_id] = copied_ko = copied_network.kos[ko_id]
+                copied_ko.modules[module_id] = copied_module
+
+            copied_network.modules[module_id] = copied_module
+
+        for hierarchy_id, hierarchy in self.hierarchies.items():
+            copied_hierarchy = BRITEHierarchy()
+            copied_hierarchy.id = hierarchy_id
+            copied_hierarchy.name = hierarchy.name
+
+            copied_network.hierarchies[hierarchy_id] = copied_hierarchy
+
+        for category_id, category in self.categories.items():
+            copied_category = BRITECategory()
+            copied_category.id = category_id
+            copied_category.name = category.name
+            copied_category.hierarchy = copied_network.hierarchies[category.hierarchy.id]
+            for ko_id in category.kos:
+                copied_category.kos[ko_id] = copied_network.kos[ko_id]
+
+            copied_network.categories[category_id] = copied_category
+
+        for pathway_id, pathway in self.pathways.items():
+            copied_pathway = KEGGPathway()
+            copied_pathway.id = pathway_id
+            copied_pathway.name = pathway.name
+            for ko_id in pathway.kos:
+                copied_pathway.kos[ko_id] = copied_ko = copied_network.kos[ko_id]
+                copied_ko.pathways[pathway_id] = copied_pathway
+            if pathway.category is not None:
+                copied_pathway.category = copied_network.categories[pathway.category.id]
+
+            copied_network.pathways[pathway_id] = copied_pathway
+
+        # Record BRITE hierarchical categorizations of each KO.
+        for ko_id, ko in self.kos.items():
+            copied_ko = copied_network.kos[ko_id]
+            for hierarchy_id, categories in ko.hierarchies.items():
+                copied_ko.hierarchies[hierarchy_id] = copied_categories = []
+                for categorization in categories:
+                    copied_categorization = []
+                    for category in categorization:
+                        copied_categorization.append(copied_network.categories[category.id])
+                    copied_categories.append(tuple(copied_categorization))
+
+        # Record the pathway membership of modules.
+        for pathway_id, pathway in self.pathways.items():
+            copied_pathway = copied_network.pathways[pathway_id]
+            for module_id in pathway.modules:
+                copied_pathway.modules[module_id] = copied_network.modules[module_id]
+
+        for module_id, module in self.modules.items():
+            copied_module = copied_network.modules[module_id]
+            for pathway_id in module.pathways:
+                copied_module.pathways[pathway_id] = copied_network.pathways[pathway_id]
+
+        # Record categories of each BRITE hierarchy.
+        for hierarchy_id, hierarchy in self.hierarchies.items():
+            copied_hierarchy = copied_network.hierarchies[hierarchy_id]
+            for categorization in hierarchy.categories:
+                copied_categorization = []
+                for category in categorization:
+                    copied_categorization.append(copied_network.categories[category.id])
+                copied_hierarchy.categories.append(tuple(copied_categorization))
+
+        # Finish filling out attributes of copied BRITE categories.
+        for category_id, category in self.categories.items():
+            copied_category = copied_network.categories[category_id]
+            # Record any supercategory of the category.
+            supercategory = category.supercategory
+            if supercategory is not None:
+                copied_category.supercategory = copied_network.categories[supercategory.id]
+            # Record any subcategories of the category.
+            for subcategory in category.subcategories:
+                copied_category.subcategories.append(copied_network.categories[subcategory.id])
+            # Record any pathway equivalent to the category.
+            pathway = category.pathway
+            if pathway is not None:
+                copied_category.pathway = copied_network.pathways[pathway.id]
+
     def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
         """
         Remove metabolites from a biomass objective dictionary that are not produced or consumed by
