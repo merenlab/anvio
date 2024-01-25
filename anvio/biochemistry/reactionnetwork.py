@@ -959,12 +959,13 @@ class ReactionNetwork:
             first_ko = self.kos[ko_id]
             second_ko = network.kos[ko_id]
 
-            # The new object representing the KO in the merged network should have all reaction
-            # annotations from both source KO objects, as these objects can have different reaction
-            # references.
             merged_ko = KO()
             merged_ko.id = ko_id
             merged_ko.name = first_ko.name
+
+            # The new object representing the KO in the merged network should have all reaction
+            # annotations from both source KO objects, as these objects can have different reaction
+            # references.
             reaction_ids = set(first_ko.reactions).union(set(second_ko.reactions))
             merged_ko.reactions = {
                 reaction_id: merged_network.reactions[reaction_id] for reaction_id in reaction_ids
