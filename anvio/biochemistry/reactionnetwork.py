@@ -173,6 +173,23 @@ class KO:
     name : str, None
         Name of the KO, e.g., 'K00001' has the name, 'alcohol dehydrogenase [EC:1.1.1.1]'.
 
+    modules : Dict[str, KEGGModule], dict
+        KEGG modules containing the KO, with keys being module IDs.
+
+    hierarchies : Dict[Tuple[str, str], List[Tuple[BRITECategory]]], dict
+        Membership of the KO in BRITE hierarchies. Tuple keys are pairs of hierarchy ID and name,
+        e.g., ('ko00001', 'KEGG Orthology (KO)'). Values are the categorical classifications of the
+        KO in the hierarchy: a KO can be classified in more than one category of a hierarchy. For
+        example, 'K00844', hexokinase, is classified multiple ways in the hierarchy, 'ko00001',
+        including '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis /
+        Gluconeogenesis' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
+        and mannose metabolism'. The first classification in this example would be represented as a
+        tuple, (<BRITECategory for '09100 Metabolism'>, <BRITECategory for '09101 Carbohydrate
+        metabolism'>, <BRITECategory for '00010 Glycolysis / Gluconeogenesis'>).
+
+    pathways : Dict[str, KEGGPathway], dict
+        KEGG pathways containing the KO, with keys being pathway IDs.
+
     reactions : Dict[str, ModelSEEDReaction], dict()
         ModelSEED reactions associated with the KO via KO KEGG reaction and EC number annotations.
         Keys are ModelSEED reaction IDs and values are 'ModelSEEDReaction' objects. A ModelSEED
@@ -199,6 +216,9 @@ class KO:
     """
     id: str = None
     name: str = None
+    modules: Dict[str, KEGGModule] = field(default_factory=dict)
+    hierarchies: Dict[Tuple[str, str], List[Tuple[BRITECategory]]] = field(default_factory=dict)
+    pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
     reactions: Dict[str, ModelSEEDReaction] = field(default_factory=dict)
     kegg_reaction_aliases: Dict[str, List[str]] = field(default_factory=dict)
     ec_number_aliases: Dict[str, List[str]] = field(default_factory=dict)
