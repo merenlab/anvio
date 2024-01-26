@@ -1090,7 +1090,7 @@ class Pangraph():
         self.debug = False
 
         self.position = {}
-        self.x_list = []
+        self.x_list = {}
         self.path = {}
         self.edges = []
 
@@ -1724,11 +1724,18 @@ class Pangraph():
         
             self.edmonds_graph.add_edge(stop, 'stop', **pangenome_graph_edge_data)
 
-        for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
-            # nodes = {}
-            self.x_list.append(generation)
+        temp_graph = nx.DiGraph(self.edmonds_graph)
+        temp_graph.remove_nodes_from(['start', 'stop'])
+
+        for x, generation in enumerate(nx.topological_generations(temp_graph), 1):
+            self.x_list[x] = generation
             for node in generation:
                 self.position[node] = (x, 0)
+
+        self.x_list[0] = ['start']
+        self.x_list[max(self.x_list.keys())+1]['stop']
+        self.position['start'] = (0, 0)
+        self.position['stop'] = (x+1, 0)
 
         edmonds_graph_edges = list(self.edmonds_graph.edges())
         for i, j in edmonds_graph_edges:
@@ -1931,7 +1938,7 @@ class Pangraph():
 
         for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
             nodes = {}
-            self.x_list.append(generation)
+            self.x_list[x] = generation
             for node in generation:
                 self.position[node] = (x, 0)
                 node_list = node.split(',')
@@ -2115,17 +2122,25 @@ class Pangraph():
 
                     self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
 
-                    # if node_stop == 'stop':
-                    #     z -= 1
-                    #     for node in sub_path[::-1]:
-                    #         if node.startswith('Ghost_'):
-                    #             self.x_list[z].remove(node)
-                    #             # print('match')
-                    #             # self.position.pop(node)
-                    #             self.ancest.remove_node(node)
-                    #             z -= 1
-                    #         else:
-                    #             break
+                    if node_start == 'start':
+                        t = node_start_x + 1
+                        for node in sub_path:
+                            if node.startswith('Ghost_'):
+                                self.x_list[t].remove(node)
+                                self.ancest.remove_node(node)
+                                t += 1
+                            else:
+                                break
+
+                    if node_stop == 'stop':
+                        s = node_stop_x - 1
+                        for node in sub_path[::-1]:
+                            if node.startswith('Ghost_'):
+                                self.x_list[s].remove(node)
+                                self.ancest.remove_node(node)
+                                s -= 1
+                            else:
+                                break
 
             except Exception as error:
                 print('Sanity Error')
