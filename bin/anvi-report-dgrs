@@ -15,7 +15,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ["katysloz"]
-__requires__ = ["fasta", "contigs-db"]
+__requires__ = ["fasta", "contigs-db", 'profile-db']
 __provides__ = []
 __description__ = "A program designed to find Diversity Generating Retroelements based on nucleotide similarity"
 
@@ -74,6 +74,8 @@ if __name__ == '__main__':
     groupE.add_argument("-snvd","--distance-between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
     groupE.add_argument("-vbl","--variable-buffer-length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
     groupE.add_argument("-dfr","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
+    groupF = parser.add_argument_group('MISCELLANEOUS', "Other options that you can find useful")
+    groupF.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db."}))
 
     args = parser.get_args(parser)
 

@@ -56,6 +56,7 @@ class DGR_Finder:
         self.min_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
+        self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
 
         self.sanity_check()
 
@@ -74,6 +75,10 @@ class DGR_Finder:
             self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
+
+        # initiate a dictionary for the gene where we find VR
+        self.vr_gene_info = {}
+
     def sanity_check(self):
         if self.contigs_db_path and self.fasta_file_path:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
@@ -552,7 +557,7 @@ class DGR_Finder:
                         subject_genome_end_position = max([int(hsp.find('Hsp_hit-from').text), int(hsp.find('Hsp_hit-to').text)])
                         alignment_length = int(hsp.find('Hsp_align-len').text)
                         query_genome_start_position = query_start_position + min([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
-                        query_genome_end_position = query_end_position + max([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
+                        query_genome_end_position = query_start_position + max([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
                         query_frame = int(hsp.find('Hsp_query-frame').text)
                         subject_frame = int(hsp.find('Hsp_hit-frame').text)
 
@@ -843,6 +848,95 @@ class DGR_Finder:
             shutil.rmtree(self.temp_dir)
         return DGRs_found_dict
 
+    def get_gene_info(self, DGRs_found_dict):
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+
+        # are there genes?
+        if not contigs_db.meta['genes_are_called']:
+            self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
+                             "learn about :/ Your reports will not include a file to study the genomic context "
+                             "that surrounds consensus inversions.")
+
+            contigs_db.disconnect()
+
+            return
+
+        # are there functions?
+        function_sources_found = contigs_db.meta['gene_function_sources'] or []
+        if not len(function_sources_found):
+            self.run.warning("There are no functions for genes in your contigs database :/ Your reports on DGRs "
+                             "will not include the function of genes with VRs. SHAME.")
+
+        # now we will go through each VRs to populate `self.vr_gene_info`
+        # with gene calls and functions
+        gene_calls_per_contig = {}
+        VR_with_no_gene_calls = set([])
+        for dgr, tr in DGRs_found_dict.items():
+            for vr, vr_data in tr['VRs'].items():
+                contig_name = vr_data['VR_contig']
+                vr_start = vr_data['VR_start_position']
+                vr_end = vr_data['VR_end_position']
+                if dgr not in self.vr_gene_info:
+                    self.vr_gene_info[dgr] = {vr:{}}
+                else:
+                    self.vr_gene_info[dgr][vr] = {}
+
+                # get any genes overlapping the start and end position of the VR
+                if contig_name not in gene_calls_per_contig:
+                    where_clause = f'''contig="{contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
+                    gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
+
+                gene_calls_in_contig = gene_calls_per_contig[contig_name]
+
+                # find gene caller overlapping with VR
+                for gene_callers_id, gene_call in gene_calls_in_contig.items():
+                    if gene_call['start'] <= vr_start and gene_call['stop'] >= vr_end:
+                        gene_call['gene_callers_id'] = gene_callers_id
+                        # if there are funtion sources, let's recover them for our gene of interest
+                        if function_sources_found:
+                            where_clause = f'''gene_callers_id="{gene_callers_id}"'''
+                            print(gene_callers_id)
+                            print(where_clause)
+                            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+                        else:
+                            # so none of these genes have any functions? WELL FINE.
+                            hits = None
+
+                        # if there are any functions at all, add that to the dict
+                        if hits:
+                            gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+
+                        # While we are here, let's add more info about the gene
+                        # DNA sequence:
+                        dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                        rev_compd = None
+                        if gene_call['direction'] == 'f':
+                            gene_call['DNA_sequence'] = dna_sequence
+                            rev_compd = False
+                        else:
+                            gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                            rev_compd = True
+
+                        # add AA sequence
+                        where_clause = f'''gene_callers_id == "{gene_callers_id}"'''
+                        aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                        gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
+                        # gene length
+                        gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                        # add fasta header
+                        header = '|'.join([f"contig:{contig_name}",
+                                       f"start:{gene_call['start']}",
+                                       f"stop:{gene_call['stop']}",
+                                       f"direction:{gene_call['direction']}",
+                                       f"rev_compd:{rev_compd}",
+                                       f"length:{gene_call['length']}"])
+                        gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
+                        self.vr_gene_info[dgr][vr] = gene_call
+                        break
+
     def create_found_tr_vr_csv(self, DGRs_found_dict):
         """
         This function creates a csv tabular format of the template and variable regions that are found from this tool.
@@ -863,7 +957,11 @@ class DGR_Finder:
         elif self.contigs_db_path:
              base_input_name = os.path.basename(self.contigs_db_path)
 
-        print(DGRs_found_dict)
+        # if contigs.db, then check for gene info per VR
+        if self.contigs_db_path:
+            self.get_gene_info(DGRs_found_dict)
+            print(self.vr_gene_info)
+
         csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
