@@ -10,11 +10,9 @@ import os
 import json
 import math
 import copy
-import time
 import argparse
 import pandas as pd
 import networkx as nx
-import random
 
 from itertools import chain
 
@@ -1724,18 +1722,33 @@ class Pangraph():
         
             self.edmonds_graph.add_edge(stop, 'stop', **pangenome_graph_edge_data)
 
+        # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
+        #     self.x_list[x] = generation
+        #     for node in generation:
+        #         self.position[node] = (x, 0)
+        
         temp_graph = nx.DiGraph(self.edmonds_graph)
-        temp_graph.remove_nodes_from(['start', 'stop'])
+        nx.set_edge_attributes(temp_graph, values=-1, name='weight')
+        temp_graph.remove_node('stop')
+    
+        leafs = [node for node in temp_graph.nodes() if temp_graph.out_degree(node) == 0]
+        leaf_values = [(nx.single_source_bellman_ford(temp_graph, 'start', leaf, 'weight')[0]*(-1), leaf) for leaf in leafs]
+        length, end_leaf = max(leaf_values)
+        
+        self.x_list = {i:[] for i in range(length + 2)}
 
-        for x, generation in enumerate(nx.topological_generations(temp_graph), 1):
-            self.x_list[x] = generation
-            for node in generation:
-                self.position[node] = (x, 0)
+        for node in temp_graph.nodes():
+            if node in nx.ancestors(temp_graph, end_leaf):
+                dist = length - nx.single_source_bellman_ford(temp_graph, node, end_leaf, 'weight')[0]*(-1)
+            else:
+                common = nx.lowest_common_ancestor(temp_graph, node, end_leaf)
+                dist = (length - nx.single_source_bellman_ford(temp_graph, common, end_leaf, 'weight')[0]*(-1)) + nx.single_source_bellman_ford(temp_graph, common, node, 'weight')[0]*(-1)
 
-        self.x_list[0] = ['start']
-        self.x_list[max(self.x_list.keys())+1]['stop']
-        self.position['start'] = (0, 0)
-        self.position['stop'] = (x+1, 0)
+            self.x_list[dist].append(node)
+            self.position[node] = (dist, 0)
+
+        self.x_list[length+1].append('stop')
+        self.position['stop'] = (length+1, 0)
 
         edmonds_graph_edges = list(self.edmonds_graph.edges())
         for i, j in edmonds_graph_edges:
@@ -1869,15 +1882,6 @@ class Pangraph():
                             first_node_path = nx.shortest_path(self.edmonds_graph, lowest_common_ancestor, node_predecessor, weight="weight")
                             first_node = first_node_path[1]
 
-                            # if current_node == 'GC_00000766':
-                            #     print("\n", lowest_common_ancestor, "\n", node_predecessor, "\n", current_node, "\n", first_node_path, "\n")
-                            #     if first_node in edmonds_graph_closed:
-                            #         print('closed')
-                            #     elif first_node in edmonds_graph_open:
-                            #         print('open')
-                            #     else:
-                            #         print('bla')
-
                             if lowest_common_ancestor == current_node:
                                 if first_node in edmonds_graph_open:                            
                                     print('This is a direct loop A -> B -> C -> A of length ', len(first_node_path))
@@ -2009,23 +2013,6 @@ class Pangraph():
         self.run.info_single(f"Removed {j} unsolvable edges.")
         self.run.info_single("Done.")
 
-    # ANCHOR Longest path calculation
-    # NOTE changed from https://stackoverflow.com/questions/25589633/how-to-find-the-longest-path-with-python-networkx
-    def inverse_weight(self, graph, weight='weight'):
-        copy_graph = graph.copy()
-        for n, m, w in copy_graph.edges(data='weight'):
-            copy_graph[n][m][weight] = w * -1
-        return copy_graph
-
-    def longest_path(self, graph, s, t, weight='weight'):
-        i_w_graph = self.inverse_weight(graph, weight)
-        # changed path = nx.dijkstra_path(i_w_graph, s, t) to the next line
-        # this solves a problem the negative weights. Using Dijkstra is not
-        # possible here. Instead bellman ford is the way to go.
-        # Seems to even work with inf weight!
-        path = nx.shortest_path(i_w_graph, s, t, method='bellman-ford')
-        return path
-
     # ANCHOR Sub path calculation script
     def calculate_unknown_edges(self, path, known):
 
@@ -2151,10 +2138,10 @@ class Pangraph():
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
         for edge in self.edges:
-            # if edge[-1] != 'stop':
-            self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
-            self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
-            self.ancest.remove_nodes_from(edge[1:-1])
+            if edge[-1] != 'stop' and edge[0] != 'start':
+                self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
+                self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+                self.ancest.remove_nodes_from(edge[1:-1])
 
         nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
 
