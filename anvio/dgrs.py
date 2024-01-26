@@ -57,6 +57,10 @@ class DGR_Finder:
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
+        self.min_range_size = A('minimum_range_size')
+
+        # performance
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
         self.sanity_check()
 
@@ -211,7 +215,9 @@ class DGR_Finder:
                         if distance <= self.min_dist_bw_snvs:
                             range_end = next_pos
 
-                        if range_end > range_start:
+                        if (range_end - range_start) < self.min_range_size:
+                           continue
+                        else:
                             window_start = range_start - self.variable_buffer_length
                             window_end = range_end + self.variable_buffer_length
 
@@ -335,15 +341,10 @@ class DGR_Finder:
 
             print(f"FASTA file written to {output_fasta_path}")
 
-            # Reading and printing the contents of the file
-            with open(output_fasta_path, "r") as handle:
-                fasta_content = handle.read()
-                print("Contents of input_original.fasta:")
-                print(fasta_content)
-
             blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
 
-            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
+                          output_file=blast_output, additional_params = '-dust no', num_threads=self.num_threads)
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
@@ -840,7 +841,6 @@ class DGR_Finder:
                                         DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
                                         DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
 
-        print(f'number of DGRs is {num_DGR}')
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         else:
@@ -895,8 +895,6 @@ class DGR_Finder:
                         # if there are funtion sources, let's recover them for our gene of interest
                         if function_sources_found:
                             where_clause = f'''gene_callers_id="{gene_callers_id}"'''
-                            print(gene_callers_id)
-                            print(where_clause)
                             hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
                         else:
                             # so none of these genes have any functions? WELL FINE.
@@ -960,7 +958,6 @@ class DGR_Finder:
         # if contigs.db, then check for gene info per VR
         if self.contigs_db_path:
             self.get_gene_info(DGRs_found_dict)
-            print(self.vr_gene_info)
 
         csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
