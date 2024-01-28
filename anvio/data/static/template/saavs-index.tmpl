@@ -17,48 +17,53 @@
 
     <!-- Custom CSS -->
     <link href=".html/css/anvio.css" rel="stylesheet">
+
+    <!-- Bootstrap Icon CSS -->
+    <link href=".html/css/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet">
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <nav class="navbar navbar-dark navbar-expand-lg fixed-top bg-dark" role="navigation">
         <div class="container">
-            <!-- Collect the nav links, forms, and other content for toggling -->
-            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-                <ul class="nav navbar-nav">
-                    <li>
-                        <a href="http://anvio.org">Anvi'o Project Page</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio">Anvi'o Repository</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio/issues">Report an Issue</a>
-                    </li>
-                    <li>
-                        <a href="http://anvio.org/#people">Contact</a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/merenlab/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
-                    </li>
-                </ul>
-            </div>
-            <!-- /.navbar-collapse -->
+            <a class="navbar-brand" href="#" style="width: 50px;">        
+                <img class="img-fluid img-left"src=".html/pics/logo-simple.png" alt="">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse align-items-center justify-content-center" id="bs-example-navbar-collapse-1">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item ml-5 mr-5">
+                            <a class="text-secondary" href="http://anvio.org">Anvi'o Project Page</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio">Anvi'o Repository</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio/issues">Report an Issue</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="http://anvio.org/#people">Contact</a>
+                        </li>
+                        <li class="nav-item mr-5">
+                            <a class="text-secondary" href="https://github.com/merenlab/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
+                        </li>
+                    </ul>
+                </div>
         </div>
-        <!-- /.container -->
+            <!-- /.navbar-collapse -->
     </nav>
-
-    <header class="image-bg-fluid-height">
-        <div class="header-summary-div">
-            <div style="width: 200px;">
-                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
-            </div>
-            <div class="header-text">
+    <div class="container mt-5 pt-5 mb-3">
+        <div class="alert alert-primary d-flex" role="alert">
+            <i class="d-flex align-items-center mr-3 text-primary bi bi-info-circle" style="font-size: 3em;"></i>
+            <div class="text-secondary">
                 Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins
                 across {{ data|lookup:"samples"|length }} samples with {{ data|lookup:"perspectives"|length }} perspective(s). {% if meta|lookup:"images_soft_linked" %}<b>Warning</b>: The images in this output are soft linked, which means the output directory will only work on this computer.{% endif %}
             </div>
         </div>
-    </header>
+    </div>
 
 
     <div id="content">
@@ -74,6 +79,9 @@
     <!-- Pako lib for ZLib inflation & deflation -->
     <script src=".html/js/pako.min.js"></script>
 
+     <!-- Popper JavaScript -->
+     <script src=".html/js/popper.min.js"></script>
+     
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/bootstrap.min.js"></script>
 
@@ -109,7 +117,7 @@
     delete binData;
 
     function generate_panel_content(element, gene) {
-        var parent = $(element).closest('.panel');
+        var parent = $(element).closest('.card');
 
         var has_functions = saav_data['genes_info'].hasOwnProperty(gene);
         var functions = {};
@@ -119,17 +127,17 @@
 
         if ($(element).attr('has-content') != 'true') {
             $(element).attr('has-content', 'true');
-            var content = `<div id="collapse-${gene}" class="panel-collapse">
-                           <div class="panel-body">
+            var content = `<div id="collapse-${gene}" class="card-collapse">
+                           <div class="card-body">
                             ${ Object.keys(saav_data["samples_per_view"]).map(function(view) { return `
-                            <div class="panel panel-default">
-                                <div class="panel-heading">
-                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★  View: '${view}'</a></h1>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★  View: '${view}'</a></h1>
                                 </div>
-                                <div id="collapse-${gene}-${view}" class="panel-collapse collapse">
-                                    <div class="panel-body">
-                                        <div class="panel panel-default">
-                                            <div class="panel-body">
+                                <div id="collapse-${gene}-${view}" class="card-collapse collapse">
+                                    <div class="card-body">
+                                        <div class="card">
+                                            <div class="card-body">
                                                 <div role="tabpanel" style="margin: 10px;">
                                                     <!-- Nav tabs -->
                                                     <ul class="nav nav-tabs" role="tablist">
@@ -228,9 +236,9 @@
             }
             var content = `<section>
                             <div class="container-fluid">
-                            <div class="panel panel-info" id="${gene}_panel">
-                                <div class="panel-heading">
-                                    <h1 class="panel-title">
+                            <div class="card border-info" id="${gene}_panel">
+                                <div class="card-header">
+                                    <h1 class="card-title">
                                         <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">Gene ID: ${gene}</a> ${function_links}
                                     </h1>
                                 </div>

@@ -530,6 +530,61 @@ class SequencesForHMMHits:
         return num_genes_missing_per_bin
 
 
+    def filter_hmm_sequences_dict_for_genes_that_are_too_long(self, hmm_sequences_dict_for_splits, ignore_genes_longer_than=0):
+        """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that are too long"""
+
+        if not isinstance(ignore_genes_longer_than, int):
+            raise ConfigError("The `--ignore-genes-longer-than` expects an integer argument :/")
+
+        # we will keep track of these bad bois
+        gene_calls_removed = set([])
+
+        # we identify entry ids that describe genes that are too long for removal
+        entry_ids_to_remove = set([])
+        for entry_id in hmm_sequences_dict_for_splits:
+            if hmm_sequences_dict_for_splits[entry_id]['length'] > ignore_genes_longer_than:
+                entry_ids_to_remove.add(entry_id)
+                gene_calls_removed.add(hmm_sequences_dict_for_splits[entry_id]['gene_callers_id'])
+
+        # we return early if there is nothing to be done
+        if not len(entry_ids_to_remove):
+            self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                             f"HMM hits. But none of the gene calls were longer than that value, so you get to keep everything.",
+                             header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏")
+            return (hmm_sequences_dict_for_splits, set([]), set([]))
+
+        # if we are here, it means there are things to be gotten rid of. we will remove things
+        # while keeping the user informed.
+        self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                         f"HMM hits. There were a total of {len(entry_ids_to_remove)} HMM hits that matched to gene calls "
+                         f"that were longer than {ignore_genes_longer_than}, and they are now removed from your analysis. "
+                         f"The following lines list all these gene calls, their length, and which model they belonged.",
+                         header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏", lc='yellow')
+
+        # before we actually start removing stuff, we first learn all bin names that are in the master dict
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # puts in business socks
+        for entry_id in entry_ids_to_remove:
+            e = hmm_sequences_dict_for_splits[entry_id]
+            self.run.info_single(f"Source: {e['source']} / Model: {e['gene_name']} /  Bin: {e['bin_id']} / "
+                                 f"Gene call: {e['gene_callers_id']} / Length: {e['length']}",
+                                 cut_after=None, level=2)
+            hmm_sequences_dict_for_splits.pop(entry_id)
+
+        # now we're done, and we will take another look at the dict to figure out remaining bins
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        # bins we lost
+        bins_removed = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        return (hmm_sequences_dict_for_splits, gene_calls_removed, bins_removed)
+
+
     def filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(self, hmm_sequences_dict_for_splits, min_num_bins_gene_occurs=None):
         """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that rarely occurs across bins.
 
