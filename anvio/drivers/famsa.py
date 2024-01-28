@@ -85,3 +85,19 @@ class FAMSA:
             shutil.rmtree(tmp_dir)
 
         return alignments
+
+
+    def run_default(self, sequences_list, debug=False):
+        """Takes a list of tuples for sequences, performs MSA using famsa, returns a dict.
+
+        Unlike `run_stdin`, runs everything through files rather than passing data via STDIN.
+
+            >>> from anvio.drivers.famsa import FAMSA
+            >>> f = FAMSA()
+            >>> f.run_default([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
+            {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
+
+        But it is not implemented yet. If it becomes a necessity, please do implement :)
+        """
+
+        raise ConfigError("Default alignment option for Famsa is not implemented :/")
