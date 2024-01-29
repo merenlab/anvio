@@ -8,6 +8,8 @@
 /build/
 /dist/
 test-output/
+node_modules/
+package-lock.json
 /*.egg-info/
 anvio/__pycache__/
 anvio/extensions/concoct/vbgmm.c

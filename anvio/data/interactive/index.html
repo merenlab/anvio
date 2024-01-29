@@ -11,37 +11,36 @@
     <meta http-equiv="pragma" content="no-cache" />
     <meta name="google" value="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    <link rel="stylesheet" href="lib/bootstrap-icons/font/bootstrap-icons.min.css" type="text/css">
-    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    
+    <!-- Import packages from node_modules -->
+    <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
     <script type="text/javascript" src="js/error.js"></script>
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
-    <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <script type="text/javascript" src="lib/popperjs/popper.min.js"></script>
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+    <link href="./node_modules/jquery-ui/themes/base/all.css" rel="stylesheet">
+    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
-    <script type="text/javascript" src="lib/randomColor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
+    <script>$.uiBackCompat = false;</script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/button.js" onerror='alertDependencyError("jquery-button")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+    <!-- <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script> -->
+
+    <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
-    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
-    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js" onerror='alertDependencyError("md5")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="./node_modules/blueimp-md5/js/md5.js" onerror='alertDependencyError("md5")'></script>
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("col-picker")'></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
+    <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -71,9 +70,9 @@
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
-    <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
+    <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
+    <link rel="stylesheet" href="./node_modules/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
+    <script type="text/javascript" src="./node_modules/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
@@ -462,7 +461,7 @@
                                         <label class="col-3 settings-label d-flex" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
                                         <div class="col-4 input-align d-flex">
                                             <input class="" type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                                            <div id="grid_color" style="display: none !important;" class="colorpicker colorpicker-width"></div>
+                                            <div id="grid_color" style="display: none !important;" class="colorpicker colorpicker-width" style="background-color: #FFFFFF" color="#FFFFFF"></div>
                                             <div class="col-8 d-flex pl-0 align-items-center">
                                                 <div class="d-flex">
                                                     <div class="grid_details display-settings" style="display: none;">
