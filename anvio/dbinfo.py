@@ -88,6 +88,7 @@ class DBInfo(ABC):
 
     db_type = None
     hash_name = None
+    functional_annotation_sources_name = None
 
     def __new__(cls, path, dont_raise=False, expecting=None):
         if not cls.is_db(path, dont_raise=dont_raise):
@@ -208,11 +209,20 @@ class DBInfo(ABC):
     def get_self_table(self):
         with DB(self.path, None, ignore_version=True) as database:
             return dict(database.get_table_as_list_of_tuples('self'))
+    
+    def get_functional_annotation_sources(self):
+        """If sources are defined in the database, we return them as a list. Otherwise, we return None."""
+        if self.functional_annotation_sources_name:
+            with self.load_db() as database:
+                return database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True).split(',')
+        else:
+            return None
 
 
 class ContigsDBInfo(DBInfo):
     db_type = 'contigs'
     hash_name = 'contigs_db_hash'
+    functional_annotation_sources_name = 'gene_function_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
@@ -260,6 +270,7 @@ class StructureDBInfo(DBInfo):
 class GenomeStorageDBInfo(DBInfo):
     db_type = 'genomestorage'
     hash_name = 'hash'
+    functional_annotation_sources_name = 'gene_function_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
@@ -281,6 +292,7 @@ class TRNADBInfo(DBInfo):
 class ModulesDBInfo(DBInfo):
     db_type = 'modules'
     hash_name = 'hash'
+    functional_annotation_sources_name = 'annotation_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 

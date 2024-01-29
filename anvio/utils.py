@@ -826,6 +826,56 @@ def add_to_2D_numeric_array(x, y, a, count=1):
     return a
 
 
+def is_all_submodules_present():
+    """A function to test whether all anvi'o submodules are present.
+
+    This check is particularly important for those who run anvi'o from a git clone
+    rather than using it via a regular installation.
+    """
+
+    # find the root directory of anvi'o module
+    anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+
+    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+
+    if not os.path.exists(gitmodules_path):
+        # if this file does not exist, we are likely looking at a case where anvi'o is
+        # installed on the user's computer, so we will let them go.
+        return True
+
+    gitmodules = configparser.ConfigParser()
+
+    try:
+        gitmodules.read(gitmodules_path)
+    except Exception as e:
+        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
+                          "needs an adult :(")
+
+    # figure out missing modules
+    missing_gitmodules = []
+    for gitmodule in gitmodules.sections():
+        for key, value in gitmodules.items(gitmodule):
+            if key == 'path':
+                gitmodule_path = os.path.join(anvio_module_path, '..', value)
+
+                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
+                    missing_gitmodules.append(value)
+
+    if len(missing_gitmodules):
+        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
+                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
+        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
+                          "codebase. If you run the commands shown above, you should be golden to try "
+                          "again.")
+    else:
+        return True
+
+
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
     columns = get_columns_of_TAB_delim_file(file_path)
     return False if len([False for c in columns if c not in columns]) else True
@@ -3033,7 +3083,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
         raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should "
-                           "be different from the the input file path...")
+                           "be different from the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
@@ -3324,13 +3374,21 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
-def get_bams_and_profiles_txt_as_data(file_path):
+def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok=False):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
 
     Updates to this function may require changes in the artifact description at
     anvio/docs/artifacts/bams-and-profiles-txt.md
+
+    Parameters
+    ==========
+    no_profile_and_bam_column_is_ok : bool
+        In some specific instances (e.g., as specific as wanting to compute
+        inversion activities in new metagenomes for pre-computed inversion sites),
+        downstream analyses may not require profile-db files or BAM files. In such,
+        cases the programmer can use this parameter to relax the sanity checks
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3339,13 +3397,19 @@ def get_bams_and_profiles_txt_as_data(file_path):
         raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
                           f"The file you have at '{file_path}' is nothing of that sorts.")
 
-    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+    if no_profile_and_bam_column_is_ok:
+        expected_columns = ['name', 'contigs_db_path']
+    else:
+        expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
 
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
         raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
                           f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
+
+    has_profile_db_column = 'profile_db_path' in columns_found
+    has_bam_file_column = 'bam_file_path' in columns_found
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3358,20 +3422,26 @@ def get_bams_and_profiles_txt_as_data(file_path):
                           "contigs database. Meaning, you have to use the same contigs database path for "
                           "every entry. Confusing? Yes. Still a rule? Yes.")
 
-    profile_db_paths = COLUMN_DATA('profile_db_path')
-    if len(set(profile_db_paths)) != len(profile_db_paths):
-        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+    if not has_profile_db_column:
+        pass
+    else:
+        profile_db_paths = COLUMN_DATA('profile_db_path')
+        if len(set(profile_db_paths)) != len(profile_db_paths):
+            raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
 
-    bam_file_paths = COLUMN_DATA('bam_file_path')
-    if len(set(bam_file_paths)) != len(bam_file_paths):
-        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+        bam_file_paths = COLUMN_DATA('bam_file_path')
+        if len(set(bam_file_paths)) != len(bam_file_paths):
+            raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
 
     contigs_db_path = contigs_db_paths[0]
     profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
     for sample_name in profiles_and_bams:
         profiles_and_bams[sample_name].pop('contigs_db_path')
-        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
-        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+        if has_bam_file_column:
+            filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+
+        if has_profile_db_column:
+            is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
     # this file can optionally contain `r1` and `r2` for short reads
     for raw_reads in ['r1', 'r2']:
@@ -4253,6 +4323,18 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+
+def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
+    pdb = dbi(pan_db_path)
+    gdb = dbi(genomes_storage_path)
+
+    if pdb.hash != gdb.hash:
+        raise ConfigError(f"The pan database and the genomes storage database do not seem to "
+                          f"be compatible. More specifically, the genomes storage database is "
+                          f"not the one that was used when the pangenome was created. "
+                          f"({pdb.hash} != {gdb.hash})")
+
+    return True
 
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):

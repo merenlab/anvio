@@ -4,7 +4,7 @@
  * For details, see http://www.apache.org/licenses/LICENSE-2.0.
  */
 
-body {
+ body {
     margin-top: 0px; /* Required margin for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
 	background: url('../pics/bg.jpg') center center scroll;
 }
@@ -123,4 +123,8 @@ footer {
   display: inline-block;
   text-align: center;
   font-size: 12px;
+}
+
+.card-title{
+    margin-bottom: 0px;
 }

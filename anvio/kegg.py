@@ -29,8 +29,9 @@ from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
+from anvio.dbinfo import DBInfo
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -1902,6 +1903,7 @@ class RunKOfams(KeggContext):
                               f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
         utils.is_contigs_db(self.contigs_db_path)
+        filesnpaths.is_output_file_writable(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
@@ -2828,6 +2830,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
@@ -2849,6 +2853,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.name_header = 'contig_name'
         elif self.profile_db_path and self.collection_name and not self.metagenome_mode:
             self.name_header = 'bin_name'
+        elif self.pan_db_path:
+            self.name_header = 'gene_cluster_bin_name'
         else:
             self.name_header = 'genome_name'
 
@@ -2864,13 +2870,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'mode_type' : 'all',
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
+        if self.pan_db_path:
+            self.update_available_headers_for_pan()
 
         if self.enzymes_txt:
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
 
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
+        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
+        # incompatible input options
+        if (self.contigs_db_path and (self.pan_db_path or self.enzymes_txt)) or \
+           (self.enzymes_txt and self.pan_db_path):
+            raise ConfigError("MULTIPLE INPUT OPTIONS DETECTED. Please check your parameters. You cannot provide more than one "
+                             "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -2885,15 +2898,27 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
-        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
+        # required with collection/bin input
+        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path and not self.pan_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
-                              "a profiles database. Unfortunately, this just does not work. Please try again.")
-
+                              "a profile database or pan database. Unfortunately, this just does not work. Please try again.")
+        # required with profile db input
         if self.profile_db_path and not (self.collection_name or self.add_coverage or self.metagenome_mode):
             raise ConfigError("If you provide a profile DB, you should also provide either a collection name (to estimate metabolism "
                               "on a collection of bins) or use the --add-coverage flag (so that coverage info goes into the output "
                               "files), or both. Otherwise the profile DB is useless.")
-
+        # required/forbidden with pangenome input
+        if self.pan_db_path and not self.genomes_storage_path:
+            raise ConfigError("You have provided a pan database but not its associated genomes storage database. Please give the "
+                             "path to the genomes storage db using the `-g` flag.")
+        if self.pan_db_path and not self.collection_name:
+            raise ConfigError("You need to provide a collection name when you estimate metabolism on a pangenome. If you don't "
+                              "already have a collection of gene clusters in the pan database, please make one first. Then provide "
+                              "the collection to this program; you can find the collection name parameter in the INPUT #2 section "
+                              "of the `-h` output.")
+        if self.pan_db_path and (self.add_copy_number or self.add_coverage):
+            raise ConfigError("The flags --add-copy-number or --add-coverage do not work for pangenome input.")
+        # required/forbidden with JSON estimation
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
                               "Please use the --get-raw-data-as-json flag to do so.")
@@ -2903,6 +2928,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        if self.pan_db_path:
+            utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
         if self.add_coverage:
             if not self.enzymes_txt:
@@ -2993,6 +3020,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         if self.profile_db_path:
             self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        if self.pan_db_path:
+            self.run.info("Pan DB", self.pan_db_path, quiet=self.quiet)
+            self.run.info("Genomes Storage DB", self.genomes_storage_path, quiet=self.quiet)
         if self.collection_name:
             self.run.info('Collection', self.collection_name, quiet=self.quiet)
         if self.bin_id:
@@ -3002,10 +3032,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.enzymes_txt:
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
 
-        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
+        estimation_mode = "Genome (or metagenome assembly)"
+        if self.profile_db_path and self.collection_name:
+            estimation_mode = "Bins in a metagenome"
+        elif self.metagenome_mode:
+            estimation_mode = "Individual contigs in a metagenome"
+        elif self.enzymes_txt:
+            estimation_mode = "List of enzymes"
+        elif self.pan_db_path:
+            estimation_mode = "Gene cluster bins in a pangenome"
+        
+        self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
 
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -3033,7 +3073,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
-            if not self.estimate_from_json and not self.enzymes_txt:
+            if self.contigs_db_path:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
                 if 'modules_db_hash' not in contigs_db.meta:
                     raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
@@ -3077,8 +3117,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # LOAD USER DATA
-        if not self.estimate_from_json and not self.enzymes_txt:
-            if self.user_input_dir:
+        if self.user_input_dir:
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
                     raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
@@ -3089,15 +3128,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
                 modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
 
-                contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
-                source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
+                if self.contigs_db_path:
+                    contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
+                    source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
 
-                if source_in_modules_not_contigs:
-                    missing_sources = ", ".join(source_in_modules_not_contigs)
-                    raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
-                                      f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
-                                      f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
-                                      f"before running this program again. Here are the missing sources: {missing_sources}")
+                    if source_in_modules_not_contigs:
+                        missing_sources = ", ".join(source_in_modules_not_contigs)
+                        raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
+                                        f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
+                                        f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
+                                        f"before running this program again. Here are the missing sources: {missing_sources}")
 
                 # expand annotation source set to include those in user db
                 annotation_source_set.update(modules_db_sources)
@@ -3109,7 +3149,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         self.ko_dict[k] = user_kos[k]
                 user_modules_db.disconnect()
 
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if self.contigs_db_path:
             contigs_db.disconnect()
 
         self.annotation_sources_to_use = list(annotation_source_set)
@@ -3122,6 +3162,34 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.run.info('Metabolism data', "KEGG + USER-DEFINED")
         else:
             self.run.info('Metabolism data', "KEGG only")
+
+        # sanity check for annotation sources in pangenome
+        if self.genomes_storage_path:
+            available_sources = DBInfo(self.genomes_storage_path).get_functional_annotation_sources()
+            missing_sources = []
+            for source in self.annotation_sources_to_use:
+                if source not in available_sources:
+                    missing_sources.append(source)
+            if missing_sources:
+                miss_str = ", ".join(missing_sources)
+                raise ConfigError(f"The following functional annotation sources are required for metabolism "
+                                  f"estimation on the chosen metabolism data, but are missing from your genome "
+                                  f"storage database: {miss_str}. You'll need to figure out which genomes in the db "
+                                  f"are missing those sources, and annotate them before re-making the genomes storage.")
+
+
+    def update_available_headers_for_pan(self):
+        """This function updates the available headers dictionary for pangenome-specific headers."""
+
+        # in modules mode, we replace 'gene_caller_ids_in_module' with 'gene_clusters_in_module'
+        self.available_headers['gene_clusters_in_module'] = {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Comma-separated list of gene cluster IDs that contribute to a module"
+                        }
+        self.available_headers.pop('gene_caller_ids_in_module')
+
+        self.available_modes['modules']["headers"] = ['gene_clusters_in_module' if x == 'gene_caller_ids_in_module' else x for x in self.available_modes['modules']["headers"]]
 
 
     def list_output_modes(self):
@@ -4485,7 +4553,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 min_step_count = None
                 for s in and_splits:
                     s_count = self.get_step_copy_number(s, enzyme_hit_counts)
-                    if not min_step_count:
+                    if min_step_count is None:
                         min_step_count = s_count # make first step the minimum
                     min_step_count = min(min_step_count, s_count)
                 return min_step_count
@@ -4510,6 +4578,117 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         return 0
                     return enzyme_hit_counts[step_string]
 
+    
+    def are_enzymes_indirect_alternatives_within_step(self, enzyme_list: list, step: str):
+        """An overly simplistic function to determine whether the relationship between the provided alternative 
+        enzymes in the given step is indirect.
+        
+        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by 
+        a character symbolizing a more complex relationship. That is, they are not separated only by commas and other enzymes (which
+        indicates a direct relationship, as in the two enzymes are synonymous in the context of the metabolic pathway).
+
+        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include 
+        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two 
+        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in 
+        an alternative branch of the step.
+
+        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will 
+        wrongly suggest they are direct alternatives. However, it is meant to be used only for identifying putative edge cases
+        for the `get_dereplicated_enzyme_hits_for_step_in_module()` function, and it works well enough for that.
+
+        PARAMETERS
+        ==========
+        enzyme_list : list of enzyme accessions
+            the alternative enzymes to process
+        step : string
+            the definition string of the relevant step
+
+        RETURNS
+        =======
+        contains_indirect : Boolean
+            True if the list of provided enzymes contains those that are indirect alternatives within the given step.
+        """
+
+        enzyme_data = {e : {'index': step.index(e), 
+                                    'direct_alts': [], 
+                                    'indirect_alts': []} for e in enzyme_list}
+        
+        contains_indirect = False
+        # get enzyme-specific list of alternatives
+        for e in enzyme_list:
+            for z in enzyme_list:
+                if e != z:
+                    e_index = enzyme_data[e]['index']
+                    z_index = enzyme_data[z]['index']
+                    indirect_alternatives = False
+                    
+                    # indirect alts have a space, parentheses, or plus/minus sign between them
+                    for c in step[min(e_index, z_index):max(e_index, z_index)]:
+                        if c in [' ', '(', ')', '+', '-']:
+                            indirect_alternatives = True
+                    
+                    if indirect_alternatives:
+                        enzyme_data[e]['indirect_alts'].append(z)
+                        contains_indirect = True
+                    else:
+                        enzyme_data[e]['direct_alts'].append(z)
+
+        return contains_indirect
+
+    
+    def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str, mnum: str):
+        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
+        same gene removed, for the provided step in a metabolic pathway.
+
+        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the 
+        same reaction, and we don't want these annotations to be double-counted in the stepwise copy number calculation.
+        
+        PARAMETERS
+        ==========
+        meta_dict_for_mnum : dictionary of dictionaries
+            metabolism completeness dict for the current bin and metabolic module
+        step_to_focus_on : string
+            which step in the module to resolve alternative enzymes for, passed as a definition string for the step.
+        mnum : string
+            module ID (used only for warning output)
+        
+        RETURNS
+        =======
+        derep_enzyme_hits : dictionary
+            matches enzyme accession to number of hits to unique genes
+        """
+
+        derep_enzyme_hits = {k : len(meta_dict_for_mnum["kofam_hits"][k]) for k in meta_dict_for_mnum["kofam_hits"] if k in step_to_focus_on}
+
+        # map gene caller IDs to enzyme accessions
+        gene_calls_to_enzymes = {gcid : [] for gcid in meta_dict_for_mnum['gene_caller_ids']}
+        for enzyme, gene_list in meta_dict_for_mnum['kofam_hits'].items():
+            for g in gene_list:
+                if enzyme in step_to_focus_on:
+                    gene_calls_to_enzymes[g].append(enzyme)
+
+        for gcid, enzymes in gene_calls_to_enzymes.items():
+            if len(enzymes) > 1:
+                # simple solution (only works well for enzymes that are direct alternatives)
+                # for each duplicated gene, we arbitrarily keep only the hit to the first enzyme
+                # and for all other annotations, we reduce the count of hits by one
+                for acc in enzymes[1:]:
+                    derep_enzyme_hits[acc] -= 1
+                
+                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on):
+                    enz_str = ", ".join(enzymes)
+                    self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
+                                     f"within the same step of a metabolic pathway ({enz_str}), and these enzymes "
+                                     f"unfortunately have a complex relationship. The affected module is {mnum}, and "
+                                     f"here is the step in question: {step_to_focus_on}. We arbitrarily kept only one of "
+                                     f"the annotations to this gene in order to avoid inflating the step's copy number, "
+                                     f"but due to the complex relationship between these alternatives, this could mean "
+                                     f"that the copy number for this step is actually too low. Please heed this warning "
+                                     f"and double check the stepwise copy number results for {mnum} and other pathways "
+                                     f"containing gene call {gcid}.")
+
+        return derep_enzyme_hits
+
 
     def compute_stepwise_module_copy_number_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
@@ -4532,12 +4711,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             "copy_number"              the copy number of an individual step
         """
 
-        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
-
         all_step_copy_nums = []
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string, mnum)
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
@@ -4945,11 +5123,89 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return enzyme_metabolism_superdict, enzyme_ko_superdict
 
 
+    def init_hits_for_pangenome(self, gene_cluster_list: list):
+        """This function loads enzyme annotations from the pangenome for use by downstream metabolism estimation.
+        
+        For each gene cluster, it takes the most common function from each annotation source relevant to the modules.
+
+        PARAMETERS
+        ==========
+        gene_cluster_list : list
+            which gene cluster IDs to load from the pan DB
+
+        RETURNS
+        =======
+        enzyme_cluster_split_contig : list
+            (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
+        """
+        
+        pan_super = PanSuperclass(self.args)
+        pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)
+        pan_super.init_gene_clusters_functions_summary_dict(source_list = self.annotation_sources_to_use, gene_clusters_of_interest = gene_cluster_list)
+
+
+        enzyme_cluster_split_contig = []
+        # no splits or contigs here
+        for cluster_id in gene_cluster_list:
+            for source in self.annotation_sources_to_use:
+                if source in pan_super.gene_clusters_functions_summary_dict[cluster_id]:
+                    acc = pan_super.gene_clusters_functions_summary_dict[cluster_id][source]['accession']
+                    if acc: # avoid introducing 'None' values here
+                        enzyme_cluster_split_contig.append((acc,cluster_id,"NA","NA"))
+
+        return enzyme_cluster_split_contig
+
+
+    def estimate_metabolism_for_pangenome_bins(self, enzyme_cluster_split_contig, cluster_collection):
+        """Estimates metabolism individually on each bin in a pangenome.
+        
+        PARAMETERS
+        ==========
+        enzyme_cluster_split_contig : list
+            (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
+
+        cluster_collection : dictionary
+            maps bin names in the collection to the list of gene clusters in each bin
+        """
+        
+        gc_bins_metabolism_superdict = {}
+        gc_bins_ko_superdict = {}
+        num_bins = len(cluster_collection)
+
+        self.progress.new("Estimating metabolism for each bin of gene clusters", progress_total_items=num_bins)
+
+        for bin_name, gc_list in cluster_collection.items():
+            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
+
+            enzymes_in_bin = [tpl for tpl in enzyme_cluster_split_contig if tpl[1] in gc_list]
+            metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(enzymes_in_bin, bin_name=bin_name)
+
+            if not self.store_json_without_estimation:
+                gc_bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin, bin_name=bin_name)
+                single_bin_module_superdict = {bin_name: gc_bins_metabolism_superdict[bin_name]}
+                gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
+            else:
+                gc_bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
+                single_bin_module_superdict = {bin_name: metabolism_dict_for_bin}
+                gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
+
+            # append individual bin to file
+            single_bin_ko_superdict = {bin_name: ko_dict_for_bin}
+            self.append_kegg_metabolism_superdicts(single_bin_module_superdict, single_bin_ko_superdict)
+
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
+
+        return gc_bins_metabolism_superdict, gc_bins_ko_superdict        
+
+
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
-        It will decide what to do based on whether the input contigs DB is a genome or metagenome.
+        It will decide what to do based on whether the input DB is a genome, metagenome, or pangenome.
         It usually avoids returning the metabolism data to save on memory (as this data is typically appended to
         files immediately), but this behavior can be changed by setting return_superdicts to True (for the entire
         modules/ko superdictionaries) or return_subset_for_matrix_format to True (for a subset of these dicts that
@@ -5014,6 +5270,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if self.enzymes_txt:
                 self.enzymes_txt_data = self.load_data_from_enzymes_txt()
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
+            elif self.pan_db_path:
+                gene_cluster_collections = ccollections.Collections()
+                gene_cluster_collections.populate_collections_dict(self.pan_db_path)
+                if self.collection_name not in gene_cluster_collections.collections_dict:
+                    c_str = ', '.join(gene_cluster_collections.collections_dict.keys())
+                    raise ConfigError(f"The collection name you provided ('{self.collection_name}') is not valid for this "
+                                      f"Pan DB. Here are the collections in this database: {c_str}")
+                collection_dict = gene_cluster_collections.get_collection_dict(self.collection_name)
+
+                all_gene_clusters_in_collection = []
+                for bin_name, gene_cluster_list in collection_dict.items():
+                    all_gene_clusters_in_collection += gene_cluster_list
+
+                kofam_hits_info = self.init_hits_for_pangenome(gene_cluster_list = all_gene_clusters_in_collection)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_pangenome_bins(kofam_hits_info, collection_dict)
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
@@ -5131,6 +5402,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
         if "gene_caller_ids_in_module" in headers_to_include:
             d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+        if "gene_clusters_in_module" in headers_to_include:
+            d[self.modules_unique_id]["gene_clusters_in_module"] = ",".join(gcids_in_mod)
 
         # comma-separated list of warnings
         if "warnings" in headers_to_include:
@@ -7298,6 +7571,12 @@ class ModulesDatabase(KeggContext):
                                   "into 2 parts. Here is what the split looks like: {split_rxn}")
             rxn_inputs = [x.strip() for x in split_rxn[0].split('+')]
             rxn_outputs = [x.strip() for x in split_rxn[1].split('+')]
+            # as of December 2023, some REACTION lines now include stoichiometry, like this:
+            # C00390 + 2 C00125 -> C00399 + 2 C00126 + 2 C00080
+            # to make sure we don't keep the stoichiometric numbers, we need to split each compound substring one more time
+            # on a space and keep only the last element
+            rxn_inputs = [x.split()[-1] for x in rxn_inputs]
+            rxn_outputs = [x.split()[-1] for x in rxn_outputs]
             inputs = inputs.union(set(rxn_inputs))
             outputs = outputs.union(set(rxn_outputs))
 

@@ -89,9 +89,17 @@ class Inversions:
         if not self.bams_and_profiles_file_path:
             raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` argument.")
 
+        # compute inversion activity across samples?
+        self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
+        self.pre_computed_inversions_path = A('pre_computed_inversions')
+
         # get these filled in immediately
-        self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
-        self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values()]
+        if self.pre_computed_inversions_path:
+            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path, no_profile_and_bam_column_is_ok=True)
+        else:
+            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
+
+        self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values() if 'profile_db_path' in e]
         self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r1' in v) for v in self.profile_db_bam_file_pairs.values()])
 
         # params to identify regions of interest. if you are studying the code, don't forget to read
@@ -123,10 +131,6 @@ class Inversions:
         # this variable tells us how long is the oligonucleotide we should be focusing on
         # to measure proportions of activity
         self.oligo_length = 6
-
-        # compute inversion activity across samples?
-        self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
-        self.pre_computed_inversions_path = A('pre_computed_inversions')
 
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
@@ -173,7 +177,11 @@ class Inversions:
 
         # we will generate our splits info, contigs to splits dicts, and check a few things to learn more about the
         # contigs db.
-        split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
+        if self.profile_db_paths:
+            split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
+        else:
+            split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
@@ -765,7 +773,10 @@ class Inversions:
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity,
-                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+                                # if no function source, it says 'the contigs.db' because it fits with the message 
+                                # displayed in the final index.html. See the inversion template, line 215
+                                # if it works, it works
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
 
         self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
@@ -829,7 +840,7 @@ class Inversions:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
-                    if gene['functions']:
+                    if 'functions' in gene.keys():
                         gene['has_functions'] = True
                         gene['COLOR'] = '#008000'
                     else:
@@ -930,18 +941,20 @@ class Inversions:
 
             for inversion_id in self.summary['inversions']:
                 for sample in self.summary['inversions'][inversion_id]['activity']:
-                    for inversion_id, activity in sum_freq.items():
-                        for oligo_primer, all_oligo in activity.items():
-                            ref_id = all_oligo['reference']
-                            previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width']
-                            for i, x in all_oligo['non_reference']:
-                                i_start = previous_width
-                                if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
-                                    continue
-                                i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
-                                previous_width = i_width
-                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
-                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
+                    for oligo_primer, all_oligo in sum_freq[inversion_id].items():
+                        # check if oligo primer is found in the current sample
+                        if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
+                            continue
+                        ref_id = all_oligo['reference']
+                        previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width'];
+                        for i, x in all_oligo['non_reference']:
+                            i_start = previous_width
+                            if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
+                                continue
+                            i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
+                            previous_width = i_width
+                            self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
+                            self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
 
         # add motif info
         if self.skip_search_for_motifs:
@@ -1413,7 +1426,7 @@ class Inversions:
                 # if the reference oligo has no frequency but reads were found for other oligo
                 # then add reference oligo with a frequency of 0
                 oligo_reference = primers_dict[primer_name]['oligo_reference']
-                if oligo_reference not in oligos_frequency_dict and reads_found:
+                if oligo_reference not in sample_counts and reads_found:
                     sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
             output_queue.put(sample_counts)

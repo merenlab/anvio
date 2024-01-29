@@ -513,6 +513,26 @@ D = {
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
                 ),
+    'skip-edges': (
+            ['--skip-edges'],
+            {'default': 0,
+             'type': int,
+             'metavar': 'NUM NUCLEOTIDES',
+             'choices': range(0, 51),
+             'help': "By default, anvi'o will report variable nucleotides and their allele frequencies from any nucleotide ."
+                     "position in a given short read found in the BAM file. Although, there are some applications where the "
+                     "observed variation in short reads will depend on the location of the nucleotide positions in the read. "
+                     "For instance, in ancient DNA sequencing, the start and the end of short reads are often suffer from "
+                     "DNA damage, leading to an increased number of single-nucleotide variants that emerge from the edges of "
+                     "short reads when they are aligned to a reference. This parameter offers a means to ameliorate the "
+                     "inflation of SNVs due to biases associated with short-read edges by enabling the user to ask anvi'o "
+                     "to ignore a few number of nucleotides from the beginning and the end of short reads as they're being "
+                     "profiled. For instance, a parameter of `5` will make sure that the mismatches of a given read to the "
+                     "reference sequence at the first and the last 5 nucleotides will not be reported in the variability "
+                     "table. Please note that the coverage data will not be impacted by the use of this parameter -- "
+                     "only what is reported as variants will be impacted, decreasing the impact of noise in specific "
+                     "applications."}
+                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
@@ -1377,6 +1397,20 @@ D = {
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
                 ),
+    'ignore-genes-longer-than': (
+            ['--ignore-genes-longer-than'],
+            {'metavar': 'MAX_LENGTH',
+             'default': 0,
+             'type': int,
+             'help': "In some cases the gene calling step can identify open reading frames that span across extremely long "
+                     "stretches of genomes. Such mistakes can lead to downstream issues, especially when concatenate flag "
+                     "is used, including failure to align genes. This flag allows anvi'o to ignore extremely long gene calls to "
+                     "avoid unintended issues (i.e., during phylogenomic analyses). If you use this flag, please carefully "
+                     "examine the output messages from the program to see which genes are removed from the analysis. "
+                     "Please note that the length parameter considers the nucleotide lenght of the open reading frame, "
+                     "even if you asked for amino acid sequences to be returned. Setting this parameter to small values, "
+                     "such as less than 10000 nucleotides may lead to the removal of genuine genes, so please use it carefully."}
+                ),
     'align-with': (
             ['--align-with'],
             {'metavar': 'ALIGNER',
@@ -2153,7 +2187,7 @@ D = {
             ['-I', '--ip-address'],
             {'metavar': 'IP_ADDR',
              'type': str,
-             'default': '0.0.0.0',
+             'default': 'localhost',
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should "
                      "work just fine for most."}
                 ),

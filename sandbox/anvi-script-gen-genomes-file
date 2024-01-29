@@ -39,7 +39,7 @@ def main(args):
             raise ConfigError("Since you provided a profile db, we think you want an internal genomes file, but "
                               "anvi'o needs the corresponding contigs db and a collection name, as well.")
         if not args.output_file:
-            raise ConfigError("Please provide an output file path for your internal genomes file using the -i parameter.")
+            raise ConfigError("Please provide an output file path for your internal genomes file using the -o parameter.")
 
         if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
             raise ConfigError("The internal genomes file path that you provided already exists, and anvi'o will not overwrite "
@@ -82,7 +82,7 @@ def main(args):
 
     elif args.input_dir:
         if not args.output_file:
-            raise ConfigError("Please provide an output file path for your external genomes file using the -e parameter.")
+            raise ConfigError("Please provide an output file path for your external genomes file using the -o parameter.")
 
         if not filesnpaths.is_file_exists(args.input_dir, dont_raise=True):
             raise ConfigError("The directory you provided does not exist :/")

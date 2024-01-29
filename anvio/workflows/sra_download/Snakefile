@@ -16,13 +16,13 @@ __email__ = "mschechter@uchicago.edu"
 
 
 """
-This Snakemake workflow downloads and compresses sequencing data from the NCBI Sequence Read Archive (SRA). 
+This Snakemake workflow downloads and compresses sequencing data from the NCBI Sequence Read Archive (SRA).
 
-Software requirements: 
+Software requirements:
 - [The SRA toolkit](https://github.com/ncbi/sra-tools): prefetch, fasterq_dump
 - [pigz](https://zlib.net/pigz/)
 
-Briefly, the prefetch rule retrieves data from the SRA and stores it as {accession}.sra files. 
+Briefly, the prefetch rule retrieves data from the SRA and stores it as {accession}.sra files.
 Next, fasterq_dump rule extracts the FASTQ files from the prefetched SRA file.
 Finally, the pigz rule gzips the FASTQ files.
 
@@ -61,7 +61,7 @@ rule prefetch:
     Threads:
         The number of threads to use is specified by the prefetch variable
 
-    NOTES: 
+    NOTES:
     - This is the first rule of the workflow
     """
 
@@ -99,7 +99,7 @@ rule fasterq_dump:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: rules.prefetch.output.SRA_TMP
+    input: ancient(rules.prefetch.output.SRA_TMP)
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
         FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
@@ -112,7 +112,7 @@ rule fasterq_dump:
 
         # Check if fasterq-dump encountered a Disk quota exceeded error
         error_message = "Disk quota exceeded"
-        log_path = str(log) 
+        log_path = str(log)
         with open(log_path, "r") as log_file:
             log_contents = log_file.read()
             if error_message in log_contents:
@@ -140,7 +140,7 @@ rule pigz:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
-    input: rules.fasterq_dump.output.FASTERQDUMP_DONE
+    input: ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE)
     output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
     params:
         READS = os.path.join(dirs_dict['FASTAS'], "{accession}*.fastq")
@@ -153,7 +153,7 @@ rule generate_samples_txt:
     """Create samples-txt files for paired-end reads and single reads samples
 
     Inputs:
-    - gziped FASTQ file(s) from the output of the pigz rule 
+    - gziped FASTQ file(s) from the output of the pigz rule
 
     Outputs:
     - samples.txt and samples_single_reads.txt in the FASTAS directory

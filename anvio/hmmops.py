@@ -530,6 +530,61 @@ class SequencesForHMMHits:
         return num_genes_missing_per_bin
 
 
+    def filter_hmm_sequences_dict_for_genes_that_are_too_long(self, hmm_sequences_dict_for_splits, ignore_genes_longer_than=0):
+        """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that are too long"""
+
+        if not isinstance(ignore_genes_longer_than, int):
+            raise ConfigError("The `--ignore-genes-longer-than` expects an integer argument :/")
+
+        # we will keep track of these bad bois
+        gene_calls_removed = set([])
+
+        # we identify entry ids that describe genes that are too long for removal
+        entry_ids_to_remove = set([])
+        for entry_id in hmm_sequences_dict_for_splits:
+            if hmm_sequences_dict_for_splits[entry_id]['length'] > ignore_genes_longer_than:
+                entry_ids_to_remove.add(entry_id)
+                gene_calls_removed.add(hmm_sequences_dict_for_splits[entry_id]['gene_callers_id'])
+
+        # we return early if there is nothing to be done
+        if not len(entry_ids_to_remove):
+            self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                             f"HMM hits. But none of the gene calls were longer than that value, so you get to keep everything.",
+                             header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏")
+            return (hmm_sequences_dict_for_splits, set([]), set([]))
+
+        # if we are here, it means there are things to be gotten rid of. we will remove things
+        # while keeping the user informed.
+        self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                         f"HMM hits. There were a total of {len(entry_ids_to_remove)} HMM hits that matched to gene calls "
+                         f"that were longer than {ignore_genes_longer_than}, and they are now removed from your analysis. "
+                         f"The following lines list all these gene calls, their length, and which model they belonged.",
+                         header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏", lc='yellow')
+
+        # before we actually start removing stuff, we first learn all bin names that are in the master dict
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # puts in business socks
+        for entry_id in entry_ids_to_remove:
+            e = hmm_sequences_dict_for_splits[entry_id]
+            self.run.info_single(f"Source: {e['source']} / Model: {e['gene_name']} /  Bin: {e['bin_id']} / "
+                                 f"Gene call: {e['gene_callers_id']} / Length: {e['length']}",
+                                 cut_after=None, level=2)
+            hmm_sequences_dict_for_splits.pop(entry_id)
+
+        # now we're done, and we will take another look at the dict to figure out remaining bins
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        # bins we lost
+        bins_removed = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        return (hmm_sequences_dict_for_splits, gene_calls_removed, bins_removed)
+
+
     def filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(self, hmm_sequences_dict_for_splits, min_num_bins_gene_occurs=None):
         """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that rarely occurs across bins.
 
@@ -578,6 +633,55 @@ class SequencesForHMMHits:
             return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
         else:
             return (hmm_sequences_dict_for_splits, set([]))
+
+
+    def filter_hmm_sequences_dict_for_to_only_include_specific_genes(self, hmm_sequences_dict_for_splits, gene_names=[]):
+        """This takes the dictionary for HMM hits, and removes all genes from it except the ones in `gene_names`.
+
+        It is critical to keep in mind that the removal of genes can leave behind no gene at all for some of the
+        genomes/bins. That's why this function tracks the genome names in the dictionary before and after to make
+        sure it can report the loss of genomes for the user to consider.
+        """
+
+        # gather all bin names
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # filter out every gene hit except those in `gene_names`
+        hmm_sequences_dict_for_splits = utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', set(gene_names))
+
+        # gather remaining bin names in the dict
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        bins_that_are_lost = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        if not len(bins_that_are_lost):
+            # well, all bins are still in the data structure. we're good to return everything
+            return hmm_sequences_dict_for_splits, []
+
+        # if we are still here, it means some bins were gon buh-bye. we start by letting
+        # the user gently that stuff went south
+        self.run.info_single("Yo yo yo! The anvi'o function that helps you focus only on a specific list of gene names "
+                             "among your HMM hits is speaking (we are here most likely you used the --gene-names flag "
+                             "to get rid of all the other genes in a given HMM collection). What follows is a report of "
+                             "happened because ANVI'O ENDED UP LOSING SOME BINS/GENOMES FROM YOUR ANALYSIS AS THEY DID "
+                             "NOT HAVE *ANY* OF THE GENES YOU LISTED (sorry for the CAPS lock here, but we wanted to "
+                             "make sure you don't miss this, since this will certainly influence your downstream "
+                             "analyses). If you want to keep more bins in your analysis, you can include more genes "
+                             "in your `--gene-names` -- but of course it will not change the fact that some bins will "
+                             "still be missing some genes, and how does this patchiness will impact your downstream "
+                             "analyses (such as phylogenomics) is an important question that will require you to "
+                             "consider. Pro tip: you can always use the program `anvi-script-gen-function-matrix-across-genomes` "
+                             "to see the distribution of HMM hits across your bins/genomes.", nl_before=1, nl_after=1)
+
+        self.run.info('Num bins at the beginning of this filter', len(bin_names_in_original_dict), nl_after=1)
+        self.run.info(f'Num bins that lacked the {P("gene", len(gene_names))} in `--gene-names`', len(bins_that_are_lost), nl_after=1, mc='red')
+        self.run.info('Bins that are no more in the analysis', ', '.join(bins_that_are_lost), nl_after=1, mc='red')
+
+        return hmm_sequences_dict_for_splits, bins_that_are_lost
 
 
     def filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(self, hmm_sequences_dict_for_splits, gene_names, max_num_genes_missing=0):
@@ -705,7 +809,7 @@ class SequencesForHMMHits:
             genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
                                                         for bin_name in genes_in_bins_dict[gene_name] \
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
-            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
         self.progress.end()
 
@@ -771,7 +875,7 @@ class SequencesForHMMHits:
 
             self.progress.new('Alignment')
             self.progress.update('Working on %d sequences ...' % (len(genes_list)))
-            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             self.progress.end()
 
             for gene_id in genes_aligned:
