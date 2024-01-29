@@ -109,7 +109,7 @@ class DGR_Finder:
 
         if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
             shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
-            blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")      
+            blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
             if self.fasta_file_path:
                 os.system(f"cp {self.fasta_file_path} {self.target_file_path}")
             elif self.contigs_db_path:
@@ -168,8 +168,8 @@ class DGR_Finder:
             self.snv_panda['departure_from_reference'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('departure_from_reference', None), axis=1)
 
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
-            # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
-            #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ], 
+            # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
+            #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
             #                                           ....}
             # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
 
@@ -362,7 +362,7 @@ class DGR_Finder:
         contig_name : str
             header of the contig sequence
         combined_start, combined_end : integers
-            A new start and end position for a contig sequence, to get the longest possible string. 
+            A new start and end position for a contig sequence, to get the longest possible string.
         """
 
         #extract all starts and stops
