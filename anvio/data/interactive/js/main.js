@@ -275,8 +275,20 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
-            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+            //$("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+            //$("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+            sortable('#tbody_layers', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
+
+            sortable('#tbody_samples', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
 
             let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
 
@@ -1259,7 +1271,7 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr>' +
+            var template = '<tr class="sortable">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
