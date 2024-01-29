@@ -56,6 +56,11 @@ class DGR_Finder:
         self.min_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
+        self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
+        self.min_range_size = A('minimum_range_size')
+
+        # performance
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
         self.sanity_check()
 
@@ -74,6 +79,10 @@ class DGR_Finder:
             self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
+
+        # initiate a dictionary for the gene where we find VR
+        self.vr_gene_info = {}
+
     def sanity_check(self):
         if self.contigs_db_path and self.fasta_file_path:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
@@ -206,7 +215,9 @@ class DGR_Finder:
                         if distance <= self.min_dist_bw_snvs:
                             range_end = next_pos
 
-                        if range_end > range_start:
+                        if (range_end - range_start) < self.min_range_size:
+                           continue
+                        else:
                             window_start = range_start - self.variable_buffer_length
                             window_end = range_end + self.variable_buffer_length
 
@@ -330,15 +341,10 @@ class DGR_Finder:
 
             print(f"FASTA file written to {output_fasta_path}")
 
-            # Reading and printing the contents of the file
-            with open(output_fasta_path, "r") as handle:
-                fasta_content = handle.read()
-                print("Contents of input_original.fasta:")
-                print(fasta_content)
-
             blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
 
-            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
+            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
+                          output_file=blast_output, additional_params = '-dust no', num_threads=self.num_threads)
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
@@ -392,7 +398,7 @@ class DGR_Finder:
             :boolean
 
         """
-        return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1)
+        return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1) or (start1 >= n_start and start1 <= n_end and end1 >= n_start and end1 <= n_end)
 
     def check_overlap(window1, window2):
                         contig_name_1, start_position_1, end_position_1 = window1[0][1], window1[1][1], window1[2][1]
@@ -548,11 +554,11 @@ class DGR_Finder:
                         qseq = str(hsp.find('Hsp_qseq').text)
                         hseq = str(hsp.find('Hsp_hseq').text)
                         midline = str(hsp.find('Hsp_midline').text)
-                        subject_genome_start_position = int(hsp.find('Hsp_hit-from').text)
-                        subject_genome_end_position = int(hsp.find('Hsp_hit-to').text)
+                        subject_genome_start_position = min([int(hsp.find('Hsp_hit-from').text), int(hsp.find('Hsp_hit-to').text)])
+                        subject_genome_end_position = max([int(hsp.find('Hsp_hit-from').text), int(hsp.find('Hsp_hit-to').text)])
                         alignment_length = int(hsp.find('Hsp_align-len').text)
-                        query_genome_start_position = query_start_position + int(hsp.find('Hsp_query-from').text)
-                        query_genome_end_position = query_end_position + int(hsp.find('Hsp_query-to').text)
+                        query_genome_start_position = query_start_position + min([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
+                        query_genome_end_position = query_start_position + max([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
                         query_frame = int(hsp.find('Hsp_query-frame').text)
                         subject_frame = int(hsp.find('Hsp_hit-frame').text)
 
@@ -582,10 +588,16 @@ class DGR_Finder:
                                 query_mismatch_positions.append(idx)
                                 subject_mismatch_counts[hseq[idx]]+=1
 
+                        # get contigs name
+                        query_contig = section_id.split('_section', 1)[0]
+                        subject_contig = hit.find('Hit_def').text
+
                         mismatch_hits[hit_identity] = {
                             'query_seq': qseq,
                             'hit_seq': hseq,
                             'midline': midline,
+                            'query_contig': query_contig,
+                            'subject_contig': subject_contig,
                             'subject_genome_start_position': subject_genome_start_position,
                             'subject_genome_end_position': subject_genome_end_position,
                             'query_mismatch_counts': query_mismatch_counts,
@@ -630,13 +642,15 @@ class DGR_Finder:
             subject_genome_end_position = hit_data['subject_genome_end_position']
             alignment_length = hit_data['alignment_length']
             subject_sequence = Seq(hit_data['hit_seq'])
-            midline = hit_data['midline']
+            original_midline = hit_data['midline']
             query_sequence = Seq(hit_data['query_seq'])
             shredded_sequence_name = sequence_component
             query_genome_start_position = hit_data['query_genome_start_position']
             query_genome_end_position = hit_data['query_genome_end_position']
             query_frame = hit_data['query_frame']
             subject_frame = hit_data['subject_frame']
+            query_contig = hit_data['query_contig']
+            subject_contig = hit_data['subject_contig']
             TR_sequence_found = None
             VR_sequence_found = None
 
@@ -653,82 +667,273 @@ class DGR_Finder:
                 for letter, count in query_mismatch_counts.items():
                     percentage_of_mismatches = (count / mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
-                        #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
                         is_TR = True
-                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, compare start stop position (likely not equal)
-                        #take longest one, bit like the FIlter code, replace sequence with longest TR. Check if VR already exsists,
-                        num_DGR += 1
-                        #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
+                        # if the letter is T, then we assume that it is an A base and we reverse completment EVERYTHING
                         if letter == 'T':
-                            #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence.reverse_complement())
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence.reverse_complement())
-                            #overwrite midline string
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'
+                            TR_sequence = str(query_sequence.reverse_complement())
+                            VR_sequence = str(subject_sequence.reverse_complement())
+                            midline = ''.join(reversed(original_midline))
+                            base = 'A'
+                            is_reverse_complement = True
                         else:
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(query_sequence)
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(subject_sequence)
-                            #overwrite midline string
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
+                            TR_sequence = str(query_sequence)
+                            VR_sequence = str(subject_sequence)
+                            midline = original_midline
+                            base = letter
+                            is_reverse_complement = False
+                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
+                        if not DGRs_found_dict:
+                            # add first DGR
+                            num_DGR += 1
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR_001':{}}}
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = TR_sequence
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = query_genome_start_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = query_genome_end_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_contig'] = query_contig
                             DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
-                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'subject'
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = base
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = is_reverse_complement
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence'] = VR_sequence
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_start_position'] = subject_genome_start_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_end_position'] = subject_genome_end_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_contig'] = subject_contig
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['midline'] = midline
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence_found'] = 'subject'
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_sequence'] = TR_sequence
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_start_position'] = query_genome_start_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = query_genome_end_position
+                            DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
 
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = query_genome_start_position
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = query_genome_end_position
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = subject_genome_start_position
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_end_position'] = subject_genome_end_position
-                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
+                        else:
+                            was_added = False
+                            for dgr in DGRs_found_dict:
+                                if DGRs_found_dict[dgr]['TR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
+                                                                                                                query_genome_end_position,
+                                                                                                                DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                                DGRs_found_dict[dgr]['TR_end_position']):
+                                    was_added = True
+                                    # update TR start and end
+                                    DGRs_found_dict[dgr]['TR_start_position'] = min(query_genome_start_position, DGRs_found_dict[dgr]['TR_start_position'])
+                                    DGRs_found_dict[dgr]['TR_end_position'] = max(query_genome_end_position, DGRs_found_dict[dgr]['TR_end_position'])
+                                    # VR info
+                                    num_VR = len(DGRs_found_dict[dgr]['VRs']) + 1
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}'] = {}
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_sequence'] = VR_sequence
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_start_position'] = subject_genome_start_position
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_end_position'] = subject_genome_end_position
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_contig'] = subject_contig
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['midline'] = midline
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_sequence_found'] = 'subject'
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_sequence'] = TR_sequence
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_start_position'] = query_genome_start_position
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_end_position'] = query_genome_end_position
+                                    DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['percentage_of_mismatches'] = percentage_of_mismatches
+                                    break
+                            if not was_added:
+                                # add new TR and its first VR
+                                num_DGR += 1
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR_001':{}}}
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = TR_sequence
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = query_genome_start_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = query_genome_end_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_contig'] = query_contig
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'query'
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = base
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = is_reverse_complement
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence'] = VR_sequence
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_start_position'] = subject_genome_start_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_end_position'] = subject_genome_end_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_contig'] = subject_contig
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['midline'] = midline
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence_found'] = 'subject'
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_sequence'] = TR_sequence
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_start_position'] = query_genome_start_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = query_genome_end_position
+                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
 
                 if not is_TR:
                     # Calculate the percentage identity of each alignment
                     for letter, count in subject_mismatch_counts.items():
                             percentage_of_mismatches = (count / mismatch_length_bp)
                             if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
-                                #make the nums changeable params w/ sanity check that percentage_of_mismatches > 0.5 and mismatch_length > 0
                                 is_TR = True
-                                num_DGR += 1
-                                #creates an empty dict, that has itself empty dicts frothe VRs so you can fill it and create a new key
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR1':{}}}
+                                # if the letter is T, then we assume that it is an A base and we reverse completment EVERYTHING
                                 if letter == 'T':
-                                    #this section needs work, doesnt change T to A or reverse midline and reverse complement the sequences :(
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence.reverse_complement())
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence.reverse_complement())
-                                    #overwrite midline string
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] =  ''.join(reversed(midline))
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter.replace('T', 'A')
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = True
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'subject'
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'query'
+                                    TR_sequence = str(subject_sequence.reverse_complement())
+                                    VR_sequence = str(query_sequence.reverse_complement())
+                                    midline = ''.join(reversed(original_midline))
+                                    base = 'A'
+                                    is_reverse_complement = True
                                 else:
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = str(subject_sequence)
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence'] = str(query_sequence)
-                                    #overwrite midline string
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['midline'] = midline
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = letter
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = False
+                                    TR_sequence = str(subject_sequence)
+                                    VR_sequence = str(query_sequence)
+                                    midline = original_midline
+                                    base = letter
+                                    is_reverse_complement = False
+                                #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
+                                if not DGRs_found_dict:
+                                    # add first DGR
+                                    num_DGR += 1
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR_001':{}}}
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = TR_sequence
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = subject_genome_start_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = subject_genome_end_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_contig'] = subject_contig
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'subject'
-                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_sequence_found'] = 'query'
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = base
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = is_reverse_complement
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence'] = VR_sequence
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_start_position'] = query_genome_start_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_end_position'] = query_genome_end_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_contig'] = query_contig
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['midline'] = midline
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence_found'] = 'query'
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_sequence'] = TR_sequence
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
+                                    DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
 
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = subject_genome_start_position
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = subject_genome_end_position
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_start_position'] = query_genome_start_position
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['VR_end_position'] = query_genome_end_position
-                                DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR1']['percentage_of_mismatches'] = percentage_of_mismatches
+                                else:
+                                    was_added = False
+                                    for dgr in DGRs_found_dict:
+                                        if DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
+                                                                                                                          subject_genome_end_position,
+                                                                                                                          DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                                          DGRs_found_dict[dgr]['TR_end_position']):
+                                            was_added = True
+                                            # update TR start and end
+                                            DGRs_found_dict[dgr]['TR_start_position'] = min(subject_genome_start_position, DGRs_found_dict[dgr]['TR_start_position'])
+                                            DGRs_found_dict[dgr]['TR_end_position'] = max(subject_genome_end_position, DGRs_found_dict[dgr]['TR_end_position'])
+                                            # VR info
+                                            num_VR = len(DGRs_found_dict[dgr]['VRs']) + 1
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}'] = {}
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_sequence'] = VR_sequence
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_start_position'] = query_genome_start_position
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_end_position'] = query_genome_end_position
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_contig'] = query_contig
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['midline'] = midline
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['VR_sequence_found'] = 'query'
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_sequence'] = TR_sequence
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_start_position'] = subject_genome_start_position
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['TR_end_position'] = subject_genome_end_position
+                                            DGRs_found_dict[dgr]['VRs'][f'VR_{num_VR:03d}']['percentage_of_mismatches'] = percentage_of_mismatches
+                                            break
 
-        print(f'number of DGRs is {num_DGR}')
+                                    if not was_added:
+                                        # add new TR and its first VR
+                                        num_DGR += 1
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}'] = {'VRs':{'VR_001':{}}}
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence'] = TR_sequence
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_start_position'] = subject_genome_start_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_end_position'] = subject_genome_end_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_contig'] = subject_contig
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_sequence_found'] = 'subject'
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['base'] = base
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['TR_reverse_complement'] = is_reverse_complement
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence'] = VR_sequence
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_start_position'] = query_genome_start_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_end_position'] = query_genome_end_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_contig'] = query_contig
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['midline'] = midline
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['VR_sequence_found'] = 'query'
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_sequence'] = TR_sequence
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
+                                        DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
+
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         else:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
         return DGRs_found_dict
+
+    def get_gene_info(self, DGRs_found_dict):
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+
+        # are there genes?
+        if not contigs_db.meta['genes_are_called']:
+            self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
+                             "learn about :/ Your reports will not include a file to study the genomic context "
+                             "that surrounds consensus inversions.")
+
+            contigs_db.disconnect()
+
+            return
+
+        # are there functions?
+        function_sources_found = contigs_db.meta['gene_function_sources'] or []
+        if not len(function_sources_found):
+            self.run.warning("There are no functions for genes in your contigs database :/ Your reports on DGRs "
+                             "will not include the function of genes with VRs. SHAME.")
+
+        # now we will go through each VRs to populate `self.vr_gene_info`
+        # with gene calls and functions
+        gene_calls_per_contig = {}
+        VR_with_no_gene_calls = set([])
+        for dgr, tr in DGRs_found_dict.items():
+            for vr, vr_data in tr['VRs'].items():
+                contig_name = vr_data['VR_contig']
+                vr_start = vr_data['VR_start_position']
+                vr_end = vr_data['VR_end_position']
+                if dgr not in self.vr_gene_info:
+                    self.vr_gene_info[dgr] = {vr:{}}
+                else:
+                    self.vr_gene_info[dgr][vr] = {}
+
+                # get any genes overlapping the start and end position of the VR
+                if contig_name not in gene_calls_per_contig:
+                    where_clause = f'''contig="{contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
+                    gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
+
+                gene_calls_in_contig = gene_calls_per_contig[contig_name]
+
+                # find gene caller overlapping with VR
+                for gene_callers_id, gene_call in gene_calls_in_contig.items():
+                    if gene_call['start'] <= vr_start and gene_call['stop'] >= vr_end:
+                        gene_call['gene_callers_id'] = gene_callers_id
+                        # if there are funtion sources, let's recover them for our gene of interest
+                        if function_sources_found:
+                            where_clause = f'''gene_callers_id="{gene_callers_id}"'''
+                            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+                        else:
+                            # so none of these genes have any functions? WELL FINE.
+                            hits = None
+
+                        # if there are any functions at all, add that to the dict
+                        if hits:
+                            gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+
+                        # While we are here, let's add more info about the gene
+                        # DNA sequence:
+                        dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                        rev_compd = None
+                        if gene_call['direction'] == 'f':
+                            gene_call['DNA_sequence'] = dna_sequence
+                            rev_compd = False
+                        else:
+                            gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                            rev_compd = True
+
+                        # add AA sequence
+                        where_clause = f'''gene_callers_id == "{gene_callers_id}"'''
+                        aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                        gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
+                        # gene length
+                        gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                        # add fasta header
+                        header = '|'.join([f"contig:{contig_name}",
+                                       f"start:{gene_call['start']}",
+                                       f"stop:{gene_call['stop']}",
+                                       f"direction:{gene_call['direction']}",
+                                       f"rev_compd:{rev_compd}",
+                                       f"length:{gene_call['length']}"])
+                        gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
+                        self.vr_gene_info[dgr][vr] = gene_call
+                        break
 
     def create_found_tr_vr_csv(self, DGRs_found_dict):
         """
@@ -750,21 +955,23 @@ class DGR_Finder:
         elif self.contigs_db_path:
              base_input_name = os.path.basename(self.contigs_db_path)
 
+        # if contigs.db, then check for gene info per VR
+        if self.contigs_db_path:
+            self.get_gene_info(DGRs_found_dict)
+
         csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
 
             # Write header
-            csv_writer.writerow(["DGR", "VR_sequence", "Midline","VR_sequence_found", "VR_start_position", "VR_end_position", "Mismatch %",
-                                "TR_sequence", "Base","TR_sequence_found", "Reverse Complement", "TR_start_position", "TR_end_position"])
+            csv_writer.writerow(["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "Mismatch %",
+                                 "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position"])
 
             # Write data
-            for dgr, info in DGRs_found_dict.items():
-                vr_data = info['VRs']['VR1']
-                #Print vr_data for debugging
-                print(f'DGR: {dgr}, vr_data: {vr_data}')
-                csv_writer.writerow([dgr, vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_sequence_found'], vr_data['VR_start_position'], vr_data['VR_end_position'],
-                                    vr_data['percentage_of_mismatches'], info['TR_sequence'], info['base'], info['TR_sequence_found'], info['TR_reverse_complement'],
-                                    info['TR_start_position'], info['TR_end_position']])
+            for dgr, tr in DGRs_found_dict.items():
+                for vr, vr_data in tr['VRs'].items():
+                    csv_writer.writerow([dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'], vr_data['VR_end_position'],
+                                         vr_data['percentage_of_mismatches'], tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
+                                         vr_data['TR_start_position'], vr_data['TR_end_position']])
             return csv_file_path
 
