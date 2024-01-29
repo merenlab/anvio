@@ -2069,69 +2069,108 @@ class Pangraph():
         for i, (_, path) in enumerate(paths):
             self.progress.update(f"{str(i).rjust(number, ' ')} / {len(paths)}")
 
-            try:
-                unknown_edges = self.calculate_unknown_edges(path, known)
+            # try:
+            unknown_edges = self.calculate_unknown_edges(path, known)
 
-                for sub_edges in unknown_edges:
+            # print("1", unknown_edges)
 
-                    known.update(sub_edges)
+            for sub_edges in unknown_edges:
 
-                    node_start = sub_edges[0][0]
-                    node_stop = sub_edges[-1][1]
+                # print("2", sub_edges)
 
-                    sub_path = path[path.index(node_start): path.index(node_stop)+1]
+                known.update(sub_edges)
 
-                    node_start_x, node_start_y = self.position[node_start]
-                    node_stop_x, node_stop_y = self.position[node_stop]
+                node_start = sub_edges[0][0]
+                node_stop = sub_edges[-1][1]
 
-                    for z in range(node_start_x, node_stop_x+1):
-                        if sub_path[z-node_start_x] not in self.x_list[z]:
+                sub_path = path[path.index(node_start): path.index(node_stop)+1]
 
-                            sub_path = sub_path[:z-node_start_x] + ["Ghost_" + str(self.ghost)] + sub_path[z-node_start_x:]
+                node_start_x, node_start_y = self.position[node_start]
+                node_stop_x, node_stop_y = self.position[node_stop]
 
-                            self.x_list[z].append("Ghost_" + str(self.ghost))
+                # print("3", node_start, node_start_x, node_start_y)
+                # print("4", node_stop, node_stop_x, node_stop_y)
 
-                            self.ghost += 1
+                for z in range(node_start_x, node_stop_x+1):
+                    if sub_path[z-node_start_x] not in self.x_list[z]:
 
-                    curr_path = []
-                    for s in sub_path:
-                        if not s.startswith('Ghost_'):
-                            if len(curr_path) > 1:
-                                curr_path.append(s)
-                                self.edges.append(curr_path)
-                            curr_path = [s]
-                        else:
+                        sub_path = sub_path[:z-node_start_x] + ["Ghost_" + str(self.ghost)] + sub_path[z-node_start_x:]
+
+                        self.x_list[z].append("Ghost_" + str(self.ghost))
+
+                        self.ghost += 1
+
+                # print("5", self.x_list)
+
+                curr_path = []
+                for s in sub_path:
+                    if not s.startswith('Ghost_'):
+                        if len(curr_path) > 1:
                             curr_path.append(s)
+                            self.edges.append(curr_path)
+                        curr_path = [s]
+                    else:
+                        curr_path.append(s)
 
-                    sub_path = sub_path[1:-1]
+                # print("6", self.x_list)
 
-                    next_y = self.y_shifting(sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y)
+                sub_path = sub_path[1:-1]
 
-                    self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
+                # print("7", sub_path)
 
-                    if node_start == 'start':
-                        t = node_start_x + 1
-                        for node in sub_path:
-                            if node.startswith('Ghost_'):
-                                self.x_list[t].remove(node)
-                                self.ancest.remove_node(node)
-                                t += 1
-                            else:
-                                break
+                next_y = self.y_shifting(sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y)
 
-                    if node_stop == 'stop':
-                        s = node_stop_x - 1
-                        for node in sub_path[::-1]:
-                            if node.startswith('Ghost_'):
-                                self.x_list[s].remove(node)
-                                self.ancest.remove_node(node)
-                                s -= 1
-                            else:
-                                break
+                # print("8", next_y)
 
-            except Exception as error:
-                print('Sanity Error')
-                exit()
+                self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
+
+                to_be_removed = set()
+                if node_start == 'start':
+                    t = node_start_x + 1
+                    for node in sub_path:
+                        if node.startswith('Ghost_'):
+                            self.x_list[t].remove(node)
+                            self.ancest.remove_node(node)
+
+                            to_be_removed.add(node)
+                            self.position.pop(node)
+                            self.path.pop(node)
+                            t += 1
+                        else:
+                            break
+
+                if node_stop == 'stop':
+                    s = node_stop_x - 1
+                    for node in sub_path[::-1]:
+                        if node.startswith('Ghost_'):
+                            self.x_list[s].remove(node)
+                            self.ancest.remove_node(node)
+
+                            to_be_removed.add(node)
+                            self.position.pop(node)
+                            self.path.pop(node)
+                            s -= 1
+                        else:
+                            break
+
+                # print("9", self.x_list)
+
+                cut_sub_path = [node for node in sub_path if node not in to_be_removed]
+
+                for node in cut_sub_path:
+                    self.path[node] = cut_sub_path
+
+                # print("10", self.path)
+
+                # print("11", self.position)
+
+                # print("12", sub_path)
+
+                # exit()
+
+            # except Exception as error:
+            #     print('Sanity Error')
+            #     exit()
 
         self.progress.end()
 
