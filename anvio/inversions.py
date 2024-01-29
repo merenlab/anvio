@@ -1417,16 +1417,19 @@ class Inversions:
                 num_oligos = len(oligos)
                 oligos_frequency_dict = Counter(oligos)
                 reads_found = False
+                oligo_reference = primers_dict[primer_name]['oligo_reference']
 
                 for oligo, frequency in oligos_frequency_dict.items():
                     if frequency > min_frequency:
                         sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
                         reads_found = True
+                    # the reference oligo is present but under the threshold, add default count of 0
+                    elif oligo == oligo_reference:
+                        sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
                 # if the reference oligo has no frequency but reads were found for other oligo
                 # then add reference oligo with a frequency of 0
-                oligo_reference = primers_dict[primer_name]['oligo_reference']
-                if oligo_reference not in sample_counts and reads_found:
+                if oligo_reference not in oligos_frequency_dict and reads_found:
                     sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
             output_queue.put(sample_counts)
