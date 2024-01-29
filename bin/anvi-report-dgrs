@@ -71,7 +71,7 @@ if __name__ == '__main__':
     groupD.add_argument("-pm","--percentage-mismatch", help="The Percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-nm","--number-of-mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-snvd","--distance-between_snv", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=5)
+    groupE.add_argument("-snvd","--distance-between_snv", help="Length of bp between SNVs for them to be added to the high SNV density window ", type=int, default=5)
     groupE.add_argument("-vbl","--variable-buffer-length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
     groupE.add_argument("-dfr","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
 
