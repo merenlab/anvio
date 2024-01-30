@@ -847,7 +847,7 @@ def is_all_submodules_present():
 
     try:
         gitmodules.read(gitmodules_path)
-    except Exception as e:
+    except Exception:
         raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
                           "needs an adult :(")
 
