@@ -97,6 +97,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
+            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
@@ -410,8 +411,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
-
-        
         
         try:
             hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
