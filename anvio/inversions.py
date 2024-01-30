@@ -1805,7 +1805,7 @@ class Inversions:
                                   f"your contigs database knows about :/ Please use the `--gene-caller` parameter to select one "
                                   f"that fits .. such as {PL('this one', len(gene_callers), alt='one of these')}: {', '.join(gene_callers)}.")
 
-        bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] != 'inversions']
+        bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] not in ['inversions', 'distant-inversions']]
         if len(bad_profile_dbs):
             if len(bad_profile_dbs) == len(self.profile_db_paths):
                 if len(bad_profile_dbs) == 1:
