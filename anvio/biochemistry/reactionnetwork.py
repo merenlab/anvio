@@ -529,9 +529,9 @@ class ReactionNetwork:
         """
         self.kos: Dict[str, KO] = {}
         self.modules: Dict[str, KEGGModule] = {}
-        self.categories: Dict[Tuple[str, str], BRITECategory] = {}
         self.pathways: Dict[str, KEGGPathway] = {}
         self.hierarchies: Dict[str, BRITEHierarchy] = {}
+        self.categories: Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]] = {}
         self.reactions: Dict[str, ModelSEEDReaction] = {}
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
         # The following dictionaries map reaction aliases in the network: as in, not all known
