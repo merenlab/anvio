@@ -442,25 +442,6 @@ class GeneCluster:
     genomes: List[str] = field(default_factory=list)
     ko: KO = None
 
-class Bin:
-    """Representation of a bin of genes or gene clusters."""
-    pass
-
-class GeneBin(Bin):
-    """Representation of a bin of genes."""
-    def __init__(self) -> None:
-        self.genes: List[Gene] = []
-
-class GeneClusterBin(Bin):
-    """Representation of a bin of gene clusters."""
-    def __init__(self) -> None:
-        self.gene_clusters: List[GeneCluster] = []
-
-class BinCollection:
-    """Representation of a collection of bins."""
-    def __init__(self) -> None:
-        self.bins: List[Bin] = []
-
 class ReactionNetwork:
     """
     A reaction network predicted from KEGG KO and ModelSEED annotations.
