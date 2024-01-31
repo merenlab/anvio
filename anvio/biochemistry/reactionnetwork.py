@@ -463,10 +463,22 @@ class ReactionNetwork:
     hierarchies : Dict[str, BRITEHierarchy], dict()
         KEGG BRITE hierarchies containing KOs in the network, with keys being hierarchy IDs.
 
-    categories : Dict[Tuple[str, str], BRITECategory], dict()
-        KEGG BRITE hierarchy categories containing KOs in the network, with keys being tuple pairs
-        of category ID, which is None in certain hierarchies, and category name.
-
+    categories : Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]], dict()
+        KEGG BRITE hierarchy categories containing KOs in the network. Keys are hierarchy IDs.
+        Values are dictionary representations of categorizations in the hierarchy. Categories at
+        each level receive their own entries. For example, 'K00844', hexokinase, is classified
+        multiple ways in the 'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100
+        Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis
+        [PATH:00010]' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
+        and mannose metabolism [PATH:00051]'. These categorizations would yield entries like the
+        following: {'ko00001': {('09100 Metabolism', ): (<BRITECategory for '09100 ...'>, ), ('09100
+        Metabolism', '09101 Carbohydrate metabolism'): (<BRITECategory for '09100 ...'>,
+        <BRITECategory for '09101 ...'>), ('09100 Metabolism', '09101 Carbohydrate metabolism',
+        '00010 Glycolysis / Gluconeogenesis [PATH:00010]'): (<BRITECategory for '09100 ...'>,
+        <BRITECategory for '09101 ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism',
+        '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism [PATH:00051]'):
+        (<BRITECategory for '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051
+        ...'>)}}
 
     reactions : Dict[str, ModelSEEDReaction], dict()
         ModelSEED reactions in the network, with keys being reaction IDs.
