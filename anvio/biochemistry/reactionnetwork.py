@@ -176,16 +176,19 @@ class KO:
     modules : Dict[str, KEGGModule], dict
         KEGG modules containing the KO, with keys being module IDs.
 
-    hierarchies : Dict[Tuple[str, str], List[Tuple[BRITECategory]]], dict
-        Membership of the KO in BRITE hierarchies. Tuple keys are pairs of hierarchy ID and name,
-        e.g., ('ko00001', 'KEGG Orthology (KO)'). Values are the categorical classifications of the
-        KO in the hierarchy: a KO can be classified in more than one category of a hierarchy. For
-        example, 'K00844', hexokinase, is classified multiple ways in the hierarchy, 'ko00001',
-        including '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis /
-        Gluconeogenesis' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
-        and mannose metabolism'. The first classification in this example would be represented as a
-        tuple, (<BRITECategory for '09100 Metabolism'>, <BRITECategory for '09101 Carbohydrate
-        metabolism'>, <BRITECategory for '00010 Glycolysis / Gluconeogenesis'>).
+    hierarchies : Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]], dict
+        Membership of the KO in BRITE hierarchies. Keys are hierarchy IDs. Values are dictionary
+        representations of categorizations in the hierarchy. For example, 'K00844', hexokinase, is
+        classified multiple ways in the 'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100
+        Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis
+        [PATH:ko00010]' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
+        and mannose metabolism [PATH:ko00051]'. This hierarchy and these classifications would be
+        represented as follows: {'ko00001': {('09100 Metabolism', '09101 Carbohydrate metabolism',
+        '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'): (<BRITECategory for '09100 ...'>,
+        <BRITECategory for '09101 ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism',
+        '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism [PATH:ko00051]'):
+        (<BRITECategory for '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051
+        ...'>)}}
 
     pathways : Dict[str, KEGGPathway], dict
         KEGG pathways containing the KO, with keys being pathway IDs.
@@ -217,7 +220,7 @@ class KO:
     id: str = None
     name: str = None
     modules: Dict[str, KEGGModule] = field(default_factory=dict)
-    hierarchies: Dict[Tuple[str, str], List[Tuple[BRITECategory]]] = field(default_factory=dict)
+    hierarchies: Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]] = field(default_factory=dict)
     pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
     reactions: Dict[str, ModelSEEDReaction] = field(default_factory=dict)
     kegg_reaction_aliases: Dict[str, List[str]] = field(default_factory=dict)
