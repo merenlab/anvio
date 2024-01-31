@@ -827,6 +827,218 @@ class ReactionNetwork:
                 """
             )
 
+    def _write_remove_metabolites_without_formula_output(
+        self,
+        output_path : str,
+        removed: Dict[str, List]
+    ) -> None:
+        """
+        Parameters
+        ==========
+        output_path : str
+            Write tab-delimited files of metabolites, reactions, KOs, KEGG modules, KEGG pathways,
+            KEGG BRITE hierarchies, and KEGG BRITE hierarchy categories removed from the network to
+            file locations based on the provided path. For example, if the argument, 'removed.tsv',
+            is provided, then the following files will be written: 'removed-metabolites.tsv',
+            'removed-reactions.tsv', 'removed-kos.tsv', 'removed-modules.tsv',
+            'removed-pathways.tsv', 'removed-hierarchies.tsv', and 'removed-categories.tsv'.
+
+        removed : Dict[str, List]
+            Data removed from the network. The dictionary looks like the following for a genomic
+            network. (For a pangenomic network, the last gene entry is replaced by a gene cluster
+            entry, 'gene_cluster': [<removed GeneCluster objects>].)
+            {
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'ko': [<removed KO objects>],
+                'module': [<removed KEGGModule objects>],
+                'pathway': [<removed KEGGPathway objects>],
+                'hierarchy': [<removed BRITEHierarchy objects>],
+                'category': [<removed BRITECategory objects>],
+                'gene': [<removed Gene objects>]
+            }
+        """
+        # Record the reactions removed as a consequence of involving formulaless metabolites, and
+        # record the formulaless metabolites involved in removed reactions.
+        removed_metabolite_ids: List[str] = [metabolite.id for metabolite in removed['metabolite']]
+        metabolite_removed_reactions: Dict[str, List[str]] = {}
+        reaction_removed_metabolites: Dict[str, List[str]] = {}
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            reaction_removed_metabolites[reaction.modelseed_id] = metabolite_ids = []
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in removed_metabolite_ids:
+                    try:
+                        metabolite_removed_reactions[metabolite.modelseed_id].append(
+                            reaction.modelseed_id
+                        )
+                    except KeyError:
+                        metabolite_removed_reactions[metabolite.modelseed_id] = [
+                            reaction.modelseed_id
+                        ]
+                    metabolite_ids.append(metabolite.modelseed_id)
+
+        metabolite_table = []
+        for metabolite in removed['metabolite']:
+            metabolite: ModelSEEDCompound
+            row = []
+            row.append(metabolite.modelseed_id)
+            row.append(metabolite.modelseed_name)
+            row.append(metabolite.formula)
+            try:
+                # The metabolite did not have a formula.
+                removed_reaction_ids = metabolite_removed_reactions[metabolite.modelseed_id]
+            except KeyError:
+                # The metabolite had a formula but was removed as a consequence of all the reactions
+                # involving the metabolite being removed due to them containing formulaless
+                # metabolites: the metabolite did not cause any reactions to be removed.
+                row.append("")
+                continue
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus the reaction is recorded multiple times.
+            row.append(", ".join(sorted(set(removed_reaction_ids))))
+
+        reaction_table = []
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            row = []
+            row.append(reaction.modelseed_id)
+            row.append(reaction.modelseed_name)
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus is recorded multiple times.
+            row.append(
+                ", ".join(set(reaction_removed_metabolites[reaction.modelseed_id]))
+            )
+            row.append(", ".join([metabolite.modelseed_id for metabolite in reaction.compounds]))
+            row.append(get_chemical_equation(reaction))
+            reaction_table.append(row)
+
+        ko_table = []
+        for ko in removed['ko']:
+            ko: KO
+            row = []
+            row.append(ko.id)
+            row.append(ko.name)
+            row.append(", ".join(ko.reactions))
+            ko_table.append(row)
+
+        module_table = []
+        for module in removed['module']:
+            module: KEGGModule
+            row = []
+            row.append(module.id)
+            row.append(module.name)
+            row.append(", ".join(module.kos))
+            module_table.append(row)
+
+        pathway_table = []
+        for pathway in removed['pathway']:
+            pathway: KEGGPathway
+            row = []
+            row.append(pathway.id)
+            row.append(pathway.name)
+            row.append(", ".join(pathway.kos))
+            row.append(", ".join(pathway.modules))
+            pathway_table.append(row)
+
+        hierarchy_table = []
+        for hierarchy in removed['hierarchy']:
+            hierarchy: BRITEHierarchy
+            row = []
+            row.append(hierarchy.id)
+            row.append(hierarchy.name)
+            row.append(", ".join(hierarchy.kos))
+            pathway_table.append(row)
+
+        category_table = []
+        for category in removed['category']:
+            category: BRITECategory
+            row = []
+            row.append(category.hierarchy.id)
+            row.append(category.hierarchy.name)
+            row.append(category.id[len(category.hierarchy.id) + 2:])
+            row.append(", ".join(category.kos))
+            category_table.append(row)
+
+        path_basename, path_extension = os.path.splitext(output_path)
+        metabolite_path = f"{path_basename}-metabolites{path_extension}"
+        reaction_path = f"{path_basename}-reactions{path_extension}"
+        ko_path = f"{path_basename}-kos{path_extension}"
+        module_path = f"{path_basename}-modules{path_extension}"
+        pathway_path = f"{path_basename}-pathways{path_extension}"
+        hierarchy_path = f"{path_basename}-hierarchies{path_extension}"
+        category_path = f"{path_basename}-categories{path_extension}"
+
+        pd.DataFrame(
+            metabolite_table,
+            columns=[
+                "ModelSEED compound ID",
+                "ModelSEED compound name",
+                "Formula",
+                "Removed reaction ModelSEED IDs"
+            ]
+        ).to_csv(metabolite_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            reaction_table,
+            columns=[
+                "ModelSEED reaction ID",
+                "ModelSEED reaction name",
+                "Removed ModelSEED compound IDs",
+                "Reaction ModelSEED compound IDs",
+                "Equation"
+            ]
+        ).to_csv(reaction_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            ko_table,
+            columns=[
+                "KO ID",
+                "KO name",
+                "KO ModelSEED reaction IDs"
+            ]
+        ).to_csv(ko_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            module_table,
+            columns=[
+                "KEGG module ID",
+                "KEGG module name",
+                "Module KOs"
+            ]
+        ).to_csv(module_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            pathway_table,
+            columns=[
+                "KEGG pathway ID",
+                "KEGG pathway name",
+                "Pathway KOs",
+                "Pathway modules"
+            ]
+        ).to_csv(pathway_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            hierarchy_table,
+            columns=[
+                "KEGG BRITE hierarchy ID",
+                "KEGG BRITE hierarchy name",
+                "Hierarchy KOs"
+            ]
+        ).to_csv(hierarchy_path, sep='\t', index=False)
+
+        pd.DataFrame(
+            category_table,
+            columns=[
+                "KEGG BRITE hierarchy ID",
+                "KEGG BRITE hierarchy name",
+                "KEGG BRITE hierarchy categorization",
+                "Category KOs"
+            ]
+        ).to_csv(category_path, sep='\t', index=False)
+
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         This method is used in the process of merging the network with another network to produce a
