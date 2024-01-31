@@ -735,13 +735,12 @@ class ReactionNetwork:
         # Record BRITE hierarchical categorizations of each KO.
         for ko_id, ko in self.kos.items():
             copied_ko = copied_network.kos[ko_id]
-            for hierarchy_id, categories in ko.hierarchies.items():
-                copied_ko.hierarchies[hierarchy_id] = copied_categories = []
-                for categorization in categories:
-                    copied_categorization = []
-                    for category in categorization:
-                        copied_categorization.append(copied_network.categories[category.id])
-                    copied_categories.append(tuple(copied_categorization))
+            for hierarchy_id, categorizations in ko.hierarchies.items():
+                copied_ko.hierarchies[hierarchy_id] = copied_categorizations = {}
+                for category_key, categorization in categorizations.items():
+                    copied_categorizations[category_key] = tuple(
+                        [copied_categories[category.id] for category in categorization]
+                    )
 
         # Record the pathway membership of modules.
         for pathway_id, pathway in self.pathways.items():
