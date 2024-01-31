@@ -298,21 +298,24 @@ class BRITEHierarchy:
     name : str, None
         Name of the hierarchy, e.g., 'ko00001' has the name, 'KEGG Orthology (KO)'.
 
-    categories : List[Tuple[BRITECategory]], list
-        Hierarchical categories containing reaction network KOs. Each tuple is a categorical
-        classification of a KO in the hierarchy: a KO can be classified in more than one category of
-        a hierarchy. For example, 'K00844', hexokinase, is classified multiple ways in the
-        hierarchy, 'ko00001', including '09100 Metabolism >>> 09101 Carbohydrate metabolism >>>
-        00010 Glycolysis / Gluconeogenesis' and '09100 Metabolism >>> 09101 Carbohydrate
-        metabolism >>> 00051 Fructose and mannose metabolism'. The first classification in this
-        example would be represented as a tuple, (<BRITECategory for '09100 Metabolism'>,
-        <BRITECategory for '09101 Carbohydrate metabolism'>, <BRITECategory for '00010 Glycolysis /
-        Gluconeogenesis'>), with each category object containing a reference to the 'K00844' KO
-        object.
+    categories : Dict[Tuple[str], Tuple[BRITECategory]], dict
+        Categorizations of reaction network KOs in the hierarchy. Categories at each level receive
+        their own entries. For example, 'K00844', hexokinase, is classified multiple ways in the
+        'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100 Metabolism >>> 09101
+        Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis [PATH:00010]' and '09100
+        Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose and mannose metabolism
+        [PATH:00051]'. These categorizations would yield entries like the following: {('09100
+        Metabolism', ): (<BRITECategory for '09100 ...'>, ), ('09100 Metabolism', '09101
+        Carbohydrate metabolism'): (<BRITECategory for '09100 ...'>, <BRITECategory for '09101
+        ...'>), ('09100 Metabolism', '09101 Carbohydrate metabolism', '00010 Glycolysis /
+        Gluconeogenesis [PATH:00010]'): (<BRITECategory for '09100 ...'>, <BRITECategory for '09101
+        ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism', '09101 Carbohydrate
+        metabolism', '00051 Fructose and mannose metabolism [PATH:00051]'): (<BRITECategory for
+        '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051 ...'>)}
     """
     id: str = None
     name: str = None
-    categories: List[Tuple[BRITECategory]] = field(default_factory=list)
+    categories: Dict[Tuple[str], Tuple[BRITECategory]] = field(default_factory=dict)
 
 @dataclass
 class BRITECategory:
