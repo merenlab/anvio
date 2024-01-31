@@ -1039,6 +1039,162 @@ class ReactionNetwork:
             ]
         ).to_csv(category_path, sep='\t', index=False)
 
+    def _purge_metabolites(self, metabolites_to_remove: Iterable[str]) -> Dict[str, List]:
+        """
+        Remove any trace of the given metabolites from the network.
+
+        Reactions involving the metabolite are also purged from the network. KOs that are only
+        associated with removed reactions are purged. In genomic networks, genes that are only
+        associated with removed KOs are purged. In pangenomic networks, gene clusters assigned
+        removed KOs are purged. KEGG modules, pathways, BRITE hierarchies, and BRITE hierarchy
+        categories only associated with purged KOs are removed.
+
+        Removal of reactions involving the metabolite can also result in other metabolites being
+        being removed from the network, those that exclusively participate in these reactions.
+
+        Parameters
+        ==========
+        metabolites_to_remove : Iterable[str]
+            ModelSEED compound IDs to remove.
+
+        Returns
+        =======
+        dict
+            This dictionary contains data removed from the network.
+
+            The dictionary examples below are for a genomic network. For a pangenomic network, the
+            gene entry is replaced by the gene cluster entry, 'gene_cluster': [<removed GeneCluster
+            objects>] or 'gene_cluster': []. The examples show protein entries as if the genomic
+            network has been annotated with protein abundances; these are absent for genomic
+            networks lacking protein annotations and for pangenomic networks.
+
+            If this method is NOT called from the method, '_purge_reactions', then the dictionary
+            will look like the following.
+            {
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'ko': [<removed KO objects>],
+                'module': [<removed KEGGModule objects>],
+                'pathway': [<removed KEGGPathway objects>],
+                'hierarchy': [<removed BRITEHierarchy objects>],
+                'category': [<removed BRITECategory objects>],
+                'gene': [<removed Gene objects>],
+                'protein': [<removed Protein objects>]
+            }
+
+            If this method is called from the method, '_purge_reactions', then the dictionary will
+            look like the following.
+            {
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
+                'gene': [],
+                'protein': []
+            }
+
+            If no metabolites are removed from the network, then the dictionary will look like the
+            following regardless of calling method.
+            {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
+                'gene': [],
+                'protein': []
+            }
+        """
+        metabolites_to_remove = set(metabolites_to_remove)
+        removed_metabolites: List[ModelSEEDCompound] = []
+        for modelseed_compound_id in metabolites_to_remove:
+            try:
+                removed_metabolites.append(self.metabolites.pop(modelseed_compound_id))
+            except KeyError:
+                # This can occur for two reasons. First, the metabolite from 'metabolites_to_remove'
+                # could not be in the network.
+
+                # Second, this can occur when removing other "unintended" metabolites from the
+                # network. '_purge_metabolites' was first called with metabolites of interest, then
+                # '_purge_reactions' was called from within the method the remove reactions
+                # involving the metabolites of interest, and then '_purge_metabolites' was called
+                # again from within '_purge_reactions' to remove other metabolites exclusively found
+                # in the removed reactions. In this last call of '_purge_metabolites', the
+                # 'metabolites_to_remove' also include the metabolites of interest that were already
+                # removed from 'self.metabolites' in the original '_purge_metabolites' call. This
+                # KeyError occurs when trying to remove those already-removed metabolites.
+                pass
+        if not removed_metabolites:
+            removed = {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': []
+            }
+            if isinstance(self, GenomicNetwork):
+                removed['gene'] = []
+                if self.proteins:
+                    removed['protein'] = []
+            elif isinstance(self, PangenomicNetwork):
+                removed['gene_cluster'] = []
+            else:
+                raise AssertionError
+            return removed
+
+        # Purge reactions from the record that involve removed metabolites.
+        reactions_to_remove = []
+        for modelseed_reaction_id, reaction in self.reactions.items():
+            for compound in reaction.compounds:
+                if compound.modelseed_id in metabolites_to_remove:
+                    reactions_to_remove.append(modelseed_reaction_id)
+                    break
+
+        removed = {'metabolite': removed_metabolites}
+        if reactions_to_remove:
+            removed_cascading_up = self._purge_reactions(reactions_to_remove)
+            # There may be other metabolites exclusively involved in the removed reactions; these
+            # metabolites were therefore also removed.
+            removed['metabolite'] = removed_metabolites + removed_cascading_up.pop('metabolite')
+        else:
+            # This method must have been called from the method, '_purge_reactions', because the
+            # reactions containing the metabolites were already removed from the network.
+            removed_cascading_up = {
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': []
+            }
+            if isinstance(self, GenomicNetwork):
+                removed_cascading_up['gene'] = []
+                if self.proteins:
+                    removed_cascading_up['protein'] = []
+            elif isinstance(self, PangenomicNetwork):
+                removed_cascading_up['gene_cluster'] = []
+            else:
+                raise AssertionError
+        removed.update(removed_cascading_up)
+        return removed
+
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         This method is used in the process of merging the network with another network to produce a
