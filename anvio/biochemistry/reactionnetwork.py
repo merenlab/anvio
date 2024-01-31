@@ -312,10 +312,15 @@ class BRITEHierarchy:
         ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism', '09101 Carbohydrate
         metabolism', '00051 Fructose and mannose metabolism [PATH:00051]'): (<BRITECategory for
         '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051 ...'>)}
+
+    kos : Dict[str, KO], dict
+        Reaction network KOs in the hierarchy. To reiterate, this does not include KOs in the
+        hierarchy that are not in the reaction network. Keys are KO IDs.
     """
     id: str = None
     name: str = None
     categories: Dict[Tuple[str], Tuple[BRITECategory]] = field(default_factory=dict)
+    kos: Dict[str, KO] = field(default_factory=dict)
 
 @dataclass
 class BRITECategory:
