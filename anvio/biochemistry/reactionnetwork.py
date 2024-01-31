@@ -2282,6 +2282,52 @@ class ReactionNetwork:
             # Add gene clusters that are annotated with the added KOs to the subsetted network.
             self._subset_gene_clusters_via_kos(subnetwork)
 
+    def _subset_network_by_metabolites(self, compound_ids: Iterable[str]) -> ReactionNetwork:
+        """
+        Subset the network by metabolites.
+
+        Parameters
+        ==========
+        compound_ids : Iterable[str]
+            ModelSEED compound IDs to subset.
+
+        Returns
+        =======
+        ReactionNetwork
+            New subsetted reaction network.
+        """
+        if isinstance(self, GenomicNetwork):
+            subnetwork = GenomicNetwork()
+        elif isinstance(self, PangenomicNetwork):
+            subnetwork = PangenomicNetwork()
+        else:
+            raise AssertionError
+
+        for reaction_id, reaction in self.reactions.items():
+            # Check all reactions in the source network for subsetted metabolites.
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in compound_ids:
+                    break
+            else:
+                # The reaction does not involve any of the requested metabolites.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subnetwork.reactions[reaction_id] = subsetted_reaction
+
+            # Add the metabolites involved in the reaction to the subsetted network. (There can be
+            # unavoidable redundancy here in readding previously encountered metabolites.)
+            for subsetted_metabolite in subsetted_reaction.compounds:
+                subnetwork.metabolites[subsetted_metabolite.modelseed_id] = subsetted_metabolite
+
+        # Add KOs that are annotated with the added reactions to the subsetted network, and then add
+        # genes or gene clusters annotated with the added KOs to the subsetted network.
+        self._subset_kos_via_reactions(subnetwork)
+
+        return subnetwork
+
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         This method is used in the process of merging the network with another network to produce a
