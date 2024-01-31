@@ -3177,6 +3177,23 @@ class ReactionNetwork:
         =======
         None
         """
+        self.run.info_single("KO biological classification")
+        stats_group = stats['KO biological classification']
+        for key in (
+            'KEGG modules in network',
+            'KOs in modules',
+            'Mean KOs per module',
+            'Max KOs per module',
+            'KEGG pathways in network',
+            'KOs in pathways',
+            'Mean KOs per pathway',
+            'Max KOs per pathway',
+            'KEGG BRITE hierarchies in network',
+            'All-level hierarchy categories in network',
+            'Low-level hierarchy categories in network'
+        ):
+            self.run.info(key, stats_group[key])
+
         self.run.info_single("ModelSEED reactions in network and KO sources")
         stats_group = stats['Reactions and KO sources']
         for key in (
