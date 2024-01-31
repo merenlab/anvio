@@ -2979,6 +2979,49 @@ class ReactionNetwork:
         =======
         None
         """
+        self.progress.new("Counting KO biological classifications")
+        self.progress.update("...")
+        stats['KO biological classification'] = stats_group = {}
+
+        ko_in_module_count = 0
+        ko_in_pathway_count = 0
+        for ko in self.kos.values():
+            if ko.modules:
+                ko_in_module_count += 1
+            if ko.pathways:
+                ko_in_pathway_count += 1
+
+        module_ko_counts = []
+        for module in self.modules.values():
+            module_ko_counts.append(len(module.kos))
+
+        pathway_ko_counts = []
+        for pathway in self.pathways.values():
+            pathway_ko_counts.append(len(pathway.kos))
+
+        all_level_category_count = 0
+        low_level_category_count = 0
+        for categorizations in self.categories.values():
+            for categorization in categorizations.values():
+                all_level_category_count += 1
+                category = categorization[-1]
+                if not category.subcategories:
+                    low_level_category_count += 1
+
+        stats_group['KEGG modules in network'] = len(self.modules)
+        stats_group['KOs in modules'] = ko_in_module_count
+        stats_group['Mean KOs per module'] = round(np.mean(module_ko_counts), 1)
+        stats_group['Max KOs per module'] = max(module_ko_counts)
+        stats_group['KEGG pathways in network'] = len(self.pathways)
+        stats_group['KOs in pathways'] = ko_in_pathway_count
+        stats_group['Mean KOs per pathway'] = round(np.mean(pathway_ko_counts), 1)
+        stats_group['Max KOs per pathway'] = max(pathway_ko_counts)
+        stats_group['KEGG BRITE hierarchies in network'] = len(self.hierarchies)
+        stats_group['All-level hierarchy categories in network'] = all_level_category_count
+        stats_group['Low-level hierarchy categories in network'] = low_level_category_count
+
+        self.progress.end()
+
         self.progress.new("Counting reactions and KO sources")
         self.progress.update("...")
         stats['Reactions and KO sources'] = stats_group = {}
