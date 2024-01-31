@@ -329,20 +329,17 @@ class BRITECategory:
 
     Attributes
     ==========
-    id : str, None
-        ID for the category. Category IDs are only found in certain hierarchies, such as 'ko00001',
-        'KEGG Orthology (KO)', and 'ko01000', 'Enzymes', which is a representation of the EC system.
-        For example, in 'ko00001', there are the categories, '09100 Metabolism' and '00010
-        Glycolysis / Gluconeogenesis', which yield the ID attributes, '09100' and '00010', in their
-        corresponding BRITECategory objects. Likewise, the categories in 'ko01000', '2.
-        Transferases' and '2.7.1.1 hexokinase', yield the ID attributes '2.' and '2.7.1.1' in their
-        corresponding BRITECategory objects.
+    id : str
+        Unique ID for the category comprising the hierarchy ID and the hierarchical categorization.
+        The following example demonstrates ID format. In the 'KEGG Orthology (KO)' hierarchy,
+        'ko00001', there is a category, '09100 Metabolism >>> 09101 Carbohydrate metabolism >>>
+        00010 Glycolysis / Gluconeogenesis [PATH:00010]'. This yields the ID, 'ko00001: 09100
+        Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis
+        [PATH:00010]'.
 
-    name : str, None
-        Name of the category. For example, the category, '09100 Metabolism' in hierarchy 'ko01000'
-        yields the name 'Metabolism', and the category, 'Polyketide synthase (PKS)' in the
-        'Polyketide Biosynthesis Proteins' hierarchy, 'ko01008', does not yield an 'id' attribute
-        and simply yields the name of the category itself.
+    name : str
+        Name of the category. These need not be unique in a hierarchy. For example, there are
+        multiple categories called 'Small subunit' and 'Large subunit' in the 'Ribosome' hierarchy.
 
     hierarchy : BRITEHierarchy, None
         The BRITE hierarchy containing the category.
@@ -353,10 +350,10 @@ class BRITECategory:
         Gluconeogenesis' in the hierarchy, 'ko00001', is '09101 Carbohydrate metabolism'.
 
     subcategories : List[BRITECategory], list
-        The encompassed categories containing KOs in the reaction network. This is None if there are
-        no categories lower in the hierarchy. For example, the category, 'Polyketide synthase
-        (PKS) >>> Modular type I PKS' in the hierarchy, 'ko01008' encompasses the categories,
-        'cis-AT PKS' and 'trans-AT PKS'.
+        The encompassed categories containing KOs in the reaction network. This is an empty list if
+        there are no categories lower in the hierarchy. For example, the category, 'Polyketide
+        synthase (PKS) >>> Modular type I PKS' in the hierarchy, 'ko01008' encompasses the
+        categories, 'cis-AT PKS' and 'trans-AT PKS'.
 
     pathway : KEGGPathway, None
         Certain categories are equivalent to KEGG pathways, such as bottom-most categories in the
