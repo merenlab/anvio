@@ -714,6 +714,8 @@ class ReactionNetwork:
                     [copied_categories[category.id] for category in categorization]
                 )
 
+        # Copy KEGG pathways. For any BRITE categories equivalent to a pathway, reference the copied
+        # pathway from the copied category.
         for pathway_id, pathway in self.pathways.items():
             copied_pathway = KEGGPathway()
             copied_pathway.id = pathway_id
@@ -722,7 +724,11 @@ class ReactionNetwork:
                 copied_pathway.kos[ko_id] = copied_ko = copied_network.kos[ko_id]
                 copied_ko.pathways[pathway_id] = copied_pathway
             if pathway.category is not None:
-                copied_pathway.category = copied_network.categories[pathway.category.id]
+                category = pathway.category
+                copied_category = copied_categories[category.id]
+                copied_pathway.category = copied_category
+                assert copied_category.pathway is None
+                copied_category.pathway = copied_pathway
 
             copied_network.pathways[pathway_id] = copied_pathway
 
