@@ -252,6 +252,39 @@ class KEGGModule:
     pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
 
 @dataclass
+class KEGGPathway:
+    """
+    Representation of a KEGG pathway with KOs in the reaction network.
+
+    Attributes
+    ==========
+    id : str, None
+        The KEGG PATHWAY ID in the format, 'XXXXX', where X is a digit, e.g., '00010' represents
+        'Glycolysis / Gluconeogensis', and corresponds to the reference pathway map, 'map00010'.
+
+    name : str, None
+        Name of the pathway, e.g., 'Glycolysis / Gluconeogenesis' for pathway ID '00010'.
+
+    category : BRITECategory, None
+        Certain pathways are equivalent to categories in KEGG BRITE hierarchies, such as bottom-most
+        categories in the hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis
+        [PATH:ko00010]'.
+
+    kos : Dict[str, KO], dict
+        Reaction network KOs in the pathway. To reiterate, this does not include KOs in the pathway
+        that are not in the reaction network. Keys are KO IDs.
+
+    modules : Dict[str, KEGGModule], dict
+        Modules in the pathway that contain reaction network KOs. To reiterate, this does not
+        include modules in the pathway that are not in the reaction network. Keys are module IDs.
+    """
+    id: str = None
+    name: str = None
+    category: BRITECategory = None
+    kos: Dict[str, KO] = field(default_factory=dict)
+    modules: Dict[str, KEGGModule] = field(default_factory=dict)
+
+@dataclass
 class BRITEHierarchy:
     """
     Representation of a KEGG BRITE hierarchy with KOs in the reaction network.
@@ -332,39 +365,6 @@ class BRITECategory:
     subcategories: List[BRITECategory] = field(default_factory=list)
     pathway: KEGGPathway = None
     kos: Dict[str, KO] = field(default_factory=dict)
-
-@dataclass
-class KEGGPathway:
-    """
-    Representation of a KEGG pathway with KOs in the reaction network.
-
-    Attributes
-    ==========
-    id : str, None
-        The KEGG PATHWAY ID in the format, 'XXXXX', where X is a digit, e.g., '00010' represents
-        'Glycolysis / Gluconeogensis', and corresponds to the reference pathway map, 'map00010'.
-
-    name : str, None
-        Name of the pathway, e.g., 'Glycolysis / Gluconeogenesis' for pathway ID '00010'.
-
-    category : BRITECategory, None
-        Certain pathways are equivalent to categories in KEGG BRITE hierarchies, such as bottom-most
-        categories in the hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis
-        [PATH:ko00010]'.
-
-    kos : Dict[str, KO], dict
-        Reaction network KOs in the pathway. To reiterate, this does not include KOs in the pathway
-        that are not in the reaction network. Keys are KO IDs.
-
-    modules : Dict[str, KEGGModule], dict
-        Modules in the pathway that contain reaction network KOs. To reiterate, this does not
-        include modules in the pathway that are not in the reaction network. Keys are module IDs.
-    """
-    id: str = None
-    name: str = None
-    category: BRITECategory = None
-    kos: Dict[str, KO] = field(default_factory=dict)
-    modules: Dict[str, KEGGModule] = field(default_factory=dict)
 
 @dataclass
 class Gene:
