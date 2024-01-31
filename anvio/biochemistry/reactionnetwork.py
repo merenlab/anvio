@@ -650,15 +650,69 @@ class ReactionNetwork:
 
             copied_network.hierarchies[hierarchy_id] = copied_hierarchy
 
-        for category_id, category in self.categories.items():
-            copied_category = BRITECategory()
-            copied_category.id = category_id
-            copied_category.name = category.name
-            copied_category.hierarchy = copied_network.hierarchies[category.hierarchy.id]
-            for ko_id in category.kos:
-                copied_category.kos[ko_id] = copied_network.kos[ko_id]
+        # Copy KEGG hierarchy categories.
+        copied_categories: Dict[str, BRITECategory] = {}
+        for hierarchy_id, categorizations in self.categories.items():
+            hierarchy = self.hierarchies[hierarchy_id]
 
-            copied_network.categories[category_id] = copied_category
+            for categorization in categorizations.values():
+                category = categorization[-1]
+                category_id = category.id
+                assert category_id not in copied_categories
+
+                copied_category = BRITECategory()
+                copied_category.id = category_id
+                copied_category.name = category.name
+                copied_category.hierarchy = hierarchy
+
+                supercategory = category.supercategory
+                if supercategory is None:
+                    copied_category.supercategory = None
+                else:
+                    try:
+                        copied_supercategory = copied_categories[supercategory.id]
+                    except KeyError:
+                        copied_supercategory = None
+                    copied_category.supercategory = copied_supercategory
+                    if copied_supercategory is None:
+                        # Replace the subcategory placeholder ID in the copied supercategory with
+                        # the copied category.
+                        copied_supercategory[
+                            copied_supercategory.subcategories.index(category_id)
+                        ] = copied_category
+
+                subcategories = category.subcategories
+                if not subcategories:
+                    copied_category.subcategories = []
+                else:
+                    for subcategory in subcategories:
+                        try:
+                            copied_subcategory = copied_categories[subcategory.id]
+                        except KeyError:
+                            copied_subcategory = None
+                        if copied_subcategory is None:
+                            # Use the subcategory ID as a placeholder to be replaced by the copied
+                            # subcategory object when it is created.
+                            copied_category.subcategories.append(subcategory.id)
+                        else:
+                            copied_category.subcategories.append(copied_subcategory)
+                            # The subcategory had already been copied, but the current category (its
+                            # supercategory) had not, so the copied subcategory had a supercategory
+                            # attribute of None. This is here replaced by the copied category.
+                            copied_subcategory.supercategory = copied_category
+
+                for ko_id in category.kos:
+                    copied_category.kos[ko_id] = copied_network.kos[ko_id]
+
+                copied_categories[category_id] = copied_category
+
+        for hierarchy_id, categorizations in self.categories.items():
+            copied_network_hierarchy: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+            copied_network.categories[hierarchy_id] = copied_network_hierarchy
+            for category_key, categorization in categorizations.items():
+                copied_network_hierarchy[category_key] = tuple(
+                    [copied_categories[category.id] for category in categorization]
+                )
 
         for pathway_id, pathway in self.pathways.items():
             copied_pathway = KEGGPathway()
