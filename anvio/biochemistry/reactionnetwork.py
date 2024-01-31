@@ -2114,6 +2114,122 @@ class ReactionNetwork:
 
         return subnetwork
 
+    def _subset_network_by_reactions(
+        self,
+        reaction_ids: Iterable[str],
+        subnetwork: ReactionNetwork = None
+    ) -> ReactionNetwork:
+        """
+        Subset the network by ModelSEED reactions.
+
+        Parameters
+        ==========
+        reaction_ids : Iterable[str]
+            ModelSEED reaction IDs to subset.
+
+        subnetwork : ReactionNetwork, None
+            This network under construction is provided when the reactions being added to the
+            network annotate already subsetted KOs.
+
+        Returns
+        =======
+        ReactionNetwork
+            If a 'subnetwork' argument is provided, then that network is returned after
+            modification. Otherwise, a new subsetted reaction network is returned.
+        """
+        if isinstance(self, GenomicNetwork):
+            if subnetwork is None:
+                subnetwork = GenomicNetwork()
+                # Signify that KOs annotated by subsetted reactions are to be added to the network.
+                subset_referencing_kos = True
+            else:
+                assert isinstance(subnetwork, GenomicNetwork)
+                # Signify that the reactions being added to the network annotate subsetted KOs that
+                # were already added to the network.
+                subset_referencing_kos = False
+        elif isinstance(self, PangenomicNetwork):
+            if subnetwork is None:
+                subnetwork = PangenomicNetwork()
+                # Signify that KOs annotated by subsetted reactions are to be added to the network.
+                subset_referencing_kos = True
+            else:
+                assert isinstance(subnetwork, PangenomicNetwork)
+                # Signify that the reactions being added to the network annotate subsetted KOs that
+                # were already added to the network.
+                subset_referencing_kos = False
+        else:
+            raise AssertionError
+
+        # Copy the network attributes mapping reaction aliases.
+        kegg_modelseed_aliases: Dict[str, List[str]] = {}
+        ec_number_modelseed_aliases: Dict[str, List[str]] = {}
+
+        for reaction_id in reaction_ids:
+            try:
+                reaction = self.reactions[reaction_id]
+            except KeyError:
+                # This occurs if the requested reaction is not in the source network.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subnetwork.reactions[reaction_id] = subsetted_reaction
+            # Record the metabolites involved in the reaction, and add them to the network.
+            for metabolite in subsetted_reaction.compounds:
+                compound_id = metabolite.modelseed_id
+                subnetwork.metabolites[compound_id] = metabolite
+
+            try:
+                subnetwork.modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+            except KeyError:
+                subnetwork.modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+
+            try:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] += list(
+                    reaction.ec_number_aliases
+                )
+            except KeyError:
+                subnetwork.modelseed_ec_number_aliases[reaction_id] = list(
+                    reaction.ec_number_aliases
+                )
+
+            for kegg_id in reaction.kegg_aliases:
+                try:
+                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                except KeyError:
+                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
+
+            for ec_number in reaction.ec_number_aliases:
+                try:
+                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
+                except KeyError:
+                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+
+        if subnetwork.kegg_modelseed_aliases:
+            for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
+                try:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] += modelseed_ids
+                except KeyError:
+                    subnetwork.kegg_modelseed_aliases[kegg_id] = modelseed_ids
+        else:
+            subnetwork.kegg_modelseed_aliases = kegg_modelseed_aliases
+
+        if subnetwork.ec_number_modelseed_aliases:
+            for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
+                try:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] += modelseed_ids
+                except KeyError:
+                    subnetwork.ec_number_modelseed_aliases[ec_number] = modelseed_ids
+        else:
+            subnetwork.ec_number_modelseed_aliases = ec_number_modelseed_aliases
+
+        if subset_referencing_kos:
+            # Add KOs that are annotated by the subsetted reactions to the network.
+            self._subset_kos_via_reactions(subnetwork)
+
+        return subnetwork
+
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         This method is used in the process of merging the network with another network to produce a
