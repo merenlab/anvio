@@ -115,7 +115,7 @@ class Muscle:
         with open(input_file_path, 'w') as input_file:
             input_file.write(sequences_data)
 
-        cmd_line = [self.program_name, '-in', input_file_path, '-out', output_file_path, '-quiet']
+        cmd_line = [self.program_name, '-in', input_file_path, '-out', output_file_path]
 
         output = utils.run_command(cmd_line, log_file_path)
 
