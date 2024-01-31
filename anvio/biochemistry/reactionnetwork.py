@@ -3394,8 +3394,6 @@ class GenomicNetwork(ReactionNetwork):
         self.contigs_db_source_path: str = None
         self.profile_db_source_path: str = None
         self.genes: Dict[int, Gene] = {}
-        self.bins: Dict[str, GeneBin] = {}
-        self.collection: BinCollection = None
         self.proteins: Dict[int, Protein] = {}
 
     def copy(self) -> GenomicNetwork:
