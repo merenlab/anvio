@@ -756,26 +756,11 @@ class ReactionNetwork:
         # Record categories of each BRITE hierarchy.
         for hierarchy_id, hierarchy in self.hierarchies.items():
             copied_hierarchy = copied_network.hierarchies[hierarchy_id]
-            for categorization in hierarchy.categories:
-                copied_categorization = []
-                for category in categorization:
-                    copied_categorization.append(copied_network.categories[category.id])
-                copied_hierarchy.categories.append(tuple(copied_categorization))
-
-        # Finish filling out attributes of copied BRITE categories.
-        for category_id, category in self.categories.items():
-            copied_category = copied_network.categories[category_id]
-            # Record any supercategory of the category.
-            supercategory = category.supercategory
-            if supercategory is not None:
-                copied_category.supercategory = copied_network.categories[supercategory.id]
-            # Record any subcategories of the category.
-            for subcategory in category.subcategories:
-                copied_category.subcategories.append(copied_network.categories[subcategory.id])
-            # Record any pathway equivalent to the category.
-            pathway = category.pathway
-            if pathway is not None:
-                copied_category.pathway = copied_network.pathways[pathway.id]
+            copied_categorizations = copied_hierarchy.categories
+            for category_key, categorization in hierarchy.categories.items():
+                copied_categorizations[category_key] = tuple(
+                    [copied_categories[category.id] for category in categorization]
+                )
 
     def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
         """
