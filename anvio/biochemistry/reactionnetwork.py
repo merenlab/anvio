@@ -2230,6 +2230,58 @@ class ReactionNetwork:
 
         return subnetwork
 
+    def _subset_kos_via_reactions(self, subnetwork: ReactionNetwork) -> None:
+        """
+        Add KOs that are annotated with subsetted reactions to the subsetted network.
+
+        Then add genes that are annotated with these added KOs to the subsetted network.
+
+        Parameters
+        ==========
+        subnetwork : ReactionNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        if isinstance(self, GenomicNetwork):
+            assert isinstance(subnetwork, GenomicNetwork)
+        elif isinstance(self, PangenomicNetwork):
+            assert isinstance(subnetwork, PangenomicNetwork)
+        else:
+            raise AssertionError
+
+        subsetted_reaction_ids = list(subnetwork.reactions)
+        for ko_id, ko in self.kos.items():
+            # Check all KOs in the source network for subsetted reactions.
+            subsetted_ko = None
+            for reaction_id in ko.reactions:
+                if reaction_id not in subsetted_reaction_ids:
+                    # The KO is not annotated by the subsetted reaction.
+                    continue
+
+                if not subsetted_ko:
+                    # Create a new KO object for the subsetted KO. The subsetted KO object would
+                    # already have been created had another subsetted reaction been among the
+                    # reactions annotating the KO.
+                    subsetted_ko = KO()
+                    subsetted_ko.id = ko_id
+                    subsetted_ko.name = ko.name
+                subsetted_ko.reactions[reaction_id] = subnetwork.reactions[reaction_id]
+                subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
+                subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+
+            if subsetted_ko:
+                subnetwork.kos[ko_id] = subsetted_ko
+
+        if isinstance(self, GenomicNetwork):
+            # Add genes that are annotated with the added KOs to the subsetted network.
+            self._subset_genes_via_kos(subnetwork)
+        elif isinstance(self, PangenomicNetwork):
+            # Add gene clusters that are annotated with the added KOs to the subsetted network.
+            self._subset_gene_clusters_via_kos(subnetwork)
+
     def _merge_network(self, network: ReactionNetwork, merged_network: ReactionNetwork) -> None:
         """
         This method is used in the process of merging the network with another network to produce a
