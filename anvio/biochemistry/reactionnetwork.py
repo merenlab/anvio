@@ -3460,11 +3460,24 @@ class GenomicNetwork(ReactionNetwork):
             metabolite_path = f"{path_basename}-metabolites{path_extension}"
             reaction_path = f"{path_basename}-reactions{path_extension}"
             ko_path = f"{path_basename}-kos{path_extension}"
+            module_path = f"{path_basename}-modules{path_extension}"
+            pathway_path = f"{path_basename}-pathways{path_extension}"
+            hierarchy_path = f"{path_basename}-hierarchies{path_extension}"
+            category_path = f"{path_basename}-categories{path_extension}"
             gene_path = f"{path_basename}-genes{path_extension}"
-            for path in (metabolite_path, reaction_path, ko_path, gene_path):
+            for path in (
+                metabolite_path,
+                reaction_path,
+                ko_path,
+                module_path,
+                pathway_path,
+                hierarchy_path,
+                category_path,
+                gene_path
+            ):
                 filesnpaths.is_output_file_writable(path)
 
-        metabolites_to_remove = []
+        metabolites_to_remove: List[str] = []
         for modelseed_compound_id, metabolite in self.metabolites.items():
             # ModelSEED compounds without a formula have a formula value of None in the network
             # object.
@@ -3477,6 +3490,10 @@ class GenomicNetwork(ReactionNetwork):
             self.run.info("Removed metabolites", len(removed['metabolite']))
             self.run.info("Removed reactions", len(removed['reaction']))
             self.run.info("Removed KOs", len(removed['ko']))
+            self.run.info("Removed KEGG modules", len(removed['module']))
+            self.run.info("Removed KEGG pathways", len(removed['pathway']))
+            self.run.info("Removed KEGG BRITE hierarchies", len(removed['hierarchy']))
+            self.run.info("Removed KEGG BRITE hierarchy categories", len(removed['category']))
             self.run.info("Removed genes", len(removed['gene']))
 
         if not output_path:
@@ -3486,69 +3503,6 @@ class GenomicNetwork(ReactionNetwork):
             self.progress.new("Writing output files of removed network items")
             self.progress.update("...")
 
-        # Record the reactions removed as a consequence of involving formulaless metabolites, and
-        # record the formulaless metabolites involved in removed reactions.
-        metabolite_removed_reactions: Dict[str, List[str]] = {}
-        reaction_removed_metabolites: Dict[str, List[str]] = {}
-        for reaction in removed['reaction']:
-            reaction: ModelSEEDReaction
-            reaction_removed_metabolites[reaction.modelseed_id] = metabolite_ids = []
-            for metabolite in reaction.compounds:
-                if metabolite.modelseed_id in metabolites_to_remove:
-                    try:
-                        metabolite_removed_reactions[metabolite.modelseed_id].append(
-                            reaction.modelseed_id
-                        )
-                    except KeyError:
-                        metabolite_removed_reactions[metabolite.modelseed_id] = [
-                            reaction.modelseed_id
-                        ]
-                    metabolite_ids.append(metabolite.modelseed_id)
-
-        metabolite_table = []
-        for metabolite in removed['metabolite']:
-            metabolite: ModelSEEDCompound
-            row = []
-            row.append(metabolite.modelseed_id)
-            row.append(metabolite.modelseed_name)
-            row.append(metabolite.formula)
-            try:
-                # The metabolite did not have a formula.
-                removed_reaction_ids = metabolite_removed_reactions[metabolite.modelseed_id]
-            except KeyError:
-                # The metabolite had a formula but was removed as a consequence of all the reactions
-                # involving the metabolite being removed due to them containing formulaless
-                # metabolites: the metabolite did not cause any reactions to be removed.
-                row.append("")
-                continue
-            # The set accounts for the theoretical possibility that a compound is present on both
-            # sides of the reaction equation and thus the reaction is recorded multiple times.
-            row.append(", ".join(sorted(set(removed_reaction_ids))))
-
-        reaction_table = []
-        for reaction in removed['reaction']:
-            reaction: ModelSEEDReaction
-            row = []
-            row.append(reaction.modelseed_id)
-            row.append(reaction.modelseed_name)
-            # The set accounts for the theoretical possibility that a compound is present on both
-            # sides of the reaction equation and thus is recorded multiple times.
-            row.append(
-                ", ".join(set(reaction_removed_metabolites[reaction.modelseed_id]))
-            )
-            row.append(", ".join([metabolite.modelseed_id for metabolite in reaction.compounds]))
-            row.append(get_chemical_equation(reaction))
-            reaction_table.append(row)
-
-        ko_table = []
-        for ko in removed['ko']:
-            ko: KO
-            row = []
-            row.append(ko.id)
-            row.append(ko.name)
-            row.append(", ".join(ko.reactions))
-            ko_table.append(row)
-
         gene_table = []
         for gene in removed['gene']:
             gene: Gene
@@ -3557,33 +3511,8 @@ class GenomicNetwork(ReactionNetwork):
             row.append(", ".join(gene.kos))
             gene_table.append(row)
 
-        pd.DataFrame(
-            metabolite_table,
-            columns=[
-                "ModelSEED compound ID",
-                "ModelSEED compound name",
-                "Formula",
-                "Removed reaction ModelSEED IDs"
-            ]
-        ).to_csv(metabolite_path, sep='\t', index=False)
-        pd.DataFrame(
-            reaction_table,
-            columns=[
-                "ModelSEED reaction ID",
-                "ModelSEED reaction name",
-                "Removed ModelSEED compound IDs",
-                "Reaction ModelSEED compound IDs",
-                "Equation"
-            ]
-        ).to_csv(reaction_path, sep='\t', index=False)
-        pd.DataFrame(
-            ko_table,
-            columns=[
-                "KO ID",
-                "KO name",
-                "KO ModelSEED reaction IDs"
-            ]
-        ).to_csv(ko_path, sep='\t', index=False)
+        self._write_remove_metabolites_without_formula_output(output_path, removed)
+
         pd.DataFrame(
             gene_table,
             columns=[
@@ -3597,6 +3526,10 @@ class GenomicNetwork(ReactionNetwork):
             self.run.info("Table of removed metabolites", metabolite_path)
             self.run.info("Table of removed reactions", reaction_path)
             self.run.info("Table of removed KOs", ko_path)
+            self.run.info("Table of removed KEGG modules", module_path)
+            self.run.info("Table of removed KEGG pathways", pathway_path)
+            self.run.info("Table of removed KEGG BRITE hierarchies", hierarchy_path)
+            self.run.info("Table of removed KEGG BRITE hierarchy categories", category_path)
             self.run.info("Table of removed genes", gene_path)
 
     def purge_metabolites(self, metabolites_to_remove: Iterable[str]) -> Dict[str, List]:
