@@ -3362,10 +3362,6 @@ class GenomicNetwork(ReactionNetwork):
     genes : Dict[int, Gene], dict()
         This maps gene callers IDs to object representations of genes in the network.
 
-    bins : Dict[str, GeneBin], dict()
-
-    collection : BinCollection, None
-
     proteins : Dict[int, Protein], dict()
         This maps protein IDs to object representations of proteins with abundance data in the
         network.
