@@ -1732,42 +1732,62 @@ class Pangraph():
             for node in generation:
                 self.position[node] = (x, 0)
 
+        self.layout_graph = nx.DiGraph(self.edmonds_graph)
+        nx.set_edge_attributes(self.layout_graph, values=1, name='weight')
+        self.layout_graph.remove_nodes_from(['start','stop'])
+        layout_graph_nodes = list(self.layout_graph.nodes())
+        layout_graph_successors = {layout_graph_node: list(self.layout_graph.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
+
+        ghost = 0
         for y in range(x-1, 0, -1):
-            change = []
             for node in self.x_list[y]:
                 node_x_position = self.position[node][0]
 
-                # if node == ',GC_00000042,GC_00000147':
-                #     print(node, node_x_position)
+                change = []
+                for successor in layout_graph_successors[node]:
+                    successor_x_position = self.position[successor][0]
+                    
+                    if successor_x_position <= node_x_position:
+                        print('Sanity Error.')
+                        exit()
+                    else:
+                        change.append((successor_x_position, successor))
+
+                if change:
+                    if min(change)[0] > 1:
+                        new_x_position = min([(x, n) for (x, n) in change if x > 1])[0] - 1
+                        self.position[node] = (new_x_position, 0)
+
+                    for (position, extend_successor) in change:
+                        x_difference = position - new_x_position
+
+                        path_list = [node]
+
+                        for i in range(1, x_difference):
+                            path_list += ['Ghost_' + str(ghost)]
+                            self.position['Ghost_' + str(ghost)] = (new_x_position + i, 0)
+                            ghost += 1
+
+                        path_list += [extend_successor]
+
+                        self.layout_graph.remove_edge(node, extend_successor)
+                        self.layout_graph.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=0)
+
+        for i, j in self.layout_graph.edges():
+
+            if self.position[j][0] - self.position[i][0] != 1 and self.position[i][0] != 0:
                 
-                possible_x_change = -1
-                do_change = True
-                for successor in self.edmonds_graph.successors(node):
-                    if successor != 'stop':
-                        successor_x_position = self.position[successor][0]
-                        # if node == ',GC_00000042,GC_00000147':
-                        #     print(successor, successor_x_position)
-                        #     print(successor_x_position - node_x_position)
-                        if (successor_x_position - node_x_position) == 1:
-                            do_change = False
-                        else:
-                            # print('HHH')
-                            if possible_x_change == -1:
-                                possible_x_change = successor_x_position - 1
-                            elif (successor_x_position - 1) < possible_x_change:
-                                possible_x_change = successor_x_position - 1
+                # print(i, j, self.position[i][0], self.position[j][0])
+                print('Sanity Error.')
+                exit()
 
-                if possible_x_change != -1 and do_change == True:
-                    change.append((node, possible_x_change))
-                    # print('TTT')
-                    # print(do_change)
+        exit()
 
-                # if node == ',GC_00000042,GC_00000147':
-                #     print(change)
+                # if possible_x_change != -1 and do_change == True:
+                #     change.append((node, possible_x_change))
 
-                # print("\n")
-            for (node, x_change) in change:
-                self.position[node] = (x_change, 0)
+            # for (node, x_change) in change:
+            #     self.position[node] = (x_change, 0)
 
         # print(self.position[',GC_00000004,GC_00000425'])
 
