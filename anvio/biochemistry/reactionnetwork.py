@@ -472,7 +472,7 @@ class ReactionNetwork:
         ModelSEED reactions in the network, with keys being reaction IDs.
 
     metabolites : Dict[str, ModelSEEDCompound], dict()
-        ModelSEED metabolites in the network, with keys being metabolite IDs.
+        ModelSEED compounds in the network, with keys being metabolite IDs.
 
     kegg_modelseed_aliases : Dict[str, List[str]], dict()
         This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
