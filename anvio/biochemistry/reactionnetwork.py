@@ -457,6 +457,9 @@ class ReactionNetwork:
     modules : Dict[str, KEGGModule], dict()
         KEGG modules containing KOs in the network, with keys being module IDs.
 
+    pathways : Dict[str, KEGGPathway], dict()
+        KEGG pathways containing KOs in the network, with keys being pathway IDs.
+
     hierarchies : Dict[str, BRITEHierarchy], dict()
         KEGG BRITE hierarchies containing KOs in the network, with keys being hierarchy IDs.
 
@@ -464,8 +467,6 @@ class ReactionNetwork:
         KEGG BRITE hierarchy categories containing KOs in the network, with keys being tuple pairs
         of category ID, which is None in certain hierarchies, and category name.
 
-    pathways : Dict[str, KEGGPathway], dict()
-        KEGG pathways containing KOs in the network, with keys being pathway IDs.
 
     reactions : Dict[str, ModelSEEDReaction], dict()
         ModelSEED reactions in the network, with keys being reaction IDs.
