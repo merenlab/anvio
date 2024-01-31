@@ -3443,11 +3443,13 @@ class GenomicNetwork(ReactionNetwork):
         formulaless metabolites to the optional output table of removed metabolites.
 
         output_path : str, None
-            If not None, write four tab-delimited files of metabolites, reactions, KEGG Orthologs,
-            and genes removed from the network to file locations based on the provided path. For
-            example, if the argument, 'removed.tsv', is provided, then the following files will be
-            written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv', and
-            'removed-genes.tsv'.
+            If not None, write tab-delimited files of metabolites, reactions, KOs, KEGG modules,
+            KEGG pathways, KEGG BRITE hierarchies, KEGG BRITE hierarchy categories, and genes
+            removed from the network to file locations based on the provided path. For example, if
+            the argument, 'removed.tsv', is provided, then the following files will be written:
+            'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv',
+            'removed-modules.tsv', 'removed-pathways.tsv', 'removed-hierarchies.tsv',
+            'removed-categories.tsv', and 'removed-genes.tsv'.
         """
         if self.verbose:
             self.progress.new("Removing metabolites without a formula in the network")
