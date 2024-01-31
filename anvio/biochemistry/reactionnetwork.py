@@ -645,6 +645,8 @@ class ReactionNetwork:
             copied_hierarchy = BRITEHierarchy()
             copied_hierarchy.id = hierarchy_id
             copied_hierarchy.name = hierarchy.name
+            for ko_id in hierarchy.kos:
+                copied_hierarchy.kos[ko_id] = copied_network.kos[ko_id]
 
             copied_network.hierarchies[hierarchy_id] = copied_hierarchy
 
