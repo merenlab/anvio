@@ -569,6 +569,7 @@ class ReactionNetwork:
         copied_network : ReactionNetwork
             The network copy under construction.
         """
+        # Copy metabolites.
         for modelseed_id, metabolite in self.metabolites.items():
             copied_metabolite = ModelSEEDCompound()
             copied_metabolite.modelseed_id = modelseed_id
@@ -584,6 +585,7 @@ class ReactionNetwork:
 
             copied_network.metabolites[modelseed_id] = copied_metabolite
 
+        # Copy reactions.
         for modelseed_id, reaction in self.reactions.items():
             copied_reaction = ModelSEEDReaction()
             copied_reaction.modelseed_id = modelseed_id
@@ -600,6 +602,7 @@ class ReactionNetwork:
 
             copied_network.reactions[modelseed_id] = copied_reaction
 
+        # Copy KOs.
         for ko_id, ko in self.kos.items():
             copied_ko = KO()
             copied_ko.id = ko_id
@@ -613,6 +616,7 @@ class ReactionNetwork:
 
             copied_network.kos[ko_id] = copied_ko
 
+        # Copy reaction alias mappings.
         for kegg_id, modelseed_ids in self.kegg_modelseed_aliases.items():
             copied_network.kegg_modelseed_aliases[kegg_id] = modelseed_ids.copy()
 
@@ -625,6 +629,7 @@ class ReactionNetwork:
         for modelseed_id, ec_numbers in self.modelseed_ec_number_aliases.items():
             copied_network.modelseed_ec_number_aliases[modelseed_id] = ec_numbers.copy()
 
+        # Copy KEGG modules.
         for module_id, module in self.modules.items():
             copied_module = KEGGModule()
             copied_module.id = module_id
@@ -635,6 +640,7 @@ class ReactionNetwork:
 
             copied_network.modules[module_id] = copied_module
 
+        # Copy KEGG hierarchies.
         for hierarchy_id, hierarchy in self.hierarchies.items():
             copied_hierarchy = BRITEHierarchy()
             copied_hierarchy.id = hierarchy_id
