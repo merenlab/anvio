@@ -5458,11 +5458,11 @@ class PangenomicNetwork(ReactionNetwork):
         ==========
         precomputed_counts : Dict[str, int], None
             To spare additional computations that involve loading and parsing databases, this
-            dictionary can contain three pieces of precomputed data: the value for the key,
-            'total_gene_clusters', should be the number of gene clusters in the pangenome; the value
-            for the key, 'gene_clusters_assigned_ko', should be the number of gene clusters in the
+            dictionary must contain certain precomputed data: the key, 'total_gene_clusters', should
+            have a value of the number of gene clusters in the pangenome; the key,
+            'gene_clusters_assigned_ko', should have a value of the number of gene clusters in the
             pangenome assigned a consensus KO (or None if 'self.consistent_annotations' is False);
-            the value for the key, 'kos_assigned_gene_clusters', should be the number of consensus
+            the key, 'kos_assigned_gene_clusters', should have a value of the number of consensus
             KOs assigned to gene clusters in the pangenome (or None if 'self.consistent_annotations'
             is False).
 
