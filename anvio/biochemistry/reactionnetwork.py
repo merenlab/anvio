@@ -4058,12 +4058,12 @@ class GenomicNetwork(ReactionNetwork):
 
     def _subset_network_by_genes(self, gcids: Iterable[int]) -> GenomicNetwork:
         """
-        Subset the network by genes with requested gene callers IDs.
+        Subset the network by genes.
 
         Parameters
         ==========
         gcids : Iterable[int]
-            Genes to subset by gene callers ID.
+            Gene callers IDs to subset.
 
         Returns
         =======
