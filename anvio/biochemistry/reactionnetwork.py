@@ -5648,21 +5648,21 @@ class PangenomicNetwork(ReactionNetwork):
         objective: str = None,
         remove_missing_objective_metabolites: bool = False,
         record_genomes: Tuple[str] = ('gene', 'reaction'),
-        # record_bins: Tuple[str] = ('gene', 'reaction'),
         indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         """
-        Export the network to a metabolic model file in JSON format. Entries in the "gene" section
-        of this file represent gene clusters.
+        Export the network to a metabolic model file in JSON format.
 
-        All information from the network is included in the JSON so that the file can by imported by
-        anvi'o as a PangenomicNetwork object containing the same information.
+        Entries in the "gene" section of this file represent gene clusters.
+
+        All information from the network is included in the JSON so that the file can be loaded as a
+        PangenomicNetwork object containing the same information.
 
         Parameters
         ==========
         path : str
-            output JSON file path
+            Output JSON file path.
 
         overwrite : bool, False
             Overwrite the JSON file if it already exists.
@@ -5690,9 +5690,10 @@ class PangenomicNetwork(ReactionNetwork):
             to encode enzymes associated with reactions and metabolites, respectively.
 
         indent : int, 2
-            spaces of indentation per nesting level in JSON file
+            Spaces of indentation per nesting level in JSON file.
 
         progress : terminal.Progress, terminal.Progress()
+            Prints transient progress information to the terminal.
         """
         if record_genomes is None:
             record_genomes = ()
@@ -5703,7 +5704,8 @@ class PangenomicNetwork(ReactionNetwork):
                 invalid_items.append(item)
         if invalid_items:
             raise ConfigError(
-                f"The following items in the 'record_genomes' argument are invalid: {', '.join(invalid_items)}"
+                f"The following items in the 'record_genomes' argument are invalid: "
+                f"{', '.join(invalid_items)}"
             )
 
         progress.new("Constructing JSON")
@@ -5719,7 +5721,9 @@ class PangenomicNetwork(ReactionNetwork):
                 self.remove_missing_objective_metabolites(objective_dict)
             json_reactions.append(objective_dict)
         elif objective != None:
-            raise ConfigError(f"Anvi'o does not recognize an objective with the name, '{objective}'.")
+            raise ConfigError(
+                f"Anvi'o does not recognize an objective with the name, '{objective}'."
+            )
 
         progress.update("Gene clusters")
         reaction_gene_clusters: Dict[str, List[str]] = {}
@@ -5733,14 +5737,50 @@ class PangenomicNetwork(ReactionNetwork):
             json_gene_clusters.append(gene_cluster_entry)
             cluster_id_str = str(cluster_id)
             gene_cluster_entry['id'] = cluster_id_str
-            # Record KO IDs in the annotation section of the gene cluster entry. In a JSON file produced
-            # from a 'GenomicNetwork', KO IDs are paired with their gene annotation e-values, which
-            # can't be done with consensus KOs for gene clusters. Therefore, where the e-value would
-            # be, put an empty string.
+
+            # Record the consensus KO ID and classifications in the annotation section of the gene
+            # cluster entry.
             annotation = gene_cluster_entry['annotation']
-            annotation['ko'] = annotation_kos = {}
             ko = gene_cluster.ko
-            annotation_kos[ko.id] = ""
+            annotation['ko'] = annotation_ko = {
+                'id': ko.id,
+                'modules': {},
+                'pathways': {},
+                'hierarchies': {}
+            }
+
+            # Record KEGG modules containing the KO.
+            annotation_ko_modules = annotation_ko['modules']
+            for module_id, module in ko.modules.items():
+                module_annotation = module.name
+                if not module.pathways:
+                    annotation_ko_modules[module_id] = module_annotation
+                    continue
+                # Cross-reference KEGG pathways containing the module.
+                module_annotation += "[pathways:"
+                for pathway in module.pathways:
+                    module_annotation += f" {pathway.id}"
+                module_annotation += "]"
+                annotation_ko_modules[module_id] = module_annotation
+
+            # Record KEGG pathways containing the KO.
+            annotation_ko_pathways = annotation_ko['pathways']
+            for pathway_id, pathway in ko.pathways.items():
+                annotation_ko_pathways[pathway_id] = pathway.name
+
+            # Record membership of the KO in KEGG BRITE hierarchies.
+            annotation_ko_hierarchies: Dict[str, List[str]] = annotation_ko['hierarchies']
+            for hierarchy_id, categorizations in ko.hierarchies.items():
+                hierarchy_name = self.hierarchies[hierarchy_id].name
+                annotation_ko_hierarchies[
+                    f"{hierarchy_id}: {hierarchy_name}"
+                ] = annotation_ko_categories = []
+                for categorization in categorizations.values():
+                    category = categorization[-1]
+                    category_id = category.id
+                    annotation_ko_categories.append(category_id[len(hierarchy_id) + 2:])
+
+            # Set up dictionaries needed to fill out reaction entries.
             for modelseed_reaction_id in ko.reactions:
                 try:
                     reaction_gene_clusters[modelseed_reaction_id].append(cluster_id_str)
@@ -5750,12 +5790,14 @@ class PangenomicNetwork(ReactionNetwork):
                     reaction_kos[modelseed_reaction_id].append(ko)
                 except KeyError:
                     reaction_kos[modelseed_reaction_id] = [ko]
+
             if not record_genomes:
                 continue
+
             genome_names = gene_cluster.genomes
             if 'gene cluster' in record_genomes:
-                # Record the names of the genomes contributing to the gene cluster in the notes section
-                # of the gene cluster entry.
+                # Record the names of the genomes contributing to the gene cluster in the notes
+                # section of the gene cluster entry.
                 gene_cluster_entry['notes']['genomes'] = genome_names
             if 'reaction' in record_genomes:
                 for modelseed_reaction_id in ko.reactions:
@@ -5791,6 +5833,7 @@ class PangenomicNetwork(ReactionNetwork):
                 # By default, the reaction entry was set up to be reversible; here make it irreversible.
                 reaction_entry['lower_bound'] = 0.0
             reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_gene_clusters[modelseed_reaction_id]])
+
             notes = reaction_entry['notes']
             # Record gene KO annotations which aliased the reaction via KEGG REACTION or EC number.
             notes['ko'] = ko_notes = {}
@@ -5834,7 +5877,8 @@ class PangenomicNetwork(ReactionNetwork):
                 metabolite_entry['name'] = modelseed_compound_name
                 metabolite_entry['compartment'] = compartment
                 # Compounds without a formula have a nominal charge of 10000000 in the ModelSEED
-                # compounds database, which is replaced by None in the reaction network and 0 in the JSON.
+                # compounds database, which is replaced by None in the reaction network and 0 in the
+                # JSON.
                 metabolite_entry['charge'] = charge if charge is not None else 0
                 metabolite_entry['formula'] = formula if formula is not None else ""
                 metabolite_entry['annotation']['kegg.compound'] = kegg_compound_aliases
