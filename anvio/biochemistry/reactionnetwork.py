@@ -4723,10 +4723,6 @@ class PangenomicNetwork(ReactionNetwork):
 
     gene_clusters : Dict[str, GeneCluster], dict()
         This maps the IDs of gene clusters in the network to object representations of the clusters.
-
-    bins : Dict[str, GeneClusterBin], dict()
-
-    collection : BinCollection, None
     """
     def __init__(
         self,
