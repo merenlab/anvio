@@ -4790,11 +4790,13 @@ class PangenomicNetwork(ReactionNetwork):
         metabolites to the output table of removed metabolites.
 
         output_path : str, None
-            If not None, write four tab-delimited files of metabolites, reactions, KEGG Orthologs,
-            and gene clusters removed from the network to file locations based on the provided path.
-            For example, if the argument, 'removed.tsv', is provided, then the following files will
-            be written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv', and
-            'removed-gene-clusters.tsv'.
+            If not None, write tab-delimited files of metabolites, reactions, KOs, KEGG modules,
+            KEGG pathways, KEGG BRITE hierarchies, KEGG BRITE hierarchy categories, and gene
+            clusters removed from the network to file locations based on the provided path. For
+            example, if the argument, 'removed.tsv', is provided, then the following files will be
+            written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv',
+            'removed-modules.tsv', 'removed-pathways.tsv', 'removed-hierarchies.tsv',
+            'removed-categories.tsv', and 'removed-gene-clusters.tsv'.
         """
         if output_path:
             path_basename, path_extension = os.path.splitext(output_path)
