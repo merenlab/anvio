@@ -4651,15 +4651,39 @@ class PangenomicNetwork(ReactionNetwork):
     Attributes
     ==========
     kos : Dict[str, KO], dict()
-        This dictionary maps the IDs of KOs in the network to object representations of the KOs.
+        KOs in the network, with keys being KO IDs.
+
+    modules : Dict[str, KEGGModule], dict()
+        KEGG modules containing KOs in the network, with keys being module IDs.
+
+    pathways : Dict[str, KEGGPathway], dict()
+        KEGG pathways containing KOs in the network, with keys being pathway IDs.
+
+    hierarchies : Dict[str, BRITEHierarchy], dict()
+        KEGG BRITE hierarchies containing KOs in the network, with keys being hierarchy IDs.
+
+    categories : Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]], dict()
+        KEGG BRITE hierarchy categories containing KOs in the network. Keys are hierarchy IDs.
+        Values are dictionary representations of categorizations in the hierarchy. Categories at
+        each level receive their own entries. For example, 'K00844', hexokinase, is classified
+        multiple ways in the 'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100
+        Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis
+        [PATH:00010]' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
+        and mannose metabolism [PATH:00051]'. These categorizations would yield entries like the
+        following: {'ko00001': {('09100 Metabolism', ): (<BRITECategory for '09100 ...'>, ), ('09100
+        Metabolism', '09101 Carbohydrate metabolism'): (<BRITECategory for '09100 ...'>,
+        <BRITECategory for '09101 ...'>), ('09100 Metabolism', '09101 Carbohydrate metabolism',
+        '00010 Glycolysis / Gluconeogenesis [PATH:00010]'): (<BRITECategory for '09100 ...'>,
+        <BRITECategory for '09101 ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism',
+        '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism [PATH:00051]'):
+        (<BRITECategory for '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051
+        ...'>)}}
 
     reactions : Dict[str, ModelSEEDReaction], dict()
-        This maps the IDs of ModelSEED reactions in the network to object representations of the
-        reactions.
+        ModelSEED reactions in the network, with keys being reaction IDs.
 
     metabolites : Dict[str, ModelSEEDCompound], dict()
-        This maps the IDs of ModelSEED metabolites in the network to object representations of the
-        metabolites.
+        ModelSEED compounds in the network, with keys being metabolite IDs.
 
     kegg_modelseed_aliases : Dict[str, List[str]], dict()
         This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
