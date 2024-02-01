@@ -5321,7 +5321,7 @@ class PangenomicNetwork(ReactionNetwork):
         Parameters
         ==========
         gene_cluster_ids : Iterable[int]
-            Gene clusters to subset by ID.
+            Gene cluster IDs to subset.
 
         Returns
         =======
