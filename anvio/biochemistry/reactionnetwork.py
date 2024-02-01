@@ -4201,9 +4201,7 @@ class GenomicNetwork(ReactionNetwork):
             (self.proteins is not None and network.proteins is None)
         )
 
-        merged_network = GenomicNetwork()
-
-        self._merge_network(network, merged_network)
+        merged_network: GenomicNetwork = self._merge_network(network)
 
         # Add genes to the merged network, first adding genes present in both source networks, and
         # then adding genes present exclusively in each source network.
