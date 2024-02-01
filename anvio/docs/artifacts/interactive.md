@@ -4,7 +4,7 @@ This page describes general properties of anvi'o interactive displays and progra
 
 Anvi'o uses a simple terminology to address various aspects of interactive displays it produces, such as items, layers, views, orders, and so on. The purpose of this section is to provide some insights into these terminology using the figure below:
 
-![an anvi'o display](../images/png/interactive_interface/anvio_display_template.png){:.center-img}
+![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
 
 Even though the figure is a product of %(anvi-display-pan)s, the general terminology does not change across different interfaces, including the default visualizations of %(anvi-interactive)s. Here are the descriptions of numbered areas in the figure:
 
@@ -56,7 +56,7 @@ We will spend most of our time in the `Settings` panel.
 
 ### Settings panel
 
-<img align="left" height="350px" src="../images/svg/interactive_interface_tabs.svg" style="margin-right: 20px;">
+<img align="left" height="350px" src="../../images/svg/interactive_interface_tabs.svg" style="margin-right: 20px;">
 
 If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
 
@@ -83,7 +83,7 @@ OK. Let's talk about each tab you will find in the settings panel.
 
 This is one of the most frequently used tabs in the interface, and there are multiple sections in it (keeps growing over time, so things may be missing here).
 
-![an anvi'o main tab](../images/png/interactive_interface/interactive-settings-panel-main.png){:.center-img}
+![an anvi'o main tab](../../images/interactive_interface/interactive-settings-panel-main.png){:.center-img}
 
 - #### Items subsection
   - Provides high level options for adjusting _drawing type_, _items order_ and _data type_.
@@ -103,7 +103,7 @@ This is one of the most frequently used tabs in the interface, and there are mul
 
 In the Options tab, just like in the Main tab, we have two sections: Items and Layers, providing a separation for these components.,
 
-![an anvi'o options items](../images/png/interactive_interface/interactive-settings-options-items.png){:.center-img}
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-items.png){:.center-img}
 
 * **Bins Selection subsection**. Allows us to customize the bins.
 * **Cosmetics subsection**. _Margin and Background Opacity_ adjustments on the chart.
@@ -112,7 +112,7 @@ In the Options tab, just like in the Main tab, we have two sections: Items and L
 * **Selections subsection**. To adjust _height_, _grid_ and/or _shade_ display, as well as selection _name_ settings.
 * **Performance subsection**. Whether the SVG output is optimized for performance or granularity (very advanced stuff).
 
-![an anvi'o options items](../images/png/interactive_interface/interactive-settings-options-layers.png){:.center-img}
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-layers.png){:.center-img}
 
 * **Tree/Dendogram subsection**. _Height and Edge length normalization_ adjustments on the Tree.
 * **Label subsection**. Settings for maximum font size on the Layer.
@@ -123,7 +123,7 @@ Mastering these in the Options Tab will minimize the post-processing of your anv
 
 Anvi’o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
 
-![an anvi'o options items](../images/png/interactive_interface/interactive-settings-bins-tabs.png){:.center-img}
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-bins-tabs.png){:.center-img}
 
 - __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
 
@@ -156,7 +156,7 @@ The news panel provides information and external links tracking major Anvi'o rel
 - Display context, references, reproducibility instructions, and any other salient details for published figures.
 - This section moved under Settings panel. `Settings > Notes`
 
-![The Description panel in action](../images/png/interactive_interface/interactive-settings-description-panel.png){:.center-img .width-50}
+![The Description panel in action](../../images/interactive_interface/interactive-settings-description-panel.png){:.center-img}
 
 ## Interactive interface tips + tricks
 
