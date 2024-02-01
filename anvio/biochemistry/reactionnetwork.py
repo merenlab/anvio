@@ -4755,8 +4755,6 @@ class PangenomicNetwork(ReactionNetwork):
         self.discard_ties: bool = None
         self.consistent_annotations: bool = None
         self.gene_clusters: Dict[str, GeneCluster] = {}
-        self.bins: Dict[str, GeneClusterBin] = {}
-        self.collection: BinCollection = None
 
     def copy(self) -> PangenomicNetwork:
         """
