@@ -5604,13 +5604,13 @@ class PangenomicNetwork(ReactionNetwork):
 
         return stats
 
-    def print_overview_statistics(self, stats: GenomicNetworkStats = None) -> None:
+    def print_overview_statistics(self, stats: PangenomicNetworkStats = None) -> None:
         """
         Print overview statistics for the genomic metabolic network.
 
         Parameters
         ==========
-        stats : GenomicNetworkStats, None
+        stats : PangenomicNetworkStats, None
             With the default value of None, network statistics will be calculated and printed.
             Alternatively, provided network statistics will be printed without calculating anew.
 
