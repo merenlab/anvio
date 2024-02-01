@@ -4176,16 +4176,15 @@ class GenomicNetwork(ReactionNetwork):
         Each network can contain different genes, KOs, and reactions/metabolites. Merging
         nonredundantly incorporates all of this data as new objects in the new network.
 
-        Objects representing genes or KOs in both networks can have different sets of references:
-        genes can be annotated by different KOs, and KOs can be annotated by different reactions.
+        Objects representing genes, KOs, KEGG modules, KEGG pathways, BRITE hierarchies, and
+        hierarchy categories in both networks can have different sets of references: genes can be
+        annotated by different KOs; KOs can be annotated by different reactions; depending on the
+        KOs in each network, different modules, pathways, and hierarchies/categories can be present.
 
-        Otherwise, object attributes should be consistent between the networks. For instance, the
-        same ModelSEED reactions and metabolites in both networks should have identical attributes.
-        If applicable, both networks should have been annotated with the same protein and metabolite
+        Other object attributes should be consistent between the networks. For instance, the same
+        ModelSEED reactions and metabolites in both networks should have identical attributes. If
+        applicable, both networks should have been annotated with the same protein and metabolite
         abundance data.
-
-        The purpose of this method is to combine different, but potentially overlapping, subnetworks
-        from the same pangenome.
 
         Parameters
         ==========
