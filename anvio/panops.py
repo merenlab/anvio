@@ -1805,13 +1805,56 @@ class Pangraph():
                     groups[group_name] += [node_w]
                     groups_rev[node_w] = group_name
 
+        branches = {}
+        sortable = []
         for g in groups.keys():
-            print([(n, self.position[n]) for n in groups[g]],"\n")
+            # print([(n, self.position[n]) for n in groups[g]],"\n")
+            branch = groups[g]
+
+            start = self.position[branch[0]][0]
+            length = len(branch)
+
+            if start in branches.keys():
+                if length in branches[start].keys():
+                    if branches[start][length].keys():
+                        num = max(branches[start][length].keys()) + 1
+                    else:
+                        num = 1
+
+                    branches[start][length][num] = branch
+                else:
+                    num = 1
+                    branches[start][length] = {num: branch}
+            else:
+                num = 1
+                branches[start] = {length: {num: branch}}
+
+            sortable += [(start, length, num)]
+
 
         left_nodes = set(self.layout_graph.nodes()) - set(groups_rev.keys())
         for n in left_nodes:
-            print([(n, self.position[n])],"\n")
+            start = self.position[n][0]
+            length = 1
 
+            if start in branches.keys():
+                if length in branches[start].keys():
+                    if branches[start][length].keys():
+                        num = max(branches[start][length].keys()) + 1
+                    else:
+                        num = 1
+
+                    branches[start][length][num] = [n]
+                else:
+                    num = 1
+                    branches[start][length] = {num: [n]}
+            else:
+                num = 1
+                branches[start] = {length: {num: [n]}}
+
+            sortable += [(start, length, num)]
+
+        print(sorted(sortable, key=lambda x: x[1], reverse = True))
         exit()
 
                 # if possible_x_change != -1 and do_change == True:
