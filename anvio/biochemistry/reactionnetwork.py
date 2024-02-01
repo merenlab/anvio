@@ -5035,163 +5035,70 @@ class PangenomicNetwork(ReactionNetwork):
 
         return removed
 
-    def purge_kos(self, kos_to_remove: Iterable[str]) -> Dict[str, List]:
-        """
-        Remove any trace of the given KOs from the network.
-
-        Reactions and metabolites that were only associated with removed KOs are purged. Genes that
-        were only associated with removed KOs are purged.
-
-        Parameters
-        ==========
-        kos_to_remove : Iterable[str]
-            KO IDs identifying KOs to remove.
-
-        Returns
-        =======
-        dict
-            This dictionary contains data removed from the network.
-
-            If this method is NOT called from the method, 'purge_reactions', or the method,
-            'purge_gene_clusters', then the dictionary will look like the following:
-            {
-                'ko': [<removed KO objects>],
-                'reaction': [<removed ModelSEEDReaction objects>],
-                'kegg_reaction': [<removed KEGG REACTION IDs>],
-                'ec_number': [<removed EC numbers>],
-                'metabolite': [<removed ModelSEEDCompound objects>],
-                'gene_cluster': [<removed GeneCluster objects>]
-            }
-
-            If this method is called from the method, 'purge_reactions', then the dictionary will
-            look like the following:
-            {
-                'ko': [<removed KO objects>],
-                'reaction': [],
-                'kegg_reaction': [],
-                'ec_number': [],
-                'metabolite': [],
-                'gene_cluster': [<removed GeneCluster objects>]
-            }
-
-            If this method is called from the method, 'purge_gene_clusters', then the dictionary
-            will look like the following:
-            {
-                'ko': [<removed KO objects>],
-                'reaction': [<removed ModelSEEDReaction objects>],
-                'kegg_reaction': [<removed KEGG REACTION IDs>],
-                'ec_number': [<removed EC numbers>],
-                'metabolite': [<removed ModelSEEDCompound objects],
-                'gene_clusters': []
-            }
-        """
-        removed_kos: List[KO] = []
-        for ko_id in kos_to_remove:
-            try:
-                removed_kos.append(self.kos.pop(ko_id))
-            except KeyError:
-                # This occurs when the original method called is 'purge_kos', followed by
-                # 'purge_gene_clusters', followed by this method again -- 'removed_kos' will be
-                # empty. Alternatively, this occurs if the KO in 'kos_to_remove' is not in the
-                # network.
-                pass
-
-        if not removed_kos:
-            return {
-                'metabolite': [],
-                'reaction': [],
-                'kegg_reaction': [],
-                'ec_number': [],
-                'ko': [],
-                'gene_cluster': []
-            }
-
-        reactions_to_remove: List[str] = []
-        for ko in removed_kos:
-            for modelseed_reaction_id in ko.reactions:
-                reactions_to_remove.append(modelseed_reaction_id)
-        reactions_to_remove = list(set(reactions_to_remove))
-        for ko in self.kos.values():
-            reactions_to_spare: List[int] = []
-            for modelseed_reaction_id in ko.reactions:
-                for idx, modelseed_reaction_id_to_remove in enumerate(reactions_to_remove):
-                    if modelseed_reaction_id == modelseed_reaction_id_to_remove:
-                        # The reaction is associated with a retained KO, so do not remove the
-                        # reaction.
-                        reactions_to_spare.append(idx)
-            for idx in sorted(reactions_to_spare, reverse=True):
-                reactions_to_remove.pop(idx)
-        if reactions_to_remove:
-            removed_cascading_down = self.purge_reactions(reactions_to_remove)
-            removed_cascading_down.pop('ko')
-        else:
-            # This method must have been called from the method, 'purge_reactions', because the
-            # reactions that are only associated with the removed KOs were already removed from the
-            # network.
-            removed_cascading_down = {
-                'reaction': [],
-                'kegg_reaction': [],
-                'ec_number': [],
-                'metabolite': []
-            }
-
-        gene_clusters_to_remove: List[str] = []
-        for gene_cluster_id, cluster in self.gene_clusters.items():
-            if cluster.ko.id in kos_to_remove:
-                gene_clusters_to_remove.append(gene_cluster_id)
-        # If this method was called from 'purge_gene_clusters' then the gene clusters that are only
-        # associated with KOs removed here were already removed from the network, and
-        # 'gene_clusters_to_remove' would be empty.
-        if gene_clusters_to_remove:
-            removed_cascading_up = self.purge_gene_clusters(gene_clusters_to_remove)
-            removed_cascading_up.pop('ko')
-        else:
-            removed_cascading_up = {'gene_cluster': []}
-
-        removed = {'ko': removed_kos}
-        removed.update(removed_cascading_down)
-        removed.update(removed_cascading_up)
-        return removed
-
-    def purge_gene_clusters(self, gene_clusters_to_remove: Iterable[str]) -> Dict[str, List]:
+    def _purge_gene_clusters(self, gene_clusters_to_remove: Iterable[str]) -> Dict[str, List]:
         """
         Remove any trace of the given gene clusters from the network.
 
-        KOs, reactions, and metabolites that were only associated with removed gene clusters are
-        purged.
+        KOs, reactions, and metabolites that are only associated with removed gene clusters are
+        purged. KEGG modules, pathways, BRITE hierarchies, and BRITE hierarchy categories only
+        associated with purged KOs are removed.
 
         Parameters
         ==========
         gene_clusters_to_remove : Iterable[str]
-            Gene cluster IDs identifying clusters to remove.
+            Gene cluster IDs to remove.
 
         Returns
         =======
         dict
             This dictionary contains data removed from the network.
 
-            If this method is NOT called from the method, 'purge_kos', then the dictionary will
-            look like the following:
+            If this method is NOT called from the method, '_purge_kos', then the dictionary will
+            look like the following.
             {
                 'gene_cluster': [<removed GeneCluster objects>],
                 'ko': [<removed KO objects>],
+                'module': [<removed KEGGModule objects>],
+                'pathway': [<removed KEGGPathway objects>],
+                'hierarchy': [<removed BRITEHierarchy objects>],
+                'category': [<removed BRITECategory objects>],
                 'reaction': [<removed ModelSEEDReaction objects>],
                 'kegg_reaction': [<removed KEGG REACTION IDs>],
                 'ec_number': [<removed EC numbers>],
                 'metabolite': [<removed ModelSEEDCompound objects>]
             }
 
-            If this method is called from the method, 'purge_kos', then the dictionary will look
-            like the following:
+            If this method is called from the method, '_purge_kos', then the dictionary will look
+            like the following.
             {
                 'gene_cluster': [<removed GeneCluster objects>],
                 'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
                 'reaction': [],
                 'kegg_reaction': [],
                 'ec_number': [],
                 'metabolite': []
             }
+
+            If no gene clusters are removed from the network, then the dictionary will look like the
+            following regardless of calling method.
+            {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
+                'gene_cluster': []
+            }
         """
+        gene_clusters_to_remove = set(gene_clusters_to_remove)
         removed_gene_clusters: List[GeneCluster] = []
         for gene_cluster_id in gene_clusters_to_remove:
             try:
@@ -5207,9 +5114,14 @@ class PangenomicNetwork(ReactionNetwork):
                 'kegg_reaction': [],
                 'ec_number': [],
                 'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
                 'gene_cluster': []
             }
 
+        # Purge KOs from the network that are exclusively assigned to removed gene clusters.
         kos_to_remove: List[str] = []
         for cluster in removed_gene_clusters:
             kos_to_remove.append(cluster.ko.id)
@@ -5222,21 +5134,23 @@ class PangenomicNetwork(ReactionNetwork):
             for ko_id in kos_to_spare:
                 kos_to_remove.remove(ko_id)
         if kos_to_remove:
-            removed_cascading_down = self.purge_kos(kos_to_remove)
+            removed_cascading_down = self._purge_kos(kos_to_remove)
             removed_cascading_down.pop('gene_cluster')
         else:
-            # This method must have been called from the method, 'purge_kos', because the KOs that
+            # This method must have been called from the method, '_purge_kos', because the KOs that
             # are only associated with the removed gene clusters were already removed from the
             # network.
             removed_cascading_down = {
                 'ko': [],
+                'module': [],
+                'pathway': [],
+                'hierarchy': [],
+                'category': [],
                 'reaction': [],
                 'kegg_reaction': [],
                 'ec_number': [],
                 'metabolite': []
             }
-
-        # TODO: remove gene clusters from self.bins
 
         removed = {'gene_cluster': removed_gene_clusters}
         removed.update(removed_cascading_down)
