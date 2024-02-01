@@ -4056,38 +4056,6 @@ class GenomicNetwork(ReactionNetwork):
 
         return first_subnetwork
 
-    def _subset_network_by_modules(self, kegg_modules: Iterable[str]) -> GenomicNetwork:
-        """
-        Subset the network by KOs in requested KEGG modules.
-
-        Parameters
-        ==========
-        kegg_modules : Iterable[str]
-            KEGG modules (of KOs) to subset by ID.
-
-        Returns
-        =======
-        GenomicNetwork
-            New subsetted reaction network.
-        """
-        pass
-
-    def _subset_network_by_brite(self, brite_categories: Iterable[str]) -> GenomicNetwork:
-        """
-        Subset the network by KOs in requested KEGG BRITE hierarchy categories.
-
-        Parameters
-        ==========
-        brite_categories : Iterable[str]
-            KEGG BRITE hierarchy categories (of KOs) to subset.
-
-        Returns
-        =======
-        GenomicNetwork
-            New subsetted reaction network.
-        """
-        pass
-
     def _subset_network_by_genes(self, gcids: Iterable[int]) -> GenomicNetwork:
         """
         Subset the network by genes with requested gene callers IDs.
