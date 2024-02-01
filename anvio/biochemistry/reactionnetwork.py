@@ -4308,11 +4308,11 @@ class GenomicNetwork(ReactionNetwork):
         ==========
         precomputed_counts : Dict[str, int], None
             To spare additional computations that involve loading and parsing the contigs database,
-            this dictionary can contain two pieces of precomputed data: the value for the key,
-            'total_genes', should be the number of genes in the genome; the value for the key,
-            'genes_assigned_kos', should be the number of genes in the genome assigned KOs; the
-            value for the key, 'kos_assigned_genes', should be the number of unique KOs assigned to
-            genes in the genome.
+            this dictionary must contain certain precomputed data: the key, 'total_genes', should
+            have a value of the number of genes in the genome; the key, 'kos_assigned_genes', should
+            have a value of the number of genes in the genome that are assigned KOs; the key,
+            'kos_assigned_genes', should have a value of the number of unique KOs assigned to genes
+            in the genome.
 
         Returns
         =======
