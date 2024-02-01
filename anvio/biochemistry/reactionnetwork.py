@@ -5158,69 +5158,142 @@ class PangenomicNetwork(ReactionNetwork):
 
     def subset_network(
         self,
-        kegg_modules_to_subset: Iterable[str] = None,
-        brite_categories_to_subset: Iterable[str] = None,
-        gene_clusters_to_subset: Iterable[int] = None,
-        kos_to_subset: Iterable[str] = None,
-        reactions_to_subset: Iterable[str] = None,
-        metabolites_to_subset: Iterable[str] = None
+        gene_clusters_to_subset: Union[int, Iterable[int]] = None,
+        kos_to_subset: Union[str, Iterable[str]] = None,
+        modules_to_subset: Union[str, Iterable[str]] = None,
+        pathways_to_subset: Union[str, Iterable[str]] = None,
+        hierarchies_to_subset: Union[str, Iterable[str]] = None,
+        categories_to_subset: Dict[str, List[Tuple[str]]] = None,
+        reactions_to_subset: Union[str, Iterable[str]] = None,
+        metabolites_to_subset: Union[str, Iterable[str]] = None
     ) -> PangenomicNetwork:
         """
         Subset a smaller network from the metabolic network.
 
-        If requested KEGG modules, BRITE categories, gene clusters, KOs, reactions, or metabolites
-        are not present in the network, no error is raised.
+        If requested gene clusters, KOs, KEGG modules, KEGG pathways, KEGG BRITE hierarchies, KEGG
+        BRITE hierarchy categories, reactions, or metabolites are not present in the network, no
+        error is raised.
 
         Subsetted items are not represented by the same objects as in the source network, i.e., new
-        gene cluster, KO, reaction, and metabolite objects are created and added to the subsetted
-        network.
+        gene cluster, KO, reaction, metabolite, and other objects are created and added to the
+        subsetted network.
 
-        Network items (i.e., gene clusters, KOs, reactions, and metabolites) that reference
-        requested items (e.g., gene clusters in the network referencing requested KOs; KOs in the
-        network referencing requested reactions) are added to the subsetted network. KOs (and by
-        extension, gene clusters referencing KOs) that are added to the subsetted network due to
-        references to requested reactions will be missing references to any other unrequested
+        Network items (e.g., gene clusters, KOs, reactions, and metabolites) associated with
+        requested items (e.g., gene clusters in the network referencing requested KOs; requested
+        reactions referencing metabolites in the network) are added to the subsetted network. KOs
+        (and by extension, gene clusters assigned the KOs) that are added to the subsetted network
+        due to references to requested reactions will be missing references to any other unrequested
         reactions. In other words, certain reaction annotations can be selected to the exclusion of
-        others, e.g., a KO encoding two reactions can be "redefined" or "pruned" to encode one
-        requested reaction in the subsetted network; a KO encoding multiple reactions can be pruned
-        to encode only those reactions involving requested metabolites.
-
-        If the 'verbose' attribute of the source 'PangenomicNetwork' object is True, then report to
-        the terminal the identities of requested KEGG modules, BRITE categories, gene clusters, KOs,
-        reactions, and metabolites that are not present in the network.
+        others, e.g., a KO encoding two reactions can be restricted to encode one requested reaction
+        in the subsetted network; a KO encoding multiple reactions can be restricted to encode only
+        those reactions involving requested metabolites.
 
         Parameters
         ==========
-        kegg_modules_to_subset : List[str], None
-            KEGG modules (of KOs) to subset by ID.
+        gene_clusters_to_subset : Union[int, Iterable[int]], None
+            Gene cluster ID(s) to subset.
 
-        brite_categories_to_subset : List[str], None
-            KEGG BRITE hierarchy categories (of KOs) to subset.
+        kos_to_subset : Union[str, Iterable[str]], None
+            KO ID(s) to subset.
 
-        gene_clusters_to_subset : List[int], None
-            Gene clusters to subset by ID.
+        modules_to_subset : List[str], None
+            KEGG module ID(s) to subset, with the effect of giving the KOs in the module(s) to the
+            argument, 'kos_to_subset'. This does not exclude other module annotations of these KOs
+            from the network.
 
-        kos_to_subset : List[str], None
-            KOs to subset by ID.
+        pathways_to_subset : Union[str, Iterable[str]], None
+            KEGG pathway ID(s) to subset, with the effect of giving the KOs in the pathway(s) to the
+            argument, 'kos_to_subset'. This does not exclude other pathway annotations of these KOs
+            from the network.
 
-        reactions_to_subset : List[str], None
-            ModelSEED reactions to subset by ID.
+        hierarchies_to_subset : Union[str, Iterable[str]], None
+            KEGG BRITE hierarchy (or hierarchies) to subset, with the effect of giving the KOs in
+            the hierarchy to the argument, 'kos_to_subset'. This does not exclude other hierarchy
+            annotations of these KOs from the network.
 
-        metabolites_to_subset : List[str], None
-            ModelSEED metabolites to subset by ID.
+        categories_to_subset : Dict[str, List[Tuple[str]]], None
+            KEGG BRITE hierarchy categories to subset, with the effect of giving the KOs in the
+            categories to the argument, 'kos_to_subset'. This does not exclude other category
+            annotations of these KOs from the network. The dictionary argument is keyed by BRITE
+            hierarchy ID and has values that list category tuples. For example, to subset KOs from
+            the network contained in the 'ko00001' 'KEGG Orthology (KO)' hierarchy categories,
+            '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis /
+            Gluconeogenesis [PATH:ko00010]' and '09100 Metabolism >>> 09101 Carbohydrate
+            metabolism >>> 00051 Fructose and mannose metabolism [PATH:ko00051]', the dictionary
+            argument would need to look like the following: {'ko00001': [('09100 Metabolism', '09101
+            Carbohydrate metabolism', '00010 Glycolysis / Gluconeogenesis'), ('09100 Metabolism',
+            '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism
+            [PATH:ko00051]')]}
+
+        reactions_to_subset : Union[str, Iterable[str]], None
+            ModelSEED reaction ID(s) to subset.
+
+        metabolites_to_subset : Union[str, Iterable[str]], None
+            ModelSEED compound ID(s) to subset.
 
         Returns
         =======
         PangenomicNetwork
             New subsetted reaction network.
         """
+        assert (
+            gene_clusters_to_subset or
+            kos_to_subset or
+            modules_to_subset or
+            pathways_to_subset or
+            hierarchies_to_subset or
+            categories_to_subset or
+            reactions_to_subset or
+            metabolites_to_subset
+        )
+
+        if kos_to_subset is None:
+            kos_to_subset: List[str] = []
+        if modules_to_subset is None:
+            modules_to_subset: List[str] = []
+        if pathways_to_subset is None:
+            pathways_to_subset: List[str] = []
+        if hierarchies_to_subset is None:
+            hierarchies_to_subset: List[str] = []
+        if categories_to_subset is None:
+            categories_to_subset: Dict[str, List[Tuple[str]]] = {}
+
+        # Get KOs to subset from requested modules, pathways, hierarchies, and hierarchy categories.
+        for module_id in modules_to_subset:
+            try:
+                module = self.modules[module_id]
+            except KeyError:
+                # The requested module is not in the network.
+                continue
+            kos_to_subset += module.kos
+        for pathway_id in pathways_to_subset:
+            try:
+                pathway = self.pathways[pathway_id]
+            except KeyError:
+                # The requested pathway is not in the network.
+                continue
+            kos_to_subset += pathway.kos
+        for hierarchy_id in hierarchies_to_subset:
+            try:
+                hierarchy = self.hierarchies[hierarchy_id]
+            except KeyError:
+                # The requested hierarchy is not in the network.
+                continue
+            kos_to_subset += hierarchy.kos
+        for hierarchy_id, category_keys in categories_to_subset.items():
+            try:
+                categorization = self.categories[hierarchy_id][category_keys]
+            except KeyError:
+                # The requested category is not in the network.
+                continue
+            category = categorization[-1]
+            kos_to_subset += category.kos
+
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
         # repeat.
         first_subnetwork = None
         for items_to_subset, subset_network_method in (
-            (kegg_modules_to_subset, self._subset_network_by_modules),
-            (brite_categories_to_subset, self._subset_network_by_brite),
             (gene_clusters_to_subset, self._subset_network_by_gene_clusters),
             (kos_to_subset, self._subset_network_by_kos),
             (reactions_to_subset, self._subset_network_by_reactions),
