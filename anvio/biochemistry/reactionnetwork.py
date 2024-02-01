@@ -5402,9 +5402,7 @@ class PangenomicNetwork(ReactionNetwork):
         PangenomicNetwork
             The merged pangenomic reaction network.
         """
-        merged_network = PangenomicNetwork()
-
-        self._merge_network(network, merged_network)
+        merged_network: PangenomicNetwork = self._merge_network(network)
 
         # Add gene clusters to the merged network, first adding clusters present in both source
         # networks, and then adding clusters present exclusively in each source network.
