@@ -56,7 +56,7 @@ We will spend most of our time in the `Settings` panel.
 
 ### Settings panel
 
-<img align="left" height="350px" src="../../images/svg/interactive_interface_tabs.svg" style="margin-right: 20px;">
+<img align="left" height="350px" src="../../images/interactive_interface_tabs.svg" style="margin-right: 20px;">
 
 If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
 
