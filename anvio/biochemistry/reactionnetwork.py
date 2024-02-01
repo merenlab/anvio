@@ -4435,20 +4435,19 @@ class GenomicNetwork(ReactionNetwork):
         overwrite: bool = False,
         objective: str = None,
         remove_missing_objective_metabolites: bool = False,
-        # record_bins: Tuple[str] = ('gene', ),
         indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         """
         Export the network to a metabolic model file in JSON format.
 
-        All information from the network is included in the JSON so that the file can by imported by
-        anvi'o as a GenomicNetwork object containing the same information.
+        All information from the network is included in the JSON so that the file can be loaded as a
+        GenomicNetwork object containing the same information.
 
         Parameters
         ==========
         path : str
-            output JSON file path
+            Output JSON file path.
 
         overwrite : bool, False
             Overwrite the JSON file if it already exists.
@@ -4467,19 +4466,11 @@ class GenomicNetwork(ReactionNetwork):
             If True, remove metabolites from the JSON objective that are not produced or consumed in
             the reaction network. FBA fails with metabolites outside the network.
 
-        record_bins : tuple, ('gene', )
-            Record bin membership in JSON entries, if a collection of bins is present in the
-            reaction network. By default, bin membership is only recorded for genes with the
-            argument, ('gene', ). 'reaction' and 'metabolite' can also be provided in a tuple
-            argument (e.g., ('reaction', ) or ('metabolite', 'reaction', 'gene')) to likewise record
-            in which bins the reaction and metabolite entries occur. To not record bins at all, pass
-            either an empty tuple or None.
-
         indent : int, 2
-            spaces of indentation per nesting level in JSON file
+            Spaces of indentation per nesting level in JSON file.
 
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
+            Prints transient progress information to the terminal.
         """
         progress.new("Constructing JSON")
         progress.update("Setting up")
@@ -4494,7 +4485,9 @@ class GenomicNetwork(ReactionNetwork):
                 self.remove_missing_objective_metabolites(objective_dict)
             json_reactions.append(objective_dict)
         elif objective != None:
-            raise ConfigError(f"Anvi'o does not recognize an objective with the name, '{objective}'.")
+            raise ConfigError(
+                f"Anvi'o does not recognize an objective with the name, '{objective}'."
+            )
 
         progress.update("Genes")
         reaction_genes: Dict[str, List[str]] = {}
@@ -4504,11 +4497,51 @@ class GenomicNetwork(ReactionNetwork):
             json_genes.append(gene_entry)
             gcid_str = str(gcid)
             gene_entry['id'] = gcid_str
-            # Record KO IDs and annotation e-values in the annotation section of the gene entry.
+
+            # Record KO IDs, annotation e-values, and KO classifications in the annotation section
+            # of the gene entry.
             annotation = gene_entry['annotation']
             annotation['ko'] = annotation_kos = {}
             for ko_id, ko in gene.kos.items():
-                annotation_kos[ko_id] = str(gene.e_values[ko_id])
+                annotation_kos[ko_id] = annotation_ko = {
+                    'e_value': str(gene.e_values[ko_id]),
+                    'modules': {},
+                    'pathways': {},
+                    'hierarchies': {}
+                }
+
+                # Record KEGG modules containing the KO.
+                annotation_ko_modules = annotation_ko['modules']
+                for module_id, module in ko.modules.items():
+                    module_annotation = module.name
+                    if not module.pathways:
+                        annotation_ko_modules[module_id] = module_annotation
+                        continue
+                    # Cross-reference KEGG pathways containing the module.
+                    module_annotation += "[pathways:"
+                    for pathway in module.pathways:
+                        module_annotation += f" {pathway.id}"
+                    module_annotation += "]"
+                    annotation_ko_modules[module_id] = module_annotation
+
+                # Record KEGG pathways containing the KO.
+                annotation_ko_pathways = annotation_ko['pathways']
+                for pathway_id, pathway in ko.pathways.items():
+                    annotation_ko_pathways[pathway_id] = pathway.name
+
+                # Record membership of the KO in KEGG BRITE hierarchies.
+                annotation_ko_hierarchies: Dict[str, List[str]] = annotation_ko['hierarchies']
+                for hierarchy_id, categorizations in ko.hierarchies.items():
+                    hierarchy_name = self.hierarchies[hierarchy_id].name
+                    annotation_ko_hierarchies[
+                        f"{hierarchy_id}: {hierarchy_name}"
+                    ] = annotation_ko_categories = []
+                    for categorization in categorizations.values():
+                        category = categorization[-1]
+                        category_id = category.id
+                        annotation_ko_categories.append(category_id[len(hierarchy_id) + 2:])
+
+                # Set up dictionaries needed to fill out reaction entries.
                 for modelseed_reaction_id in ko.reactions:
                     try:
                         reaction_genes[modelseed_reaction_id].append(gcid_str)
@@ -4519,6 +4552,23 @@ class GenomicNetwork(ReactionNetwork):
                     except KeyError:
                         reaction_kos[modelseed_reaction_id] = [ko]
 
+                if not self.proteins:
+                    continue
+
+                # A protein section is added if the network has been annotated with protein
+                # abundances.
+                annotation['protein'] = annotation_protein = {
+                    'id': None,
+                    'abundances': {}
+                }
+                if gene.protein:
+                    # Record abundances of the protein encoded by the gene.
+                    protein = gene.protein
+                    annotation_protein['id'] = protein.id
+                    annotation_protein_abundances = annotation_protein['abundances']
+                    for sample_name, abundance_value in protein.abundances.items():
+                        annotation_protein_abundances[sample_name] = abundance_value
+
         progress.update("Reactions")
         compound_compartments: Dict[str, Set[str]] = {}
         for modelseed_reaction_id, reaction in self.reactions.items():
@@ -4527,7 +4577,9 @@ class GenomicNetwork(ReactionNetwork):
             reaction_entry['id'] = modelseed_reaction_id
             reaction_entry['name'] = reaction.modelseed_name
             metabolites = reaction_entry['metabolites']
-            for compound, compartment, coefficient in zip(reaction.compounds, reaction.compartments, reaction.coefficients):
+            for compound, compartment, coefficient in zip(
+                reaction.compounds, reaction.compartments, reaction.coefficients
+            ):
                 modelseed_compound_id = compound.modelseed_id
                 metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
                 try:
@@ -4535,9 +4587,13 @@ class GenomicNetwork(ReactionNetwork):
                 except KeyError:
                     compound_compartments[modelseed_compound_id] = set(compartment)
             if not reaction.reversibility:
-                # By default, the reaction entry was set up to be reversible; here make it irreversible.
+                # By default, the reaction entry was set up to be reversible; here make it
+                # irreversible.
                 reaction_entry['lower_bound'] = 0.0
-            reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_genes[modelseed_reaction_id]])
+            reaction_entry['gene_reaction_rule'] = " or ".join(
+                [gcid for gcid in reaction_genes[modelseed_reaction_id]]
+            )
+
             notes = reaction_entry['notes']
             # Record gene KO annotations which aliased the reaction via KEGG REACTION or EC number.
             notes['ko'] = ko_notes = {}
@@ -4577,7 +4633,8 @@ class GenomicNetwork(ReactionNetwork):
                 metabolite_entry['name'] = modelseed_compound_name
                 metabolite_entry['compartment'] = compartment
                 # Compounds without a formula have a nominal charge of 10000000 in the ModelSEED
-                # compounds database, which is replaced by None in the reaction network and 0 in the JSON.
+                # compounds database, which is replaced by None in the reaction network and 0 in the
+                # JSON.
                 metabolite_entry['charge'] = charge if charge is not None else 0
                 metabolite_entry['formula'] = formula if formula is not None else ""
                 metabolite_entry['annotation']['kegg.compound'] = kegg_compound_aliases
