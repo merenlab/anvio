@@ -1734,7 +1734,7 @@ class Pangraph():
 
         self.layout_graph = nx.DiGraph(self.edmonds_graph)
         nx.set_edge_attributes(self.layout_graph, values=1, name='weight')
-        self.layout_graph.remove_nodes_from(['start','stop'])
+        self.layout_graph.remove_node('stop')
         layout_graph_nodes = list(self.layout_graph.nodes())
         layout_graph_successors = {layout_graph_node: list(self.layout_graph.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
@@ -1780,6 +1780,37 @@ class Pangraph():
                 # print(i, j, self.position[i][0], self.position[j][0])
                 print('Sanity Error.')
                 exit()
+
+        dfs_list = list(nx.dfs_edges(self.layout_graph, source='start'))
+
+        # print(dfs_list)
+
+        group = 0
+        degree = dict(self.layout_graph.degree())
+        groups = {}
+        groups_rev = {}
+
+        for node_v, node_w in dfs_list:
+            if node_v != 'start' and degree[node_v] == 2 and degree[node_w] == 2:
+
+                if node_v not in groups_rev.keys():
+                    group_name = 'GCG_' + str(group).zfill(8)
+                    groups[group_name] = [node_v, node_w]
+                    groups_rev[node_v] = group_name
+                    groups_rev[node_w] = group_name
+                    group += 1
+
+                else:
+                    group_name = groups_rev[node_v]
+                    groups[group_name] += [node_w]
+                    groups_rev[node_w] = group_name
+
+        for g in groups.keys():
+            print([(n, self.position[n]) for n in groups[g]],"\n")
+
+        left_nodes = set(self.layout_graph.nodes()) - set(groups_rev.keys())
+        for n in left_nodes:
+            print([(n, self.position[n])],"\n")
 
         exit()
 
