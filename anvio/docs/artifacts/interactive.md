@@ -52,11 +52,11 @@ The interactive interface has two major areas of interaction:
 * The space for visualization in the middle area,
 * The Settings panel on the left of the screen,
 
-We will spend most of our time in the 'Settings' panel.
+We will spend most of our time in the `Settings` panel.
 
 ### Settings panel
 
-<img align="left" height="500px" src="../images/svg/sidebar.svg" style="width: 50px; margin-right: 20px;">
+<img align="left" height="350px" src="../images/svg/interactive_interface_tabs.svg" style="margin-right: 20px;">
 
 If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
 
@@ -64,15 +64,15 @@ But before we start talking about these tabs, it is worthwhile to mention that a
 
 Through these controls you can,
 
-* __Create or refresh__ the display when necessary using the <ins>D</ins>raw button (or just press <ins>D</ins>),
+* __Create or refresh__ the display when necessary using the Draw button (or just press ***D***),
 
 * __Load or Save__ the current state of the display using the buttons below the State section,
 
-* __Download your display as an SVG file__ (or just press <ins>E</ins>),
+* __Download your display as an SVG file__ (or just press ***E***),
 
 * __Center__ the display.
 
-💡  Before talking about Tabs, here's a <ins> useful tip</ins>: you can conveniently switch between tabs using your keypad. For instance, pressing '1' will navigate you to the Main tab, '2' to the Options tab, and so forth.
+💡  Before talking about Tabs, here's a  *useful tip*: you can conveniently switch between tabs using your keypad. For instance, pressing `1` will navigate you to the Main tab, `2` to the Options tab, and so forth.
 
 For more tips you can check out the [Tips + Tricks](#interactive-interface-tips--tricks) section at the end of this page.
 
@@ -156,7 +156,7 @@ The news panel provides information and external links tracking major Anvi'o rel
 - Display context, references, reproducibility instructions, and any other salient details for published figures.
 - This section moved under Settings panel. `Settings > Notes`
 
-![The Description panel in action](../images/png/interactive_interface/interactive-settings-description-panel.png){:.center-img}
+![The Description panel in action](../images/png/interactive_interface/interactive-settings-description-panel.png){:.center-img .width-50}
 
 ## Interactive interface tips + tricks
 
