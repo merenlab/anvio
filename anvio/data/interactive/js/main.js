@@ -2875,7 +2875,6 @@ function processState(state_name, state) {
     }
 
     populateColorDicts();
-    buildLegendTables();
 
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
