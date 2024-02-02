@@ -220,8 +220,8 @@ class SanityCheck(object):
                 if scg_taxonomy_database_version != self.ctx.scg_taxonomy_database_version:
                     self.progress.reset()
                     raise ConfigError("The SCG taxonomy database version on your computer (%s) is different than the SCG taxonomy database "
-                                      "version to populate your contigs database (%s). Please consider re-running the program "
-                                      "`anvi-run-scg-taxonomy` on your contigs-db." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
+                                      "version to populate your contigs database (%s). Please re-run the program `anvi-run-scg-taxonomy` "
+                                      "on your contigs-db." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
