@@ -59,6 +59,10 @@ class FAMSA:
         sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
         cmd_line = [self.program_name, 'STDIN', 'STDOUT']
 
+        additional_params = self.get_additional_params_from_shell()
+        if additional_params:
+            cmd_line += additional_params
+
         output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
         if output[0:5] != 'FAMSA' or output[-6:].strip() != "Done!":
@@ -101,3 +105,12 @@ class FAMSA:
         """
 
         raise ConfigError("Default alignment option for Famsa is not implemented :/")
+
+
+    def get_additional_params_from_shell(self):
+        """Get additional user-defined params from environmental variables"""
+
+        if 'FAMSA_PARAMS' in os.environ:
+            return os.environ['FAMSA_PARAMS'].split()
+        else:
+            return None

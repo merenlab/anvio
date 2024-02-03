@@ -60,6 +60,10 @@ class Muscle:
         sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
         cmd_line = [self.program_name, '-quiet']
 
+        additional_params = self.get_additional_params_from_shell()
+        if additional_params:
+            cmd_line += additional_params
+
         output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
         if not (len(output) and output[0] == '>'):
@@ -117,6 +121,10 @@ class Muscle:
 
         cmd_line = [self.program_name, '-in', input_file_path, '-out', output_file_path]
 
+        additional_params = self.get_additional_params_from_shell()
+        if additional_params:
+            cmd_line += additional_params
+
         output = utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
@@ -136,3 +144,12 @@ class Muscle:
             shutil.rmtree(tmp_dir)
 
         return alignments
+
+
+    def get_additional_params_from_shell(self):
+        """Get additional user-defined params from environmental variables"""
+
+        if 'MUSCLE_PARAMS' in os.environ:
+            return os.environ['MUSCLE_PARAMS'].split()
+        else:
+            return None
