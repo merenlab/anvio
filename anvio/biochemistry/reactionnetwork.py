@@ -29,6 +29,7 @@ from argparse import Namespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Union, Iterable
 
+import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.tables as tables
