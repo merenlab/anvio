@@ -305,6 +305,7 @@ class KeggContext(object):
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
+        self.binary_relation_data_dir = os.path.join(self.kegg_data_dir, "binary_relations")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -315,6 +316,7 @@ class KeggContext(object):
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
+        self.kegg_binary_relation_files = {('KO', 'EC'): "ko2ec.xl", ('KO', 'RN'): "ko2rn.xl"}
 
         if self.user_input_dir:
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
@@ -552,8 +554,6 @@ class KeggSetup(KeggContext):
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
         self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
-        self.expect_modeling_files_in_archive = True if 'no_modeling_data' in self.snapshot_dict[self.target_snapshot].keys() and \
-                                                    (not self.snapshot_dict[self.target_snapshot]['no_modeling_data']) else False
 
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
@@ -664,8 +664,9 @@ class KeggSetup(KeggContext):
         utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
 
         self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name, no_modeling_is_ok = (not self.expect_modeling_files_in_archive))
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        archive_contains_binary_relations = self.check_archive_for_binary_relations(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir):
@@ -678,6 +679,14 @@ class KeggSetup(KeggContext):
                 self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
                                  "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
                                  "downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+
+            if not archive_contains_binary_relations and not self.skip_binary_relations:
+                self.run.warning(
+                    "The KEGG data archive does not contain the binary relation files needed for "
+                    "`anvi-reaction-network`. This is not a problem, and KEGG setup proceeded "
+                    "without it. Binary relation files are guaranteed to be set up when "
+                    "downloading the latest version of KEGG with `anvi-setup-kegg-data`."
+                )
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -735,6 +744,42 @@ class KeggSetup(KeggContext):
         return is_brite_included
 
 
+    def check_archive_for_binary_relations(self, unpacked_archive_path):
+        """
+        Check the archive for the binary relations directory and files.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        binary_relation_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.binary_relation_data_dir)
+        )
+        if os.path.isdir(self.binary_relation_data_dir):
+            is_binary_relation_dir_included = True
+        else:
+            is_binary_relation_dir_included = False
+            if anvio.DEBUG and not self.skip_binary_relations:
+                self.run.warning(
+                    f"The KEGG archive does not contain the following optional binary relations "
+                    f"directory needed for `anvi-reaction-network`: {binary_relation_data_dir}"
+                )
+
+        if is_binary_relation_dir_included:
+            missing_files = []
+            for file in self.kegg_binary_relation_files.values():
+                path = os.path.join(binary_relation_data_dir, file)
+                if not os.path.isfile(path):
+                    missing_files.append(file)
+            if anvio.DEBUG and missing_files:
+                self.run.warning(
+                    "The following binary relation files expected in an up-to-date anvi'o KEGG "
+                    f"installation are missing from the directory, '{binary_relation_data_dir}', "
+                    f"in the archive: {', '.join(missing_files)}"
+                )
+
+        return is_binary_relation_dir_included
+
+
     def setup_kegg_snapshot(self):
         """This is the default setup strategy in which we unpack a specific KEGG archive.
 
@@ -762,7 +807,7 @@ class KeggSetup(KeggContext):
                              "has been kept. You may want to remove it later.")
 
 
-    def kegg_archive_is_ok(self, unpacked_archive_path, no_modeling_is_ok = False):
+    def kegg_archive_is_ok(self, unpacked_archive_path):
         """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
 
         Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
@@ -779,9 +824,6 @@ class KeggSetup(KeggContext):
         ==========
         unpacked_archive_path : str
             Path to the unpacked archive directory
-        no_modeling_is_ok : boolean
-            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the
-            previous versions of KEGG archives that do not include this data.
         """
 
         is_ok = True
@@ -821,29 +863,6 @@ class KeggSetup(KeggContext):
                     if anvio.DEBUG:
                         self.run.warning(f"The KEGG archive does not contain the following expected `hmmpress` output: "
                                          f"{path_to_expected_hmmpress_file}")
-
-        # check modeling files
-        # this section needs to be kept up to date with any changes to requirements in reactionnetwork.py
-        # which is a bit silly, but since these two classes don't know about each other it is the workaround we need :(
-        path_to_modeling_files_in_archive = os.path.join(path_to_kegg_in_archive, "KO_REACTION_NETWORK")
-        expected_modeling_files = reactionnetwork.KODatabase.expected_files
-        missing_modeling_files = []
-        for f in expected_modeling_files:
-            path_to_f_in_archive = os.path.join(path_to_modeling_files_in_archive, f)
-            if not os.path.exists(path_to_f_in_archive):
-                is_ok = False or no_modeling_is_ok
-                missing_modeling_files.append(f)
-                if anvio.DEBUG:
-                    self.run.warning(f"The KEGG archive does not contain the following expected modeling file: "
-                                     f"{path_to_f_in_archive}")
-
-        if no_modeling_is_ok and missing_modeling_files:
-            self.run.warning("Modeling files are missing from the KEGG archive you have set up. However, somebody "
-                             "upstream thinks this is okay. Likely you are setting up an early KEGG snapshot version "
-                             "that doesn't contain this data. That's fine. But please keep in mind that you won't be "
-                             "able to run metabolic modeling. If this is a problem, you should either pick a later "
-                             "KEGG snapshot, or download the modeling data independently using the command "
-                             "`anvi-setup-kegg-data --mode modeling`.")
 
         return is_ok
 
@@ -1432,7 +1451,8 @@ class KOfamDownload(KeggSetup):
 
 
 class ModulesDownload(KeggSetup):
-    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES.
+    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES,
+    and reaction networks, which require MODULES, BRITE, and binary relation files.
 
     Parameters
     ==========
@@ -1452,6 +1472,7 @@ class ModulesDownload(KeggSetup):
         self.progress = progress
         self.skip_init = skip_init
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.skip_binary_relations = A('skip_binary_relations')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
         # we also need the init of the superclass
@@ -1463,10 +1484,20 @@ class ModulesDownload(KeggSetup):
                              "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
                              "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
 
+        if (not self.download_from_kegg) and self.skip_binary_relations:
+            self.run.warning(
+                "Just so you know, the --skip-binary-relations flag does not do anything (besides "
+                "suppress some warning output) when used without the -D option. You are setting up "
+                "from an archived KEGG snapshot which may already include binary relation files, "
+                "and if it does, this data will not be removed. `anvi-reaction-network` depends on "
+                "these files and will let you know if they're missing."
+            )
+
         # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+        self.kegg_binary_relations_download_path = "https://www.genome.jp/kegg-bin/show?file="
         # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
@@ -1476,6 +1507,8 @@ class ModulesDownload(KeggSetup):
         if not self.skip_brite_hierarchies:
             expected_files_for_modules.append(self.kegg_brite_hierarchies_file)
             expected_files_for_modules.append(self.brite_data_dir)
+        if not self.skip_binary_relations:
+            expected_files_for_modules.append(self.binary_relation_data_dir)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
             self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
@@ -1485,6 +1518,10 @@ class ModulesDownload(KeggSetup):
             filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
             if not self.skip_brite_hierarchies:
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
+            if not self.skip_binary_relations:
+                filesnpaths.gen_output_directory(
+                    self.binary_relation_data_dir, delete_if_exists=args.reset
+                )
 
 
     def download_kegg_module_file(self):
@@ -1656,7 +1693,7 @@ class ModulesDownload(KeggSetup):
 
 
     def setup_modules_data(self):
-        """This is a driver function which executes the setup process for pathway prediction data from KEGG."""
+        """This is a driver function which executes the setup process for pathway prediction and reaction network data from KEGG."""
 
         # FIXME: we will have to move user setup to a completely separate program at some point
         # PS. user setup related functions belong to the superclass for now
@@ -1676,13 +1713,21 @@ class ModulesDownload(KeggSetup):
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
                     self.download_brite_hierarchies()
                     self.confirm_downloaded_brite_hierarchies()
+
+                if not self.skip_binary_relations:
+                    self.download_binary_relations()
+                    self.confirm_downloaded_binary_relations()
             else:
                 # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
                 self.confirm_downloaded_modules()
+
                 if not self.skip_brite_hierarchies:
                     self.process_brite_hierarchy_of_hierarchies()
                     self.confirm_downloaded_brite_hierarchies()
+
+                if not self.skip_binary_relations:
+                    self.confirm_downloaded_binary_relations()
 
             # process the modules file into a database
             if not self.only_download:
@@ -1861,6 +1906,46 @@ class ModulesDownload(KeggSetup):
             # verify that the whole json file was downloaded
             filesnpaths.is_file_json_formatted(file_path)
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
+
+
+    ###### Binary relations-related functions below ######
+    def download_binary_relations(self):
+        """
+        Download binary relations files relating the accession of a type of KEGG data, such as KOs,
+        to related accessions of another type of data, such as EC numbers.
+        """
+        for file in self.kegg_binary_relation_files.values():
+            url = f'{self.kegg_binary_relations_download_path}{file}'
+            dest = os.path.join(self.binary_relation_data_dir, file)
+            try:
+                utils.download_file(url, dest, progress=self.progress, run=self.run)
+            except Exception as e:
+                print(e)
+                raise ConfigError(
+                    f"Anvi'o failed to download the KEGG binary relations file, '{file}', from the "
+                    "KEGG website. Something likely changed on the KEGG end. Please contact the "
+                    "developers to see if this is a fixable issue. If it isn't, we may be able to "
+                    "provide you with a legacy KEGG data archive that you can use to set up KEGG "
+                    "with the --kegg-archive flag."
+                )
+
+
+    def confirm_downloaded_binary_relations(self):
+        """Verify that all expected binary relations files were downloaded."""
+        missing_files = []
+        for file in self.kegg_binary_relation_files.values():
+            path = os.path.join(self.binary_relation_data_dir, file)
+            if not os.path.exists(path):
+                missing_files.append(file)
+        if missing_files:
+            raise ConfigError(
+                "The following binary relation files were not found in the expected directory, "
+                f"'{self.binary_relation_data_dir}', so the KEGG data should be re-downloaded: "
+                f"{', '.join(missing_files)}"
+            )
+        self.run.info(
+            "Number of KEGG binary relations files found", len(self.kegg_binary_relation_files)
+        )
 
 
 class RunKOfams(KeggContext):
@@ -3041,7 +3126,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             estimation_mode = "List of enzymes"
         elif self.pan_db_path:
             estimation_mode = "Gene cluster bins in a pangenome"
-        
+
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
 
@@ -4578,21 +4663,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         return 0
                     return enzyme_hit_counts[step_string]
 
-    
+
     def are_enzymes_indirect_alternatives_within_step(self, enzyme_list: list, step: str):
-        """An overly simplistic function to determine whether the relationship between the provided alternative 
+        """An overly simplistic function to determine whether the relationship between the provided alternative
         enzymes in the given step is indirect.
-        
-        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by 
+
+        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by
         a character symbolizing a more complex relationship. That is, they are not separated only by commas and other enzymes (which
         indicates a direct relationship, as in the two enzymes are synonymous in the context of the metabolic pathway).
 
-        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include 
-        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two 
-        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in 
+        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include
+        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two
+        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in
         an alternative branch of the step.
 
-        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will 
+        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will
         wrongly suggest they are direct alternatives. However, it is meant to be used only for identifying putative edge cases
         for the `get_dereplicated_enzyme_hits_for_step_in_module()` function, and it works well enough for that.
 
@@ -4609,10 +4694,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             True if the list of provided enzymes contains those that are indirect alternatives within the given step.
         """
 
-        enzyme_data = {e : {'index': step.index(e), 
-                                    'direct_alts': [], 
+        enzyme_data = {e : {'index': step.index(e),
+                                    'direct_alts': [],
                                     'indirect_alts': []} for e in enzyme_list}
-        
+
         contains_indirect = False
         # get enzyme-specific list of alternatives
         for e in enzyme_list:
@@ -4621,12 +4706,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     e_index = enzyme_data[e]['index']
                     z_index = enzyme_data[z]['index']
                     indirect_alternatives = False
-                    
+
                     # indirect alts have a space, parentheses, or plus/minus sign between them
                     for c in step[min(e_index, z_index):max(e_index, z_index)]:
                         if c in [' ', '(', ')', '+', '-']:
                             indirect_alternatives = True
-                    
+
                     if indirect_alternatives:
                         enzyme_data[e]['indirect_alts'].append(z)
                         contains_indirect = True
@@ -4635,14 +4720,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return contains_indirect
 
-    
+
     def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str, mnum: str):
-        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
+        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the
         same gene removed, for the provided step in a metabolic pathway.
 
-        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the 
+        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the
         same reaction, and we don't want these annotations to be double-counted in the stepwise copy number calculation.
-        
+
         PARAMETERS
         ==========
         meta_dict_for_mnum : dictionary of dictionaries
@@ -4651,7 +4736,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             which step in the module to resolve alternative enzymes for, passed as a definition string for the step.
         mnum : string
             module ID (used only for warning output)
-        
+
         RETURNS
         =======
         derep_enzyme_hits : dictionary
@@ -4674,7 +4759,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # and for all other annotations, we reduce the count of hits by one
                 for acc in enzymes[1:]:
                     derep_enzyme_hits[acc] -= 1
-                
+
                 if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on):
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
@@ -5125,7 +5210,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def init_hits_for_pangenome(self, gene_cluster_list: list):
         """This function loads enzyme annotations from the pangenome for use by downstream metabolism estimation.
-        
+
         For each gene cluster, it takes the most common function from each annotation source relevant to the modules.
 
         PARAMETERS
@@ -5138,7 +5223,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         enzyme_cluster_split_contig : list
             (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
         """
-        
+
         pan_super = PanSuperclass(self.args)
         pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)
         pan_super.init_gene_clusters_functions_summary_dict(source_list = self.annotation_sources_to_use, gene_clusters_of_interest = gene_cluster_list)
@@ -5158,7 +5243,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def estimate_metabolism_for_pangenome_bins(self, enzyme_cluster_split_contig, cluster_collection):
         """Estimates metabolism individually on each bin in a pangenome.
-        
+
         PARAMETERS
         ==========
         enzyme_cluster_split_contig : list
@@ -5167,7 +5252,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         cluster_collection : dictionary
             maps bin names in the collection to the list of gene clusters in each bin
         """
-        
+
         gc_bins_metabolism_superdict = {}
         gc_bins_ko_superdict = {}
         num_bins = len(cluster_collection)
@@ -5198,7 +5283,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.progress.end()
 
-        return gc_bins_metabolism_superdict, gc_bins_ko_superdict        
+        return gc_bins_metabolism_superdict, gc_bins_ko_superdict
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
