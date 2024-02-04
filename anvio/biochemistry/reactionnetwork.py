@@ -6023,6 +6023,301 @@ class JSONStructure:
             }
         }
 
+class KEGGData:
+    """
+    This object handles KEGG reference data used in reaction networks.
+
+    Attributes
+    ==========
+    kegg_context : anvio.kegg.KeggContext
+        This contains anvi'o KEGG database attributes, such as filepaths.
+
+    modules_db_hash : str
+        The unique identifier of the anvi'o modules database, derived from its contents.
+
+    ko_data : Dict[str, Dict[str, Any]]
+        This dictionary relates KO IDs to various data, as shown in the following schematic.
+        ko_data = {
+            <KO 1 ID>:
+                {
+                    'EC':   (<EC numbers>),
+                    'RN':   (<KEGG reaction IDs>),
+                    'MOD':  (<KEGG module IDs>),
+                    'PTH':  (<KEGG pathway IDs>),
+                    'HIE':  {
+                        <BRITE hierarchy ID A>: (
+                            (<hierarchical category names X, Y, Z, ... classifying KO 1>),
+                            (<hierarchical category names A, B, C, ... classifying KO 1>),
+                            ...
+                        ),
+                        <BRITE hierarchy ID B>: (...),
+                        ...
+                    }
+                },
+            <KO 2>: {...},
+            ...
+        }
+
+    module_data : Dict[str, Dict[str, Any]]
+        This dictionary relates module IDs to module names and pathways, as shown in the following
+        schematic.
+        module_data = {
+            <module 1 ID>:
+                {
+                    'NAME': <module 1 name>,
+                    'PTH':  (<KEGG PATHWAY IDS>)
+                },
+            <module 2 ID>: {...},
+            ...
+        }
+
+    pathway_data : Dict[str, Dict[str, Any]]
+        This dictionary relates pathway IDs to pathway names and equivalent categories in the BRITE
+        hierarchy, 'ko00001', as shown in the following schematic.
+        pathway_data = {
+            <pathway 1 ID>:
+                {
+                    'NAME': <pathway 1 name>,
+                    'CAT':  (<hierarchical category names X, Y, Z equivalent to pathway 1>)
+                },
+            <pathway 2 ID>: {...},
+            ...
+        }
+
+    hierarchy_data : Dict[str, str]
+        This dictionary relates BRITE hierarchy IDs to hierarchy names.
+    """
+    def __init__(
+        self,
+        kegg_dir: str = None,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
+        """
+        Set up the KEGG data in attributes designed for reaction network construction.
+
+        Parameters
+        ==========
+        kegg_dir : str, None
+            The directory containing the anvi'o KEGG database. The default argument of None expects
+            the KEGG database to be set up in the default directory used by the program
+            `anvi-setup-kegg-data`.
+        """
+        args = argparse.Namespace()
+        args.kegg_data_dir = kegg_dir
+        self.kegg_context = kegg.KeggContext(args)
+
+        missing_paths = self.check_for_binary_relation_files()
+        if missing_paths:
+            raise ConfigError(
+                "Unfortunately, the KEGG database needs to be reinstalled, because the following "
+                "KEGG binary relation files used in reaction networks were not found: "
+                f"{', '.join(missing_paths)}"
+            )
+
+        utils.is_kegg_modules_db(self.kegg_context.kegg_modules_db_path)
+
+        self.module_data: Dict[str, Dict[str, Any]] = {}
+        self._load_module_data()
+
+        self.ko_data: Dict[str, Dict[str, Any]] = {}
+        self._load_ko_binary_relation_data()
+        self._load_ko_classification_data()
+
+        self.pathway_data: Dict[str, Dict[str, Any]] = {}
+        self._load_pathway_data()
+
+        self.hierarchy_data: Dict[str, str] = {}
+        self._load_hierarchy_data()
+
+    def check_for_binary_relation_files(self) -> List[str]:
+        """
+        Check for expected binary relation files.
+
+        Returns
+        =======
+        List[str]
+            The paths of missing binary relation files not found at the expected locations.
+        """
+        missing_paths = []
+        for file in self.kegg_context.kegg_binary_relation_files:
+            path = os.path.join(self.kegg_context.binary_relation_data_dir, file)
+            if not os.path.exists(path):
+                missing_paths.append(path)
+
+        return missing_paths
+
+    def _load_module_data(self) -> None:
+        """
+        Load module data into 'module_data'.
+
+        Returns
+        =======
+        None
+        """
+        modules_db = kegg.ModulesDatabase(
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+        )
+
+        self.modules_db_hash = modules_db.db.get_meta_value('hash')
+
+        modules_names_table = modules_db.db.get_table_as_dataframe(
+            'modules',
+            where_clause='data_name="NAME"',
+            columns_of_interest=['module', 'data_value']
+        ).rename({'module': 'module_id', 'data_value': 'module_name'}, axis=1)
+        modules_pathways_table = modules_db.db.get_table_as_dataframe(
+            'modules',
+            where_clause='data_name="PATHWAY"',
+            columns_of_interest=['module', 'data_value']
+        ).rename({'module': 'module_id','data_value': 'pathway_id'}, axis=1)
+
+        module_data = self.module_data
+        for key, module_table in modules_names_table.merge(
+            modules_pathways_table, how='left', on='module_id'
+        ).groupby(('module_id', 'module_name')):
+            module_id = key[0]
+            module_name = key[1]
+            module_data[module_id] = module_dict = {}
+            module_dict['NAME'] = module_name
+            module_dict['PTH'] = tuple(sorted(module_table['pathway_id']))
+
+        modules_db.disconnect()
+
+    def _load_ko_binary_relation_data(self) -> None:
+        """
+        Load KO binary relations to EC numbers and KEGG reactions into 'ko_data'.
+
+        Returns
+        =======
+        None
+        """
+        ko_relations = self.ko_relations
+        for binary_relation, file in self.kegg_context.kegg_binary_relation_files.items():
+            binary_relation_path = os.path.join(self.kegg_context.binary_relation_data_dir, file)
+            binary_relation_df = pd.read_csv(binary_relation_path, sep='\t', header=0, index_col=0)
+
+            col_name = binary_relation[1]
+            prefix_length = len(f'[{col_name}:')
+            for line in binary_relation_df.itertuples():
+                ko_id: str = line.Index
+                try:
+                    ko_relations_dict = ko_relations[ko_id]
+                except KeyError:
+                    ko_relations[ko_id] = ko_relations_dict = {}
+                entry: str = getattr(line, col_name)
+                # An entry has a format like '[EC:1.1.1.18 1.1.1.369]' or '[RN:R00842]'.
+                ko_relations_dict[col_name] = tuple(entry[prefix_length:-1].split())
+
+    def _load_ko_classification_data(self) -> None:
+        """
+        Load KO classifications within KEGG modules, pathways, and hierarchies into 'ko_data'.
+
+        Returns
+        =======
+        None
+        """
+        modules_db = kegg.ModulesDatabase(
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+        )
+        ko_data = self.ko_data
+
+        module_data = self.module_data
+        kos_table = modules_db.db.get_table_as_dataframe(
+            'modules',
+            where_clause='data_name="ORTHOLOGY',
+            columns_of_interest=['module', 'data_value', 'data_definition']
+        ).rename({'module': 'module_id', 'data_value': 'ko_id'}, axis=1)
+        for key, ko_table in kos_table.groupby('ko_id'):
+            ko_id = key[0]
+            try:
+                ko_dict = ko_data[ko_id]
+            except KeyError:
+                ko_data[ko_id] = ko_dict = {}
+            ko_dict['MOD'] = module_ids = tuple(sorted(ko_table['module']))
+
+            pathway_ids = []
+            for module_id in module_ids:
+                module_dict = module_data[module_id]
+                pathway_ids += module_dict['PTH']
+            ko_dict['PTH'] = tuple(sorted(set(pathway_ids)))
+
+        hierarchies_table = modules_db.db.get_table_as_dataframe(
+            'brite_hierarchies',
+            columns_of_interest=['hierarchy_accession', 'ortholog_accession', 'categorization']
+        ).rename({'hierarchy_accession': 'hierarchy_id', 'ortholog_accession': 'ko_id'}, axis=1)
+        for ko_id, ko_table in hierarchies_table.groupby('ko_id'):
+            try:
+                ko_dict = ko_data[ko_id]
+            except KeyError:
+                ko_data[ko_id] = ko_dict = {}
+            ko_dict['HIE'] = ko_hierarchy_dict = {}
+            for hierarchy_id, hierarchy_table in ko_table.groupby('hierarchy_id'):
+                categorizations = []
+                for categorization in hierarchy_table['categorization']:
+                    categorization: str
+                    categorizations.append((categorization.split('>>>')))
+                ko_hierarchy_dict[hierarchy_id] = tuple(categorizations)
+
+        modules_db.disconnect()
+
+    def _load_pathway_data(self) -> None:
+        """
+        Load pathway data into 'pathway_data'.
+
+        Returns
+        =======
+        None
+        """
+        modules_db = kegg.ModulesDatabase(
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+        )
+
+        pathway_data = self.pathway_data
+        categorizations = set(modules_db.db.get_table_as_dataframe(
+            'brite_hierarchies',
+            where_clause='hierarchy_accession="ko00001"',
+            columns_of_interest=['categorization']
+        )['categorization'])
+        for categorization in categorizations:
+            categorization: str
+            categories = tuple(categorization.split('>>>'))
+            category = categories[-1]
+            # A category is formatted like 'XXXXX <pathway name> [PATH:koXXXXX]', where X is a digit
+            # in the pathway ID.
+            pathway_id = f'map{category[:5]}'
+            pathway_name = categories[-1][6:-15]
+            pathway_data[pathway_id] = {'NAME': pathway_name, 'CAT': categories}
+
+        modules_db.disconnect()
+
+    def _load_hierarchy_data(self) -> None:
+        """
+        Load hierarchy data into 'hierarchy_data'.
+
+        Returns
+        =======
+        None
+        """
+        modules_db = kegg.ModulesDatabase(
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+        )
+
+        hierarchy_data = self.hierarchy_data
+        hierarchies_table = modules_db.db.get_table_as_dataframe(
+            'brite_hierarchies', columns_of_interest=['hierarchy_accession', 'hierarchy_name']
+        ).rename({'hierarchy_accession': 'hierarchy_id'}, axis=1)
+        for entry in sorted(
+            set(hierarchies_table['hierarchy_id'] + ':' + hierarchies_table['hierarchy_name'])
+        ):
+            entry: str
+            sep_index = entry.index(':')
+            hierarchy_id = entry[:sep_index]
+            hierarchy_name = entry[sep_index + 1:]
+            hierarchy_data[hierarchy_id] = hierarchy_name
+
+        modules_db.disconnect()
+
 class KODatabase:
     """
     Representation of the KEGG KO database used in the construction of reaction networks.
