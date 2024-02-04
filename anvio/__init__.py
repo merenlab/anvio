@@ -3073,6 +3073,14 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
                 ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
             {'default': 1.0e-5,
