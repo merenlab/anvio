@@ -7948,8 +7948,13 @@ class Constructor:
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
         # Load reference databases.
-        ko_db = KODatabase(self.ko_dir)
-        modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
+        kegg_db = KEGGData(kegg_dir=self.kegg_dir)
+        kegg_kos_data = kegg_db.ko_data
+        kegg_modules_data = kegg_db.module_data
+        kegg_pathways_data = kegg_db.pathway_data
+        kegg_hierarchies_data = kegg_db.hierarchy_data
+
+        modelseed_db = ModelSEEDDatabase(modelseed_dir=self.modelseed_dir)
         modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
         modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
         modelseed_compounds_table = modelseed_db.compounds_table
@@ -8004,18 +8009,18 @@ class Constructor:
                 gene.kos[ko_id] = ko
                 gene.e_values[ko_id] = e_value
                 if is_new_gene:
-                    # Add the newly encountered gene to the network.
+                    # Add the unadded gene to the network.
                     network.genes[gcid] = gene
                 # Proceed to the next gene-KO match.
                 continue
 
             # Get KEGG REACTION IDs and EC numbers associated with the KO.
             try:
-                ko_info = ko_db.ko_table.loc[ko_id]
+                ko_info = kegg_kos_data[ko_id]
             except KeyError:
                 # For some reason the KO annotated a gene in the contigs database but is not found
-                # in the KEGG KO database set up by anvi'o. Do not add the alien KO or the gene, if
-                # newly encountered, to the network.
+                # in the KEGG database set up by anvi'o. Do not add the alien KO or the gene, if
+                # unadded, to the network.
                 undefined_ko_ids.append(ko_id)
                 continue
             ko_kegg_reaction_ids = self._get_ko_kegg_reaction_ids(ko_info)
@@ -8024,7 +8029,7 @@ class Constructor:
             if not ko_kegg_reaction_ids and not ko_ec_numbers:
                 # The KO is not associated with any KEGG reactions or EC numbers, and therefore
                 # anvi'o can't relate the KO to ModelSEED reactions. Do not add the unsystematizable
-                # KO or the gene, if newly encountered, to the network.
+                # KO or the gene, if unadded, to the network.
                 continue
 
             # Check if KEGG reactions and EC numbers associated with the KO have already been added
@@ -8033,9 +8038,7 @@ class Constructor:
             old_kegg_reaction_ids, new_kegg_reaction_ids = self._find_kegg_reaction_ids(
                 ko_kegg_reaction_ids, network
             )
-            old_ec_numbers, new_ec_numbers = self._find_ec_numbers(
-                ko_ec_numbers, network
-            )
+            old_ec_numbers, new_ec_numbers = self._find_ec_numbers(ko_ec_numbers, network)
 
             # Retrieve data on ModelSEED reactions aliasing KEGG reactions that haven't been added
             # to the network. Each row of the reference table represents a unique mapping of KEGG
@@ -8084,7 +8087,7 @@ class Constructor:
             # the network.
 
             if is_new_gene:
-                # Add an object representing the newly encountered gene to the network.
+                # Add an object representing the unadded gene to the network.
                 network.genes[gcid] = gene
 
             # Add an object representing the newly encountered KO to the network.
@@ -8095,7 +8098,7 @@ class Constructor:
             gene.kos[ko_id] = ko
             gene.e_values[ko_id] = e_value
 
-            # Associate ModelSEED reactions that have been previously added to the network under
+            # Associate ModelSEED reactions that have previously been added to the network under
             # construction with the newly encountered KO.
             self._process_added_reactions(
                 old_kegg_reaction_ids,
@@ -8118,6 +8121,17 @@ class Constructor:
                 new_kegg_reaction_ids,
                 old_ec_numbers,
                 new_ec_numbers
+            )
+
+            # Add KEGG classifications of the KO (modules, pathways, and BRITE hierarchies) to the
+            # network.
+            self._add_ko_classification(
+                ko,
+                network,
+                ko_info,
+                kegg_modules_data,
+                kegg_pathways_data,
+                kegg_hierarchies_data
             )
 
         if DEBUG:
@@ -8146,20 +8160,20 @@ class Constructor:
         if undefined_ko_ids:
             self.run.info_single(
                 f"""\
-                Certain genes matched KOs that were not found in the reference KO database. These
+                Certain genes matched KOs that were not found in the KEGG reference database. These
                 KOs will not be used in network construction. It could be that the KOfams used to
-                annotate genes were not from the same KEGG database version as the reference KO
-                files. Here are the unrecognized KO IDs from the contigs database:
+                annotate genes were not from the same KEGG database version as the reference. Here
+                are the unrecognized KO IDs from the contigs database:
                 {','.join(undefined_ko_ids)}\
                 """
             )
 
-        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        kegg_dir = kegg_db.kegg_context.kegg_data_dir
         if self.modelseed_dir is None:
             modelseed_dir = ModelSEEDDatabase.default_dir
         else:
             modelseed_dir = self.modelseed_dir
-        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference KEGG database directory", kegg_dir, nl_before=1)
         self.run.info("Reference ModelSEED database directory", modelseed_dir, nl_after=1)
 
         if store:
@@ -8190,7 +8204,9 @@ class Constructor:
             self.progress.update("Metadata")
             ko_annotations_hash = self.hash_contigs_db_ko_hits(gene_ko_hits_table)
             cdb_db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
-            cdb_db.set_meta_value('reaction_network_kegg_database_release', ko_db.release)
+            # The KEGG database release is now not explicitly that, but instead the hash of the
+            # anvi'o modules database.
+            cdb_db.set_meta_value('reaction_network_kegg_database_release', kegg_db.modules_db_hash)
             cdb_db.set_meta_value('reaction_network_modelseed_database_sha', modelseed_db.sha)
             self.progress.end()
 
@@ -8307,7 +8323,12 @@ class Constructor:
         network.consistent_annotations = True
 
         # Load reference databases.
-        ko_db = KODatabase(self.ko_dir)
+        kegg_db = KEGGData(kegg_dir=self.kegg_dir)
+        kegg_kos_data = kegg_db.ko_data
+        kegg_modules_data = kegg_db.module_data
+        kegg_pathways_data = kegg_db.pathway_data
+        kegg_hierarchies_data = kegg_db.hierarchy_data
+
         modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
         modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
         modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
@@ -8365,11 +8386,11 @@ class Constructor:
 
             # Get KEGG REACTION IDs and EC numbers associated with the KO.
             try:
-                ko_info = ko_db.ko_table.loc[ko_id]
+                ko_info = kegg_kos_data[ko_id]
             except KeyError:
                 # For some reason the KO annotated genes in the pangenomic databases but is not
-                # found in the KEGG KO database set up by anvi'o. Do not add the alien KO or the
-                # gene cluster to the network.
+                # found in the KEGG database set up by anvi'o. Do not add the alien KO or the gene
+                # cluster to the network.
                 undefined_ko_ids.append(ko_id)
                 continue
             ko_kegg_reaction_ids = self._get_ko_kegg_reaction_ids(ko_info)
@@ -8387,9 +8408,7 @@ class Constructor:
             old_kegg_reaction_ids, new_kegg_reaction_ids = self._find_kegg_reaction_ids(
                 ko_kegg_reaction_ids, network
             )
-            old_ec_numbers, new_ec_numbers = self._find_ec_numbers(
-                ko_ec_numbers, network
-            )
+            old_ec_numbers, new_ec_numbers = self._find_ec_numbers(ko_ec_numbers, network)
 
             # Retrieve data on ModelSEED reactions aliasing KEGG reactions that haven't been added
             # to the network. Each row of the reference table represents a unique mapping of KEGG
@@ -8472,6 +8491,17 @@ class Constructor:
                 new_ec_numbers
             )
 
+            # Add KEGG classifications of the KO (modules, pathways, and BRITE hierarchies) to the
+            # network.
+            self._add_ko_classification(
+                ko,
+                network,
+                ko_info,
+                kegg_modules_data,
+                kegg_pathways_data,
+                kegg_hierarchies_data
+            )
+
         if DEBUG:
             for gene_cluster in network.gene_clusters.values():
                 assert gene_cluster.ko.reactions
@@ -8497,20 +8527,20 @@ class Constructor:
         if undefined_ko_ids:
             self.run.info_single(
                 f"""\
-                Certain gene clusters were assigned KOs that were not found in the reference KO
+                Certain gene clusters were assigned KOs that were not found in the KEGG reference
                 database. These KOs will not be used in network construction. It could be that the
                 KOfams used to annotate genes were not from the same KEGG database version as the
-                reference KO files. Here are the unrecognized KO IDs from the pangenomic databases:
+                reference. Here are the unrecognized KO IDs from the pangenomic databases:
                 {','.join(undefined_ko_ids)}\
                 """
             )
 
-        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        ko_dir = kegg_db.kegg_context.kegg_data_dir
         if self.modelseed_dir is None:
             modelseed_dir = ModelSEEDDatabase.default_dir
         else:
             modelseed_dir = self.modelseed_dir
-        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference KEGG database directory", ko_dir, nl_before=1)
         self.run.info("Reference ModelSEED database directory", modelseed_dir, nl_after=1)
 
         pdb = PanDatabase(pan_db)
@@ -8554,7 +8584,9 @@ class Constructor:
                 discard_ties=discard_ties
             )
             pdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
-            pdb.db.set_meta_value('reaction_network_kegg_database_release', ko_db.release)
+            # The KEGG database release is now not explicitly that, but instead the hash of the
+            # anvi'o modules database.
+            pdb.db.set_meta_value('reaction_network_kegg_database_release', kegg_db.modules_db_hash)
             pdb.db.set_meta_value('reaction_network_modelseed_database_sha', modelseed_db.sha)
             pdb.db.set_meta_value('reaction_network_consensus_threshold', consensus_threshold)
             pdb.db.set_meta_value('reaction_network_discard_ties', int(discard_ties))
@@ -8574,50 +8606,52 @@ class Constructor:
 
         return network
 
-    def _get_ko_kegg_reaction_ids(self, ko_info: pd.Series) -> Set[str]:
+    def _get_ko_kegg_reaction_ids(self, ko_info: Dict[str, Any]) -> Set[str]:
         """
         Get the set of KEGG REACTION IDs associated with the KO under consideration in network
         construction.
 
         Parameters
         ==========
-        ko_info : pd.Series
-            The row for the KO in the KO data table set up by anvi'o.
+        ko_info : Dict[str, Any]
+            Information on the KO loaded from the anvi'o KEGG database.
 
         Returns
         =======
         Set[str]
             KEGG REACTION IDs associated with the KO.
         """
-        ko_kegg_reaction_info: str = ko_info.loc['reactions']
-        if pd.isna(ko_kegg_reaction_info):
+        try:
+            ko_kegg_reaction_ids = set(ko_info['RN'])
+        except KeyError:
             # The KO is not associated with KEGG reactions.
-            ko_kegg_reaction_ids: Set[str] = set()
-        else:
-            ko_kegg_reaction_ids = set(ko_kegg_reaction_info.split())
+            ko_kegg_reaction_ids = set()
+        ko_kegg_reaction_ids: Set[str]
+
         return ko_kegg_reaction_ids
 
-    def _get_ko_ec_numbers(self, ko_info: pd.Series) -> Set[str]:
+    def _get_ko_ec_numbers(self, ko_info: Dict[str, Any]) -> Set[str]:
         """
         Get the set of EC numbers associated with the KO under consideration in network
         construction.
 
         Parameters
         ==========
-        ko_info : pd.Series
-            The row for the KO in the KO data table set up by anvi'o.
+        ko_info : Dict[str, Any]
+            Information on the KO loaded from the anvi'o KEGG database.
 
         Returns
         =======
         Set[str]
             EC numbers associated with the KO.
         """
-        ko_ec_number_info: str = ko_info.loc['ec_numbers']
-        if pd.isna(ko_ec_number_info):
+        try:
+            ko_ec_numbers = set(ko_info['EC'])
+        except KeyError:
             # The KO is not associated with EC numbers.
-            ko_ec_numbers: Set[str] = set()
-        else:
-            ko_ec_numbers = set(ko_ec_number_info.split())
+            ko_ec_numbers = set()
+        ko_ec_numbers: Set[str]
+
         return ko_ec_numbers
 
     def _find_kegg_reaction_ids(
