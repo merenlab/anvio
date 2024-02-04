@@ -3195,7 +3195,7 @@ class ReactionNetwork:
         ):
             self.run.info(key, stats_group[key])
 
-        self.run.info_single("ModelSEED reactions in network and KO sources")
+        self.run.info_single("ModelSEED reactions in network and KO sources", nl_before=1)
         stats_group = stats['Reactions and KO sources']
         for key in (
             'Reactions in network',
@@ -6140,7 +6140,7 @@ class KEGGData:
             The paths of missing binary relation files not found at the expected locations.
         """
         missing_paths = []
-        for file in self.kegg_context.kegg_binary_relation_files:
+        for file in self.kegg_context.kegg_binary_relation_files.values():
             path = os.path.join(self.kegg_context.binary_relation_data_dir, file)
             if not os.path.exists(path):
                 missing_paths.append(path)
@@ -6156,7 +6156,7 @@ class KEGGData:
         None
         """
         modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
         )
 
         self.modules_db_hash = modules_db.db.get_meta_value('hash')
@@ -6166,21 +6166,39 @@ class KEGGData:
             where_clause='data_name="NAME"',
             columns_of_interest=['module', 'data_value']
         ).rename({'module': 'module_id', 'data_value': 'module_name'}, axis=1)
+
         modules_pathways_table = modules_db.db.get_table_as_dataframe(
             'modules',
             where_clause='data_name="PATHWAY"',
             columns_of_interest=['module', 'data_value']
-        ).rename({'module': 'module_id','data_value': 'pathway_id'}, axis=1)
+        ).rename({'module': 'module_id', 'data_value': 'pathway_id'}, axis=1)
+
+        # Remove pathways that contain modules but are not represented in BRITE hierarchies
+        # downloaded by anvi'o KEGG data setup.
+        categorizations = modules_db.db.get_single_column_from_table(
+            'brite_hierarchies', 'categorization', unique=True
+        )
+        recognized_ko_pathways = []
+        for categorization in categorizations:
+            if categorization[-14:-8] == '[PATH:':
+                recognized_ko_pathways.append(f'map{categorization[-6:-1]}')
+        modules_pathways_table = modules_pathways_table[
+            modules_pathways_table['pathway_id'].isin(recognized_ko_pathways)
+        ]
 
         module_data = self.module_data
         for key, module_table in modules_names_table.merge(
             modules_pathways_table, how='left', on='module_id'
-        ).groupby(('module_id', 'module_name')):
+        ).groupby(['module_id', 'module_name']):
             module_id = key[0]
             module_name = key[1]
             module_data[module_id] = module_dict = {}
             module_dict['NAME'] = module_name
-            module_dict['PTH'] = tuple(sorted(module_table['pathway_id']))
+            pathway_id_tuple = tuple(sorted(module_table['pathway_id']))
+            if pd.isna(pathway_id_tuple[0]):
+                module_dict['PTH'] = tuple()
+            else:
+                module_dict['PTH'] = pathway_id_tuple
 
         modules_db.disconnect()
 
@@ -6192,22 +6210,34 @@ class KEGGData:
         =======
         None
         """
-        ko_relations = self.ko_relations
+        ko_data = self.ko_data
         for binary_relation, file in self.kegg_context.kegg_binary_relation_files.items():
             binary_relation_path = os.path.join(self.kegg_context.binary_relation_data_dir, file)
-            binary_relation_df = pd.read_csv(binary_relation_path, sep='\t', header=0, index_col=0)
+            binary_relation_df = pd.read_csv(binary_relation_path, sep='\t', header=0).rename(
+                {'#KO': 'KO'}, axis=1
+            )
 
-            col_name = binary_relation[1]
-            prefix_length = len(f'[{col_name}:')
+            entry_label = binary_relation[1]
+            if entry_label == 'EC':
+                col_name = 'EC number'
+            elif entry_label == 'RN':
+                col_name = 'Reaction'
+            else:
+                raise AssertionError
+            binary_relation_df = binary_relation_df.rename({col_name: entry_label}, axis=1)
+            col_name = entry_label
+            assert binary_relation_df.columns.tolist() == ['KO', col_name]
+
+            prefix_length = len(f'[{entry_label}:')
             for line in binary_relation_df.itertuples():
-                ko_id: str = line.Index
+                ko_id: str = line.KO
                 try:
-                    ko_relations_dict = ko_relations[ko_id]
+                    ko_data_dict = ko_data[ko_id]
                 except KeyError:
-                    ko_relations[ko_id] = ko_relations_dict = {}
+                    ko_data[ko_id] = ko_data_dict = {}
                 entry: str = getattr(line, col_name)
                 # An entry has a format like '[EC:1.1.1.18 1.1.1.369]' or '[RN:R00842]'.
-                ko_relations_dict[col_name] = tuple(entry[prefix_length:-1].split())
+                ko_data_dict[col_name] = tuple(entry[prefix_length:-1].split())
 
     def _load_ko_classification_data(self) -> None:
         """
@@ -6218,29 +6248,41 @@ class KEGGData:
         None
         """
         modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
         )
         ko_data = self.ko_data
 
         module_data = self.module_data
         kos_table = modules_db.db.get_table_as_dataframe(
             'modules',
-            where_clause='data_name="ORTHOLOGY',
+            where_clause='data_name="ORTHOLOGY"',
             columns_of_interest=['module', 'data_value', 'data_definition']
         ).rename({'module': 'module_id', 'data_value': 'ko_id'}, axis=1)
-        for key, ko_table in kos_table.groupby('ko_id'):
-            ko_id = key[0]
+        ko_id_pattern = 'K\d{5}'
+        match = re.match
+        for orthology_entry, ko_table in kos_table.groupby('ko_id'):
+            if not match(ko_id_pattern, orthology_entry):
+                # Check that the "orthology" entry is indeed a validly formatted KO ID.
+                continue
+            ko_id = orthology_entry
+
             try:
                 ko_dict = ko_data[ko_id]
             except KeyError:
                 ko_data[ko_id] = ko_dict = {}
-            ko_dict['MOD'] = module_ids = tuple(sorted(ko_table['module']))
+            ko_dict['MOD'] = module_ids = tuple(sorted(ko_table['module_id']))
 
             pathway_ids = []
             for module_id in module_ids:
                 module_dict = module_data[module_id]
                 pathway_ids += module_dict['PTH']
             ko_dict['PTH'] = tuple(sorted(set(pathway_ids)))
+
+        # Add placeholder entries for KOs not in modules.
+        for ko_dict in ko_data.values():
+            if 'MOD' not in ko_dict:
+                ko_dict['MOD'] = tuple()
+                ko_dict['PTH'] = tuple()
 
         hierarchies_table = modules_db.db.get_table_as_dataframe(
             'brite_hierarchies',
@@ -6256,8 +6298,13 @@ class KEGGData:
                 categorizations = []
                 for categorization in hierarchy_table['categorization']:
                     categorization: str
-                    categorizations.append((categorization.split('>>>')))
+                    categorizations.append(tuple(categorization.split('>>>')))
                 ko_hierarchy_dict[hierarchy_id] = tuple(categorizations)
+
+        # Add placeholder entries for KOs not in hierarchies.
+        for ko_dict in ko_data.values():
+            if 'HIE' not in ko_dict:
+                ko_dict['HIE'] = tuple()
 
         modules_db.disconnect()
 
@@ -6270,7 +6317,7 @@ class KEGGData:
         None
         """
         modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
         )
 
         pathway_data = self.pathway_data
@@ -6300,7 +6347,7 @@ class KEGGData:
         None
         """
         modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace()
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
         )
 
         hierarchy_data = self.hierarchy_data
@@ -7942,18 +7989,19 @@ class Constructor:
             )
 
         self.progress.new("Building reaction network")
-        self.progress.update("Loading reference databases")
 
         network = GenomicNetwork(run=self.run, progress=self.progress)
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
         # Load reference databases.
+        self.progress.update("Loading KEGG reference database")
         kegg_db = KEGGData(kegg_dir=self.kegg_dir)
         kegg_kos_data = kegg_db.ko_data
         kegg_modules_data = kegg_db.module_data
         kegg_pathways_data = kegg_db.pathway_data
         kegg_hierarchies_data = kegg_db.hierarchy_data
 
+        self.progress.update("Loading ModelSEED Biochemistry reference database")
         modelseed_db = ModelSEEDDatabase(modelseed_dir=self.modelseed_dir)
         modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
         modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
@@ -8149,23 +8197,19 @@ class Constructor:
 
         if DEBUG:
             self.run.info_single(
-                f"""\
-                The following ModelSEED reactions would have been added to the reaction network had
-                there been a chemical equation in the ModelSEED database; perhaps it is worth
-                investigating the ModelSEED reactions table to understand why this is not the case:
-                {', '.join(undefined_modelseed_reaction_ids)}\
-                """
+                "The following ModelSEED reactions would have been added to the reaction network "
+                "had there been a chemical equation in the ModelSEED database; perhaps it is worth "
+                "investigating the ModelSEED reactions table to understand why this is not the "
+                f"case: {', '.join(undefined_modelseed_reaction_ids)}"
             )
 
         if undefined_ko_ids:
             self.run.info_single(
-                f"""\
-                Certain genes matched KOs that were not found in the KEGG reference database. These
-                KOs will not be used in network construction. It could be that the KOfams used to
-                annotate genes were not from the same KEGG database version as the reference. Here
-                are the unrecognized KO IDs from the contigs database:
-                {','.join(undefined_ko_ids)}\
-                """
+                "Certain genes matched KOs that were not found in the KEGG reference database. "
+                "These KOs will not be used in network construction. It could be that the KOfams "
+                "used to annotate genes were not from the same KEGG database version as the "
+                "reference. Here are the unrecognized KO IDs from the contigs database: "
+                f"{','.join(undefined_ko_ids)}"
             )
 
         kegg_dir = kegg_db.kegg_context.kegg_data_dir
