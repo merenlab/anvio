@@ -7019,7 +7019,7 @@ class Constructor:
             )
 
         # Check that the network stored in the contigs database was made from the same set of KO
-        # gene annotations as currently in the database.
+        # gene annotations as is in the database.
         stored_hash = cdb_db.get_meta_value('reaction_network_ko_annotations_hash')
         gene_ko_hits_table = cdb_db.get_table_as_dataframe(
             'gene_functions',
