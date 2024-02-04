@@ -6606,7 +6606,8 @@ class ModelSEEDDatabase:
 
     def __init__(self, modelseed_dir: str = None) -> None:
         """
-        Load and set up reorganized tables of reactions and compounds from the ModelSEED directory.
+        Load and set up reorganized tables of reactions and compounds from the ModelSEED directory
+        to facilitate reaction network construction.
 
         Parameters
         ==========
