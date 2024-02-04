@@ -6582,6 +6582,22 @@ class ModelSEEDDatabase:
 
     By default, the database is loaded from a default directory of ModelSEED files unless an
     alternative directory is provided.
+
+    Attributes
+    ==========
+    sha : str
+        The git commit SHA used to track the version of the downloaded ModelSEED database.
+
+    compounds_table : pandas.core.frame.DataFrame
+        The ModelSEED Biochemistry Compound database.
+
+    kegg_reactions_table : pandas.core.frame.DataFrame
+        The ModelSEED Biochemistry Reaction database, retaining ModelSEED reactions with KEGG reaction aliases
+        and keying by KEGG reaction ID.
+
+    ec_reactions_table : pandas.core.frame.DataFrame
+        The ModelSEED Biochemistry Reaction database, retaining ModelSEED reactions with EC number
+        aliases and keying by EC number.
     """
     default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/MODELSEED')
 
