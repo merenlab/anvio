@@ -6348,14 +6348,19 @@ class KODatabase:
 
         for expected_file in self.expected_files:
             if not os.path.isfile(os.path.join(ko_dir, expected_file)):
-                raise ConfigError(f"No required file named '{expected_file}' was found in the KO directory, '{ko_dir}'.")
+                raise ConfigError(
+                    f"No required file named '{expected_file}' was found in the KO directory, "
+                    f"'{ko_dir}'."
+                )
 
         f = open(os.path.join(ko_dir, 'ko_info.txt'))
         f.readline()
         self.release = ' '.join(f.readline().strip().split()[1:])
         f.close()
 
-        self.ko_table = pd.read_csv(os.path.join(ko_dir, 'ko_data.tsv'), sep='\t', header=0, index_col=0, low_memory=False)
+        self.ko_table = pd.read_csv(
+            os.path.join(ko_dir, 'ko_data.tsv'), sep='\t', header=0, index_col=0, low_memory=False
+        )
 
     def set_up(
         num_threads: int = 1,
