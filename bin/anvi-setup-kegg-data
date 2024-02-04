@@ -87,7 +87,7 @@ def main(args, unknown_args):
     args = argparse.Namespace(**vars(args), **vars(mode_args))
     # global flags are already handled by anvi'o and shouldn't be in the unknown list
     # these are coming from __init__.py and not all are relevant to this code but we catch them anyway
-    global_flags_to_catch = ['--debug', '--no-progress', '--force', '--quiet', '--as-markdown', 
+    global_flags_to_catch = ['--debug', '--no-progress', '--force', '--quiet', '--as-markdown',
                              '--force-overwrite', '--fix-sad-tables', '--display-db-calls', '--I-know-this-is-not-a-good-idea',
                              '--force-use-my-tree', '--debug-auto-fill-anvio-dbs']
     for gf in global_flags_to_catch:
@@ -138,7 +138,7 @@ if __name__ == '__main__':
                 "certain subsets of the data available from KEGG. Use --list-modes to see " + \
                 f"a description of the options. Available modes: {', '.join(DOWNLOAD_MODES.keys())}"
     groupM.add_argument('--mode', choices=DOWNLOAD_MODES.keys(), help=mode_help, default='all')
-    groupM.add_argument('--list-modes', **{'default': False, 'action': 'store_true', 
+    groupM.add_argument('--list-modes', **{'default': False, 'action': 'store_true',
                                          'help': "List the available modes and their descriptions."})
 
     # common arguments
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     if show_help:
         parser.print_help()
 
-    
+
     subparsers = {}
     for mode, info_dict in DOWNLOAD_MODES.items():
         subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
         if show_help:
             subparser.print_help()
-    
+
         subparsers[mode] = subparser
 
 
