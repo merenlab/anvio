@@ -30,7 +30,8 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                           }
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
-                                           'mode if you want to run pathway prediction with `anvi-estimate-metabolism`.',
+                                           'mode if you want to run pathway prediction with `anvi-estimate-metabolism`. This mode does the '
+                                           'necessary set up that allows you to run `anvi-reaction-network`.',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                             'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
@@ -43,20 +44,10 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                                             "are using the --only-processing flag"})},
                                           'skip-brite-hierarchies': {'flags': anvio.A('skip-brite-hierarchies'),
                                                             'definition': anvio.K('skip-brite-hierarchies')},
+                                          'skip-binary-relations': {'flags': anvio.A('skip-binary-relations'),
+                                                            'definition': anvio.K('skip-binary-relations')}
                                         }
                             },
-                'modeling': {'description': 'KEGG orthologs and reactions. Use this mode if '
-                                            'you want to run metabolic modeling with `anvi-reaction-network`.',
-                            'arguments': {'dir': {'flags': ['--dir'],
-                                            'definition': {'default': None, 
-                                                    'type': str,
-                                                    'help': "You have the option to store the modeling data in a different location "
-                                                            "on your computer than other KEGG stuff (ie, NOT --kegg-data-dir). "
-                                                            "Use this argument to select a custom directory in which to store "
-                                                            "the modeling data."
-                                                            f"(default: {KODatabase.default_dir})"}}
-                                        },
-                },
                 'all': {'description': 'Download ALL KEGG data. This is the default mode.',
                                  'arguments': {'kegg-snapshot': {'flags': anvio.A('kegg-snapshot'),
                                                             'definition': anvio.K('kegg-snapshot')},
@@ -66,7 +57,6 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                             'definition': anvio.K('kegg-archive')}
                                             },
                 }
-        
 }
 
 
@@ -112,19 +102,6 @@ def main(args, unknown_args):
             args.download_from_kegg = True
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
-        if mode == "modeling" or mode == "all":
-            # we ignore the dir parameter for all mode
-            if mode == "all":
-                setup_directory = args.kegg_data_dir
-            else:
-                # the --dir parameter overrides --kegg-data-dir
-                if args.dir:
-                    setup_directory = args.dir
-                elif not args.dir and args.kegg_data_dir:
-                    setup_directory = args.kegg_data_dir
-            
-            KODatabase.set_up(num_threads = args.num_threads, dir = setup_directory, reset = args.reset)
-    
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
