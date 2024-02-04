@@ -6833,7 +6833,7 @@ class Constructor:
     """Make, store, and load metabolic reaction networks."""
     def __init__(
         self,
-        ko_dir: str = None,
+        kegg_dir: str = None,
         modelseed_dir: str = None,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
@@ -6841,10 +6841,10 @@ class Constructor:
         """
         Parameters
         ==========
-        ko_dir : str, None
-            The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. The
-            default argument of None expects KO data to be set up in the default anvi'o directory
-            used by the program `anvi-setup-kegg-data`.
+        kegg_dir : str, None
+            The directory containing the anvi'o KEGG database. The default argument of None expects
+            the KEGG database to be set up in the default directory used by the program
+            `anvi-setup-kegg-data`.
 
         modelseed_dir : str, None
             The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. The
@@ -6857,7 +6857,7 @@ class Constructor:
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
             This object prints transient progress information to the terminal.
         """
-        self.ko_dir = ko_dir
+        self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
         self.run = run
         self.progress = progress
