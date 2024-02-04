@@ -8696,6 +8696,7 @@ class Constructor:
         Parameters
         ==========
         ko_ec_numbers : Set[str]
+            EC numbers associated with the KO.
 
         Returns
         =======
@@ -8814,11 +8815,11 @@ class Constructor:
         network : ReactionNetwork
             The reaction network under construction.
 
-        modelseed_compounds_table : DataFrame
+        modelseed_compounds_table : pandas.core.frame.DataFrame
             Loaded compounds table of ModelSEED Biochemistry database set up by anvi'o.
 
         ko : KO
-            The representation of the KO being processed.
+            The KO being added to the network.
 
         old_kegg_reaction_ids : Set[str]
             KEGG REACTION IDs referenced by the KO that are in the network.
@@ -9095,7 +9096,7 @@ class Constructor:
             The dictionary representation of a row of the ModelSEED reaction table set up by anvi'o,
             containing data on the reaction.
 
-        modelseed_compounds_table : pd.DataFrame
+        modelseed_compounds_table : pandas.core.frame.DataFrame
             Loaded ModelSEED Biochemistry compounds database.
 
         network : ReactionNetwork, None
@@ -9284,7 +9285,7 @@ class Constructor:
             The reaction network under construction.
 
         ko : KO
-            The representation of the KO being processed.
+            The KO being added to the network.
 
         ko_kegg_reaction_ids : Set[str]
             KEGG REACTION IDs associated with the KO under consideration in network construction.
@@ -9547,8 +9548,8 @@ class Constructor:
     def _get_database_reactions_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
         Make a reactions table that can be stored in either a contigs or pan database, as the tables
-        have the same structure. A `ReactionNetwork` can be reconstructed with the same data from
-        the reactions and metabolites tables of the database.
+        have the same structure. A ReactionNetwork can be reconstructed with the same data from the
+        reactions and metabolites tables of the database.
 
         Parameters
         ==========
@@ -9661,7 +9662,7 @@ class Constructor:
     def _get_database_metabolites_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
         Make a metabolites table that can be stored in either a contigs or pan database, as the
-        tables have the same structure. A `ReactionNetwork` can be reconstructed with the same data
+        tables have the same structure. A ReactionNetwork can be reconstructed with the same data
         from the reactions and metabolites tables of the database.
 
         Parameters
@@ -9708,7 +9709,7 @@ class Constructor:
 
         Parameters
         ==========
-        gene_ko_hits_table : pd.DataFrame
+        gene_ko_hits_table : pandas.core.frame.DataFrame
             This table contains gene KO hit data from the contigs database 'gene_functions' table.
 
         Returns
