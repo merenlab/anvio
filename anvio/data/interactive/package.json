@@ -19,6 +19,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@fontsource/roboto": "^5.0.8",
     "@popperjs/core": "^2.11.8",
     "blueimp-md5": "2.7.0",
     "bootstrap": "4.6.0",
@@ -31,7 +32,7 @@
     "jquery-ui": "1.12.1",
     "marked": "0.3.6",
     "randomcolor": "0.6.2",
-    "roboto": "0.8.2",
+    "svg-pan-zoom": "^3.6.1",
     "toastr": "2.1.2"
   }
 }
