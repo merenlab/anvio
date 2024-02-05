@@ -126,7 +126,7 @@ class SanityCheck(object):
         if sorted(list(locally_known_SCG_names)) != sorted(self.ctx.default_scgs_for_taxonomy):
             raise ConfigError("Oh no. The default SCG names to be used for all SCG taxonomy tasks seem to differ "
                               "from those names for which you have names described in locally known HMMs to remote FASTA files "
-                              "conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero "
+                              "conversion table defined in SetupLocalSCGTaxonomyData module. If this makes zero "
                               "sense to you please ask a developer.")
 
         if not self.ctx.SCGs_taxonomy_data_dir:
@@ -1043,7 +1043,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                          "help you if you can't find any published example to get inspiration.", lc = 'yellow')
 
 
-        self.run.warning("Anvi'o will now attempt to generate the SCG serach databases from scratch. Fingers crossed.")
+        self.run.warning("Anvi'o will now attempt to generate the SCG search databases from scratch. Fingers crossed.")
 
         self.create_search_databases()
 
