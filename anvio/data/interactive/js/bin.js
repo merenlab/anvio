@@ -91,7 +91,7 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
-                       <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                       <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
                     <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
                             <td style="border-top: 0px;">&nbsp;</td>
@@ -936,7 +936,7 @@ Bins.prototype.RedrawBins = function() {
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
-    var bin_labels_font_size = parseFloat($('#bin_labels_font_size').val());
+    var bin_labels_font_size = (parseFloat($('#bin_labels_font_size').val())) ? parseFloat($('#bin_labels_font_size').val()) : 32;
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
     var background_starts_from_branch = $('#begins_from_branch').is(':checked');

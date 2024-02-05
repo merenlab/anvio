@@ -124,16 +124,17 @@ $(document).ready(function() {
         "hideMethod": "fadeOut",
     }
 
+    // Dendrogram settings changes depending on drawing type
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram')
         {
-            $('.phylogram_settings').hide();
-            $('.circlephylogram_settings').show();
+            $('#tree_type_circlephylogram').show();
+            $('#tree_type_phylogram').hide();
         }
         else
         {
-            $('.phylogram_settings').show();
-            $('.circlephylogram_settings').hide();
+            $('#tree_type_circlephylogram').hide();
+            $('#tree_type_phylogram').show();
         }
     });
 
@@ -201,6 +202,18 @@ $(document).ready(function() {
     }
 
     initData();
+        // Sidebar Hide/Show button 
+        $(".sidebar-toggle").click(function() {
+            $(this).text(function(i, text) {
+                if(text === "Hide"){
+                    $('#inner-sidebar').hide();
+    
+                }else{
+                    $('#inner-sidebar').show();
+                }
+                return text === "Hide" ? "Show" : "Hide";
+            });
+        });
 });
 
 function initData() {
@@ -262,8 +275,20 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
-            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+            //$("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+            //$("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+            sortable('#tbody_layers', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
+
+            sortable('#tbody_samples', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
 
             let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
 
@@ -275,9 +300,9 @@ function initData() {
 
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
-                    <div style="float: left; padding: 4px 4px;">
+                    <div class="mr-5 col-5">
                         <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
-                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
+                        <label onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
             });
 
@@ -324,8 +349,6 @@ function initData() {
 
             if (response.autodraw)
             {
-                $('#btn_draw_tree').removeClass('glowing-button');
-
                 $.when()
                  .then(drawTree)
                  .then(function() {
@@ -363,7 +386,7 @@ function switchUserInterfaceMode(project, title) {
     console.log("The running mode for the interface: " + mode);
 
     $('.' + mode + '-mode').show();
-    $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
+    $('<b title="This info shows your anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
@@ -404,7 +427,6 @@ function switchUserInterfaceMode(project, title) {
 
     if (server_mode) {
         $('.server-mode').show();
-        $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
         $('#multiUser').show();
         $('#multiUser > span').html('<b>' + title + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
         $('#multiUser > img').attr('src', project.user_avatar);
@@ -450,10 +472,6 @@ function setupDescriptionPanel(description) {
         ],
         'fullscreen': {'enable': false},
     });
-
-    if (description.length > 100) {
-        toggleRightPanel('#description-panel');
-    }
 }
 
 function onViewChange() {
@@ -691,10 +709,6 @@ function populateColorDicts() {
 }
 
 function buildLegendTables() {
-    if(typeof $('#legend_settings').data("ui-accordion") != "undefined"){
-        $('#legend_settings').accordion("destroy");
-        $('#legend_settings').empty();
-    }
 
     legends = [];
     let toastr_warn_flag = false
@@ -774,14 +788,14 @@ function buildLegendTables() {
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
-        var template = '<span>';
+        var template = '<div class="shadow-box mb-3 p-3 rounded"><span class="header">';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
-            template += '<span class="label label-default">Samples</span> '
+            template += '<span class="label label-default header mb-2">Layer</span> '
         } else {
-            template += '<span class="label label-default">Main</span> '
+            template += '<span class="label label-default header">Item</span> '
         }
-        template += legend['name'] + '</span><div>';
+        template += legend['name'] + '</span><div><div style="height:10px;"></div>';
 
         if (!legends[i]['item_names']){
             template += `
@@ -792,18 +806,19 @@ function buildLegendTables() {
                 <div>
                     <table class="col-md-12 table-spacing table-striped" style="margin-bottom: 10px;">
                         <tr>
-                            <td class="col-md-auto" style="white-space: nowrap;">For <input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
+                            <td class="col-8 d-flex mr-1" style="white-space: nowrap; width: 160px;"><span class="d-flex align-middle mr-1 mt-2">For</span><input class="form-control" type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-2" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-2 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto">For all categories</td>
                             <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
                         </tr>
                         <tr>
-                            <td class="col-md-auto" colspan="2">For all categories</td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                            <td class="col-md-auto">For all categories</td>
+                            <td class="col-md-auto d-flex justify-content-center align-middle mt-2">Color: <div class="d-flex justify-content-center align-middle">Random</div></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Set</button></td>
                         </tr>
                     </table>
 
@@ -815,22 +830,22 @@ function buildLegendTables() {
                 </div>
             `
         } else {
-            template += `Sort: <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+            template += `<div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="bi bi-sort-alpha-down"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="bi bi-sort-numeric-down-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="bi bi-droplet"></span> Batch coloring</button>
                         </div>
                         <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
                             <table class="col-md-12 table-spacing">
                                 <tr>
                                     <td class="col-md-2">Rule: </td>
                                     <td class="col-md-10">
-                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
                                         <input type="radio" name="batch_rule_`+i+`" value="count"> Count
-                                            <select id="count_rule_`+i+`">
+                                            <select style="margin-left: 48px;" id="count_rule_`+i+`">
                                                 <option selected>==</option>
                                                 <option>&lt;</option>
                                                 <option>&gt;</option>
@@ -844,27 +859,28 @@ function buildLegendTables() {
                                     <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
                                 </tr>
                                 <tr>
-                                    <td class="col-md-2"></td>
-                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                    <td class="col-md-2">Random Color:</td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /></td>
                                 </tr>
                                 <tr>
                                     <td class="col-md-2"></td>
-                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-outline-info btn-sm" onclick="batchColor(`+i+`);">Apply</button></td>
                                 </tr>
                             </table>
                         </div>
-                        <div style="clear: both; display:block;"></div>
-                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+                        <div style="clear: both; display:block;"></div>`;
         }
 
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
-        $('#legend_settings').append(template + '</div>');
+        $('#legend_settings').append(template + '</div></div>');
 
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
+    if(legends.length == 0){
+        $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
+    }
 
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -1179,8 +1195,8 @@ function buildLayersTable(order, settings)
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1219,7 +1235,7 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr>' +
+            var template = '<tr class="sortable">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
@@ -1231,8 +1247,8 @@ function buildLayersTable(order, settings)
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1317,16 +1333,16 @@ function buildLayersTable(order, settings)
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                     '<td style="width: 50px;">' +
-                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
+                    '    <select id="type{id}" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm" onChange="togglePickerStart(this, true);">' +
                     '        <option value="color"{option-type-color}>Color</option>' +
                     '        <option value="text"{option-type-text}>Text</option>' +
                     '    </select>' +
                     '</td>' +
-                    '<td>n/a</td>' +
-                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                    '<td>n/a</td>' +
-                    '<td>n/a</td>' +
+                    '<td style="width:55px;">n/a</td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td style="width:55px;">n/a</td>' +
+                    '<td style="width:55px;">n/a</td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1396,23 +1412,23 @@ function buildLayersTable(order, settings)
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
-                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                    '    <select id="type{id}" style="width: 50px;" class="form-control form-control-sm col-12 select-sm type" onChange="togglePickerStart(this);">' +
                     '        <option value="bar"{option-type-bar}>Bar</option>' +
                     '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                     '        <option value="line"{option-type-line}>Line</option>' +
                     '    </select>' +
                     '</td>' +
                     '<td>' +
-                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                     '        <option value="none"{option-none}>none</option>' +
                     '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                     '        <option value="log"{option-log}>log</option>' +
                     '    </select>' +
                     '</td>' +
-                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                    '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
-                    '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin " type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td><input class="form-control form-control-sm input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1680,6 +1696,9 @@ function drawTree() {
     // clear existing diagram, if any
     document.getElementById('svg').innerHTML = "";
 
+    // Drawing time toasted to the user
+    toastr.success("<span id='draw_delta_time'></span>");
+
     waitingDialog.show('Drawing ...',
         {
             dialogSize: 'sm',
@@ -1709,6 +1728,7 @@ function drawTree() {
 
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
+                $('#btn_redraw_samples_layer').prop('disabled', false);
 
                 if (settings['tree-radius'] == 0)
                 {
@@ -2855,7 +2875,6 @@ function processState(state_name, state) {
     }
 
     populateColorDicts();
-    buildLegendTables();
 
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
@@ -2952,7 +2971,7 @@ function showTaxonomy()
                 let d = response[bin_name];
 
                 content += `<tr>
-                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
+                    <td><a data-toggle="collapse" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
                     <td class="text-center">${ d['total_scgs'] }</td>
                     <td class="text-center">${ d['supporting_scgs'] }</td>`;
 
@@ -2970,7 +2989,7 @@ function showTaxonomy()
                 content += `</tr>`;
 
                 // Building an inner table for each individual SCG within a given bin.
-                let scg_table_content = `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+                let scg_table_content = `<tr id="collapse-${ bin_name }" class="fade collapse" style="background: #acaf3330;"><td colspan="10">
 
                 <table class="table table-striped sortable" id="tblGrid_${ bin_name }">
 
@@ -3135,4 +3154,26 @@ function toggleTaxonomyEstimation() {
     if (bins) {
         bins.UpdateBinsWindow();
     }
+}
+
+function ShadowBoxSelection(type) {
+        var result = document.getElementById('result-box');
+        if (type == "search_contigs"){
+            result.classList.remove('border-primary');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(40,167,69,0.25), 0 10px 10px rgba(40,167,69,0.22)';
+            result.classList.add('border-success');
+        }
+        else if (type == "search_functions"){
+            result.classList.remove('border-success');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(0,123,255,0.25), 0 10px 10px rgba(0,123,255,0.22)';
+            result.classList.add('border-primary');
+        }
+        else {
+            result.classList.remove('border-primary');
+            result.classList.remove('border-success');
+            result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
+            result.classList.add('border-warning');
+        }
 }

@@ -10,34 +10,33 @@
     <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
     <meta http-equiv="pragma" content="no-cache" />
     <meta name="google" value="notranslate">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    
+    <!-- Import packages from node_modules -->
+    <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
     <script type="text/javascript" src="js/error.js"></script>
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
-    <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
-    <script type="text/javascript" src="lib/randomColor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
+    <script>$.uiBackCompat = false;</script>
+    <!-- <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script> -->
+    <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
+
+    <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
-    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
-    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js" onerror='alertDependencyError("md5")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="./node_modules/blueimp-md5/js/md5.js" onerror='alertDependencyError("md5")'></script>
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("col-picker")'></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
+    <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -67,9 +66,9 @@
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
-    <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
+    <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
+    <link rel="stylesheet" href="./node_modules/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
+    <script type="text/javascript" src="./node_modules/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
@@ -85,25 +84,20 @@
         </div>
     </div>
     <div id="wrapper">
-        <div id="toggle-panel-top" onclick="$('#title-panel').show();">
+        <div class="invisible" id="toggle-panel-top" onclick="$('#toggle-panel-top').toggleClass('visible invisible'); $('#title-panel').show();">
             &#9660; TITLE
         </div>
         <div id="title-panel">
-            <span id="title-panel-first-line"></span><br>
-            <span id="title-panel-second-line"></span>
-            <div id="title-panel-close-button"><a href="#" class="close-thick" onclick="$('#title-panel').hide();"></a>
+            <div id="title-alter-panel">
+                <span id="title-panel-first-line"></span><br>
+                <span id="title-panel-second-line"></span>
+                <div id="title-panel-close-button">
+                    <a href="#" class="close-thick" onclick="$('#title-panel').hide(); $('#toggle-panel-top').toggleClass('invisible visible');"></a>
+                </div>
             </div>
         </div>
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
-        </div>
-
-        <div id="toggle-panel-right" onclick="toggleRightPanel('#mouse_hover_panel');">
-                <span id="toggle-panel-right-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
-        </div>
-
-        <div id="toggle-panel-right-2" onclick="toggleRightPanel('#description-panel');">
-                <span id="toggle-panel-right-2-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">DESCRIPTIO<u>N</u></span>
         </div>
 
         <div id="panel-center">
@@ -111,119 +105,475 @@
                 <g id="viewport"></g>
             </svg>
         </div>
+        <!-- LEFT MENU -->
         <div id="panel-left">
-            <div id="fixed-navbar-div">
-                <div id="multiUser">
-                    <a href="/" target="_parent" class="btn btn-default btn-sm home-button"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> Home</a>
-                    <img src="#" />
-                    <span class="project-name"></span>
-                    <a href="/" class="btn btn-default btn-sm download-button"><span class="glyphicon glyphicon-download" aria-hidden="true"></span> Download</a>
-                </div>
-                <div role="tabpanel" style="margin: 0px;">
-                    <ul class="nav nav-tabs" role="tablist">
-                      <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
-                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Layers</a></li>
-                      <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                      <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Legends</a></li>
-                      <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
-                      <li role="presentation" class="dropdown-submenu pull-right">
-                        <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
-                          <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true" style="color: #008A77;"></span>
-                        </a>
-                        <ul class="dropdown-menu multi-level" role="menu">
-                          <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
-                          <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
-                          <li><a href='#' onclick="showAllNews()">Anvi'o news</a></li>
-                          <li><a href="http://merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
-                          <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
-                          <li><a href="http://merenlab.org/people/">Contact us</a></li>
-                          <li role="separator" class="divider"></li>
-                          <li><a href="javascript:shutdownServer();"><span class="glyphicon glyphicon-off" aria-hidden="true"></span> Shutdown Server</a></li>
-                          <li><p>Show help tooltips for the interactive interface: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></p></li>
+            <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
+                <div class="inner-wrapper d-flex" role="tabpanel">
+                    <nav id="inner-sidebar" onclick="switchNavigationTabs();">
+                        <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
+                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-1">
+                                <a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block active">
+                                    <i class="nav-icon fs-2x bi bi-house-door"></i><i class="nav-icon-fill fs-2x bi bi-house-door-fill"></i> <span class="d-block">Main</span>
+                                </a>
+                            </li>
+                            <li id="sample_settings_tab" role="presentation" class="nav-item">
+                                <a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-gear"></i><i class="nav-icon-fill fs-2x bi bi-gear-fill"></i><span id="sidebar-option-tab" class="d-block">Options</span>
+                                </a>
+                            </li>
+                            <li id="bin_settings_tab" role="presentation" class="nav-item">
+                                <a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-archive "></i><i class="nav-icon-fill fs-2x bi bi-archive-fill "></i><span class="d-block">Bins</span>
+                                </a>
+                            </li>
+                            <li id="data_panel_tab" role="presentation" class="nav-item">
+                                <a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="nav-link navbar-btn d-block" >
+                                    <i class="nav-icon fs-2x bi bi-cursor"></i><i class="nav-icon-fill fs-2x bi bi-cursor-fill"></i><span role="tab" class="d-block">Data</span>
+                                </a>
+                            </li>
+                            <li id="description_panel_tab" role="presentation" class="nav-item">
+                                <a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" >
+                                    <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span role="tab" class="d-block">Notes</span>
+                                </a>
+                            </li>
+                            <li id="search_panel_tab" role="presentation" class="nav-item">
+                                <a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-search"></i><i class="nav-icon-fill fs-2x bi bi-search"></i><span class="d-block">Search</span>
+                                </a>
+                            </li>
+                            <li id="news_settings_tab" role="presentation" class="nav-item" onclick="showAllNews()">
+                                <a href="#news_settings" aria-controls="new_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-newspaper"></i><i class="nav-icon-fill fs-2x bi bi-newspaper"></i><span class="d-block">News</span>
+                                </a>
+                            </li>
+                            <li id="detail_tab" role="presentation" class="nav-item">
+                                <a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fs-2x bi bi-question-octagon"></i><i class="nav-icon-fill fs-2x bi bi-question-octagon-fill"></i><span class="d-block">Anvi'o</span>
+                                </a>
+                            </li>
+                            <div id="nav-bottom">
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" id="draw-btn" class="navbar-btn d-block glow-on-hover" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
+                                        <i class="icon-unlock bi-pencil fs-2x"></i><span class="d-block"><u>D</u>raw</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <li class="nav-bottom-alignment">
+                                    <p class="side-menu-text">State</p>
+                                    <li class="nav-bottom-alignment">
+                                        <a href="#" class="navbar-btn d-block mt-3" onclick="showLoadStateWindow();" data-help="load-state-button">
+                                            <i class="icon-unlock bi bi-upload fs-2x"></i><span class="d-block">Load</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-bottom-alignment"><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span> </a></li>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">Display</p> 
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg">
+                                        <i class="icon-unlock bi bi-images fs-2x"></i><span class="d-block">Export</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment pb-2">
+                                    <a href="#" class="navbar-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural">
+                                        <i class="icon-unlock bi bi-align-middle fs-2x"></i><span class="d-block">Align</span>
+                                    </a>
+                                </li>
+                            </div>
                         </ul>
-                      </li>
-                    </ul>
+                    </nav>
                 </div>
-            </div>
-
-            <div id="sidebar" onload="{$('#support_value_params').hide()}">
                 <!-- this hide function needs to happen upon initial render, currently only called onchange -->
-                <div class="tab-content">
-                    <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
+                <div class="col-11 tab-content ml-1">
+                    <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
-                            <span class="settings-header">Display</span>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>
-                                    <div class="col-md-8">
-                                        <select id="tree_type" class="form-control input-xs">
-                                            <option value="phylogram">Phylogram</option>
-                                            <option value="circlephylogram" selected>Circle Phylogram</option>
-                                        </select>
+                            <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                                <img src="images/item-chart.svg" alt="Item Icon"/> 
+                                Items
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span> 
+                            <div class="collapse multi-collapse show" id="item-collapse-main">
+                                <div class="ml-2">
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="tree_type" class="form-control">
+                                                    <option value="phylogram">Phylogram</option>
+                                                    <option value="circlephylogram" selected>Circle Phylogram</option>
+                                                </select>
+                                            </div>
                                     </div>
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                                <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                    <br />
+                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                    <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label" for="views_container" data-help="view">Data</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                            </div>
+                                    </div>
+                                </div>
+                                <div class="ml-2">
+                                    <span class="settings-secondary-header">Display</span>
+    
+                                    <div id="table_layers_container" class="mt-3">
+                                        <table id="table_layers">
+                                            <thead>
+                                                <tr>
+                                                    <td></td>
+                                                    <td data-help="layer-name">Name</td>
+                                                    <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                                    <td data-help="layer-type">Type</td>
+                                                    <td data-help="layer-norm">Norm.</td>
+                                                    <td data-help="layer-height">Height</td>
+                                                    <td data-help="layer-margin" class="column-margin">Margin</td>
+                                                    <td data-help="layer-min">Min</td>
+                                                    <td data-help="layer-max">Max</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody_layers"></tbody>
+                                            <tbody id="tbody_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><input class="select_layer form-control form-control-sm" placeholder="Layer Name" size="9"></td>
+                                                    <td class="d-flex colorpicker-align">
+                                                        <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF"></div>
+                                                        <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF"></div>
+                                                    </td>
+                                                    <td>
+                                                        <select class="type form-control form-control-sm col-12 select-sm type_multiple">
+                                                            <option value="">Type</option>
+                                                            <option value="" disabled>-----Numerical Types-----</option>
+                                                            <option value="bar">Bar</option>
+                                                            <option value="intensity">Intensity</option>
+                                                            <option value="line">Line</option>
+                                                            <option value="" disabled>-----Categorical Types-----</option>
+                                                            <option value="color">Color</option>
+                                                            <option value="text">Text</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-control form-control-sm col-12 select-sm normalization_multiple">
+                                                            <option value="">Norm.</option>
+                                                            <option value="none">none</option>
+                                                            <option value="sqrt">sqrt</option>
+                                                            <option value="log">log</option>
+                                                        </select>
+                                                    </td>
+                                                    <td><input class="form-control form-control-sm input-height-multiple" size="3" placeholder="height"></input></td>
+                                                    <td class="column-margin"><input class="form-control form-control-sm input-margin-multiple" size="3" placeholder="margin"></input></td>
+                                                    <td><input class="form-control form-control-sm input-min-multiple" size="4" placeholder="min"></input></td>
+                                                    <td><input class="form-control form-control-sm input-max-multiple" size="4" placeholder="max"></input></td>
+                                                    <td><input type="checkbox" class="select_all"></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>
-                                    <div class="col-md-8">
-                                        <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
-                                        <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                            <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
-                                        </div>
+                            <span id="toggle-chevron-layer" class="settings-header btn d-flex chart-icon-padding mt-5 align-items-center" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/layer-chart.svg" alt="Layer Icon"/>
+                                Layers
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                            <div class="ml-2 collapse multi-collapse show" id="layer-collapse-main">
+                                <div id="sample-settings" class="form-horizontal">
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label settings-label w400" for="tree_type" data-help="samples_order">Order by</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="samples_order" class="form-control">
+                                                    <!-- JS FILLS HERE -->
+                                                </select>
+                                                <div id="samples_tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                    <br />
+                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
+                                                    <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="bi bi-plus" aria-hidden="true"></span>Generate new phylogenetic tree</button>
+                                            </div>
                                     </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>
-                                    <div class="col-md-8">
-                                        <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
+                                    
+                                    <span class="settings-secondary-header">Layer Groups</span>
+                                    <div id="sample_groups_container" class="row mt-3 ml-1">
+        
                                     </div>
+                                    <div class="clearfix"></div>
+                                    <span class="settings-secondary-header">Display</span>
+                                    <div id="table_samples_container" class="mt-3">
+                                        <table id="table_samples">
+                                            <thead>
+                                                <tr>
+                                                    <td></td>
+                                                    <td data-help="layer-name">Name</td>
+                                                    <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                                    <td data-help="layer-type">Type</td>
+                                                    <td data-help="layer-norm">Norm.</td>
+                                                    <td data-help="layer-height">Height</td>
+                                                    <td data-help="layer-margin">Margin</td>
+                                                    <td data-help="layer-min">Min</td>
+                                                    <td data-help="layer-max">Max</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody_samples"></tbody>
+                                            <tbody id="tbody_samples_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><input class="select_layer form-control form-control-sm" placeholder="Layer Name" size="9"></td>
+                                                    <td class="d-flex colorpicker-align">
+                                                        <div id="picker_start_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                                        <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-control form-control-sm col-12 select-sm type type_multiple">
+                                                            <option value="bar">Bar</option>
+                                                            <option value="intensity">Intensity</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-control form-control-sm col-12 select-sm normalization_multiple">
+                                                            <option value="none">Norm.</option>
+                                                            <option value="sqrt">sqrt</option>
+                                                            <option value="log">log</option>
+                                                        </select>
+                                                    </td>
+                                                    <td><input class="form-control form-control-sm input-height-multiple" size="3" placeholder="height"></input></td>
+                                                    <td><input class="form-control form-control-sm input-margin-multiple" size="3" placeholder="margin"></input></td>
+                                                    <td><input class="form-control form-control-sm input-min-multiple" size="4" placeholder="min"></input></td>
+                                                    <td><input class="form-control form-control-sm input-max-multiple" size="4" placeholder="max"></input></td>
+                                                    <td><input type="checkbox" class="select_all"></td>
+                                                </tr>
+                                            </tbody>
+                                            <tbody id="tbody_samples_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;">Select all layers in a group</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td colspan="2"><select class="form-control form-control-sm" style="width: 100%;" id="group_list_for_select_all"></select></td>
+                                                    <td style="width: 50px;"><button class="btn btn-outline-success btn-sm" id="group_select_all">Select</button></td>
+                                                    <td><button class="btn btn-outline-danger btn-sm" id="group_unselect_all">Unselect</button></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <br />
+                                    <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
+                                        <button id="btn_redraw_samples_layer" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="bi bi-layers-fill" aria-hidden="true"></span> Redraw layer data</button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <a href="#" onclick="$('#additional_settings').toggle(); if ($('#additional_settings').is(':visible')) { $('#additional_settings_label').html('Hide Additional Settings'); } else { $('#additional_settings_label').html('Show Additional Settings'); }; " style="text-decoration: none;"><h4 id="additional_settings_label">Show Additional Settings</h4></a>
-                            <div id="additional_settings" style="display: none;">
-                                <span class="settings-header">Dendrogram</span>
-                                <div class="form-group form-margin circlephylogram_settings">
-                                        <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
-                                        <div class="col-md-8 form-inline">
-                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to
-                                            <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
-                                        </div>
+                            <span id="toggle-chevron-legend" class="settings-header btn d-flex chart-icon-padding mt-5 align-items-center" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-legend').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/legend-chart.svg" alt="Item Icon"/>
+                                Legends
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                            <div class="collapse multi-collapse show" id="legend-collapse-main">
+                                <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
                                 </div>
-                                <div class="form-group form-margin circlephylogram_settings">
-                                        <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OPTION Tab -->
+                    <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
+                        <div id="additional_settings">
+                            <span id="toggle-chevron-item-option" class="settings-header mt-3 btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/item-chart.svg" alt="Item Icon"/>
+                                Items
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                            <div class="collapse multi-collapse show" id="item-collapse-option">
+                                <div class="ml-3">
+                                    <span class="settings-secondary-header">Bins Selection</span>
+                                    <div class="form-group form-margin d-flex pt-1 mt-3 align-items-center">
+                                            <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
+                                            <div class="col-6 d-flex align-item-center input-align">
+                                                <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label d-flex" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
+                                            <div class="col-12 input-align d-flex">
+                                                <input class="mr-4" type="checkbox" id="show_bin_labels" name="checkbox"
+                                                value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" checked>
+                                                <div class="col-8">
+                                                    <div class="bin_labels_details input-align" style="display: flex;">
+                                                        <span class="d-flex align-items-center">Font Size:</span>
+                                                        <input id="bin_labels_font_size" class="form-control input-xs col-2" size="5" value="128" onchange="emit('bin-settings-changed');" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin bin_labels_details d-flex">
+                                            <label class="col-3 settings-label d-flex" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
+                                            <div class="col-12 d-flex input-align">
+                                                <input class="mr-4" type="checkbox" id="autorotate_bin_labels" name="checkbox"
+                                                value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" checked>
+                                                <div class="d-flex">
+                                                    <div class="col-8 align-items-center" id="span_bin_labels_angle" style="display: none;">
+                                                        <div class="d-flex input-align">
+                                                            <span class="d-flex align-items-center mr-4">Angle:</span>
+                                                            <input class="form-control input-xs col-8 d-flex" size="5" value="0" id="bin_labels_angle" onchange="emit('bin-settings-changed');" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
+                                        <div class="col-4 input-align d-flex">
+                                            <input class="" type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                            <div id="grid_color" style="display: none !important;" class="colorpicker colorpicker-width" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                            <div class="col-8 d-flex pl-0 align-items-center">
+                                                <div class="d-flex">
+                                                    <div class="grid_details display-settings" style="display: none;">
+                                                        <span class="d-flex align-items-center pl-1 mr-1">Width:</span>
+                                                        <input class="form-control input-xs d-flex ml-4 col-8"  size="5" value="10" id="grid_width" onchange="emit('bin-settings-changed');" />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                </div>
-                                <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Height:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label d-flex" for="show_shade_for_bins" data-help="show-shade">Show shade: </label>
+                                            <div class="col-12 input-align d-flex">
+                                                <input class="mr-4" type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
+                                                <div class="col-8 align-items-center">
+                                                    <div class="shade_details input-align align-items-center" style="display: flex;">
+                                                        <span>Opacity:</span>
+                                                        <input class="form-control input-xs col-2 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1"  name="checkbox" id="shade_fill_opacity" onchange="emit('bin-settings-changed')" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex" id="invert_shade_div">
+                                        <label class="col-3 settings-label d-flex" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </label>
+                                        <div class="col-7 input-align d-flex">
+                                            <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color, #inverse_color_input').show(); } else { $('.inverse_details, #inverse_color, #inverse_color_input').hide(); }" style="float: left;" unchecked>
+                                            <div id="inverse_color" onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker colorpicker-width" style="background-color: #000" color="#000"></div>
+                                            <div style="display: none !important;" id="inverse_color_input">
+                                                <div class="inverse_details d-flex">
+                                                    <span class="pt-1">Opacity:</span>        
+                                                    <input class="form-control input-xs col-5 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
+                                                </div> 
+                                            </div>
                                         </div>
-                                </div>
-                                <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Width:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label" for="begins_from_branch" data-help="begins-from-branch">Begins from branch:</label>
+                                            <div class="col-6 d-flex">
+                                                <input type="checkbox" id="begins_from_branch" name="checkbox" value="value" onchange="emit('bin-settings-changed')">
+                                            </div>
+                                    </div>
+                            </div>
+                            <div class="ml-3">
+                                <span class="settings-secondary-header">Cosmetics</span>
+                                <div>
+                                    <div class="form-group form-margin d-flex pt-1">
+                                        <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
+                                        <div class="col-6 d-flex">
+                                            <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                         </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
+                                            <div class="col-6 d-flex align-items-center input-align">
+                                                <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
+                                            </div>
+                                    </div>
+                                    <div class="max-font-size-input" style="display: none;">
+                                        <div class="form-group form-margin align-items-center d-flex">
+                                                <label class="col-2 settings-label" for="max_font_size" data-help="max-font-size">Maximum Font Size: </label>
+                                                <div class="col-6 d-flex align-items-center input-align">
+                                                    <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs col-3">
+                                                </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
+                                            </div>
+                                    </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
-                                        <div class="col-md-8">
+                            </div>
+                            <div class="ml-3">
+                                <span class="settings-secondary-header">Dendrogram</span>
+                                <div id="tree_type_circlephylogram">
+                                    <div class="form-group form-margin circlephylogram_settings d-flex mt-3 align-items-center">
+                                            <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
+                                            <div class="col-6 form-inline input-align">
+                                                <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
+                                                <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin circlephylogram_settings d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                </div>
+                                <div id="tree_type_phylogram">
+                                    <div class="form-group form-margin phylogram_settings d-flex align-items-center" style="display: none;">
+                                            <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin phylogram_settings d-flex align-items-center" style="display: none;">
+                                            <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                </div>
+                                <div class="form-group form-margin d-flex align-items-center">
+                                        <label class="col-3 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
+                                        <div class="col-2 d-flex">
                                             <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                         </div>
                                 </div>
 
-                            <span class="settings-header" >Branch Support</span>
-                               <div id="max_branch_support_value_seen_is_zero_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                   You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
-                                   tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
-                               </div>
-
-                                <div class="form-group form-margin" >
-                                    <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
-                                    <div class="col-md-8">
+                            <div class="manual-mode">    
+                            <span class="settings-secondary-header" >Branch Support</span>
+                                <div class="form-group form-margin d-flex mt-3">
+                                    <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
+                                    <div class="col-3 d-flex pt-1">
                                         <input type="checkbox"
                                                 onclick="checkMaxSupportValueSeen();"
                                                 onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
@@ -233,54 +583,61 @@
                                         </input>
                                     </div>
                                 </div>
+                                <div id="max_branch_support_value_seen_is_zero_warning" class="pt-1 alert alert-info" style="display: none;" >
+                                    <span class="bi bi-info-circle-fill mr-1" aria-hidden="true"></span> You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                    tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
+                                </div>
                                 <div id="support_value_params">
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
-                                        <div class="col-md-8">
-                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'> to
-                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
+                                        <div class="col-6 form-inline input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                            <span class="ml-1">to</span>
+                                            <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
-                                        <div class="col-md-8">
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
+                                        <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
-                                                   id="support_display_symbol"
-                                                   style="float: left;"
-                                                   name="show-symbol"
-                                                   onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
-                                                   >
+                                                id="support_display_symbol"
+                                                style="float: left;"
+                                                name="show-symbol"
+                                                onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
+                                                >
                                         </div>
                                     </div>
-                                    <div class='form-group form-margin' id='show_symbol_options'>
-                                        <div class="form-group form-margin" id="support_symbol">
-                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
-                                            <div class="col-md-8">
+                                    <div class="form-group form-margin" id='show_symbol_options'>
+                                        <div class="form-group form-margin" id="support_symbol" style="display: flex;">
+                                            <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                            <div class="col-4 input-align d-flex">
                                                 <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
                                             </div>
                                         </div>
                                         <div class="form-group form-margin">
-                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
-                                            <div class="col-md-8">
-                                                <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            <div class="form-group form-margin" style="display: flex;">
+                                                <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                                <div class="col-4 input-align d-flex">
+                                                    <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="form-group form-margin">
-                                            <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
-                                            <div class="col-md-8">
-                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
+                                        <div class="form-group form-margin" style="display: flex;">
+                                            <label class="col-2 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
+                                            <div class="col-6 form-inline d-flex input-align">
+                                                <input class="form-control input-xs col-3" type="number" id="support_symbol_size" value='12' max='20' min='1'>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
-                                        <div class="col-md-8">
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="support_display_number" data-help="support-value-checkbox">Text:</label>
+                                        <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
-                                                   id="support_display_number"
-                                                   style="float: left;"
-                                                   name="show-number"
-                                                   onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
-                                                   >
+                                                id="support_display_number"
+                                                style="float: left;"
+                                                name="show-number"
+                                                onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                >
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_font_size'>
@@ -289,122 +646,25 @@
                                             <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin" id='show_text_rotation'>
-                                        <label class="col-md-4 settings-label" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
-                                        <div class="col-md-8">
-                                            <input type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                    <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
+                                        <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                        <div class="col-6 input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
                                         </div>
                                     </div>
                                 </div>
-
-                                <span class="settings-header">Selections</span>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="show_bin_labels" name="checkbox"
-                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
-                                            <span class="bin_labels_details" style="margin-left:5px;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin bin_labels_details">
-                                        <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="autorotate_bin_labels" name="checkbox"
-                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
-                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                                            <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                                            <span class="grid_details" style="display: none; margin-left:5px;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shade: </Label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
-                                            <span class="shade_details" style="display: float; margin-left:5px;">Shade opacity:        
-                                                <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="shade_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                            </span>
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin" id="invert_shade_div">
-                                    <Label class="col-md-4 settings-label" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </Label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color').show(); } else { $('.inverse_details, #inverse_color').hide(); }" style="float: left;" unchecked>
-                                        <div id="inverse_color"onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #000" color="#000"></div>
-                                        <span class="inverse_details" style="display: float; margin-left:5px;">Opacity:        
-                                            <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                        </span> 
-                                    </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="begins_from_branch" data-help="begins-from-branch">Begins from branch:</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="begins_from_branch" name="checkbox" value="value" onchange="emit('bin-settings-changed')" style="float: left;">
-                                        </div>
-                                </div>
-
-                                <span class="settings-header">Layers</span>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin max-font-size-input" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
-                                        </div>
-                                </div>
-
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <span class="settings-header">Layer Labels</span>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="max_font_size_label" data-help="max-font-size-label">Max. Font Size: </label>
-                                        <div class="col-md-8">
-                                            <input type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs">
-                                        </div>
-                                </div>
-
-                                <span class="settings-header">Performance</span>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>
-                                        <div class="col-md-8">
+                            </div>
+                                <span class="settings-secondary-header">Performance</span>
+                                <div class="form-group form-margin d-flex pt-1">
+                                        <label class="col-3 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>
+                                        <div class="col-6 d-flex">
                                             <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
                                         </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
-                                        <div class="col-md-8">
-                                                <select id="draw_guide_lines">
+                                <div class="form-group form-margin d-flex align-items-center">
+                                        <label class="col-3 settings-label d-flex" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
+                                        <div class="col-8 input-dropdown">
+                                                <select class="form-control form-control-sm col-7" id="draw_guide_lines">
                                                     <option value="no" selected>No</option>
                                                     <option value="odd_even">Draw for every other leaf</option>
                                                     <option value="yes">Draw for every leaf</option>
@@ -412,97 +672,72 @@
                                         </div>
                                 </div>
                             </div>
-
-                            <span class="settings-header">Layers</span>
-
-                            <div id="table_layers_container" style="margin-top: 15px;">
-                                <table id="table_layers">
-                                    <thead>
-                                        <tr>
-                                            <td></td>
-                                            <td data-help="layer-name">Name</td>
-                                            <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
-                                            <td data-help="layer-type">Type</td>
-                                            <td data-help="layer-norm">Norm.</td>
-                                            <td data-help="layer-height">Height</td>
-                                            <td data-help="layer-margin" class="column-margin">Margin</td>
-                                            <td data-help="layer-min">Min</td>
-                                            <td data-help="layer-max">Max</td>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_layers"></tbody>
-                                    <tbody id="tbody_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                                            <td>
-                                                <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
-                                                <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
-                                            </td>
-                                            <td style="width: 50px;">
-                                                <select class="type_multiple" style="width: 50px;" class="type">
-                                                    <option value="">Select</option>
-                                                    <option value="" disabled>-----Numerical Types-----</option>
-                                                    <option value="bar">Bar</option>
-                                                    <option value="intensity">Intensity</option>
-                                                    <option value="line">Line</option>
-                                                    <option value="" disabled>-----Categorical Types-----</option>
-                                                    <option value="color">Color</option>
-                                                    <option value="text">Text</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <select class="normalization_multiple">
-                                                    <option value="">Select</option>
-                                                    <option value="none">none</option>
-                                                    <option value="sqrt">sqrt</option>
-                                                    <option value="log">log</option>
-                                                </select>
-                                            </td>
-                                            <td><input class="input-height-multiple" size="3"></input></td>
-                                            <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
-                                            <td><input class="input-min-multiple" size="4"></input></td>
-                                            <td><input class="input-max-multiple" size="4"></input></td>
-                                            <td><input type="checkbox" class="select_all"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
                             </div>
+
+                            <span id="toggle-chevron-layer-option" class="settings-header btn d-flex chart-icon-padding align-items-center mt-5" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/layer-chart.svg" alt="Layer Icon"/>
+                                Layers
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                                <div class="collapse multi-collapse show ml-3" id="layer-collapse-option">
+                                    <div>
+                                        <span class="settings-secondary-header">Tree/Dendrogram</span>
+                                        <div class="form-group form-margin d-flex mt-3 align-items-center">
+                                                <label class="col-2 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
+                                                <div class="col-6 d-flex align-item-center input-align">
+                                                    <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs col-3">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex align-items-center">
+                                                <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex align-items-center">
+                                                <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
+                                                </div>
+                                        </div>
+                                    </div>
+                                    <span class="settings-secondary-header">Labels</span>
+                                    <div class="form-group form-margin d-flex pt-1 align-items-center">
+                                            <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
+                                            <div class="col-2 input-align d-flex mt-2">
+                                                <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="sidebar-state-buttons btn-group col-11 mt-3" role="group">
+                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-info btn-md" onClick="drawSamples();" disabled><span class="bi bi-layers-fill" aria-hidden="true"></span> Redraw layer data</button>
+                                    </div>
+                                </div>
                         </div>
                     </div>
-                    <div role="tabpanel" class="tab-pane fade in" id="legend_settings">
 
-
-
-                    </div>
-
-                    <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
-                        <div id="bin-settings" class="form-horizontal">
+                    <!-- BINS Tab -->
+                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
+                        <div id="bin-settings" class="form-horizontal mt-3">
                             <div class="panel-body">
 
-                                <div class="form-group form-margin full-mode refine-mode">
-                                    <p id="estimate-taxonomy-check">
+                                <div class="form-group form-margin full-mode refine-mode mt-3">
+                                    <p id="estimate-taxonomy-check" class="d-flex">
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
-                                        <label for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</label>
+                                        <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
                                     </p>
                                 </div>
 
                                 <table class="table sortable" id="bins-table">
                                     <thead id="thead_bins">
                                         <tr>
-                                            <th data-defaultsort='disabled'></th>
+                                            <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>
                                             <th class="text-center"></th>
                                             <th>Name</th>
                                             <th id="splits_title">Splits</th>
                                             <th id="len_title">Len</th>
                                             <th id="completion_title" title="Completion">Comp.</th>
                                             <th id="redundancy_title" title="Redundancy">Red.</th>
-                                            <th data-defaultsort='disabled'><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();" style="color: red;"></span></th>
+                                            <th data-defaultsort='disabled'><span class="del-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody_bins">
@@ -510,316 +745,202 @@
                                     </tbody>
                                 </table>
 
-                                <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="bins.NewBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
-                                </div>
-
                                 <div class="">
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode gene-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                        <button type="button" class="btn btn-default btn-sm" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="bi bi-file-arrow-up fa-lg" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="bi bi-file-arrow-down fa-lg" aria-hidden="true"></span> Store bin collection</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                        <button type="button" class="btn btn-outline-success btn-lg" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true">Generate a static summary page</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode refine-mode" role="group" style="display: none">
-                                        <button type="button" id="show_taxonomy_button" class="btn btn-default btn-sm" onclick="showTaxonomy();" style="width: 100%"><span class="glyphicon glyphicon-gift" aria-hidden="true"></span> Recalculate / Show Taxonomy for Bins</button>
+                                        <button type="button" id="show_taxonomy_button" class="btn btn-outline-info btn-lg" onclick="showTaxonomy();" style="width: 100%">Recalculate / Show Taxonomy for Bins</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true">Store refined bins in the database</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                         <div id="bins-bottom" class="col-md-12">
                             <!-- JS FILLS HERE -->
                         </div>
                     </div>
 
-                    <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
-                        <div id="sample-settings" class="form-horizontal">
-                            <span class="settings-header">Organization</span>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Order by:</label>
-                                    <div class="col-md-8">
-                                        <select id="samples_order" class="form-control input-xs">
-                                            <!-- JS FILLS HERE -->
-                                        </select>
-                                        <div id="samples_tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                            <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
-                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
+                    <!-- SEARCH Tab -->
+                    <div role="tabpanel" class="tab-pane fade show" id="search_tab">
+                        <div class="mt-1 p-2" id="search_tab_content" tabindex="-1">
+                            <div class="shadow-box focus-box pb-3 pr-3 pl-3 mb-3 rounded">
+                                <span class="settings-header mb-3 pt-2" data-help='search-expression'>Search with expression</span>
+                                <div class="form-horizontal">
+                                    <table style="width: 100%;">
+                                        <tr>
+                                            <td style="width: 25%;">Field:</td>
+                                            <td><select class="form-control form-control-sm col-12 select-sm" id="searchLayerList" data-help="search-layer" style="width: 100%;"></select></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Operator:</td>
+                                            <td>
+                                                <select class="form-control form-control-sm col-12 select-sm" id="searchOperator" data-help="search-operator" style="width: 100%;">
+                                                    <option value="6">Contains</option>
+                                                    <option value="0">==</option>
+                                                    <option value="1">!=</option>
+                                                    <option value="2">&gt;</option>
+                                                    <option value="3">&lt;</option>
+                                                    <option value="4">&gt;=</option>
+                                                    <option value="5">&lt;=</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Term:</td>
+                                            <td><input class="form-control form-control-sm col-12 select-sm" id="searchValue" value="" data-help="search-value" style="width: 100%;"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;</td>
+                                            <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="searchContigs();" data-help="search-button"><span class="bi bi-search" aria-hidden="true"></span> Search</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;</td>
+                                            <td><div class="text-success" id="search_result_message"></div></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded">
+                                <span class="settings-header mb-3 pt-2">Search functions</span>
+                                <div class="form-horizontal">
+                                    <div class="alert alert-danger functions-not-available-message mb-3">Functions are not initialized or not available for this mode.</div>
+                                    <table style="width: 100%;">
+                                        <tr>
+                                            <td>Search terms:</td>
+                                            <td>
+                                                <input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" placeholder="You can separate multiple search terms with ','" style="width: 100%;" disabled>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Sources:</td>
+                                            <td id="functions_sources_list">No source found.</td>
+                                        </tr>
+                                        <tr>
+                                            <td></td>
+                                            <td><button class="btn btn-outline-secondary btn-sm mr-2" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button class="btn btn-outline-secondary btn-sm" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;</td>
+                                            <td class="mt-2"><button type="button" class="btn btn-outline-secondary btn-md" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="bi bi-search" aria-hidden="true"></span> Search functions</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>&nbsp;</td>
+                                            <td><div class="text-primary" id="search_result_message_functions"></div></td>
+                                        </tr>
+                                    </table>
+                                    <div class="alert alert-danger search-message" style="display: none; margin-top: 20px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pan-mode">
+                                <div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded">
+                                    <span class="settings-header mb-3 pt-2">Search gene clusters using filters</span>
+                                    <div class="form-horizontal">
+                                        <div class="alert alert-danger gene-filters-not-available-message mb-3">This feature is only available for 'pangenomics' mode.</div>
+                                        <table class="table table-borderless">
+                                            <thead>
+                                                <tr>
+                                                    <th>Active</th>
+                                                    <th>Rule</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="pan-filters">
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                    <td>Min number of genomes gene cluster occurs</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                    <td>Max number of genomes gene cluster occurs</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                    <td>Min number of genes from each genome</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                    <td>Max number of genes from each genome</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="min_func"/></td>
+                                                    <td>Min functional homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="min_functional_homogeneity_index" type="text" value="-1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="max_func"/></td>
+                                                    <td>Max functional homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="max_functional_homogeneity_index" type="text" value="1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="min_geo"/></td>
+                                                    <td>Min geometric homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="min_geometric_homogeneity_index" type="text" value="-1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="max_geo"/></td>
+                                                    <td>Max geometric homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="max_geometric_homogeneity_index" type="text" value="1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="min_combined"/></td>
+                                                    <td>Min combined homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="min_combined_homogeneity_index" type="text" value="-1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><input class="form-control input-xs" type="checkbox" disabled id="max_combined"/></td>
+                                                    <td>Max combined homogeneity index</td>
+                                                    <td><input class="form-control input-xs" size="6" parameter="max_combined_homogeneity_index" type="text" value="1" disabled /></td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterGeneClusters();" disabled><span class="bi bi-search" aria-hidden="true"></span> Search</button></td>
+                                                    <td></td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><div class="text-warning" id="search_result_message_pan_filter"></div></td>
+                                                    <td></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;">
                                         </div>
-                                         <button type="button" class="btn btn-default btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
+                                        <script type="text/javascript">
+                                            $(document).ready(function() {
+                                                $('.pan-filters input:checkbox').on('change', function(event) {
+                                                    $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
+                                                });
+                                            });
+                                        </script>
                                     </div>
-                            </div>
-
-                            <span class="settings-header">Tree/Dendrogram</span>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
-                                    <div class="col-md-8">
-                                        <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
-                                    </div>
-                            </div>
-                            <span class="settings-header">Layer Groups</span>
-                            <div id="sample_groups_container">
-
-                            </div>
-                            <div class="clearfix"></div>
-                            <span class="settings-header">Layers</span>
-                            <div id="table_samples_container" style="margin-top: 10px;">
-                                <table id="table_samples">
-                                    <thead>
-                                        <tr>
-                                            <td></td>
-                                            <td data-help="layer-name">Name</td>
-                                            <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
-                                            <td data-help="layer-type">Type</td>
-                                            <td data-help="layer-norm">Norm.</td>
-                                            <td data-help="layer-height">Height</td>
-                                            <td data-help="layer-margin">Margin</td>
-                                            <td data-help="layer-min">Min</td>
-                                            <td data-help="layer-max">Max</td>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_samples"></tbody>
-                                    <tbody id="tbody_samples_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                                            <td>
-                                                <div id="picker_start_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
-                                                <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
-                                            </td>
-                                            <td style="width: 50px;">
-                                                <select class="type_multiple" style="width: 50px;" class="type">
-                                                    <option value="bar">Bar</option>
-                                                    <option value="intensity">Intensity</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <select class="normalization_multiple">
-                                                    <option value="none">none</option>
-                                                    <option value="sqrt">sqrt</option>
-                                                    <option value="log">log</option>
-                                                </select>
-                                            </td>
-                                            <td><input class="input-height-multiple" size="3"></input></td>
-                                            <td><input class="input-margin-multiple" size="3"></input></td>
-                                            <td><input class="input-min-multiple" size="4"></input></td>
-                                            <td><input class="input-max-multiple" size="4"></input></td>
-                                            <td><input type="checkbox" class="select_all"></td>
-                                        </tr>
-                                    </tbody>
-                                    <tbody id="tbody_samples_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;">Select all layers in a group</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td colspan="2"><select style="width: 100%;" id="group_list_for_select_all"></select></td>
-                                            <td style="width: 50px;"><button id="group_select_all">Select</button></td>
-                                            <td><button id="group_unselect_all">Unselect</button></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <br />
-                            <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                                <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Redraw layer data</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div role="tabpanel" class="tab-pane fade in" id="search_tab">
-                        <div id="search_tab_content">
-                            <span data-help='search-expression'>Search with expression</span>
-                            <div class="form-horizontal">
-                                <table style="width: 100%;">
-                                    <tr>
-                                        <td style="width: 25%;">Field</td>
-                                        <td><select id="searchLayerList" data-help="search-layer" style="width: 100%;"></select></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Operator</td>
-                                        <td>
-                                            <select id="searchOperator" data-help="search-operator" style="width: 100%;">
-                                                <option value="6">Contains</option>
-                                                <option value="0">==</option>
-                                                <option value="1">!=</option>
-                                                <option value="2">&gt;</option>
-                                                <option value="3">&lt;</option>
-                                                <option value="4">&gt;=</option>
-                                                <option value="5">&lt;=</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Term</td>
-                                        <td><input id="searchValue" value="" data-help="search-value" style="width: 100%;"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>&nbsp;</td>
-                                        <td><button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>&nbsp;</td>
-                                        <td><div id="search_result_message"></div></td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <span>Search functions</span>
-                            <div class="form-horizontal">
-                                <div class="alert alert-danger functions-not-available-message" style="margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
-                                <table style="width: 100%;">
-                                    <tr>
-                                        <td>Search terms:</td>
-                                        <td><input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" style="width: 100%;" disabled>
-                                            <small>You can separate multiple search terms with ","</small></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Sources:</td>
-                                        <td id="functions_sources_list">No source found.</td>
-                                    </tr>
-                                    <tr>
-                                        <td></td>
-                                        <td><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>&nbsp;</td>
-                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search functions</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>&nbsp;</td>
-                                        <td><div id="search_result_message_functions"></div></td>
-                                    </tr>
-                                </table>
-                                <div class="alert alert-danger search-message" style="display: none; margin-top: 20px;">
                                 </div>
                             </div>
-                            <span>Search gene clusters using filters</span>
-                            <div class="form-horizontal">
-                                <div class="alert alert-danger gene-filters-not-available-message" style="margin-bottom: 20px;">This feature is only available for 'pangenomics' mode.</div>
-                                <table class="table table-borderless">
-                                    <thead>
-                                        <tr>
-                                            <th>Active</th>
-                                            <th>Rule</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="pan-filters">
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_func"/></td>
-                                            <td>Min functional homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_functional_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_func"/></td>
-                                            <td>Max functional homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_functional_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_geo"/></td>
-                                            <td>Min geometric homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_geometric_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_geo"/></td>
-                                            <td>Max geometric homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_geometric_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_combined"/></td>
-                                            <td>Min combined homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_combined_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_combined"/></td>
-                                            <td>Max combined homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_combined_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><button type="button" class="btn btn-default btn-sm" onclick="filterGeneClusters();" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
-                                            <td></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><div id="search_result_message_pan_filter"></div></td>
-                                            <td></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;">
-                                </div>
-                                <script type="text/javascript">
-                                    $(document).ready(function() {
-                                        $('.pan-filters input:checkbox').on('change', function(event) {
-                                            $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
-                                        });
-                                    });
-                                </script>
-                            </div>
                         </div>
-                        <div class="form-horizontal" style="margin-top: 20px;">
+                        <hr class="mb-3 col-11 border-color">
+                        <div class="form-horizontal p-3 m-2 rounded border" id="result-box">
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="mr-1 bi bi-table" aria-hidden="true"></span><b>List Results</b></button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="bi bi-highlighter" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-default btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="bi bi-eraser-fill" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="bi bi-plus-circle-fill" aria-hidden="true"></span> Append splits to selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="bi bi-dash-circle-fill" aria-hidden="true"></span> Remove splits from selected bin</button>
                             </div>
 
                             <span id="search-results-table-header" class="col-md-12"></span>
@@ -837,73 +958,74 @@
                         </div>
                     </div>
 
-                </div>
-            </div>
+                    <!-- DATA TAB -->
+                    <div role="tabpanel" class="tab-pane fade show" id="data_tab">
+                        <p class="mt-3" style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
+                        <div id="mouse_hover">
+                            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
+                                <thead>
+                                    <tr>
+                                        <td width="40%">Item Name</th>
+                                        <td width="60%" id="cell_item_name">#</th>
+                                    </tr>
+                                    <tr>
+                                        <td width="40%">Layer Name</th>
+                                        <td width="60%" id="cell_layer_name">#</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
+                                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
+                                    <table class="table table-striped" id="tooltips-table">
+                                        <col width="40%">
+                                        <col width="60%">
+                                        <tbody id="tooltip_content">
+                                            <!-- JS FILLS HERE -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- NOTES TAB -->
+                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
+                        <div class="mt-3">
+                            <textarea id="description-editor" rows="10"></textarea>
+                        </div>
+                    </div>
 
-            <div class="sidebar-footer">
-                <div class="sidebar-footer-draw">
-                    <button type="button" class="btn btn-default btn-sm glowing-button" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
-                        <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> <u>D</u>raw
-                    </button>
-                    <span id="draw_delta_time" style="padding-left: 10px;"></span>
-                </div>
-                <div class="btn-group sidebar-state-buttons sidebar-footer-draw" role="group" style="margin-bottom: 0px;">
-                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
-                </div>
-                <div class="btn-group btn-group-justified" id="sidebar-footer-controls" role="group">
-                    <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm upload-button" onclick="showUploadProject();"><span class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
+                    <!-- ANVIO TAB -->
+                    <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
+                        <div class="mt-3 paragraph" id="anvio_tab_content">
+                            <a href="https://anvio.org/people/">
+                                <p class="subheading">Anvi'o Authors</p>
+                            </a>
+                            <hr class="mb-3 col-11 border-color">
+                            <a href="https://anvio.org/"><p class="subheading">Anvi'o Project Page</p></a>
+                            <hr class="mb-3 col-11 border-color">
+                            <a href="https://github.com/merenlab/anvio/issues"><p class="subheading">Browse/Report Issue</p></a>
+                            <hr class="mb-3 col-11 border-color">
+                            <a href="https://anvio.org/cite/"><p class="subheading">How To Cite</p></a>
+                            <hr class="mb-3 col-11 border-color">
+                        </div>
+                        <div class="paragraph d-flex align-item-center justify-content-center col-10">
+                            <a href="https://discord.gg/C6He6mSNY4" class="mr-3 discord-btn btn btn-outline-secondary align-item-center justify-content-center"><i class="bi bi-discord fs-2"></i> <span class="lead">| Get Help</span></a>
+                            <a href="https://github.com/merenlab/anvio" class="btn github-btn btn-outline-secondary align-item-center justify-content-center"><i class="bi bi-github fs-2"></i> <span class="lead">| Access Code</span></a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div id="mouse_hover_panel">
-        <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
-        <div id="mouse_hover">
-            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
-                <thead>
-                    <tr>
-                        <td width="40%">Item Name</th>
-                        <td width="60%" id="cell_item_name">#</th>
-                    </tr>
-                    <tr>
-                        <td width="40%">Layer Name</th>
-                        <td width="60%" id="cell_layer_name">#</th>
-                    </tr>
-                </thead>
-            </table>
-            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
-                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
-                    <table class="table table-striped" id="tooltips-table">
-                        <col width="40%">
-                        <col width="60%">
-                        <tbody id="tooltip_content">
-                            <!-- JS FILLS HERE -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="description-panel">
-        <textarea id="description-editor" rows="10"></textarea>
-    </div>
-    <!-- DIALOGS SECTION -->
 
     <!-- LOAD STATE -->
     <div class="modal fade" id="modLoadState">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Load State</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -914,7 +1036,7 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -925,8 +1047,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Save State</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -943,7 +1065,7 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -953,17 +1075,17 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header" style="padding-bottom: 0px;">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">📰 The Anvi'o News Network</h4>
                     <p style="padding: 10px 10px 0px 10px;">Click the button below to mark all news as read to not see this window again until there is a new news for you from the anvi'o developers 😇</p>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div id='modNewsBadger-inner'></div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-default" type='button' onclick='newsMarkRead()'>Mark all news as read</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-primary" type="button" onclick="newsMarkRead();">Mark all news as read</button>
+                    <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -974,8 +1096,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Generate Summary</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -1001,7 +1123,7 @@
 
                 <div class="modal-footer">
                     <button type="button" id="btn-generate-summary" class="btn btn-primary" onclick="generateSummary();">Generate</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -1012,8 +1134,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Summary is ready</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -1023,7 +1145,7 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -1034,8 +1156,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Generate new phylogenetic tree</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -1078,7 +1200,7 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" onclick="generatePhylogeneticTree();" type="button">Generate</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -1089,8 +1211,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Upload project to Anvio Server</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -1106,8 +1228,8 @@
                             <input type="password" id="password" value="">
                         </div>
                     </div>
-                    <div class="col-md-12">
-                        <center><a href="https://anvi-server.org/accounts/register/">Register</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://anvi-server.org/accounts/password/reset/">Reset your password</a></center>
+                    <div class="col-md-12 text-align-center">
+                        <a href="https://anvi-server.org/accounts/register/">Register</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://anvi-server.org/accounts/password/reset/">Reset your password</a>
                     </div>
 
                     <div class="col-md-12">
@@ -1185,7 +1307,7 @@
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" onclick="uploadProject();" type="button">Upload</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -1196,18 +1318,18 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Split Sequence</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea>
+                        <textarea class="form-control" style="width: 100%; height: 100%;" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>
@@ -1260,31 +1382,20 @@
             return false;
         }
 
-        if (ev.keyCode >= 49 && ev.keyCode < 54)
+        if (ev.keyCode >= 49 && ev.keyCode < 57)
         {
+            // 1 = Main , 2 = Option , 3 = Bins, 4 = Data, 5 = Notes, 6 = Search, 8 = Anvio
             var targetTabNumber = ev.keyCode - 49;
-            var targetTab = $('.nav-tabs a').eq(targetTabNumber);
+            var targetTab = $('#inner-sidebar a').eq(targetTabNumber);
 
             if (!$(targetTab).parent().hasClass('disabled'))
             {
-                $(targetTab).tab('show');
+                switchNavigationTabs(targetTab);
             }
         }
 
         if (ev.keyCode === 83) { // S = 83
             $('#toggle-panel-left').trigger('click');
-        }
-
-        if (ev.keyCode === 77) { // M = 77
-            $('#toggle-panel-right').trigger('click');
-        }
-
-        if (ev.keyCode === 78) { // N = 78
-            $('#toggle-panel-right-2').trigger('click');
-        }
-
-        if (ev.keyCode === 87) { // W = 87
-            $('#toggle-panel-right-3').trigger('click');
         }
 
         if (ev.keyCode === 68) { // D = 68
@@ -1293,6 +1404,7 @@
 
         if (ev.keyCode === 84) { // T = 84
             $('#title-panel').toggle();
+            $('#toggle-panel-top').toggleClass('invisible visible');
         }
 
         if (ev.keyCode === 90 && (ev.metaKey || ev.ctrlKey)) {

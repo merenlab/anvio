@@ -1,7 +1,7 @@
 @import url('normalize.css');
 
 #chart-container {
-    width: 1200px; //this is being overwritten though.
+    width: 1200px;
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
     box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
@@ -35,7 +35,7 @@
 }
 
 svg {
-    font-family: 'Lato', Arial, serif;
+    font-family: 'Roboto',Helvetica,Arial,sans-serif;
     font-size: 10px;
     font-weight: 700;
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
@@ -78,7 +78,7 @@ g.context rect.background{
 
 /* General Demo Style */
 body{
-    font-family: 'Lato', Arial, serif;
+    font-family: 'Roboto',Helvetica,Arial,sans-serif;
     font-weight: 300;
     font-size: 14px;
     color: #888;
@@ -136,7 +136,7 @@ a{
     text-transform: uppercase;
     z-index: 9999;
     position: relative;
-    font-family: Cambria, Georgia, serif;
+    font-family: 'Roboto',Helvetica,Arial,sans-serif;
     box-shadow: 1px 0px 2px rgba(0,0,0,0.2);
 }
 .codrops-top a{
@@ -166,7 +166,7 @@ a{
   max-width: 900px;
   padding: 1px;
   color: black;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Roboto',Helvetica,Arial,sans-serif;
   font-size: 14px;
   font-style: normal;
   font-weight: normal;
@@ -295,7 +295,7 @@ a{
 
 table {
   color: #333; /* Lighten up font color */
-  font-family: Helvetica, Arial, sans-serif; /* Nicer font */
+  font-family: 'Roboto',Helvetica,Arial,sans-serif; /* Nicer font */
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -319,4 +319,6 @@ td {
   text-align: center;
   padding-bottom: 15px;
 }
-
+.main-container{
+  display: contents;
+}
