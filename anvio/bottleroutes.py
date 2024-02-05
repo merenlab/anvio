@@ -193,7 +193,9 @@ class BottleApplication(Bottle):
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
-
+        self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
+        self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
+        self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -262,6 +264,8 @@ class BottleApplication(Bottle):
             homepage = 'structure.html'
         elif self.interactive.mode == 'metabolism':
             homepage = 'metabolism.html'
+        elif self.interactive.mode == 'pangraph':
+            homepage = 'pangraph.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
@@ -1065,7 +1069,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-        
+
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
@@ -1481,7 +1485,29 @@ class BottleApplication(Bottle):
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
+
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+
+
+    def get_pangraph_json_data(self):
+        return self.interactive.pan_graph_json
+
+    def get_pangraph_settings(self):
+        pass
+        # Rerun function
+
+    def get_pangraph_gc_alignment(self):
+
+        payload = request.json
+        result = {}
+
+        for genome in payload.keys():
+            genecall, name = payload[genome]
+            gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
+            sequence = gene_cluster_alignment_dict[genome][int(genecall)]
+
+            result[genome] = [genecall, sequence]
+
+        return(result)

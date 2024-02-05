@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <title>Gene Cluster Network</title>
+
+    <link type="text/css" rel="stylesheet" href="lib/pangraph/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="lib/pangraph/icons/font/bootstrap-icons.min.css" />
+    <!-- <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/themes/light.css" />
+    <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/dist/tippy.css" /> -->
+    <link type="text/css" rel="stylesheet" href="css/pangraph.css" />
+    <link rel="shortcut icon" href="#">
+
+    <script type="text/javascript" src="lib/pangraph/jquery-dist/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
+    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+
+    <script type="text/javascript" src="lib/pangraph/bootstrap/dist/js/bootstrap.bundle.min.js" onerror='alertDependencyError("popper")'></script>
+    <!-- <script type="text/javascript" src="lib/pangraph/tippy.js/dist/tippy.umd.min.js" onerror='alertDependencyError("tippy")'></script> -->
+    <script type="text/javascript" src="lib/pangraph/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
+    <script type="text/javascript" src='js/pangraph.js' type="module"></script>
+
+  </head>
+
+  <body>
+  
+    <div id="svgbox"></div>
+    
+    <div class="offcanvas offcanvas-start" data-bs-scroll="true" data-bs-backdrop="false" id="leftoffcanvas">
+      <button class="btn btn-primary offcanvas-btn position-absolute ms-3 mt-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#leftoffcanvas" id="leftoffcanvas-button">
+          <!-- <span>Open</span><span>Close</span> -->
+          <span><i class="bi bi-gear"></i></span><span><i class="bi bi-x-lg"></i></span>
+      </button>
+      
+      <div class="offcanvas-body p-0">
+        <nav>
+          <div class="nav nav-tabs pt-3 ps-3 pe-3" id="nav-tab" role="tablist">
+            <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab" data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home" aria-selected="true"><i class="bi bi-house"></i></button>
+            <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="false"><i class="bi bi-search"></i></button>
+            <button class="nav-link" id="nav-bins-tab" data-bs-toggle="tab" data-bs-target="#nav-bins" type="button" role="tab" aria-controls="nav-bins" aria-selected="false"><i class="bi bi-archive"></i></button>
+          </div>
+        </nav>
+        <div class="tab-content" id="nav-tabContent">
+          <div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab" tabindex="0">
+          <!-- <form class="container p-0" id="settingsform" action="/settings" method="post"> -->
+            <div id="left" class="ps-3 pe-3">
+              <h5 class="text-start mt-3 mb-3">Color</h5>
+              <div class="row gy-3 align-items-center">
+                
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center">   
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="colorgenecluster" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                    </div>
+                    <div class="col-10">
+                      Color gene cluster
+                    </div>
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="coloredge" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                    </div>
+                    <div class="col-10">
+                      Color edge
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center">
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Color groups
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=groups name=groups value="#ffa500" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Color nodes 
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=nodes name=nodes value="#bcbcbc" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Color start/stop
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=startstop name=startstop value="#6aa84f" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>   
+                  </div>
+                </div>   
+              </div>
+              
+              <h5 class="text-start mb-3">Layout</h5>
+              <div class="row gy-3 align-items-center">
+                
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                  
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Node x-distance
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                    
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Node y-distance
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                  
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Node radius
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                  
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Node border thickness
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+
+                    <div class="col-2">
+                    </div>
+                    <div class="col-8">
+                      Edge thickness
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=10 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center">   
+                    <div class="col-2">
+                      <input class="form-check-input" type="radio" name="LayoutOptions" id="LayoutRadio1" value="option1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                    </div>
+                    <div class="col-10">
+                      Circular graph layout
+                    </div>
+                    <div class="col-2">
+                      <input class="form-check-input" type="radio" name="LayoutOptions" id="LayoutRadio2" value="option2" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-10">
+                      Linear graph layout
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="text-start mb-3">Graph</h5>
+              <div class="row gy-3 align-items-center">
+                
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center">    
+                    <div class="col-2">
+                      <div class="form-switch">
+                        <input class="form-check-input" type="checkbox" id="flexconntr" name="flexconntr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                      </div>
+                    </div>
+                    <div class="col-8">
+                      Include non-consensus edges
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="conntr" name="conntr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                    
+                    <div class="col-2">
+                      <div class="form-switch">
+                        <input class="form-check-input" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                      </div>
+                    </div>
+                    <div class="col-8">
+                      Merge nodes into groups
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                    
+                    <div class="col-2">
+                      <div class="form-switch">
+                        <input class="form-check-input" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                      </div>
+                    </div>
+                    <div class="col-8">
+                      Allowed max edge length
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="maxlength" name="maxlength" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-0 align-items-center">    
+                    <div class="col-2">
+                      <div class="form-switch">
+                        <input class="form-check-input" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                      </div>
+                    </div>
+                    <div class="col-8">
+                      Group size compression
+                    </div>
+                    <div class="d-flex col-2">
+                      <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="groupcompress" name="groupcompress" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color" readonly>
+                    </div>
+                    <div class="d-flex col-12">
+                      <input type="range" class="form-range" min="0" max="1" value=0 id="customRange4" onChange="document.getElementById('groupcompress').value = document.getElementById('customRange4').value">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <h5 class="text-start mb-3">Genomes</h5>
+              
+              <div id="genomecolors" class="row grid gy-1 align-items-center">
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-center border-top p-3">
+
+              <div class="btn-group" role="group" aria-label="Basic example">
+                <button class="btn btn-primary" id="settings">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button id="redraw" class="btn btn-primary">
+                  <i class="user-handle bi bi-pencil"></i>
+                </button>
+                <div class="btn-group" role="group">
+                  <button id="download" type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="user-handle bi bi-download"></i>
+                  </button>
+                  <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                    <li><a class="dropdown-item" id="jsonDownload" href="#">json</a></li>
+                    <li><a class="dropdown-item" id="svgDownload" href="#">svg</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+          <!-- </form> -->
+          </div>
+
+          <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab" tabindex="0">
+            <!-- <form class="container p-0" id="searchform" action="/search" method="post"> -->
+            <div id="left" class="ps-3 pe-3">
+              <h5 class="text-start mt-3 mb-3">Expression</h5>
+              <div class="row gy-3 align-items-center">
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+
+                    <div class="col-2">
+                    </div>
+                    <div class="col-10">
+                      <div class="dropdown">
+                        <a class= "btn border-1 m-0 p-0 dropdown-toggle" id="expressiondrop" name="Choose item" data-bs-toggle="dropdown" href="#">
+                          <span class="caret">
+                            Choose item
+                          </span>
+                        </a>
+                        <ul class="dropdown-menu pre-scrollable choice">            
+                          <li class="caret">
+                            <a class="dropdown-item" name="Choose item" href="#">Choose item</a>
+                            <a class="dropdown-item" name="Name" href="#">Name</a>
+                            <a class="dropdown-item" name="Entropy" href="#">Entropy</a>
+                            <a class="dropdown-item" name="Position" href="#">Position</a>
+                          </li>
+                        </ul>    
+                      </div>
+                    </div>
+                    <div class="col-2">
+                    </div>
+                    <div class="col-10">
+                      <div class="dropdown">
+                        <a class= "btn border-1 m-0 p-0 dropdown-toggle" id="expressionrel" name="Choose operator" data-bs-toggle="dropdown" href="#">
+                          <span class="caret">
+                            Choose operator
+                          </span>
+                        </a>
+                        <ul class="dropdown-menu pre-scrollable choice">            
+                          <li class="caret">
+                            <a class="dropdown-item" name="Choose operator" href="#">Choose operator</a>
+                            <a class="dropdown-item" name="=" href="#">=</a>
+                            <a class="dropdown-item" name="&ne;" href="#">&ne;</a>
+                            <a class="dropdown-item" name="&le;" href="#">&le;</a>
+                            <a class="dropdown-item" name="&ge;" href="#">&ge;</a>
+                            <a class="dropdown-item" name="&lt;" href="#">&lt;</a>
+                            <a class="dropdown-item" name="&gt;" href="#">&gt;</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" name="&#9666;&#9642;&#9656;" href="#">&#9666;&#9642;&#9656;</a>
+                            <a class="dropdown-item" name="&#9666;&#9642;" href="#">&#9666;&#9642;</a>
+                            <a class="dropdown-item" name="&#9642;&#9656;" href="#">&#9642;&#9656;</a>
+                          </li>
+                        </ul>    
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                    <div class="col-2">
+                    </div>
+                    <div class="col-10">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="expressiontext" aria-describedby="">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="text-start mt-3 mb-3">Function</h5>
+              <div class="row gy-3 align-items-center">
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center" id="functiondiv">
+                  </div>
+                </div> 
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                    <div class="col-2">
+                    </div>
+                    <div class="col-10">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="functiontext" aria-describedby="">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="text-start mt-3 mb-3">Filter</h5>
+              <div class="row gy-3 align-items-center">
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="mingenomes" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Min number of genomes
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="mingenomestext" aria-describedby="">
+                    </div>
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="maxgenomes" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Max number of genomes
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxgenomestext" aria-describedby="">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="minentropy" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Min entropy
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="minentropytext" aria-describedby="">
+                    </div>
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="maxentropy" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Max entropy
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxentropytext" aria-describedby="">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="row gy-1 align-items-center"> 
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="minposition" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Min position
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="minpositiontext" aria-describedby="">
+                    </div>
+                    <div class="col-2">
+                      <input class="form-check-input" type="checkbox" id="maxposition" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+                    </div>
+                    <div class="col-8">
+                      Max position
+                    </div>
+                    <div class="col-2">
+                      <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxpositiontext" aria-describedby="">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-center border-top p-3">
+              <div class="btn-group" role="group" aria-label="Basic example">
+                <button class="btn btn-primary" id="search">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-primary" id="searchcolor">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-primary" id="searcherase">
+                  <i class="bi bi-eraser"></i>
+                </button>
+                <button class="btn btn-primary" id="searchadd">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-primary" id="searchremove">
+                  <i class="bi bi-dash-lg"></i>
+                </button>
+              </div>
+            </div>
+          <!-- </form> -->
+          </div>
+          
+          <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="searchtoast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+              <div class="toast-header justify-content-end align-items-center">
+                  <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+              <div class="toast-body" id="toastbody">
+              </div>
+            </div>
+          </div>          
+
+          <div class="tab-pane fade" id="nav-bins" role="tabpanel" aria-labelledby="nav-bins-tab" tabindex="0">
+            <div id="left" class="ps-3 pe-3">
+              <h5 class="text-start mt-3 mb-3">Bins</h5>
+              
+              <div class="row gy-3 align-items-center">
+                <div class="col-12">
+
+                  <div class="row grid gy-1 align-items-center" id="bingrid">
+                    <div class="col-12" id="bin1">
+                      <div class="row gy-1 align-items-center">
+                        <div class="col-2">
+                          <input class="form-check-input" type="radio" name="binradio" id="bin1radio" value="bin1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-6">
+                          <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin1text" aria-describedby="">
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="bin1value" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color" readonly>
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" id=bin1color name="bin1" value="#000000" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-center border-top p-3">
+              <div class="btn-group" role="group" aria-label="Basic example">
+                <button class="btn btn-primary" id="bininfo">
+                  <i class="bi bi-info-square"></i>
+                </button>
+                <button class="btn btn-primary" id="binadd">
+                  <i class="bi bi-plus-square"></i>
+                </button>
+                <button class="btn btn-primary" id="binremove">
+                  <i class="bi bi-dash-square"></i>
+                </button>
+                <button class="btn btn-primary" id="binsave">
+                  <i class="bi bi-database-up"></i>
+                </button>
+                <button class="btn btn-primary" id="binload">
+                  <i class="bi bi-database-down"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end" data-bs-scroll="true" data-bs-backdrop="false" id="rightoffcanvas">
+      <button class="btn btn-primary offcanvas-btn position-absolute me-3 mt-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#rightoffcanvas" id="rightoffcanvas-button">
+        <span><i class="bi bi-info-circle"></i></span><span><i class="bi bi-x-lg"></i></span>
+      </button>
+      <div class="offcanvas-body p-0" id="rightoffcanvas-body">
+        <div id="right" class="p-3">
+        <div class="row g-1" id="RightOffcanvasBodyTop">
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="InfoModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-body overflow-auto" id="InfoModalBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="InfoModalFooter">
+            <div class="btn-group" role="group" aria-label="Basic example">
+              <button class="btn btn-primary" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-left-square"></i>
+              </button>
+              <button class="btn btn-primary" data-bs-target="#AlignmentModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-right-square"></i>
+              </button>
+              <button class="btn btn-primary" id="InfoDownload">
+                <i class="user-handle bi bi-download"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="AlignmentModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel2" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" id="AlignmentModalTitle">Genecluster Alignment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="AlignmentModalBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="AlignmentModalFooter">
+            <div class="btn-group" role="group" aria-label="Basic example">
+              <button class="btn btn-primary" data-bs-target="#InfoModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-left-square"></i>
+              </button>
+              <button class="btn btn-primary" data-bs-target="#GenomeModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-right-square"></i>
+              </button>
+              <button class="btn btn-primary" id="AlignmentDownload">
+                <i class="user-handle bi bi-download"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="BinModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" id="BinModalTitle">Bin Information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body overflow-auto" id="BinModalBody">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="GenomeModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel3" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" id="GenomeModalTitle">Genecall Information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="GenomeModalBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="GenomeModalFooter">
+            <div class="btn-group" role="group" aria-label="Basic example">
+              <button class="btn btn-primary" data-bs-target="#AlignmentModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-left-square"></i>
+              </button>
+              <button class="btn btn-primary" data-bs-dismiss="modal">
+                <i class="bi bi-arrow-right-square"></i>
+              </button>
+              <button class="btn btn-primary" id="GenomeDownload">
+                <i class="user-handle bi bi-download"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group btn-bot mt-3 align-self-center" role="group" aria-label="Basic example">
+      <button type="button" id="plus" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+        <i class="user-handle bi bi-zoom-in"></i>
+      </button>
+      <button type="button" id="minus" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+        <i class="user-handle bi bi-zoom-out"></i>
+      </button>
+      <button type="button" id="fit" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+        <i class="user-handle bi bi-arrows-fullscreen"></i>
+      </button>
+    </div>
+
+  </body>
+</html>
