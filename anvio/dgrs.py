@@ -58,6 +58,8 @@ class DGR_Finder:
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.min_range_size = A('minimum_range_size')
+        self.hmm = A('hmm_usage')
+        self.vr_in_orf = A('vr_in_orf')
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
@@ -75,8 +77,10 @@ class DGR_Finder:
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
+        self.run.info('VR in ORF', self.vr_in_orf)
         if self.profile_db_path and self.contigs_db_path:
             self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
+            self.run.info('Minimum length of SNV window', self.min_range_size)
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
 
@@ -186,7 +190,11 @@ class DGR_Finder:
                 for sample in sample_id_list:
                     split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
                                                       (self.snv_panda.sample_id==sample)&
-                                                      (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)]
+                                                      (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)&
+                                                      ((self.vr_in_orf & ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))) |
+                                                        ~self.vr_in_orf)]
+                                                        #need an if vr in orf == True then self.snv_panda.base_pos_in_codon above 0
+                                                      # can add here to be that the SNVs are in the intergenic regions? this needs to be a flag- dfault is on genes but can change to be that the VR can be anywhere.
                     if split_subset.shape[0] == 0:
                         continue
                     contig_name = split_subset.contig_name.unique()[0]
@@ -271,54 +279,6 @@ class DGR_Finder:
                             if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
                                 print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
         #print(all_merged_snv_windows)
-        # below is the old version, I've moved it above with minor changes to variable names
-            # # Initialize an empty list for unique overlapping sequences
-            # all_entries = []
-
-            # for contig_name, window_dict in self.all_possible_windows.items():
-            #     for window_name, window_values in window_dict.items():
-            #         all_entries.append((contig_name, window_name, window_values['start_position'], window_values['end_position']))
-
-            # # now it is time to identify clusters. the following state
-            # clusters = []
-            # while 1:
-            #     if not len(all_entries):
-            #         break
-
-            #     entry = all_entries.pop(0)
-            #     cluster = [entry]
-            #     contig_name, window_number, start, end = entry
-            #     matching_entries = []
-
-            #     for i in range(0, len(all_entries)):
-            #         contig_name, n_window_number, n_start, n_end = all_entries[i]
-            #         if self.range_overlapping(start, end, n_start, n_end):
-            #             matching_entries.append(i)
-            #             start = min(start, n_start)
-            #             end = max(end, n_end)
-            #     #for i in range(0, len(all_entries)):
-            #         #contig_name, n_window_number, n_start, n_end = all_entries[i]
-            #         #if self.range_overlapping(start, end, n_start, n_end):
-            #             #matching_entries.append(i)
-
-            #     # add all matching entries
-            #     for i in sorted(matching_entries, reverse=True):
-            #         cluster.append(all_entries.pop(i))
-
-            #     # combine ranges of the cluster from entries and then add the combined lsit to the final clusters
-            #     combined_result = self.combine_ranges(cluster)
-            #     clusters.append(combined_result)
-        #print(self.contig_sequences)
-
-        #dumb katy code for turning dict to fasta see utils.func below
-        #fasta_file_path = os.path.join(self.temp_dir, "input_original.fasta")
-
-        # Writing to the file
-        #with open(fasta_file_path, "w") as handle:
-            #for contig_name, contig_data in self.contig_sequences.items():
-                #sequence = contig_data.get('sequence', '')  # Get the sequence from the inner dictionary
-                #id = contig_name
-                #SeqIO.write(SeqRecord(Seq(sequence), id=id), handle, "fasta")
 
             #export contigs_db to fasta file
             utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
@@ -494,10 +454,6 @@ class DGR_Finder:
         #subprocess.run(blast_command)
         #return blast_output
 
-     #def find_SNV_window(self, profile.db)
-        #if SNV:
-            #for row()
-
     def filter_blastn_for_none_identical(self, blast_output):
         """
         This function takes the BLASTn xml output and refines the results to those with less than 100% identity.
@@ -517,7 +473,6 @@ class DGR_Finder:
         =======
 
         """
-        print(blast_output)
         tree = ET.parse(blast_output)
         root = tree.getroot()
 
@@ -855,7 +810,7 @@ class DGR_Finder:
         if not contigs_db.meta['genes_are_called']:
             self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
                              "learn about :/ Your reports will not include a file to study the genomic context "
-                             "that surrounds consensus inversions.")
+                             "that surrounds the DGRs")
 
             contigs_db.disconnect()
 
