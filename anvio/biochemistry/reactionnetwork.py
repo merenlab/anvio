@@ -69,6 +69,8 @@ class ModelSEEDCompound:
     (either abstract, like 'Cofactors' and 'Biomass', or defined, like 'Carboxylic acid' and
     'Polynucleotides'), with properties given by the ModelSEED Biochemistry database.
 
+    Objects of this class are stored in the 'metabolites' attribute of a ReactionNetwork instance.
+
     Attributes
     ==========
     modelseed_id : str, None
@@ -107,6 +109,8 @@ class ModelSEEDReaction:
     """
     Representation of a reaction, with properties given by the ModelSEED Biochemistry database.
 
+    Objects of this class are stored in the 'reactions' attribute of a ReactionNetwork instance.
+
     Attributes
     ==========
     modelseed_id : str, None
@@ -126,12 +130,14 @@ class ModelSEEDReaction:
         The EC numbers that are known to possibly alias the ModelSEED reaction, according to the
         ModelSEED database, e.g., 'rxn00001' has the aliases, ('3.6.1.1').
 
-    compounds : Tuple[ModelSEEDCompound], None
-        ModelSEED compound IDs of reactants and products involved in the reaction, e.g., 'rxn00001'
-        involves the compounds, ('cpd00001', 'cpd00012', 'cpd00009', 'cpd00067'). A compound ID is
-        formatted 'cpdXXXXX', where each X is a digit, e.g., 'cpd00001'. Each compound item has a
-        corresponding stoichiometric reaction coefficient in the attribute, 'coefficients', and a
-        corresponding cellular compartment in the attribute, 'compartments'.
+    compound_ids : Tuple[str], None
+        ModelSEED IDs of reactants and products involved in the reaction. For example, 'rxn00001'
+        involves the ModelSEED compounds, 'cpd00001', 'cpd00012', 'cpd00009', and 'cpd00067'. A
+        compound ID is formatted 'cpdXXXXX', where each X is a digit, e.g., 'cpd00001'. IDs can be
+        used to look up metabolite objects in the 'metabolites' attribute of the ReactionNetwork
+        containing the reaction. Each metabolite object has a corresponding stoichiometric reaction
+        coefficient in the reaction attribute, 'coefficients', and a corresponding cellular
+        compartment in the reaction attribute, 'compartments'.
 
     coefficients : Tuple[int], None
         Integer stoichiometric reaction coefficients of reactants and products, with negative
@@ -156,7 +162,7 @@ class ModelSEEDReaction:
     modelseed_name: str = None
     kegg_aliases: Tuple[str] = None
     ec_number_aliases: Tuple[str] = None
-    compounds: Tuple[ModelSEEDCompound] = None
+    compound_ids: Tuple[str] = None
     coefficients: Tuple[int] = None
     compartments: Tuple[str] = None
     reversibility: bool = None
@@ -164,7 +170,9 @@ class ModelSEEDReaction:
 @dataclass
 class KO:
     """
-    Representation of a KEGG Ortholog (KO).
+    Representation of a KEGG Ortholog (KO) in a reaction network.
+
+    Objects of this class are stored in the 'kos' attribute of a ReactionNetwork instance.
 
     Attributes
     ==========
@@ -174,30 +182,32 @@ class KO:
     name : str, None
         Name of the KO, e.g., 'K00001' has the name, 'alcohol dehydrogenase [EC:1.1.1.1]'.
 
-    modules : Dict[str, KEGGModule], dict
-        KEGG modules containing the KO, with keys being module IDs.
+    module_ids : List[str], list()
+        IDs of KEGG modules containing the KO, which can be used to look up module objects in the
+        'pathways' attribute of the ReactionNetwork containing the KO.
 
-    hierarchies : Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]], dict
+    hierarchies : Dict[str, List[Tuple[str]]], dict()
         Membership of the KO in BRITE hierarchies. Keys are hierarchy IDs. Values are dictionary
         representations of categorizations in the hierarchy. For example, 'K00844', hexokinase, is
         classified multiple ways in the 'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100
         Metabolism >>> 09101 Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis
         [PATH:ko00010]' and '09100 Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose
         and mannose metabolism [PATH:ko00051]'. This hierarchy and these classifications would be
-        represented as follows: {'ko00001': {('09100 Metabolism', '09101 Carbohydrate metabolism',
-        '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'): (<BRITECategory for '09100 ...'>,
-        <BRITECategory for '09101 ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism',
-        '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism [PATH:ko00051]'):
-        (<BRITECategory for '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051
-        ...'>)}}
+        represented as follows: {'ko00001': [('09100 Metabolism', '09101 Carbohydrate metabolism',
+        '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'), ('09100 Metabolism', '09101
+        Carbohydrate metabolism', '00051 Fructose and mannose metabolism [PATH:ko00051]'), ...],
+        ...} Hierarchy IDs and categorization tuples can be used to look up category objects in the
+        'categories' attribute of the ReactionNetwork containing the KO.
 
-    pathways : Dict[str, KEGGPathway], dict
-        KEGG pathways containing the KO, with keys being pathway IDs.
+    pathway_ids : List[str], list()
+        IDs of KEGG pathways containing the KO, which can be used to look up pathway objects in the
+        'pathways' attribute of the ReactionNetwork containing the KO.
 
-    reactions : Dict[str, ModelSEEDReaction], dict()
-        ModelSEED reactions associated with the KO via KO KEGG reaction and EC number annotations.
-        Keys are ModelSEED reaction IDs and values are 'ModelSEEDReaction' objects. A ModelSEED
-        reaction ID is formatted 'rxnXXXXX', where each X is a digit, e.g., 'rxn00001'.
+    reaction_ids : List[str], list()
+        IDs of ModelSEED reactions associated with the KO via KEGG reaction and EC number
+        annotations of the KO. A ModelSEED reaction ID is formatted 'rxnXXXXX', where each X is a
+        digit, e.g., 'rxn00001'. ModelSEED reaction IDs can be used to look up reaction objects in
+        the 'reactions' attribute of the ReactionNetwork containing the KO.
 
     kegg_reaction_aliases : Dict[str, List[str]], dict()
         KEGG reaction annotations of the KO that alias ModelSEED reactions. A KEGG REACTION ID is
@@ -220,17 +230,19 @@ class KO:
     """
     id: str = None
     name: str = None
-    modules: Dict[str, KEGGModule] = field(default_factory=dict)
-    hierarchies: Dict[str, Dict[Tuple[str], Tuple[BRITECategory]]] = field(default_factory=dict)
-    pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
-    reactions: Dict[str, ModelSEEDReaction] = field(default_factory=dict)
+    module_ids: List[str] = field(default_factory=list)
+    hierarchies: Dict[str, List[Tuple[str]]] = field(default_factory=dict)
+    pathway_ids: List[str] = field(default_factory=list)
+    reaction_ids: List[str] = field(default_factory=list)
     kegg_reaction_aliases: Dict[str, List[str]] = field(default_factory=dict)
     ec_number_aliases: Dict[str, List[str]] = field(default_factory=dict)
 
 @dataclass
 class KEGGModule:
     """
-    Representation of a KEGG module with KOs in the reaction network.
+    Representation of a KEGG module with KOs in a reaction network.
+
+    Objects of this class are stored in the 'modules' attribute of a ReactionNetwork instance.
 
     Attributes
     ==========
@@ -241,21 +253,26 @@ class KEGGModule:
         Name of the module, e.g., 'M00001' has the name, 'Glycolysis (Embden-Meyerhof pathway),
         glucose => pyruvate'.
 
-    kos : Dict[str, KO], dict()
-        Reaction network KOs that are in the module, with keys being KO IDs.
+    ko_ids : List[str], list()
+        IDs of reaction network KOs that are in the module, which can be used to look up KO objects
+        in the 'kos' attribute of the ReactionNetwork containing the module. To reiterate, this does
+        not include KOs in the module that are not in the reaction network.
 
-    pathways : Dict[str, KEGGPathway], dict()
-        KEGG pathways containing the module, with keys being KEGG pathway IDs.
+    pathway_ids : List[str], list()
+        IDs of KEGG pathways containing the module, which can be used to look up KEGG pathway
+        objects in the 'pathways' attribute of the ReactionNetwork containing the module.
     """
     id: str = None
     name: str = None
-    kos: Dict[str, KO] = field(default_factory=dict)
-    pathways: Dict[str, KEGGPathway] = field(default_factory=dict)
+    ko_ids: List[str] = field(default_factory=list)
+    pathway_ids: List[str] = field(default_factory=list)
 
 @dataclass
 class KEGGPathway:
     """
-    Representation of a KEGG pathway with KOs in the reaction network.
+    Representation of a KEGG pathway with KOs in a reaction network.
+
+    Objects of this class are stored in the 'pathways' attribute of a ReactionNetwork instance.
 
     Attributes
     ==========
@@ -266,67 +283,81 @@ class KEGGPathway:
     name : str, None
         Name of the pathway, e.g., 'Glycolysis / Gluconeogenesis' for pathway ID '00010'.
 
-    category : BRITECategory, None
-        Certain pathways are equivalent to categories in KEGG BRITE hierarchies, such as bottom-most
-        categories in the hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis
-        [PATH:ko00010]'.
+    categorization : Tuple[str], None
+        Certain pathways are equivalent to bottommost categories in the KEGG BRITE hierarchy,
+        'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]', which is represented
+        in the categorization tuple, ('09100 Metabolism', '09101 Carbohydrate metabolism', '00010
+        Glycolysis / Gluconeogenesis [PATH:ko00010]'). The categorization tuple can be used to
+        retrieve the category object from the 'categories' attribute of the ReactionNetwork
+        containing the pathway, e.g., `category = network.categories['ko00001'][('09100 Metabolism',
+        '09101 Carbohydrate metabolism', '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]')]`
 
-    kos : Dict[str, KO], dict
-        Reaction network KOs in the pathway. To reiterate, this does not include KOs in the pathway
-        that are not in the reaction network. Keys are KO IDs.
+    ko_ids : List[str], list()
+        IDs of reaction network KOs that are in the pathway, which can be used to look up KO objects in the
+        'kos' attribute of the ReactionNetwork containing the pathway. To reiterate, this does not
+        include KOs in the pathway that are not in the reaction network.
 
-    modules : Dict[str, KEGGModule], dict
-        Modules in the pathway that contain reaction network KOs. To reiterate, this does not
-        include modules in the pathway that are not in the reaction network. Keys are module IDs.
+    module_ids : List[str], list()
+        IDs of modules in the pathway that contain reaction network KOs. Module IDs can be used to
+        look up module objects in the 'modules' attribute of the ReactionNetwork containing the
+        pathway. To reiterate, this does not include modules in the pathway that do not contain KOs
+        in the reaction network.
     """
     id: str = None
     name: str = None
-    category: BRITECategory = None
-    kos: Dict[str, KO] = field(default_factory=dict)
-    modules: Dict[str, KEGGModule] = field(default_factory=dict)
+    categorization: Tuple[str] = None
+    ko_ids: List[str] = field(default_factory=list)
+    module_ids: List[str] = field(default_factory=list)
 
 @dataclass
 class BRITEHierarchy:
     """
-    Representation of a KEGG BRITE hierarchy with KOs in the reaction network.
+    Representation of a KEGG BRITE hierarchy with KOs in a reaction network.
+
+    Objects of this class are stored in the 'hierarchies' attribute of a ReactionNetwork instance.
 
     Attributes
     ==========
     id : str, None
         BRITE hierarchy ID in the format, 'koXXXXX' or 'brXXXXX', where X is a digit, e.g.,
-        'ko00001'.
+        'ko00001'. Currently, given the anvi'o KEGG data setup, the ReactionNetwork will only
+        contain hierarchies with IDs in the 'koXXXXX' format.
 
     name : str, None
         Name of the hierarchy, e.g., 'ko00001' has the name, 'KEGG Orthology (KO)'.
 
-    categories : Dict[Tuple[str], Tuple[BRITECategory]], dict
-        Categorizations of reaction network KOs in the hierarchy. Categories at each level receive
-        their own entries. For example, 'K00844', hexokinase, is classified multiple ways in the
-        'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100 Metabolism >>> 09101
+    categorizations : List[Tuple[str]], list()
+        Categorizations of reaction network KOs in the hierarchy. To reiterate, this does not
+        include categories that do not contain KOs in the reaction network. Categories at each level
+        receive their own entries. For example, 'K00844', hexokinase, is classified multiple ways in
+        the 'KEGG Orthology (KO)' hierarchy, 'ko00001', including '09100 Metabolism >>> 09101
         Carbohydrate metabolism >>> 00010 Glycolysis / Gluconeogenesis [PATH:00010]' and '09100
         Metabolism >>> 09101 Carbohydrate metabolism >>> 00051 Fructose and mannose metabolism
-        [PATH:00051]'. These categorizations would yield entries like the following: {('09100
-        Metabolism', ): (<BRITECategory for '09100 ...'>, ), ('09100 Metabolism', '09101
-        Carbohydrate metabolism'): (<BRITECategory for '09100 ...'>, <BRITECategory for '09101
-        ...'>), ('09100 Metabolism', '09101 Carbohydrate metabolism', '00010 Glycolysis /
-        Gluconeogenesis [PATH:00010]'): (<BRITECategory for '09100 ...'>, <BRITECategory for '09101
-        ...'>, <BRITECategory for '00010 ...'>), ('09100 Metabolism', '09101 Carbohydrate
-        metabolism', '00051 Fructose and mannose metabolism [PATH:00051]'): (<BRITECategory for
-        '09100 ...'>, <BRITECategory for '09101 ...'>, <BRITECategory for '00051 ...'>)}
+        [PATH:00051]'. These categorizations would yield four entries like the following: [('09100
+        Metabolism', ), ('09100 Metabolism', '09101 Carbohydrate metabolism'), ('09100 Metabolism',
+        '09101 Carbohydrate metabolism', '00010 Glycolysis / Gluconeogenesis [PATH:00010]'), ('09100
+        Metabolism', '09101 Carbohydrate metabolism', '00051 Fructose and mannose metabolism
+        [PATH:00051]')]. Each categorization tuple can be used to retrieve the corresponding
+        category object from the 'categories' attribute of the ReactionNetwork containing the
+        hierarchy, e.g., `category = network.categories['ko00001'][('09100 Metabolism', '09101
+        Carbohydrate metabolism')]`
 
-    kos : Dict[str, KO], dict
-        Reaction network KOs in the hierarchy. To reiterate, this does not include KOs in the
-        hierarchy that are not in the reaction network. Keys are KO IDs.
+    ko_ids : List[str], list()
+        IDs of reaction network KOs in the hierarchy, which can be used to look up KO objects in the
+        'kos' attribute of the ReactionNetwork containing the hierarchy. To reiterate, this does not
+        include KOs in the hierarchy that are not in the reaction network.
     """
     id: str = None
     name: str = None
-    categories: Dict[Tuple[str], Tuple[BRITECategory]] = field(default_factory=dict)
-    kos: Dict[str, KO] = field(default_factory=dict)
+    categorizations: List[Tuple[str]] = field(default_factory=list)
+    ko_ids: List[str] = field(default_factory=list)
 
 @dataclass
 class BRITECategory:
     """
-    Representation of a KEGG BRITE hierarchy category with KOs in the reaction network.
+    Representation of a KEGG BRITE hierarchy category with KOs in a reaction network.
+
+    Objects of this class are stored in the 'categories' attribute of a ReactionNetwork instance.
 
     Attributes
     ==========
@@ -342,88 +373,99 @@ class BRITECategory:
         Name of the category. These need not be unique in a hierarchy. For example, there are
         multiple categories called 'Small subunit' and 'Large subunit' in the 'Ribosome' hierarchy.
 
-    hierarchy : BRITEHierarchy, None
-        The BRITE hierarchy containing the category.
+    hierarchy_id : str, None
+        ID of the BRITE hierarchy containing the category, which can be used to look up the
+        hierarchy object in the 'hierarchies' attribute of the ReactionNetwork containing the
+        category.
 
-    supercategory : BRITECategory, None
-        The encompassing category. This is None if there is no category higher in the hierarchy. For
-        example, the supercategory immediately above the category, '00010 Glycolysis /
-        Gluconeogenesis' in the hierarchy, 'ko00001', is '09101 Carbohydrate metabolism'.
+    subcategory_names : List[str], list()
+        The names of encompassed categories containing KOs in the reaction network. This is an empty
+        list if there are no categories lower in the hierarchy. For example, the category,
+        'Polyketide synthase (PKS) >>> Modular type I PKS' in the hierarchy, 'ko01008' encompasses
+        the categories, 'cis-AT PKS' and 'trans-AT PKS'. Objects representing these subcategories
+        can be looked up in the 'categories' attribute of the ReactionNetwork containing the
+        category, e.g., `cis_category = network.categories['ko01008'][('Polyketide synthase (PKS)',
+        'Modular type I PKS', 'cis-AT PKS')]` and `trans_category = network.categories['ko01008']
+        [('Polyketide synthase (PKS)', 'Modular type I PKS', 'trans-AT PKS')]`
 
-    subcategories : List[BRITECategory], list
-        The encompassed categories containing KOs in the reaction network. This is an empty list if
-        there are no categories lower in the hierarchy. For example, the category, 'Polyketide
-        synthase (PKS) >>> Modular type I PKS' in the hierarchy, 'ko01008' encompasses the
-        categories, 'cis-AT PKS' and 'trans-AT PKS'.
+    pathway_id : str, None
+        Certain bottommost categories in the hierarchy, 'ko00001', are equivalent to KEGG pathways,
+        e.g., '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'. This attribute encodes any
+        equivalent pathway ID, which can be used to look up the pathway object using the 'pathways'
+        attribute of the ReactionNetwork containing the category.
 
-    pathway : KEGGPathway, None
-        Certain categories are equivalent to KEGG pathways, such as bottom-most categories in the
-        hierarchy, 'ko00001', e.g., '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'.
-
-    kos : Dict[str, KO], dict
-        Reaction network KOs in the category (and all subcategories). To reiterate, this does not
-        include KOs in the category that are not in the reaction network. Keys are KO IDs.
+    ko_ids : List[str], list()
+        IDs of Reaction network KOs in the category (and all subcategories), which can be used to
+        look up KO objects in the 'kos' attribute of the ReactionNetwork containing the category. To
+        reiterate, this does not include KOs in the category that are not in the reaction network.
     """
     id: str = None
     name: str = None
-    hierarchy: BRITEHierarchy = None
-    supercategory: BRITECategory = None
-    subcategories: List[BRITECategory] = field(default_factory=list)
-    pathway: KEGGPathway = None
-    kos: Dict[str, KO] = field(default_factory=dict)
+    hierarchy_id: str = None
+    subcategory_names: List[str] = field(default_factory=list)
+    pathway_id: str = None
+    ko_ids: List[str] = field(default_factory=list)
 
 @dataclass
 class Gene:
     """
-    Representation of a gene.
+    Representation of a gene in a genomic reaction network.
+
+    Objects of this class are stored in the 'categories' attribute of a GenomicNetwork instance.
 
     Attributes
     ==========
     gcid : int, None
         The gene callers ID, or unique anvi'o identifier, of the gene: a non-negative integer.
 
-    kos : Dict[str, KO], dict()
-        KEGG Orthologs (KOs) annotating the gene. Keys are KO IDs, which are formatted as 'KXXXXX',
-        where each X is a digit, e.g., 'K00001'. Values are 'KO' objects.
+    ko_ids : List[str], list()
+        IDs of KOs annotating the gene, which can be used to look up KO objects in the 'kos'
+        attribute of the GenomicNetwork containing the gene.
 
     e_values : Dict[str, float], dict()
         E-values express the strength of KO-gene associations. Keys are KO IDs; values are
         non-negative numbers.
 
-    protein : Protein, None
-        This object is used for storing abundance data on the protein expressed by the gene (from
-        proteomics, for instance).
+    protein_id : Protein, None
+        ID of the protein expressed by the gene. The protein is used for storing abundance data,
+        from proteomics, for instance.
     """
     gcid: int = None
-    kos: Dict[str, KO] = field(default_factory=dict)
+    ko_ids: List[str] = field(default_factory=list)
     e_values: Dict[str, float] = field(default_factory=dict)
-    protein: Protein = None
+    protein_id: str = None
 
 @dataclass
 class Protein:
     """
-    This object stores protein abundance data (from proteomics, for instance).
+    This object stores protein abundance data (from proteomics, for instance) in a reaction network.
+
+    Objects of this class are stored in the 'proteins' attribute of a GenomicNetwork instance.
 
     Attributes
     ==========
     id : int, None
         The unique anvi'o ID for the protein: a non-negative integer.
 
-    genes : Dict[int, Gene], dict()
-        Genes that can express the protein. Keys are gene callers IDs; values are 'Gene' objects.
+    gcids : List[int], list()
+        Anvi'o gene callers IDs of genes that can express the protein. These can be used to look up
+        gene objects in the 'genes' attribute of the GenomicNetwork containing the gene.
 
     abundances : Dict[str, float], dict()
         Protein abundance profile data with each key being a sample name and each value being the
         abundance of the protein expressed by the gene in that sample.
     """
     id: int = None
-    genes: Dict[int, Gene] = field(default_factory=dict)
+    gcids: List[int] = field(default_factory=list)
     abundances: Dict[str, float] = field(default_factory=dict)
 
 @dataclass
 class GeneCluster:
     """
-    Representation of a gene cluster.
+    Representation of a gene cluster in a pangenomic reaction network.
+
+    Objects of this class are stored in the 'gene_clusters' attribute of a PangenomicNetwork
+    instance.
 
     Attributes
     ==========
@@ -433,15 +475,16 @@ class GeneCluster:
     genomes : List[str], []
         The names of the genomes contributing the genes in the cluster.
 
-    ko : KO, None
-        The consensus KO among the genes in the cluster. (Consensus KOs can be found from a
-        pangenome by the anvi'o method, 'dbops.PanSuperclass.get_gene_cluster_function_summary'.)
-        Note that the individual gene KO annotations underlying the consensus annotation are not
-        tracked.
+    ko_id : str, None
+        ID of the consensus KO among the genes in the cluster, which can be used to look up the KO
+        object in the 'kos' attribute of the PangenomicNetwork containing the gene cluster.
+        (Consensus KOs can be found from a pangenome by the anvi'o method,
+        'dbops.PanSuperclass.get_gene_cluster_function_summary'.) Note that the individual gene KO
+        annotations underlying the consensus annotation are not tracked.
     """
     gene_cluster_id: int = None
     genomes: List[str] = field(default_factory=list)
-    ko: KO = None
+    ko_id: str = None
 
 class ReactionNetwork:
     """
