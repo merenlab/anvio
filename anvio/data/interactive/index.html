@@ -26,11 +26,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+    <script>$.uiBackCompat = false; //Do not change the order of jquery-ui files</script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/jquery-patch.js" onerror='alertDependencyError("jquery-patch")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/plugin.js" onerror='alertDependencyError("jquery-plugin")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/resizable.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+    
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
-    <script>$.uiBackCompat = false;</script>
-    <!-- <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script> -->
     <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
-
     <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
     <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
