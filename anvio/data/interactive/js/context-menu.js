@@ -140,6 +140,7 @@ ContextMenu = function(options) {
                 if (!$('#panel-left').is(':visible')) {
                     toggleLeftPanel()
                 }
+                $($('.nav-tabs a').eq(3)).tab('show')
 
                 let splitHTML = layerdata_title[node.label][layer[0] -1].split('</td>')
                 let legend = extractContent(splitHTML[0]).toLowerCase()
@@ -523,9 +524,9 @@ ContextMenu.prototype.Show = function() {
 
     for (const item of this.BuildMenu()) {
         if (item == 'divider') {
-            list.innerHTML += `<li class="dropdown-divider"></li>`;
+            list.innerHTML += `<li class="divider"></li>`;
         } else {
-            list.innerHTML += `<li><a class="dropdown-item" href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
+            list.innerHTML += `<li><a href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
         }
     }
 

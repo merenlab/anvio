@@ -4,6 +4,6 @@
   100% { box-shadow: 0 0 3px #B20000; }
 }
 
-.glowingbutton {
+.glowing-button {
   animation: glowing 1500ms infinite;
 }

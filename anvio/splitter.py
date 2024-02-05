@@ -629,9 +629,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bin_profile_db.db.update_meta_value('sample_id', self.bin_id)
 
         # setup the filtering rules for migrating data:
-        tables = {
-                    t.item_additional_data_table_name: ('item_name', self.split_names),
-                }
+        tables = {}
 
         # dealing with 'view' data tables
         for table_name in constants.essential_data_fields_for_anvio_profiles:

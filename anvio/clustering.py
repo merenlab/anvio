@@ -9,7 +9,6 @@ from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
 from scipy.spatial import distance as scipy_distance
-from scipy.spatial.distance import pdist, squareform
 
 import anvio
 import anvio.utils as utils
@@ -148,15 +147,12 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
 
 def create_newick_file_from_matrix_file(observation_matrix_path, output_file_path, linkage=constants.linkage_method_default,
                          distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False,
-                         items_order_file_path=None, pad_with_zeros=False, distance_matrix_output_path=None):
+                         items_order_file_path=None, pad_with_zeros=False):
     is_distance_and_linkage_compatible(distance, linkage)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
+
     filesnpaths.is_output_file_writable(output_file_path)
-
-    if distance_matrix_output_path:
-        filesnpaths.is_output_file_writable(distance_matrix_output_path)
-
     if items_order_file_path:
         filesnpaths.is_output_file_writable(items_order_file_path)
 
@@ -165,12 +161,6 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
     vectors = np.array(vectors)
 
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
-
-    if distance_matrix_output_path:
-        # the user has requested a distance matrix calculated from the
-        # same data that yields the newick tree to also be reported.
-        distance_matrix = get_distance_matrix(vectors, distance=distance)
-        report_distance_matrix(distance_matrix, id_to_sample_dict, distance_matrix_output_path)
 
     if output_file_path:
         open(output_file_path, 'w').write(newick.strip() + '\n')
@@ -211,28 +201,6 @@ def get_normalized_vectors(vectors, norm='l1', progress=progress, pad_zeros=True
         vectors += 0.0000001
     normalizer = preprocessing.Normalizer(norm=norm)
     return normalizer.fit_transform(vectors)
-
-
-def report_distance_matrix(distance_matrix, id_to_sample_dict, distance_matrix_output_path):
-    with open(distance_matrix_output_path, 'w') as output:
-        line = ['items'] + [id_to_sample_dict[i] for i in range(0, len(distance_matrix))]
-        output.write('\t'.join(line) + '\n')
-        for i in range(0, len(distance_matrix)):
-            line = [id_to_sample_dict[i]] + [str(v) for v in distance_matrix[i].tolist()]
-            output.write('\t'.join(line) + '\n')
-
-    run.info('Distance matrix', distance_matrix_output_path)
-
-
-def get_distance_matrix(vectors, distance=constants.distance_metric_default, progress=progress):
-    progress.update("Calculating the distance marix")
-
-    distances = pdist(vectors, metric=distance)
-    matrix = squareform(distances)
-
-    progress.clear()
-
-    return matrix
 
 
 def get_clustering_as_tree(vectors, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, progress=progress):

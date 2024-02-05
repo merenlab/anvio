@@ -46,8 +46,7 @@ def main(args):
     progress.new('Analyzing input file')
     clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage=args.linkage,
                                     distance=args.distance, transpose=args.transpose, progress=progress,
-                                    items_order_file_path=args.items_order_file, pad_with_zeros=args.pad_input_with_zeros,
-                                    distance_matrix_output_path=args.distance_matrix)
+                                    items_order_file_path=args.items_order_file, pad_with_zeros=args.pad_input_with_zeros)
     progress.end()
     run.info('Output newick', args.output_file)
     if args.items_order_file:
@@ -68,10 +67,6 @@ if __name__ == '__main__':
                               the order of items in the resulting tree in a separate file. The content of\
                               this file will be a single-column item names the way they are ordered in the\
                               output newick dendrogram.")
-    groupB.add_argument('--distance-matrix', metavar='FILE PATH', default=None,
-                        help="In addition to a newick formatted output file, you can ask anvi'o to also report "
-                             "a distance matrix computed from the same data that leads to the generation.")
-
 
     groupC = parser.add_argument_group('SWEETS', 'Additional options')
     groupC.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))

@@ -60,8 +60,6 @@ if __name__ == '__main__':
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
-        utils.is_all_submodules_present()
-
         args.mode = 'metabolism'
         d = interactive.MetabolismInteractive(args)
         args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)

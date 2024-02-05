@@ -27,6 +27,7 @@ var Drawer = function(settings) {
 
     this.has_tree = (clusteringData.constructor !== Array);
 
+    //
     this.layerdata_dict = new Array();
     this.layer_fonts = new Array();
 };
@@ -997,9 +998,7 @@ Drawer.prototype.draw_categorical_layers = function() {
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
-                if(this.layerdata_dict[q.label][layer.index]){
-                    layer_items.push(this.layerdata_dict[q.label][layer.index]);
-                }
+                layer_items.push(this.layerdata_dict[q.label][layer.index]);
             }
             else
             {

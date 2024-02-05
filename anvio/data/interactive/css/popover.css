@@ -9,7 +9,7 @@
   max-width: 900px;
   padding: 1px;
   color: black;
-  font-family: 'Roboto',Helvetica,Arial,sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 14px;
   font-style: normal;
   font-weight: normal;
@@ -157,7 +157,7 @@
 
 .popover table {
   color: #333; /* Lighten up font color */
-  font-family: 'Roboto',Helvetica,Arial,sans-serif;
+  font-family: Helvetica, Arial, sans-serif; /* Nicer font */
   border-collapse:
   collapse; border-spacing: 0;
 }

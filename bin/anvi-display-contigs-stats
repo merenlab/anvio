@@ -67,8 +67,6 @@ if __name__ == '__main__':
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
-        utils.is_all_submodules_present()
-
         if A('report_as_text'):
             if not A('output_file'):
                 raise ConfigError("You set the --report-as-text flag but didn't give any --output-file. ")

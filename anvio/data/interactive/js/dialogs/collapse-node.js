@@ -28,8 +28,8 @@ function CollapseNodeDialog(node) {
     this.dialog.innerHTML = `<div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Collapse Node</h4>
                     <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">Collapse Node</h4>
                 </div>
 
                 <div class="modal-body">
@@ -61,7 +61,7 @@ function CollapseNodeDialog(node) {
 
                 <div class="modal-footer">
                     <button class="btn btn-primary" type="button">Collapse</button>
-                    <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>`;

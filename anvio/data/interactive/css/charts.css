@@ -1,12 +1,7 @@
 @import url('normalize.css');
-@import url('variable.css');
-
-.main-container{
-    display: contents;
-}
 
 #display-container {
-    width: 1200px;
+    width: 1200px; //this is being overwritten though.
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
     box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
@@ -83,8 +78,8 @@
     position: fixed;
     height: 100px;
     width: 15px;
-    background-color: var(--bg-color);
-    border: solid 1px var(--bg-color-hover);
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
     top: calc(40%);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
@@ -100,15 +95,15 @@
     right: 0px;
     position: fixed;
     height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
     opacity: 0.9;
     width: 420px;
     padding: 20px;
-    font-family: 'Roboto',Helvetica,Arial,sans-serif;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
     z-index: 999;
     color: black;
-    background: var(--solid-white);
 }
 
 .settings-header {
@@ -160,7 +155,7 @@
 }
 
 svg {
-    font-family: 'Roboto',Helvetica,Arial,sans-serif;
+    font-family: 'Lato', Arial, serif;
     font-size: 10px;
     font-weight: 700;
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
@@ -204,7 +199,7 @@ g.context rect.background{
 
 /* General Demo Style */
 body{
-    font-family: 'Roboto',Helvetica,Arial,sans-serif;
+    font-family: 'Lato', Arial, serif;
     font-weight: 300;
     font-size: 14px;
     color: #888;
@@ -262,7 +257,7 @@ a{
     text-transform: uppercase;
     z-index: 9999;
     position: relative;
-    font-family: 'Roboto',Helvetica,Arial,sans-serif;
+    font-family: Cambria, Georgia, serif;
     box-shadow: 1px 0px 2px rgba(0,0,0,0.2);
 }
 .codrops-top a{
@@ -353,18 +348,4 @@ a{
 
 .sidebar-footer > .btn {
     width: 50%;
-}
-
-.input-xs {
-    height: 22px;
-    padding: 0px 5px;
-    margin-left: 3px;
-    font-size: 1rem;
-    line-height: 1.5;
-    border-radius: 3px;
-}
-
-#gc_overlay_color{
-    background-color: #008000; 
-    margin-left: 3px;
 }

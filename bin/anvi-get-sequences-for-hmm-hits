@@ -184,16 +184,6 @@ def main(args):
 
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
 
-    if args.ignore_genes_longer_than > 0:
-        hmm_sequences_dict, gene_calls_removed, bins_removed = s.filter_hmm_sequences_dict_for_genes_that_are_too_long(hmm_sequences_dict, int(args.ignore_genes_longer_than))
-        CHK()
-
-        if len(bins_removed):
-            bins_removed_for_any_reason.update(bins_removed)
-
-        if len(gene_calls_removed):
-            run.info('Filtered hits', '%d hits remain after filtering for %d genes longer than %d' % (len(hmm_sequences_dict), len(gene_calls_removed), args.ignore_genes_longer_than), nl_before=1)
-
     if args.max_num_genes_missing_from_bin is not None:
         hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
         CHK()
@@ -331,11 +321,10 @@ if __name__ == '__main__':
                                   program with `--concatenate-genes` flag). The default is "XXX" for amino\
                                   acid sequences, and "NNN" for DNA sequences'}))
 
-    groupH = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
-    groupH.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
-    groupH.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
-    groupH.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
-    groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
+    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
+    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
 

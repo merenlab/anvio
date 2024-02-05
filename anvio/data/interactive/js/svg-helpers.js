@@ -353,7 +353,7 @@ function drawText(svg_id, p, string, font_size, align, color, baseline, supportC
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('text-rendering', 'optimizeLegibility');
-    text.setAttribute('font-family', 'Roboto','Helvetica', 'Arial;')
+    text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
 
     text.setAttribute('onclick', function(event){
         console.log(event)

@@ -79,7 +79,7 @@ $(document).ready(function() {
 
     $('.input-height-multiple, .input-margin-multiple, .input-min-multiple, .input-max-multiple').on('change', function() {
         var new_val = this.value;
-        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('-multiple', '') + ':enabled';
+        var target_selector = '.' + this.getAttribute('class').replace('-multiple', '') + ':enabled';
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(
@@ -94,9 +94,7 @@ $(document).ready(function() {
         var new_val = this.value;
         if (new_val == "")
             return;
-        // get last item of class name, which is the target selector
-        // Make sure to remove _multiple from the class name
-        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('_multiple', '');
+        var target_selector = '.' + this.getAttribute('class').replace('_multiple', '');
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(

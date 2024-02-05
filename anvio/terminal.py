@@ -495,7 +495,7 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
-            self.write(message_line, overwrite_verbose=overwrite_verbose)
+            self.write(message_line, overwrite_verbose=False)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0, progress=None):

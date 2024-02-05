@@ -49,6 +49,7 @@ body {
 .ngl-container-wrapper {
     height: 100%;
     display: block;
+    overflow-y: scroll;
     background: #FAFAFA;
 }
 
@@ -83,10 +84,11 @@ body {
 }
 
 .sidebar {
-    height: 100vh;
-    overflow-y: scroll;
+    background: url(../images/fractal.jpg) center center scroll;
+    height: 100%;
     border-right: 1px solid #D3D3D3;
     box-shadow: 0px 0px 10px 2px rgba(200,200,200,0.75);
+    overflow-y: scroll;
 }
 
 .table-group-checkbox {
@@ -141,7 +143,7 @@ body {
     background-color: rgba( 0, 0, 0, 0.6 );
     color: lightgrey;
     padding: 8px;
-    font-family: 'Roboto',Helvetica,Arial,sans-serif;
+    font-family: sans-serif;
 }
 
 .ngl-tooltip > table {
@@ -192,16 +194,4 @@ body {
 .tooltip-table {
     font-size: 10px;
     color: rgb(230, 230, 230) !important;
-}
-
-#ngl-container {
-    height: 100%;
-    width: 66%;
-    position: fixed;
-    overflow-x: scroll;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-content: space-around;
-    text-align: center;
 }

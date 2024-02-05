@@ -86,8 +86,6 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
     try:
-        utils.is_all_submodules_present()
-
         args = parser.get_args(parser)
         args.mode = 'structure'
 

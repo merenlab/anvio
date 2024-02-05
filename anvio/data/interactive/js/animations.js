@@ -64,26 +64,6 @@ function toggleLeftPanel() {
     }
 }
 
-function switchNavigationTabs(tab_number) {
-    if ($('#panel-left').is(':visible')) {
-        $('a').each(function(){
-            if (tab_number){
-                $(tab_number).addClass('active');
-                $(tab_number).tab('show');
-            }
-            if ($(this).prop('href') == window.location.href) {
-                $(this).addClass('active'); 
-                $(this).parents('li').addClass('active');
-            } else 
-            { 
-              $(this).removeClass('active');
-              $(this).parents('li').removeClass('active');
-            }
-        });
-    }
-}
-
-// Outdated with new UI but lets keep it for future development
 function toggleRightPanel(name) {
     ['#mouse_hover_panel', '#description-panel', '#news-panel'].forEach(function(right_panel) {
         if (right_panel == name)
