@@ -1202,10 +1202,10 @@ class ReactionNetwork:
             return removed
 
         # Purge reactions from the record that involve removed metabolites.
-        reactions_to_remove = []
+        reactions_to_remove: List[str] = []
         for modelseed_reaction_id, reaction in self.reactions.items():
-            for compound in reaction.compounds:
-                if compound.modelseed_id in metabolites_to_remove:
+            for modelseed_compound_id in reaction.compound_ids:
+                if modelseed_compound_id in metabolites_to_remove:
                     reactions_to_remove.append(modelseed_reaction_id)
                     break
 
@@ -1414,12 +1414,12 @@ class ReactionNetwork:
         # Purge metabolites from the network that are exclusive to removed reactions.
         metabolites_to_remove: List[str] = []
         for reaction in removed_reactions:
-            for metabolite in reaction.compounds:
-                metabolites_to_remove.append(metabolite.modelseed_id)
+            for modelseed_compound_id in reaction.compound_ids:
+                metabolites_to_remove.append(modelseed_compound_id)
         metabolites_to_remove = list(set(metabolites_to_remove))
         for reaction in self.reactions.values():
             metabolites_to_spare: List[int] = []
-            for metabolite in reaction.compounds:
+            for metabolite in reaction.compound_ids:
                 for idx, modelseed_compound_id in enumerate(metabolites_to_remove):
                     if modelseed_compound_id == metabolite.modelseed_id:
                         # Do not remove the metabolite, because it participates in a retained
@@ -1457,16 +1457,16 @@ class ReactionNetwork:
         kos_to_remove = []
         for ko_id, ko in self.kos.items():
             ko_reactions_to_remove = []
-            for modelseed_reaction_id in ko.reactions:
+            for modelseed_reaction_id in ko.reaction_ids:
                 if modelseed_reaction_id in reactions_to_remove:
                     ko_reactions_to_remove.append(modelseed_reaction_id)
-            if len(ko_reactions_to_remove) == len(ko.reactions):
+            if len(ko_reactions_to_remove) == len(ko.reaction_ids):
                 # All reactions associated with the KO were removed, so remove the KO as well.
                 kos_to_remove.append(ko_id)
                 continue
             for modelseed_reaction_id in ko_reactions_to_remove:
                 # Only some of the reactions associated with the KO are invalid.
-                ko.reactions.pop(modelseed_reaction_id)
+                ko.reaction_ids.remove(modelseed_reaction_id)
                 try:
                     ko.kegg_reaction_aliases.pop(modelseed_reaction_id)
                 except KeyError:
@@ -1663,29 +1663,31 @@ class ReactionNetwork:
             except KeyError:
                 # The requested module is not in the network.
                 continue
-            kos_to_remove += module.kos
+            kos_to_remove += module.ko_ids
         for pathway_id in pathways_to_remove:
             try:
                 pathway = self.pathways[pathway_id]
             except KeyError:
                 # The requested pathway is not in the network.
                 continue
-            kos_to_remove += pathway.kos
+            kos_to_remove += pathway.ko_ids
         for hierarchy_id in hierarchies_to_remove:
             try:
                 hierarchy = self.hierarchies[hierarchy_id]
             except KeyError:
                 # The requested hierarchy is not in the network.
                 continue
-            kos_to_remove += hierarchy.kos
-        for hierarchy_id, category_keys in categories_to_remove.items():
-            try:
-                categorization = self.categories[hierarchy_id][category_keys]
-            except KeyError:
-                # The requested category is not in the network.
-                continue
-            category = categorization[-1]
-            kos_to_remove += category.kos
+            kos_to_remove += hierarchy.ko_ids
+        for hierarchy_id, categorizations in categories_to_remove.items():
+            hierarchy_categorizations = self.categories[hierarchy_id]
+            for categorization in categorizations:
+                try:
+                    categories = hierarchy_categorizations[categorization]
+                except KeyError:
+                    # The requested category is not in the network.
+                    continue
+                category = categories[-1]
+                kos_to_remove += category.ko_ids
 
         # Remove requested KOs from the network.
         kos_to_remove = set(kos_to_remove)
@@ -1723,53 +1725,56 @@ class ReactionNetwork:
         # Remove modules from the network that exclusively contain removed KOs.
         modules_to_remove.clear()
         for removed_ko in removed_kos:
-            for module_id, module in removed_ko.modules.items():
+            for module_id in removed_ko.module_ids:
                 if module_id in modules_to_remove:
                     # The module has already been considered via another removed KO.
                     continue
                 removed_kos_in_module: List[str] = []
-                for ko_id, ko in module.kos.items():
+                module = self.modules[module_id]
+                for ko_id in module.ko_ids:
                     if ko_id in kos_to_remove:
                         removed_kos_in_module.append(ko_id)
-                if len(removed_kos_in_module) == len(module.kos):
+                if len(removed_kos_in_module) == len(module.ko_ids):
                     # Remove the module since all of its KOs were removed from the network.
                     modules_to_remove.append(module_id)
                     continue
                 for ko_id in removed_kos_in_module:
                     # Remove obsolete KO references from the retained module.
-                    module.kos.pop(ko_id)
+                    module.ko_ids.remove(ko_id)
         removed_modules: List[KEGGModule] = []
         for module_id in modules_to_remove:
             module = self.modules.pop(module_id)
             # Remove obsolete module references from pathways.
-            for pathway in module.pathways.values():
-                pathway.modules.pop(module_id)
+            for pathway_id in module.pathway_ids:
+                pathway = self.pathways[pathway_id]
+                pathway.module_ids.remove(module_id)
             removed_modules.append(module)
 
         # Remove pathways from the network that exclusively contain removed KOs.
         pathways_to_remove.clear()
         for removed_ko in removed_kos:
-            for pathway_id, pathway in removed_ko.pathways.items():
+            for pathway_id in removed_ko.pathway_ids:
                 if pathway_id in pathways_to_remove:
                     # The pathway has already been considered via another removed KO.
                     continue
                 removed_kos_in_pathway: List[str] = []
-                for ko_id, ko in pathway.kos.items():
+                pathway = self.pathways[pathway_id]
+                for ko_id in pathway.ko_ids:
                     if ko_id in kos_to_remove:
                         removed_kos_in_pathway.append(ko_id)
-                if len(removed_kos_in_pathway) == len(pathway.kos):
+                if len(removed_kos_in_pathway) == len(pathway.ko_ids):
                     # Remove the pathway since all of its KOs were removed from the network.
                     pathways_to_remove.append(pathway_id)
                     continue
                 for ko_id in removed_kos_in_pathway:
                     # Remove obsolete KO references from the retained pathway.
-                    pathway.kos.pop(ko_id)
+                    pathway.ko_ids.remove(ko_id)
         removed_pathways: List[KEGGPathway] = []
         for pathway_id in pathways_to_remove:
             pathway = self.pathways.pop(pathway_id)
             # Remove obsolete pathway references from modules.
-            for module in pathway.modules.values():
-                module.pathways.pop(pathway_id)
+            for module_id in pathway.module_ids:
+                module.pathway_ids.remove(pathway_id)
             removed_pathways.append(pathway)
 
         # For simplicity's sake, remove hierarchies and hierarchy categories from the network
@@ -1782,16 +1787,17 @@ class ReactionNetwork:
                     # The hierarchy has already been considered via another removed KO.
                     continue
                 removed_kos_in_hierarchy: List[str] = []
-                for ko_id, ko in hierarchy.kos.items():
+                hierarchy = self.hierarchies[hierarchy_id]
+                for ko_id in hierarchy.ko_ids:
                     if ko_id in kos_to_remove:
                         removed_kos_in_hierarchy.append(ko_id)
-                if len(removed_kos_in_hierarchy) == len(hierarchy.kos):
+                if len(removed_kos_in_hierarchy) == len(hierarchy.ko_ids):
                     # Remove the hierarchy since all of its KOs were removed from the network.
                     hierarchies_to_remove.append(hierarchy_id)
                     continue
                 for ko_id in removed_kos_in_pathway:
                     # Remove obsolete KO references from the retained hierarchy.
-                    hierarchy.kos.pop(ko_id)
+                    hierarchy.ko_ids.pop(ko_id)
         removed_hierarchies: List[BRITEHierarchy] = []
         removed_categories: List[BRITECategory] = []
         for hierarchy_id in hierarchies_to_remove:
@@ -1812,50 +1818,53 @@ class ReactionNetwork:
                     # The hierarchy, and thus all of its categories, was already removed.
                     continue
                 removed_kos_in_category: List[str] = []
+                hierarchy_categorizations = self.categories[hierarchy_id]
                 # Consider the (most specific) category and supercategories containing the KO.
-                for category_key, categorization in categorizations.items():
+                for categorization in categorizations:
+                    categories = hierarchy_categorizations[categorization]
                     is_supercategory_removed = False
-                    for rank, category in enumerate(categorization, 1):
-                        key = category_key[:rank]
+                    for depth, category in enumerate(categories, 1):
+                        focus_categorization = categorization[:depth]
                         if is_supercategory_removed:
                             # This category should be removed since it was already established that
                             # the supercategory in the categorization should be removed.
-                            categories_to_remove.append((hierarchy_id, key))
+                            categories_to_remove.append((hierarchy_id, focus_categorization))
                             continue
-                        if (hierarchy_id, key) in categories_to_remove:
+                        if (hierarchy_id, focus_categorization) in categories_to_remove:
                             # The category has already been considered via another removed KO.
                             break
-                        for ko_id, ko in category.kos.items():
+                        for ko_id in category.ko_ids:
                             if ko_id in kos_to_remove:
                                 removed_kos_in_category.append(ko_id)
-                        if len(removed_kos_in_category) == len(category.kos):
+                        if len(removed_kos_in_category) == len(category.ko_ids):
                             # Remove the category since all of its KOs were removed from the
                             # network.
-                            categories_to_remove.append((hierarchy_id, key))
+                            categories_to_remove.append((hierarchy_id, focus_categorization))
                             is_supercategory_removed = True
                             continue
                         for ko_id in removed_kos_in_category:
                             # Remove obsolete KO references from the retained category.
-                            category.kos.pop(ko_id)
-        for hierarchy_id, category_key in categories_to_remove:
-            categorization = self.categories[hierarchy_id].pop(category_key)
-            category = categorization[-1]
-            if category.pathway is not None:
+                            category.ko_ids.remove(ko_id)
+        for hierarchy_id, categorization in categories_to_remove:
+            categories = self.categories[hierarchy_id].pop(categorization)
+            category = categories[-1]
+            if category.pathway_id is not None:
                 # The equivalent pathway should already have been removed from the network.
-                assert category.pathway.id not in self.pathways
+                assert category.pathway_id not in self.pathways
             # Remove the obsolete category reference from the hierarchy.
-            category.hierarchy.categories.pop(category_key)
+            hierarchy = self.hierarchies[hierarchy_id]
+            hierarchy.categorizations.pop(categorization)
             removed_categories.append(category)
 
         # Purge reactions from the network that are exclusive to removed KOs.
         reactions_to_remove: List[str] = []
         for ko in removed_kos:
-            for modelseed_reaction_id in ko.reactions:
+            for modelseed_reaction_id in ko.reaction_ids:
                 reactions_to_remove.append(modelseed_reaction_id)
         reactions_to_remove = list(set(reactions_to_remove))
         for ko in self.kos.values():
             reactions_to_spare: List[int] = []
-            for modelseed_reaction_id in ko.reactions:
+            for modelseed_reaction_id in ko.reaction_ids:
                 for idx, modelseed_reaction_id_to_remove in enumerate(reactions_to_remove):
                     if modelseed_reaction_id == modelseed_reaction_id_to_remove:
                         # The reaction is associated with a retained KO, so do not remove the
@@ -1889,15 +1898,15 @@ class ReactionNetwork:
             genes_to_remove: List[str] = []
             for gcid, gene in self.genes.items():
                 gene_kos_to_remove: List[str] = []
-                for ko_id in gene.kos:
+                for ko_id in gene.ko_ids:
                     if ko_id in kos_to_remove:
                         gene_kos_to_remove.append(ko_id)
-                if len(gene_kos_to_remove) == len(gene.kos):
+                if len(gene_kos_to_remove) == len(gene.ko_ids):
                     # All KOs matching the gene were removed, so remove it as well.
                     genes_to_remove.append(gcid)
                     continue
                 for ko_id in gene_kos_to_remove:
-                    gene.kos.pop(ko_id)
+                    gene.ko_ids.remove(ko_id)
                     gene.e_values.pop(ko_id)
             # If this method was called from '_purge_genes', then the genes that are only associated
             # with KOs removed here were already removed from the network, and 'genes_to_remove'
@@ -1921,7 +1930,7 @@ class ReactionNetwork:
         elif isinstance(self, PangenomicNetwork):
             gene_clusters_to_remove: List[str] = []
             for gene_cluster_id, cluster in self.gene_clusters.items():
-                if cluster.ko.id in kos_to_remove:
+                if cluster.ko_id in kos_to_remove:
                     gene_clusters_to_remove.append(gene_cluster_id)
             # If this method was called from 'purge_gene_clusters' then the gene clusters that are only
             # associated with KOs removed here were already removed from the network, and
@@ -1992,6 +2001,11 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
+        subnetwork_kos = subnetwork.kos
+        subnetwork_modules = subnetwork.modules
+        subnetwork_pathways = subnetwork.pathways
+        subnetwork_hierarchies = subnetwork.hierarchies
+        subnetwork_categories = subnetwork.categories
         for ko_id in ko_ids:
             try:
                 ko = self.kos[ko_id]
@@ -1999,153 +2013,68 @@ class ReactionNetwork:
                 # This occurs if the requested KO ID is not in the source network.
                 continue
 
-            subsetted_ko = KO()
-            subsetted_ko.id = ko.id
-            subsetted_ko.name = ko.name
-            subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
-            subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+            # Copy reactions annotating the KO to the subsetted network.
+            self._subset_network_by_reactions(ko.reaction_ids, subnetwork=subnetwork)
 
-            # Add reactions annotating the KO to the subsetted network as new objects, and then
-            # reference these objects in the KO object.
-            reaction_ids = [reaction_id for reaction_id in ko.reactions]
-            subnetwork = self._subset_network_by_reactions(reaction_ids, subnetwork=subnetwork)
-            subsetted_ko.reactions = {
-                reaction_id: subnetwork.reactions[reaction_id] for reaction_id in reaction_ids
-            }
+            subnetwork_kos[ko_id] = deepcopy(ko)
 
-            subnetwork.kos[ko_id] = subsetted_ko
-
-        # Add modules, pathways, and hierarchies/categories to the subnetwork after new KO objects
-        # have already been added so that references to the new KO objects can be made from the new
-        # module, pathway, hierarchy, and category objects.
-        # Add modules to the subnetwork.
-        for ko_id, subsetted_ko in subnetwork.kos.items():
-            ko = self.kos[ko_id]
-            for module_id, module in ko.modules.items():
-                if module_id in subnetwork.modules:
+            # Copy modules annotating the KO to the subsetted network.
+            for module_id in ko.module_ids:
+                if module_id in subnetwork_modules:
                     # The module was already added to the subnetwork via another KO.
                     continue
 
-                subnetwork_module = KEGGModule()
-                subnetwork_module.id = module_id
-                subnetwork_module.name = module.name
+                module = self.modules[module_id]
+                subnetwork_modules[module_id] = deepcopy(module)
 
-                for module_ko_id in module.kos:
-                    try:
-                        subsetted_module_ko = subnetwork.kos[module_ko_id]
-                    except KeyError:
-                        continue
-                    subnetwork_module.kos[module_ko_id] = subsetted_module_ko
-                    subsetted_module_ko.modules[module_id] = subnetwork_module
-
-        # Add pathways to the subnetwork. Add pathway references to subnetwork modules.
-        for ko_id, subsetted_ko in subnetwork.kos.items():
-            for pathway_id, pathway in ko.pathways.items():
-                if pathway_id in subnetwork.pathways:
+            # Copy pathways annotating the KO to the subsetted network.
+            for pathway_id in ko.pathway_ids:
+                if pathway_id in subnetwork_pathways:
                     # The pathway was already added to the subnetwork via another KO.
                     continue
 
-                subnetwork_pathway = KEGGPathway()
-                subnetwork_pathway.id = pathway_id
-                subnetwork_pathway.name = pathway.name
+                pathway = self.pathways[pathway_id]
+                subnetwork_pathways[pathway_id] = deepcopy(pathway)
 
-                for pathway_ko_id in pathway.kos:
-                    try:
-                        subsetted_pathway_ko = subnetwork.kos[pathway_ko_id]
-                    except KeyError:
-                        continue
-                    subnetwork_pathway.kos[pathway_ko_id] = subsetted_pathway_ko
-                    subsetted_pathway_ko.pathways[pathway_ko_id] = subnetwork_pathway
-
-                for module_id in pathway.modules:
-                    try:
-                        subnetwork_module = subnetwork.modules[module_id]
-                    except KeyError:
-                        continue
-                    subnetwork_pathway.modules[module_id] = subnetwork_module
-                    subnetwork_module.pathways[pathway_id] = subnetwork_pathway
-
-        # Add hierarchies and categories to the subnetwork.
-        for ko_id, subsetted_ko in subnetwork.kos.items():
-            for hierarchy_id, categorizations in ko.hierarchies.items():
-                if hierarchy_id in subnetwork.hierarchies:
-                    # The hierarchy was already added to the subnetwork via another KO.
+            # Copy hierarchies annotating the KO to the subsetted network.
+            for hierarchy_id in ko.hierarchies:
+                if hierarchy_id in subnetwork_hierarchies:
+                    # The hierarchy and all categories were already added to the subnetwork via
+                    # another KO.
                     continue
 
-                # Add the hierarchy to the subnetwork.
                 hierarchy = self.hierarchies[hierarchy_id]
-                subnetwork_hierarchy = BRITEHierarchy()
-                subnetwork_hierarchy.id = hierarchy_id
-                subnetwork_hierarchy.name = hierarchy.name
+                subnetwork_hierarchies[hierarchy_id] = deepcopy(hierarchy)
 
-                for hierarchy_ko_id in hierarchy.kos:
-                    try:
-                        subsetted_hierarchy_ko = subnetwork.kos[hierarchy_ko_id]
-                    except KeyError:
+                # Copy all categories in the hierarchy to the subsetted network.
+                hierarchy_categorizations = self.categories[hierarchy_id]
+                subnetwork_hierarchy_categorizations = subnetwork_categories[hierarchy_id]
+                for categorization in hierarchy.categorizations:
+                    if categorization in subnetwork_hierarchy_categorizations:
+                        # The category must have been a supercategory of another category already
+                        # copied into the subnetwork along with all of its supercategories.
                         continue
-                    subnetwork_hierarchy.kos[hierarchy_ko_id] = subsetted_hierarchy_ko
-                    subsetted_hierarchy_ko.hierarchies[hierarchy_id] = {}
-
-                # Create new category objects for the subnetwork.
-                subnetwork_hierarchy_categories = subnetwork.categories[hierarchy_id]
-                for category_key, categorization in categorizations.items():
-                    # Also consider each supercategory of the (most specific) category referenced by
-                    # the KO.
-                    subnetwork_categorization: List[BRITECategory] = []
-                    for rank, category in enumerate(categorization, 1):
-                        key = category_key[:rank]
-                        category_id = category.id
+                    categories = hierarchy_categorizations[categorization]
+                    subnetwork_categories = []
+                    for depth, category in enumerate(categories, 1):
+                        focus_categorization = categorization[:depth]
                         try:
-                            # The category was already encountered via another KO.
-                            subnetwork_category = subnetwork_hierarchy_categories[key]
-                            is_new_category = False
+                            # The supercategory must have been a supercategory of another category
+                            # already copied into the subnetwork.
+                            subnetwork_category = subnetwork_hierarchy_categorizations[
+                                focus_categorization
+                            ]
+                            is_category_added = True
                         except KeyError:
-                            subnetwork_category = BRITECategory()
-                            is_new_category = True
-                        subnetwork_categorization.append(subnetwork_category)
-
-                        if not is_new_category:
+                            is_category_added = False
+                        if not is_category_added:
+                            subnetwork_category = deepcopy(category)
+                        subnetwork_categories.append(subnetwork_category)
+                        if is_category_added:
                             continue
-
-                        subnetwork_category.id = category_id
-                        subnetwork_category.name = category.name
-                        subnetwork_category.hierarchy = subnetwork_hierarchy
-
-                        # Relate the category to an equivalent pathway in the subnetwork.
-                        pathway = category.pathway
-                        if pathway is not None:
-                            subnetwork_pathway = subnetwork.pathways[pathway.id]
-                            subnetwork_pathway.category = subnetwork_category
-                            subnetwork_category.pathway = subnetwork_pathway
-
-                        # Use subcategory IDs as placeholders to later fill in subcategory
-                        # object references.
-                        for subcategory in category.subcategories:
-                            subnetwork_category.subcategories.append(subcategory.id)
-
-                        subnetwork_hierarchy.categories[key] = subnetwork_category
-
-                        subnetwork_hierarchy_categories[subnetwork_category][
-                            key
-                        ] = subnetwork_category
-
-                        # Add the new category object to the hierarchies attribute of each
-                        # subsetted KO in the category.
-                        for category_ko_id in category.kos:
-                            subsetted_category_ko = subnetwork.kos[category_ko_id]
-                            subnetwork_category.kos[category_ko_id] = subsetted_category_ko
-                            subsetted_category_ko.hierarchies[hierarchy_id][key] = tuple(
-                                subnetwork_categorization
-                            )
-
-                        # Fill in subnetwork supercategory/subcategory relationships.
-                        if len(subnetwork_categorization) > 1:
-                            subnetwork_supercategory = subnetwork_categorization[-2]
-                            subnetwork_category.supercategory = subnetwork_supercategory
-                            # Replace the placeholder subcategory ID with the object.
-                            subnetwork_supercategory.subcategories[
-                                subnetwork_supercategory.subcategories.index(category_id)
-                            ] = subnetwork_category
+                        subnetwork_hierarchy_categorizations[focus_categorization] = tuple(
+                            subnetwork_categories
+                        )
 
         if isinstance(self, GenomicNetwork):
             if subset_referencing_genes:
@@ -2204,37 +2133,40 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        # Copy the network attributes mapping reaction aliases.
+        # Map subsetted reaction aliases.
         kegg_modelseed_aliases: Dict[str, List[str]] = {}
         ec_number_modelseed_aliases: Dict[str, List[str]] = {}
 
+        subnetwork_reactions = subnetwork.reactions
+        subnetwork_metabolites = subnetwork.metabolites
+        subnetwork_modelseed_kegg_aliases = subnetwork.modelseed_kegg_aliases
+        subnetwork_modelseed_ec_number_aliases = subnetwork.modelseed_ec_number_aliases
         for reaction_id in reaction_ids:
             try:
                 reaction = self.reactions[reaction_id]
             except KeyError:
                 # This occurs if the requested reaction is not in the source network.
                 continue
+            subnetwork_reactions[reaction_id] = deepcopy(reaction)
 
-            # Copy the reaction object, including referenced metabolite objects, from the source
-            # network.
-            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
-            subnetwork.reactions[reaction_id] = subsetted_reaction
-            # Record the metabolites involved in the reaction, and add them to the network.
-            for metabolite in subsetted_reaction.compounds:
-                compound_id = metabolite.modelseed_id
-                subnetwork.metabolites[compound_id] = metabolite
+            # Copy metabolites involved in the reaction to the subnetwork.
+            for modelseed_compound_id in reaction.compound_ids:
+                if modelseed_compound_id in subnetwork_metabolites:
+                    continue
+                metabolite = self.metabolites[modelseed_compound_id]
+                subnetwork_metabolites[modelseed_compound_id] = deepcopy(metabolite)
 
             try:
-                subnetwork.modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+                subnetwork_modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
             except KeyError:
-                subnetwork.modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+                subnetwork_modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
 
             try:
-                subnetwork.modelseed_ec_number_aliases[reaction_id] += list(
+                subnetwork_modelseed_ec_number_aliases[reaction_id] += list(
                     reaction.ec_number_aliases
                 )
             except KeyError:
-                subnetwork.modelseed_ec_number_aliases[reaction_id] = list(
+                subnetwork_modelseed_ec_number_aliases[reaction_id] = list(
                     reaction.ec_number_aliases
                 )
 
@@ -2251,20 +2183,22 @@ class ReactionNetwork:
                     ec_number_modelseed_aliases[ec_number] = [reaction_id]
 
         if subnetwork.kegg_modelseed_aliases:
+            subnetwork_kegg_modelseed_aliases = subnetwork.kegg_modelseed_aliases
             for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
                 try:
-                    subnetwork.kegg_modelseed_aliases[kegg_id] += modelseed_ids
+                    subnetwork_kegg_modelseed_aliases[kegg_id] += modelseed_ids
                 except KeyError:
-                    subnetwork.kegg_modelseed_aliases[kegg_id] = modelseed_ids
+                    subnetwork_kegg_modelseed_aliases[kegg_id] = modelseed_ids
         else:
             subnetwork.kegg_modelseed_aliases = kegg_modelseed_aliases
 
         if subnetwork.ec_number_modelseed_aliases:
+            subnetwork_ec_number_modelseed_aliases = subnetwork.ec_number_modelseed_aliases
             for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
                 try:
-                    subnetwork.ec_number_modelseed_aliases[ec_number] += modelseed_ids
+                    subnetwork_ec_number_modelseed_aliases[ec_number] += modelseed_ids
                 except KeyError:
-                    subnetwork.ec_number_modelseed_aliases[ec_number] = modelseed_ids
+                    subnetwork_ec_number_modelseed_aliases[ec_number] = modelseed_ids
         else:
             subnetwork.ec_number_modelseed_aliases = ec_number_modelseed_aliases
 
@@ -2297,33 +2231,22 @@ class ReactionNetwork:
             raise AssertionError
 
         subsetted_reaction_ids = list(subnetwork.reactions)
+        subnetwork_kos = subnetwork.kos
         for ko_id, ko in self.kos.items():
             # Check all KOs in the source network for subsetted reactions.
-            subsetted_ko = None
-            for reaction_id in ko.reactions:
+            for reaction_id in ko.reaction_ids:
                 if reaction_id not in subsetted_reaction_ids:
                     # The KO is not annotated by the subsetted reaction.
                     continue
-
-                if not subsetted_ko:
-                    # Create a new KO object for the subsetted KO. The subsetted KO object would
-                    # already have been created had another subsetted reaction been among the
-                    # reactions annotating the KO.
-                    subsetted_ko = KO()
-                    subsetted_ko.id = ko_id
-                    subsetted_ko.name = ko.name
-                subsetted_ko.reactions[reaction_id] = subnetwork.reactions[reaction_id]
-                subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
-                subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
-
-            if subsetted_ko:
-                subnetwork.kos[ko_id] = subsetted_ko
+                # Copy the KO to the subsetted network.
+                subnetwork_kos[ko_id] = deepcopy(ko)
+                break
 
         if isinstance(self, GenomicNetwork):
-            # Add genes that are annotated with the added KOs to the subsetted network.
+            # Copy genes that are annotated with the added KOs to the subsetted network.
             self._subset_genes_via_kos(subnetwork)
         elif isinstance(self, PangenomicNetwork):
-            # Add gene clusters that are annotated with the added KOs to the subsetted network.
+            # Copy gene clusters that are annotated with the added KOs to the subsetted network.
             self._subset_gene_clusters_via_kos(subnetwork)
 
     def _subset_network_by_metabolites(self, compound_ids: Iterable[str]) -> ReactionNetwork:
@@ -2347,24 +2270,25 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
+        subnetwork_metabolites = subnetwork.metabolites
         for reaction_id, reaction in self.reactions.items():
             # Check all reactions in the source network for subsetted metabolites.
-            for metabolite in reaction.compounds:
-                if metabolite.modelseed_id in compound_ids:
+            for modelseed_compound_id in reaction.compound_ids:
+                if modelseed_compound_id in compound_ids:
                     break
             else:
                 # The reaction does not involve any of the requested metabolites.
                 continue
 
-            # Copy the reaction object, including referenced metabolite objects, from the source
-            # network.
-            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
-            subnetwork.reactions[reaction_id] = subsetted_reaction
+            # Copy the reaction to the subsetted network.
+            subnetwork.reactions[reaction_id] = deepcopy(reaction)
 
-            # Add the metabolites involved in the reaction to the subsetted network. (There can be
-            # unavoidable redundancy here in readding previously encountered metabolites.)
-            for subsetted_metabolite in subsetted_reaction.compounds:
-                subnetwork.metabolites[subsetted_metabolite.modelseed_id] = subsetted_metabolite
+            # Copy the metabolites involved in the reaction to the subsetted network.
+            for modelseed_compound_id in reaction.compound_ids:
+                if modelseed_compound_id in subnetwork_metabolites:
+                    continue
+                metabolite = self.metabolites[modelseed_compound_id]
+                subnetwork_metabolites[modelseed_compound_id] = deepcopy(metabolite)
 
         # Add KOs that are annotated with the added reactions to the subsetted network, and then add
         # genes or gene clusters annotated with the added KOs to the subsetted network.
@@ -2396,613 +2320,189 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        # Add metabolites to the merged network, starting with metabolites in the first network and
-        # continuing with metabolites exclusive to the second network. Assume objects representing
-        # the same metabolites in both networks properly have identical attributes.
-        for metabolite_id, first_metabolite in self.metabolites.items():
-            merged_metabolite = ModelSEEDCompound()
-            merged_metabolite.modelseed_id = metabolite_id
-            merged_metabolite.modelseed_name = first_metabolite.modelseed_name
-            merged_metabolite.kegg_aliases = first_metabolite.kegg_aliases
-            merged_metabolite.charge = first_metabolite.charge
-            merged_metabolite.formula = first_metabolite.formula
-            abundances: Dict[str, float] = getattr(first_metabolite, 'abundances', None)
-            if abundances is None:
+        merged_network.metabolites = deepcopy(self.metabolites)
+        merged_network.reactions = deepcopy(self.reactions)
+        merged_network.kos = deepcopy(self.kos)
+        merged_network.modules = deepcopy(self.modules)
+        merged_network.pathways = deepcopy(self.pathways)
+        merged_network.hierarchies = deepcopy(self.hierarchies)
+        merged_network.categories = deepcopy(self.categories)
+        merged_network.kegg_modelseed_aliases = deepcopy(self.kegg_modelseed_aliases)
+        merged_network.ec_number_modelseed_aliases = deepcopy(self.ec_number_modelseed_aliases)
+        merged_network.modelseed_kegg_aliases = deepcopy(self.modelseed_kegg_aliases)
+        merged_network.modelseed_ec_number_aliases = deepcopy(self.modelseed_ec_number_aliases)
+
+        # Copy unique metabolites from the second network. Assume objects representing the same
+        # metabolite in both networks have identical attributes.
+        for modelseed_compound_id, metabolite in network.metabolites.items():
+            if modelseed_compound_id in merged_network.metabolites:
                 continue
-            merged_metabolite.abundances = abundances.copy()
+            merged_network.metabolites[modelseed_compound_id] = deepcopy(metabolite)
 
-            merged_network.metabolites[metabolite_id] = merged_metabolite
-
-        for metabolite_id in set(network.metabolites).difference(self.metabolites):
-            second_metabolite = network.metabolites[metabolite_id]
-
-            merged_metabolite = ModelSEEDCompound()
-            merged_metabolite.modelseed_id = metabolite_id
-            merged_metabolite.modelseed_name = second_metabolite.modelseed_name
-            merged_metabolite.kegg_aliases = second_metabolite.kegg_aliases
-            merged_metabolite.charge = second_metabolite.charge
-            merged_metabolite.formula = second_metabolite.formula
-            abundances: Dict[str, float] = getattr(second_metabolite, 'abundances', None)
-            if abundances is None:
+        # Copy unique reactions from the second network. Assume objects representing the same
+        # reaction in both networks have identical attributes.
+        for modelseed_reaction_id, reaction in network.reactions.items():
+            if modelseed_reaction_id in merged_network.reactions:
                 continue
-            merged_metabolite.abundances = abundances.copy()
+            merged_network.reactions[modelseed_reaction_id] = deepcopy(reaction)
 
-            merged_network.metabolites[metabolite_id] = merged_metabolite
-
-        # Add reactions to the merged network, starting with reactions in the first network and
-        # continuing with reactions exclusive to the second network. Assume objects representing the
-        # same reactions in both networks properly have identical attributes.
-
-        for reaction_id, first_reaction in self.reactions.items():
-            # Create the reaction object for the merged network.
-            merged_reaction = ModelSEEDReaction()
-            merged_reaction.modelseed_id = reaction_id
-            merged_reaction.modelseed_name = first_reaction.modelseed_name
-            merged_reaction.kegg_aliases = first_reaction.kegg_aliases
-            merged_reaction.ec_number_aliases = first_reaction.ec_number_aliases
-            metabolites = []
-            for metabolite in first_reaction.compounds:
-                metabolites.append(merged_network.metabolites[metabolite.modelseed_id])
-            merged_reaction.compounds = tuple(metabolites)
-            merged_reaction.coefficients = first_reaction.coefficients
-            merged_reaction.compartments = first_reaction.compartments
-            merged_reaction.reversibility = first_reaction.reversibility
-
-            merged_network.reactions[reaction_id] = merged_reaction
-
-            # Add reaction ID aliases to the merged network.
-            merged_network.modelseed_kegg_aliases[reaction_id] = list(
-                first_reaction.kegg_aliases
-            )
-            merged_network.modelseed_ec_number_aliases[reaction_id] = list(
-                first_reaction.ec_number_aliases
+        # Reconcile reaction ID aliases, which can differ between the networks depending on the KO
+        # sources of the reactions.
+        merged_kegg_modelseed_aliases = merged_network.kegg_modelseed_aliases
+        for kegg_reaction_id, modelseed_reaction_ids in network.kegg_modelseed_aliases.items():
+            try:
+                merged_modelseed_reaction_ids = merged_kegg_modelseed_aliases[kegg_reaction_id]
+            except KeyError:
+                merged_kegg_modelseed_aliases[kegg_reaction_id] = modelseed_reaction_ids.copy()
+                continue
+            merged_kegg_modelseed_aliases[kegg_reaction_id] = sorted(
+                set(modelseed_reaction_ids + merged_modelseed_reaction_ids)
             )
 
-            for kegg_id in first_reaction.kegg_aliases:
-                try:
-                    merged_network.kegg_modelseed_aliases[kegg_id].append(reaction_id)
-                except KeyError:
-                    merged_network.kegg_modelseed_aliases[kegg_id] = [reaction_id]
-
-            for ec_number in first_reaction.ec_number_aliases:
-                try:
-                    merged_network.ec_number_modelseed_aliases[ec_number].append(reaction_id)
-                except KeyError:
-                    merged_network.ec_number_modelseed_aliases[ec_number] = [reaction_id]
-
-        for reaction_id in set(network.reactions).difference(self.reactions):
-            second_reaction = network.reactions[reaction_id]
-
-            # Create the reaction object for the merged network.
-            merged_reaction = ModelSEEDReaction()
-            merged_reaction.modelseed_id = reaction_id
-            merged_reaction.modelseed_name = second_reaction.modelseed_name
-            merged_reaction.kegg_aliases = second_reaction.kegg_aliases
-            merged_reaction.ec_number_aliases = second_reaction.ec_number_aliases
-            metabolites = []
-            for metabolite in second_reaction.compounds:
-                metabolites.append(merged_network.metabolites[metabolite.modelseed_id])
-            merged_reaction.compounds = tuple(metabolites)
-            merged_reaction.coefficients = second_reaction.coefficients
-            merged_reaction.compartments = second_reaction.compartments
-            merged_reaction.reversibility = second_reaction.reversibility
-
-            merged_network.reactions[reaction_id] = merged_reaction
-
-            # Add reaction ID aliases to the merged network.
-            merged_network.modelseed_kegg_aliases[reaction_id] = list(
-                second_reaction.kegg_aliases
+        merged_ec_number_modelseed_aliases = merged_network.ec_number_modelseed_aliases
+        for ec_number, modelseed_reaction_ids in network.ec_number_modelseed_aliases.items():
+            try:
+                merged_modelseed_reaction_ids = merged_ec_number_modelseed_aliases[ec_number]
+            except KeyError:
+                merged_ec_number_modelseed_aliases[ec_number] = modelseed_reaction_ids.copy()
+                continue
+            merged_ec_number_modelseed_aliases[ec_number] = sorted(
+                set(modelseed_reaction_ids + merged_modelseed_reaction_ids)
             )
 
-            merged_network.modelseed_ec_number_aliases[reaction_id] = list(
-                second_reaction.ec_number_aliases
+        merged_modelseed_kegg_aliases = merged_network.modelseed_kegg_aliases
+        for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
+            try:
+                merged_kegg_reaction_ids = merged_modelseed_kegg_aliases[modelseed_reaction_id]
+            except KeyError:
+                merged_modelseed_kegg_aliases[modelseed_reaction_id] = kegg_reaction_ids.copy()
+                continue
+            merged_modelseed_kegg_aliases[modelseed_reaction_id] = sorted(
+                set(kegg_reaction_ids + merged_kegg_reaction_ids)
             )
 
-            for kegg_id in second_reaction.kegg_aliases:
+        merged_modelseed_ec_number_aliases = merged_network.modelseed_ec_number_aliases
+        for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
+            try:
+                merged_ec_numbers = merged_modelseed_ec_number_aliases[modelseed_reaction_id]
+            except KeyError:
+                merged_modelseed_ec_number_aliases[modelseed_reaction_id] = ec_numbers.copy()
+                continue
+            merged_modelseed_ec_number_aliases[modelseed_reaction_id] = sorted(
+                set(ec_numbers + merged_ec_numbers)
+            )
+
+        # Copy KOs from the second network. These can have different reaction annotations, so take
+        # the union of the reactions associated with the same KO. Assume KOs with the same ID have
+        # the same name.
+        merged_kos = merged_network.kos
+        for ko_id, ko in network.kos.items():
+            try:
+                merged_ko = merged_kos[ko_id]
+            except KeyError:
+                merged_kos[ko_id] = deepcopy(ko)
+                continue
+
+            # The KOs should be classified in the same modules, pathways, and hierarchy categories,
+            # unless the networks are derived from different reference database versions.
+            merged_ko.module_ids = sorted(set(ko.module_ids + merged_ko.module_ids))
+            merged_ko.pathway_ids = sorted(set(ko.pathway_ids + merged_ko.pathway_ids))
+            for hierarchy_id, categorizations in ko.hierarchies.items():
                 try:
-                    merged_network.kegg_modelseed_aliases[kegg_id].append(reaction_id)
+                    merged_hierarchy_categorizations = merged_ko.hierarchies[hierarchy_id]
                 except KeyError:
-                    merged_network.kegg_modelseed_aliases[kegg_id] = [reaction_id]
-
-            for ec_number in second_reaction.ec_number_aliases:
-                try:
-                    merged_network.ec_number_modelseed_aliases[ec_number].append(reaction_id)
-                except KeyError:
-                    merged_network.ec_number_modelseed_aliases[ec_number] = [reaction_id]
-
-        # Add KOs to the merged network, first adding KOs common to both source networks, since
-        # these need to be treated specially, and then adding KOs present exclusively in each source
-        # network.
-        first_ko_ids = set(self.kos)
-        second_ko_ids = set(network.kos)
-
-        for ko_id in first_ko_ids.intersection(second_ko_ids):
-            first_ko = self.kos[ko_id]
-            second_ko = network.kos[ko_id]
-
-            # Create the KO object for the merged network.
-            merged_ko = KO()
-            merged_ko.id = ko_id
-            merged_ko.name = first_ko.name
-
-            # The merged network KO references all reaction annotations from both source KOs; these
-            # need not be the same reactions.
-            reaction_ids = set(first_ko.reactions).union(set(second_ko.reactions))
-            merged_ko.reactions = {
-                reaction_id: merged_network.reactions[reaction_id] for reaction_id in reaction_ids
-            }
-
-            # Add reaction ID aliases to the merged KO.
-            for reaction_id in reaction_ids:
-                try:
-                    merged_ko.kegg_reaction_aliases[reaction_id] = first_ko.kegg_reaction_aliases[
-                        reaction_id
-                    ]
-                except KeyError:
-                    # The reaction has no KO KEGG REACTION aliases.
-                    pass
-                try:
-                    merged_ko.ec_number_aliases[reaction_id] = first_ko.ec_number_aliases[
-                        reaction_id
-                    ]
-                except KeyError:
-                    # The reaction has no KO KEGG REACTION aliases.
-                    pass
-
-            merged_network.kos[ko_id] = merged_ko
-
-        for ko_id in first_ko_ids.difference(second_ko_ids):
-            first_ko = self.kos[ko_id]
-
-            # Create the KO object for the merged network.
-            ko = KO()
-            ko.id = ko_id
-            ko.name = first_ko.name
-            ko.reactions = {
-                reaction_id: merged_network.reactions[reaction_id]
-                for reaction_id in first_ko.reactions
-            }
-            ko.kegg_reaction_aliases = deepcopy(first_ko.kegg_reaction_aliases)
-            ko.ec_number_aliases = deepcopy(first_ko.ec_number_aliases)
-
-            merged_network.kos[ko_id] = ko
-
-        for ko_id in second_ko_ids.difference(first_ko_ids):
-            second_ko = network.kos[ko_id]
-
-            # Create the KO object for the merged network.
-            ko = KO()
-            ko.id = ko_id
-            ko.name = second_ko.name
-            ko.reactions = {
-                reaction_id: merged_network.reactions[reaction_id]
-                for reaction_id in second_ko.reactions
-            }
-            ko.kegg_reaction_aliases = deepcopy(second_ko.kegg_reaction_aliases)
-            ko.ec_number_aliases = deepcopy(second_ko.ec_number_aliases)
-
-            merged_network.kos[ko_id] = ko
-
-        # Add modules to the merged network, first adding modules common to both source networks,
-        # since these need to be treated specially, and then adding modules present exclusively in
-        # each source network.
-        first_module_ids = set(self.modules)
-        second_module_ids = set(network.modules)
-
-        for module_id in first_module_ids.intersection(second_module_ids):
-            first_module = self.modules[module_id]
-            second_module = network.modules[module_id]
-
-            # Create the module object for the merged network.
-            merged_module = KEGGModule()
-            merged_module.id = module_id
-            merged_module.name = first_module.name
-
-            # The merged network module references KOs from both source modules; these need not be
-            # the same KOs.
-            for ko_id in set(first_module.kos).union(set(second_module.kos)):
-                merged_module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a module reference to the KO in the merged network.
-                merged_ko.modules[module_id] = merged_module
-
-            merged_network.modules[module_id] = merged_module
-
-        for module_id in first_module_ids.difference(second_module_ids):
-            first_module = self.modules[module_id]
-
-            # Create the module object for the merged network.
-            module = KEGGModule()
-            module.id = module_id
-            module.name = first_module.name
-
-            for ko_id in first_module.kos:
-                module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a module reference to the KO in the merged network.
-                merged_ko.modules[module_id] = module
-
-            merged_network.modules[module_id] = module
-
-        for module_id in second_module_ids.difference(first_module_ids):
-            second_module = network.modules[module_id]
-
-            # Create the module object for the merged network.
-            module = KEGGModule()
-            module.id = module_id
-            module.name = second_module.name
-
-            for ko_id in second_module.kos:
-                module.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a module reference to the KO in the merged network.
-                merged_ko.modules[module_id] = module
-
-            merged_network.modules[module_id] = module
-
-        # Add hierarchies to the merged network, adding hierarchies in the first network, and then
-        # adding hierarchies exclusively in the second network.
-        for hierarchy_id, first_hierarchy in self.hierarchies.items():
-            # Create the hierarchy object for the merged network.
-            hierarchy = BRITEHierarchy()
-            hierarchy.id = hierarchy_id
-            hierarchy.name = first_hierarchy.name
-            for ko_id in first_hierarchy.kos:
-                hierarchy.kos[ko_id] = merged_network.kos[ko_id]
-
-            merged_network.hierarchies[hierarchy_id] = hierarchy
-
-        exclusive_second_hierarchy_ids = set(network.hierarchies).difference(set(self.hierarchies))
-        for hierarchy_id in exclusive_second_hierarchy_ids:
-            second_hierarchy = network.hierarchies[hierarchy_id]
-
-            # Create the hierarchy object for the merged network.
-            hierarchy = BRITEHierarchy()
-            hierarchy.id = hierarchy_id
-            hierarchy.name = second_hierarchy.name
-            for ko_id in second_hierarchy.kos:
-                hierarchy.kos[ko_id] = merged_network.kos[ko_id]
-
-            merged_network.hierarchies[hierarchy_id] = hierarchy
-
-        # Add categories to the merged network, not a straightforward process.
-        # First, create dictionaries for each source network mapping category ID to object.
-        first_categories: Dict[str, BRITECategory] = {}
-        for categorizations in self.categories.values():
-            for categorization in categorizations.values():
-                for category in categorization:
-                    first_categories[category.id] = category
-        first_category_ids = set(first_category_ids)
-
-        second_categories: Dict[str, BRITECategory] = {}
-        for categorizations in self.categories.values():
-            for categorization in categorizations.values():
-                for category in categorization:
-                    second_categories[category.id] = category
-        second_category_ids = set(second_category_ids)
-
-        # Make all merged category objects, storing them in the following dictionary keyed by
-        # category ID, before filling out the structure of the merged network categories attribute.
-        merged_categories: Dict[str, BRITECategory] = {}
-
-        # Make objects for categories common to both networks, which need not reference the same KOs
-        # and thus subcategories in each network.
-        for category_id in first_category_ids.intersection(second_category_ids):
-            first_category = first_categories[category_id]
-            second_category = second_categories[category_id]
-
-            # Create the category object for the merged network.
-            merged_category = BRITECategory()
-            merged_category.id = category_id
-            merged_category.name = first_category.name
-            merged_category.hierarchy = merged_network.hierarchies[first_category.hierarchy.id]
-
-            # Process the supercategory.
-            supercategory = first_category.supercategory
-            if supercategory is None:
-                # There is no higher category in the hierarchy.
-                merged_supercategory = None
-            else:
-                try:
-                    # A category in the merged network has already been made for the supercategory.
-                    merged_supercategory = merged_categories[supercategory.id]
-                except KeyError:
-                    # A category in the merged network has not yet been made for the supercategory.
-                    # A placeholder value of None for the supercategory attribute is replaced by a
-                    # merged category object in a further iteration of the loop.
-                    merged_supercategory = None
-                if merged_supercategory is not None:
-                    # A category in the merged network has already been made for the supercategory. A
-                    # placeholder value of the current category ID in the supercategory object's
-                    # subcategories attribute is replaced by the current merged category object.
-                    merged_supercategory.subcategories[
-                        merged_supercategory.subcategories.index(category_id)
-                    ] = merged_category
-            merged_category.supercategory = merged_supercategory
-
-            # Find the subcategories from both source networks.
-            added_subcategory_ids = []
-            for subcategory in first_category.subcategories:
-                try:
-                    # A category in the merged network has already been made for the subcategory.
-                    merged_subcategory = merged_categories[subcategory.id]
-                except KeyError:
-                    # A category in the merged network has not yet been made for the subcategory:
-                    # the placeholder value of the subcategory ID is subsequently replaced when this
-                    # is done.
-                    merged_subcategory = subcategory.id
-                merged_category.subcategories.append(merged_subcategory)
-                added_subcategory_ids.append(subcategory.id)
-            for subcategory in second_category.subcategories:
-                if subcategory.id in added_subcategory_ids:
-                    # The subcategory was already processed considering the first network.
+                    merged_ko.hierarchies[hierarchy_id] = categorizations.copy()
                     continue
+                merged_ko.hierarchies[hierarchy_id] = sorted(
+                    set(categorizations + merged_hierarchy_categorizations)
+                )
+
+            merged_ko.reaction_ids = sorted(set(ko.reaction_ids + merged_ko.reaction_ids))
+
+            for kegg_reaction_id, modelseed_reaction_ids in merged_ko.kegg_reaction_aliases.items():
                 try:
-                    # A category in the merged network has already been made for the subcategory.
-                    merged_subcategory = merged_categories[subcategory.id]
+                    merged_modelseed_reaction_ids = merged_ko.kegg_reaction_aliases[kegg_reaction_id]
                 except KeyError:
-                    # A category in the merged network has not yet been made for the subcategory:
-                    # the placeholder value of the subcategory ID is subsequently replaced when this
-                    # is done.
-                    merged_subcategory = subcategory.id
-                merged_category.subcategories.append(merged_subcategory)
+                    merged_ko.kegg_reaction_aliases = modelseed_reaction_ids.copy()
+                    continue
+                merged_ko.kegg_reaction_aliases[kegg_reaction_id] = sorted(
+                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                )
 
-            # Reference KO objects in the category. These need not be the same in each source
-            # network.
-            for ko_id in set(first_category.kos).union(set(second_category.kos)):
-                merged_category.kos[ko_id] = merged_network.kos[ko_id]
-
-            merged_categories[category_id] = merged_category
-
-        # Make objects for categories exclusive to the first network.
-        for category_id in first_category_ids.difference(second_category_ids):
-            first_category = first_categories[category_id]
-
-            # Create the category object for the merged network.
-            merged_category = BRITECategory()
-            merged_category.id = category_id
-            merged_category.name = first_category.name
-            merged_category.hierarchy = merged_network.hierarchies[first_category.hierarchy.id]
-
-            # Process the supercategory.
-            supercategory = first_category.supercategory
-            if supercategory is None:
-                # There is no higher category in the hierarchy.
-                merged_supercategory = None
-            else:
+            for ec_number, modelseed_reaction_ids in merged_ko.ec_number_aliases.items():
                 try:
-                    # A category in the merged network has already been made for the supercategory.
-                    merged_supercategory = merged_categories[supercategory.id]
+                    merged_modelseed_reaction_ids = merged_ko.ec_number_aliases[ec_number]
                 except KeyError:
-                    # A category in the merged network has not yet been made for the supercategory.
-                    # A placeholder value of None for the supercategory attribute is replaced by a
-                    # merged category object in a further iteration of the loop.
-                    merged_supercategory = None
-                if merged_supercategory is not None:
-                    # A category in the merged network has already been made for the supercategory. A
-                    # placeholder value of the current category ID in the supercategory object's
-                    # subcategories attribute is replaced by the current merged category object.
-                    merged_supercategory.subcategories[
-                        merged_supercategory.subcategories.index(category_id)
-                    ] = merged_category
-            merged_category.supercategory = merged_supercategory
+                    merged_ko.ec_number_aliases = modelseed_reaction_ids.copy()
+                    continue
+                merged_ko.ec_number_aliases[ec_number] = sorted(
+                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                )
 
-            # Process the subcategories.
-            for subcategory in first_category.subcategories:
+        # Copy hierarchies from the second network. Hierarchies from the two networks can contain
+        # different categories due to different KOs. Assume hierarchies with the same ID have the
+        # same name.
+        merged_hierarchies = merged_network.hierarchies
+        for hierarchy_id, hierarchy in network.hierarchies.items():
+            try:
+                merged_hierarchy = merged_hierarchies[hierarchy_id]
+            except KeyError:
+                merged_hierarchies[hierarchy_id] = deepcopy(hierarchy)
+                continue
+
+            merged_hierarchy.categorizations = sorted(
+                set(hierarchy.categorizations + merged_hierarchy.categorizations)
+            )
+
+            merged_hierarchy.ko_ids = sorted(set(hierarchy.ko_ids + merged_hierarchy.ko_ids))
+
+        # Copy hierarchy categories from the second network.
+        for hierarchy_id, categorizations in network.categories.items():
+            try:
+                merged_hierarchy_categorizations = merged_network.categories[hierarchy_id]
+            except KeyError:
+                merged_network.categories[hierarchy_id] = deepcopy(categorizations)
+                continue
+
+            for categorization, categories in categorizations.items():
                 try:
-                    # A category in the merged network has already been made for the subcategory.
-                    merged_subcategory = merged_categories[subcategory.id]
+                    merged_categories = merged_hierarchy_categorizations[categorization]
+                    is_category_copied = True
                 except KeyError:
-                    # A category in the merged network has not yet been made for the subcategory:
-                    # the placeholder value of the subcategory ID is subsequently replaced when this
-                    # is done.
-                    merged_subcategory = subcategory.id
-                merged_category.subcategories.append(merged_subcategory)
+                    is_category_copied = False
 
-            # Process KOs in the category.
-            for ko_id in first_category.kos:
-                merged_category.kos[ko_id] = merged_network.kos[ko_id]
+                if is_category_copied:
+                    # Reconcile the subcategories and KOs contained in the category from the two
+                    # networks.
+                    category = categories[-1]
+                    merged_category = merged_categories[-1]
 
-            merged_categories[category_id] = merged_category
+                    merged_category.subcategory_names = sorted(
+                        set(category.subcategory_names + merged_category.subcategory_names)
+                    )
 
-        # Make objects for categories exclusive to the second network.
-        for category_id in second_category_ids.difference(first_category_ids):
-            second_category = second_categories[category_id]
+                    merged_category.ko_ids = sorted(set(category.ko_ids + merged_category.ko_ids))
 
-            # Create the category object for the merged network.
-            merged_category = BRITECategory()
-            merged_category.id = category_id
-            merged_category.name = second_category.name
-            merged_category.hierarchy = merged_network.hierarchies[second_category.hierarchy.id]
+                    continue
 
-            # Process the supercategory.
-            supercategory = second_category.supercategory
-            if supercategory is None:
-                # There is no higher category in the hierarchy.
-                merged_supercategory = None
-            else:
-                try:
-                    # A category in the merged network has already been made for the supercategory.
-                    merged_supercategory = merged_categories[supercategory.id]
-                except KeyError:
-                    # A category in the merged network has not yet been made for the supercategory.
-                    # A placeholder value of None for the supercategory attribute is replaced by a
-                    # merged category object in a further iteration of the loop.
-                    merged_supercategory = None
-                if merged_supercategory is not None:
-                    # A category in the merged network has already been made for the supercategory. A
-                    # placeholder value of the current category ID in the supercategory object's
-                    # subcategories attribute is replaced by the current merged category object.
-                    merged_supercategory.subcategories[
-                        merged_supercategory.subcategories.index(category_id)
-                    ] = merged_category
-            merged_category.supercategory = merged_supercategory
-
-            # Process the subcategories.
-            for subcategory in second_category.subcategories:
-                try:
-                    # A category in the merged network has already been made for the subcategory.
-                    merged_subcategory = merged_categories[subcategory.id]
-                except KeyError:
-                    # A category in the merged network has not yet been made for the subcategory:
-                    # the placeholder value of the subcategory ID is subsequently replaced when this
-                    # is done.
-                    merged_subcategory = subcategory.id
-                merged_category.subcategories.append(merged_subcategory)
-
-            # Process KOs in the category.
-            for ko_id in second_category.kos:
-                merged_category.kos[ko_id] = merged_network.kos[ko_id]
-
-            merged_categories[category_id] = merged_category
-
-        # Establish category dictionaries for each hierarchy of the merged network.
-        for hierarchy_id in merged_network.hierarchies:
-            merged_network.categories[hierarchy_id] = {}
-
-        # Add categories to the merged network.
-        for category_id, merged_category in merged_categories.items():
-            # A category ID string is formatted like '<hierarchy ID>: <highest supercategory> >>>
-            # <next highest supercategory> >>> ... >>> <category>'.
-            hierarchy_id = merged_category.hierarchy.id
-            category_key = category_id[len(hierarchy_id) + 2:].split(' >>> ')
-            merged_network.categories[merged_category.hierarchy.id][category_key] = merged_category
-
-        # Add pathways to the merged network, first adding pathways common to both source networks,
-        # and then adding pathways exclusive to each source network.
-        first_pathway_ids = set(self.pathways)
-        second_pathway_ids = set(network.pathways)
-
-        for pathway_id in first_pathway_ids.intersection(second_pathway_ids):
-            first_pathway = self.pathways[pathway_id]
-            second_pathway = network.pathways[pathway_id]
-
-            # Create the pathway object for the merged network.
-            merged_pathway = KEGGPathway()
-            merged_pathway.id = pathway_id
-            merged_pathway.name = first_pathway.name
-
-            # The merged network pathway references KOs from both source pathways; these need not be
-            # the same KOs.
-            for ko_id in set(first_pathway.kos).intersection(set(second_pathway.kos)):
-                merged_pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a pathway reference to the KO in the merged network.
-                merged_ko.pathways[pathway_id] = merged_pathway
-
-            if first_pathway.category is not None:
-                # Reference the equivalent BRITE category to the pathway in the merged network.
-                merged_pathway.category = merged_category = merged_categories[
-                    first_pathway.category.id
-                ]
-                # Vice versa.
-                merged_category.pathway = merged_pathway
-
-            merged_network.pathways[pathway_id] = merged_pathway
-
-        for pathway_id in first_pathway_ids.difference(second_pathway_ids):
-            first_pathway = self.pathways[pathway_id]
-
-            # Create the pathway object for the merged network.
-            pathway = KEGGPathway()
-            pathway.id = pathway_id
-            pathway.name = first_pathway.name
-
-            for ko_id in first_pathway.kos:
-                pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a pathway reference to the KO in the merged network.
-                merged_ko.pathways[pathway_id] = pathway
-
-            if first_pathway.category is not None:
-                # Reference the equivalent BRITE category to the pathway in the merged network.
-                pathway.category = merged_category = merged_categories[first_pathway.category.id]
-                # Vice versa.
-                merged_category.pathway = pathway
-
-            merged_network.pathways[pathway_id] = pathway
-
-        for pathway_id in second_pathway_ids.difference(first_pathway_ids):
-            second_pathway = network.pathways[pathway_id]
-
-            # Create the pathway object for the merged network.
-            pathway = KEGGPathway()
-            pathway.id = pathway_id
-            pathway.name = second_pathway.name
-
-            for ko_id in second_pathway.kos:
-                pathway.kos[ko_id] = merged_ko = merged_network.kos[ko_id]
-                # Add a pathway reference to the KO in the merged network.
-                merged_ko.pathways[pathway_id] = pathway
-
-            if second_pathway.category is not None:
-                # Reference the equivalent BRITE category to the pathway in the merged network.
-                pathway.category = merged_category = merged_categories[second_pathway.category.id]
-                # Vice versa.
-                merged_category.pathway = pathway
-
-            merged_network.pathways[pathway_id] = pathway
-
-        # In each merged network KO object, reference BRITE hierarchical categorizations. First
-        # process KOs in the first network, and then process KOs exclusive to the second network.
-        for ko_id, first_ko in self.kos.items():
-            merged_ko = merged_network.kos[ko_id]
-            for hierarchy_id, categorizations in first_ko.hierarchies.items():
-                merged_ko.hierarchies[hierarchy_id] = merged_categorizations = {}
-                for category_key, categorization in categorizations.items():
-                    merged_categorization = []
-                    for category in categorization:
-                        merged_categorization.append(merged_categories[category.id])
-                    merged_categorizations[category_key] = tuple(merged_categorization)
-
-        for ko_id in second_ko_ids.difference(first_ko_ids):
-            second_ko = network.kos[ko_id]
-            merged_ko = merged_network.kos[ko_id]
-            for hierarchy_id, categorizations in second_ko.hierarchies.items():
-                merged_ko.hierarchies[hierarchy_id] = merged_categorizations = {}
-                for category_key, categorization in categorizations.items():
-                    merged_categorization = []
-                    for category in categorization:
-                        merged_categorization.append(merged_categories[category.id])
-                    merged_categorizations[category_key] = tuple(merged_categorization)
-
-        # In each merged network pathway object, reference modules. Process pathways in the first
-        # network, and then process pathways exclusive to the second network.
-        for pathway_id, pathway in self.pathways.items():
-            merged_pathway = merged_network.pathways[pathway_id]
-            for module_id in pathway.modules:
-                merged_pathway.modules[module_id] = merged_network.modules[module_id]
-
-        for pathway_id in second_pathway_ids.difference(first_pathway_ids):
-            second_pathway = network.pathways[pathway_id]
-            merged_pathway = merged_network.pathways[pathway_id]
-            for module_id in second_pathway.modules:
-                merged_pathway.modules[module_id] = merged_network.modules[module_id]
-
-        # Likewise, in each merged network module object, reference pathway membership. Process
-        # modules in the first network, and then process modules exclusive to the second network.
-        for module_id, module in self.modules.items():
-            merged_module = merged_network.modules[module_id]
-            for pathway_id in module.pathways:
-                merged_module.pathways[pathway_id] = merged_network.pathways[pathway_id]
-
-        for module_id in second_module_ids.difference(first_module_ids):
-            second_module = network.modules[module_id]
-            merged_module = merged_network.modules[module_id]
-            for pathway_id in module.pathways:
-                merged_module.pathways[pathway_id] = merged_network.pathways[pathway_id]
-
-        # In each merged network hierarchy, reference categories. Process pathways in the first
-        # network, and then process pathways exclusive to the second network.
-        for hierarchy_id, hierarchy in self.hierarchies.items():
-            merged_hierarchy = merged_network.hierarchies[hierarchy_id]
-            merged_categorizations = merged_network.categories[hierarchy_id]
-            for category_key in hierarchy.categories:
-                merged_hierarchy.categories[category_key] = merged_categorizations[category_key]
-
-        for hierarchy_id in exclusive_second_hierarchy_ids:
-            second_hierarchy = network.hierarchies[hierarchy_id]
-            merged_hierarchy = merged_network.hierarchies[hierarchy_id]
-            merged_categorizations = merged_network.categories[hierarchy_id]
-            for category_key in second_hierarchy.categories:
-                merged_hierarchy.categories[category_key] = merged_categorizations[category_key]
-
-        return merged_network
+                # Copy the category and supercategories that have not already been copied.
+                copied_categories = []
+                for depth, category in enumerate(categories, 1):
+                    focus_categorization = categorization[:depth]
+                    try:
+                        # The supercategory has already been copied.
+                        copied_category = merged_hierarchy_categorizations[focus_categorization]
+                        is_focus_category_copied = True
+                    except KeyError:
+                        is_focus_category_copied = False
+                    if not is_focus_category_copied:
+                        copied_category = deepcopy(category)
+                    copied_categories.append(copied_category)
+                    if is_focus_category_copied:
+                        continue
+                    merged_hierarchy_categorizations[focus_categorization] = tuple(
+                        copied_categories
+                    )
 
     def _get_common_overview_statistics(
         self,
@@ -3030,26 +2530,26 @@ class ReactionNetwork:
         ko_in_module_count = 0
         ko_in_pathway_count = 0
         for ko in self.kos.values():
-            if ko.modules:
+            if ko.module_ids:
                 ko_in_module_count += 1
-            if ko.pathways:
+            if ko.pathway_ids:
                 ko_in_pathway_count += 1
 
         module_ko_counts = []
         for module in self.modules.values():
-            module_ko_counts.append(len(module.kos))
+            module_ko_counts.append(len(module.ko_ids))
 
         pathway_ko_counts = []
         for pathway in self.pathways.values():
-            pathway_ko_counts.append(len(pathway.kos))
+            pathway_ko_counts.append(len(pathway.ko_ids))
 
         all_level_category_count = 0
         low_level_category_count = 0
         for categorizations in self.categories.values():
-            for categorization in categorizations.values():
+            for categories in categorizations.values():
                 all_level_category_count += 1
-                category = categorization[-1]
-                if not category.subcategories:
+                category = categories[-1]
+                if not category.subcategory_names:
                     low_level_category_count += 1
 
         stats_group['KEGG modules in network'] = len(self.modules)
@@ -3073,7 +2573,7 @@ class ReactionNetwork:
         stats_group['Reactions in network'] = len(self.reactions)
         reaction_counts = []
         for ko in self.kos.values():
-            reaction_counts.append(len(ko.reactions))
+            reaction_counts.append(len(ko.reaction_ids))
         stats_group['Mean reactions per KO'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per KO'] = round(np.std(reaction_counts), 1)
         stats_group['Max reactions per KO'] = max(reaction_counts)
@@ -3144,26 +2644,25 @@ class ReactionNetwork:
             else:
                 irreversible_count += 1
             encountered_compound_ids = []
-            for compartment, coefficient, compound in zip(
-                reaction.compartments, reaction.coefficients, reaction.compounds
+            for compartment, coefficient, modelseed_compound_id in zip(
+                reaction.compartments, reaction.coefficients, reaction.compound_ids
             ):
-                compound_id = compound.modelseed_id
                 if compartment == 'c':
-                    cytoplasmic_compound_ids.append(compound_id)
+                    cytoplasmic_compound_ids.append(modelseed_compound_id)
                 else:
-                    extracellular_compound_ids.append(compound_id)
+                    extracellular_compound_ids.append(modelseed_compound_id)
                 if reaction.reversibility:
-                    consumed_compound_ids.append(compound_id)
-                    produced_compound_ids.append(compound_id)
+                    consumed_compound_ids.append(modelseed_compound_id)
+                    produced_compound_ids.append(modelseed_compound_id)
                 elif coefficient < 0:
-                    consumed_compound_ids.append(compound_id)
+                    consumed_compound_ids.append(modelseed_compound_id)
                 else:
-                    produced_compound_ids.append(compound_id)
-                if compound_id not in encountered_compound_ids:
+                    produced_compound_ids.append(modelseed_compound_id)
+                if modelseed_compound_id not in encountered_compound_ids:
                     try:
-                        compound_reaction_counts[compound_id] += 1
+                        compound_reaction_counts[modelseed_compound_id] += 1
                     except KeyError:
-                        compound_reaction_counts[compound_id] = 1
+                        compound_reaction_counts[modelseed_compound_id] = 1
         stats_group['Reversible reactions'] = reversible_count
         stats_group['Irreversible reactions'] = irreversible_count
         cytoplasmic_compound_ids = set(cytoplasmic_compound_ids)
@@ -3552,7 +3051,7 @@ class GenomicNetwork(ReactionNetwork):
             gene: Gene
             row = []
             row.append(gene.gcid)
-            row.append(", ".join(gene.kos))
+            row.append(", ".join(gene.ko_ids))
             gene_table.append(row)
 
         self._write_remove_metabolites_without_formula_output(output_path, removed)
@@ -3838,7 +3337,7 @@ class GenomicNetwork(ReactionNetwork):
             except KeyError:
                 # The requested protein ID is not in the network.
                 continue
-            genes_to_remove += protein.genes
+            genes_to_remove += protein.gcids
 
         # Remove requested genes from the network.
         genes_to_remove = set(genes_to_remove)
@@ -3870,12 +3369,12 @@ class GenomicNetwork(ReactionNetwork):
         # Purge KOs from the network that are exclusive to removed genes.
         kos_to_remove: List[str] = []
         for gene in removed_genes:
-            for ko_id in gene.kos:
+            for ko_id in gene.ko_ids:
                 kos_to_remove.append(ko_id)
         kos_to_remove = list(set(kos_to_remove))
         for gene in self.genes.values():
             kos_to_spare: List[str] = []
-            for ko_id in gene.kos:
+            for ko_id in gene.ko_ids:
                 if ko_id in kos_to_remove:
                     # The KO is not removed because it is associated with a retained gene.
                     kos_to_spare.append(ko_id)
@@ -3908,7 +3407,7 @@ class GenomicNetwork(ReactionNetwork):
         removed_gcids: List[str] = []
         proteins_to_remove: List[str] = []
         for protein_id, protein in self.proteins.items():
-            for gcid, gene in protein.genes.items():
+            for gcid in protein.gcids:
                 if gcid not in removed_gcids:
                     # The protein is not removed because it is associated with a retained gene.
                     break
@@ -4034,7 +3533,7 @@ class GenomicNetwork(ReactionNetwork):
             except KeyError:
                 # The requested protein ID is not in the network.
                 continue
-            genes_to_subset += protein.genes
+            genes_to_subset += protein.gcids
 
         if kos_to_subset is None:
             kos_to_subset: List[str] = []
@@ -4054,29 +3553,31 @@ class GenomicNetwork(ReactionNetwork):
             except KeyError:
                 # The requested module is not in the network.
                 continue
-            kos_to_subset += module.kos
+            kos_to_subset += module.ko_ids
         for pathway_id in pathways_to_subset:
             try:
                 pathway = self.pathways[pathway_id]
             except KeyError:
                 # The requested pathway is not in the network.
                 continue
-            kos_to_subset += pathway.kos
+            kos_to_subset += pathway.ko_ids
         for hierarchy_id in hierarchies_to_subset:
             try:
                 hierarchy = self.hierarchies[hierarchy_id]
             except KeyError:
                 # The requested hierarchy is not in the network.
                 continue
-            kos_to_subset += hierarchy.kos
-        for hierarchy_id, category_keys in categories_to_subset.items():
-            try:
-                categorization = self.categories[hierarchy_id][category_keys]
-            except KeyError:
-                # The requested category is not in the network.
-                continue
-            category = categorization[-1]
-            kos_to_subset += category.kos
+            kos_to_subset += hierarchy.ko_ids
+        for hierarchy_id, categorizations in categories_to_subset.items():
+            hierarchy_categorizations = self.categories[hierarchy_id]
+            for categorization in categorizations:
+                try:
+                    categories = hierarchy_categorizations[categorization]
+                except KeyError:
+                    # The requested category is not in the network.
+                    continue
+                category = categories[-1]
+                kos_to_subset += category.ko_ids
 
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
@@ -4123,17 +3624,11 @@ class GenomicNetwork(ReactionNetwork):
                 # This occurs if the requested gene callers ID is not in the source network.
                 continue
 
-            subsetted_gene = Gene()
-            subsetted_gene.gcid = gcid
-            subsetted_gene.e_values = gene.e_values.copy()
+            # Subset KOs annotating the gene.
+            self._subset_network_by_kos(gene.ko_ids, subnetwork=subnetwork)
 
-            # Add KOs annotating the gene to the subsetted network as new objects, and then
-            # reference these objects in the gene object.
-            ko_ids = list(gene.kos)
-            subnetwork = self._subset_network_by_kos(ko_ids, subnetwork=subnetwork)
-            subsetted_gene.kos = {ko_id: subnetwork.kos[ko_id] for ko_id in ko_ids}
+            subnetwork.genes[gcid] = deepcopy(gene)
 
-            subnetwork.genes[gcid] = subsetted_gene
         self._subset_proteins(subnetwork)
 
         return subnetwork
@@ -4157,24 +3652,15 @@ class GenomicNetwork(ReactionNetwork):
 
         # Parse each protein with abundance data.
         for protein_id, protein in self.proteins.items():
-            subsetted_gcids: List[int] = []
-            for gcid in protein.genes:
+            for gcid in protein.gcids:
                 if gcid in subnetwork.genes:
                     # A subsetted gene encodes the protein.
-                    subsetted_gcids.append(gcid)
-            if not subsetted_gcids:
+                    break
+            else:
                 # No genes expressing the protein were subsetted, so the protein data is not added.
                 continue
 
-            subsetted_protein = Protein()
-            subsetted_protein.id = protein_id
-            subsetted_protein.abundances = protein.abundances.copy()
-            for gcid in subsetted_gcids:
-                subsetted_gene = subnetwork.genes[gcid]
-                subsetted_gene.protein = subsetted_protein
-                subsetted_protein.genes[gcid] = subsetted_gene
-
-            subnetwork.proteins[protein_id] = subsetted_protein
+            subnetwork.proteins[protein_id] = deepcopy(protein)
 
     def _subset_genes_via_kos(self, subnetwork: GenomicNetwork) -> None:
         """
@@ -4195,27 +3681,23 @@ class GenomicNetwork(ReactionNetwork):
         subsetted_ko_ids = list(subnetwork.kos)
         for gcid, gene in self.genes.items():
             # Check all genes in the source network for subsetted KOs.
-            subsetted_gene = None
-            for ko_id in gene.kos:
-                if ko_id not in subsetted_ko_ids:
-                    # The gene is not annotated by the subsetted KO.
-                    continue
+            for ko_id in gene.ko_ids:
+                if ko_id in subsetted_ko_ids:
+                    # A gene is annotated by the subsetted KO.
+                    break
+            else:
+                # The gene is not annotated by any subsetted KOs.
+                continue
 
-                if not subsetted_gene:
-                    # Create a new gene object for the subsetted gene. The gene object would already
-                    # have been created had another subsetted KO been among the KOs annotating the
-                    # gene.
-                    subsetted_gene = Gene()
-                    subsetted_gene.gcid = gcid
-                subsetted_gene.kos[ko_id] = subnetwork.kos[ko_id]
-                subsetted_gene.e_values[ko_id] = gene.e_values[ko_id]
-
-            if subsetted_gene:
-                subnetwork.genes[gcid] = subsetted_gene
+            subnetwork.genes[gcid] = deepcopy(gene)
 
     def merge_network(self, network: GenomicNetwork) -> GenomicNetwork:
         """
-        Merge the genomic reaction network with another genomic reaction network.
+        Merge the genomic reaction network with another genomic reaction network derived from the
+        same contigs database.
+
+        The purpose of the network is to combine different, but potentially overlapping, subnetworks
+        from the same genome.
 
         Each network can contain different genes, KOs, and reactions/metabolites. Merging
         nonredundantly incorporates all of this data as new objects in the new network.
@@ -4226,9 +3708,9 @@ class GenomicNetwork(ReactionNetwork):
         KOs in each network, different modules, pathways, and hierarchies/categories can be present.
 
         Other object attributes should be consistent between the networks. For instance, the same
-        ModelSEED reactions and metabolites in both networks should have identical attributes. If
-        applicable, both networks should have been annotated with the same protein and metabolite
-        abundance data.
+        ModelSEED reactions and metabolites in both networks should have identical attributes. The
+        same gene-KO should have the same e-values. If applicable, both networks should have been
+        annotated with the same protein and metabolite abundance data.
 
         Parameters
         ==========
@@ -4240,104 +3722,39 @@ class GenomicNetwork(ReactionNetwork):
         GenomicNetwork
             The merged genomic reaction network.
         """
-        assert not (
-            (self.proteins is None and network.proteins is not None) and
-            (self.proteins is not None and network.proteins is None)
-        )
-
         merged_network: GenomicNetwork = self._merge_network(network)
 
-        # Add genes to the merged network, first adding genes present in both source networks, and
-        # then adding genes present exclusively in each source network.
-        first_gcids = set(self.genes)
-        second_gcids = set(network.genes)
+        merged_network.genes = deepcopy(self.genes)
+        merged_network.proteins = deepcopy(self.proteins)
 
-        for gcid in first_gcids.intersection(second_gcids):
-            first_gene = self.genes[gcid]
-            second_gene = network.genes[gcid]
+        # Copy genes from the second network. Assume the same gene KO references have the same
+        # e-values. Assume identical protein abundance assignments.
+        merged_genes = merged_network.genes
+        for gcid, gene in network.genes.items():
+            try:
+                merged_gene = merged_genes[gcid]
+            except KeyError:
+                merged_genes[gcid] = deepcopy(gene)
+                continue
 
-            # The new object representing the gene in the merged network should have all KO
-            # annotations from each source gene object, as these objects can have different KO
-            # references.
-            merged_gene = Gene()
-            merged_gene.gcid = gcid
-            ko_ids = set(first_gene.kos).union(set(second_gene.kos))
-            for ko_id in ko_ids:
-                merged_gene.kos[ko_id] = merged_network.kos[ko_id]
-            first_ko_ids = set(first_gene.kos)
-            second_ko_ids = set(second_gene.kos).difference(set(first_gene.kos))
-            for ko_id in first_ko_ids:
-                merged_gene.e_values[ko_id] = first_gene.e_values[ko_id]
-            for ko_id in second_ko_ids:
-                merged_gene.e_values[ko_id] = second_gene.e_values[ko_id]
+            merged_gene.ko_ids = sorted(set(gene.ko_ids + merged_gene.ko_ids))
 
-            merged_network.genes[gcid] = merged_gene
+            for ko_id, e_value in gene.e_values.items():
+                if ko_id in merged_gene.e_values:
+                    continue
 
-        for gcid in first_gcids.difference(second_gcids):
-            first_gene = self.genes[gcid]
+                merged_gene.e_values[ko_id] = e_value
 
-            gene = Gene()
-            gene.gcid = gcid
-            gene.kos = {ko_id: merged_network.kos[ko_id] for ko_id in first_gene.kos}
-            gene.e_values = first_gene.e_values.copy()
+        # Copy proteins from the second network. Assume identical abundance profiles.
+        merged_proteins = merged_network.proteins
+        for protein_id, protein in network.proteins.items():
+            try:
+                merged_protein = merged_proteins[protein_id]
+            except KeyError:
+                merged_proteins[protein_id] = deepcopy(protein)
+                continue
 
-            merged_network.genes[gcid] = gene
-
-        for gcid in second_gcids.difference(first_gcids):
-            second_gene = network.genes[gcid]
-
-            gene = Gene()
-            gene.gcid = gcid
-            gene.kos = {ko_id: merged_network.kos[ko_id] for ko_id in second_gene.kos}
-            gene.e_values = second_gene.e_values.copy()
-
-            merged_network.genes[gcid] = gene
-
-        if not self.proteins and not network.proteins:
-            # No protein abundance data is present and needs to be added to the merged network.
-            return merged_network
-
-        # Add protein abundance data to the merged network, first adding proteins annotating genes
-        # in both source networks, and then adding proteins annotating genes exclusively in each
-        # source network.
-        first_protein_ids = set(self.proteins)
-        second_protein_ids = set(network.proteins)
-
-        # Assume that each source network was annotated with the same protein annotation data, so
-        # that the same gene in each network should have the same protein abundance profile.
-        for protein_id in first_protein_ids.intersection(second_protein_ids):
-            first_protein = self.proteins[protein_id]
-            second_protein = network.proteins[protein_id]
-
-            merged_protein = Protein()
-            merged_protein.id = protein_id
-            for gcid in first_protein.genes:
-                merged_protein.genes[gcid] = merged_network.genes[gcid]
-            for gcid in set(second_protein.genes).difference(set(first_protein.genes)):
-                merged_protein.genes[gcid] = merged_network.genes[gcid]
-            merged_protein.abundances = first_protein.abundances.copy()
-
-            merged_network.proteins[protein_id] = merged_protein
-
-        for protein_id in first_protein_ids.difference(second_protein_ids):
-            first_protein = self.proteins[protein_id]
-
-            protein = Protein()
-            protein.id = protein_id
-            protein.genes = {gcid: merged_network.genes[gcid] for gcid in first_protein.genes}
-            protein.abundances = first_protein.abundances.copy()
-
-            merged_network.proteins[protein_id] = protein
-
-        for protein_id in second_protein_ids.difference(first_protein_ids):
-            second_protein = network.proteins[protein_id]
-
-            protein = Protein()
-            protein.id = protein_id
-            protein.genes = {gcid: merged_network.genes[gcid] for gcid in second_protein.genes}
-            protein.abundances = second_protein.abundances.copy()
-
-            merged_network.proteins[protein_id] = protein
+            merged_protein.gcids = sorted(set(protein.gcids + merged_protein.gcids))
 
         return merged_network
 
@@ -4546,7 +3963,7 @@ class GenomicNetwork(ReactionNetwork):
             # of the gene entry.
             annotation = gene_entry['annotation']
             annotation['ko'] = annotation_kos = {}
-            for ko_id, ko in gene.kos.items():
+            for ko_id in gene.ko_ids:
                 annotation_kos[ko_id] = annotation_ko = {
                     'e_value': str(gene.e_values[ko_id]),
                     'modules': {},
@@ -4555,22 +3972,25 @@ class GenomicNetwork(ReactionNetwork):
                 }
 
                 # Record KEGG modules containing the KO.
+                ko = self.kos[ko_id]
                 annotation_ko_modules = annotation_ko['modules']
-                for module_id, module in ko.modules.items():
+                for module_id in ko.module_ids:
+                    module = self.modules[module_id]
                     module_annotation = module.name
-                    if not module.pathways:
+                    if not module.pathway_ids:
                         annotation_ko_modules[module_id] = module_annotation
                         continue
                     # Cross-reference KEGG pathways containing the module.
                     module_annotation += "[pathways:"
-                    for pathway in module.pathways:
-                        module_annotation += f" {pathway.id}"
+                    for pathway_id in module.pathway_ids:
+                        module_annotation += f" {pathway_id}"
                     module_annotation += "]"
                     annotation_ko_modules[module_id] = module_annotation
 
                 # Record KEGG pathways containing the KO.
                 annotation_ko_pathways = annotation_ko['pathways']
-                for pathway_id, pathway in ko.pathways.items():
+                for pathway_id in ko.pathway_ids:
+                    pathway = self.pathways[pathway_id]
                     annotation_ko_pathways[pathway_id] = pathway.name
 
                 # Record membership of the KO in KEGG BRITE hierarchies.
@@ -4580,13 +4000,15 @@ class GenomicNetwork(ReactionNetwork):
                     annotation_ko_hierarchies[
                         f"{hierarchy_id}: {hierarchy_name}"
                     ] = annotation_ko_categories = []
-                    for categorization in categorizations.values():
-                        category = categorization[-1]
+                    hierarchy_categorizations = self.categories[hierarchy_id]
+                    for categorization in categorizations:
+                        categories = hierarchy_categorizations[categorization]
+                        category = categories[-1]
                         category_id = category.id
                         annotation_ko_categories.append(category_id[len(hierarchy_id) + 2:])
 
                 # Set up dictionaries needed to fill out reaction entries.
-                for modelseed_reaction_id in ko.reactions:
+                for modelseed_reaction_id in ko.reaction_ids:
                     try:
                         reaction_genes[modelseed_reaction_id].append(gcid_str)
                     except KeyError:
@@ -4605,10 +4027,11 @@ class GenomicNetwork(ReactionNetwork):
                     'id': None,
                     'abundances': {}
                 }
-                if gene.protein:
+                if gene.protein_id:
                     # Record abundances of the protein encoded by the gene.
-                    protein = gene.protein
-                    annotation_protein['id'] = protein.id
+                    protein_id = gene.protein_id
+                    protein = self.proteins[protein_id]
+                    annotation_protein['id'] = protein_id
                     annotation_protein_abundances = annotation_protein['abundances']
                     for sample_name, abundance_value in protein.abundances.items():
                         annotation_protein_abundances[sample_name] = abundance_value
@@ -4621,10 +4044,9 @@ class GenomicNetwork(ReactionNetwork):
             reaction_entry['id'] = modelseed_reaction_id
             reaction_entry['name'] = reaction.modelseed_name
             metabolites = reaction_entry['metabolites']
-            for compound, compartment, coefficient in zip(
-                reaction.compounds, reaction.compartments, reaction.coefficients
+            for modelseed_compound_id, compartment, coefficient in zip(
+                reaction.compound_ids, reaction.compartments, reaction.coefficients
             ):
-                modelseed_compound_id = compound.modelseed_id
                 metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
                 try:
                     compound_compartments[modelseed_compound_id].add(compartment)
@@ -4898,7 +4320,7 @@ class PangenomicNetwork(ReactionNetwork):
             cluster: GeneCluster
             row = []
             row.append(cluster.gene_cluster_id)
-            row.append(cluster.ko.id)
+            row.append(cluster.ko_id)
             row.append(", ".join(cluster.genomes))
             gene_cluster_table.append(row)
 
@@ -5168,13 +4590,13 @@ class PangenomicNetwork(ReactionNetwork):
         # Purge KOs from the network that are exclusively assigned to removed gene clusters.
         kos_to_remove: List[str] = []
         for cluster in removed_gene_clusters:
-            kos_to_remove.append(cluster.ko.id)
+            kos_to_remove.append(cluster.ko_id)
         kos_to_remove = list(set(kos_to_remove))
         for gene_cluster in self.gene_clusters.values():
             kos_to_spare: List[str] = []
-            if gene_cluster.ko.id in kos_to_remove:
+            if gene_cluster.ko_id in kos_to_remove:
                 # The KO is associated with a retained gene cluster, so do not remove the KO.
-                kos_to_spare.append(gene_cluster.ko.id)
+                kos_to_spare.append(gene_cluster.ko_id)
             for ko_id in kos_to_spare:
                 kos_to_remove.remove(ko_id)
         if kos_to_remove:
@@ -5309,29 +4731,31 @@ class PangenomicNetwork(ReactionNetwork):
             except KeyError:
                 # The requested module is not in the network.
                 continue
-            kos_to_subset += module.kos
+            kos_to_subset += module.ko_ids
         for pathway_id in pathways_to_subset:
             try:
                 pathway = self.pathways[pathway_id]
             except KeyError:
                 # The requested pathway is not in the network.
                 continue
-            kos_to_subset += pathway.kos
+            kos_to_subset += pathway.ko_ids
         for hierarchy_id in hierarchies_to_subset:
             try:
                 hierarchy = self.hierarchies[hierarchy_id]
             except KeyError:
                 # The requested hierarchy is not in the network.
                 continue
-            kos_to_subset += hierarchy.kos
-        for hierarchy_id, category_keys in categories_to_subset.items():
-            try:
-                categorization = self.categories[hierarchy_id][category_keys]
-            except KeyError:
-                # The requested category is not in the network.
-                continue
-            category = categorization[-1]
-            kos_to_subset += category.kos
+            kos_to_subset += hierarchy.ko_ids
+        for hierarchy_id, categorizations in categories_to_subset.items():
+            hierarchy_categorizations = self.categories[hierarchy_id]
+            for categorization in categorizations:
+                try:
+                    categories = hierarchy_categorizations[categorization]
+                except KeyError:
+                    # The requested category is not in the network.
+                    continue
+                category = categories[-1]
+                kos_to_subset += category.ko_ids
 
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
@@ -5381,17 +4805,10 @@ class PangenomicNetwork(ReactionNetwork):
                 # This occurs if the requested gene cluster ID is not in the source network.
                 continue
 
-            subsetted_cluster = GeneCluster()
-            subsetted_cluster.gene_cluster_id = gene_cluster_id
-            subsetted_cluster.genomes = cluster.genomes.copy()
+            # Subset the consensus KO annotating the gene cluster.
+            self._subset_network_by_kos([cluster.ko_id], subnetwork=subnetwork)
 
-            # Add KOs annotating the gene cluster to the subsetted network as new objects, and then
-            # reference these objects in the cluster object.
-            ko_id = cluster.ko.id
-            subnetwork = self._subset_network_by_kos([ko_id], subnetwork=subnetwork)
-            subsetted_cluster.ko = subnetwork.kos[ko_id]
-
-            subnetwork.gene_clusters[gene_cluster_id] = subsetted_cluster
+            subnetwork.gene_clusters[gene_cluster_id] = deepcopy(cluster)
 
         return subnetwork
 
@@ -5411,30 +4828,25 @@ class PangenomicNetwork(ReactionNetwork):
         subsetted_ko_ids = list(subnetwork.kos)
         for gene_cluster_id, cluster in self.gene_clusters.items():
             # Check all gene clusters in the source network for subsetted KOs.
-            if cluster.ko.id in subsetted_ko_ids:
-                # Create a new gene cluster object for the subsetted cluster.
-                subsetted_cluster = GeneCluster()
-                subsetted_cluster.gene_cluster_id = gene_cluster_id
-                subsetted_cluster.genomes = cluster.genomes.copy()
-                subsetted_cluster.ko = subnetwork.kos[cluster.ko.id]
-                subnetwork.gene_clusters[gene_cluster_id] = subsetted_cluster
+            if cluster.ko_id in subsetted_ko_ids:
+                # A gene cluster is annotated by the subsetted KO.
+                subnetwork.gene_clusters[gene_cluster_id] = deepcopy(cluster)
 
     def merge_network(self, network: PangenomicNetwork) -> PangenomicNetwork:
         """
-        Merge the pangenomic reaction network with another pangenomic reaction network.
+        Merge the pangenomic reaction network with another pangenomic reaction network derived from
+        the same pan database.
+
+        The purpose of the network is to combine different, but potentially overlapping, subnetworks
+        from the same pangenome.
 
         Each network can contain different gene clusters, KOs, and reactions/metabolites. Merging
         nonredundantly incorporates all of this data as new objects in the new network.
 
         Objects representing KOs in both networks can have different sets of references: KOs can be
-        annotated by different reactions.
-
-        However, the same gene cluster in each network should have the same consensus KO annotation:
-        the method of annotation should have been the same in each network. This reflects the
-        purpose of the method, which is to combine different, but potentially overlapping,
-        subnetworks from the same pangenome.
-
-        ModelSEED reactions and metabolites in both networks should have identical attributes.
+        annotated by different reactions. However, the same gene cluster in each network should have
+        the same consensus KO annotation. ModelSEED reactions and metabolites in both networks
+        should have identical attributes.
 
         Parameters
         ==========
@@ -5448,46 +4860,13 @@ class PangenomicNetwork(ReactionNetwork):
         """
         merged_network: PangenomicNetwork = self._merge_network(network)
 
-        # Add gene clusters to the merged network, first adding clusters present in both source
-        # networks, and then adding clusters present exclusively in each source network.
-        first_gene_cluster_ids = set(self.gene_clusters)
-        second_gene_cluster_ids = set(network.gene_clusters)
+        merged_network.gene_clusters = deepcopy(self.gene_clusters)
 
-        for gene_cluster_id in first_gene_cluster_ids.intersection(second_gene_cluster_ids):
-            first_cluster = self.gene_clusters[gene_cluster_id]
-            second_cluster = network.gene_clusters[gene_cluster_id]
-
-            # The new object representing the gene cluster in the merged network should have all KO
-            # annotations from each source cluster object, as these objects can have different KO
-            # references.
-            merged_cluster = GeneCluster()
-            merged_cluster.gene_cluster_id = gene_cluster_id
-            assert first_cluster.genomes == second_cluster.genomes
-            merged_cluster.genomes = first_cluster.genomes.copy()
-            assert first_cluster.ko.id == second_cluster.ko.id
-            merged_cluster.ko = merged_network.kos[first_cluster.ko.id]
-
-            merged_network.gene_clusters[gene_cluster_id] = merged_cluster
-
-        for gene_cluster_id in first_gene_cluster_ids.difference(second_gene_cluster_ids):
-            first_cluster = self.gene_clusters[gene_cluster_id]
-
-            cluster = GeneCluster()
-            cluster.gene_cluster_id = gene_cluster_id
-            cluster.genomes = first_cluster.genomes.copy()
-            cluster.ko = merged_network.kos[first_cluster.ko.id]
-
-            merged_network.gene_clusters[gene_cluster_id] = cluster
-
-        for gene_cluster_id in second_gene_cluster_ids.difference(first_gene_cluster_ids):
-            second_cluster = network.gene_clusters[gene_cluster_id]
-
-            cluster = GeneCluster()
-            cluster.gene_cluster_id = gene_cluster_id
-            cluster.genomes = second_cluster.genomes.copy()
-            cluster.ko = merged_network.kos[second_cluster.ko.id]
-
-            merged_network.gene_clusters[gene_cluster_id] = cluster
+        # Copy gene clusters from the second network. Assume they have the same consensus KOs.
+        merged_gene_clusters = merged_network.gene_clusters
+        for gene_cluster_id, cluster in network.gene_clusters.items():
+            if gene_cluster_id not in merged_gene_clusters:
+                merged_gene_clusters[gene_cluster_id] = deepcopy(cluster)
 
         return merged_network
 
@@ -5785,31 +5164,34 @@ class PangenomicNetwork(ReactionNetwork):
             # Record the consensus KO ID and classifications in the annotation section of the gene
             # cluster entry.
             annotation = gene_cluster_entry['annotation']
-            ko = gene_cluster.ko
+            ko_id = gene_cluster.ko_id
             annotation['ko'] = annotation_ko = {
-                'id': ko.id,
+                'id': ko_id,
                 'modules': {},
                 'pathways': {},
                 'hierarchies': {}
             }
 
             # Record KEGG modules containing the KO.
+            ko = self.kos[ko_id]
             annotation_ko_modules = annotation_ko['modules']
-            for module_id, module in ko.modules.items():
+            for module_id in ko.module_ids:
+                module = self.modules[module_id]
                 module_annotation = module.name
-                if not module.pathways:
+                if not module.pathway_ids:
                     annotation_ko_modules[module_id] = module_annotation
                     continue
                 # Cross-reference KEGG pathways containing the module.
                 module_annotation += "[pathways:"
-                for pathway in module.pathways:
-                    module_annotation += f" {pathway.id}"
+                for pathway_id in module.pathway_ids:
+                    module_annotation += f" {pathway_id}"
                 module_annotation += "]"
                 annotation_ko_modules[module_id] = module_annotation
 
             # Record KEGG pathways containing the KO.
             annotation_ko_pathways = annotation_ko['pathways']
-            for pathway_id, pathway in ko.pathways.items():
+            for pathway_id in ko.pathway_ids:
+                pathway = self.pathways[pathway_id]
                 annotation_ko_pathways[pathway_id] = pathway.name
 
             # Record membership of the KO in KEGG BRITE hierarchies.
@@ -5819,13 +5201,15 @@ class PangenomicNetwork(ReactionNetwork):
                 annotation_ko_hierarchies[
                     f"{hierarchy_id}: {hierarchy_name}"
                 ] = annotation_ko_categories = []
-                for categorization in categorizations.values():
-                    category = categorization[-1]
+                hierarchy_categorizations = self.categories[hierarchy_id]
+                for categorization in categorizations:
+                    categories = hierarchy_categorizations[categorization]
+                    category = categories[-1]
                     category_id = category.id
                     annotation_ko_categories.append(category_id[len(hierarchy_id) + 2:])
 
             # Set up dictionaries needed to fill out reaction entries.
-            for modelseed_reaction_id in ko.reactions:
+            for modelseed_reaction_id in ko.reaction_ids:
                 try:
                     reaction_gene_clusters[modelseed_reaction_id].append(cluster_id_str)
                 except KeyError:
@@ -5844,15 +5228,18 @@ class PangenomicNetwork(ReactionNetwork):
                 # section of the gene cluster entry.
                 gene_cluster_entry['notes']['genomes'] = genome_names
             if 'reaction' in record_genomes:
-                for modelseed_reaction_id in ko.reactions:
+                for modelseed_reaction_id in ko.reaction_ids:
                     try:
                         reaction_genomes[modelseed_reaction_id] += genome_names
                     except KeyError:
                         reaction_genomes[modelseed_reaction_id] = genome_names
             if 'metabolite' in record_genomes:
-                for reaction in ko.reactions.values():
-                    for compartment, metabolite in zip(reaction.compartments, reaction.compounds):
-                        entry_id = f"{metabolite.modelseed_id}_{compartment}"
+                for modelseed_reaction_id in ko.reaction_ids:
+                    reaction = self.reactions[modelseed_reaction_id]
+                    for compartment, modelseed_compound_id in zip(
+                        reaction.compartments, reaction.compound_ids
+                    ):
+                        entry_id = f"{modelseed_compound_id}_{compartment}"
                         try:
                             metabolite_genomes[entry_id] += genome_names
                         except KeyError:
@@ -5866,17 +5253,21 @@ class PangenomicNetwork(ReactionNetwork):
             reaction_entry['id'] = modelseed_reaction_id
             reaction_entry['name'] = reaction.modelseed_name
             metabolites = reaction_entry['metabolites']
-            for compound, compartment, coefficient in zip(reaction.compounds, reaction.compartments, reaction.coefficients):
-                modelseed_compound_id = compound.modelseed_id
+            for modelseed_compound_id, compartment, coefficient in zip(
+                reaction.compound_ids, reaction.compartments, reaction.coefficients
+            ):
                 metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
                 try:
                     compound_compartments[modelseed_compound_id].add(compartment)
                 except KeyError:
                     compound_compartments[modelseed_compound_id] = set(compartment)
             if not reaction.reversibility:
-                # By default, the reaction entry was set up to be reversible; here make it irreversible.
+                # By default, the reaction entry was set up to be reversible; here make it
+                # irreversible.
                 reaction_entry['lower_bound'] = 0.0
-            reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_gene_clusters[modelseed_reaction_id]])
+            reaction_entry['gene_reaction_rule'] = " or ".join(
+                [gcid for gcid in reaction_gene_clusters[modelseed_reaction_id]]
+            )
 
             notes = reaction_entry['notes']
             # Record gene KO annotations which aliased the reaction via KEGG REACTION or EC number.
@@ -6130,12 +5521,7 @@ class KEGGData:
     hierarchy_data : Dict[str, str]
         This dictionary relates BRITE hierarchy IDs to hierarchy names.
     """
-    def __init__(
-        self,
-        kegg_dir: str = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
-    ) -> None:
+    def __init__(self, kegg_dir: str = None) -> None:
         """
         Set up the KEGG data in attributes designed for reaction network construction.
 
@@ -6342,6 +5728,17 @@ class KEGGData:
                 for categorization in hierarchy_table['categorization']:
                     categorization: str
                     categorizations.append(tuple(categorization.split('>>>')))
+
+                    if hierarchy_id == 'ko00001':
+                        if categorizations[-1][-1][-14:-8] == '[PATH:':
+                            pathway_id = f'map{categorizations[-1][-1][-6:-1]}'
+                            try:
+                                pathway_ids = ko_dict['PTH']
+                            except KeyError:
+                                ko_dict['PTH'] = (pathway_id, )
+                                continue
+                            ko_dict['PTH'] = pathway_ids + (pathway_id, )
+
                 ko_hierarchy_dict[hierarchy_id] = tuple(categorizations)
 
         # Add placeholder entries for KOs not in hierarchies.
@@ -7172,7 +6569,7 @@ class Constructor:
                 ko.id = ko_id
                 ko.name = ko_name
                 network.kos[ko_id] = ko
-            gene.kos[ko_id] = ko
+            gene.ko_ids.append(ko_id)
             gene.e_values[ko_id] = e_value
 
         self._load_modelseed_reactions(cdb, network)
@@ -7184,14 +6581,15 @@ class Constructor:
         for gcid, gene in network.genes.items():
             gene_in_network = False
             unnetworked_kos: List[str] = []
-            for ko_id, ko in gene.kos.items():
-                if ko.reactions:
+            for ko_id in gene.ko_ids:
+                ko = network.kos[ko_id]
+                if ko.reaction_ids:
                     gene_in_network = True
                 else:
                     unnetworked_kos.append(ko_id)
             if gene_in_network:
                 for unnetworked_ko_id in unnetworked_kos:
-                    gene.kos.pop(unnetworked_ko_id)
+                    gene.ko_ids.remove(unnetworked_ko_id)
                     gene.e_values.pop(unnetworked_ko_id)
             else:
                 unnetworked_gcids.append(gcid)
@@ -7201,7 +6599,7 @@ class Constructor:
         # Remove any trace of KOs that do not contribute to the reaction network.
         unnetworked_ko_ids = []
         for ko_id, ko in network.kos.items():
-            if not ko.reactions:
+            if not ko.reaction_ids:
                 unnetworked_ko_ids.append(ko_id)
         for ko_id in unnetworked_ko_ids:
             network.kos.pop(ko_id)
@@ -7306,14 +6704,14 @@ class Constructor:
             protein.id = protein_id
             for gcid in protein_table['gene_callers_id'].unique():
                 gene = network.genes[gcid]
-                protein.genes[gcid] = gene
-                if gene.protein:
+                protein.gcids.append(gcid)
+                if gene.protein_id:
                     try:
-                        multiprotein_genes[gene].append(protein_id)
+                        multiprotein_genes[gcid].append(protein_id)
                     except KeyError:
-                        multiprotein_genes[gene] = [protein_id]
+                        multiprotein_genes[gcid] = [protein_id]
                 else:
-                    gene.protein = protein
+                    gene.protein_id = protein_id
             for row in protein_table.itertuples():
                 protein.abundances[row.sample_name] = row.abundance_value
 
@@ -7499,6 +6897,7 @@ class Constructor:
             gene_cluster = GeneCluster()
             gene_cluster.gene_cluster_id = cluster_id
             gene_cluster.genomes = list(pan_super.gene_clusters[cluster_id])
+            gene_cluster.ko_id = ko_id
             # Add the gene cluster to the network, regardless of whether it yields reactions. Gene
             # clusters not contributing to the reaction network are removed later.
             network.gene_clusters[cluster_id] = gene_cluster
@@ -7512,7 +6911,6 @@ class Constructor:
                 ko.id = ko_id
                 ko.name = gene_cluster_ko_data['function']
                 network.kos[ko_id] = ko
-            gene_cluster.ko = ko
 
         pdb = PanDatabase(pan_db)
         self._load_modelseed_reactions(pdb, network)
@@ -7521,7 +6919,9 @@ class Constructor:
         # Remove any trace of gene clusters that do not contribute to the reaction network.
         unnetworked_cluster_ids = []
         for cluster_id, gene_cluster in network.gene_clusters.items():
-            if gene_cluster.ko.reactions:
+            ko_id = gene_cluster.ko_id
+            ko = network.kos[ko_id]
+            if ko.reaction_ids:
                 continue
             unnetworked_cluster_ids.append(cluster_id)
         for cluster_id in unnetworked_cluster_ids:
@@ -7530,7 +6930,7 @@ class Constructor:
         # Remove any trace of KOs that do not contribute to the reaction network.
         unnetworked_ko_ids = []
         for ko_id, ko in network.kos.items():
-            if not ko.reactions:
+            if not ko.reaction_ids:
                 unnetworked_ko_ids.append(ko_id)
         for ko_id in unnetworked_ko_ids:
             network.kos.pop(ko_id)
@@ -7642,18 +7042,14 @@ class Constructor:
             network.reactions[modelseed_reaction_id] = reaction
 
             modelseed_compound_ids: str = row.metabolite_modelseed_ids
-            reaction.compounds = []
+            reaction_compound_ids = []
             for modelseed_compound_id in modelseed_compound_ids.split(', '):
-                try:
-                    # This is not the first reaction involving the compound, so an object for it
-                    # already exists.
-                    compound = network.metabolites[modelseed_compound_id]
-                except KeyError:
-                    compound = ModelSEEDCompound()
-                    compound.modelseed_id = modelseed_compound_id
-                    network.metabolites[modelseed_compound_id] = compound
-                reaction.compounds.append(compound)
-            reaction.compounds = tuple(reaction.compounds)
+                reaction_compound_ids.append(modelseed_compound_id)
+                if modelseed_compound_id not in network.metabolites:
+                    metabolite = ModelSEEDCompound()
+                    metabolite.modelseed_id = modelseed_compound_id
+                    network.metabolites[modelseed_compound_id] = metabolite
+            reaction.compound_ids = tuple(reaction_compound_ids)
 
             stoichiometry: str = row.stoichiometry
             reaction.coefficients = tuple(int(coeff) for coeff in stoichiometry.split(', '))
@@ -7707,14 +7103,14 @@ class Constructor:
                         # annotations is derived from the pan and genomes storage databases using
                         # the parameters, 'consensus_threshold' and 'discard_ties'.)
                         ko = KO()
-                        ko.ko_id = ko_id
+                        ko.id = ko_id
                         # The KO name is unknown from the database, so take it from the KO database.
-                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
+                        ko.name = ko_db.ko_table.loc[ko_id, 'name']
                         network.kos[ko_id] = ko
                         orphan_ko_ids.append(ko_id)
-                    if not modelseed_reaction_id in ko.reactions:
+                    if not modelseed_reaction_id in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
-                        ko.reactions[modelseed_reaction_id] = reaction
+                        ko.reaction_ids.append(modelseed_reaction_id)
                     try:
                         ko.kegg_reaction_aliases[modelseed_reaction_id].append(kegg_reaction_id)
                     except KeyError:
@@ -7756,14 +7152,14 @@ class Constructor:
                         # This error arises for the same reason as before (in processing KEGG
                         # reactions).
                         ko = KO()
-                        ko.ko_id = ko_id
+                        ko.id = ko_id
                         # The KO name is unknown from the database, so take it from the KO database.
-                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
+                        ko.name = ko_db.ko_table.loc[ko_id, 'name']
                         network.kos[ko_id] = ko
                         orphan_ko_ids.append(ko_id)
                     if not modelseed_reaction_id in ko.reactions:
                         # This is the first time encountering the reaction as a reference of the KO.
-                        ko.reactions[modelseed_reaction_id] = reaction
+                        ko.reaction_ids.append(modelseed_reaction_id)
                     try:
                         ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
                     except KeyError:
@@ -7836,21 +7232,21 @@ class Constructor:
         for row in metabolites_table.itertuples():
             # Each row of the table contains information on a different ModelSEED compound.
             modelseed_compound_id = row.modelseed_compound_id
-            compound = network.metabolites[modelseed_compound_id]
+            metabolite = network.metabolites[modelseed_compound_id]
             modelseed_compound_name: str = row.modelseed_compound_name
-            compound.modelseed_name = modelseed_compound_name
+            metabolite.modelseed_name = modelseed_compound_name
             kegg_aliases: str = row.kegg_aliases
             if kegg_aliases:
-                compound.kegg_aliases = tuple(kegg_aliases.split(', '))
+                metabolite.kegg_aliases = tuple(kegg_aliases.split(', '))
             else:
-                compound.kegg_aliases = tuple()
+                metabolite.kegg_aliases = tuple()
             # Compounds without a formula, recorded here as None, have a nominal charge of 10000000
             # in the ModelSEED compounds database. This is replaced by NaN in the table and here as
             # None in the reaction network.
             formula: str = row.formula
-            compound.formula = formula
+            metabolite.formula = formula
             charge: int = row.charge
-            compound.charge = None if np.isnan(charge) else int(charge)
+            metabolite.charge = None if np.isnan(charge) else int(charge)
 
     def make_network(
         self,
@@ -8096,8 +7492,7 @@ class Constructor:
             except KeyError:
                 is_new_ko = True
             if not is_new_ko:
-                # Have the gene reference the KO.
-                gene.kos[ko_id] = ko
+                gene.ko_ids.append(ko_id)
                 gene.e_values[ko_id] = e_value
                 if is_new_gene:
                     # Add the unadded gene to the network.
@@ -8186,7 +7581,7 @@ class Constructor:
             ko.id = ko_id
             ko.name = ko_name
             network.kos[ko_id] = ko
-            gene.kos[ko_id] = ko
+            gene.ko_ids.append(ko_id)
             gene.e_values[ko_id] = e_value
 
             # Associate ModelSEED reactions that have previously been added to the network under
@@ -8227,8 +7622,9 @@ class Constructor:
 
         if DEBUG:
             for gene in network.genes.values():
-                for ko in gene.kos.values():
-                    assert ko.reactions
+                for ko_id in gene.ko_ids:
+                    ko = network.kos[ko_id]
+                    assert ko.reaction_ids
 
             assert sorted(network.modelseed_kegg_aliases) == sorted(network.reactions)
             assert sorted(network.modelseed_ec_number_aliases) == sorted(network.reactions)
@@ -8464,8 +7860,7 @@ class Constructor:
             except KeyError:
                 is_new_ko = True
             if not is_new_ko:
-                # Have the gene cluster reference the KO.
-                gene_cluster.ko = ko
+                gene_cluster.ko_id = ko_id
                 # Add the newly encountered gene cluster to the network.
                 network.gene_clusters[cluster_id] = gene_cluster
                 # Proceed to the next gene cluster.
@@ -8551,7 +7946,7 @@ class Constructor:
             ko.id = ko_id
             ko.name = gene_cluster_ko_data['function']
             network.kos[ko_id] = ko
-            gene_cluster.ko = ko
+            gene_cluster.ko_id = ko_id
 
             # Associate ModelSEED reactions that have been previously added to the network under
             # construction with the newly encountered KO.
@@ -8591,7 +7986,8 @@ class Constructor:
 
         if DEBUG:
             for gene_cluster in network.gene_clusters.values():
-                assert gene_cluster.ko.reactions
+                ko = network.kos[gene_cluster.ko_id]
+                assert ko.reaction_ids
 
             assert sorted(network.modelseed_kegg_aliases) == sorted(network.reactions)
             assert sorted(network.modelseed_ec_number_aliases) == sorted(network.reactions)
@@ -8760,15 +8156,16 @@ class Constructor:
         Tuple[Set[str], Set[str]]
             A set of KEGG REACTION IDs in the network and a set of those not in the network.
         """
-        old_kegg_reaction_ids: List[str] = []
-        new_kegg_reaction_ids: List[str] = []
+        old_kegg_reaction_ids = []
+        new_kegg_reaction_ids = []
         for kegg_reaction_id in ko_kegg_reaction_ids:
             if kegg_reaction_id in network.kegg_modelseed_aliases:
                 old_kegg_reaction_ids.append(kegg_reaction_id)
             else:
                 new_kegg_reaction_ids.append(kegg_reaction_id)
-        old_kegg_reaction_ids: Set[str] = set(old_kegg_reaction_ids)
-        new_kegg_reaction_ids: Set[str] = set(new_kegg_reaction_ids)
+        old_kegg_reaction_ids = set(old_kegg_reaction_ids)
+        new_kegg_reaction_ids = set(new_kegg_reaction_ids)
+
         return old_kegg_reaction_ids, new_kegg_reaction_ids
 
     def _find_ec_numbers(
@@ -8790,15 +8187,16 @@ class Constructor:
         Tuple[List[str], List[str]]
             A set of EC numbers in the network and a set of those not in the network.
         """
-        old_ec_numbers: List[str] = []
-        new_ec_numbers: List[str] = []
+        old_ec_numbers = []
+        new_ec_numbers = []
         for ec_number in ko_ec_numbers:
             if ec_number in network.ec_number_modelseed_aliases:
                 old_ec_numbers.append(ec_number)
             else:
                 new_ec_numbers.append(ec_number)
-        old_ec_numbers: Set[str] = set(old_ec_numbers)
-        new_ec_numbers: Set[str] = set(new_ec_numbers)
+        old_ec_numbers = set(old_ec_numbers)
+        new_ec_numbers = set(new_ec_numbers)
+
         return old_ec_numbers, new_ec_numbers
 
     def _remove_undefined_reactions(
@@ -8957,7 +8355,7 @@ class Constructor:
                     is_added = True
                 except KeyError:
                     # Generate a new ModelSEED reaction object.
-                    reaction = self._get_modelseed_reaction(
+                    reaction, metabolites = self._get_modelseed_reaction(
                         modelseed_reaction_data,
                         modelseed_compounds_table,
                         network=network
@@ -8971,7 +8369,7 @@ class Constructor:
             if not is_added:
                 # Add the new reaction to the network.
                 network.reactions[modelseed_reaction_id] = reaction
-                for metabolite in reaction.compounds:
+                for metabolite in metabolites:
                     if metabolite.modelseed_id not in network.metabolites:
                         network.metabolites[metabolite.modelseed_id] = metabolite
 
@@ -8997,7 +8395,7 @@ class Constructor:
                         pass
 
             # Associate the reaction with the KO.
-            ko.reactions[modelseed_reaction_id] = reaction
+            ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_kegg_alias_tuple = modelseed_kegg_alias_dict[modelseed_reaction_id]
@@ -9082,7 +8480,7 @@ class Constructor:
                     is_added = True
                 except KeyError:
                     # Generate a new ModelSEED reaction object.
-                    reaction = self._get_modelseed_reaction(
+                    reaction, reaction_metabolites = self._get_modelseed_reaction(
                         modelseed_reaction_data,
                         modelseed_compounds_table,
                         network=network
@@ -9096,7 +8494,7 @@ class Constructor:
             if not is_added:
                 # Add the new reaction to the network.
                 network.reactions[modelseed_reaction_id] = reaction
-                for metabolite in reaction.compounds:
+                for metabolite in reaction_metabolites:
                     if metabolite.modelseed_id not in network.metabolites:
                         network.metabolites[metabolite.modelseed_id] = metabolite
 
@@ -9122,7 +8520,7 @@ class Constructor:
                         pass
 
             # Associate the reaction with the KO.
-            ko.reactions[modelseed_reaction_id] = reaction
+            ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_ec_alias_tuple = modelseed_ec_alias_dict[modelseed_reaction_id]
@@ -9171,11 +8569,10 @@ class Constructor:
         modelseed_reaction_data: Dict,
         modelseed_compounds_table: pd.DataFrame,
         network: ReactionNetwork = None
-    ) -> ModelSEEDReaction:
+    ) -> Tuple[ModelSEEDReaction, List[ModelSEEDCompound]]:
         """
-        Get an object representation of the ModelSEED reaction.
-
-        The reaction object references objects representing associated ModelSEED compounds.
+        Get an object representation of the ModelSEED reaction and object representations of the
+        associated ModelSEED compounds involved in the reaction.
 
         Parameters
         ==========
@@ -9195,6 +8592,10 @@ class Constructor:
         =======
         ModelSEEDReaction
             The representation of the reaction with data sourced from ModelSEED Biochemistry.
+
+        List[ModelSEEDCompound]
+            Representations of metabolites involved in the reaction, with data sourced from
+            ModelSEED Biochemistry.
         """
         reaction = ModelSEEDReaction()
 
@@ -9264,16 +8665,15 @@ class Constructor:
             reaction.coefficients = tuple(reaction_coefficients)
 
         if not modelseed_compound_ids:
-            reaction.compounds = None
-            return reaction
+            return reaction, []
 
-        reaction_compounds: List[ModelSEEDCompound] = []
+        reaction_metabolites: List[ModelSEEDCompound] = []
         for modelseed_compound_id in modelseed_compound_ids:
             if network:
                 try:
                     # The ModelSEED compound ID has been encountered in previously processed
                     # reactions, so there is already a 'ModelSEEDCompound' object for it.
-                    reaction_compounds.append(network.metabolites[modelseed_compound_id])
+                    reaction_metabolites.append(network.metabolites[modelseed_compound_id])
                     continue
                 except KeyError:
                     pass
@@ -9293,11 +8693,11 @@ class Constructor:
                 )
             modelseed_compound_data = modelseed_compound_series.to_dict()
             modelseed_compound_data['id'] = modelseed_compound_id
-            compound = self._get_modelseed_compound(modelseed_compound_data)
-            reaction_compounds.append(compound)
-        reaction.compounds = tuple(reaction_compounds)
+            metabolite = self._get_modelseed_compound(modelseed_compound_data)
+            reaction_metabolites.append(metabolite)
+        reaction.compound_ids = tuple([compound.modelseed_id for compound in reaction_metabolites])
 
-        return reaction
+        return reaction, reaction_metabolites
 
     def _get_modelseed_compound(self, modelseed_compound_data: Dict) -> ModelSEEDCompound:
         """
@@ -9388,7 +8788,7 @@ class Constructor:
         for kegg_reaction_id in old_kegg_reaction_ids:
             for modelseed_reaction_id in network.kegg_modelseed_aliases[kegg_reaction_id]:
                 reaction = network.reactions[modelseed_reaction_id]
-                ko.reactions[modelseed_reaction_id] = reaction
+                ko.reaction_ids.append(modelseed_reaction_id)
                 # Record which KEGG REACTION IDs and EC numbers associated with the KO alias the
                 # ModelSEED reaction.
                 ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
@@ -9401,13 +8801,13 @@ class Constructor:
         # Associate reactions aliasing EC numbers with the KO.
         for ec_number in old_ec_numbers:
             for modelseed_reaction_id in network.ec_number_modelseed_aliases[ec_number]:
-                if modelseed_reaction_id in ko.reactions:
+                if modelseed_reaction_id in ko.reaction_ids:
                     # The ModelSEED reaction has already been associated with the KO, as it was
                     # aliased by a KEGG reaction referenced by the KO -- addressed above -- as well
                     # as the EC number.
                     continue
                 reaction = network.reactions[modelseed_reaction_id]
-                ko.reactions[modelseed_reaction_id] = reaction
+                ko.reaction_ids.append(modelseed_reaction_id)
                 if DEBUG:
                     assert not ko_kegg_reaction_ids.intersection(set(reaction.kegg_aliases))
                 ko.kegg_reaction_aliases[modelseed_reaction_id] = []
@@ -9458,6 +8858,7 @@ class Constructor:
         # Add module references to the KO object, and vice versa, creating and adding objects to the
         # network for newly encountered modules.
         ko_module_ids: Tuple[str] = ko_info['MOD']
+        pathway_modules: Dict[str, List[str]] = {}
         for module_id in ko_module_ids:
             try:
                 module = network.modules[module_id]
@@ -9470,92 +8871,47 @@ class Constructor:
                 module_name: str = module_info['NAME']
                 module.name = module_name
 
-                # Add cross-references between the module and pathways containing the module.
+                # Add references to the pathways containing the module.
                 module_pathway_ids: Tuple[str] = module_info['PTH']
                 for pathway_id in module_pathway_ids:
+                    module.pathway_ids.append(pathway_id)
                     try:
-                        pathway = network.pathways[pathway_id]
-                        is_added_pathway = True
+                        pathway_modules[pathway_id].append(module_id)
                     except KeyError:
-                        is_added_pathway = False
-                    if not is_added_pathway:
-                        # This is the first KO added to the network that is in the pathway.
-                        pathway = KEGGPathway(id=pathway_id)
-                        pathway_info = kegg_pathways_data[pathway_id]
-                        pathway_name: str = pathway_info['NAME']
-                        pathway.name = pathway_name
-                        # Reference the module from the pathway.
-                        pathway.modules[module_id] = module
-                        network.pathways[pathway_id] = pathway
-                    module.pathways[pathway_id] = pathway
+                        pathway_modules[pathway_id] = [module_id]
 
                 network.modules[module_id] = module
-            ko.modules[module_id] = module
-            module.kos[ko_id] = ko
+            ko.module_ids.append(module_id)
+            module.ko_ids.append(ko_id)
 
         # Add pathway references to the KO object, and vice versa, creating and adding objects to
         # the network for newly encountered pathways.
         ko_pathway_ids: Tuple[str] = ko_info['PTH']
+        category_pathways: Dict[Tuple[str], str] = {}
         for pathway_id in ko_pathway_ids:
             try:
                 pathway = network.pathways[pathway_id]
                 is_added_pathway = True
             except KeyError:
                 is_added_pathway = False
+
             if not is_added_pathway:
                 pathway = KEGGPathway(id=pathway_id)
                 pathway_info = kegg_pathways_data[pathway_id]
                 pathway_name: str = pathway_info['NAME']
                 pathway.name = pathway_name
 
-                # Add cross-references between the pathway and the equivalent BRITE hierarchy
-                # category.
-                module_categorization: Tuple[str] = pathway_info['CAT']
-                try:
-                    hierarchy_categorizations = network.categories['ko00001']
-                    is_added_hierarchy = True
-                except KeyError:
-                    is_added_hierarchy = False
-                if is_added_hierarchy:
-                    category = hierarchy_categorizations[module_categorization][-1]
-                else:
-                    # This is the first KO added to the network that prompts consideration of the
-                    # hierarchy, 'ko00001'. Create a hierarchy object and add it to the network.
-                    hierarchy_id = 'ko00001'
-                    hierarchy = BRITEHierarchy(id=hierarchy_id)
-                    hierarchy_name: str = kegg_hierarchies_data[hierarchy_id]
-                    hierarchy.name = hierarchy_name
-
-                    network.hierarchies[hierarchy_id] = hierarchy
-                    hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
-                    network.categories[hierarchy_id] = hierarchy_categorizations
-
-                    # Create category objects for each level of the hierarchical categorization. Add
-                    # them to the network and cross-reference with the hierarchy object.
-                    categories: List[BRITECategory] = []
-                    for depth, category_name in enumerate(module_categorization, 1):
-                        categorization = module_categorization[:depth]
-                        category = BRITECategory(
-                            id=f'{hierarchy_id}: {" >>> ".join(categorization)}',
-                            name=category_name,
-                            hierarchy=hierarchy
-                        )
-                        if depth > 1:
-                            category.supercategory = supercategory = categories[-1]
-                            supercategory.subcategories.append(category)
-                        categories.append(category)
-
-                        categories_tuple = tuple(categories)
-                        hierarchy.categories[categorization] = categories_tuple
-                        hierarchy_categorizations[categorization] = categories_tuple
-
-                    category = categories[-1]
-                pathway.category = category
-                category.pathway = pathway
+                # Add references to any equivalent BRITE hierarchy category.
+                categorization: Tuple[str] = pathway_info['CAT']
+                pathway.categorization = categorization
+                category_pathways[categorization] = pathway_id
 
                 network.pathways[pathway_id] = pathway
-            ko.pathways[pathway_id] = pathway
-            pathway.kos[ko_id] = ko
+            if pathway_id in pathway_modules:
+                module_ids = pathway_modules[pathway_id]
+                pathway.module_ids = sorted(set(pathway.module_ids + module_ids))
+            ko.pathway_ids.append(pathway_id)
+            pathway.ko_ids.append(ko_id)
 
         # Add hierarchy and category references to the KO object, and vice versa, creating and
         # adding objects to the network for newly encountered hierarchies and categories. Note that
@@ -9570,13 +8926,14 @@ class Constructor:
                 is_added_hierarchy = True
             except KeyError:
                 is_added_hierarchy = False
+
             if is_added_hierarchy:
-                hierarchy.kos[ko_id] = ko
+                hierarchy.ko_ids.append(ko_id)
                 hierarchy_categorizations = network.categories[hierarchy_id]
                 try:
                     ko_object_hierarchy_categorizations = ko.hierarchies[hierarchy_id]
                 except KeyError:
-                    ko_object_hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+                    ko_object_hierarchy_categorizations: List[Tuple[str]] = []
                     ko.hierarchies[hierarchy_id] = ko_object_hierarchy_categorizations
             else:
                 # This is the first KO added to the network that prompts consideration of the
@@ -9584,13 +8941,13 @@ class Constructor:
                 hierarchy = BRITEHierarchy(id=hierarchy_id)
                 hierarchy_name: str = kegg_hierarchies_data[hierarchy_id]
                 hierarchy.name = hierarchy_name
-                hierarchy.kos[ko_id] = ko
+                hierarchy.ko_ids.append(ko_id)
 
                 network.hierarchies[hierarchy_id] = hierarchy
                 hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
                 network.categories[hierarchy_id] = hierarchy_categorizations
 
-                ko_object_hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+                ko_object_hierarchy_categorizations: List[Tuple[str]] = []
                 ko.hierarchies[hierarchy_id] = ko_object_hierarchy_categorizations
 
             for ko_hierarchy_categorization in ko_hierarchy_categorizations:
@@ -9599,10 +8956,11 @@ class Constructor:
                     is_added_categorization = True
                 except KeyError:
                     is_added_categorization = False
+
                 if not is_added_categorization:
                     # This is the first KO added to the network that is in the category. Create
                     # category objects as needed for each level of the hierarchical categorization.
-                    # Add them to the network and cross-reference with the hierarchy object.
+                    # Add them to the network and cross-reference with the hierarchy.
                     categories: List[BRITECategory] = []
                     for depth, category_name in enumerate(ko_hierarchy_categorization, 1):
                         categorization = ko_hierarchy_categorization[:depth]
@@ -9617,20 +8975,27 @@ class Constructor:
                             category = BRITECategory(
                                 id=f'{hierarchy_id}: {" >>> ".join(categorization)}',
                                 name=category_name,
-                                hierarchy=hierarchy
+                                hierarchy_id=hierarchy_id
                             )
                             if depth > 1:
-                                category.supercategory = supercategory = categories[-1]
-                                supercategory.subcategories.append(category)
+                                categories[-1].subcategory_names.append(category_name)
                             categories.append(category)
 
+                            hierarchy.categorizations.append(categorization)
                             categories_tuple = tuple(categories)
-                            hierarchy.categories[categorization] = categories_tuple
                             hierarchy_categorizations[categorization] = categories_tuple
 
-                for category in categories:
-                    category.kos[ko_id] = ko
-                ko_object_hierarchy_categorizations[ko_hierarchy_categorization] = tuple(categories)
+                    if hierarchy_id == 'ko00001':
+                        if ko_hierarchy_categorization[-1][-14:-8] == '[PATH:':
+                            try:
+                                category.pathway_id = category_pathways[ko_hierarchy_categorization]
+                            except KeyError:
+                                pass
+
+                    for category in categories:
+                        category.ko_ids.append(ko_id)
+
+                ko_object_hierarchy_categorizations.append(ko_hierarchy_categorization)
 
     def _get_database_reactions_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
@@ -9664,9 +9029,7 @@ class Constructor:
             reaction_data = {}
             reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
             reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
-            reaction_data['metabolite_modelseed_ids'] = ', '.join(
-                [c.modelseed_id for c in reaction.compounds]
-            )
+            reaction_data['metabolite_modelseed_ids'] = ', '.join(reaction.compound_ids)
             reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
             reaction_data['compartments'] = ', '.join(reaction.compartments)
             reaction_data['reversibility'] = reaction.reversibility
@@ -9701,7 +9064,7 @@ class Constructor:
             modelseed_reaction_id: ({}, {}) for modelseed_reaction_id in reactions_data
         }
         for ko_id, ko in network.kos.items():
-            for modelseed_reaction_id, reaction in ko.reactions.items():
+            for modelseed_reaction_id in ko.reaction_ids:
                 aliases = ko_reaction_aliases[modelseed_reaction_id]
 
                 kegg_reaction_aliases = aliases[0]
@@ -9744,6 +9107,7 @@ class Constructor:
             reactions_data, orient='index'
         ).reset_index(drop=True).sort_values('modelseed_reaction_id')
         reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
+
         return reactions_table
 
     def _get_database_metabolites_table(self, network: ReactionNetwork) -> pd.DataFrame:
@@ -9774,19 +9138,20 @@ class Constructor:
 
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
         metabolites_data = {}
-        for modelseed_compound_id, compound in network.metabolites.items():
+        for modelseed_compound_id, metabolite in network.metabolites.items():
             metabolite_data = {}
             metabolite_data['modelseed_compound_id'] = modelseed_compound_id
-            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
-            metabolite_data['kegg_aliases'] = ', '.join(compound.kegg_aliases)
-            metabolite_data['formula'] = compound.formula
-            metabolite_data['charge'] = compound.charge
+            metabolite_data['modelseed_compound_name'] = metabolite.modelseed_name
+            metabolite_data['kegg_aliases'] = ', '.join(metabolite.kegg_aliases)
+            metabolite_data['formula'] = metabolite.formula
+            metabolite_data['charge'] = metabolite.charge
             metabolites_data[modelseed_compound_id] = metabolite_data
 
         metabolites_table = pd.DataFrame.from_dict(
             metabolites_data, orient='index'
         ).reset_index(drop=True).sort_values('modelseed_compound_id')
         metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
+
         return metabolites_table
 
     def hash_contigs_db_ko_hits(self, gene_ko_hits_table: pd.DataFrame) -> str:
@@ -9849,11 +9214,19 @@ class Constructor:
             to select consensus KOs.
         """
         gsdb = dbinfo.GenomeStorageDBInfo(genomes_storage_db).load_db()
-        functions_table = gsdb.get_table_as_dataframe('gene_function_calls', where_clause='source = "KOfam"')
+        functions_table = gsdb.get_table_as_dataframe(
+            'gene_function_calls', where_clause='source = "KOfam"'
+        )
         gsdb.disconnect()
         ko_annotations = []
         for row in functions_table.itertuples(index=False):
-            ko_annotations.append((row.genome_name, str(row.gene_callers_id), row.accession, row.function, str(row.e_value)))
+            ko_annotations.append((
+                row.genome_name,
+                str(row.gene_callers_id),
+                row.accession,
+                row.function,
+                str(row.e_value)
+            ))
         ko_annotations = sorted(ko_annotations, key=lambda x: (x[0], x[1], x[2]))
 
         ko_annotations = []
@@ -10436,8 +9809,8 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
     equation = ""
     leftside = True
-    for coefficient, metabolite, compartment in zip(
-        reaction.coefficients, reaction.compounds, reaction.compartments
+    for coefficient, modelseed_compound_id, compartment in zip(
+        reaction.coefficients, reaction.compound_ids, reaction.compartments
     ):
         if leftside and coefficient > 0:
             leftside = False
@@ -10450,7 +9823,7 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
             coeff = -coefficient
         else:
             coeff = coefficient
-        equation += f"{coeff} {metabolite.modelseed_name} [{compartment}] + "
+        equation += f"{coeff} {modelseed_compound_id} [{compartment}] + "
 
     return equation.rstrip('+ ')
 
