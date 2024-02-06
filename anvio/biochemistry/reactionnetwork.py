@@ -8592,147 +8592,133 @@ class Constructor:
         """
         ko_id = ko.id
 
-        # Add module references to the KO object, and vice versa, creating and adding objects to the
-        # network for newly encountered modules.
-        ko_module_ids: Tuple[str] = ko_info['MOD']
-        pathway_modules: Dict[str, List[str]] = {}
-        for module_id in ko_module_ids:
-            try:
-                module = network.modules[module_id]
-                is_added_module = True
-            except KeyError:
-                is_added_module = False
-            if not is_added_module:
-                module = KEGGModule(id=module_id)
-                module_info = kegg_modules_data[module_id]
-                module_name: str = module_info['NAME']
-                module.name = module_name
+        # Reference module IDs in the KO.
+        ko_info_mod: Tuple[str] = ko_info['MOD']
+        for module_id in ko_info_mod:
+            ko.module_ids.append(module_id)
 
-                # Add references to the pathways containing the module.
-                module_pathway_ids: Tuple[str] = module_info['PTH']
-                for pathway_id in module_pathway_ids:
+        # Reference pathway IDs in the KO.
+        ko_info_pth: Tuple[str] = ko_info['PTH']
+        for pathway_id in ko_info_pth:
+            ko.pathway_ids.append(pathway_id)
+
+        # Reference BRITE hierarchy categorizations in the KO.
+        ko_info_hie: Dict[str, Tuple[Tuple[str]]] = ko_info['HIE']
+        for hierarchy_id, categorizations in ko_info_hie.items():
+            ko_hierarchy_categorizations: List[Tuple[str]] = []
+            for categorization in categorizations:
+                ko_hierarchy_categorizations.append(categorization)
+            ko.hierarchies[hierarchy_id] = ko_hierarchy_categorizations
+
+        # Fill out module objects in the network.
+        # Track module membership of pathways to facilitate pathway object creation.
+        pathway_modules: Dict[str, List[str]] = {}
+        for module_id in ko.module_ids:
+            try:
+                # The module has already been added to the network via another KO.
+                module = network.modules[module_id]
+            except KeyError:
+                # Create a module object and add it to the network.
+                module_info = kegg_modules_data[module_id]
+                module = KEGGModule(id=module_id)
+                module.name = module_info['NAME']
+                for pathway_id in module_info['PTH']:
+                    if pathway_id not in kegg_pathways_data:
+                        # Only pathways that are equivalent to categories in the KO BRITE hierarchy,
+                        # 'ko00001', are considered.
+                        continue
                     module.pathway_ids.append(pathway_id)
                     try:
                         pathway_modules[pathway_id].append(module_id)
                     except KeyError:
                         pathway_modules[pathway_id] = [module_id]
-
                 network.modules[module_id] = module
-            ko.module_ids.append(module_id)
             module.ko_ids.append(ko_id)
 
-        # Add pathway references to the KO object, and vice versa, creating and adding objects to
-        # the network for newly encountered pathways.
-        ko_pathway_ids: Tuple[str] = ko_info['PTH']
+        # Fill out pathway objects in the network.
+        # Track BRITE categories that are equivalent to pathways to facilitate category object
+        # creation.
         category_pathways: Dict[Tuple[str], str] = {}
-        for pathway_id in ko_pathway_ids:
+        for pathway_id in ko.pathway_ids:
             try:
+                # The pathway has already been added to the network via another KO.
                 pathway = network.pathways[pathway_id]
-                is_added_pathway = True
             except KeyError:
-                is_added_pathway = False
-
-            if not is_added_pathway:
-                pathway = KEGGPathway(id=pathway_id)
+                # Create a pathway object and add it to the network.
                 pathway_info = kegg_pathways_data[pathway_id]
-                pathway_name: str = pathway_info['NAME']
-                pathway.name = pathway_name
-
-                # Add references to any equivalent BRITE hierarchy category.
-                categorization: Tuple[str] = pathway_info['CAT']
+                pathway = KEGGPathway(id=pathway_id)
+                pathway.name = pathway_info['NAME']
+                categorization = pathway_info['CAT']
                 pathway.categorization = categorization
                 category_pathways[categorization] = pathway_id
-
                 network.pathways[pathway_id] = pathway
-            if pathway_id in pathway_modules:
+
+            try:
+                # The KO was associated with newly encountered modules, which need to be referenced
+                # by the pathway.
                 module_ids = pathway_modules[pathway_id]
-                pathway.module_ids = sorted(set(pathway.module_ids + module_ids))
-            ko.pathway_ids.append(pathway_id)
+                for module_id in module_ids:
+                    pathway.module_ids.append(module_id)
+            except KeyError:
+                pass
+
             pathway.ko_ids.append(ko_id)
 
-        # Add hierarchy and category references to the KO object, and vice versa, creating and
-        # adding objects to the network for newly encountered hierarchies and categories. Note that
-        # in the network 'hierarchies' and 'categories' attributes, each intermediate category of
-        # the categorization also receives its own categorization entry, whereas in the KO
-        # 'hierarchies' attribute, there is only one entry for the category.
-        ko_hierarchy_info: Dict[str, Tuple[Tuple[str]]] = ko_info['HIE']
-        for hierarchy_id, ko_hierarchy_categorizations in ko_hierarchy_info.items():
+        # Fill out hierarchy objects in the network.
+        for hierarchy_id, categorizations in ko.hierarchies.items():
             try:
-                # The hierarchy has already been added to the network.
+                # The hierarchy has already been added to the network via another KO.
                 hierarchy = network.hierarchies[hierarchy_id]
-                is_added_hierarchy = True
+                network_hierarchy_categories = network.categories[hierarchy_id]
             except KeyError:
-                is_added_hierarchy = False
-
-            if is_added_hierarchy:
-                hierarchy.ko_ids.append(ko_id)
-                hierarchy_categorizations = network.categories[hierarchy_id]
-                try:
-                    ko_object_hierarchy_categorizations = ko.hierarchies[hierarchy_id]
-                except KeyError:
-                    ko_object_hierarchy_categorizations: List[Tuple[str]] = []
-                    ko.hierarchies[hierarchy_id] = ko_object_hierarchy_categorizations
-            else:
-                # This is the first KO added to the network that prompts consideration of the
-                # hierarchy. Create a hierarchy object and add it to the network.
+                # Create a new hierarchy object and add it to the network.
+                hierarchy_info = kegg_hierarchies_data[hierarchy_id]
                 hierarchy = BRITEHierarchy(id=hierarchy_id)
-                hierarchy_name: str = kegg_hierarchies_data[hierarchy_id]
-                hierarchy.name = hierarchy_name
-                hierarchy.ko_ids.append(ko_id)
-
+                hierarchy.name = hierarchy_info[hierarchy_id]
                 network.hierarchies[hierarchy_id] = hierarchy
-                hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
-                network.categories[hierarchy_id] = hierarchy_categorizations
+                network_hierarchy_categories: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+                network.categories[hierarchy_id] = network_hierarchy_categories
 
-                ko_object_hierarchy_categorizations: List[Tuple[str]] = []
-                ko.hierarchies[hierarchy_id] = ko_object_hierarchy_categorizations
+            hierarchy.ko_ids.append(ko_id)
 
-            for ko_hierarchy_categorization in ko_hierarchy_categorizations:
+            # Fill out category objects in the network.
+            for categorization in categorizations:
                 try:
-                    categories = hierarchy_categorizations[ko_hierarchy_categorization]
-                    is_added_categorization = True
+                    # The category has already been added to the network via another KO.
+                    categories = network_hierarchy_categories[categorization]
                 except KeyError:
-                    is_added_categorization = False
-
-                if not is_added_categorization:
-                    # This is the first KO added to the network that is in the category. Create
-                    # category objects as needed for each level of the hierarchical categorization.
-                    # Add them to the network and cross-reference with the hierarchy.
+                    # Add a category object to the network for each level of the categorization.
                     categories: List[BRITECategory] = []
-                    for depth, category_name in enumerate(ko_hierarchy_categorization, 1):
-                        categorization = ko_hierarchy_categorization[:depth]
+                    for depth, focus_category_name in enumerate(categorization, 1):
+                        focus_categorization = categorization[:depth]
                         try:
-                            # Supercategories to the depth of the category under consideration are
-                            # already in the network.
-                            categories = list(hierarchy_categorizations[categorization])
-                            is_added_category = True
+                            # The supercategory has already been added to the network.
+                            focus_categories = network_hierarchy_categories[focus_categorization]
+                            categories = list(focus_categories)
+                            continue
                         except KeyError:
-                            is_added_category = False
-                        if not is_added_category:
-                            category = BRITECategory(
-                                id=f'{hierarchy_id}: {" >>> ".join(categorization)}',
-                                name=category_name,
-                                hierarchy_id=hierarchy_id
-                            )
-                            if depth > 1:
-                                categories[-1].subcategory_names.append(category_name)
-                            categories.append(category)
+                            pass
 
-                            hierarchy.categorizations.append(categorization)
-                            categories_tuple = tuple(categories)
-                            hierarchy_categorizations[categorization] = categories_tuple
+                        # Add the previously unencountered category to the network.
+                        category = BRITECategory()
+                        category.id = f'{hierarchy_id}: {">>>".join(focus_categorization)}'
+                        category.name = focus_category_name
+                        category.hierarchy_id = hierarchy_id
+                        if depth == len(categorization) and hierarchy_id == 'ko00001':
+                            category.pathway_id = category_pathways[categorization]
+                        categories.append(category)
 
-                    if hierarchy_id == 'ko00001':
-                        if ko_hierarchy_categorization[-1][-14:-8] == '[PATH:':
-                            try:
-                                category.pathway_id = category_pathways[ko_hierarchy_categorization]
-                            except KeyError:
-                                pass
+                        if len(categories) > 1:
+                            # Consider the supercategory of the newly encountered category. Add the
+                            # category name as a subcategory reference of the supercategory.
+                            categories[-1].subcategory_names.append(focus_category_name)
 
-                    for category in categories:
-                        category.ko_ids.append(ko_id)
+                        hierarchy.categorizations.append(focus_categorization)
+                        network_hierarchy_categories[focus_categorization] = tuple(categories)
 
-                ko_object_hierarchy_categorizations.append(ko_hierarchy_categorization)
+                for category in categories:
+                    category.ko_ids.append(ko_id)
+
 
     def _get_database_reactions_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
