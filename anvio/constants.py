@@ -43,28 +43,29 @@ clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clu
 clustering_configs = {}
 
 default_scgs_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY')
-default_scgs_for_taxonomy = ['Ribosomal_S2',
-                             'Ribosomal_S3_C',
-                             'Ribosomal_S6',
-                             'Ribosomal_S7',
-                             'Ribosomal_S8',
-                             'Ribosomal_S9',
-                             'Ribosomal_S11',
-                             'Ribosomal_S20p',
-                             'Ribosomal_L1',
-                             'Ribosomal_L2',
-                             'Ribosomal_L3',
-                             'Ribosomal_L4',
-                             'Ribosomal_L6',
-                             'Ribosomal_L9_C',
+default_scgs_for_taxonomy = ['Ribosomal_L1',
                              'Ribosomal_L13',
+                             'Ribosomal_L14',
                              'Ribosomal_L16',
                              'Ribosomal_L17',
+                             'Ribosomal_L19',
+                             'Ribosomal_L2',
                              'Ribosomal_L20',
                              'Ribosomal_L21p',
                              'Ribosomal_L22',
-                             'ribosomal_L24',
-                             'Ribosomal_L27A']
+                             'Ribosomal_L27A',
+                             'Ribosomal_L3',
+                             'Ribosomal_L4',
+                             'Ribosomal_L5',
+                             'Ribosomal_S11',
+                             'Ribosomal_S15',
+                             'Ribosomal_S16',
+                             'Ribosomal_S2',
+                             'Ribosomal_S6',
+                             'Ribosomal_S7',
+                             'Ribosomal_S8',
+                             'Ribosomal_S9']
+
 default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
 default_trna_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/TRNA_TAXONOMY')
