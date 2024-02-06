@@ -5202,8 +5202,11 @@ class KEGGData:
     kegg_context : anvio.kegg.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
+    modules_db : anvio.kegg.ModulesDatabase
+        The anvi'o modules database from which KEGG data is loaded.
+
     modules_db_hash : str
-        The unique identifier of the anvi'o modules database, derived from its contents.
+        The unique identifier of the anvi'o modules database, unique to its contents.
 
     ko_data : Dict[str, Dict[str, Any]]
         This dictionary relates KO IDs to various data, as shown in the following schematic.
@@ -5282,18 +5285,25 @@ class KEGGData:
 
         utils.is_kegg_modules_db(self.kegg_context.kegg_modules_db_path)
 
-        self.module_data: Dict[str, Dict[str, Any]] = {}
-        self._load_module_data()
+        self.modules_db = kegg.ModulesDatabase(
+            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
+        )
+        self.modules_db_hash = self.modules_db.db.get_meta_value('hash')
 
         self.ko_data: Dict[str, Dict[str, Any]] = {}
-        self._load_ko_binary_relation_data()
-        self._load_ko_classification_data()
-
+        self.module_data: Dict[str, Dict[str, Any]] = {}
         self.pathway_data: Dict[str, Dict[str, Any]] = {}
-        self._load_pathway_data()
-
         self.hierarchy_data: Dict[str, str] = {}
+
+        self._load_ko_binary_relation_data()
+        self._load_module_data()
+        self._load_ko_module_data()
+        self._load_ko_pathway_data()
+        self._load_ko_hierarchy_data()
+        self._load_pathway_data()
         self._load_hierarchy_data()
+
+        self.modules_db.disconnect()
 
     def check_for_binary_relation_files(self) -> List[str]:
         """
@@ -5311,61 +5321,6 @@ class KEGGData:
                 missing_paths.append(path)
 
         return missing_paths
-
-    def _load_module_data(self) -> None:
-        """
-        Load module data into 'module_data'.
-
-        Returns
-        =======
-        None
-        """
-        modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
-        )
-
-        self.modules_db_hash = modules_db.db.get_meta_value('hash')
-
-        modules_names_table = modules_db.db.get_table_as_dataframe(
-            'modules',
-            where_clause='data_name="NAME"',
-            columns_of_interest=['module', 'data_value']
-        ).rename({'module': 'module_id', 'data_value': 'module_name'}, axis=1)
-
-        modules_pathways_table = modules_db.db.get_table_as_dataframe(
-            'modules',
-            where_clause='data_name="PATHWAY"',
-            columns_of_interest=['module', 'data_value']
-        ).rename({'module': 'module_id', 'data_value': 'pathway_id'}, axis=1)
-
-        # Remove pathways that contain modules but are not represented in BRITE hierarchies
-        # downloaded by anvi'o KEGG data setup.
-        categorizations = modules_db.db.get_single_column_from_table(
-            'brite_hierarchies', 'categorization', unique=True
-        )
-        recognized_ko_pathways = []
-        for categorization in categorizations:
-            if categorization[-14:-8] == '[PATH:':
-                recognized_ko_pathways.append(f'map{categorization[-6:-1]}')
-        modules_pathways_table = modules_pathways_table[
-            modules_pathways_table['pathway_id'].isin(recognized_ko_pathways)
-        ]
-
-        module_data = self.module_data
-        for key, module_table in modules_names_table.merge(
-            modules_pathways_table, how='left', on='module_id'
-        ).groupby(['module_id', 'module_name']):
-            module_id = key[0]
-            module_name = key[1]
-            module_data[module_id] = module_dict = {}
-            module_dict['NAME'] = module_name
-            pathway_id_tuple = tuple(sorted(module_table['pathway_id']))
-            if pd.isna(pathway_id_tuple[0]):
-                module_dict['PTH'] = tuple()
-            else:
-                module_dict['PTH'] = pathway_id_tuple
-
-        modules_db.disconnect()
 
     def _load_ko_binary_relation_data(self) -> None:
         """
@@ -5404,142 +5359,188 @@ class KEGGData:
                 # An entry has a format like '[EC:1.1.1.18 1.1.1.369]' or '[RN:R00842]'.
                 ko_data_dict[col_name] = tuple(entry[prefix_length:-1].split())
 
-    def _load_ko_classification_data(self) -> None:
+    def _load_module_data(self) -> None:
         """
-        Load KO classifications within KEGG modules, pathways, and hierarchies into 'ko_data'.
+        Load module name and pathway membership into 'module_data'.
 
         Returns
         =======
         None
         """
-        modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
-        )
-        ko_data = self.ko_data
+        modules_names_table = self.modules_db.db.get_table_as_dataframe(
+            'modules',
+            where_clause='data_name="NAME"',
+            columns_of_interest=['module', 'data_value']
+        ).rename({'module': 'module_id', 'data_value': 'module_name'}, axis=1)
+
+        modules_pathways_table = self.modules_db.db.get_table_as_dataframe(
+            'modules',
+            where_clause='data_name="PATHWAY"',
+            columns_of_interest=['module', 'data_value']
+        ).rename({'module': 'module_id', 'data_value': 'pathway_id'}, axis=1)
 
         module_data = self.module_data
-        kos_table = modules_db.db.get_table_as_dataframe(
+        for key, module_table in modules_names_table.merge(
+            modules_pathways_table, how='left', on='module_id'
+        ).groupby(['module_id', 'module_name']):
+            module_id = key[0]
+            module_name = key[1]
+            module_data[module_id] = module_dict = {}
+            module_dict['NAME'] = module_name
+            pathway_id_tuple = tuple(sorted(module_table['pathway_id']))
+            if pd.isna(pathway_id_tuple[0]):
+                # The module is not part of any pathway.
+                module_dict['PTH'] = tuple()
+            else:
+                module_dict['PTH'] = pathway_id_tuple
+
+    def _load_ko_module_data(self) -> None:
+        """
+        Load KO classification within modules into 'ko_data'.
+
+        Returns
+        =======
+        None
+        """
+        kos_modules_table = self.modules_db.db.get_table_as_dataframe(
             'modules',
             where_clause='data_name="ORTHOLOGY"',
             columns_of_interest=['module', 'data_value', 'data_definition']
         ).rename({'module': 'module_id', 'data_value': 'ko_id'}, axis=1)
+
         ko_id_pattern = 'K\d{5}'
-        match = re.match
-        for orthology_entry, ko_table in kos_table.groupby('ko_id'):
-            if not match(ko_id_pattern, orthology_entry):
-                # Check that the "orthology" entry is indeed a validly formatted KO ID.
+        for orthology_entry, ko_modules_table in kos_modules_table.groupby('ko_id'):
+            if not re.match(ko_id_pattern, orthology_entry):
+                # Screen for "orthology" entries that are validly formatted KO IDs. There are also
+                # orthology entires for modules that are part of other modules.
                 continue
             ko_id = orthology_entry
 
             try:
-                ko_dict = ko_data[ko_id]
+                ko_dict = self.ko_data[ko_id]
             except KeyError:
-                ko_data[ko_id] = ko_dict = {}
-            ko_dict['MOD'] = module_ids = tuple(sorted(ko_table['module_id']))
+                self.ko_data[ko_id] = ko_dict = {}
+            ko_dict['MOD'] = tuple(sorted(ko_modules_table['module_id']))
 
-            pathway_ids = []
-            for module_id in module_ids:
-                module_dict = module_data[module_id]
-                pathway_ids += module_dict['PTH']
-            ko_dict['PTH'] = tuple(sorted(set(pathway_ids)))
+    def _load_ko_pathway_data(self) -> None:
+        """
+        Load KO classification within pathways into 'ko_data'.
 
-        # Add placeholder entries for KOs not in modules.
-        for ko_dict in ko_data.values():
-            if 'MOD' not in ko_dict:
-                ko_dict['MOD'] = tuple()
-                ko_dict['PTH'] = tuple()
+        Only pathways that are equivalent to categories in the KO BRITE hierarchy, 'ko00001', are
+        considered, because the complete KO membership of these pathways (maps) is accessible in the
+        modules database given how BRITE hierarchy files are processed by 'anvi-setup-kegg-data'.
+        This excludes global and overview metabolism maps, such as the global 'Metabolic pathways'
+        and overview 'Degradation of aromatic compounds' maps. This also excludes maps corresponding
+        to hierarchies with IDs starting 'br' rather than 'ko'. 'br' maps involve other data besides
+        KOs, such as drugs, diseases, reactions, and compounds.
 
-        hierarchies_table = modules_db.db.get_table_as_dataframe(
+        Returns
+        =======
+        None
+        """
+        hierarchy_table = self.modules_db.db.get_table_as_dataframe(
+            'brite_hierarchies',
+            where_clause='hierarchy_accession="ko00001"',
+            columns_of_interest=['ortholog_accession', 'categorization']
+        ).rename({'hierarchy_accession': 'hierarchy_id', 'ortholog_accession': 'ko_id'}, axis=1)
+
+        for ko_id, ko_table in hierarchy_table.groupby('ko_id'):
+            try:
+                ko_dict = self.ko_data[ko_id]
+            except KeyError:
+                self.ko_data[ko_id] = ko_dict = {}
+
+            pathway_ids: List[str] = []
+            for categorization in ko_table['categorization']:
+                categorization: str
+                category_name = categorization.split('>>>')[-1]
+                # 'ko00001' categories that are equivalent to pathways have names formatted like
+                # '00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'.
+                if category_name[-15:-8] != ' [PATH:' and category_name[-1] != ']':
+                    continue
+                pathway_ids.append(f'map{category_name[-6:-1]}')
+            ko_dict['PTH'] = tuple(pathway_ids)
+
+    def _load_ko_hierarchy_data(self) -> None:
+        """
+        Load KO BRITE hierarchy membership into 'ko_data'.
+
+        Only KO hierarchies with IDs starting 'ko' are considered given modules database setup.
+
+        Returns
+        =======
+        None
+        """
+        hierarchies_table = self.modules_db.db.get_table_as_dataframe(
             'brite_hierarchies',
             columns_of_interest=['hierarchy_accession', 'ortholog_accession', 'categorization']
         ).rename({'hierarchy_accession': 'hierarchy_id', 'ortholog_accession': 'ko_id'}, axis=1)
+
         for ko_id, ko_table in hierarchies_table.groupby('ko_id'):
             try:
-                ko_dict = ko_data[ko_id]
+                ko_dict = self.ko_data[ko_id]
             except KeyError:
-                ko_data[ko_id] = ko_dict = {}
-            ko_dict['HIE'] = ko_hierarchy_dict = {}
-            for hierarchy_id, hierarchy_table in ko_table.groupby('hierarchy_id'):
-                categorizations = []
-                for categorization in hierarchy_table['categorization']:
+                self.ko_data[ko_id] = ko_dict = {}
+
+            ko_hierarchies_dict: Dict[str, Tuple[Tuple[str]]] = {}
+            for hierarchy_id, ko_hierarchy_table in ko_table.groupby('hierarchy_id'):
+                categorizations: List[Tuple[str]] = []
+                for categorization in ko_hierarchy_table['categorization']:
                     categorization: str
-                    categorizations.append(tuple(categorization.split('>>>')))
-
-                    if hierarchy_id == 'ko00001':
-                        if categorizations[-1][-1][-14:-8] == '[PATH:':
-                            pathway_id = f'map{categorizations[-1][-1][-6:-1]}'
-                            try:
-                                pathway_ids = ko_dict['PTH']
-                            except KeyError:
-                                ko_dict['PTH'] = (pathway_id, )
-                                continue
-                            ko_dict['PTH'] = pathway_ids + (pathway_id, )
-
-                ko_hierarchy_dict[hierarchy_id] = tuple(categorizations)
-
-        # Add placeholder entries for KOs not in hierarchies.
-        for ko_dict in ko_data.values():
-            if 'HIE' not in ko_dict:
-                ko_dict['HIE'] = tuple()
-
-        modules_db.disconnect()
+                    categorizations.append(categorization.split('>>>'))
+                ko_hierarchies_dict[hierarchy_id] = tuple(categorizations)
+            ko_dict['HIE'] = ko_hierarchies_dict
 
     def _load_pathway_data(self) -> None:
         """
-        Load pathway data into 'pathway_data'.
+        Load pathway name and BRITE categorization into 'pathway_data'.
+
+        Only pathways that are equivalent to categories in the KO BRITE hierarchy, 'ko00001', are
+        considered.
 
         Returns
         =======
         None
         """
-        modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
+        categorizations = self.modules_db.db.get_single_column_from_table(
+            'brite_hierarchies',
+            'categorization',
+            unique=True,
+            where_clause='hierarchy_accession="ko00001"'
         )
 
-        pathway_data = self.pathway_data
-        categorizations = set(modules_db.db.get_table_as_dataframe(
-            'brite_hierarchies',
-            where_clause='hierarchy_accession="ko00001"',
-            columns_of_interest=['categorization']
-        )['categorization'])
         for categorization in categorizations:
             categorization: str
-            categories = tuple(categorization.split('>>>'))
-            category = categories[-1]
-            # A category is formatted like 'XXXXX <pathway name> [PATH:koXXXXX]', where X is a digit
-            # in the pathway ID.
-            pathway_id = f'map{category[:5]}'
-            pathway_name = categories[-1][6:-15]
-            pathway_data[pathway_id] = {'NAME': pathway_name, 'CAT': categories}
-
-        modules_db.disconnect()
+            categorization_tuple = tuple(categorization.split('>>>'))
+            category_name = categorization_tuple[-1]
+            # 'ko00001' categories that are equivalent to pathways have names formatted like '00010
+            # Glycolysis / Gluconeogenesis [PATH:ko00010]'.
+            if category_name[-15:-8] != ' [PATH:' and category_name[-1] != ']':
+                continue
+            pathway_id = f'map{category_name[-6:-1]}'
+            assert category_name[:6] == f'{pathway_id[3:]} '
+            pathway_dict: Dict[str, Any] = {}
+            pathway_name = f'{category_name[6:-14]}'
+            pathway_dict['NAME'] = pathway_name
+            pathway_dict['CAT'] = categorization_tuple
+            self.pathway_data[pathway_id] = pathway_dict
 
     def _load_hierarchy_data(self) -> None:
         """
-        Load hierarchy data into 'hierarchy_data'.
+        Load hierarchy names into 'hierarchy_data'.
 
         Returns
         =======
         None
         """
-        modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
-        )
-
-        hierarchy_data = self.hierarchy_data
-        hierarchies_table = modules_db.db.get_table_as_dataframe(
+        hierarchies_table = self.modules_db.db.get_table_as_dataframe(
             'brite_hierarchies', columns_of_interest=['hierarchy_accession', 'hierarchy_name']
-        ).rename({'hierarchy_accession': 'hierarchy_id'}, axis=1)
-        for entry in sorted(
-            set(hierarchies_table['hierarchy_id'] + ':' + hierarchies_table['hierarchy_name'])
-        ):
-            entry: str
-            sep_index = entry.index(':')
-            hierarchy_id = entry[:sep_index]
-            hierarchy_name = entry[sep_index + 1:]
-            hierarchy_data[hierarchy_id] = hierarchy_name
+        ).rename({'hierarchy_accession': 'hierarchy_id'}, axis=1).drop_duplicates()
 
-        modules_db.disconnect()
+        for row in hierarchies_table.itertuples():
+            hierarchy_id = row.hierarchy_id
+            hierarchy_name = row.hierarchy_name
+            self.hierarchy_data[hierarchy_id] = hierarchy_name
 
 class KODatabase:
     """
