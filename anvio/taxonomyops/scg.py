@@ -1010,7 +1010,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
         self.SCGs_taxonomy_data_dir = A('scgs_taxonomy_data_dir')
 
