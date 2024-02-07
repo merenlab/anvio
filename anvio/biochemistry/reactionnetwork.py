@@ -8400,6 +8400,7 @@ class Constructor:
                 # The way the reaction is written is the opposite of the way the reaction proceeds.
                 reaction_coefficients = [-c for c in reaction_coefficients]
             reaction.coefficients = tuple(reaction_coefficients)
+            reaction.compound_ids = modelseed_compound_ids
 
         if not modelseed_compound_ids:
             return reaction, []
@@ -8432,7 +8433,6 @@ class Constructor:
             modelseed_compound_data['id'] = modelseed_compound_id
             metabolite = self._get_modelseed_compound(modelseed_compound_data)
             reaction_metabolites.append(metabolite)
-        reaction.compound_ids = tuple([compound.modelseed_id for compound in reaction_metabolites])
 
         return reaction, reaction_metabolites
 
