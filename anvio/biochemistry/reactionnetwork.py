@@ -8711,7 +8711,7 @@ class Constructor:
                         if len(categories) > 1:
                             # Consider the supercategory of the newly encountered category. Add the
                             # category name as a subcategory reference of the supercategory.
-                            categories[-1].subcategory_names.append(focus_category_name)
+                            categories[-2].subcategory_names.append(focus_category_name)
 
                         hierarchy.categorizations.append(focus_categorization)
                         network_hierarchy_categories[focus_categorization] = tuple(categories)
