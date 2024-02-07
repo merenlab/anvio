@@ -5303,6 +5303,19 @@ class KEGGData:
         self._load_pathway_data()
         self._load_hierarchy_data()
 
+        # Add placeholder entries for missing KO data.
+        for ko_dict in self.ko_data.values():
+            if 'EC' not in ko_dict:
+                ko_dict['EC'] = tuple()
+            if 'RN' not in ko_dict:
+                ko_dict['RN'] = tuple()
+            if 'MOD' not in ko_dict:
+                ko_dict['MOD'] = tuple()
+            if 'PTH' not in ko_dict:
+                ko_dict['PTH'] = tuple()
+            if 'HIE' not in ko_dict:
+                ko_dict['HIE'] = {}
+
         self.modules_db.disconnect()
 
     def check_for_binary_relation_files(self) -> List[str]:
