@@ -1132,10 +1132,10 @@ class Pangraph():
 
         # reconnect open leaves in the graph to generate
         # a flow network from left to right
-        # self.run_tree_to_flow_network_algorithm()
+        self.run_tree_to_flow_network_algorithm()
         
         ##### START OF ALEX TESTING AREA
-        self.new_run_tree_to_flow_network_algorithm()
+        # self.new_run_tree_to_flow_network_algorithm()
         ##### END OF ALEX TESTING AREA
 
         # process edges and nodes to extract unique paths
