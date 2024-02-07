@@ -78,11 +78,15 @@ class DGR_Finder:
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
         self.run.info('VR in ORF', self.vr_in_orf)
+        self.run.info('Number of Mismatches', self.number_of_mismatches)
+        self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         if self.profile_db_path and self.contigs_db_path:
             self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
             self.run.info('Minimum length of SNV window', self.min_range_size)
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
+        if self.contigs_db_path:
+            self.run.info('HMM Provided', self.hmm)
 
         # initiate a dictionary for the gene where we find VR
         self.vr_gene_info = {}
@@ -91,6 +95,16 @@ class DGR_Finder:
         if self.contigs_db_path and self.fasta_file_path:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
                               "class, not multiple :/")
+
+        if ((self.contigs_db_path and self.profile_db_path) or (self.contigs_db_path)) and not self.hmm:
+            #check if running with --HMM, if not
+            self.run.warning("Just so you know in order to report a DGR you need to have Reverse Transcriptase "
+                            "annotated or else you are not finding DGRs. If you would like to do this please run"
+                            "your 'contigs.db' with 'anvi-run-hmms'"
+                            "with the flag '-I' and the 'Reverse_Transcriptase' (type: 6 clades of DGR Retroelements from"
+                            "doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases)."
+                            "then re-run 'anvi-report-dgrs' with the '--hmm-usage' flag. If that is what you want of course")
+
         if self.fasta_file_path:
             # check fasta input
             filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
