@@ -8,6 +8,7 @@ import csv
 import os
 import shutil
 import argparse
+#import bisect
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -193,6 +194,7 @@ class DGR_Finder:
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
 
             self.snv_panda['departure_from_reference'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('departure_from_reference', None), axis=1)
+            self.snv_panda['base_pos_in_codon'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('base_pos_in_codon', None), axis=1)
 
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
             # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
@@ -318,7 +320,7 @@ class DGR_Finder:
             blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
 
             blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
-                          output_file=blast_output, additional_params = '-dust no', num_threads=self.num_threads)
+                        output_file=blast_output, additional_params = '-dust no', num_threads=self.num_threads)
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
@@ -760,15 +762,16 @@ class DGR_Finder:
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_sequence'] = TR_sequence
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
+
                                     DGRs_found_dict[f'DGR_{num_DGR:03d}']['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
 
                                 else:
                                     was_added = False
                                     for dgr in DGRs_found_dict:
                                         if DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
-                                                                                                                          subject_genome_end_position,
-                                                                                                                          DGRs_found_dict[dgr]['TR_start_position'],
-                                                                                                                          DGRs_found_dict[dgr]['TR_end_position']):
+                                                                                                                        subject_genome_end_position,
+                                                                                                                        DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                                        DGRs_found_dict[dgr]['TR_end_position']):
                                             was_added = True
                                             # update TR start and end
                                             DGRs_found_dict[dgr]['TR_start_position'] = min(subject_genome_start_position, DGRs_found_dict[dgr]['TR_start_position'])
@@ -822,7 +825,7 @@ class DGR_Finder:
 
         # are there genes?
         if not contigs_db.meta['genes_are_called']:
-            self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
+            self.run.warning("There are no gene calls in your contigs database, therefore there is no context to "
                              "learn about :/ Your reports will not include a file to study the genomic context "
                              "that surrounds the DGRs")
 
@@ -894,15 +897,134 @@ class DGR_Finder:
 
                         # add fasta header
                         header = '|'.join([f"contig:{contig_name}",
-                                       f"start:{gene_call['start']}",
-                                       f"stop:{gene_call['stop']}",
-                                       f"direction:{gene_call['direction']}",
-                                       f"rev_compd:{rev_compd}",
-                                       f"length:{gene_call['length']}"])
+                                        f"start:{gene_call['start']}",
+                                        f"stop:{gene_call['stop']}",
+                                        f"direction:{gene_call['direction']}",
+                                        f"rev_compd:{rev_compd}",
+                                        f"length:{gene_call['length']}"])
                         gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
+
+    def get_hmm_info(self, DGRs_found_dict):
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        hmm_hits_info_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        hmm_hits_info_dict = contigs_db.db.smart_get(t.hmm_hits_info_table_name, column = 'source')
+        hmms_provided = list(hmm_hits_info_dict.keys())
+        self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
+
+        # check if HMMs given are classic RT_HMM ones if not raise warning
+        if 'Reverse_Transcriptase' in hmms_provided:
+            self.run.warning("The classic reverse transcriptase HMM has not been run with these contigs. "
+                            "Anvi'o hopes you are using your own reverse transcriptase HMM, however if not "
+                            "we will still find the HMM hits closes to the template regions for you (we don't "
+                            "know why this could be helpful though)")
+
+        found_HMMS_dict = {}
+        for gene_caller_id in self.hmm_hits_in_splits_dict:
+            # Check if the gene_caller_id exists in genes_in_contigs
+            if gene_caller_id in genes_in_contigs:
+                # Retrieve the 'start' and 'stop' values
+                start_value = genes_in_contigs[gene_caller_id]['start']
+                stop_value = genes_in_contigs[gene_caller_id]['stop']
+                contig = genes_in_contigs[gene_caller_id]['contig']
+                Gene_annotation_source = genes_in_contigs[gene_caller_id]['source']
+                direction = genes_in_contigs[gene_caller_id]['direction']
+
+                if (gene_caller_id in genes_in_contigs) and (gene_caller_id in hmm_hits_dict):
+                    gene_name = hmm_hits_dict[gene_caller_id]['gene_name']
+                    HMM_source = hmm_hits_dict[gene_caller_id]['source']
+
+                # Create a new dictionary entry for each gene_caller_id
+                found_HMMS_dict[gene_caller_id] = {
+                    'HMM_start': start_value,
+                    'HMM_stop': stop_value,
+                    'HMM_Midpoint': int((start_value + stop_value)/2),
+                    'contig': contig,
+                    'HMM_source': HMM_source,
+                    'HMM_direction': direction,
+                    'HMM_gene_name': gene_name,
+                    'Gene_annotation_source': Gene_annotation_source
+                }
+
+        #sorted_DGRs_found_dict = dict(sorted(DGRs_found_dict.items(), key=lambda x: x[1]['VRs'][next(iter(x[1]['VRs']))]['TR_middle_position']))
+        #sorted_DGRs_found_dict = dict(sorted(DGRs_found_dict.items(), key=lambda x: x[1]['VRs'][next(iter(x[1]['VRs']))].get('TR_middle_position', float('inf'))))
+
+        #print(sorted_DGRs_found_dict)
+        #second_sorted_DGRs_found_dict = dict(sorted(DGRs_found_dict.items(), key=lambda x: x[1]['TR_middle_position']))
+        #print(second_sorted_DGRs_found_dict)
+
+        for DGR_id, DGR_info in DGRs_found_dict.items():
+            # Access the 'VRs' dictionary within each DGR
+            VRs_dict = DGR_info.get('VRs', {})
+            for TR_id in VRs_dict.keys():  # Iterate over keys of VRs_dict
+                # Access VR_info using TR_id
+                VR_info = VRs_dict[TR_id]
+                # Calculate the new TR_middle_position
+                TR_start_position = VR_info.get('TR_start_position')
+                TR_end_position = VR_info.get('TR_end_position')
+                if TR_start_position is not None and TR_end_position is not None:
+                    TR_middle_position = (TR_start_position + TR_end_position) / 2
+                    # Update the VR_info dictionary with the new TR_middle_position
+                    VR_info['TR_middle_position'] = TR_middle_position
+
+                # Initialize closest_distances dictionary inside the loop
+                closest_distances = {}  # Initialize an empty dictionary to store closest distances
+
+                for HMM_id, HMM_info in found_HMMS_dict.items():
+                    HMM_midpoint = HMM_info['HMM_Midpoint']
+                    distance = abs(TR_middle_position - HMM_midpoint)
+
+                    if TR_id not in closest_distances or distance < closest_distances[TR_id]['distance']:
+                        closest_distances[TR_id] = {'HMM_id': HMM_id, 'distance': distance}
+
+                # Update closest_HMM for each TR
+                for TR_id, closest_info in closest_distances.items():
+                    HMM_id = closest_info['HMM_id']
+                    if 'closest_HMM' not in VRs_dict[TR_id]:
+                        VRs_dict[TR_id]['closest_HMM'] = {}
+                    VRs_dict[TR_id]['closest_HMM'][HMM_id] = found_HMMS_dict.get(HMM_id, {})
+
+
+        print(closest_distances)
+
+        print('printing DGRs_found_dict....')
+        print(DGRs_found_dict)
+
+
+
+
+        #for the caller id if it is on the same contig than search for the closest gene hit in trs
+        #for gene_caller_id, gene_info in found_HMMS_dict.items():
+            #start_value = gene_info['HMM_start']
+
+            # Calculate absolute differences and find the closest TR_start_position
+            #closest_positions = [abs(start_value - dgr_info['TR_start_position']) for dgr_info in DGRs_found_dict.values()]
+            #closest_index = closest_positions.index(min(closest_positions))
+
+            # Add the gene_info to the closest DGR entry
+            #closest_dgr_key = list(DGRs_found_dict.keys())[closest_index]
+            #DGRs_found_dict[closest_dgr_key][gene_caller_id] = gene_info
+        #print('found HMMs dict:')
+        #print(DGRs_found_dict)
+        #if TR in same contig then loops through found_HMMs_dict - finds hmm that is close to the TR?
+        # are there hmms?
+        #if not contigs_db.meta['hmm_hits']:
+            #self.run.warning("Houston we have a problem. There are no HMMs in your contigs database, therefore"
+                             #"there are no reverse transcriptases to investigate :/ Your reports will not include"
+                             #"information about the RTs and there fore no DGRs can officially exsist :/"
+                             #f"To run this information you can re-run your '{self.contigs_dp_path}' with 'anvi-run-hmms'"
+                             #"with the flag '-I' and the 'RT_HMM' (type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases)."
+                             #"then re-run 'anvi-report-dgrs'. If that is what you want of course")
+
+            #contigs_db.disconnect()
+
+        return (DGRs_found_dict)
+
 
     def create_found_tr_vr_csv(self, DGRs_found_dict):
         """
@@ -920,13 +1042,14 @@ class DGR_Finder:
         """
         base_input_name = None
         if self.fasta_file_path:
-             base_input_name = os.path.basename(self.fasta_file_path)
+                base_input_name = os.path.basename(self.fasta_file_path)
         elif self.contigs_db_path:
-             base_input_name = os.path.basename(self.contigs_db_path)
+                base_input_name = os.path.basename(self.contigs_db_path)
 
         # if contigs.db, then check for gene info per VR
         if self.contigs_db_path:
             self.get_gene_info(DGRs_found_dict)
+            self.get_hmm_info(DGRs_found_dict)
 
         csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(csv_file_path, 'w', newline='') as csvfile:
@@ -934,13 +1057,39 @@ class DGR_Finder:
 
             # Write header
             csv_writer.writerow(["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "Mismatch %",
-                                 "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position"])
+                                "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position","HMM_source",
+                                "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_name"])
 
+            #pre adding HMMs code!
             # Write data
+            #for dgr, tr in DGRs_found_dict.items():
+                #for vr, vr_data in tr['VRs'].items():
+                    #csv_writer.writerow([dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'], vr_data['VR_end_position'],
+                                        #vr_data['percentage_of_mismatches'], tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
+                                        #vr_data['TR_start_position'], vr_data['TR_end_position'], vr_data[]])
+
             for dgr, tr in DGRs_found_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    csv_writer.writerow([dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'], vr_data['VR_end_position'],
-                                         vr_data['percentage_of_mismatches'], tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
-                                         vr_data['TR_start_position'], vr_data['TR_end_position']])
+                    # Access the closest_HMM dictionary within each VR
+                    closest_hmm_dict = vr_data.get('closest_HMM', {})
+
+                    # Write VR data to CSV
+                    csv_row = [dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'],
+                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data['percentage_of_mismatches'],
+                            tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
+                            vr_data['TR_start_position'], vr_data['TR_end_position']]
+
+                    # If closest_HMM information is available, add it to the CSV row
+                    if closest_hmm_dict:
+                        for hmm_id, hmm_info in closest_hmm_dict.items():
+                            csv_row.extend([hmm_info.get('HMM_gene_name', ''),hmm_info.get('HMM_direction', ''), hmm_info.get('HMM_start', ''), hmm_info.get('HMM_stop', ''),
+                                            hmm_info.get('HMM_source', '')
+                                            ])
+                    else:
+                        # If no closest_HMM information is available, add empty fields to the CSV row
+                        csv_row.extend([''] * 5)
+
+                    # Write the CSV row
+                    csv_writer.writerow(csv_row)
             return csv_file_path
 
