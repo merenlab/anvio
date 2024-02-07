@@ -5487,7 +5487,7 @@ class KEGGData:
                 categorizations: List[Tuple[str]] = []
                 for categorization in ko_hierarchy_table['categorization']:
                     categorization: str
-                    categorizations.append(categorization.split('>>>'))
+                    categorizations.append(tuple(categorization.split('>>>')))
                 ko_hierarchies_dict[hierarchy_id] = tuple(categorizations)
             ko_dict['HIE'] = ko_hierarchies_dict
 
