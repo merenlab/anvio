@@ -8718,7 +8718,10 @@ class Constructor:
                         category.name = focus_category_name
                         category.hierarchy_id = hierarchy_id
                         if depth == len(categorization) and hierarchy_id == 'ko00001':
-                            category.pathway_id = category_pathways[categorization]
+                            try:
+                                category.pathway_id = category_pathways[categorization]
+                            except KeyError:
+                                pass
                         categories.append(category)
 
                         if len(categories) > 1:
