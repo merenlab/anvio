@@ -8672,9 +8672,9 @@ class Constructor:
                 network_hierarchy_categories = network.categories[hierarchy_id]
             except KeyError:
                 # Create a new hierarchy object and add it to the network.
-                hierarchy_info = kegg_hierarchies_data[hierarchy_id]
+                hierarchy_name = kegg_hierarchies_data[hierarchy_id]
                 hierarchy = BRITEHierarchy(id=hierarchy_id)
-                hierarchy.name = hierarchy_info[hierarchy_id]
+                hierarchy.name = hierarchy_name
                 network.hierarchies[hierarchy_id] = hierarchy
                 network_hierarchy_categories: Dict[Tuple[str], Tuple[BRITECategory]] = {}
                 network.categories[hierarchy_id] = network_hierarchy_categories
