@@ -118,9 +118,9 @@ rule anvi_run_hmms_hmmsearch:
             # Load contigs_db
             contigs_db = ContigsDatabase(contigs_db_path)
             # Check if anvi-run-scg-taxonomy has been run
-            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
+            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_database_version']
 
-            if scg_taxonomy_was_run_value != 1:
+            if scg_taxonomy_was_run_value !=  "GTDB: v214.1; Anvi'o: v1":
                 print(f"Running anvi-run-scg-taxonomy on {contigs_db_path} since the {wildcards.hmm} is in anvio's collection of SCGs")
                 shell("anvi-run-scg-taxonomy -c {contigs_db_path} --num-threads {threads} {params.additional_params}")
         else:
