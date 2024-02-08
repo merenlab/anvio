@@ -1132,23 +1132,23 @@ class Pangraph():
 
         # reconnect open leaves in the graph to generate
         # a flow network from left to right
-        self.new_run_tree_to_flow_network_algorithm()
+        # self.run_tree_to_flow_network_algorithm()
         
         ##### START OF ALEX TESTING AREA
-        # self.new_run_tree_to_flow_network_algorithm()
+        self.new_run_tree_to_flow_network_algorithm()
         ##### END OF ALEX TESTING AREA
 
         # process edges and nodes to extract unique paths
         # from the nework
         # TODO Edge direction overlay
-        self.calculate_component_paths()
+        # self.calculate_component_paths()
 
         # run Alex's layout algorithm
         # TODO Rework the algorithm
-        self.run_synteny_layout_algorithm()
+        # self.run_synteny_layout_algorithm()
 
         # condense gene clusters into groups
-        self.condense_gene_clusters_into_groups()
+        # self.condense_gene_clusters_into_groups()
 
         # store network in the database
         self.store_network()
@@ -1730,13 +1730,13 @@ class Pangraph():
         for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
             self.x_list[x] = generation
             for node in generation:
-                self.position[node] = (x, 0)
+                self.position[node] = (x, -1)
 
-        self.layout_graph = nx.DiGraph(self.edmonds_graph)
-        nx.set_edge_attributes(self.layout_graph, values=1, name='weight')
-        self.layout_graph.remove_node('stop')
-        layout_graph_nodes = list(self.layout_graph.nodes())
-        layout_graph_successors = {layout_graph_node: list(self.layout_graph.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
+        self.ancest = nx.DiGraph(self.edmonds_graph)
+        nx.set_edge_attributes(self.ancest, values=-1, name='weight')
+        # self.ancest.remove_node('stop')
+        layout_graph_nodes = list(self.ancest.nodes())
+        layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
         ghost = 0
         for y in range(x-1, 0, -1):
@@ -1745,18 +1745,19 @@ class Pangraph():
 
                 change = []
                 for successor in layout_graph_successors[node]:
-                    successor_x_position = self.position[successor][0]
-                    
-                    if successor_x_position <= node_x_position:
-                        print('Sanity Error.')
-                        exit()
-                    else:
-                        change.append((successor_x_position, successor))
+                    if successor != 'stop':
+                        successor_x_position = self.position[successor][0]
+                        
+                        if successor_x_position <= node_x_position:
+                            print('Sanity Error.')
+                            exit()
+                        else:
+                            change.append((successor_x_position, successor))
 
                 if change:
                     if min(change)[0] > 1:
                         new_x_position = min([(x, n) for (x, n) in change if x > 1])[0] - 1
-                        self.position[node] = (new_x_position, 0)
+                        self.position[node] = (new_x_position, -1)
 
                     for (position, extend_successor) in change:
                         x_difference = position - new_x_position
@@ -1765,28 +1766,35 @@ class Pangraph():
 
                         for i in range(1, x_difference):
                             path_list += ['Ghost_' + str(ghost)]
-                            self.position['Ghost_' + str(ghost)] = (new_x_position + i, 0)
+                            self.position['Ghost_' + str(ghost)] = (new_x_position + i, -1)
                             ghost += 1
 
                         path_list += [extend_successor]
 
-                        self.layout_graph.remove_edge(node, extend_successor)
-                        self.layout_graph.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=0)
+                        self.ancest.remove_edge(node, extend_successor)
+                        
+                        self.edges.append(path_list)
+                        self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
 
-        for i, j in self.layout_graph.edges():
+        for i, j in self.ancest.edges():
 
-            if self.position[j][0] - self.position[i][0] != 1 and self.position[i][0] != 0:
+            if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop':
                 
                 # print(i, j, self.position[i][0], self.position[j][0])
                 print('Sanity Error.')
                 exit()
 
-        dfs_list = list(nx.dfs_edges(self.layout_graph, source='start'))
+        # for pred in self.ancest.predecessors('stop'):
+        #     print(pred)
 
-        # print(dfs_list)
+        longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
+        print(len(longest_path))
+        m = set(longest_path)
+
+        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
 
         group = 0
-        degree = dict(self.layout_graph.degree())
+        degree = dict(self.ancest.degree())
         groups = {}
         groups_rev = {}
 
@@ -1805,57 +1813,178 @@ class Pangraph():
                     groups[group_name] += [node_w]
                     groups_rev[node_w] = group_name
 
+        for label, condense_nodes in groups.items():
+
+            condense_nodes = [node for node in condense_nodes if not node.startswith('Ghost_')]
+
+            if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
+                self.grouping[label] = condense_nodes
+
         branches = {}
+        # branches_rev = {}
         sortable = []
         for g in groups.keys():
             # print([(n, self.position[n]) for n in groups[g]],"\n")
             branch = groups[g]
 
-            start = self.position[branch[0]][0]
-            length = len(branch)
+            # for br in branch:
+            #     branches_rev[br] = branch
 
-            if start in branches.keys():
-                if length in branches[start].keys():
-                    if branches[start][length].keys():
-                        num = max(branches[start][length].keys()) + 1
+            if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
+                print('Sanity Error.')
+                break
+
+            elif set(branch).isdisjoint(m):
+
+                start = self.position[branch[0]][0]
+                length = len(branch)
+
+                if start in branches.keys():
+                    if length in branches[start].keys():
+                        if branches[start][length].keys():
+                            num = max(branches[start][length].keys()) + 1
+                        else:
+                            num = 1
+
+                        branches[start][length][num] = branch
                     else:
                         num = 1
-
-                    branches[start][length][num] = branch
+                        branches[start][length] = {num: branch}
                 else:
                     num = 1
-                    branches[start][length] = {num: branch}
-            else:
-                num = 1
-                branches[start] = {length: {num: branch}}
+                    branches[start] = {length: {num: branch}}
 
-            sortable += [(start, length, num)]
+                sortable += [(start, length, num)]
 
 
-        left_nodes = set(self.layout_graph.nodes()) - set(groups_rev.keys())
+        left_nodes = set(self.ancest.nodes()) - set(groups_rev.keys())
         for n in left_nodes:
-            start = self.position[n][0]
-            length = 1
 
-            if start in branches.keys():
-                if length in branches[start].keys():
-                    if branches[start][length].keys():
-                        num = max(branches[start][length].keys()) + 1
+            # branches_rev[node] = node
+
+            if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
+                print('Sanity Error.')
+                break
+
+            elif set([n]).isdisjoint(m):
+
+                start = self.position[n][0]
+                length = 1
+                if n != 'start' and n != 'stop':
+                    if start in branches.keys():
+                        if length in branches[start].keys():
+                            if branches[start][length].keys():
+                                num = max(branches[start][length].keys()) + 1
+                            else:
+                                num = 1
+
+                            branches[start][length][num] = [n]
+                        else:
+                            num = 1
+                            branches[start][length] = {num: [n]}
                     else:
                         num = 1
+                        branches[start] = {length: {num: [n]}}
 
-                    branches[start][length][num] = [n]
-                else:
-                    num = 1
-                    branches[start][length] = {num: [n]}
-            else:
-                num = 1
-                branches[start] = {length: {num: [n]}}
+                    sortable += [(start, length, num)]
 
-            sortable += [(start, length, num)]
 
-        print(sorted(sortable, key=lambda x: x[1], reverse = True))
-        exit()
+        # for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
+        #     br = branches[i][j][k]
+        #     if set(br).issubset(m):
+        #         print(br)
+        
+        used = {}
+
+        y_new = 0
+        for node in longest_path:
+            x_pos = self.position[node][0]
+            self.position[node] = (x_pos, y_new)
+            used[x_pos] = y_new
+
+        stack = [longest_path]
+        while stack:
+
+            current = stack[0]
+
+            # print(current)
+
+            remove = True
+            for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
+                branch = branches[i][j][k]
+                branch_pred = set(self.ancest.predecessors(branch[0]))
+                branch_succ = set(self.ancest.successors(branch[-1]))
+                if not branch_pred.isdisjoint(set(current)) or not branch_succ.isdisjoint(set(current)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+                    
+                    # print(branch, i, j, k)
+
+                    remove = False
+                    sortable.remove((i,j,k))
+
+                    stack = [branch] + stack
+                    y_new = max([used[s] for s in range(i, i+j)]) + 1
+
+                    for node in branch:
+                        x_pos = self.position[node][0]
+                        self.position[node] = (x_pos, y_new)
+
+                        # print((x_pos, y_new))
+
+                        used[x_pos] = y_new
+
+                    break
+
+            if remove == True:
+                stack.remove(current)
+
+        #     print('\n')
+            
+        print(sortable)
+
+        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
+
+        for edge in self.edges:            
+            self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
+            self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+            self.ancest.remove_nodes_from(edge[1:-1])
+
+        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
+
+        for node in self.ancest.nodes():
+            self.ancest.nodes[node]['pos'] = self.position[node]
+
+        # self.ancest.remove_edge('start', 'stop')
+
+        self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges.")
+        self.run.info_single(f"Done.")
+
+        # self.position['start'] = (0, 0)
+        # for z in range(1, x):
+        #     print(z)
+        #     if z in branches.keys():
+        #         for item in sorted(branches[z].keys(), reverse=False):
+        #             for num in branches[z][item]:
+        #                 branch = branches[z][item][num]
+        #                 predecessors = self.ancest.predecessors(branch[0])
+        #                 start_y, predec = min([(self.position[pred][1], pred) for pred in predecessors])
+
+        #                 print(start_y)
+        #                 print(branch)
+
+        #                 repeat = True
+        #                 while repeat == True:
+        #                     repeat = False
+        #                     for i, node in enumerate(branch):
+        #                         if (i+z, start_y) in self.position.values():
+        #                             repeat = True
+        #                             start_y += 1
+        #                             print('this')
+        #                             break
+        #                         else:
+        #                             self.position[node] = (i+z, start_y)
+        #                             print('add ', node, ' ', i+z, start_y)
+
+        # exit()
 
                 # if possible_x_change != -1 and do_change == True:
                 #     change.append((node, possible_x_change))
@@ -1894,397 +2023,399 @@ class Pangraph():
         #         else:
         #             nodes[node_list[int(len(node_list)/2)]] = [node]
 
-        edmonds_graph_edges = list(self.edmonds_graph.edges())
-        for i, j in edmonds_graph_edges:
-            if abs(self.position[j][0] - self.position[i][0]) > self.max_edge_length_filter and self.max_edge_length_filter != -1:
-                self.edmonds_graph.remove_edge(i, j)
-                self.removed_edges += 1
+        # edmonds_graph_edges = list(self.edmonds_graph.edges())
+        # for i, j in edmonds_graph_edges:
+        #     if abs(self.position[j][0] - self.position[i][0]) > self.max_edge_length_filter and self.max_edge_length_filter != -1:
+        #         self.edmonds_graph.remove_edge(i, j)
+        #         self.removed_edges += 1
 
-        self.run.info_single(f"{self.fusion_events} fusion events.") 
-        self.run.info_single(f"{self.removed_edges} removed edges due to length cutoff.")
-        self.run.info_single(f"Done.")
+        # self.run.info_single(f"{self.fusion_events} fusion events.") 
+        # self.run.info_single(f"{self.removed_edges} removed edges due to length cutoff.")
+        # self.run.info_single(f"Done.")
 
     # TODO Speed up component path finding (multithreading)
-    def calculate_component_paths(self):
+    # def calculate_component_paths(self):
 
-        self.run.warning(None, header="Extracting component paths from F", lc="green")
+    #     self.run.warning(None, header="Extracting component paths from F", lc="green")
 
-        self.progress.new("Solving Path")
+    #     self.progress.new("Solving Path")
 
-        edmonds_graph_edges = list(self.edmonds_graph.edges())
-        number = len(str(len(edmonds_graph_edges)))
+    #     edmonds_graph_edges = list(self.edmonds_graph.edges())
+    #     number = len(str(len(edmonds_graph_edges)))
 
-        j = 0
-        for i, (node_i, node_j) in enumerate(edmonds_graph_edges):
+    #     j = 0
+    #     for i, (node_i, node_j) in enumerate(edmonds_graph_edges):
 
-            self.progress.update(f"{str(i).rjust(number, ' ')} / {len(edmonds_graph_edges)}")
+    #         self.progress.update(f"{str(i).rjust(number, ' ')} / {len(edmonds_graph_edges)}")
 
-            if nx.has_path(self.edmonds_graph, 'start', node_i) and nx.has_path(self.edmonds_graph, node_j, 'stop'):
+    #         if nx.has_path(self.edmonds_graph, 'start', node_i) and nx.has_path(self.edmonds_graph, node_j, 'stop'):
 
-                path_leaf = nx.shortest_path(self.edmonds_graph, 'start', node_i, method='bellman-ford')
-                path_succ = nx.shortest_path(self.edmonds_graph, node_j, 'stop', method='bellman-ford')
-                full_path = path_leaf + path_succ
+    #             path_leaf = nx.shortest_path(self.edmonds_graph, 'start', node_i, method='bellman-ford')
+    #             path_succ = nx.shortest_path(self.edmonds_graph, node_j, 'stop', method='bellman-ford')
+    #             full_path = path_leaf + path_succ
 
-                value = nx.path_weight(self.edmonds_graph, full_path, 'weight')/len(full_path)
+    #             value = nx.path_weight(self.edmonds_graph, full_path, 'weight')/len(full_path)
 
-                self.leaf_path.append((value, full_path))
+    #             self.leaf_path.append((value, full_path))
 
-            else:
-                j += 1
+    #         else:
+    #             j += 1
 
-        self.progress.end()
+    #     self.progress.end()
 
-        self.run.info_single(f"Removed {j} unsolvable edges.")
-        self.run.info_single("Done.")
+    #     self.run.info_single(f"Removed {j} unsolvable edges.")
+    #     self.run.info_single("Done.")
 
-    # ANCHOR Sub path calculation script
-    def calculate_unknown_edges(self, path, known):
+    # # ANCHOR Sub path calculation script
+    # def calculate_unknown_edges(self, path, known):
 
-        ancest_nodes = list(self.ancest.nodes())
+    #     ancest_nodes = list(self.ancest.nodes())
 
-        unknown_edges = []
-        sub_edges = []
+    #     unknown_edges = []
+    #     sub_edges = []
 
-        for k, o in map(tuple, zip(path, path[1:])):
-            if not (k, o) in known:
+    #     for k, o in map(tuple, zip(path, path[1:])):
+    #         if not (k, o) in known:
 
-                if k in ancest_nodes and o in ancest_nodes:
-                    if sub_edges:
-                        unknown_edges.append(sub_edges)
-                        sub_edges = []
+    #             if k in ancest_nodes and o in ancest_nodes:
+    #                 if sub_edges:
+    #                     unknown_edges.append(sub_edges)
+    #                     sub_edges = []
 
-                    unknown_edges.append([(k, o)])
+    #                 unknown_edges.append([(k, o)])
 
-                elif o in ancest_nodes:
-                    sub_edges.append((k, o))
-                    unknown_edges.append(sub_edges)
-                    sub_edges = []
+    #             elif o in ancest_nodes:
+    #                 sub_edges.append((k, o))
+    #                 unknown_edges.append(sub_edges)
+    #                 sub_edges = []
 
-                else:
-                    sub_edges.append((k, o))
+    #             else:
+    #                 sub_edges.append((k, o))
 
-            else:
-                if sub_edges:
-                    unknown_edges.append(sub_edges)
-                    sub_edges = []
+    #         else:
+    #             if sub_edges:
+    #                 unknown_edges.append(sub_edges)
+    #                 sub_edges = []
 
-        if sub_edges:
-            unknown_edges.append(sub_edges)
-            sub_edges = []
+    #     if sub_edges:
+    #         unknown_edges.append(sub_edges)
+    #         sub_edges = []
 
-        return(unknown_edges)
+    #     return(unknown_edges)
 
-    # ANCHOR Main position calculation
-    # TODO Recalculate Topo Coordinated
-    # It is possible that the topological x positions have to be recalculated here as
-    # change of the graph can happen after the first topological sorting by removing / adding
-    # more edges.
-    def run_synteny_layout_algorithm(self):
+    # # ANCHOR Main position calculation
+    # # TODO Recalculate Topo Coordinated
+    # # It is possible that the topological x positions have to be recalculated here as
+    # # change of the graph can happen after the first topological sorting by removing / adding
+    # # more edges.
+    # def run_synteny_layout_algorithm(self):
 
-        self.run.warning(None, header="Calculating graph P node positions", lc="green")
+    #     self.run.warning(None, header="Calculating graph P node positions", lc="green")
 
-        self.ancest.add_edge("start", "stop", weight=1)
-        known = set([('start', 'stop')])
+    #     self.ancest.add_edge("start", "stop", weight=1)
+    #     known = set([('start', 'stop')])
 
-        paths = [value for value in sorted(self.leaf_path, key=lambda x: x[0], reverse=True)]
-        self.progress.new("Running path")
+    #     paths = [value for value in sorted(self.leaf_path, key=lambda x: x[0], reverse=True)]
+    #     self.progress.new("Running path")
 
-        number = len(str(len(paths)))
-        for i, (_, path) in enumerate(paths):
-            self.progress.update(f"{str(i).rjust(number, ' ')} / {len(paths)}")
+    #     number = len(str(len(paths)))
+    #     for i, (_, path) in enumerate(paths):
+    #         self.progress.update(f"{str(i).rjust(number, ' ')} / {len(paths)}")
 
-            # try:
-            unknown_edges = self.calculate_unknown_edges(path, known)
+    #         # try:
+    #         unknown_edges = self.calculate_unknown_edges(path, known)
 
-            # print("1", unknown_edges)
+    #         # print("1", unknown_edges)
 
-            for sub_edges in unknown_edges:
+    #         for sub_edges in unknown_edges:
 
-                # print("2", sub_edges)
+    #             # print("2", sub_edges)
 
-                known.update(sub_edges)
+    #             known.update(sub_edges)
 
-                node_start = sub_edges[0][0]
-                node_stop = sub_edges[-1][1]
+    #             node_start = sub_edges[0][0]
+    #             node_stop = sub_edges[-1][1]
 
-                sub_path = path[path.index(node_start): path.index(node_stop)+1]
+    #             sub_path = path[path.index(node_start): path.index(node_stop)+1]
 
-                node_first_x, node_first_y = self.position[sub_path[1]]
-                node_last_x, node_last_y = self.position[sub_path[-2]]
+    #             node_first_x, node_first_y = self.position[sub_path[1]]
+    #             node_last_x, node_last_y = self.position[sub_path[-2]]
 
-                node_start_x, node_start_y = self.position[node_start]
-                node_stop_x, node_stop_y = self.position[node_stop]
+    #             node_start_x, node_start_y = self.position[node_start]
+    #             node_stop_x, node_stop_y = self.position[node_stop]
 
-                # print("3", node_start, node_start_x, node_start_y)
-                # print("4", node_stop, node_stop_x, node_stop_y)
+    #             # print("3", node_start, node_start_x, node_start_y)
+    #             # print("4", node_stop, node_stop_x, node_stop_y)
 
-                for z in range(node_start_x, node_stop_x+1):
-                    if sub_path[z-node_start_x] not in self.x_list[z]:
+    #             for z in range(node_start_x, node_stop_x+1):
+    #                 if sub_path[z-node_start_x] not in self.x_list[z]:
 
-                        sub_path = sub_path[:z-node_start_x] + ["Ghost_" + str(self.ghost)] + sub_path[z-node_start_x:]
+    #                     sub_path = sub_path[:z-node_start_x] + ["Ghost_" + str(self.ghost)] + sub_path[z-node_start_x:]
 
-                        self.x_list[z].append("Ghost_" + str(self.ghost))
+    #                     self.x_list[z].append("Ghost_" + str(self.ghost))
 
-                        self.ghost += 1
+    #                     self.ghost += 1
 
-                # print("5", self.x_list)
+    #             # print("5", self.x_list)
 
-                curr_path = []
-                for s in sub_path:
-                    if not s.startswith('Ghost_'):
-                        if len(curr_path) > 1:
-                            curr_path.append(s)
-                            self.edges.append(curr_path)
-                        curr_path = [s]
-                    else:
-                        curr_path.append(s)
+    #             curr_path = []
+    #             for s in sub_path:
+    #                 if not s.startswith('Ghost_'):
+    #                     if len(curr_path) > 1:
+    #                         curr_path.append(s)
+    #                         self.edges.append(curr_path)
+    #                     curr_path = [s]
+    #                 else:
+    #                     curr_path.append(s)
 
-                # print("6", self.x_list)
+    #             # print("6", self.x_list)
 
-                sub_path = sub_path[1:-1]
+    #             sub_path = sub_path[1:-1]
 
-                # print("7", sub_path)
+    #             # print("7", sub_path)
 
-                if node_start == 'start':
-                    next_y = self.y_shifting(sub_path, node_first_x-1, node_stop_x, node_start_y, node_stop_y)
-                elif node_stop == 'stop':
-                    next_y = self.y_shifting(sub_path, node_start_x, node_last_x+1, node_start_y, node_stop_y)
-                elif node_start == 'start' and node_stop == 'stop':
-                    next_y = self.y_shifting(sub_path, node_first_x-1, node_last_x+1, node_start_y, node_stop_y)
-                else:
-                    next_y = self.y_shifting(sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y)
+    #             if node_start == 'start':
+    #                 next_y = self.y_shifting(sub_path, node_first_x-1, node_stop_x, node_start_y, node_stop_y)
+    #             elif node_stop == 'stop':
+    #                 next_y = self.y_shifting(sub_path, node_start_x, node_last_x+1, node_start_y, node_stop_y)
+    #             elif node_start == 'start' and node_stop == 'stop':
+    #                 next_y = self.y_shifting(sub_path, node_first_x-1, node_last_x+1, node_start_y, node_stop_y)
+    #             else:
+    #                 next_y = self.y_shifting(sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y)
 
-                # print("8", next_y)
+    #             # print("8", next_y)
 
-                self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
+    #             self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
 
-                to_be_removed = set()
-                if node_start == 'start':
-                    t = node_start_x + 1
-                    for node in sub_path:
-                        if node.startswith('Ghost_'):
-                            self.x_list[t].remove(node)
-                            self.ancest.remove_node(node)
+    #             to_be_removed = set()
+    #             if node_start == 'start':
+    #                 t = node_start_x + 1
+    #                 for node in sub_path:
+    #                     if node.startswith('Ghost_'):
+    #                         self.x_list[t].remove(node)
+    #                         self.ancest.remove_node(node)
 
-                            to_be_removed.add(node)
-                            self.position.pop(node)
-                            self.path.pop(node)
-                            t += 1
-                        else:
-                            break
+    #                         to_be_removed.add(node)
+    #                         self.position.pop(node)
+    #                         self.path.pop(node)
+    #                         t += 1
+    #                     else:
+    #                         break
 
-                if node_stop == 'stop':
-                    s = node_stop_x - 1
-                    for node in sub_path[::-1]:
-                        if node.startswith('Ghost_'):
-                            self.x_list[s].remove(node)
-                            self.ancest.remove_node(node)
+    #             if node_stop == 'stop':
+    #                 s = node_stop_x - 1
+    #                 for node in sub_path[::-1]:
+    #                     if node.startswith('Ghost_'):
+    #                         self.x_list[s].remove(node)
+    #                         self.ancest.remove_node(node)
 
-                            to_be_removed.add(node)
-                            self.position.pop(node)
-                            self.path.pop(node)
-                            s -= 1
-                        else:
-                            break
+    #                         to_be_removed.add(node)
+    #                         self.position.pop(node)
+    #                         self.path.pop(node)
+    #                         s -= 1
+    #                     else:
+    #                         break
 
-                # print("9", self.x_list)
+    #             # print("9", self.x_list)
 
-                cut_sub_path = [node for node in sub_path if node not in to_be_removed]
+    #             cut_sub_path = [node for node in sub_path if node not in to_be_removed]
 
-                for node in cut_sub_path:
-                    self.path[node] = cut_sub_path
+    #             for node in cut_sub_path:
+    #                 self.path[node] = cut_sub_path
 
-                # print("10", self.path)
+    #             # print("10", self.path)
 
-                # print("11", self.position)
+    #             # print("11", self.position)
 
-                # print("12", sub_path)
+    #             # print("12", sub_path)
 
-                # exit()
+    #             # exit()
 
-            # except Exception as error:
-            #     print('Sanity Error')
-            #     exit()
+    #         # except Exception as error:
+    #         #     print('Sanity Error')
+    #         #     exit()
 
-        self.progress.end()
+    #     self.progress.end()
 
-        if len(list(self.position.values())) != len(set(self.position.values())):  
-            print(len(list(self.position.values())) - len(set(self.position.values())))
+    #     if len(list(self.position.values())) != len(set(self.position.values())):  
+    #         print(len(list(self.position.values())) - len(set(self.position.values())))
 
-        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
+    #     nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
-        for edge in self.edges:
-            if edge[-1] != 'stop' and edge[0] != 'start':
-                self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
-                self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
-                self.ancest.remove_nodes_from(edge[1:-1])
+    #     for edge in self.edges:
+    #         if edge[-1] != 'stop' and edge[0] != 'start':
+    #             self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
+    #             self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+    #             self.ancest.remove_nodes_from(edge[1:-1])
 
-        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
+    #     nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
 
-        for node in self.ancest.nodes():
-            self.ancest.nodes[node]['pos'] = self.position[node]
+    #     for node in self.ancest.nodes():
+    #         self.ancest.nodes[node]['pos'] = self.position[node]
 
-        self.ancest.remove_edge('start', 'stop')
+    #     self.ancest.remove_edge('start', 'stop')
 
-        self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges.")
-        self.run.info_single(f"Done.")
+    #     self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges.")
+    #     self.run.info_single(f"Done.")
 
         # print(self.position['GC_00000071,GC_00000004,GC_00000125'])
 
     # ANCHOR Gene Cluster grouping
     # TODO Degree is calculated by pangenome graph not edmonds graph probably not a bad idea due
     # to easier adding of additional edges.
-    def condense_gene_clusters_into_groups(self):
+    # def condense_gene_clusters_into_groups(self):
 
-        self.run.warning(None, header="Grouping GCs to gene cluster groups (GCGs)", lc="green")
+    #     self.run.warning(None, header="Grouping GCs to gene cluster groups (GCGs)", lc="green")
 
-        if self.gene_cluster_grouping_threshold == -1:
-            self.run.info_single("Setting algorithm to 'no grouping'")
-        else:
-            self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {str(self.gene_cluster_grouping_threshold)}'")
+    #     if self.gene_cluster_grouping_threshold == -1:
+    #         self.run.info_single("Setting algorithm to 'no grouping'")
+    #     else:
+    #         self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {str(self.gene_cluster_grouping_threshold)}'")
 
-        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
+    #     dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
 
-        group = 0
-        degree = dict(self.ancest.degree())
-        groups = {}
-        groups_rev = {}
+    #     group = 0
+    #     degree = dict(self.ancest.degree())
+    #     groups = {}
+    #     groups_rev = {}
 
-        for node_v, node_w in dfs_list:
+    #     for node_v, node_w in dfs_list:
 
-            if node_v != 'start' and node_w != 'stop' and degree[node_v] == 2 and degree[node_w] == 2 and set(self.ancest.nodes[node_v]['genome'].keys()) == set(self.ancest.nodes[node_w]['genome'].keys()):
+    #         print(node_v, self.ancest.nodes[node_v].keys())
 
-                if node_v not in groups_rev.keys():
-                    group_name = 'GCG_' + str(group).zfill(8)
-                    groups[group_name] = [node_v, node_w]
-                    groups_rev[node_v] = group_name
-                    groups_rev[node_w] = group_name
-                    group += 1
+    #         if node_v != 'start' and node_w != 'stop' and degree[node_v] == 2 and degree[node_w] == 2 and set(self.ancest.nodes[node_v]['genome'].keys()) == set(self.ancest.nodes[node_w]['genome'].keys()):
 
-                else:
-                    group_name = groups_rev[node_v]
-                    groups[group_name] += [node_w]
-                    groups_rev[node_w] = group_name
+    #             if node_v not in groups_rev.keys():
+    #                 group_name = 'GCG_' + str(group).zfill(8)
+    #                 groups[group_name] = [node_v, node_w]
+    #                 groups_rev[node_v] = group_name
+    #                 groups_rev[node_w] = group_name
+    #                 group += 1
 
-        for label, condense_nodes in groups.items():
+    #             else:
+    #                 group_name = groups_rev[node_v]
+    #                 groups[group_name] += [node_w]
+    #                 groups_rev[node_w] = group_name
 
-            if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
-                self.grouping[label] = condense_nodes
+    #     for label, condense_nodes in groups.items():
 
-        self.run.info_single(f"Created {len(groups.keys())} groups.")
-        self.run.info_single("Done")
+    #         if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
+    #             self.grouping[label] = condense_nodes
+
+    #     self.run.info_single(f"Created {len(groups.keys())} groups.")
+    #     self.run.info_single("Done")
 
     # ANCHOR y-shifting script
     # TODO Wrong hierarchy bug:
     # Sometimes very small branches are included on top of way longer and higher weighted ones I'm currently
     # not completely sure why this occures and have to solve it.
-    def y_shifting(self, sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y):
-        current_start_x = node_start_x + 1
-        current_stop_x = node_stop_x - 1
-        current_path_length = (current_stop_x - current_start_x) - 1
-        current_y = max(node_start_y, node_stop_y) + 1
+    # def y_shifting(self, sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y):
+    #     current_start_x = node_start_x + 1
+    #     current_stop_x = node_stop_x - 1
+    #     current_path_length = (current_stop_x - current_start_x) - 1
+    #     current_y = max(node_start_y, node_stop_y) + 1
 
-        next_y = -1
+    #     next_y = -1
 
-        increase_layer = []
+    #     increase_layer = []
 
-        while current_y <= self.global_y + 1:
+    #     while current_y <= self.global_y + 1:
 
-            node = ''
-            current_layer_start_x = self.global_x
-            current_layer_stop_x = 0
-            layer_branches = []
-            sub_branch = []
-            layer_size = 0
+    #         node = ''
+    #         current_layer_start_x = self.global_x
+    #         current_layer_stop_x = 0
+    #         layer_branches = []
+    #         sub_branch = []
+    #         layer_size = 0
 
-            z = current_start_x
-            while z <= current_stop_x:
-                for check in self.x_list[z]:
-                    if check not in sub_path and self.position[check] == (z, current_y):
-                        node = check
+    #         z = current_start_x
+    #         while z <= current_stop_x:
+    #             for check in self.x_list[z]:
+    #                 if check not in sub_path and self.position[check] == (z, current_y):
+    #                     node = check
 
-                        if not sub_branch or node not in sub_branch:
+    #                     if not sub_branch or node not in sub_branch:
 
-                            sub_branch = self.path[node]
+    #                         sub_branch = self.path[node]
 
-                            if (current_y, sub_branch) not in layer_branches:
-                                layer_branches.append((current_y, sub_branch))
+    #                         if (current_y, sub_branch) not in layer_branches:
+    #                             layer_branches.append((current_y, sub_branch))
 
-                                sub_branch_start_x, _ = self.position[sub_branch[0]]
-                                sub_branch_stop_x, _ = self.position[sub_branch[-1]]
+    #                             sub_branch_start_x, _ = self.position[sub_branch[0]]
+    #                             sub_branch_stop_x, _ = self.position[sub_branch[-1]]
 
-                                layer_size += sub_branch_stop_x - sub_branch_start_x + 1
+    #                             layer_size += sub_branch_stop_x - sub_branch_start_x + 1
 
-                                current_layer_start_x = sub_branch_start_x if sub_branch_start_x < current_layer_start_x else current_layer_start_x
-                                current_layer_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_layer_stop_x else current_layer_stop_x
+    #                             current_layer_start_x = sub_branch_start_x if sub_branch_start_x < current_layer_start_x else current_layer_start_x
+    #                             current_layer_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_layer_stop_x else current_layer_stop_x
 
-                                current_start_x = sub_branch_start_x if sub_branch_start_x < current_start_x else current_start_x
-                                current_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_stop_x else current_stop_x
+    #                             current_start_x = sub_branch_start_x if sub_branch_start_x < current_start_x else current_start_x
+    #                             current_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_stop_x else current_stop_x
 
-                                z = current_layer_stop_x
+    #                             z = current_layer_stop_x
 
-                z += 1
+    #             z += 1
 
-            if layer_size > current_path_length:
+    #         if layer_size > current_path_length:
 
-                if next_y == -1:
-                    next_y = current_y
+    #             if next_y == -1:
+    #                 next_y = current_y
 
-            if next_y != -1:
-                increase_layer.extend(layer_branches)
+    #         if next_y != -1:
+    #             increase_layer.extend(layer_branches)
 
-            if not sub_branch:
-                if current_y != max(node_start_y, node_stop_y):
-                    break
-                else:
-                    current_y += 1
-            else:
-                current_y += 1
+    #         if not sub_branch:
+    #             if current_y != max(node_start_y, node_stop_y):
+    #                 break
+    #             else:
+    #                 current_y += 1
+    #         else:
+    #             current_y += 1
 
-        for _, layer_branch in sorted(increase_layer, reverse=True):
-            for node_branch in layer_branch:
-                node_branch_x = self.position[node_branch][0]
-                node_branch_y = self.position[node_branch][1]
+    #     for _, layer_branch in sorted(increase_layer, reverse=True):
+    #         for node_branch in layer_branch:
+    #             node_branch_x = self.position[node_branch][0]
+    #             node_branch_y = self.position[node_branch][1]
 
-                self.position[node_branch] = (node_branch_x, node_branch_y + 1)
+    #             self.position[node_branch] = (node_branch_x, node_branch_y + 1)
 
-        if next_y == -1:
-            next_y = current_y
+    #     if next_y == -1:
+    #         next_y = current_y
 
-        self.global_y = current_y if current_y > self.global_y else self.global_y
-        self.global_x = self.position["stop"][0] if self.position["stop"][0] > self.global_x else self.global_x
+    #     self.global_y = current_y if current_y > self.global_y else self.global_y
+    #     self.global_x = self.position["stop"][0] if self.position["stop"][0] > self.global_x else self.global_x
 
-        return(next_y)
+    #     return(next_y)
 
-    # ANCHOR adding new nodes and edges
-    # TODO take a closer look at the len(sub_path) == 0 situation for now added if sub_path
-    # keep in mind this can become a error later
-    def add_new_edges(self, sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x):
-        if sub_path:
-            if sub_path[0].startswith('Ghost_'):
-                self.ancest.add_edge(node_start, sub_path[0], weight=0)
+    # # ANCHOR adding new nodes and edges
+    # # TODO take a closer look at the len(sub_path) == 0 situation for now added if sub_path
+    # # keep in mind this can become a error later
+    # def add_new_edges(self, sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x):
+    #     if sub_path:
+    #         if sub_path[0].startswith('Ghost_'):
+    #             self.ancest.add_edge(node_start, sub_path[0], weight=0)
 
-            else:
-                self.ancest.add_edge(node_start, sub_path[0], weight=1)
+    #         else:
+    #             self.ancest.add_edge(node_start, sub_path[0], weight=1)
 
-            for i, new in enumerate(sub_path, 1):
-                self.path[new] = sub_path
+    #         for i, new in enumerate(sub_path, 1):
+    #             self.path[new] = sub_path
 
-                if new == sub_path[-1]:
-                    self.position[new] = (node_stop_x - 1, next_y)
-                else:
-                    self.position[new] = (node_start_x + i, next_y)
+    #             if new == sub_path[-1]:
+    #                 self.position[new] = (node_stop_x - 1, next_y)
+    #             else:
+    #                 self.position[new] = (node_start_x + i, next_y)
 
-                if new != sub_path[-1]:
-                    if sub_path[i].startswith('Ghost_') or new.startswith('Ghost_') or (sub_path[i].startswith('Ghost_') and new.startswith('Ghost_')):
-                        self.ancest.add_edge(new, sub_path[i], weight=0)
-                    else:
-                        self.ancest.add_edge(new, sub_path[i], weight=1)
+    #             if new != sub_path[-1]:
+    #                 if sub_path[i].startswith('Ghost_') or new.startswith('Ghost_') or (sub_path[i].startswith('Ghost_') and new.startswith('Ghost_')):
+    #                     self.ancest.add_edge(new, sub_path[i], weight=0)
+    #                 else:
+    #                     self.ancest.add_edge(new, sub_path[i], weight=1)
 
-            if sub_path[-1].startswith('Ghost_'):
-                self.ancest.add_edge(sub_path[-1], node_stop, weight=0)
-            else:
-                self.ancest.add_edge(sub_path[-1], node_stop, weight=1)
+    #         if sub_path[-1].startswith('Ghost_'):
+    #             self.ancest.add_edge(sub_path[-1], node_stop, weight=0)
+    #         else:
+    #             self.ancest.add_edge(sub_path[-1], node_stop, weight=1)
 
     # ANCHOR Converting network to JSON data
     # TODO rework that section for better debugging and add more features as an example fuse start and top
