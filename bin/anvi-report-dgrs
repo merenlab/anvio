@@ -30,18 +30,19 @@ run = Run()
 @time_program
 def main(args):
     D = dgrs.DGR_Finder(args)
-    blast_output = D.get_blast_results()
-    mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
-    DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
-    DGRs_found_dict = D.get_hmm_info(DGRs_found_dict)
-    csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
+    D.process()
+    #blast_output = D.get_blast_results()
+    #mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
+    #DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
+    #DGRs_found_dict = D.get_hmm_info(DGRs_found_dict)
+    #csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
 
 #call function here for filtering hits of blast from root
 def float_range(mini,maxi):
     """Return function handle of an argument type function for
-       ArgumentParser checking a float range: mini <= arg <= maxi
-         mini - minimum acceptable argument
-         maxi - maximum acceptable argument"""
+        ArgumentParser checking a float range: mini <= arg <= maxi
+        mini - minimum acceptable argument
+        maxi - maximum acceptable argument"""
 
     # Define the function with default arguments
     def float_range_checker(arg):
