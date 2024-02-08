@@ -61,13 +61,19 @@ def float_range(mini,maxi):
 
 my_float_range= float_range(0.5,1.0)
 
+def comma_or_string(input_str):
+        if ',' in input_str:
+            return input_str.split(',')
+        else:
+            return [input_str]
+
 if __name__ == '__main__':
     available_hmm_sources_pretty = '; '.join([f"'{s}' (type: {hmm_data.sources[s]['kind']})" for s in available_hmm_sources])
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('INPUT DATA', "Three options with varying outputs. 1. fasta file nothing else. 2. Contigs.db. 3. Contigs.db AND Profile.db. "
-                                       "option 1 and 2 Search for DGRs in whatever you have given it. Option 3. Searches based on areas of high SNV")
+                                        "option 1 and 2 Search for DGRs in whatever you have given it. Option 3. Searches based on areas of high SNV")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False})) #ADD THAT HAS TO BE MERGED_DB, unless have
     groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
@@ -78,7 +84,8 @@ if __name__ == '__main__':
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db."}))
+    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program"
+                                                                            "that you want to find the genes that your Variable Regions occured in."}))
     groupC.add_argument("--vr-in-orf", help="Search for variable regions only in open reading frames. More specifically it searches for SNVs only at the "
                         "first and second codon positions, based on our current knowledge of where the Adenine bases usually occur", type=bool, default=False)
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
@@ -93,7 +100,7 @@ if __name__ == '__main__':
                         "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
                         "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
                         f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
-                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed", type=str, default = 'Reverse_Transcriptase')
+                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=comma_or_string, default = ['Reverse_Transcriptase'])
 
     args = parser.get_args(parser)
 
