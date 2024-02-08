@@ -1702,7 +1702,7 @@ class Pangraph():
             
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
                     print('Sanity Error.')
-                    print(pred, current_node)
+                    # print(pred, current_node)
                     exit()
 
         self.progress.end()
@@ -1732,6 +1732,15 @@ class Pangraph():
             for node in generation:
                 self.position[node] = (x, -1)
 
+        remove = []
+        for edge_i, edge_j in self.edmonds_graph.edges():
+            if self.position[edge_j][0] - self.position[edge_i][0] > self.max_edge_length_filter:
+                remove.append((edge_i, edge_j))
+                print('y')
+        self.edmonds_graph.remove_edges_from(remove)
+
+        self.global_x = x
+
         self.ancest = nx.DiGraph(self.edmonds_graph)
         nx.set_edge_attributes(self.ancest, values=-1, name='weight')
         # self.ancest.remove_node('stop')
@@ -1739,7 +1748,7 @@ class Pangraph():
         layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
         ghost = 0
-        for y in range(x-1, 0, -1):
+        for y in range(self.global_x-1, 0, -1):
             for node in self.x_list[y]:
                 node_x_position = self.position[node][0]
 
@@ -1788,7 +1797,7 @@ class Pangraph():
         #     print(pred)
 
         longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
-        print(len(longest_path))
+        # print(len(longest_path))
         m = set(longest_path)
 
         dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
@@ -1932,6 +1941,8 @@ class Pangraph():
 
                         used[x_pos] = y_new
 
+                        self.global_y = y_new if y_new > self.global_y else self.global_y
+
                     break
 
             if remove == True:
@@ -1939,7 +1950,11 @@ class Pangraph():
 
         #     print('\n')
             
-        print(sortable)
+        # print(sortable)
+                
+        if len(set(self.position.values())) != len(self.position.values()):
+            print('Sanity Error.')
+            exit()
 
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
