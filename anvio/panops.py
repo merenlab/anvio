@@ -1240,11 +1240,11 @@ class Pangraph():
                         elif stop == len(genome_gc_order):
                             gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
-                            print("Sanity Error.")
+                            print("Sanity Error. Code 1.")
                             exit()
 
                         if len(gc_k) != 1 + (2 * self.k):
-                            print("Sanity Error.")
+                            print("Sanity Error. Code 2.")
                             exit()
 
                         gc = gc_k[int(len(gc_k) / 2)]
@@ -1264,7 +1264,7 @@ class Pangraph():
                                 #     self.genome_gc_occurence[gc_k[::-1]][genome] = 1
                                 # else:
                                 #     self.genome_gc_occurence[gc_k[::-1]][genome] += 1
-                                print('Sanity Error.')
+                                print('Sanity Error. Code 3.')
                                 exit()
 
             for gc, genome_gc_frequency in self.genome_gc_occurence.items():
@@ -1312,7 +1312,7 @@ class Pangraph():
                     elif stop == len(genome_gc_order):
                         gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                     else:
-                        print("Sanity Error.")
+                        print("Sanity Error. Code 4.")
                         exit()
 
                     for j in range(0, self.k+1):
@@ -1334,7 +1334,7 @@ class Pangraph():
             num_calls += sum(value.values()) 
 
         if num_calls != syn_calls:
-            print("Sanity Error.")
+            print("Sanity Error. Code 5.")
             exit()
 
         self.run.info_single("Done")
@@ -1670,7 +1670,7 @@ class Pangraph():
                 visited_nodes.add(current_node)
             
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-                    print('Sanity Error.')
+                    print('Sanity Error. Code 6.')
                     exit()
 
         self.progress.end()
@@ -1693,20 +1693,55 @@ class Pangraph():
             edmonds_graph_successors[stop] += ['stop']
 
         if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-            print('Sanity Error.')
+            print('Sanity Error. Code 7.')
             exit()
 
         self.run.info_single("Done")
 
+    # TODO Fusion of same position paralog GCs
     def run_synteny_layout_algorithm(self):
 
         self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
 
-        for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
-            self.x_list[x] = generation
-            for node in generation:
-                self.position[node] = (x, -1)
+        # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
+        #     self.x_list[x] = generation
+        #     for node in generation:
+        #         self.position[node] = (x, -1)
 
+        for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
+            nodes = {}
+            self.x_list[x] = []
+            for node in generation:
+                node_list = node.split(',')
+
+                if node_list[int(len(node_list)/2)] in nodes.keys():
+
+                    found = False
+                    for contractor in nodes[node_list[int(len(node_list)/2)]]:
+
+                        intersection = set(self.edmonds_graph.nodes()[contractor]['genome'].keys()).intersection(set(self.edmonds_graph.nodes()[node]['genome'].keys()))
+                        if not intersection:
+
+                            self.edmonds_graph.nodes()[contractor]['weight'] += self.edmonds_graph.nodes()[node]['weight']
+                            self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
+
+                            nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
+                            nx.contracted_nodes(self.pangenome_graph, contractor, node, copy=False)
+
+                            self.fusion_events += 1
+                            found = True
+                            break
+
+                    if found == False:
+                        nodes[node_list[int(len(node_list)/2)]] += [node]
+                        self.x_list[x].append(node)
+                        self.position[node] = (x, -1)
+
+                else:
+                    nodes[node_list[int(len(node_list)/2)]] = [node]
+                    self.x_list[x].append(node)
+                    self.position[node] = (x, -1)
+            
         self.global_x = x
 
         self.ancest = nx.DiGraph(self.edmonds_graph)
@@ -1727,7 +1762,7 @@ class Pangraph():
                         successor_x_position = self.position[successor][0]
                         
                         if successor_x_position <= node_x_position:
-                            print('Sanity Error.')
+                            print('Sanity Error. Code 8.')
                             exit()
                         else:
                             change.append((successor_x_position, successor))
@@ -1740,7 +1775,7 @@ class Pangraph():
                     for (position, extend_successor) in change:
                         x_difference = position - new_x_position
 
-                        if x_difference < self.max_edge_length_filter:
+                        if x_difference < self.max_edge_length_filter or self.max_edge_length_filter == -1:
 
                             path_list = [node]
 
@@ -1754,7 +1789,11 @@ class Pangraph():
                             self.ancest.remove_edge(node, extend_successor)
 
                             self.edges.append(path_list)
-                            self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
+
+                            if len(path_list) == 2:
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
+                            else:
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-0.5)
 
                         else:
                             n_removed += 1
@@ -1764,16 +1803,31 @@ class Pangraph():
         for i, j in self.ancest.edges():
 
             if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop':
-                print('Sanity Error.')
+                print('Sanity Error. Code 9.')
                 exit()
+
+        self.run.info_single(f"{self.fusion_events} fusion events.")
+
+        if self.max_edge_length_filter == -1:
+            self.run.info_single("Setting algorithm to 'keep all edges'")
+        else:
+            self.run.info_single(f"Setting algorithm to 'max edge length < {pp(self.max_edge_length_filter)}'")
 
         self.run.info_single(f"Removed {pp(n_removed)} edge(s) due to length cutoff")
 
         longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
+        # print(longest_path)
+        
         m = set(longest_path)
 
-        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
+        # starts = [node for node in self.ancest.nodes() if self.ancest.in_degree(node) == 0]
+        # dfs_list = list(nx.edge_dfs(self.ancest, source=starts))
 
+        starts = [node for node in self.ancest.nodes() if self.ancest.in_degree(node) == 0 if node != 'start']
+        for st in starts:
+            self.ancest.add_edge('start', st, weight=-1)
+        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
+        
         group = 0
         degree = dict(self.ancest.degree())
         groups = {}
@@ -1799,6 +1853,11 @@ class Pangraph():
                     groups[group_name] += [node_w]
                     groups_rev[node_w] = group_name
 
+        # print(len(sum(groups.values(), [])))
+        # for key in groups.keys():
+        #     if 'GC_00000628,GC_00000044,GC_00002584' in groups[key]:
+        #         print(groups[key])
+
         for label, condense_nodes in groups.items():
 
             condense_nodes = [node for node in condense_nodes if not node.startswith('Ghost_')]
@@ -1806,13 +1865,15 @@ class Pangraph():
             if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
                 self.grouping[label] = condense_nodes
 
+        self.run.info_single(f"Grouped {pp(len(sum(self.grouping.values(), [])))} nodes in {pp(len(self.grouping.keys()))} groups")
+
         branches = {}
         sortable = []
         for g in groups.keys():
             branch = groups[g]
 
             if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
-                print('Sanity Error.')
+                print('Sanity Error. Code 10.')
                 break
 
             elif set(branch).isdisjoint(m):
@@ -1842,11 +1903,10 @@ class Pangraph():
         for n in left_nodes:
 
             if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
-                print('Sanity Error.')
+                print('Sanity Error. Code 11.')
                 break
 
             elif set([n]).isdisjoint(m):
-
                 start = self.position[n][0]
                 length = 1
                 if n != 'start' and n != 'stop':
@@ -1866,7 +1926,9 @@ class Pangraph():
                         branches[start] = {length: {num: [n]}}
 
                     sortable += [(start, length, num)]
-        
+
+        # print(sorted(sortable, key=lambda x: (x[0], x[1]), reverse = False))
+
         used = {}
 
         y_new = 0
@@ -1886,7 +1948,7 @@ class Pangraph():
                 branch_pred = set(self.ancest.predecessors(branch[0]))
                 branch_succ = set(self.ancest.successors(branch[-1]))
                 if not branch_pred.isdisjoint(set(current)) or not branch_succ.isdisjoint(set(current)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
-                    
+
                     remove = False
                     sortable.remove((i,j,k))
 
@@ -1906,8 +1968,9 @@ class Pangraph():
                 stack.remove(current)
 
         if len(set(self.position.values())) != len(self.position.values()):
-            print('Sanity Error.')
-            exit()
+            print(len(self.position.values()) - len(set(self.position.values())))
+            print('Sanity Error. Code 12.')
+            # exit()
 
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
@@ -1954,7 +2017,7 @@ class Pangraph():
                 instances_ancest_graph += len(list(attr['genome'].keys()))
 
         self.run.info_single(f"Total fraction of recovered genecall information {round((instances_ancest_graph/instances_pangenome_graph)*100, 3)}%")
-        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())+self.fusion_events)/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
+        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes()))/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
 
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
