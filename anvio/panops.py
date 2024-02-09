@@ -1501,6 +1501,18 @@ class Pangraph():
             
         return(leaves)  
 
+    def edge_check(self, node_i, node_j, data):
+        
+        new_data = copy.deepcopy(data)
+
+        if self.edmonds_graph.has_edge(node_i, node_j):
+            old_data = self.edmonds_graph[node_i][node_j]
+            new_data['genome'].update(old_data['genome'])
+            new_data['weight'] += old_data['weight']
+            new_data['direction'] = 'B'
+        
+        return(new_data)
+
     def run_tree_to_flow_network_algorithm(self):
 
         self.run.warning(None, header="Building flow network F from M and G", lc="green")
@@ -1605,18 +1617,23 @@ class Pangraph():
                                 'direction': 'R'
                             }
                         
-                            self.edmonds_graph.add_edge(current_node, 'stop', **pangenome_graph_edge_data)
+                            new_data = self.edge_check(current_node, 'stop', pangenome_graph_edge_data)
+                            self.edmonds_graph.add_edge(current_node, 'stop', **new_data)
                             connected = True
                 
                     if connected == True:
                         for current_forward in current_forward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_forward, reverse = False)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+                            
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_forward))
                             
                         for current_backward in current_backward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_backward, reverse = True)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_backward))
                             
                         resolved_nodes.add(current_node)
@@ -1629,7 +1646,9 @@ class Pangraph():
 
                             node_i, node_j, data = self.get_edge(current_node, current_backward_connected[number], reverse = True)
                             self.edmonds_graph.remove_edge(edmonds_graph_predecessors[current_node], current_node)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             
                             edmonds_graph_removed_edges.remove((current_node, current_backward_connected[number]))
                             edmonds_graph_removed_edges.add((edmonds_graph_predecessors[current_node], current_node))
@@ -1667,8 +1686,9 @@ class Pangraph():
                 'bended': [],
                 'direction': 'R'
             }
-        
-            self.edmonds_graph.add_edge(stop, 'stop', **pangenome_graph_edge_data)
+
+            new_data = self.edge_check(stop, 'stop', pangenome_graph_edge_data)
+            self.edmonds_graph.add_edge(stop, 'stop', **new_data)
 
             edmonds_graph_successors[stop] += ['stop']
 
@@ -1677,7 +1697,6 @@ class Pangraph():
             exit()
 
         self.run.info_single("Done")
-
 
     def run_synteny_layout_algorithm(self):
 

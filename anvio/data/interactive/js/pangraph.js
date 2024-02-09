@@ -722,6 +722,8 @@ async function generate_svg(body, data) {
 
     if (edge['direction'] == 'L') {
       var stroke = ' stroke-dasharray="5,5" '
+    } else if (edge['direction'] == 'B') {
+      var stroke = ' stroke-dasharray="15,5" '
     } else {
       var stroke = ''
     }
