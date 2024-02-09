@@ -1287,7 +1287,7 @@ class Pangraph():
                 solved = set([gc[int(len(gc)/2)] for gc in self.genome_gc_occurence.keys()])
                 self.k += 1
 
-        self.run.info_single(f"{str(self.k+1)} iteration(s) to expand {len(self.paralog_dict.keys())} GCs to {len(self.genome_gc_occurence.keys())} GCs without paralogs")
+        self.run.info_single(f"{pp(self.k+1)} iteration(s) to expand {pp(len(self.paralog_dict.keys()))} GCs to {pp(len(self.genome_gc_occurence.keys()))} GCs without paralogs")
         syn_calls = 0
         for genome in self.gene_synteny_data_dict.keys():
 
@@ -1339,7 +1339,6 @@ class Pangraph():
 
         self.run.info_single("Done")
 
-    # ANCHOR Node adding
     def add_node_to_graph(self, gene_cluster, name, info):
 
         if not self.initial_graph.has_node(gene_cluster):
@@ -1356,7 +1355,6 @@ class Pangraph():
             self.initial_graph.nodes[gene_cluster]['genome'].update(info)
 
 
-    # ANCHOR Edge adding
     def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info):
 
         if self.priority_genome in info.keys():
@@ -1451,7 +1449,6 @@ class Pangraph():
                 direction='R'
             )
 
-        # ANCHOR Edmonds Algorithm
         selfloops = list(nx.selfloop_edges(self.pangenome_graph))
         self.run.info_single(f"Found and removed {pp(len(selfloops))} selfloop edge(s)")
         self.pangenome_graph.remove_edges_from(selfloops)
@@ -1660,7 +1657,7 @@ class Pangraph():
         self.progress.end()
 
         remaining_stops = [node for node in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(node) == 0 and node != 'stop']
-        self.run.info_single(f"{i} iterations to solve the graph") 
+        self.run.info_single(f"{pp(i)} iterations to solve the graph") 
 
         for stop in remaining_stops:
 
@@ -1751,7 +1748,7 @@ class Pangraph():
                 print('Sanity Error.')
                 exit()
 
-        self.run.info_single(f"Removed {n_removed} edge(s) due to length cutoff")
+        self.run.info_single(f"Removed {pp(n_removed)} edge(s) due to length cutoff")
 
         longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
         m = set(longest_path)
@@ -1766,7 +1763,7 @@ class Pangraph():
         if self.gene_cluster_grouping_threshold == -1:
             self.run.info_single("Setting algorithm to 'no grouping'")
         else:
-            self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {str(self.gene_cluster_grouping_threshold)}'")
+            self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {pp(self.gene_cluster_grouping_threshold)}'")
 
         for node_v, node_w in dfs_list:
             if node_v != 'start' and degree[node_v] == 2 and degree[node_w] == 2:
@@ -1908,10 +1905,9 @@ class Pangraph():
         # self.ancest.remove_edge('start', 'stop')
         self.ancest.remove_nodes_from(['start', 'stop'])
 
-        self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges")
+        self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single(f"Done")
 
-    # ANCHOR Converting network to JSON data
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
     # edges section for (k,o) in circular edges and for (k,o) in pangenome edges. Change and test while reworking.
