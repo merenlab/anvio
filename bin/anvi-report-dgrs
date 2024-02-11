@@ -88,6 +88,7 @@ if __name__ == '__main__':
                                                                             "that you want to find the genes that your Variable Regions occured in."}))
     groupC.add_argument("--vr-in-orf", help="Search for variable regions only in open reading frames. More specifically it searches for SNVs only at the "
                         "first and second codon positions, based on our current knowledge of where the Adenine bases usually occur", type=bool, default=False)
+    groupC.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
     groupD.add_argument("-pm","--percentage-mismatch", help="The percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-nm","--number-of-mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
@@ -101,6 +102,8 @@ if __name__ == '__main__':
                         "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
                         f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
                         "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=comma_or_string, default = ['Reverse_Transcriptase'])
+    groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
+    groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
     args = parser.get_args(parser)
 
