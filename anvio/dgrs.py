@@ -63,6 +63,7 @@ class DGR_Finder:
         self.hmm = A('hmm_usage')
         self.vr_in_orf = A('vr_in_orf')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
+        self.parameter_outputs = A('parameter-output')
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
@@ -85,12 +86,6 @@ class DGR_Finder:
             self.run.info('Profile.db', self.profile_db_path)
         if self.fasta_file_path or self.contigs_db_path and not self.profile_db_path:
             self.run.info('Step size', self.step)
-        self.run.info('BLASTn word size', self.word_size)
-        self.run.info('Skip "N" characters', self.skip_Ns)
-        self.run.info('Skip "-" characters', self.skip_dashes)
-        self.run.info('VR in ORF', self.vr_in_orf)
-        self.run.info('Number of Mismatches', self.number_of_mismatches)
-        self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         if self.profile_db_path and self.contigs_db_path:
             self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
             self.run.info('Minimum length of SNV window', self.min_range_size)
@@ -99,10 +94,14 @@ class DGR_Finder:
         if self.contigs_db_path:
             self.run.info('HMM Provided', self.hmm)
 
-        # initiate a dictionary for the gene where we find VR
-        self.vr_gene_info = {}
-
     def sanity_check(self):
+        """Basic checks for a smooth operation"""
+
+        if os.path.exists(self.output_directory):
+            filesnpaths.is_output_dir_writable(self.output_directory)
+        else:
+            filesnpaths.gen_output_directory(self.output_directory)
+
         if self.contigs_db_path and self.fasta_file_path:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
                             "class, not multiple :/")
@@ -153,6 +152,18 @@ class DGR_Finder:
                         raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
                                         f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
                                         f"contigs.db.")
+
+            if self.gene_caller_to_consider_in_context:
+                contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+                genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+                unique_sources = set()
+                for gene_id, gene_info in genes_in_contigs_dict.items():
+                    unique_sources.add(gene_info['source'])
+                unique_sources_list = list(unique_sources)
+                if self.gene_caller_to_consider_in_context not in unique_sources_list:
+                    raise ConfigError(f"Anvi'o can't find {self.gene_caller_to_consider_in_context} in your {self.contigs_db_path}. "
+                                    f"Here are the sources of your genes: {unique_sources_list}.")
+
             #this warning is running when I gice Reverse_ Transcriptase as an input and these are there but also other arguments
             #LOOP THROUGH LIST IN self.hmm in self.hmms_provided list.
             #if self.hmm not in self.hmms_provided:
@@ -885,8 +896,6 @@ class DGR_Finder:
 
             contigs_db.disconnect()
 
-            return
-
         # are there functions?
         function_sources_found = contigs_db.meta['gene_function_sources'] or []
         if not len(function_sources_found):
@@ -1094,9 +1103,6 @@ class DGR_Finder:
             DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
             DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
 
-        print('\n')
-        print('printing found DGR dict')
-        print(self.DGRs_found_dict)
         return (self.DGRs_found_dict)
 
 
@@ -1156,26 +1162,68 @@ class DGR_Finder:
 
                     # Write the CSV row
                     csv_writer.writerow(csv_row)
-            return csv_file_path
+            return
+
+    def parameter_output_sheet(self):
+        """
+        This function creates a csv tabular format of all the parameters the user input in the current run.
+
+        Returns
+        =======
+        : csv
+            A csv tabular file containing the template and variable regions
+
+        """
+        output_path_parameters = os.path.join(self.output_directory, "Parameters_used_in_DGRs_found.csv")
+        with open(output_path_parameters, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            headers = ["Parameter", "Value"]
+            csv_writer.writerow(headers)
+
+            parameters = [
+                ("Contig.db", self.contigs_db_path if self.contigs_db_path else None),
+                ("Profile.db", self.profile_db_path if self.profile_db_path else None),
+                ("Word Size of BLAST", self.word_size if self.word_size else "8"),
+                ("Number of Threads for BLAST", self.num_threads if self.num_threads else None),
+                ("Skip 'Ns'", self.skip_Ns if self.skip_Ns else "FALSE"),
+                ("Skip '-'", self.skip_dashes if self.skip_dashes else "FLASE"),
+                ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
+                ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
+                ("Temporary Directoy", self.temp_dir if self.temp_dir else None),
+                ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
+                ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
+                ("Departure from Reference (Percentage)", self.departure_from_reference_percentage if self.departure_from_reference_percentage else "0.1"),
+                ("Minimum Range size of High Density SNVs", self.min_range_size if self.min_range_size else "5"),
+                ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
+                ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
+                ("VR in ORF?", self.vr_in_orf if self.vr_in_orf else "FALSE"),
+                ("Output Directoy", self.output_directory if self.output_directory else "default")
+            ]
+
+            csv_writer.writerows(parameters)
+
+        return
 
 
     def process(self):
         """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
-
         self.sanity_check()
+        #if self.parameter_outputs:
+        self.run.info_single("Writing to Parameters used file.")
+        self.parameter_output_sheet()
         self.get_blast_results()
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
-
         if self.fasta_file_path:
             return
 
         else:
-            self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv. Also "
-                                    "computing the Genes the Variable Regions occur in and creating a 'DGR_genes_found.csv'.")
+            self.run.info_single("Computing the Genes the Variable Regions occur in and creating a 'DGR_genes_found.csv'.")
             self.get_gene_info()
+            self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
+
 
         return
 
