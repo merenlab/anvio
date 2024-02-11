@@ -51,6 +51,7 @@ class DGR_Finder:
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
+        self.num_threads = A('num-threads')
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
@@ -61,13 +62,21 @@ class DGR_Finder:
         self.min_range_size = A('minimum_range_size')
         self.hmm = A('hmm_usage')
         self.vr_in_orf = A('vr_in_orf')
+        self.output_directory = A('output_dir') or 'DGR-OUTPUT'
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
         self.sanity_check()
-        """Basic checks for a smooth operation"""
 
+        self.run.info('BLASTn word size', self.word_size)
+        self.run.info('Skip "N" characters', self.skip_Ns)
+        self.run.info('Skip "-" characters', self.skip_dashes)
+        self.run.info('VR in ORF', self.vr_in_orf)
+        self.run.info('Number of Mismatches', self.number_of_mismatches)
+        self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
+        self.run.info('Output Directory', self.output_directory)
+        self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
         if self.fasta_file_path:
             self.run.info('Input FASTA file', self.fasta_file_path)
         if self.contigs_db_path:
@@ -120,7 +129,7 @@ class DGR_Finder:
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
-        if self.contigs_db_path:
+        if self.contigs_db_path and self.hmm:
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
             hmm_hits_info_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
             hmm_hits_info_dict = contigs_db.db.smart_get(t.hmm_hits_info_table_name, column = 'source')
@@ -864,11 +873,13 @@ class DGR_Finder:
         return (self.DGRs_found_dict)
 
     def get_gene_info(self):
+        # initiate a dictionary for the gene where we find VR
+        self.vr_gene_info = {}
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         # are there genes?
         if not contigs_db.meta['genes_are_called']:
-            self.run.warning("There are no gene calls in your contigs database, therefore there is no context to "
+            self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
                             "learn about :/ Your reports will not include a file to study the genomic context "
                             "that surrounds the DGRs")
 
@@ -886,6 +897,7 @@ class DGR_Finder:
         # with gene calls and functions
         gene_calls_per_contig = {}
         VR_with_no_gene_calls = set([])
+
         for dgr, tr in self.DGRs_found_dict.items():
             for vr, vr_data in tr['VRs'].items():
                 contig_name = vr_data['VR_contig']
@@ -940,46 +952,45 @@ class DGR_Finder:
 
                         # add fasta header
                         header = '|'.join([f"contig:{contig_name}",
-                                        f"start:{gene_call['start']}",
-                                        f"stop:{gene_call['stop']}",
-                                        f"direction:{gene_call['direction']}",
-                                        f"rev_compd:{rev_compd}",
-                                        f"length:{gene_call['length']}"])
+                                    f"start:{gene_call['start']}",
+                                    f"stop:{gene_call['stop']}",
+                                    f"direction:{gene_call['direction']}",
+                                    f"rev_compd:{rev_compd}",
+                                    f"length:{gene_call['length']}"])
                         gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
                         self.vr_gene_info[dgr][vr] = gene_call
-
                         break
-        # Define the CSV file name
-        csv_filename = "DGR_genes_found.csv"
 
-        # Define the header for the CSV file
-        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header']
+            #define output path
+            output_path_for_genes_found = os.path.join(self.output_directory, "DGR_genes_found.csv")
 
-        # Open the CSV file in write mode
-        with open(csv_filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(csv_header)  # Write the header row
-            # Iterate through the dictionary and write each gene's information to the CSV file
-            for dgr_id, vr_data in self.vr_gene_info.items():
-                for vr_id, gene_info in vr_data.items():
-                    writer.writerow([
-                        dgr_id,
-                        vr_id,
-                        gene_info['contig'],
-                        gene_info['start'],
-                        gene_info['stop'],
-                        gene_info['direction'],
-                        gene_info['partial'],
-                        gene_info['call_type'],
-                        gene_info['source'],
-                        gene_info['version'],
-                        gene_info['gene_callers_id'],
-                        gene_info['DNA_sequence'],
-                        gene_info['AA_sequence'],
-                        gene_info['length']
-                    ])
+            # Define the header for the CSV file
+            csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header']
 
+            # Open the CSV file in write mode
+            with open(output_path_for_genes_found, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(csv_header)  # Write the header row
+                # Iterate through the dictionary and write each gene's information to the CSV file
+                for dgr_id, vr_data in self.vr_gene_info.items():
+                    for vr_id, gene_info in vr_data.items():
+                        writer.writerow([
+                            dgr_id,
+                            vr_id,
+                            gene_info['contig'],
+                            gene_info['start'],
+                            gene_info['stop'],
+                            gene_info['direction'],
+                            gene_info['partial'],
+                            gene_info['call_type'],
+                            gene_info['source'],
+                            gene_info['version'],
+                            gene_info['gene_callers_id'],
+                            gene_info['DNA_sequence'],
+                            gene_info['AA_sequence'],
+                            gene_info['length']
+                        ])
         return
 
     def get_hmm_info(self):
@@ -1113,9 +1124,9 @@ class DGR_Finder:
         #if self.contigs_db_path:
             #self.get_gene_info()
             #self.get_hmm_info()
-
-        csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
-        with open(csv_file_path, 'w', newline='') as csvfile:
+        output_path_dgrs = os.path.join(self.output_directory, "DGRs_found.csv")
+        #csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
+        with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
 
             # Write header
