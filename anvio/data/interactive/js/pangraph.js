@@ -728,37 +728,28 @@ async function generate_svg(body, data) {
 
     var source = edge['source']
     var target = edge['target']
-
-    if (edge['bended'] == ""){
-
-      var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
-      var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
-
-      svg.append(
-        $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
-      )
-
-    } else {
-
-      var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
-      var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
-      var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
-
-      for(var j in edge['bended']) {
-
-        var bend_n_x = edge['bended'][j]['x']
-        var bend_n_y = edge['bended'][j]['y']
-        var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
-
-        circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
-
+    if (source !=  'start' && target != 'stop'){
+      if (edge['bended'] == ""){
+        var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
+        var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
+        svg.append(
+          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
+        )
+      } else {
+        var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
+        var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
+        var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+        for(var j in edge['bended']) {
+          var bend_n_x = edge['bended'][j]['x']
+          var bend_n_y = edge['bended'][j]['y']
+          var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
+          circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
+        }
+        circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
+        svg.append(
+          $(circle_svg)
+        )
       }
-
-      circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
-
-      svg.append(
-        $(circle_svg)
-      )
     }
   };
 
