@@ -1929,13 +1929,15 @@ class Pangraph():
 
         # print(sorted(sortable, key=lambda x: (x[0], x[1]), reverse = False))
 
-        used = {}
+        used = set()
+        finished = set()
 
         y_new = 0
         for node in longest_path:
             x_pos = self.position[node][0]
             self.position[node] = (x_pos, y_new)
-            used[x_pos] = y_new
+            used.add((x_pos, y_new))
+            finished.add(node)
 
         stack = [longest_path]
         while stack:
@@ -1947,19 +1949,31 @@ class Pangraph():
                 branch = branches[i][j][k]
                 branch_pred = set(self.ancest.predecessors(branch[0]))
                 branch_succ = set(self.ancest.successors(branch[-1]))
-                if not branch_pred.isdisjoint(set(current)) or not branch_succ.isdisjoint(set(current)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+                # if (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(finished)) or (not branch_succ.isdisjoint(set(current)) and not branch_pred.isdisjoint(finished)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+                if (not branch_pred.isdisjoint(set(current))) or (not branch_succ.isdisjoint(set(current))) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
 
                     remove = False
                     sortable.remove((i,j,k))
-
+                    y_new = max(sum([[self.position[ypred][1] for ypred in branch_pred], [self.position[ysucc][1] for ysucc in branch_succ]], []))
+                        
                     stack = [branch] + stack
-                    y_new = max([used[s] for s in range(i, i+j)]) + 1
+                    while True:
+                        repeat = False
+                        for xnew in range(i, i+j):
+                            if (xnew, y_new) in used:
+                                repeat = True
+
+                        if repeat == False:
+                            break
+                        else:
+                            y_new += 1
 
                     for node in branch:
                         x_pos = self.position[node][0]
                         self.position[node] = (x_pos, y_new)
+                        used.add((x_pos, y_new))
+                        finished.add(node)
 
-                        used[x_pos] = y_new
                         self.global_y = y_new if y_new > self.global_y else self.global_y
 
                     break
@@ -1970,7 +1984,7 @@ class Pangraph():
         if len(set(self.position.values())) != len(self.position.values()):
             print(len(self.position.values()) - len(set(self.position.values())))
             print('Sanity Error. Code 12.')
-            # exit()
+            exit()
 
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
