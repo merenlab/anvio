@@ -30,7 +30,7 @@ run = Run()
 @time_program
 def main(args):
     D = dgrs.DGR_Finder(args)
-    D.process()
+    D.process(args)
     #blast_output = D.get_blast_results()
     #mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
     #DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)

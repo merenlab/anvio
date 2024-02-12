@@ -1205,25 +1205,27 @@ class DGR_Finder:
         return
 
 
-    def process(self):
+    def process(self,args):
         """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
         self.sanity_check()
-        #if self.parameter_outputs:
-        self.run.info_single("Writing to Parameters used file.")
-        self.parameter_output_sheet()
         self.get_blast_results()
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
+        if args.parameter_output:
+            self.run.info_single("Writing to Parameters used file.")
+            self.run.info_single('\n')
+            self.parameter_output_sheet()
+
         if self.fasta_file_path:
             return
 
         else:
             self.run.info_single("Computing the Genes the Variable Regions occur in and creating a 'DGR_genes_found.csv'.")
+            self.run.info_single('\n')
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
-
 
         return
 
