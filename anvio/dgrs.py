@@ -61,7 +61,7 @@ class DGR_Finder:
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.min_range_size = A('minimum_range_size')
         self.hmm = A('hmm_usage')
-        self.vr_in_orf = A('vr_in_orf')
+        self.discovery_mode = A('discovery_mode')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
         self.parameter_outputs = A('parameter-output')
 
@@ -73,7 +73,7 @@ class DGR_Finder:
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
-        self.run.info('VR in ORF', self.vr_in_orf)
+        self.run.info('Discovery mode', self.discovery_mode)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         self.run.info('Output Directory', self.output_directory)
@@ -254,9 +254,6 @@ class DGR_Finder:
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
 
-            self.snv_panda['departure_from_reference'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('departure_from_reference', None), axis=1)
-            self.snv_panda['base_pos_in_codon'] = self.snv_panda.apply(lambda row: self.variable_nucleotides_dict.get(row.name, {}).get('base_pos_in_codon', None), axis=1)
-
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
             # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
             #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
@@ -265,13 +262,15 @@ class DGR_Finder:
 
             for split in self.split_names_unique:
                 for sample in sample_id_list:
-                    split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
-                                                        (self.snv_panda.sample_id==sample)&
-                                                        (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)&
-                                                        ((self.vr_in_orf & ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))) |
-                                                        ~self.vr_in_orf)]
-                                                        #need an if vr in orf == True then self.snv_panda.base_pos_in_codon above 0
-                                                        #can add here to be that the SNVs are in the intergenic regions? this needs to be a flag- dfault is on genes but can change to be that the VR can be anywhere.
+                    if self.discovery_mode:
+                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
+                                                            (self.snv_panda.sample_id==sample)&
+                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)]
+                    else:
+                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
+                                                            (self.snv_panda.sample_id==sample)&
+                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)&
+                                                            ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
                     if split_subset.shape[0] == 0:
                         continue
                     contig_name = split_subset.contig_name.unique()[0]
@@ -1196,7 +1195,7 @@ class DGR_Finder:
                 ("Minimum Range size of High Density SNVs", self.min_range_size if self.min_range_size else "5"),
                 ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
                 ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
-                ("VR in ORF?", self.vr_in_orf if self.vr_in_orf else "FALSE"),
+                ("Discovery mode", self.discovery_mode if self.discovery_mode else "FALSE"),
                 ("Output Directoy", self.output_directory if self.output_directory else "default")
             ]
 
