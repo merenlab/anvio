@@ -731,36 +731,39 @@ async function generate_svg(body, data) {
     var source = edge['source']
     var target = edge['target']
 
-    if (edge['bended'] == ""){
+    if (source !=  'start' && target != 'stop' && edge['shown'] == 1){
 
-      var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
-      var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
+      if (edge['bended'] == ""){
 
-      svg.append(
-        $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
-      )
+        var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
+        var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
 
-    } else {
+        svg.append(
+          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
+        )
 
-      var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
-      var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
-      var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+      } else {
 
-      for(var j in edge['bended']) {
+        var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
+        var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
+        var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
 
-        var bend_n_x = edge['bended'][j]['x']
-        var bend_n_y = edge['bended'][j]['y']
-        var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
+        for(var j in edge['bended']) {
 
-        circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
+          var bend_n_x = edge['bended'][j]['x']
+          var bend_n_y = edge['bended'][j]['y']
+          var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
 
+          circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
+
+        }
+
+        circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
+
+        svg.append(
+          $(circle_svg)
+        )
       }
-
-      circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
-
-      svg.append(
-        $(circle_svg)
-      )
     }
   };
 
@@ -985,7 +988,7 @@ function main () {
     success: function(data){
 
   // $.getJSON('static/json/result.json?' + new Date().getTime(), function(data) {
-
+    console.log('Accessed.')
     $('#redraw').on('click', function() {
 
       // [...document.querySelectorAll('*')].forEach(node => {
@@ -1023,7 +1026,10 @@ function main () {
           async: false,
           data: JSON.stringify(data),
           contentType: "application/json",
-          dataType: "json"
+          dataType: "json",
+          success: function(data){
+            console.log(data)
+          }
       });
 
       // [...document.querySelectorAll('*')].forEach(node => {

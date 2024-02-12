@@ -1750,6 +1750,7 @@ class Pangraph():
         layout_graph_nodes = list(self.ancest.nodes())
         layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
+        removed = set()
         n_removed = 0
         ghost = 0
         for x in range(self.global_x-1, 0, -1):
@@ -1797,12 +1798,12 @@ class Pangraph():
 
                         else:
                             n_removed += 1
-                            self.ancest.remove_edge(node, extend_successor)
-                            self.edmonds_graph.remove_edge(node, extend_successor)
+                            # small change here, adding to set instead of removing directly from edmonds and ancest
+                            removed.add((node, extend_successor))
 
         for i, j in self.ancest.edges():
 
-            if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop':
+            if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop' and (i,j) not in removed:
                 print('Sanity Error. Code 9.')
                 exit()
 
@@ -1829,9 +1830,11 @@ class Pangraph():
         dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
         
         group = 0
-        degree = dict(self.ancest.degree())
+        # degree = dict(self.ancest.degree())
         groups = {}
         groups_rev = {}
+
+        # TODO Currently no seperation between unequal genome context
 
         if self.gene_cluster_grouping_threshold == -1:
             self.run.info_single("Setting algorithm to 'no grouping'")
@@ -1839,7 +1842,7 @@ class Pangraph():
             self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {pp(self.gene_cluster_grouping_threshold)}'")
 
         for node_v, node_w in dfs_list:
-            if node_v != 'start' and degree[node_v] == 2 and degree[node_w] == 2:
+            if node_v != 'start' and self.ancest.in_degree(node_v) == 1 and self.ancest.out_degree(node_v) == 1 and self.ancest.in_degree(node_w) == 1 and self.ancest.out_degree(node_w) == 1:
 
                 if node_v not in groups_rev.keys():
                     group_name = 'GCG_' + str(group).zfill(8)
@@ -1866,6 +1869,12 @@ class Pangraph():
                 self.grouping[label] = condense_nodes
 
         self.run.info_single(f"Grouped {pp(len(sum(self.grouping.values(), [])))} nodes in {pp(len(self.grouping.keys()))} groups")
+
+        for st in starts:
+            self.ancest.remove_edge('start', st)
+
+        self.ancest.remove_edges_from(removed)
+        self.edmonds_graph.remove_edges_from(removed)
 
         branches = {}
         sortable = []
@@ -1999,7 +2008,7 @@ class Pangraph():
             self.ancest.nodes[node]['pos'] = self.position[node]
 
         # self.ancest.remove_edge('start', 'stop')
-        self.ancest.remove_nodes_from(['start', 'stop'])
+        # self.ancest.remove_nodes_from(['start', 'stop'])
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single(f"Done")
@@ -2012,13 +2021,13 @@ class Pangraph():
 
         jsondata = {}
 
-        instances_pangenome_graph = 0
-        for node, attr in self.pangenome_graph.nodes(data=True):
-            instances_pangenome_graph += len(list(attr['genome'].keys()))
+        # instances_pangenome_graph = 0
+        # for node, attr in self.pangenome_graph.nodes(data=True):
+        #     instances_pangenome_graph += len(list(attr['genome'].keys()))
 
-        instances_ancest_graph = 0
-        for node, attr in self.ancest.nodes(data=True):
-            instances_ancest_graph += len(list(attr['genome'].keys()))
+        # instances_ancest_graph = 0
+        # for node, attr in self.ancest.nodes(data=True):
+        #     instances_ancest_graph += len(list(attr['genome'].keys()))
 
         instances_pangenome_graph = 0
         for node, attr in self.pangenome_graph.nodes(data=True):
@@ -2031,7 +2040,7 @@ class Pangraph():
                 instances_ancest_graph += len(list(attr['genome'].keys()))
 
         self.run.info_single(f"Total fraction of recovered genecall information {round((instances_ancest_graph/instances_pangenome_graph)*100, 3)}%")
-        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes()))/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
+        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())-2)/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
 
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
@@ -2075,6 +2084,7 @@ class Pangraph():
             jsondata["elements"]["edges"]['E_' + str(l).zfill(8)] = {
                 "source": k,
                 "target": o,
+                "shown": 1,
                 "genome": m["genome"],
                 "weight": m["weight"],
                 "direction": m["direction"],
