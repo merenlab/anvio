@@ -86,9 +86,10 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program"
                                                                             "that you want to find the genes that your Variable Regions occured in."}))
-    groupC.add_argument("--vr-in-orf", help="Search for variable regions only in open reading frames. More specifically it searches for SNVs only at the "
-                        "first and second codon positions, based on our current knowledge of where the Adenine bases usually occur", type=bool, default=False)
-    groupC.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action='store_true')
+    groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occuring in the first and second codon position of ORF to identify DGRs. "
+                        "This constrain allows for a fast search and more reliable results. If you feel daring, you can use this flag and let anvi'o use "
+                        "ANY SNVs to identify regions of interest for the VR/TR search.", action = 'store_true', default=False)
+    groupC.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
     groupD.add_argument("-pm","--percentage-mismatch", help="The percentage of mismatching bases that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-nm","--number-of-mismatches", help="Number of one 'type' of base that is mismatching to the sequence", type=int, default=7)
