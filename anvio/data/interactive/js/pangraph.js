@@ -1041,27 +1041,25 @@ function main () {
         }
 
         $('#genomecolors').append(
-          $('<div class="col-12">').append(
-            $('<div class="row gy-0 align-items-center">').append(
-              $('<div class="col-2">').append(
-                $('<div class="form-switch">').append(
-                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+          $('<div class="col-12 d-flex mb-1">').append(
+              $('<div class="col-2 d-flex align-items-center">').append(
+                $('<div class="form-switch d-flex">').append(
+                  $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
                 )
               )
             ).append(
-              $('<div class="col-7">').append(
+              $('<div class="col-7 d-flex align-items-center">').append(
                 genome
               )
             ).append(
-              $('<div class="col-1">').append(
+              $('<div class="col-1 d-flex align-items-center">').append(
                 $('<i class="user-handle bi bi-arrows-expand"></i>')
               )
             ).append(
-              $('<div class="d-flex col-2">').append(
+              $('<div class="col-2 d-flex align-items-center">').append(
                 $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
               )
             )
-          )
         )
 
         $('#RightOffcanvasBodyTop').append(
