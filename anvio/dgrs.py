@@ -250,7 +250,7 @@ class DGR_Finder:
             departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
 
             profile_db.disconnect()
-            utils.get_all_item_names_from_the_database(self.profile_db_path)
+            #utils.get_all_item_names_from_the_database(self.profile_db_path)
 
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
