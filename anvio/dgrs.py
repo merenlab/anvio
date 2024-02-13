@@ -263,17 +263,17 @@ class DGR_Finder:
             #                                           ....}
             # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
 
+            # filter snv_panda for min departure from ref and codon position
+            if self.discovery_mode:
+                self.snv_panda = self.snv_panda.loc[self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage]
+            else:
+                self.snv_panda = self.snv_panda.loc[(self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
+                                                    ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
+
             for split in self.split_names_unique:
                 for sample in sample_id_list:
-                    if self.discovery_mode:
-                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
-                                                            (self.snv_panda.sample_id==sample) &
-                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)]
-                    else:
-                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
-                                                            (self.snv_panda.sample_id==sample) &
-                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
-                                                            ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
+                    split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
+                                                        (self.snv_panda.sample_id==sample)]
                     if split_subset.shape[0] == 0:
                         continue
                     contig_name = split_subset.contig_name.unique()[0]
