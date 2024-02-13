@@ -1493,7 +1493,10 @@ class BottleApplication(Bottle):
 
 
     def get_pangraph_json_data(self):
-        return self.interactive.pan_graph_json
+
+        # return self.interactive.pan_graph_json()
+
+        return self.interactive.get_pangraph_json()
 
     def get_pangraph_settings(self):
         
@@ -1507,8 +1510,10 @@ class BottleApplication(Bottle):
         position = {}
         edges = []
 
-        with open("test.json", "r") as pangraph_json:
-            data = json.load(pangraph_json)
+        data = json.load(open(self.interactive.pan_graph_json_path))
+
+        # with open("test.json", "r") as pangraph_json:
+        #     data = json.load(pangraph_json)
 
         global_x = int(data["infos"]["meta"]["global_x"])
         global_y = -1
@@ -1767,6 +1772,7 @@ class BottleApplication(Bottle):
         for edge in data["elements"]["edges"]:
             source = data["elements"]["edges"][edge]["source"]
             target = data["elements"]["edges"][edge]["target"]
+            data["elements"]["edges"][edge]["shown"] = 1
 
             if (source, target) in removed:
                 data["elements"]["edges"][edge]["shown"] = 0

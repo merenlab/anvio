@@ -3013,6 +3013,9 @@ class PangraphInteractive(PanSuperclass):
 
         if self.pan_graph_json_path:
             json_data = json.load(open(self.pan_graph_json_path))
+
+            print('\n', '\n', '\n', json_data['infos']['max_edge_length_filter'], '\n', '\n', '\n')
+
         else:
             # FIXME: this is where we will get things from the pan-db, but it
             #        is not yet implemented

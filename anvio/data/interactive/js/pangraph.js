@@ -1047,8 +1047,8 @@ function main () {
     if (!$('#genomecolors').children().length) {
 
       $("#conntr")[0].value = -1;
-      $("#condtr")[0].value = data['infos']['max_edge_length_filter']
-      $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
+      $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
+      $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
 
       for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 
