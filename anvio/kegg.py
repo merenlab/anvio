@@ -512,6 +512,8 @@ class KeggSetup(KeggContext):
         self.only_download = True if A('only_download') else False
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
+        self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
+
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
