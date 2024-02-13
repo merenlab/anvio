@@ -99,7 +99,7 @@ rule fasterq_dump:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: rules.prefetch.output.SRA_TMP
+    input: ancient(rules.prefetch.output.SRA_TMP)
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
         FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
@@ -140,7 +140,7 @@ rule pigz:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
-    input: rules.fasterq_dump.output.FASTERQDUMP_DONE
+    input: ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE)
     output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
     params:
         READS = os.path.join(dirs_dict['FASTAS'], "{accession}*.fastq")

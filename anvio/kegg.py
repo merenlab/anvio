@@ -514,6 +514,8 @@ class KeggSetup(KeggContext):
         self.only_download = True if A('only_download') else False
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
+        self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
+
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -4591,7 +4593,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             sub_copy_num = self.get_step_copy_number(sub_step, enzyme_hit_counts)
 
             # parse the rest of the string and combine with the copy number of the stuff within parentheses
-            step_copy_num = 0
+            step_copy_num = None
             # handle anything prior to parentheses
             if open_parens_idx > 0:
                 previous_str = step_string[:open_parens_idx]
@@ -4601,9 +4603,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 combo_element = previous_str[-1]
                 if combo_element == ',': # OR
-                    step_copy_num += (prev_copy + sub_copy_num)
+                    step_copy_num = (prev_copy + sub_copy_num)
                 if combo_element == ' ' or combo_element == '+': # AND
-                    step_copy_num += min(prev_copy,sub_copy_num)
+                    step_copy_num = min(prev_copy,sub_copy_num)
 
             # handle anything following parentheses
             if close_parens_idx < len(step_string) - 1:
@@ -4613,14 +4615,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
 
                 combo_element = step_string[close_parens_idx+1]
-                if combo_element == ',': # OR
-                    step_copy_num += (sub_copy_num + post_copy)
-                if combo_element == ' ' or combo_element == '+': # AND
-                    step_copy_num += min(sub_copy_num,post_copy)
+                if step_copy_num is None:
+                    # no previous clause, so we only combine the parenthetical clause and what comes after
+                    if combo_element == ',': # OR
+                        step_copy_num = (sub_copy_num + post_copy)
+                    if combo_element == ' ' or combo_element == '+': # AND
+                        step_copy_num = min(sub_copy_num,post_copy)
+                else:
+                    # we have to combine the post clause with the already-combined previous clause
+                    # and parenthetical clause
+                    if combo_element == ',': # OR
+                        step_copy_num += post_copy
+                    if combo_element == ' ' or combo_element == '+': # AND
+                        step_copy_num = min(step_copy_num,post_copy)
 
             # handle edge case where parentheses circles entire step
             if (open_parens_idx == 0) and (close_parens_idx == len(step_string) - 1):
-                step_copy_num += sub_copy_num
+                step_copy_num = sub_copy_num
 
             return step_copy_num
 

@@ -546,7 +546,7 @@ class Dereplicate:
             return None
 
         if len(cluster) == 1:
-            return cluster[0]
+            return list(cluster)[0]
 
         # get all substantive completion and lenght values for genomes within the cluster
         substantive_completion_and_length_values = [(g, self.genomes_info_dict[g]['percent_completion'] - self.genomes_info_dict[g]['percent_redundancy'], self.genomes_info_dict[g]['total_length']) for g in cluster]

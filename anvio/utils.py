@@ -826,6 +826,56 @@ def add_to_2D_numeric_array(x, y, a, count=1):
     return a
 
 
+def is_all_submodules_present():
+    """A function to test whether all anvi'o submodules are present.
+
+    This check is particularly important for those who run anvi'o from a git clone
+    rather than using it via a regular installation.
+    """
+
+    # find the root directory of anvi'o module
+    anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+
+    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+
+    if not os.path.exists(gitmodules_path):
+        # if this file does not exist, we are likely looking at a case where anvi'o is
+        # installed on the user's computer, so we will let them go.
+        return True
+
+    gitmodules = configparser.ConfigParser()
+
+    try:
+        gitmodules.read(gitmodules_path)
+    except Exception:
+        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
+                          "needs an adult :(")
+
+    # figure out missing modules
+    missing_gitmodules = []
+    for gitmodule in gitmodules.sections():
+        for key, value in gitmodules.items(gitmodule):
+            if key == 'path':
+                gitmodule_path = os.path.join(anvio_module_path, '..', value)
+
+                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
+                    missing_gitmodules.append(value)
+
+    if len(missing_gitmodules):
+        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
+                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
+        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
+                          "codebase. If you run the commands shown above, you should be golden to try "
+                          "again.")
+    else:
+        return True
+
+
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
     columns = get_columns_of_TAB_delim_file(file_path)
     return False if len([False for c in columns if c not in columns]) else True
