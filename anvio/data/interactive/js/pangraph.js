@@ -988,7 +988,6 @@ function main () {
     success: function(data){
 
   // $.getJSON('static/json/result.json?' + new Date().getTime(), function(data) {
-    console.log('Accessed.')
     $('#redraw').on('click', function() {
 
       // [...document.querySelectorAll('*')].forEach(node => {
@@ -1006,7 +1005,6 @@ function main () {
 
       var data = new Object;
 
-      data['conntr'] = $('#conntr')[0].value
       data['condtr'] = $('#condtr')[0].value
       data['maxlength'] = $('#maxlength')[0].value
 
@@ -1046,7 +1044,6 @@ function main () {
 
     if (!$('#genomecolors').children().length) {
 
-      $("#conntr")[0].value = -1;
       $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
       $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
 
@@ -1126,11 +1123,7 @@ function main () {
     })
 
     //ANCHOR - Main panel response functions
-    if ($('#conntr')[0].value == -1){
-      // $('#customRange1').prop('disabled', true);
-      $('#flexconntr').prop('checked', false);
-    }
-
+    
     if ($('#condtr')[0].value == -1){
       // $('#customRange2').prop('disabled', true);
       $('#flexcondtr').prop('checked', false);
@@ -1144,18 +1137,6 @@ function main () {
     if ($('#groupcompress')[0].value == -1){
       $('#flexgroupcompress').prop('checked', false);
     }
-
-    $('#flexconntr').change(function() {
-      if ($(this).prop('checked') == true){
-        $('#conntr')[0].value = 0;
-        // $('#customRange1')[0].value = 0;
-        // $('#customRange1').prop('disabled', false);
-      } else {
-        $('#conntr')[0].value = -1;
-        // $('#customRange1')[0].value = 0;
-        // $('#customRange1').prop('disabled', true);
-      }
-    })
 
     $('#flexcondtr').change(function() {
       if ($(this).prop('checked') == true){
@@ -1979,7 +1960,6 @@ function main () {
 //ANCHOR - Main function after loading DOM
 $(document).ready(function() {
 
-  console.log('start pangrah layout creation!')
   main()
 
 });

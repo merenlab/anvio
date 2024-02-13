@@ -1776,7 +1776,7 @@ class Pangraph():
                     for (position, extend_successor) in change:
                         x_difference = position - new_x_position
 
-                        if x_difference < self.max_edge_length_filter or self.max_edge_length_filter == -1:
+                        if x_difference <= self.max_edge_length_filter or self.max_edge_length_filter == -1:
 
                             path_list = [node]
 
