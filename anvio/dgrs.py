@@ -271,9 +271,9 @@ class DGR_Finder:
                                                     ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
 
             for split in self.split_names_unique:
+                split_subset = self.snv_panda.loc[self.snv_panda.split_name==split]
                 for sample in sample_id_list:
-                    split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
-                                                        (self.snv_panda.sample_id==sample)]
+                    split_subset = split_subset.loc[split_subset.sample_id==sample]
                     if split_subset.shape[0] == 0:
                         continue
                     contig_name = split_subset.contig_name.unique()[0]
@@ -317,7 +317,6 @@ class DGR_Finder:
 
                         # Add the window to the contig's list
                         self.all_possible_windows[contig_name].append((window_start, window_end))
-
             all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
             # loop to merge overlaps within a given contig
 
