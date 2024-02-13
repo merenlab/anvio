@@ -235,25 +235,27 @@ class DGR_Finder:
             #print(self.splits_of_interest)
             #split_path = 'split_of_interest_file.txt
 
-            contigs_db.disconnect()
+            #contigs_db.disconnect()
 
             #open merged profile-db and get the variable nucleotide table as a dictionary then acess the split names as a list to use in get_snvs
-            profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
+            #profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            #self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
 
 
             # Use a list comprehension to extract the values associated with the target key
-            split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
-            self.split_names_unique = list(dict.fromkeys(split_names))
-            sample_id_list = [self.variable_nucleotides_dict[key]['sample_id'] for key in self.variable_nucleotides_dict if 'sample_id' in self.variable_nucleotides_dict[key]]
-            sample_id_list = list(set(sample_id_list))
-            departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
+            #split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
+            #self.split_names_unique = list(dict.fromkeys(split_names))
+            self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
+            #sample_id_list = [self.variable_nucleotides_dict[key]['sample_id'] for key in self.variable_nucleotides_dict if 'sample_id' in self.variable_nucleotides_dict[key]]
+            #sample_id_list = list(set(sample_id_list))
+            #departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
 
-            profile_db.disconnect()
-            #utils.get_all_item_names_from_the_database(self.profile_db_path)
+            #profile_db.disconnect()
 
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
+            #self.split_names_unique = self.snv_panda.split_name.unique()
+            sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
             # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
@@ -264,13 +266,13 @@ class DGR_Finder:
             for split in self.split_names_unique:
                 for sample in sample_id_list:
                     if self.discovery_mode:
-                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
-                                                            (self.snv_panda.sample_id==sample)&
+                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
+                                                            (self.snv_panda.sample_id==sample) &
                                                             (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)]
                     else:
-                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split)&
-                                                            (self.snv_panda.sample_id==sample)&
-                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage)&
+                        split_subset = self.snv_panda.loc[(self.snv_panda.split_name==split) &
+                                                            (self.snv_panda.sample_id==sample) &
+                                                            (self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
                                                             ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
                     if split_subset.shape[0] == 0:
                         continue
@@ -318,6 +320,7 @@ class DGR_Finder:
 
             all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
             # loop to merge overlaps within a given contig
+
             for contig_name, window_list in self.all_possible_windows.items():
                 # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
                 sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
@@ -967,7 +970,6 @@ class DGR_Finder:
                                     f"rev_compd:{rev_compd}",
                                     f"length:{gene_call['length']}"])
                         gene_call['header'] = ' '.join([str(gene_callers_id), header])
-
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
@@ -984,6 +986,8 @@ class DGR_Finder:
             # Iterate through the dictionary and write each gene's information to the CSV file
             for dgr_id, vr_data in self.vr_gene_info.items():
                 for vr_id, gene_info in vr_data.items():
+                    if not gene_info:
+                        continue
                     writer.writerow([
                         dgr_id,
                         vr_id,
