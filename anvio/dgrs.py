@@ -250,6 +250,7 @@ class DGR_Finder:
             departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
 
             profile_db.disconnect()
+            utils.get_all_item_names_from_the_database(self.profile_db_path)
 
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
@@ -970,35 +971,35 @@ class DGR_Finder:
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
-            #define output path
-            output_path_for_genes_found = os.path.join(self.output_directory, "DGR_genes_found.csv")
+        #define output path
+        output_path_for_genes_found = os.path.join(self.output_directory, "DGR_genes_found.csv")
 
-            # Define the header for the CSV file
-            csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header']
+        # Define the header for the CSV file
+        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header']
 
-            # Open the CSV file in write mode
-            with open(output_path_for_genes_found, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(csv_header)  # Write the header row
-                # Iterate through the dictionary and write each gene's information to the CSV file
-                for dgr_id, vr_data in self.vr_gene_info.items():
-                    for vr_id, gene_info in vr_data.items():
-                        writer.writerow([
-                            dgr_id,
-                            vr_id,
-                            gene_info['contig'],
-                            gene_info['start'],
-                            gene_info['stop'],
-                            gene_info['direction'],
-                            gene_info['partial'],
-                            gene_info['call_type'],
-                            gene_info['source'],
-                            gene_info['version'],
-                            gene_info['gene_callers_id'],
-                            gene_info['DNA_sequence'],
-                            gene_info['AA_sequence'],
-                            gene_info['length']
-                        ])
+        # Open the CSV file in write mode
+        with open(output_path_for_genes_found, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(csv_header)  # Write the header row
+            # Iterate through the dictionary and write each gene's information to the CSV file
+            for dgr_id, vr_data in self.vr_gene_info.items():
+                for vr_id, gene_info in vr_data.items():
+                    writer.writerow([
+                        dgr_id,
+                        vr_id,
+                        gene_info['contig'],
+                        gene_info['start'],
+                        gene_info['stop'],
+                        gene_info['direction'],
+                        gene_info['partial'],
+                        gene_info['call_type'],
+                        gene_info['source'],
+                        gene_info['version'],
+                        gene_info['gene_callers_id'],
+                        gene_info['DNA_sequence'],
+                        gene_info['AA_sequence'],
+                        gene_info['length']
+                    ])
         return
 
     def get_hmm_info(self):
