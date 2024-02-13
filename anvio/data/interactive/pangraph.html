@@ -117,193 +117,194 @@
 
                   <div id="item-collapse-main" class="ml-2 mr-3 collapse multi-collapse show">
                     <span class="settings-secondary-header mb-3 mt-3">Color</span>
-                    <div class="row gy-3 align-items-center">
-                      
-                      <div class="col-12 ml-3 mr-3">
-                        <div class="row gy-1 align-items-center">   
-                          <div class="col-2">
-                            <input class="form-check-input" type="checkbox" id="colorgenecluster" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                          </div>
-                          <div class="col-10">
-                            Color gene cluster
-                          </div>
-                          <div class="col-2">
-                            <input class="form-check-input" type="checkbox" id="coloredge" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                          </div>
-                          <div class="col-10">
-                            Color edge
-                          </div>
+
+                    <div class="row align-items-center">
+                      <div class="col-12 d-flex mb-1 py-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="checkbox" id="colorgenecluster" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Color gene cluster
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1 py-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="checkbox" id="coloredge" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Color edge
                         </div>
                       </div>
       
-                      <div class="col-11 ml-3 mr-3">
-                        <div class="row gy-1 align-items-center">
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Color groups
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=groups name=groups value="#ffa500" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Color nodes 
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=nodes name=nodes value="#bcbcbc" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Color start/stop
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=startstop name=startstop value="#6aa84f" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>   
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
                         </div>
-                      </div>   
+                        <div class="col-8 d-flex align-items-center">
+                          Color groups
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=groups name=groups value="#ffa500" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Color nodes 
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=nodes name=nodes value="#bcbcbc" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Color start/stop
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=startstop name=startstop value="#6aa84f" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>   
+                      </div>
                     </div>
                     
                     <span class="settings-secondary-header mb-3 mt-3">Layout</span>
 
-                    <div class="row gy-3 align-items-center mb-3">
+                    <div class="row align-items-center mb-3">
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node x-distance
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node y-distance
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node radius
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node border thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
                       
-                      <div class="col-12 ml-3">
-                        <div class="row gy-1 align-items-center"> 
-                        
+                      <div class="col-12 d-flex mb-1">      
                           <div class="col-2">
                           </div>
-                          <div class="col-8">
-                            Node x-distance
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                          
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Node y-distance
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=20 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                        
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Node radius
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                        
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
-                            Node border thickness
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-      
-                          <div class="col-2">
-                          </div>
-                          <div class="col-8">
+                          <div class="col-8 d-flex align-items-center">
                             Edge thickness
                           </div>
                           <div class="d-flex col-2">
                             <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=10 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
                           </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio1" value="option1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Circular graph layout
                         </div>
                       </div>
-      
-                      <div class="col-12 ml-3">
-                        <div class="row gy-1 align-items-center">   
-                          <div class="col-2">
-                            <input class="form-check-input" type="radio" name="LayoutOptions" id="LayoutRadio1" value="option1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                          </div>
-                          <div class="col-10">
-                            Circular graph layout
-                          </div>
-                          <div class="col-2">
-                            <input class="form-check-input" type="radio" name="LayoutOptions" id="LayoutRadio2" value="option2" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
-                          </div>
-                          <div class="col-10">
-                            Linear graph layout
-                          </div>
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio2" value="option2" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
                         </div>
+                      <div class="col-10 d-flex align-items-center">
+                        Linear graph layout
                       </div>
                     </div>
-      
-                    <span class="settings-secondary-header mb-3 mt-5">Color</span>
-                    <div class="row gy-3 align-items-center ml-2">
-                      
-                      <div class="col-12">
-                        <div class="row gy-1 align-items-center">    
-                          <div class="col-2">
-                            <div class="form-switch">
-                              <input class="form-check-input" type="checkbox" id="flexconntr" name="flexconntr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                            </div>
-                          </div>
-                          <div class="col-8">
-                            Include non-consensus edges
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="conntr" name="conntr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                          
-                          <div class="col-2">
-                            <div class="form-switch">
-                              <input class="form-check-input" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                            </div>
-                          </div>
-                          <div class="col-8">
-                            Merge nodes into groups
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                          
-                          <div class="col-2">
-                            <div class="form-switch">
-                              <input class="form-check-input" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                            </div>
-                          </div>
-                          <div class="col-8">
-                            Allowed max edge length
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="maxlength" name="maxlength" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
-                          </div>
-                        </div>
-                      </div>
-      
-                      <div class="col-12">
-                        <div class="row gy-0 align-items-center">    
-                          <div class="col-2">
-                            <div class="form-switch">
-                              <input class="form-check-input" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
-                            </div>
-                          </div>
-                          <div class="col-8">
-                            Group size compression
-                          </div>
-                          <div class="d-flex col-2">
-                            <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="groupcompress" name="groupcompress" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color" readonly>
-                          </div>
-                          <div class="d-flex col-12">
-                            <input type="range" class="form-range" min="0" max="1" value=0 id="customRange4" onChange="document.getElementById('groupcompress').value = document.getElementById('customRange4').value">
-                          </div>
-                        </div>
-                      </div>
                     </div>
+      
+                    <span class="settings-secondary-header mb-3 mt-3">Graph</span>
+                    <div class="row align-items-center">
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexconntr" name="flexconntr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                          </div>
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Include non-consensus edges
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="conntr" name="conntr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                          </div>
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Merge nodes into groups
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="condtr" name="condtr" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                          </div>
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Allowed max edge length
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="maxlength" name="maxlength" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                          <div class="form-switch d-flex">
+                            <input class="" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                          </div>
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Group size compression
+                        </div>
+                        <div class="col-2 d-flex">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="groupcompress" name="groupcompress" value=0 aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color" readonly>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex ml-2">
+                        <div class="col-2"></div>
+                        <div class="col-10 align-items-center justify-content-center">
+                          <input type="range" class="form-range" min="0" max="1" value=0 id="customRange4" onChange="document.getElementById('groupcompress').value = document.getElementById('customRange4').value">
+                        </div>
+                      </div>
+
+                    </div>
+                    <span class="settings-secondary-header mb-3 mt-3">Genomes</span>
                     
-                    <span class="settings-secondary-header mb-3 mt-5">Genomes</span>
-                    
-                    <div id="genomecolors" class="row grid gy-1 align-items-center ml-2">
+                    <div id="genomecolors" class="row grid align-items-center">
                     </div>
                   </div>
                 </div>
@@ -315,12 +316,12 @@
                 <div class="ps-3 pe-3">
                   <h5 class="text-start mt-3 mb-3">Bins</h5>
                   
-                  <div class="row gy-3 align-items-center">
+                  <div class="row align-items-center">
                     <div class="col-12">
     
-                      <div class="row grid gy-1 align-items-center" id="bingrid">
+                      <div class="row grid align-items-center" id="bingrid">
                         <div class="col-12" id="bin1">
-                          <div class="row gy-1 align-items-center">
+                          <div class="row align-items-center">
                             <div class="col-2">
                               <input class="form-check-input" type="radio" name="binradio" id="bin1radio" value="bin1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
                             </div>
@@ -380,9 +381,9 @@
               <div class="mt-1 p-2" id="search_tab_content" tabindex="-1">
                 <div class="ps-3 pe-3">
                   <h5 class="text-start mt-3 mb-3">Expression</h5>
-                  <div class="row gy-3 align-items-center">
+                  <div class="row align-items-center">
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
     
                         <div class="col-2">
                         </div>
@@ -433,7 +434,7 @@
                     </div>
     
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
                         <div class="col-2">
                         </div>
                         <div class="col-10">
@@ -444,14 +445,14 @@
                   </div>
     
                   <h5 class="text-start mt-3 mb-3">Function</h5>
-                  <div class="row gy-3 align-items-center">
+                  <div class="row align-items-center">
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center" id="functiondiv">
+                      <div class="row align-items-center" id="functiondiv">
                       </div>
                     </div> 
     
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
                         <div class="col-2">
                         </div>
                         <div class="col-10">
@@ -462,9 +463,9 @@
                   </div>
     
                   <h5 class="text-start mt-3 mb-3">Filter</h5>
-                  <div class="row gy-3 align-items-center">
+                  <div class="row align-items-center">
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
                         <div class="col-2">
                           <input class="form-check-input" type="checkbox" id="mingenomes" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
                         </div>
@@ -487,7 +488,7 @@
                     </div>
     
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
                         <div class="col-2">
                           <input class="form-check-input" type="checkbox" id="minentropy" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
                         </div>
@@ -510,7 +511,7 @@
                     </div>
     
                     <div class="col-12">
-                      <div class="row gy-1 align-items-center"> 
+                      <div class="row align-items-center"> 
                         <div class="col-2">
                           <input class="form-check-input" type="checkbox" id="minposition" value="" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
                         </div>
