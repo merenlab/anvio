@@ -65,7 +65,7 @@ def comma_or_string(input_str):
         if ',' in input_str:
             return input_str.split(',')
         else:
-            return input_str
+            return [input_str]
 
 if __name__ == '__main__':
     available_hmm_sources_pretty = '; '.join([f"'{s}' (type: {hmm_data.sources[s]['kind']})" for s in available_hmm_sources])
