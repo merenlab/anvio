@@ -32,7 +32,7 @@ def main(args):
 
     if args.hmm_usage:
         args.hmm_usage = [p.strip() for p in args.hmm_usage.split(',') if p.strip()]
-    
+
     D = dgrs.DGR_Finder(args)
     D.process(args)
     #blast_output = D.get_blast_results()
@@ -64,12 +64,6 @@ def float_range(mini,maxi):
     return float_range_checker
 
 my_float_range= float_range(0.5,1.0)
-
-def comma_or_string(input_str):
-        if ',' in input_str:
-            return input_str.split(',')
-        else:
-            return [input_str]
 
 if __name__ == '__main__':
     available_hmm_sources_pretty = '; '.join([f"'{s}' (type: {hmm_data.sources[s]['kind']})" for s in available_hmm_sources])
