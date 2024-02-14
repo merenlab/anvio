@@ -1426,15 +1426,24 @@ class BottleApplication(Bottle):
         newick = request.forms.get('newick')
         tree = Tree(newick, format=1)
 
+        branch_support_values = {}
+
+        for node in tree.traverse():
+            if node.support:
+                branch_support_values[node] = node.support
+
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
         right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
 
         new_root = tree.get_common_ancestor(left_most, right_most)
         tree.set_outgroup(new_root)
 
-        # Ete3 tree.write function replaces some charachters that we support in the interface.
-        # As a workaround we are going to encode node names with base32, after serialization
-        # we are going to decode them back.
+        for node, support_value in branch_support_values.items():
+            if not node.is_root():
+                original_node = tree.search_nodes(name=node.name)[0]
+                if original_node != node:
+                    node.support = support_value
+
         for node in tree.traverse('preorder'):
             node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
 
