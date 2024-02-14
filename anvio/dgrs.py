@@ -162,22 +162,7 @@ class DGR_Finder:
                 if self.gene_caller_to_consider_in_context not in unique_sources_list:
                     raise ConfigError(f"Anvi'o can't find {self.gene_caller_to_consider_in_context} in your {self.contigs_db_path}. "
                                     f"Here are the sources of your genes: {unique_sources_list}.")
-
-            #this warning is running when I gice Reverse_ Transcriptase as an input and these are there but also other arguments
-            #LOOP THROUGH LIST IN self.hmm in self.hmms_provided list.
-            #if self.hmm not in self.hmms_provided:
-                #print(self.hmms_provided)
-                #['Ribosomal_RNA_16S', 'Ribosomal_RNA_28S', 'Ribosomal_RNA_18S', 'Protista_83', 'Ribosomal_RNA_23S', 'Bacteria_71', 'Archaea_76', 'Ribosomal_RNA_5S', 'Ribosomal_RNA_12S', 'Transfer_RNAs', 'Reverse_Transcriptase']
-                #sraise ConfigError and quit :(
-                #self.run.warning(f"The HMMs you told anvi-report-dgrs were in your {self.contigs_db_path} "
-                                #"are in fact not there. The program will still run provided that there are. "
-                                #"Anvi'o just thought you should know, but you know your data better than us.")
-
-            #if 'Reverse_Transcriptase' not in self.hmms_provided:
-                #self.run.warning("The classic reverse transcriptase HMM has not been run with these contigs. "
-                                #"Anvi'o hopes you are using your own reverse transcriptase HMM, however if not "
-                                #"we will still find the HMM hits closes to the template regions for you (we don't "
-                                #"know why this could be helpful though).")
+            contigs_db.disconnect()
 
     def get_blast_results(self):
         """
