@@ -97,7 +97,7 @@ class DGR_Finder:
         """Basic checks for a smooth operation"""
 
         if os.path.exists(self.output_directory) and not anvio.FORCE_OVERWRITE:
-            raise ConfigError("Hold up your directory exists. To avoid overwriting data we are stopping you right here. You have three options "
+            raise ConfigError(f"Hold up your directory ({self.output_directory}) exists. To avoid overwriting data we are stopping you right here. You have three options "
                             "if you want to continue: rename your directory, delete your directory, or rerun with flag `--force-overwrite`.")
         else:
             filesnpaths.gen_output_directory(self.output_directory)
