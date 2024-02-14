@@ -4677,7 +4677,7 @@ class ContigsDatabase:
                                   f"Specifically, the length of the contig is {contig_length}, but the "
                                   f"gene starts at position {start} and goes to position {stop}. We've "
                                   f"removed the partially-created contigs database for you (but you can "
-                                  f"see if if you re-run your command with the `--debug` flag).")
+                                  f"see it if you re-run your command with the `--debug` flag).")
 
             if gene_call['call_type'] != coding:
                 for nt_position in range(start, stop):
