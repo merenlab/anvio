@@ -273,11 +273,11 @@ class DGR_Finder:
             for split in self.split_names_unique:
                 split_subset = self.snv_panda.loc[self.snv_panda.split_name==split]
                 for sample in sample_id_list:
-                    split_subset = split_subset.loc[split_subset.sample_id==sample]
-                    if split_subset.shape[0] == 0:
+                    split_subset_sample = split_subset.loc[split_subset.sample_id==sample]
+                    if split_subset_sample.shape[0] == 0:
                         continue
-                    contig_name = split_subset.contig_name.unique()[0]
-                    pos_list = split_subset.pos_in_contig.to_list()
+                    contig_name = split_subset_sample.contig_name.unique()[0]
+                    pos_list = split_subset_sample.pos_in_contig.to_list()
 
                     if contig_name not in self.all_possible_windows:
                         # If not, initialize it with an empty dictionary
