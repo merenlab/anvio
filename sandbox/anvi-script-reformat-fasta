@@ -271,11 +271,11 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group('OPERATIONS: RENAME YOUR DEFLINES')
     groupC.add_argument('--simplify-names', default=False, action="store_true",
-                        help="Edit deflines to make sure they contigs have simple names.")
+                        help="Edit deflines to make sure the contigs have simple names.")
     groupC.add_argument('--prefix', default=None, metavar="PREFIX",
                         help="Use this parameter if you would like to add a prefix to your contig\
                               names while simplifying them. The prefix must be a single word (you\
-                              can use underscor character, but nothing more!).")
+                              can use the underscore character, but nothing more!).")
 
     groupD = parser.add_argument_group('OPERATIONS: TAME YOUR SEQUENCES')
     groupD.add_argument('-l', '--min-len', type=int, default=0, metavar='INT',
