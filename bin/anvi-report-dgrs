@@ -29,6 +29,10 @@ run = Run()
 
 @time_program
 def main(args):
+
+    if args.hmm_usage:
+        args.hmm_usage = [p.strip() for p in args.hmm_usage.split(',') if p.strip()]
+    
     D = dgrs.DGR_Finder(args)
     D.process(args)
     #blast_output = D.get_blast_results()
@@ -102,7 +106,7 @@ if __name__ == '__main__':
                         "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
                         "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
                         f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
-                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=comma_or_string, default = ['Reverse_Transcriptase'])
+                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=str, default = None)
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
