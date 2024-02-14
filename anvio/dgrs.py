@@ -238,10 +238,12 @@ class DGR_Finder:
             #contigs_db.disconnect()
 
             #open merged profile-db and get the variable nucleotide table as a dictionary then acess the split names as a list to use in get_snvs
-            #profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
             #self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
 
-
+            self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
+            print(self.snv_panda)
             # Use a list comprehension to extract the values associated with the target key
             #split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
             #self.split_names_unique = list(dict.fromkeys(split_names))
@@ -250,10 +252,10 @@ class DGR_Finder:
             #sample_id_list = list(set(sample_id_list))
             #departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
 
-            #profile_db.disconnect()
+            profile_db.disconnect()
 
             #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
-            self.snv_panda = self.get_snvs().sort_values(by=['contig_name', 'pos_in_contig'])
+            #self.snv_panda = self.snv_panda.sort_values(by=['contig_name', 'pos_in_contig'])
             #self.split_names_unique = self.snv_panda.split_name.unique()
             sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
