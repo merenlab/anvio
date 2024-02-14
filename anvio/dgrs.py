@@ -176,7 +176,7 @@ class DGR_Finder:
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
         self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
-        self.run.info('Temporary input for blast', self.target_file_path)
+        self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
         if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
             shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
@@ -284,9 +284,9 @@ class DGR_Finder:
 
                         # Add the window to the contig's list
                         self.all_possible_windows[contig_name].append((window_start, window_end))
+
             all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
             # loop to merge overlaps within a given contig
-
             for contig_name, window_list in self.all_possible_windows.items():
                 # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
                 sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
@@ -319,13 +319,6 @@ class DGR_Finder:
 
                 all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
-                for i in range(len(merged_windows_in_contig)):
-                    for j in range(i, len(merged_windows_in_contig)):
-                        if i != j:
-                            if self.range_overlapping(merged_windows_in_contig[i][0], merged_windows_in_contig[i][1], merged_windows_in_contig[j][0], merged_windows_in_contig[j][1]):
-                                print(f"overlapping at indices {i} and {j} for contig {contig_name}:\n{merged_windows_in_contig[i]}\n{merged_windows_in_contig[j]}")
-        #print(all_merged_snv_windows)
-
             #export contigs_db to fasta file
             utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
 
@@ -345,7 +338,7 @@ class DGR_Finder:
             with open(output_fasta_path, "w") as output_handle:
                 SeqIO.write(contig_records, output_handle, "fasta")
 
-            print(f"FASTA file written to {output_fasta_path}")
+            self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
 
             self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
 
