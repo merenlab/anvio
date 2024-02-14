@@ -573,6 +573,7 @@ class DGR_Finder:
         return self.mismatch_hits
 
     def filter_for_TR_VR(self):
+        #NOTE: need to check this code to clean up and maybe put into one function to remove redundancy - Iva offered to help :)
         """
         This function takes the none identical hits of the BLASTn and filters for template and variable regions.
 
@@ -612,8 +613,6 @@ class DGR_Finder:
             subject_frame = hit_data['subject_frame']
             query_contig = hit_data['query_contig']
             subject_contig = hit_data['subject_contig']
-            TR_sequence_found = None
-            VR_sequence_found = None
 
             # get number of mismatches
             mismatch_length_bp = len(position)
@@ -621,7 +620,6 @@ class DGR_Finder:
             # if num of mismatches = 0, skip DGR search sanity check
             if mismatch_length_bp == 0:
                 continue
-                #old code mismatch_dict[hit_id]['is_DGR'] = False
             else:
                 # Calculate the percentage identity of each alignment
                 is_TR = False
@@ -810,7 +808,7 @@ class DGR_Finder:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
 
-        return (self.DGRs_found_dict)
+        return
 
     def get_gene_info(self):
         # initiate a dictionary for the gene where we find VR
@@ -834,7 +832,6 @@ class DGR_Finder:
         # now we will go through each VRs to populate `self.vr_gene_info`
         # with gene calls and functions
         gene_calls_per_contig = {}
-        VR_with_no_gene_calls = set([])
 
         for dgr, tr in self.DGRs_found_dict.items():
             for vr, vr_data in tr['VRs'].items():
@@ -899,6 +896,7 @@ class DGR_Finder:
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
+        #MAKE into WRITE DGR_genes_found write function
         #define output path
         output_path_for_genes_found = os.path.join(self.output_directory, "DGR_genes_found.csv")
 
@@ -931,6 +929,9 @@ class DGR_Finder:
                         gene_info['length']
                     ])
         return
+
+    #need to add what the (gene annotation) functions are write csv (code function) .
+#dgr, vr, gene_call_id, function list.
 
     def get_hmm_info(self):
         """
