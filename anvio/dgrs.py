@@ -348,7 +348,7 @@ class DGR_Finder:
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
 
-        return(self.blast_output)
+        return
 
     def split_sequence_at_given_pos(self, sequence):
         sections = []
@@ -375,10 +375,9 @@ class DGR_Finder:
         all_end = []
         contig_name = None
         for start, end in entries:
-            #contig_name = contig # these should all be the same so it doesn't matter that we overwrite it every iteration of the loop
             all_start.append(start)
             all_end.append(end)
-        # do le math
+        # do le maths
         combined_start = min(all_start)
         combined_end = max(all_end)
 
@@ -390,29 +389,40 @@ class DGR_Finder:
         Parameters
         ==========
         start1, end1, n_start, n_end : integer
-            Start and end of windows containing SNVs with 20 bp buffer on either side
+            Start and end of windows containing SNVs with 20 bp buffer on either side.
 
         Returns
         =======
-            :boolean
-
+        A boolean indicating whether the ranges overlap.
         """
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1) or (start1 >= n_start and start1 <= n_end and end1 >= n_start and end1 <= n_end)
 
     def check_overlap(window1, window2):
-                        contig_name_1, start_position_1, end_position_1 = window1[0][1], window1[1][1], window1[2][1]
-                        contig_name_2, start_position_2, end_position_2 = window2[0][1], window2[1][1], window2[2][1]
+        """
+        WRITE ME PLEASE!!!
+        This function checks if the sections of sequences overlap based on the start and end positions.
+        Parameters
+        ==========
+        start1, end1, n_start, n_end : integer
+            Start and end of windows containing SNVs with 20 bp buffer on either side.
 
-                        return (
-                            contig_name_1 == contig_name_2
-                            and start_position_1 <= end_position_2
-                            and end_position_1 >= start_position_2
-                        )
+        Returns
+        =======
+        A boolean indicating whether the ranges overlap.
+        """
+        contig_name_1, start_position_1, end_position_1 = window1[0][1], window1[1][1], window1[2][1]
+        contig_name_2, start_position_2, end_position_2 = window2[0][1], window2[1][1], window2[2][1]
+
+        return (
+            contig_name_1 == contig_name_2
+            and start_position_1 <= end_position_2
+            and end_position_1 >= start_position_2
+        )
 
     def get_snvs(self):
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
-
+        This function is not currently in use but here for Merens sake.
         Returns
         =======
         n.data : panada df
@@ -452,46 +462,6 @@ class DGR_Finder:
                 if i + self.step > len(sequence.seq):
                     print(sequence.seq)
         return section_sequences
-
-    #def run_blastn(self):
-        #"""
-        #This function runs the BLASTn search of the split sequences against the original input FASTA to find regions of matching nucleotides.
-
-        #Running the BLASTn generates an xml file of results.
-
-        #Returns
-        #blast_output : xml file
-            #BLASTn results
-        #=======
-        #"""
-        #blast output file name
-        #blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
-        #self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
-        #print(f"cp {self.fasta_file_path} {self.target_file_path}")
-        #os.system(f"cp {self.fasta_file_path} {self.target_file_path}")
-        #self.run.info('temporary input for blast', self.target_file_path)
-
-        # Start at half the step size of the output file
-        #overlap_start = self.step // 2
-        #first_sequences = self.split_sequences()
-        #second_sequences = self.split_sequences(overlap_start)
-
-        #all_sequences = first_sequences + second_sequences
-
-        # Write combined sequences to output file
-        #with open(shredded_sequence_file, "w") as output_handle:
-            #SeqIO.write(all_sequences, output_handle, "fasta")
-        #need a temporary directory where intermediate files are written, to call on them.
-
-        #blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=blast_output, additional_params = '-dust no')
-        #blast.evalue = 10 #set Evalue to be same as blastn default
-        #blast.makedb(dbtype = 'nucl')
-        #blast.blast(outputfmt = '5', word_size = self.word_size)
-
-        #blast_command = ["blastn", "-query", output_file, "-subject", self.fasta_file_path, "-out", blast_output,
-                        #"-word_size", str(self.word_size), "-dust", "no", "-outfmt", "5"]
-        #subprocess.run(blast_command)
-        #return blast_output
 
     def filter_blastn_for_none_identical(self):
         """
@@ -557,9 +527,6 @@ class DGR_Finder:
                         subject_frame = int(hsp.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
-
-                        #query_mismatch_counts = {'A': 0, 'T': 0, 'G': 0, 'C': 0}
-                        #subject_mismatch_counts = {'A': 0, 'T': 0, 'G': 0, 'C': 0}
 
                         # Unique characters that may appear in qseq and hseq
                         all_possible_characters = set(qseq + hseq)
