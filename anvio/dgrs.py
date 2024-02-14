@@ -107,13 +107,12 @@ class DGR_Finder:
                             "class, not multiple :/")
 
         if ((self.contigs_db_path and self.profile_db_path) or (self.contigs_db_path)) and not self.hmm:
-            #check if running with --HMM, if not
-            self.run.warning("Just so you know in order to report a DGR you need to have Reverse Transcriptase "
-                            "annotated or else you are not finding DGRs. If you would like to do this please run"
-                            "your 'contigs.db' with 'anvi-run-hmms'"
-                            "with the flag '-I' and the 'Reverse_Transcriptase' (type: 6 clades of DGR Retroelements from"
-                            "doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases)."
-                            "then re-run 'anvi-report-dgrs' with the '--hmm-usage' flag. If that is what you want of course")
+            raise ConfigError("Just so you know in order to report a DGR you need to have Reverse Transcriptase "
+                            "annotated or else you are not finding DGRs. If you would like to do this please run "
+                            "your 'contigs.db' with `anvi-run-hmms -I Reverse_Transcriptase` (type: 6 clades of DGR "
+                            "Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). "
+                            "then re-run `anvi-report-dgrs` with the `--hmm-usage` flag. This is one option, but you can use other HMM "
+                            "profiles if you like.")
 
         if self.fasta_file_path:
             # check fasta input
