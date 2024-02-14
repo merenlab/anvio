@@ -464,7 +464,7 @@ class DGR_Finder:
                                 splits_of_interest_set= set(self.split_names_unique),
                                 compute_gene_coverage_stats=True)
 
-        n = NucleotidesEngine(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        n = NucleotidesEngine(args, r=terminal.Run(verbose=True), p=terminal.Progress(verbose=True))
         n.process()
 
         return n.data
