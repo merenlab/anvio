@@ -8,7 +8,6 @@ import csv
 import os
 import shutil
 import argparse
-#import bisect
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -153,7 +152,6 @@ class DGR_Finder:
                                         f"contigs.db.")
 
             if self.gene_caller_to_consider_in_context:
-                contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
                 genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
                 unique_sources = set()
                 for gene_id, gene_info in genes_in_contigs_dict.items():
@@ -227,7 +225,6 @@ class DGR_Finder:
             #self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
 
             self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
-            print(self.snv_panda)
             # Use a list comprehension to extract the values associated with the target key
             #split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
             #self.split_names_unique = list(dict.fromkeys(split_names))
