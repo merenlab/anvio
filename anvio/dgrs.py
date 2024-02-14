@@ -209,35 +209,19 @@ class DGR_Finder:
 
         elif self.contigs_db_path and self.profile_db_path:
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-            #self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column = 'split')
-            #self.splits_of_interest = contigs_db.db.smart_get(t.splits_info_table_name, column='split')
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-            #self.splits_of_interest = list(self.splits_basic_info.keys())
-            #self.splits_of_interest = ', '.join(map(str, self.splits_basic_info.keys()))
-            #print(self.splits_of_interest)
-            #split_path = 'split_of_interest_file.txt
 
-            #contigs_db.disconnect()
+            contigs_db.disconnect()
 
             #open merged profile-db and get the variable nucleotide table as a dictionary then acess the split names as a list to use in get_snvs
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-            #self.variable_nucleotides_dict = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
-
             self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
-            # Use a list comprehension to extract the values associated with the target key
-            #split_names = [self.variable_nucleotides_dict[key]['split_name'] for key in self.variable_nucleotides_dict if 'split_name' in self.variable_nucleotides_dict[key]]
-            #self.split_names_unique = list(dict.fromkeys(split_names))
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
-            #sample_id_list = [self.variable_nucleotides_dict[key]['sample_id'] for key in self.variable_nucleotides_dict if 'sample_id' in self.variable_nucleotides_dict[key]]
-            #sample_id_list = list(set(sample_id_list))
-            #departure_from_reference = [self.variable_nucleotides_dict[key]['departure_from_reference'] for key in self.variable_nucleotides_dict if 'departure_from_reference' in self.variable_nucleotides_dict[key]]
 
             profile_db.disconnect()
 
-            #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
-            #self.snv_panda = self.snv_panda.sort_values(by=['contig_name', 'pos_in_contig'])
-            #self.split_names_unique = self.snv_panda.split_name.unique()
             sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
             self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
