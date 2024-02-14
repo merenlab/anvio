@@ -4668,6 +4668,17 @@ class ContigsDatabase:
         for gene_unique_id, start, stop in genes_in_contig:
             gene_call = genes_in_contigs_dict[gene_unique_id]
 
+            if (start > contig_length) or (stop > contig_length):
+                if not anvio.DEBUG:
+                    os.remove(self.db_path)
+                raise ConfigError(f"Something is wrong with your external gene calls file. It seems "
+                                  f"that the gene with gene callers id {gene_unique_id}, on contig "
+                                  f"{contig_name}, has positions that go beyond the length of the contig. "
+                                  f"Specifically, the length of the contig is {contig_length}, but the "
+                                  f"gene starts at position {start} and goes to position {stop}. We've "
+                                  f"removed the partially-created contigs database for you (but you can "
+                                  f"see if if you re-run your command with the `--debug` flag).")
+
             if gene_call['call_type'] != coding:
                 for nt_position in range(start, stop):
                     nt_position_info_list[nt_position] = 8
