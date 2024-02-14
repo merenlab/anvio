@@ -91,7 +91,7 @@ class DGR_Finder:
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
         if self.contigs_db_path:
-            self.run.info('HMM Provided', self.hmm)
+            self.run.info('HMM(s) Provided', ", ".join(self.hmm))
 
     def sanity_check(self):
         """Basic checks for a smooth operation"""
