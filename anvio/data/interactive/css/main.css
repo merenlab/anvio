@@ -293,6 +293,7 @@ html, body, #wrapper {
 
 .toggle-panel-left-pos {
     left: 560px;
+    z-index: 1;
 }
 
 #toggle-panel-left:hover {
