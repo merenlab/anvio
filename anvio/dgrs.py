@@ -955,11 +955,6 @@ class DGR_Finder:
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
         self.hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
 
-        #CHANGE TO BE IF HMMs FOUND <=0 then no HMMs :(
-        #if self.hmms_provided <= 0:
-            #ConfigError(f"No HMMs were provided in your {self.contigs_db_path}, please check your contig.db "
-                        #"needless to say we cannot find reverse transcriptases without any HMMs :(")
-
         found_HMMS_dict = {}
         # go to hmm_hits, for every unique gene_caller_ids pick lowest e-value. now have gene callers ID
         for index, entry in self.hmm_hits_dict.items():
@@ -977,8 +972,7 @@ class DGR_Finder:
                     found_HMMS_dict[gene_callers_id]['e_value'] = e_value
                     found_HMMS_dict[gene_callers_id]['HMM_source'] = HMM_source
 
-
-            # Check if the gene_caller_id exists in genes_in_contigs
+        # Check if the gene_caller_id exists in genes_in_contigs
         for gene_callers_id, hmm_dict in found_HMMS_dict.items():
             # Retrieve the 'start' and 'stop' values
             int_gene_callers_id = int(gene_callers_id)
@@ -997,12 +991,6 @@ class DGR_Finder:
             hmm_dict['Gene_annotation_source'] = gene_annotation_source
 
             found_HMMS_dict[gene_callers_id] = hmm_dict
-
-        #sorted_self.DGRs_found_dict = dict(sorted(self.DGRs_found_dict.items(), key=lambda x: x[1]['VRs'][next(iter(x[1]['VRs']))]['TR_middle_position']))
-        #sorted_self.DGRs_found_dict = dict(sorted(self.DGRs_found_dict.items(), key=lambda x: x[1]['VRs'][next(iter(x[1]['VRs']))].get('TR_middle_position', float('inf'))))
-
-        #print(sorted_self.DGRs_found_dict)
-        #second_sorted_self.DGRs_found_dict = dict(sorted(self.DGRs_found_dict.items(), key=lambda x: x[1]['TR_middle_position']))
 
         #look at general concensus TR in the level up so all the TRs have the same HMM if in the same DGR.
         for DGR_id, DGR_info in self.DGRs_found_dict.items():
@@ -1034,8 +1022,7 @@ class DGR_Finder:
             DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
             DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
 
-        return (self.DGRs_found_dict)
-
+        return
 
     def create_found_tr_vr_csv(self):
         """
@@ -1051,18 +1038,7 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
-        base_input_name = None
-        if self.fasta_file_path:
-                base_input_name = os.path.basename(self.fasta_file_path)
-        elif self.contigs_db_path:
-                base_input_name = os.path.basename(self.contigs_db_path)
-
-        # if contigs.db, then check for gene info per VR
-        #if self.contigs_db_path:
-            #self.get_gene_info()
-            #self.get_hmm_info()
         output_path_dgrs = os.path.join(self.output_directory, "DGRs_found.csv")
-        #csv_file_path = f'DGRs_found_from_{base_input_name}_percentage_{self.percentage_mismatch}_number_mismatches_{self.number_of_mismatches}.csv'
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
 
@@ -1070,14 +1046,6 @@ class DGR_Finder:
             csv_writer.writerow(["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "Mismatch %",
                                 "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position","HMM_source",
                                 "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop",  "HMM_gene_callers_id"])
-
-            #pre adding HMMs code!
-            # Write data
-            #for dgr, tr in self.DGRs_found_dict.items():
-                #for vr, vr_data in tr['VRs'].items():
-                    #csv_writer.writerow([dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'], vr_data['VR_end_position'],
-                                        #vr_data['percentage_of_mismatches'], tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
-                                        #vr_data['TR_start_position'], vr_data['TR_end_position'], vr_data[]])
 
             for dgr, tr in self.DGRs_found_dict.items():
                 for vr, vr_data in tr['VRs'].items():
@@ -1135,7 +1103,6 @@ class DGR_Finder:
 
         return
 
-
     def process(self,args):
         """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
         self.sanity_check()
@@ -1159,6 +1126,3 @@ class DGR_Finder:
             self.create_found_tr_vr_csv()
 
         return
-
-
-
