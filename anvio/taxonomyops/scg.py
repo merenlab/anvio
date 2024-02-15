@@ -138,11 +138,6 @@ class SanityCheck(object):
                               "taxonomic levels anvi'o recognizes: %s" % (', '.join(constants.levels_of_taxonomy)))
 
         # sanity checks specific to classes start below
-        if self.__class__.__name__ in ['SetupLocalSCGTaxonomyData']:
-            if self.reset and self.redo_databases:
-                raise ConfigError("You can't ask anvi'o to both `--reset` and `--redo-databases` at the same time. Well. "
-                                  "You can, but then this happens :/")
-
         if self.__class__.__name__ in ['SetupLocalSCGTaxonomyData', 'PopulateContigsDatabaseWithSCGTaxonomy']:
             if self.user_taxonomic_level:
                 raise ConfigError("There is no need to set a taxonomic level while working with the class SetupLocalSCGTaxonomyData "
@@ -157,8 +152,8 @@ class SanityCheck(object):
 
             if not os.path.exists(self.ctx.accession_to_taxonomy_file_path):
                 raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical "
-                                  "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
-                                  "the program `anvi-setup-scg-taxonomy` with the `--reset` flag to set things right again.")
+                                  "file (in this case, the file to resolve accession IDs to taxon names). You may need to "
+                                  "restore your anvi'o Git repository. Maybe reach out to us for help on Github or Discord.")
 
             filesnpaths.is_output_file_writable(self.all_hits_output_file_path, ok_if_exists=False) if self.all_hits_output_file_path else None
 
@@ -1015,8 +1010,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.reset = A("reset") # complete start-over (downloading everything from GTDB)
-        self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
         self.SCGs_taxonomy_data_dir = A('scgs_taxonomy_data_dir')
 
@@ -1052,13 +1045,12 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
 
     def check_initial_directory_structure(self):
-        if os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
-            if self.reset:
-                shutil.rmtree(self.ctx.SCGs_taxonomy_data_dir)
-                self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
-                filesnpaths.gen_output_directory(self.ctx.SCGs_taxonomy_data_dir)
-        else:
-            filesnpaths.gen_output_directory(self.ctx.SCGs_taxonomy_data_dir)
+        if not os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
+            raise ConfigError(f"Bad news. Anvi'o cannot find the directory for SCG taxonomy data, which should be at "
+                              f"{self.ctx.SCGs_taxonomy_data_dir}. Fixing this problem may require restoring your "
+                              f"anvi'o Git repository (or perhaps cloning it from scratch). "
+                              f"Since this shouldn't happen, please consider reaching out to us via anvi'o Discord so "
+                              f"we can help you sort this out.")
 
 
     def create_search_databases(self):
@@ -1091,8 +1083,9 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         missing_FASTA_files = [SCG for SCG in self.ctx.SCGs if not os.path.exists(new_paths[SCG])]
         if len(missing_FASTA_files):
             raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this "
-                              "can't be your fault, it is not easy to advice what could be the solution to this. But you can "
-                              "always try to re-run `anvi-setup-scg-taxonomy` with `--reset` flag.")
+                              "can't be your fault, it is not easy to advise what could be the solution to this. You can "
+                              "try to run `git status` within your copy of the anvi'o repository to see if some critical files "
+                              "were deleted and can be restored. If not, please feel free to reach out to the developers for help.")
 
         self.progress.update("Decompressing FASTA files in %s" % (temp_dir))
         new_paths = dict([(SCG, utils.gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
