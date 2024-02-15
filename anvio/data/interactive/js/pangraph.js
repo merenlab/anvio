@@ -1321,7 +1321,7 @@ function main () {
         $('<div class="col-12" id="bin' + binnum + '"></div>').append(
           $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
             $('<div class="col-2"></div>').append(
-              $('<input class="form-check-input" type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
+              $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
             )
           ).append(
             $('<div class="col-6"></div>').append(

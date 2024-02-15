@@ -313,17 +313,17 @@
             <!-- BIN Tab -->
             <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
               <div id="bin-settings" class="form-horizontal mt-3">  
-                <div class="ps-3 pe-3">
-                  <h5 class="text-start mt-3 mb-3">Bins</h5>
+                <div class="panel-body">
+                  <span class="settings-secondary-header mb-3 mt-3">Bins</span>
                   
-                  <div class="row align-items-center">
+                  <div class="row align-items-center ml-2 mr-3">
                     <div class="col-12">
     
                       <div class="row grid align-items-center" id="bingrid">
                         <div class="col-12" id="bin1">
                           <div class="row align-items-center">
                             <div class="col-2">
-                              <input class="form-check-input" type="radio" name="binradio" id="bin1radio" value="bin1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
+                              <input type="radio" name="binradio" id="bin1radio" value="bin1" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" checked>
                             </div>
                             <div class="col-6">
                               <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin1text" aria-describedby="">
@@ -339,25 +339,31 @@
                       </div>
                     </div>
                   </div>
-                </div>
-    
-                <div class="d-flex justify-content-center border-top p-3">
-                  <div class="btn-group" role="group" aria-label="Basic example">
-                    <button class="btn btn-primary" id="bininfo">
-                      <i class="bi bi-info-square"></i>
-                    </button>
-                    <button class="btn btn-primary" id="binadd">
-                      <i class="bi bi-plus-square"></i>
-                    </button>
-                    <button class="btn btn-primary" id="binremove">
-                      <i class="bi bi-dash-square"></i>
-                    </button>
-                    <button class="btn btn-primary" id="binsave">
-                      <i class="bi bi-database-up"></i>
-                    </button>
-                    <button class="btn btn-primary" id="binload">
-                      <i class="bi bi-database-down"></i>
-                    </button>
+                  <div class="pt-5">
+                    <div class="col-12 pt-2 border-top d-flex align-items-center justify-content-center">
+                      <button type="button" class="col-6 btn btn-outline-success btn-md mr-2 align-items-center justify-content-center" id="binadd">
+                        <i class="bi bi-archive-fill fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-bold">Add bin</span>
+                      </button>
+                      <button type="button" class="col-6 btn btn-outline-danger btn-md align-items-center justify-content-center" id="binremove">
+                        <i class="bi bi-trash3-fill fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-bold">Delete bin</span>
+                      </button>
+                    </div>
+                    <div class="col-12 pt-2 d-flex align-items-center justify-content-center">
+                      <button type="button" class="col-4 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload">
+                        <i class="bi bi-arrow-up-square fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-normal">Load bin collection</span>
+                      </button>
+                      <button type="button" class="col-4 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave">
+                        <i class="bi bi-arrow-down-square fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-normal">Store bin collection</span>
+                      </button>
+                      <button type="button" class="col-4 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="bininfo">
+                        <i class="bi bi-info-square fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-normal">Info bin collection</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
