@@ -1423,35 +1423,43 @@ class BottleApplication(Bottle):
 
 
     def reroot_tree(self):
+        # Get the Newick tree string from the form data
         newick = request.forms.get('newick')
-        tree = Tree(newick, format=1)
+        
+        # Replace unsupported characters for Ete3 and convert to Ete3 format
+        newick_tree = re.sub('[R;]', ";", newick)
+        
+        # Create an Ete3 Tree object from the Newick string
+        tree = Tree(newick_tree, format=0)
 
-        branch_support_values = {}
-
-        for node in tree.traverse():
-            if node.support:
-                branch_support_values[node] = node.support
-
+        # Find the leftmost and rightmost nodes based on the provided names
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
         right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
 
+        # Find the new root by identifying the common ancestor of the leftmost and rightmost nodes
         new_root = tree.get_common_ancestor(left_most, right_most)
+
+        # Set the support value to 0 for all nodes under the new root
+        for node in new_root.traverse():
+            try:
+                node.support = 0
+            except AttributeError:
+                pass
+
+        # Set the new root as the outgroup
         tree.set_outgroup(new_root)
 
-        for node, support_value in branch_support_values.items():
-            if not node.is_root():
-                original_node = tree.search_nodes(name=node.name)[0]
-                if original_node != node:
-                    node.support = support_value
-
+        # Encode node names using base32 encoding
         for node in tree.traverse('preorder'):
             node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
 
-        new_newick = tree.write(format=1)
+        # Serialize the tree to Newick format
+        new_newick = tree.write(format=0)
 
-        # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
-        new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
+        # Decode base32 encoded node names back
+        new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_', '=')).decode('utf-8'), new_newick)
 
+        # Return the modified Newick format tree string as JSON
         return json.dumps({'newick': new_newick})
 
 
