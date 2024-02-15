@@ -132,3 +132,7 @@ html *
   .gene_cluster_id_current {
       background: #d8ebde;
   }
+
+  .bin-icon-size{
+    font-size: 14px;
+  }
