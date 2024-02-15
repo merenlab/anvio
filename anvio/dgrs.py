@@ -1039,8 +1039,8 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
-        if not self.DGRs_found_dict:
-            raise ConfigError("No DGRS were found so no output file will be written")
+        #if not self.DGRs_found_dict:
+            #raise ConfigError("No DGRS were found so no output file will be written")
 
         output_path_dgrs = os.path.join(self.output_directory, "DGRs_found.csv")
         with open(output_path_dgrs, 'w', newline='') as csvfile:
