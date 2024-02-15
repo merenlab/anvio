@@ -181,6 +181,21 @@
       inst_link: https://www.socialsymbioticevolution.com/
       current: true
 
+- github: pbradz
+  name: Patrick J. H. Bradley
+  web: https://bradleylab.science/authors/admin/
+  email: bradley.720@osu.edu
+  avatar: PatBradley.jpg
+  bio: "Bioinformatician interested in Metagenomics, Statistical Modeling, Microbial Evolution, Functional Genomics and Metabolism"
+  affiliations:
+    - title: Assistant Professor
+      inst: Department of Microbiology - The Ohio State University
+      inst_link: https://microbiology.osu.edu/
+      current: true
+    - title: Assistant Professor
+      inst: Infectious Diseases Institute - The Ohio State University
+      inst_link: https://idi.osu.edu/
+
 - github: kekananen
   name: Kathryn Kananen
   web: https://bradleylab.science/author/kathryn-kananen/
