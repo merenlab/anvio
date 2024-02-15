@@ -1426,11 +1426,14 @@ class BottleApplication(Bottle):
         # Get the Newick tree string from the form data
         newick = request.forms.get('newick')
         
-        # Replace unsupported characters for Ete3 and convert to Ete3 format
-        newick_tree = re.sub('[R;]', ";", newick)
-        
-        # Create an Ete3 Tree object from the Newick string
-        tree = Tree(newick_tree, format=0)
+        # Create an Ete3 Tree object from the Newick string, specifying format=1
+        # since you are using a different Newick format (check Ete3 documentation for details)
+        tree = Tree(newick, format=1)
+
+        # Assign node names to their support values for non-leaf and non-root nodes
+        for node in tree.traverse():
+            if not node.is_leaf() and not node.is_root():
+                node.support = node.name
 
         # Find the leftmost and rightmost nodes based on the provided names
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
@@ -1449,12 +1452,17 @@ class BottleApplication(Bottle):
         # Set the new root as the outgroup
         tree.set_outgroup(new_root)
 
+        # Assign support values as node names for non-leaf and non-root nodes
+        for node in tree.traverse():
+            if not node.is_leaf() and not node.is_root():
+                node.name = str(node.support)
+
         # Encode node names using base32 encoding
         for node in tree.traverse('preorder'):
             node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
 
         # Serialize the tree to Newick format
-        new_newick = tree.write(format=0)
+        new_newick = tree.write(format=1)
 
         # Decode base32 encoded node names back
         new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_', '=')).decode('utf-8'), new_newick)
