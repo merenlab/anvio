@@ -1001,9 +1001,11 @@ class DGR_Finder:
 
             # Initialize closest_distances dictionary inside the loop
             closest_distances = {}  # Initialize an empty dictionary to store closest distances
+            HMM_found = False
 
             for gene_callers_id, hmm_dict in found_HMMS_dict.items():
                 if DGR_info['TR_contig'] == hmm_dict['contig']:
+                    HMM_found = True
                     HMM_midpoint = hmm_dict['HMM_Midpoint']
                     distance = abs(TR_middle_position - HMM_midpoint)
 
@@ -1012,16 +1014,26 @@ class DGR_Finder:
                     elif distance < closest_distances['distance']:
                         closest_distances['gene_callers_id'] = gene_callers_id
                         closest_distances['distance'] = distance
-
-            HMM_gene_callers_id = closest_distances['gene_callers_id']
-            DGR_info['HMM_gene_callers_id'] = HMM_gene_callers_id
-            DGR_info['distance_to_HMM'] = closest_distances['distance']
-            DGR_info['HMM_start'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_start']
-            DGR_info['HMM_stop'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_stop']
-            DGR_info['HMM_direction'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_direction']
-            DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
-            DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
-            DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
+            if not HMM_found:
+                HMM_gene_callers_id = ''
+                DGR_info['HMM_gene_callers_id'] = ''
+                DGR_info['distance_to_HMM'] = ''
+                DGR_info['HMM_start'] = ''
+                DGR_info['HMM_stop'] = ''
+                DGR_info['HMM_direction'] = ''
+                DGR_info['HMM_source'] = ''
+                DGR_info['HMM_gene_name'] = ''
+                DGR_info['HMM_gene_source'] = ''
+            else:
+                HMM_gene_callers_id = closest_distances['gene_callers_id']
+                DGR_info['HMM_gene_callers_id'] = HMM_gene_callers_id
+                DGR_info['distance_to_HMM'] = closest_distances['distance']
+                DGR_info['HMM_start'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_start']
+                DGR_info['HMM_stop'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_stop']
+                DGR_info['HMM_direction'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_direction']
+                DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
+                DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
+                DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
 
         return
 
