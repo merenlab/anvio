@@ -8877,6 +8877,105 @@ class Constructor:
 
         return metabolites_table
 
+    def _get_database_kegg_table(self, network: ReactionNetwork) -> pd.DataFrame:
+        """
+        Make a table recording the relationships between KEGG KOs, modules, pathways, and BRITE
+        hierarchies in the reaction network that can be stored in either a contigs or a pan
+        database, as tables have the same structure. A ReactionNetwork can be reconstructed with the
+        same data from the reaction, metabolites, and KEGG tables of the database.
+
+        Parameters
+        ==========
+        network : ReactionNetwork
+            Network generated from gene or gene cluster KO annotations.
+
+        Returns
+        =======
+        pd.DataFrame
+            Table of KEGG information to be stored.
+        """
+        if DEBUG:
+            assert (
+                tables.reaction_network_kegg_table_structure ==
+                tables.pan_reaction_network_kegg_table_structure
+            )
+            assert (
+                tables.reaction_network_kegg_table_types ==
+                tables.pan_reaction_network_kegg_table_types
+            )
+
+        # Transfer data from KEGG objects to dictionaries mapping to table entries.
+        kegg_data = {}
+
+        # The first rows in the table are for KOs.
+        ko_id_pattern = re.compile('K\d{5}')
+        for ko_id, ko in network.kos.items():
+            ko_data = {}
+            assert re.fullmatch(ko_id_pattern, ko_id)
+            ko_data['id'] = ko_id
+            ko_data['name'] = ko.name
+            ko_data['modules'] = ', '.join(ko.module_ids)
+            ko_data['pathways'] = ', '.join(ko.pathway_ids)
+            brite_categorizations = []
+            for hierarchy_id, categorizations in ko.hierarchies.items():
+                for categorization in categorizations:
+                    brite_categorizations.append(
+                        f'{hierarchy_id} >>> {" >>> ".join(categorization)}'
+                    )
+            ko_data['brite_categorization'] = ' !!! '.join(brite_categorizations)
+            kegg_data[f'1{ko_id}'] = ko_data
+
+        # Modules are second in the table.
+        module_id_pattern = re.compile('M\d{5}')
+        for module_id, module in network.modules.items():
+            module_data = {}
+            assert re.fullmatch(module_id_pattern, module_id)
+            module_data['id'] = module_id
+            module_data['name'] = module.name
+            module_data['modules'] = ''
+            module_data['pathways'] = ', '.join(module.pathway_ids)
+            # TODO: There is a BRITE hierarchy of modules, 'ko00002'. This hierarchy is not
+            # currently downloaded or handled by kegg.py, but the classification of modules, like
+            # that of pathways as categories in the hierarchy, 'ko00001', could be useful.
+            module_data['brite_categorization'] = ''
+            kegg_data[f'2{module_id}'] = module_data
+
+        # Pathways are third in the table.
+        pathway_id_pattern = re.compile('map\d{5}')
+        for pathway_id, pathway in network.pathways.items():
+            pathway_data = {}
+            assert re.fullmatch(pathway_id_pattern, pathway_id)
+            pathway_data['id'] = pathway_id
+            pathway_data['name'] = pathway.name
+            pathway_data['modules'] = ''
+            pathway_data['pathways'] = ''
+            pathway_data[
+                'brite_categorization'
+            ] = f'ko00001 >>> {" >>> ".join(pathway.categorization)}'
+            kegg_data[f'3{pathway_id}'] = pathway_data
+
+        # Hierarchies are fourth in the table.
+        hierarchy_id_pattern = re.compile('ko\d{5}')
+        for hierarchy_id, hierarchy in network.hierarchies.items():
+            hierarchy_data = {}
+            # Only hierarchies of KOs should be in consideration. Hierarchies of other KEGG items
+            # that do not resolve to KOs, such as reactions and drugs, have IDs that start with 'br'
+            # rather than 'ko'.
+            assert re.fullmatch(hierarchy_id_pattern, hierarchy_id)
+            hierarchy_data['id'] = hierarchy_id
+            hierarchy_data['name'] = hierarchy.name
+            hierarchy_data['modules'] = ''
+            hierarchy_data['pathways'] = ''
+            hierarchy_data['brite_categorization'] = ''
+            kegg_data[f'4{hierarchy_id}'] = hierarchy_data
+
+        kegg_table = pd.DataFrame.from_dict(
+            kegg_data, orient='index'
+        ).sort_index().reset_index(drop=True)
+        kegg_table = kegg_table[tables.reaction_network_kegg_table_structure]
+
+        return kegg_table
+
     def hash_contigs_db_ko_hits(self, gene_ko_hits_table: pd.DataFrame) -> str:
         """
         To concisely represent the data underlying a reaction network, hash all gene KO annotations
