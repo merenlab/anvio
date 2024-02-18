@@ -4045,8 +4045,9 @@ class PanDatabase:
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_reactions_table_name, t.pan_gene_cluster_function_reactions_table_structure, t.pan_gene_cluster_function_reactions_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_metabolites_table_name, t.pan_gene_cluster_function_metabolites_table_structure, t.pan_gene_cluster_function_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
+        self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
