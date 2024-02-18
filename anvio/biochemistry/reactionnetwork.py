@@ -6719,18 +6719,56 @@ class Constructor:
                 f"Instead, the argument was of type '{type(database)}'."
             )
 
-        # The KO database is needed if KOs in the stored network aren't among the current gene
-        # annotations.
-        try:
-            ko_db = KODatabase(ko_dir=self.ko_dir)
-        except ConfigError as e:
-            raise ConfigError(
-                f"{e} Please set up the KO database in the default directory with the program, "
-                "'anvi-reaction-network'."
-            )
-
+        # Each row of the table contains information on a different ModelSEED reaction.
         for row in reactions_table.itertuples():
-            # Each row of the table contains information on a different ModelSEED reaction.
+            # Check that the reaction is associated with a KO that matches a gene in the contigs
+            # database (or is assigned to a gene cluster in the pan database). If KO gene
+            # annotations have been updated from those used to create the stored reaction network,
+            # then certain KOs and everything inferred from the KOs may no longer annotate genes
+            # and gene clusters, and are therefore not loaded.
+            is_networked = False
+
+            # Map KEGG reaction aliases of the ModelSEED reaction to all KOs that were associated
+            # with the KEGG reaction.
+            kegg_reaction_sources: str = row.ko_kegg_reaction_source
+            kegg_reaction_kos: Dict[str, List[KO]] = {}
+            for kegg_reaction_item in kegg_reaction_sources.split('; '):
+                if not kegg_reaction_item:
+                    # The ModelSEED reaction was not sourced from KEGG reactions.
+                    continue
+                kegg_reaction_id, ko_ids = kegg_reaction_item.split(': (')
+                ko_ids = ko_ids[:-1].split(', ')
+                kegg_reaction_kos[kegg_reaction_id] = kos = []
+                for ko_id in ko_ids:
+                    try:
+                        kos.append(network.kos[ko_id])
+                    except KeyError:
+                        continue
+                if kos:
+                    is_networked = True
+
+            # Map EC number aliases of the ModelSEED reaction to all KOs that were associated with
+            # the EC number.
+            ec_number_sources: str = row.ko_ec_number_source
+            ec_number_kos: Dict[str, List[KO]] = {}
+            for ec_number_item in ec_number_sources.split('; '):
+                if not ec_number_item:
+                    # The ModelSEED reaction was not sourced from EC numbers.
+                    continue
+                ec_number, ko_ids = ec_number_item.split(': (')
+                ko_ids = ko_ids[:-1].split(', ')
+                ec_number_kos[ec_number] = kos = []
+                for ko_id in ko_ids:
+                    try:
+                        kos.append(network.kos[ko_id])
+                    except KeyError:
+                        continue
+                if kos:
+                    is_networked = True
+
+            if not is_networked:
+                continue
+
             reaction = ModelSEEDReaction()
             modelseed_reaction_id: str = row.modelseed_reaction_id
             reaction.modelseed_id = modelseed_reaction_id
@@ -6754,28 +6792,16 @@ class Constructor:
             reversibility: int = row.reversibility
             reaction.reversibility = bool(reversibility)
 
-            # Map KEGG reaction aliases of the ModelSEED reaction to all KOs that were associated
-            # with the KEGG reaction.
-            kegg_reaction_ko_ids: Dict[str, List[str]] = {}
-            kegg_reaction_sources: str = row.ko_kegg_reaction_source
-            for kegg_reaction_item in kegg_reaction_sources.split('; '):
-                if not kegg_reaction_item:
-                    # The ModelSEED reaction was not sourced from KEGG reactions.
-                    continue
-                kegg_reaction_id, ko_ids = kegg_reaction_item.split(': (')
-                ko_ids = ko_ids[:-1].split(', ')
-                kegg_reaction_ko_ids[kegg_reaction_id] = ko_ids
             # Record *all* KEGG reaction aliases of the ModelSEED reaction, including those not
             # associated with KO annotations.
             other_kegg_reaction_ids: str = row.other_kegg_reaction_ids
-            reaction.kegg_aliases = list(kegg_reaction_ko_ids)
+            reaction.kegg_aliases = list(kegg_reaction_kos)
             if other_kegg_reaction_ids:
                 reaction.kegg_aliases += other_kegg_reaction_ids.split(', ')
             reaction.kegg_aliases = tuple(reaction.kegg_aliases)
 
             network.modelseed_kegg_aliases[modelseed_reaction_id] = modelseed_kegg_aliases = []
-            orphan_ko_ids = []
-            for kegg_reaction_id, ko_ids in kegg_reaction_ko_ids.items():
+            for kegg_reaction_id, kos in kegg_reaction_kos.items():
                 # Record the ModelSEED reaction as one of the aliases of the KEGG reaction in the
                 # network.
                 try:
@@ -6783,27 +6809,7 @@ class Constructor:
                 except KeyError:
                     network.kegg_modelseed_aliases[kegg_reaction_id] = [modelseed_reaction_id]
                 modelseed_kegg_aliases.append(kegg_reaction_id)
-                for ko_id in ko_ids:
-                    try:
-                        ko = network.kos[ko_id]
-                    except KeyError:
-                        # In the case of a genomic network, this error arises when the current set
-                        # of gene KO annotations in the contigs database does not match the set from
-                        # which the reaction network was originally made, and the KO under
-                        # consideration in the network is no longer a gene annotation in the
-                        # database. In the case of a pangenomic network, this error arises when the
-                        # current set of gene cluster consensus KO annotations does not match the
-                        # set from which the reaction network was originally made and the consensus
-                        # KO under consideration in the network no longer annotates a gene cluster
-                        # in the pan database. (The current set of gene cluster consensus KO
-                        # annotations is derived from the pan and genomes storage databases using
-                        # the parameters, 'consensus_threshold' and 'discard_ties'.)
-                        ko = KO()
-                        ko.id = ko_id
-                        # The KO name is unknown from the database, so take it from the KO database.
-                        ko.name = ko_db.ko_table.loc[ko_id, 'name']
-                        network.kos[ko_id] = ko
-                        orphan_ko_ids.append(ko_id)
+                for ko in kos:
                     if not modelseed_reaction_id in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
                         ko.reaction_ids.append(modelseed_reaction_id)
@@ -6812,28 +6818,17 @@ class Constructor:
                     except KeyError:
                         ko.kegg_reaction_aliases[modelseed_reaction_id] = [kegg_reaction_id]
 
-            # Map EC number aliases of the ModelSEED reaction to all KOs that were associated with
-            # the EC number.
-            ec_number_ko_ids: Dict[str, List[str]] = {}
-            ec_number_sources: str = row.ko_ec_number_source
-            for ec_number_item in ec_number_sources.split('; '):
-                if not ec_number_item:
-                    # The ModelSEED reaction was not sourced from EC numbers.
-                    continue
-                ec_number, ko_ids = ec_number_item.split(': (')
-                ko_ids = ko_ids[:-1].split(', ')
-                ec_number_ko_ids[ec_number] = ko_ids
             # Record *all* EC number aliases of the ModelSEED reaction, including those not
             # associated with KO annotations.
             other_ec_numbers: str = row.other_ec_numbers
-            reaction.ec_number_aliases = list(ec_number_ko_ids)
+            reaction.ec_number_aliases = list(ec_number_kos)
             if other_ec_numbers:
                 reaction.ec_number_aliases += other_ec_numbers.split(', ')
             reaction.ec_number_aliases = tuple(reaction.ec_number_aliases)
 
             modelseed_ec_number_aliases = []
             network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases
-            for ec_number, ko_ids in ec_number_ko_ids.items():
+            for ec_number, kos in ec_number_kos.items():
                 # Record the ModelSEED reaction as one of the aliases of the EC number in the
                 # network.
                 try:
@@ -6841,18 +6836,7 @@ class Constructor:
                 except KeyError:
                     network.ec_number_modelseed_aliases[ec_number] = [modelseed_reaction_id]
                 modelseed_ec_number_aliases.append(ec_number)
-                for ko_id in ko_ids:
-                    try:
-                        ko = network.kos[ko_id]
-                    except KeyError:
-                        # This error arises for the same reason as before (in processing KEGG
-                        # reactions).
-                        ko = KO()
-                        ko.id = ko_id
-                        # The KO name is unknown from the database, so take it from the KO database.
-                        ko.name = ko_db.ko_table.loc[ko_id, 'name']
-                        network.kos[ko_id] = ko
-                        orphan_ko_ids.append(ko_id)
+                for ko in kos:
                     if not modelseed_reaction_id in ko.reactions:
                         # This is the first time encountering the reaction as a reference of the KO.
                         ko.reaction_ids.append(modelseed_reaction_id)
@@ -6860,26 +6844,6 @@ class Constructor:
                         ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
                     except KeyError:
                         ko.ec_number_aliases[modelseed_reaction_id] = [ec_number]
-
-            if DEBUG:
-                # "Orphan" KOs can only arise when 'check_gene_annotations' is False in the calling
-                # method, 'load_contigs_database_network' or 'load_pan_database_network'.
-                if type(network) is GenomicNetwork:
-                    self.run.info_single(
-                        "The following KOs are found in the stored reaction network in the contigs "
-                        "database, but they are not found among the current gene KO annotations in "
-                        "the contigs database. The available version of the KO database set up by "
-                        "anvi'o was used to retrieve the function 'names' of these KOs: "
-                        f"{', '.join(orphan_ko_ids)}"
-                    )
-                elif type(network) is PangenomicNetwork:
-                    self.run.info_single(
-                        "The following KOs are found in the stored reaction network in the pan "
-                        "database, but they are not found among the current gene KO annotations in "
-                        "the genomes storage database. The available version of the KO database "
-                        "set up by anvi'o was used to retrieve the function 'names' of these KOs: "
-                        f"{', '.join(orphan_ko_ids)}"
-                    )
 
     def _load_modelseed_compounds(
         self,
