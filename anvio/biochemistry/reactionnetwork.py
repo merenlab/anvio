@@ -6181,10 +6181,8 @@ class Constructor:
             )
         else:
             raise ConfigError(
-                f"""\
-                A reaction network must be loaded from a database source. Either a contigs database\
-                or a genomes storage database and pan database are required.\
-                """
+                "A reaction network must be loaded from a database source. Either a contigs "
+                "database or a genomes storage database and pan database are required."
             )
         return network
 
