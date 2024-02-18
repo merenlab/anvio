@@ -6518,7 +6518,7 @@ class Constructor:
         Parameters
         ==========
         pan_db : str
-            Path to the pan database in which the reaction network is stored.
+            Path to a pan database in which a reaction network is stored.
 
         genomes_storage_db : str
             Path to the genomes storage database associated with the pan database.
@@ -6541,7 +6541,7 @@ class Constructor:
         Returns
         =======
         PangenomicNetwork
-            The network derived from the pangenomic databases.
+            Reaction network loaded from the pangenomic databases.
         """
         # Preemptively check the statistics file path.
         if stats_file is not None:
