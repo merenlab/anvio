@@ -6736,7 +6736,7 @@ class Constructor:
         """
         # Load the table of reactions data.
         if type(database) is ContigsDatabase:
-            reactions_table = database.db.get_table_as_dataframe('gene_function_reactions')
+            reactions_table = database.db.get_table_as_dataframe('reaction_network_reactions')
             if type(network) is not GenomicNetwork:
                 raise ConfigError(
                     "The provided 'database' was of type 'ContigsDatabase', so the provided "
