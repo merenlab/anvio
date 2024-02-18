@@ -6714,7 +6714,7 @@ class Constructor:
     def _load_modelseed_reactions(
         self,
         database: Union[ContigsDatabase, PanDatabase],
-        network: Union[GenomicNetwork, PangenomicNetwork]
+        network: ReactionNetwork
     ) -> None:
         """
         Add ModelSEED reactions to the network being loaded from the database.
@@ -6724,11 +6724,11 @@ class Constructor:
         Parameters
         ==========
         database : ContigsDatabase or PanDatabase
-            The database storing a reaction network. In loading a genomic network, provide a contigs
-            database; in loading a pangenomic network, provide a pan database.
+            Database storing a reaction network.
 
-        network : GenomicNetwork or PangenomicNetwork
-            The reaction network under construction.
+        network : ReactionNetwork
+            Network under construction. A GenomicNetwork is loaded from a ContigsDatabase; a
+            PangenomicNetwork is loaded from a PanDatabase.
 
         Returns
         =======
