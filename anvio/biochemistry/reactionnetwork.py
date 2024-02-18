@@ -7396,8 +7396,9 @@ class Constructor:
         if store:
             if cdb_db.get_meta_value('reaction_network_ko_annotations_hash'):
                 self.run.warning("Deleting existing reaction network from contigs database")
-                cdb_db._exec(f'''DELETE from {tables.gene_function_reactions_table_name}''')
-                cdb_db._exec(f'''DELETE from {tables.gene_function_metabolites_table_name}''')
+                cdb_db._exec(f'''DELETE from {tables.reaction_network_reactions_table_name}''')
+                cdb_db._exec(f'''DELETE from {tables.reaction_network_metabolites_table_name}''')
+                cdb_db._exec(f'''DELETE from {tables.reaction_network_kegg_table_name}''')
                 self.run.info_single(
                     "Deleted data in gene function reactions and metabolites tables", nl_after=1
                 )
@@ -7406,17 +7407,24 @@ class Constructor:
             self.progress.update("Reactions table")
             reactions_table = self._get_database_reactions_table(network)
             sql_statement = (
-                f"INSERT INTO {tables.gene_function_reactions_table_name} VALUES "
-                f"({','.join('?' * len(tables.gene_function_reactions_table_structure))})"
+                f"INSERT INTO {tables.reaction_network_reactions_table_name} VALUES "
+                f"({','.join('?' * len(tables.reaction_network_reactions_table_structure))})"
             )
             cdb_db._exec_many(sql_statement, reactions_table.values)
             self.progress.update("Metabolites table")
             metabolites_table = self._get_database_metabolites_table(network)
             sql_statement = (
-                f"INSERT INTO {tables.gene_function_metabolites_table_name} VALUES "
-                f"({','.join('?' * len(tables.gene_function_metabolites_table_structure))})"
+                f"INSERT INTO {tables.reaction_network_metabolites_table_name} VALUES "
+                f"({','.join('?' * len(tables.reaction_network_metabolites_table_structure))})"
             )
             cdb_db._exec_many(sql_statement, metabolites_table.values)
+            self.progress.update("KEGG KO information table")
+            kegg_table = self._get_database_kegg_table(network)
+            sql_statement = (
+                f"INSERT INTO {tables.reaction_network_kegg_table_name} VALUES "
+                f"({','.join('?' * len(tables.reaction_network_kegg_table_structure))})"
+            )
+            cdb_db._exec_many(sql_statement, kegg_table.values)
 
             self.progress.update("Metadata")
             ko_annotations_hash = self.hash_contigs_db_ko_hits(gene_ko_hits_table)
