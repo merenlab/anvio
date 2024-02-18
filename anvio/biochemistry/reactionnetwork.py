@@ -5421,7 +5421,7 @@ class KEGGData:
             columns_of_interest=['module', 'data_value', 'data_definition']
         ).rename({'module': 'module_id', 'data_value': 'ko_id'}, axis=1)
 
-        ko_id_pattern = 'K\d{5}'
+        ko_id_pattern = re.compile('K\d{5}')
         for orthology_entry, ko_modules_table in kos_modules_table.groupby('ko_id'):
             if not re.match(ko_id_pattern, orthology_entry):
                 # Screen for "orthology" entries that are validly formatted KO IDs. There are also
