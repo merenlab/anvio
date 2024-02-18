@@ -6284,10 +6284,34 @@ class Constructor:
         network = GenomicNetwork(run=self.run, progress=self.progress)
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
-        # Make objects representing all genes with KO annotations in the contigs database, including
-        # genes that are not in the network, which are later removed from the network.
-        for row in gene_ko_hits_table.itertuples(index=False):
-            gcid = int(row.gene_callers_id)
+        # Identify KOs present in the reaction network as it was stored that have disappeared from
+        # among the gene-KO annotations.
+        ko_id_pattern = re.compile('K\d{5}')
+        reaction_network_ko_ids: Set[str] = set([
+            kegg_id for kegg_id in
+            set(cdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            if re.fullmatch(ko_id_pattern, kegg_id)
+        ])
+        contigs_db_ko_ids = set(gene_ko_hits_table['accession'])
+        missing_ko_ids = reaction_network_ko_ids.difference(contigs_db_ko_ids)
+        if missing_ko_ids:
+            self.run.warning(
+                "The following KOs present in the reaction network as it was originally stored are "
+                "not present among the current gene-KO hits in the contigs database, indicating "
+                f"that genes were reannotated: {', '.join(missing_ko_ids)}"
+            )
+
+        # Count the genes with KO hits, a summary statistic.
+        num_genes_assigned_kos = gene_ko_hits_table['gene_callers_id'].nunique()
+
+        # Make objects representing genes with KO annotations in the stored reaction network. Make
+        # objects representing the KOs, initially only assigning their ID attribute.
+        gene_ko_hits_table: pd.DataFrame = gene_ko_hits_table.set_index('accession').loc[
+            reaction_network_ko_ids.intersection(contigs_db_ko_ids)
+        ]
+        gene_ko_hits_table = gene_ko_hits_table.reset_index().set_index('gene_callers_id')
+        for row in gene_ko_hits_table.itertuples():
+            gcid = row.gene_callers_id
             ko_id = row.accession
             ko_name = row.function
             e_value = float(row.e_value)
@@ -6297,70 +6321,22 @@ class Constructor:
                 # exists.
                 gene = network.genes[gcid]
             except KeyError:
-                gene = Gene()
-                gene.gcid = gcid
+                gene = Gene(gcid=gcid)
                 network.genes[gcid] = gene
+
             try:
                 # This is not the first annotation involving the KO, so an object for it already
                 # exists.
                 ko = network.kos[ko_id]
             except KeyError:
-                ko = KO()
-                ko.id = ko_id
-                ko.name = ko_name
+                ko = KO(id=ko_id, name=ko_name)
                 network.kos[ko_id] = ko
             gene.ko_ids.append(ko_id)
             gene.e_values[ko_id] = e_value
 
         self._load_modelseed_reactions(cdb, network)
         self._load_modelseed_compounds(cdb, network)
-
-        # Remove any trace of genes that do not contribute to the reaction network. Also remove
-        # unnetworked KO links to genes.
-        unnetworked_gcids = []
-        for gcid, gene in network.genes.items():
-            gene_in_network = False
-            unnetworked_kos: List[str] = []
-            for ko_id in gene.ko_ids:
-                ko = network.kos[ko_id]
-                if ko.reaction_ids:
-                    gene_in_network = True
-                else:
-                    unnetworked_kos.append(ko_id)
-            if gene_in_network:
-                for unnetworked_ko_id in unnetworked_kos:
-                    gene.ko_ids.remove(unnetworked_ko_id)
-                    gene.e_values.pop(unnetworked_ko_id)
-            else:
-                unnetworked_gcids.append(gcid)
-        for gcid in unnetworked_gcids:
-            network.genes.pop(gcid)
-
-        # Remove any trace of KOs that do not contribute to the reaction network.
-        unnetworked_ko_ids = []
-        for ko_id, ko in network.kos.items():
-            if not ko.reaction_ids:
-                unnetworked_ko_ids.append(ko_id)
-        for ko_id in unnetworked_ko_ids:
-            network.kos.pop(ko_id)
-
-        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO KEGG
-        # REACTION ID aliases if no such aliases were found to exist.
-        modelseed_reaction_ids = []
-        for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
-            if not kegg_reaction_ids:
-                modelseed_reaction_ids.append(modelseed_reaction_id)
-        for modelseed_reaction_id in modelseed_reaction_ids:
-            network.modelseed_kegg_aliases.pop(modelseed_reaction_id)
-
-        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO EC number
-        # aliases if no such aliases were found to exist.
-        modelseed_reaction_ids = []
-        for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
-            if not ec_numbers:
-                modelseed_reaction_ids.append(modelseed_reaction_id)
-        for modelseed_reaction_id in modelseed_reaction_ids:
-            network.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+        self._load_ko_classifications(cdb, network)
 
         if load_protein_abundances or load_metabolite_abundances:
             network.profile_db_source_path = os.path.abspath(profile_db)
@@ -6376,8 +6352,8 @@ class Constructor:
 
         precomputed_counts = {
             'total_genes': cdb_db.get_row_counts_from_table('genes_in_contigs'),
-            'genes_assigned_kos': len(network.genes) + len(unnetworked_gcids),
-            'kos_assigned_genes': len(network.kos) + len(unnetworked_ko_ids)
+            'genes_assigned_kos': num_genes_assigned_kos,
+            'kos_assigned_genes': len(contigs_db_ko_ids)
         }
         cdb.disconnect()
         stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
