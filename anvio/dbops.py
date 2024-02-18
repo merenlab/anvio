@@ -4276,7 +4276,7 @@ class ContigsDatabase:
 
 
     def remove_data_from_db(self, tables_dict):
-        """This is quite an experimental function to clean up tables in contgis databases. Use with caution.
+        """This is quite an experimental function to clean up tables in contigs databases. Use with caution.
 
            The expected tables dict should follow this structure:
 
