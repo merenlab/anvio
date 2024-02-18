@@ -6591,8 +6591,21 @@ class Constructor:
         else:
             network.consistent_annotations = False
 
-        # Make objects representing all gene clusters with consensus KO annotations.
+        # Find gene clusters with consensus KO annotations. Make objects representing gene clusters
+        # with KO annotations in the stored reaction network. Make objects representing the KOs,
+        # initially only assigning their ID attribute.
+
+        pdb = PanDatabase(pan_db)
+        pdb_db: DB = pdb.db
+        ko_id_pattern = re.compile('K\d{5}')
+        reaction_network_ko_ids: List[str] = [
+            kegg_id for kegg_id in
+            set(pdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            if re.fullmatch(ko_id_pattern, kegg_id)
+        ]
+
         num_gene_clusters_assigned_ko = 0
+        ko_ids_assigned_gene_cluster = []
         for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
             # Retrieve the consensus KO across genes in the cluster. Parameterization of the method
             # used to select consensus KOs occurred in pan super initialization. Parameter values
@@ -6603,13 +6616,15 @@ class Constructor:
                 continue
             ko_id = gene_cluster_ko_data['accession']
             num_gene_clusters_assigned_ko += 1
+            ko_ids_assigned_gene_cluster.append(ko_id)
 
-            gene_cluster = GeneCluster()
-            gene_cluster.gene_cluster_id = cluster_id
+            if ko_id not in reaction_network_ko_ids:
+                # The KO is not in the stored reaction network, indicating that it is a newer
+                # annotation.
+                continue
+
+            gene_cluster = GeneCluster(gene_cluster_id=cluster_id, ko_id=ko_id)
             gene_cluster.genomes = list(pan_super.gene_clusters[cluster_id])
-            gene_cluster.ko_id = ko_id
-            # Add the gene cluster to the network, regardless of whether it yields reactions. Gene
-            # clusters not contributing to the reaction network are removed later.
             network.gene_clusters[cluster_id] = gene_cluster
 
             try:
@@ -6617,51 +6632,22 @@ class Constructor:
                 # to it, so an object for the KO already exists.
                 ko = network.kos[ko_id]
             except KeyError:
-                ko = KO()
-                ko.id = ko_id
-                ko.name = gene_cluster_ko_data['function']
+                ko = KO(id=ko_id, name=gene_cluster_ko_data['function'])
                 network.kos[ko_id] = ko
+        ko_ids_assigned_gene_cluster = set(ko_ids_assigned_gene_cluster)
 
-        pdb = PanDatabase(pan_db)
+        missing_ko_ids = set(reaction_network_ko_ids).difference(set(network.kos.values()))
+        if missing_ko_ids:
+            self.run.warning(
+                "The following KOs present in the reaction network as it was originally stored are "
+                "not present among the current gene cluster consensus KOs derived from the "
+                "pangenomic databases, suggesting that genes underlying the gene clusters were "
+                "reannotated."
+            )
+
         self._load_modelseed_reactions(pdb, network)
         self._load_modelseed_compounds(pdb, network)
-
-        # Remove any trace of gene clusters that do not contribute to the reaction network.
-        unnetworked_cluster_ids = []
-        for cluster_id, gene_cluster in network.gene_clusters.items():
-            ko_id = gene_cluster.ko_id
-            ko = network.kos[ko_id]
-            if ko.reaction_ids:
-                continue
-            unnetworked_cluster_ids.append(cluster_id)
-        for cluster_id in unnetworked_cluster_ids:
-            network.gene_clusters.pop(cluster_id)
-
-        # Remove any trace of KOs that do not contribute to the reaction network.
-        unnetworked_ko_ids = []
-        for ko_id, ko in network.kos.items():
-            if not ko.reaction_ids:
-                unnetworked_ko_ids.append(ko_id)
-        for ko_id in unnetworked_ko_ids:
-            network.kos.pop(ko_id)
-
-        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO KEGG
-        # REACTION ID aliases if no such aliases were found to exist.
-        modelseed_reaction_ids = []
-        for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
-            if not kegg_reaction_ids:
-                modelseed_reaction_ids.append(modelseed_reaction_id)
-        for modelseed_reaction_id in modelseed_reaction_ids:
-            network.modelseed_kegg_aliases.pop(modelseed_reaction_id)
-
-        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO EC number
-        # aliases if no such aliases were found to exist.
-        modelseed_reaction_ids = []
-        for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
-            if not ec_numbers:
-                modelseed_reaction_ids.append(modelseed_reaction_id)
-        for modelseed_reaction_id in modelseed_reaction_ids:
-            network.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+        self._load_ko_classifications(pdb, network)
 
         if quiet and not stats_file:
             return network
@@ -6670,7 +6656,7 @@ class Constructor:
             precomputed_counts = {
                 'total_gene_clusters': pdb.meta['num_gene_clusters'],
                 'gene_clusters_assigned_ko': num_gene_clusters_assigned_ko,
-                'kos_assigned_gene_clusters': len(network.kos) + len(unnetworked_ko_ids)
+                'kos_assigned_gene_clusters': len(ko_ids_assigned_gene_cluster)
             }
         else:
             precomputed_counts = {
