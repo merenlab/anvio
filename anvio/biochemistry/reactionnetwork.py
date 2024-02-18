@@ -6982,6 +6982,267 @@ class Constructor:
             charge: int = row.charge
             metabolite.charge = None if np.isnan(charge) else int(charge)
 
+
+    def _load_ko_classifications(
+        self,
+        database: Union[ContigsDatabase, PanDatabase],
+        network: ReactionNetwork
+    ) -> None:
+        """
+        Add information on KEGG module, pathway, and BRITE hierarchy membership to the network being
+        loaded from the database.
+
+        Parameters
+        ==========
+        database : ContigsDatabase or PanDatabase
+            Database storing a reaction network.
+
+        network : ReactionNetwork
+            Network under construction. A GenomicNetwork is loaded from a ContigsDatabase; a
+            PangenomicNetwork is loaded from a PanDatabase.
+
+        Returns
+        =======
+        None
+        """
+        # Load the table of compounds data.
+        if type(database) is ContigsDatabase:
+            kegg_table = database.db.get_table_as_dataframe('reaction_network_kegg')
+            if type(network) is not GenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'ContigsDatabase', so the provided "
+                    "'network' must be of type 'GenomicNetwork'. Instead, the reaction network "
+                    f"argument was of type '{type(network)}'."
+                )
+        elif type(database) is PanDatabase:
+            kegg_table = database.db.get_table_as_dataframe('pan_reaction_network_kegg')
+            if type(network) is not PangenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'PanDatabase', so the provided 'network' "
+                    "must be of type 'PangenomicNetwork'. Instead, the reaction network argument "
+                    f"was of type '{type(database)}'."
+                )
+        else:
+            raise ConfigError(
+                "The provided 'database' must be of type 'ContigsDatabase' or 'PanDatabase'. "
+                f"Instead, the argument was of type '{type(database)}'."
+            )
+
+        # Create a separate table for each type of KEGG information.
+        kegg_table = kegg_table.fillna('')
+        ko_id_pattern = re.compile('K\d{5}')
+        kos_table = kegg_table[kegg_table['kegg_id'].apply(
+            lambda ko_id: True if re.fullmatch(ko_id_pattern, ko_id) else False
+        )]
+        module_id_pattern = re.compile('M\d{5}')
+        modules_table = kegg_table[kegg_table['kegg_id'].apply(
+            lambda module_id: True if re.fullmatch(module_id_pattern, module_id) else False
+        )]
+        pathway_id_pattern = re.compile('map\d{5}')
+        pathways_table = kegg_table[kegg_table['kegg_id'].apply(
+            lambda pathway_id: True if re.fullmatch(pathway_id_pattern, pathway_id) else False
+        )]
+        hierarchy_id_pattern = re.compile('ko\d{5}')
+        hierarchies_table = kegg_table[kegg_table['kegg_id'].apply(
+            lambda hierarchy_id: True if re.fullmatch(hierarchy_id_pattern, hierarchy_id) else False
+        )]
+
+        # Remove entries in the KO table for stored network KOs that no longer annotate genes in the
+        # contigs database. (For pangenomics, instead read this and following comments as indicating
+        # that the KOs no longer are consensus annotations of gene clusters from the pan database.)
+        reaction_network_ko_ids: Set[str] = set(kos_table['kegg_id'])
+        kos_table: pd.DataFrame = kos_table.set_index('kegg_id').loc[
+            set(network.kos).intersection(reaction_network_ko_ids)
+        ]
+
+        # Fill out KEGG classification attributes of KO objects in the loaded network.
+        # Record KOs that have names that differ between (newer) gene annotations in the database
+        # and (older) information in the stored network due to a KEGG database update.
+        inconsistent_kos = Dict[str, Tuple[str, str]] = {}
+        for row in kos_table.itertuples():
+            ko_id: str = row.kegg_id
+            ko = network.kos[ko_id]
+
+            ko_name: str = row.name
+            if ko.name != ko_name:
+                inconsistent_kos[ko_id] = (ko.name, ko_name)
+
+            module_ids_str: str = row.modules
+            if module_ids_str:
+                module_ids = module_ids_str.split(', ')
+            else:
+                # The KO is not classified in a module.
+                module_ids = []
+            for module_id in module_ids:
+                ko.module_ids.append(module_id)
+                try:
+                    # Another KO was loaded that is classified in the module.
+                    module = network.modules[module_id]
+                except KeyError:
+                    # Create an object in the network for the newly encountered module.
+                    network.modules[module_id] = module = KEGGModule(id=module_id)
+                module.ko_ids.append(ko_id)
+
+            pathway_ids_str: str = row.pathways
+            if pathway_ids_str:
+                pathway_ids = pathway_ids_str.split(', ')
+            else:
+                # The KO is not classified in a pathway.
+                pathway_ids = []
+            for pathway_id in pathway_ids:
+                ko.pathway_ids.append(pathway_id)
+                try:
+                    # Another KO was loaded that is classified in the pathway.
+                    pathway = network.pathways[pathway_id]
+                except KeyError:
+                    # Create an object in the network for the newly encountered pathway.
+                    network.pathways[pathway_id] = pathway = KEGGPathway(id=pathway_id)
+                pathway.ko_ids.append(ko_id)
+
+            categorizations_str: str = row.brite_categorization
+            if categorizations_str:
+                categorization_strs = categorizations_str.split(' !!! ')
+            else:
+                # The KO is not classified in a BRITE category.
+                categorization_strs = []
+            loaded_categories: Dict[str, List[Tuple[str]]] = {}
+            if categorization_strs:
+                for categorization_str in categorization_strs:
+                    full_categorization = categorization_str.split(' >>> ')
+                    hierarchy_id = full_categorization[0]
+                    assert re.fullmatch(hierarchy_id_pattern, hierarchy_id)
+                    try:
+                        categorizations = loaded_categories[hierarchy_id]
+                    except KeyError:
+                        loaded_categories[hierarchy_id] = categorizations = []
+                    categorization = tuple(full_categorization[1:])
+                    categorizations.append(categorization)
+
+            for hierarchy_id, categorizations in loaded_categories.items():
+                ko.hierarchies[hierarchy_id] = categorizations
+
+                try:
+                    # Another KO was loaded that is classified in the hierarchy.
+                    hierarchy = network.hierarchies[hierarchy_id]
+                except KeyError:
+                    # Create an object in the network for the newly encountered hierarchy.
+                    network.hierarchies[hierarchy_id] = hierarchy = BRITEHierarchy(id=hierarchy_id)
+                hierarchy.ko_ids.append(ko_id)
+
+                try:
+                    hierarchy_categorizations = network.categories[hierarchy_id]
+                except KeyError:
+                    network.categories[hierarchy_id] = hierarchy_categorizations = {}
+
+                for categorization in categorizations:
+                    if categorization in hierarchy.categorizations:
+                        # Another KO was loaded that is classified in the hierarchy.
+                        categories: List[BRITECategory] = hierarchy_categorizations[categorization]
+                        for category in categories:
+                            category.ko_ids.append(ko_id)
+                        continue
+
+                    hierarchy.categorizations.append(categorization)
+                    hierarchy_categorizations[categorization] = categories = []
+
+                    # Add the category and unencountered supercategories to the network.
+                    for depth, category_name in enumerate(categorization, 1):
+                        focus_categorization = categorization[:depth]
+                        try:
+                            # Another KO was loaded that is classified in the supercategory.
+                            category = hierarchy_categorizations[focus_categorization]
+                            is_added = True
+                        except KeyError:
+                            is_added = False
+
+                        if is_added:
+                            category.ko_ids.append(ko_id)
+                            categories.append(category)
+                            continue
+
+                        if depth > 1:
+                            # The unencountered category is a subcategory of its supercategory.
+                            categories[-1].subcategory_names.append(category_name)
+
+                        category = BRITECategory()
+                        category.id = f'{hierarchy_id}: {" >>> ".join(categorization[:depth])}'
+                        category.name = category_name
+                        category.hierarchy_id = hierarchy_id
+                        category.ko_ids.append(ko_id)
+                        categories.append(category)
+                        hierarchy_categorizations[focus_categorization] = tuple(categories)
+
+        if inconsistent_kos:
+            msg = ''
+            for ko_id, ko_names in inconsistent_kos.items():
+                gene_ko_name, network_ko_name = ko_names
+                msg += f"{ko_id}: '{gene_ko_name}' ||| '{network_ko_name}', "
+            self.run.warning(
+                "KO names differ between certain records in the stored reaction network and the "
+                "current gene-KO hits, indicating that genes were reannotated with KOs from a "
+                "newer version of the KEGG database in which certain names have changed. Hopefully "
+                "the names are similar enough to indicate that the underlying KO ID that unites "
+                "them is from the same ortholog. The first name following the KO ID is from the "
+                "gene annotation and the second after the '|||' separator is from the stored "
+                f"network: {msg}"
+            )
+
+        # Fill out module and pathway attributes.
+        for row in modules_table.itertuples():
+            module_id: str = row.kegg_id
+            try:
+                module = network.modules[module_id]
+            except KeyError:
+                # The module is not loaded because it no longer contains any KOs that annotate genes
+                # in the database.
+                continue
+
+            module_name: str = row.name
+            module.name = module_name
+
+            pathway_ids: str = row.pathway_ids
+            if not pathway_ids:
+                continue
+            for pathway_id in pathway_ids.split(', '):
+                module.pathway_ids.append(pathway_id)
+                pathway = network.pathways[pathway_id]
+                pathway.module_ids.append(module_id)
+
+        # Fill out pathway and equivalent BRITE category attributes.
+        for row in pathways_table.itertuples():
+            pathway_id: str = row.kegg_id
+            try:
+                pathway = network.pathways[pathway_id]
+            except KeyError:
+                # The pathway is not loaded because it no longer contains any KOs that annotate
+                # genes in the database.
+                continue
+
+            pathway_name: str = row.name
+            pathway.name = pathway_name
+
+            categorization_str: str = row.brite_categorization
+            full_categorization = categorization_str.split(' >>> ')
+            hierarchy_id = full_categorization[0]
+            assert hierarchy_id == 'ko00001'
+            categorization = full_categorization[1:]
+            pathway.categorization = tuple(categorization)
+            category = network.categories[hierarchy_id][categorization][-1]
+            category.pathway_id = pathway_id
+
+        # Fill out hierarchy names.
+        for row in hierarchies_table.itertuples():
+            hierarchy_id: str = row.kegg_id
+            try:
+                hierarchy = network.hierarchies[hierarchy_id]
+            except KeyError:
+                # The hierarchy is not loaded because it no longer contains any KOs that annotate
+                # genes in the database.
+                continue
+
+            hierarchy_name: str = row.name
+            hierarchy.name = hierarchy_name
+
     def make_network(
         self,
         contigs_db: str = None,
