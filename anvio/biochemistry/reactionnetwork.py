@@ -6889,10 +6889,18 @@ class Constructor:
                 f"Instead, the argument was of type '{type(database)}'."
             )
 
+        # Each row of the table contains information on a different ModelSEED compound.
         for row in metabolites_table.itertuples():
-            # Each row of the table contains information on a different ModelSEED compound.
             modelseed_compound_id = row.modelseed_compound_id
-            metabolite = network.metabolites[modelseed_compound_id]
+            try:
+                metabolite = network.metabolites[modelseed_compound_id]
+            except KeyError:
+                # The metabolite in the stored network is not loaded. The metabolite only
+                # participates in reactions that also were not loaded. The reactions are only
+                # associated with KOs that no longer match genes in the contigs database (or are no
+                # longer assigned to gene clusters in the pan database). Gene KO annotations must
+                # have been updated from those used to create the stored reaction network.
+                continue
             modelseed_compound_name: str = row.modelseed_compound_name
             metabolite.modelseed_name = modelseed_compound_name
             kegg_aliases: str = row.kegg_aliases
