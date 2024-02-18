@@ -8724,26 +8724,26 @@ class Constructor:
         """
         Make a reactions table that can be stored in either a contigs or pan database, as the tables
         have the same structure. A ReactionNetwork can be reconstructed with the same data from the
-        reactions and metabolites tables of the database.
+        reactions, metabolites, and KEGG tables of the database.
 
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network generated from gene or gene cluster KO annotations.
+            Network generated from gene or gene cluster KO annotations.
 
         Returns
         =======
         pd.DataFrame
-            The table of reactions data to be stored in the contigs or pan database.
+            Table of reactions data to be stored in the contigs or pan database.
         """
         if DEBUG:
             assert (
-                tables.gene_function_reactions_table_structure ==
-                tables.pan_gene_cluster_function_reactions_table_structure
+                tables.reaction_network_reactions_table_structure ==
+                tables.pan_reaction_network_reactions_table_structure
             )
             assert (
-                tables.gene_function_reactions_table_types ==
-                tables.pan_gene_cluster_function_reactions_table_types
+                tables.reaction_network_reactions_table_types ==
+                tables.pan_reaction_network_reactions_table_types
             )
 
         # Transfer data from reaction objects to dictionaries mapping to table entries.
@@ -8829,7 +8829,7 @@ class Constructor:
         reactions_table = pd.DataFrame.from_dict(
             reactions_data, orient='index'
         ).reset_index(drop=True).sort_values('modelseed_reaction_id')
-        reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
+        reactions_table = reactions_table[tables.reaction_network_reactions_table_structure]
 
         return reactions_table
 
@@ -8837,26 +8837,26 @@ class Constructor:
         """
         Make a metabolites table that can be stored in either a contigs or pan database, as the
         tables have the same structure. A ReactionNetwork can be reconstructed with the same data
-        from the reactions and metabolites tables of the database.
+        from the reactions, metabolites, and KEGG tables of the database.
 
         Parameters
         ==========
         network : ReactionNetwork
-            The reaction network generated from gene or gene cluster KO annotations.
+            Network generated from gene or gene cluster KO annotations.
 
         Returns
         =======
         pd.DataFrame
-            The table of metabolites data to be stored in the contigs or pan database.
+            Table of metabolites data to be stored in the contigs or pan database.
         """
         if DEBUG:
             assert (
-                tables.gene_function_metabolites_table_structure ==
-                tables.pan_gene_cluster_function_metabolites_table_structure
+                tables.reaction_network_metabolites_table_structure ==
+                tables.pan_reaction_network_metabolites_table_structure
             )
             assert (
-                tables.gene_function_metabolites_table_types ==
-                tables.pan_gene_cluster_function_metabolites_table_types
+                tables.reaction_network_metabolites_table_types ==
+                tables.pan_reaction_network_metabolites_table_types
             )
 
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
@@ -8873,7 +8873,7 @@ class Constructor:
         metabolites_table = pd.DataFrame.from_dict(
             metabolites_data, orient='index'
         ).reset_index(drop=True).sort_values('modelseed_compound_id')
-        metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
+        metabolites_table = metabolites_table[tables.reaction_network_metabolites_table_structure]
 
         return metabolites_table
 
