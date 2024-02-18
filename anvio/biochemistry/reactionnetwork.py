@@ -6235,7 +6235,6 @@ class Constructor:
         GenomicNetwork
             Reaction network loaded from the contigs database.
         """
-        # Preemptively check the statistics file path.
         if stats_file is not None:
             filesnpaths.is_output_file_writable(stats_file)
 
