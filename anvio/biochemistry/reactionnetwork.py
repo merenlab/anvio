@@ -6543,7 +6543,6 @@ class Constructor:
         PangenomicNetwork
             Reaction network loaded from the pangenomic databases.
         """
-        # Preemptively check the statistics file path.
         if stats_file is not None:
             filesnpaths.is_output_file_writable(stats_file)
 
