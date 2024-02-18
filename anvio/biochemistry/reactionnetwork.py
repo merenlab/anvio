@@ -6245,11 +6245,9 @@ class Constructor:
         sources: List[str] = cdb.meta['gene_function_sources']
         if not sources or not 'KOfam' in sources:
             raise ConfigError(
-                f"""\
-                The contigs database indicates that genes were never annotated with KOs. This is\
-                especially strange since to load a reaction network means that a network had to be\
-                constructed from gene KO annotations in the database.\
-                """
+                "The contigs database indicates that genes were never annotated with KOs. This is "
+                "especially strange since to load a reaction network means that a network had to "
+                "be constructed from gene KO annotations in the database. "
             )
 
         # Check that the network stored in the contigs database was made from the same set of KO
