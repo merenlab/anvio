@@ -6581,21 +6581,20 @@ class Constructor:
                 # meddling with the metavariables, 'consensus_threshold' and 'discard_ties', in the
                 # database. Assume that the user was not engaged in mischief.
                 raise ConfigError(
-                    f"""\
-                    The reaction network stored in the pan database was made from a different set\
-                    of KO gene annotations than is currently in the associated genomes storage\
-                    database. There are two solutions to this problem. First, the program,\
-                    'anvi-reaction-network', can be run again to overwrite the existing network\
-                    stored in the pan database with a new network from the new KO gene annotations.\
-                    Second, 'check_gene_annotations' can be given an argument of False instead of\
-                    True, preventing this exception from being raised if the stored network was\
-                    made from a different set of KO gene annotations than is currently in the\
-                    genomes storage database. This can result in different consensus KOs assigned\
-                    to gene clusters in the returned PangenomicNetwork than in the original network\
-                    that was stored. The available version of the KO database that has been set up\
-                    by anvi'o is used to fill in data for any KOs in the network that are not\
-                    current gene annotations in the genomes storage database.\
-                    """
+                    "The reaction network stored in the pan database was made from a different set "
+                    "of KO gene annotations than is currently in the associated genomes storage "
+                    "database. There are two solutions to this problem. First, the program, "
+                    "'anvi-reaction-network', can be run again to overwrite the existing network "
+                    "stored in the pan database with a new network from the new KO gene "
+                    "annotations. Second, 'check_gene_annotations' can be given an argument of "
+                    "False instead of True, preventing this exception from being raised if the "
+                    "stored network was made from a different set of KO gene annotations than is "
+                    "currently in the genomes storage database. This can result in different "
+                    "consensus KOs assigned to gene clusters in the returned PangenomicNetwork "
+                    "than in the original network that was stored. The available version of the KO "
+                    "database that has been set up by anvi'o is used to fill in data for any KOs "
+                    "in the network that are not current gene annotations in the genomes storage "
+                    "database."
                 )
             self.run.warning(
                 f"""\
