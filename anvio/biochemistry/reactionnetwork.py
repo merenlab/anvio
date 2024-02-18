@@ -6274,13 +6274,11 @@ class Constructor:
                     "to fill in data for KOs in the network that are not current gene annotations."
                 )
             self.run.warning(
-                f"""\
-                The reaction network stored in the contigs database was made from a different set of
-                KEGG KO gene annotations than is currently in the database. This will be ignored
-                since 'check_gene_annotations' is False. This can result in different genes being
-                associated with KOs in the returned GenomicNetwork than in the original network that
-                was stored.\
-                """
+                "The reaction network stored in the contigs database was made from a different set "
+                "of KEGG KO gene annotations than is currently in the database. This will be "
+                "ignored since 'check_gene_annotations' is False. This can result in different "
+                "KO assignments to genes in the returned GenomicNetwork than in the original "
+                "network that was stored."
             )
 
         network = GenomicNetwork(run=self.run, progress=self.progress)
