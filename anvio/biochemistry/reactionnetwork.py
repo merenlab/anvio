@@ -6479,10 +6479,10 @@ class Constructor:
         Parameters
         ==========
         profile_database : ProfileDatabase
-            The database storing protein measurement data that is loaded into the genomic network.
+            Database storing protein measurement data that is loaded into the genomic network.
 
         network : GenomicNetwork
-            The genomic network under construction.
+            Genomic network under construction.
 
         Returns
         =======
