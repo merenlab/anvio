@@ -6456,18 +6456,16 @@ class Constructor:
                 protein.abundances[row.sample_name] = row.abundance_value
 
         if multiprotein_genes:
-            s = ""
+            msg = ""
             for gcid, protein_ids in multiprotein_genes.items():
-                s += f"{gcid}: {', '.join(protein_ids)}; "
-            s = s[: -1]
+                msg += f"{gcid}: {', '.join(protein_ids)}; "
+            msg = msg[: -1]
             raise ConfigError(
-                f"""\
-                Certain genes were unexpectedly associated with multiple proteins with abundance\
-                data. Unfortunately, multiple protein products are not currently allowed in anvi'o,\
-                so the protein abundance data must be edited down in the profile database to permit\
-                use with the reaction network. These are as follows, with the gene callers ID\
-                separated by a comma-separated\ list of protein IDs. {s}\
-                """
+                "Certain genes were unexpectedly associated with multiple proteins with abundance "
+                "data. Unfortunately, multiple protein products are not currently allowed in "
+                "anvi'o, so the protein abundance data must be edited down in the profile database "
+                "to permit use with the reaction network. These are as follows, with the gene "
+                f"callers ID separated by a comma-separated\ list of protein IDs. {msg}"
             )
 
     def _load_metabolite_abundances(
