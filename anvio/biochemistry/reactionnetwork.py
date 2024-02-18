@@ -7773,10 +7773,10 @@ class Constructor:
             if pan_super.p_meta['reaction_network_ko_annotations_hash']:
                 self.run.warning("Deleting existing reaction network from pan database")
                 pdb.db._exec(
-                    f'''DELETE from {tables.pan_gene_cluster_function_reactions_table_name}'''
+                    f'''DELETE from {tables.pan_reaction_network_reactions_table_name}'''
                 )
                 pdb.db._exec(
-                    f'''DELETE from {tables.pan_gene_cluster_function_metabolites_table_name}'''
+                    f'''DELETE from {tables.pan_reaction_network_metabolites_table_name}'''
                 )
                 self.run.info_single(
                     "Deleted data in gene cluster function reactions and metabolites tables",
@@ -7786,19 +7786,27 @@ class Constructor:
             self.progress.new("Saving reaction network to pan database")
             self.progress.update("Reactions table")
             reactions_table = self._get_database_reactions_table(network)
-            table_name = tables.pan_gene_cluster_function_reactions_table_name
-            table_structure = tables.pan_gene_cluster_function_reactions_table_structure
+            table_name = tables.pan_reaction_network_reactions_table_name
+            table_structure = tables.pan_reaction_network_reactions_table_structure
             pdb.db._exec_many(
                 f'''INSERT INTO {table_name} VALUES ({','.join('?' * len(table_structure))})''',
                 reactions_table.values
             )
             self.progress.update("Metabolites table")
             metabolites_table = self._get_database_metabolites_table(network)
-            table_name = tables.pan_gene_cluster_function_metabolites_table_name
-            table_structure = tables.gene_function_metabolites_table_structure
+            table_name = tables.pan_reaction_network_metabolites_table_name
+            table_structure = tables.pan_reaction_network_metabolites_table_structure
             pdb.db._exec_many(
                 f'''INSERT INTO {table_name} VALUES ({','.join('?' * len(table_structure))})''',
                 metabolites_table.values
+            )
+            self.progress.update("KEGG KO information table")
+            kegg_table = self._get_database_kegg_table(network)
+            table_name = tables.pan_reaction_network_kegg_table_name
+            table_structure = tables.pan_reaction_network_kegg_table_structure
+            pdb.db._exec_many(
+                f'''INSERT INTO {table_name} VALUES ({','.join('?' * len(table_structure))})''',
+                kegg_table.values
             )
 
             self.progress.update("Metadata")
