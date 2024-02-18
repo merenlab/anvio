@@ -6402,13 +6402,13 @@ class Constructor:
         Parameters
         ==========
         profile_database : ProfileDatabase
-            The database storing protein measurements.
+            Database storing protein measurements.
 
         contigs_database : ContigsDatabase
-            The database storing associations between genes and proteins.
+            Database storing associations between genes and proteins.
 
         network : GenomicNetwork
-            The genomic network under construction.
+            Genomic network under construction.
 
         Returns
         =======
