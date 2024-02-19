@@ -2,12 +2,11 @@
 # -*- coding: utf-8
 
 import sys
-import sqlite3
 import argparse
 
-import anvio.dbinfo as dbinfo
+import anvio.db as db
+import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.constants as constants
 
 from anvio.errors import ConfigError
 
@@ -20,28 +19,32 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    contigs_db_info = dbinfo.ContigsDBInfo(db_path)
-    if str(contigs_db_info.version) != current_version:
-        raise ConfigError(
-            f"The version of the provided contigs database is {contigs_db_info.version}, "
-            f"not the required version, {current_version}, so this script cannot upgrade the database.")
+    utils.is_contigs_db(db_path)
 
+    contigs_db = db.DB(db_path, None, ignore_version = True)
+    if str(contigs_db.get_version()) != current_version:
+        raise ConfigError(f"The version of the provided contigs database is {contigs_db.get_version()}, "
+                          f"not the required version, {current_version}, so this script cannot upgrade the database.")
+
+    db_altered = False
     progress.new("Migrating")
-    progress.update("Removing old SCGs...")
 
-    self_table = contigs_db_info.get_self_table()
-    contigs_db = contigs_db_info.load_db()
-    
-    if self_table['scg_taxonomy_was_run']:
-        with sqlite3.connect(db_path) as connection:
-            cursor = connection.cursor()
+    # usually we never need to do this, but in this case it is best practice to test if
+    # we need an actual removal of the SCGs from a contigs-db since we released new SCGs
+    # in the master repository, and some poeople likely already updated their contigs-dbs.
+    # if they have already gone through that, we can save them the trouble.
+    scg_taxonomy_was_run = contigs_db.get_meta_value('scg_taxonomy_was_run')
+    scg_taxonomy_db_version = contigs_db.get_meta_value('scg_taxonomy_database_version')
+    if scg_taxonomy_was_run and scg_taxonomy_db_version == "GTDB: v214.1; Anvi'o: v1":
+        # does not need an update.
+        pass
+    else:
+        # needs an update
+        contigs_db._exec('''DELETE FROM scg_taxonomy''')
+        contigs_db.set_meta_value('scg_taxonomy_was_run', 0)
+        contigs_db.set_meta_value('scg_taxonomy_database_version', None)
 
-            # Construct the parameterized query for SCG removal
-            placeholders = ', '.join(['?'] * len(constants.default_scgs_for_taxonomy))
-            where_clause = f"gene_name NOT IN ({placeholders})"
-
-            # Execute the DELETE statement to remove old SCGs
-            cursor.execute(f"DELETE FROM scg_taxonomy WHERE {where_clause}", constants.default_scgs_for_taxonomy)
+        db_altered = True
 
     progress.update("Updating version")
     contigs_db.remove_meta_key_value_pair('version')
@@ -52,12 +55,18 @@ def migrate(db_path):
 
     progress.end()
 
-    message = (
-        "Congratulations! Your contigs database is now version 23. This update removed the old SCGs "
-        "that anvi-estimate-scg-taxonomy used to use, and updated the version of the database."
-    )
+    if db_altered:
+        message = (f"Your contigs database is now version {next_version}. Sadly this update removed all SCG taxonomy "
+                   f"data in this contigs-db due to a change in the set of SCGs anvi'o now uses for taxonomy estimation. "
+                   f"As a result, you will need to re-run anvi-run-scg-taxonomy command on this contigs-db :/ If you "
+                   f"would like to learn why this was necessary, please visit https://github.com/merenlab/anvio/issues/2211. "
+                   f"We thank you for your patience!")
+    else:
+        message = ("Since you have already updated your contigs-db with new SCGs, anvi'o simply bumped the version of your "
+                   "database rather than removing or editing any data :) Moving on.")
 
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=f"A simple script to upgrade an anvi'o contigs database from version {current_version} to version {next_version}")
