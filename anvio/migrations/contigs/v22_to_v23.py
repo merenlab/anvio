@@ -31,7 +31,7 @@ def migrate(db_path):
 
     # usually we never need to do this, but in this case it is best practice to test if
     # we need an actual removal of the SCGs from a contigs-db since we released new SCGs
-    # in the master repository, and some poeople likely already updated their contigs-dbs.
+    # in the master repository, and some people likely already updated their contigs-dbs.
     # if they have already gone through that, we can save them the trouble.
     scg_taxonomy_was_run = contigs_db.get_meta_value('scg_taxonomy_was_run')
     scg_taxonomy_db_version = contigs_db.get_meta_value('scg_taxonomy_database_version')
