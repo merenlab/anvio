@@ -1551,6 +1551,18 @@ function main () {
       downloadBlob(blob, pass_project_name + ".svg");
     });
 
+    $('#expressiontext, #searchFunctionsValue').on('input', function(){
+      // Check the length of #expressiontext and #searchFunctionsValue values
+      if ($('#expressiontext').val().trim() !== '' || $('#searchFunctionsValue').val().trim() !== '') {
+          // Enable the search button if at least one of them is not empty
+          $('#search').prop('disabled', false);
+      } else {
+          // Disable the search button if both of them are empty
+          $('#search').prop('disabled', true);
+      }
+    });
+
+
     $('#searchadd').on('click', function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
@@ -1606,8 +1618,18 @@ function main () {
       }
     })
 
+    const searchEraseButton = document.getElementById('searcherase');
+    const searchColorButton = document.getElementById('searchcolor');
+    const searchAppendBin = document.getElementById('searchadd');
+    const searchRemoveBin = document.getElementById('searchremove');
+
     var searched = {}
     $('#search').on('click', function() {
+
+      searchEraseButton.disabled = false;
+      searchColorButton.disabled = false;
+      searchAppendBin.disabled = false;
+      searchRemoveBin.disabled = false;
 
       var mingenomes = ($("#mingenomes").prop('checked') == true && !isNaN($("#mingenomestext")[0].value)) ? $("#mingenomestext")[0].value : '-1'
       var maxgenomes = ($("#maxgenomes").prop('checked') == true && !isNaN($("#maxgenomestext")[0].value)) ? $("#maxgenomestext")[0].value : '-1'
@@ -1618,8 +1640,8 @@ function main () {
       var searchfunction = {}
       var expressioncomparison = ''
 
-      var expressiondrop = $('#expressiondrop').attr('name')
-      var expressionrel = $('#expressionrel').attr('name')
+      var expressiondrop = $('#expressiondrop').attr('value')
+      var expressionrel = $('#expressionrel').attr('value')
       var expressiontext = $('#expressiontext')[0].value
 
       if (expressionrel != "Choose operator" && expressiontext != '') {
