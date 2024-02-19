@@ -11,7 +11,7 @@ from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-pan_reaction_network_kegg_table_name      = 'pan_reaction_network_kegg_table_name'
+pan_reaction_network_kegg_table_name      = 'pan_reaction_network_kegg'
 pan_reaction_network_kegg_table_structure = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
 pan_reaction_network_kegg_table_types     = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 

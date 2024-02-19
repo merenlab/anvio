@@ -105,7 +105,7 @@ reaction_network_metabolites_table_name      = 'reaction_network_metabolites'
 reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
 reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
 
-reaction_network_kegg_table_name             = 'reaction_network_kegg_table_name'
+reaction_network_kegg_table_name             = 'reaction_network_kegg'
 reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
 reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 

@@ -12,7 +12,7 @@ from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-reaction_network_kegg_table_name      = 'reaction_network_kegg_table_name'
+reaction_network_kegg_table_name      = 'reaction_network_kegg'
 reaction_network_kegg_table_structure = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
 reaction_network_kegg_table_types     = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 
