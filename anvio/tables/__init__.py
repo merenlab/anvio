@@ -408,12 +408,16 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
                                   pan_reaction_network_reactions_table_name: False,
+                                  'gene_cluster_function_metabolites': False, # renamed to 'pan_reaction_network_metabolites'
                                   pan_reaction_network_metabolites_table_name: False,
                                   pan_reaction_network_kegg_table_name: False,
                                   genes_in_splits_table_name: True,
                                   gene_function_calls_table_name: True,
+                                  'gene_function_reactions': False, # renamed to 'reaction_network_reactions'
                                   reaction_network_reactions_table_name: False,
+                                  'gene_function_metabolites': False, # renamed to 'reaction_network_metabolites'
                                   reaction_network_metabolites_table_name: False,
                                   reaction_network_kegg_table_name: False,
                                   hmm_hits_splits_table_name: True,
