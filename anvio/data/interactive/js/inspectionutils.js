@@ -54,7 +54,8 @@ function getUrlVars() {
 $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
-    if ($(e.target).data('toggle') !== 'popover'
+    if (!$(e.target).is('[data-toggle="popover"]') 
+        && !$(e.target).closest('.popover').length
         && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
     }

@@ -73,6 +73,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
         self.general_params.extend(['gene_caller_to_use']) # designate gene-caller for all contig-dbs if not default Prodigal
         self.general_params.extend(['run_genomes_sanity_check']) # run GenomeDescriptions and MetagenomesDescriptions
+        self.general_params.extend(['scg_taxonomy_database_version']) # run GenomeDescriptions and MetagenomesDescriptions
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
@@ -97,6 +98,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
+            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
@@ -121,7 +123,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_scg_taxonomy': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
             'anvi_import_everything': {'threads': 2},
-            'run_genomes_sanity_check': True
+            'run_genomes_sanity_check': True,
+            'scg_taxonomy_database_version': "GTDB: v214.1; Anvi'o: v1",
             })
 
         # Directory structure for Snakemake workflow
@@ -410,8 +413,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
-
-        
         
         try:
             hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)

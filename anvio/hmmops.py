@@ -809,7 +809,7 @@ class SequencesForHMMHits:
             genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
                                                         for bin_name in genes_in_bins_dict[gene_name] \
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
-            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
         self.progress.end()
 
@@ -875,7 +875,7 @@ class SequencesForHMMHits:
 
             self.progress.new('Alignment')
             self.progress.update('Working on %d sequences ...' % (len(genes_list)))
-            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             self.progress.end()
 
             for gene_id in genes_aligned:
