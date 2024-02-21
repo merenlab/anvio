@@ -97,7 +97,7 @@ gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
 gene_function_calls_table_types        = [    'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
-reaction_network_reactions_table_name        = 'reaction_network_reactions_table_name'
+reaction_network_reactions_table_name        = 'reaction_network_reactions'
 reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
 reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'         ,       'text'      ,          'text'           ,      'text'    ,     'text'    ,      'bool'    ]
 
