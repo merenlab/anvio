@@ -9284,19 +9284,19 @@ class Tester:
 
     Attributes
     ==========
-    ko_dir : str, None
-        The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. This
-        attribute is assigned the argument of the same name upon initialization.
+    kegg_dir : str, None
+        Directory containing an anvi'o KEGG database. This attribute is assigned the argument of the
+        same name upon initialization.
 
     modelseed_dir : str, None
-        The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. This
+        Directory containing reference ModelSEED Biochemistry tables set up by anvi'o. This
         attribute is assigned the argument of the same name upon initialization.
 
     test_dir : str, None
-        The directory storing test files, including copied input files and output files. With the
-        default value of None, temporary directories are created and deleted as needed by methods.
-        None of the test files in a provided directory, in contrast, are deleted. This attribute is
-        assigned the argument of the same name upon initialization.
+        Directory storing test files, including copied input and output files. With the default
+        value of None, temporary directories are created and deleted as needed by methods. In
+        contrast, if a directory is provided, it and its contents will not be deleted. This
+        attribute is assigned the argument of the same name upon initialization.
 
     run : anvio.terminal.Run, anvio.terminal.Run()
         This object prints run information to the terminal. This attribute is assigned the argument
@@ -9308,7 +9308,7 @@ class Tester:
     """
     def __init__(
         self,
-        ko_dir: str = None,
+        kegg_dir: str = None,
         modelseed_dir: str = None,
         test_dir: str = None,
         run: terminal.Run = terminal.Run(),
@@ -9317,21 +9317,21 @@ class Tester:
         """
         Parameters
         ==========
-        ko_dir : str, None
-            The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. The
-            default argument of None expects KO data to be set up in the default anvi'o directory
-            used by the program `anvi-setup-kegg-data`.
+        kegg_dir : str, None
+            Directory containing an anvi'o KEGG database. The default argument of None expects KEGG
+            data to be set up in the default anvi'o directory used by the program,
+            `anvi-setup-kegg-data`.
 
         modelseed_dir : str, None
-            The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. The
+            Directory containing reference ModelSEED Biochemistry tables set up by anvi'o. The
             default argument of None expects ModelSEED data to be set up in the default anvi'o
-            directory used by the program `anvi-setup-modelseed-database`.
+            directory used by the program, `anvi-setup-modelseed-database`.
 
         test_dir : str, None
-            The directory storing test files. With the default value of None, temporary test
-            directories are created and deleted by Tester methods; these methods operate on copies
-            of input files in the test directories. In contrast, a provided directory will not be
-            deleted, which can be useful for further work on output files.
+            Directory storing test files. With the default value of None, temporary test directories
+            are created and deleted by Tester methods; these methods operate on copies of input
+            files in the test directories. In contrast, if a directory is provided, it and its
+            contents will not be deleted.
 
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
@@ -9339,7 +9339,7 @@ class Tester:
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
             This object prints transient progress information to the terminal.
         """
-        self.ko_dir = ko_dir
+        self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
         self.test_dir = test_dir
         self.run = run
@@ -9348,7 +9348,7 @@ class Tester:
     def test_contigs_database_network(self, contigs_db: str, copy_db: bool = True) -> None:
         """
         Test the construction of a reaction network from a contigs database, and test that network
-        methods are able to run and do not fail certain basic (by no means comprehensive) tests.
+        methods are able to run and do not fail certain basic tests.
 
         Parameters
         ==========
@@ -9362,7 +9362,7 @@ class Tester:
             contigs database. If a test directory has been set, the database copy is placed there
             with a derived filename, e.g., "my-CONTIGS.db" is copied to a file like
             "TEST/my-CONTIGS-k2z9jxjd.db". If False, store the reaction network in the input contigs
-            database, overwriting any that is already stored.
+            database, overwriting any network that is already stored.
 
         Returns
         =======
@@ -9390,7 +9390,7 @@ class Tester:
             contigs_db_target = contigs_db
 
         con = Constructor(
-            ko_dir=self.ko_dir,
+            kegg_dir=self.kegg_dir,
             modelseed_dir=self.modelseed_dir,
             run=self.run,
             progress=self.progress
@@ -9407,50 +9407,28 @@ class Tester:
         load_stats_file_target = os.path.join(test_dir, "load_contigs_db_network_stats.tsv")
         con.load_contigs_database_network(contigs_db_target, stats_file=load_stats_file_target)
 
-        # Check that the statistics on the network constructed and saved in the contigs database are
-        # the same as the statistics on the same network loaded back into memory from the contigs
-        # database.
-        make_stats_table = pd.read_csv(
-            make_stats_file_target,
-            sep='\t',
-            header=0,
-            index_col='Statistic',
-            usecols=['Statistic', 'Value']
+        # Check that the statistics for the network constructed and saved in the contigs database
+        # are the same as the statistics for the same network loaded back into memory from the
+        # contigs database.
+        inconsistent_stats = self._get_inconsistent_statistics(
+            make_stats_file_target, load_stats_file_target
         )
-        make_stats_table = make_stats_table.rename({'Value': 'make'}, axis=1)
-        load_stats_table = pd.read_csv(
-            load_stats_file_target,
-            sep='\t',
-            header=0,
-            index_col='Statistic',
-            usecols=['Statistic', 'Value']
-        )
-        load_stats_table = load_stats_table.rename({'Value': 'load'}, axis=1)
-        stats_table = pd.merge(
-            make_stats_table, load_stats_table, left_index=True, right_index=True
-        )
-        inconsistent_stats: Dict[str, Tuple[float, float]] = {}
-        for row in stats_table.itertuples():
-            if row.make != row.load:
-                inconsistent_stats[row.Index] = (row.make, row.load)
         if inconsistent_stats:
-            s = ""
+            msg = ""
             for stat, stat_tuple in inconsistent_stats.items():
-                s += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
-            s = s[:-2]
+                msg += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
+            msg = msg[:-2]
             raise AssertionError(
-                f"""\
-                Statistics on the network constructed and saved to the contigs database differ from\
-                what should be the same statistics on the same network loaded from the contigs\
-                database. Here are the different statistics, with the value from network\
-                construction before the value from network loading: {s}\
-                """
+                "Statistics on the network constructed and saved to the contigs database differ "
+                "from what should be the same statistics on the same network loaded from the "
+                "contigs database. Here are the different statistics, with the value from network "
+                f"construction before the value from network loading: {msg}"
             )
 
         self.run.info_single(
             "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
         )
-        network.copy().remove_metabolites_without_formula(
+        deepcopy(network).remove_metabolites_without_formula(
             output_path=os.path.join(test_dir, "removed.tsv")
         )
         print()
@@ -9458,90 +9436,62 @@ class Tester:
         self.progress.new("Testing network purge methods")
         self.progress.update("...")
         # Network pruning tests use a random sample of half the network items (nodes) of each type.
-        random.seed(RANDOM_SEED)
-        metabolite_sample = set(random.sample(
-            list(network.metabolites), math.ceil(len(network.metabolites) / 2)
-        ))
-        random.seed(RANDOM_SEED)
-        reaction_sample = set(random.sample(
-            list(network.reactions), math.ceil(len(network.reactions) / 2)
-        ))
-        random.seed(RANDOM_SEED)
-        ko_sample = set(random.sample(list(network.kos), math.ceil(len(network.kos) / 2)))
-        random.seed(RANDOM_SEED)
-        gene_sample = set(random.sample(list(network.genes), math.ceil(len(network.genes) / 2)))
-
-        copied_network = network.copy()
-        # The basic tests of the copy method check that the network-level attributes appear to
-        # contain the same items. What remains untested is that all of the references between nodes
-        # are identical, e.g., the reactions referenced by each KO.
-        assert list(network.metabolites) == list(copied_network.metabolites)
-        assert list(network.reactions) == list(copied_network.reactions)
-        assert list(network.kos) == list(copied_network.kos)
-        assert list(network.genes) == list(copied_network.genes)
-        assert list(network.proteins) == list(copied_network.proteins)
-        assert network.kegg_modelseed_aliases == copied_network.kegg_modelseed_aliases
-        assert network.modelseed_kegg_aliases == copied_network.modelseed_kegg_aliases
-        assert network.ec_number_modelseed_aliases == copied_network.ec_number_modelseed_aliases
-        assert network.modelseed_ec_number_aliases == copied_network.modelseed_ec_number_aliases
-        removed = copied_network.purge_metabolites(metabolite_sample)
-        # The most basic test of the purge (pruning) method is that the network no longer contains
-        # the items that were requested to be removed. What remains untested, and would require a
-        # curated test dataset, is the removal of certain other "upstream" and "downstream" nodes
-        # associated with the nodes requested to be removed, e.g., KOs and genes upstream and
-        # metabolites downstream of requested reactions.
-        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
-        assert not metabolite_sample.difference(
-            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        sample_proportion = 0.5
+        sample_seed = RANDOM_SEED
+        samples = self._get_common_item_samples(
+            network, proportion=sample_proportion, seed=sample_seed
         )
 
-        copied_network = network.copy()
-        removed = copied_network.purge_reactions(reaction_sample)
-        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
-        assert not reaction_sample.difference(
-            set([reaction.modelseed_id for reaction in removed['reaction']])
-        )
+        random.seed(sample_seed)
+        gene_sample = set(random.sample(
+            list(network.genes), sample_proportion * math.ceil(len(network.genes) / 2)
+        ))
 
-        copied_network = network.copy()
-        removed = copied_network.purge_kos(ko_sample)
-        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
-        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+        self._test_common_prune(network, samples)
 
-        copied_network = network.copy()
-        removed = copied_network.purge_genes(gene_sample)
+        copied_network = deepcopy(network)
+        removed = copied_network.prune(genes_to_remove=gene_sample)
         assert gene_sample.difference(set(copied_network.genes)) == gene_sample
         assert not gene_sample.difference(set([gene.gcid for gene in removed['gene']]))
         self.progress.end()
 
         self.progress.new("Testing network subset methods")
         self.progress.update("...")
-        subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
-        # The most basic test of the subset method is that the new network contains the requested
-        # items. What remains untested, and would require a curated test dataset, is the inclusion
-        # of certain other "upstream" and "downstream" nodes associated with the nodes requested to
-        # be removed, e.g., KOs and genes upstream and metabolites downstream of requested
-        # reactions.
-        assert not metabolite_sample.difference(set(subnetwork.metabolites))
-
-        subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
-        assert not reaction_sample.difference(set(subnetwork.reactions))
-
-        subnetwork = network.subset_network(kos_to_subset=ko_sample)
-        assert not ko_sample.difference(set(subnetwork.kos))
+        self._test_common_subset(network, samples)
 
         subnetwork = network.subset_network(genes_to_subset=gene_sample)
         assert not gene_sample.difference(set(subnetwork.genes))
 
-        # Network merging functionality is tested within the following command.
+        # Test network merging functionality by subsetting samples of items of all types.
+        metabolite_sample: Set[str] = samples['metabolite']
+        reaction_sample: Set[str] = samples['reaction']
+        ko_sample: Set[str] = samples['ko']
+        module_sample: Set[str] = samples['module']
+        pathway_sample: Set[str] = samples['pathway']
+        hierarchy_sample: Set[str] = samples['hierarchy']
+        category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
         subnetwork = network.subset_network(
             genes_to_subset=gene_sample,
             kos_to_subset=ko_sample,
+            modules_to_subset=module_sample,
+            pathways_to_subset=pathway_sample,
+            hierarchies_to_subset=hierarchy_sample,
+            categories_to_subset=category_sample_dict,
             reactions_to_subset=reaction_sample,
             metabolites_to_subset=metabolite_sample
         )
         assert not metabolite_sample.difference(set(subnetwork.metabolites))
         assert not reaction_sample.difference(set(subnetwork.reactions))
         assert not ko_sample.difference(set(subnetwork.kos))
+        assert not module_sample.difference(set(subnetwork.modules))
+        assert not pathway_sample.difference(set(subnetwork.pathways))
+        assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+        remaining_category_ids: List[str] = []
+        for categorizations in subnetwork.categories.values():
+            for categories in categorizations.values():
+                remaining_category_ids.append(categories[-1].id)
+        category_sample: Set[str] = samples['category']
+        assert not category_sample.difference(set(remaining_category_ids))
         assert not gene_sample.difference(set(subnetwork.genes))
         self.progress.end()
 
@@ -9559,10 +9509,18 @@ class Tester:
         self.run.info_single("Purge select metabolites")
         self.run.info_single("Purge select reactions")
         self.run.info_single("Purge select KOs")
+        self.run.info_single("Purge KOs in select KEGG modules")
+        self.run.info_single("Purge KOs in select KEGG pathways")
+        self.run.info_single("Purge KOs in select KEGG BRITE hierarchies")
+        self.run.info_single("Purge KOs in select KEGG BRITE hierarchy categories")
         self.run.info_single("Purge select genes")
         self.run.info_single("Subset select metabolites")
         self.run.info_single("Subset select reactions")
         self.run.info_single("Subset select KOs")
+        self.run.info_single("Subset KOs in select KEGG modules")
+        self.run.info_single("Subset KOs in select KEGG pathways")
+        self.run.info_single("Subset KOs in select KEGG BRITE hierarchies")
+        self.run.info_single("Subset KOs in select KEGG BRITE hierarchy categories")
         self.run.info_single("Subset select genes")
         self.run.info_single("Subset select metabolites, reactions, KOs, and genes", nl_after=1)
 
@@ -9576,7 +9534,7 @@ class Tester:
     ) -> None:
         """
         Test the construction of a reaction network from a pan database, and test that network
-        methods are able to run and do not fail certain basic (by no means comprehensive) tests.
+        methods are able to run and do not fail certain basic tests.
 
         Parameters
         ==========
@@ -9592,8 +9550,8 @@ class Tester:
             If True, as by default, store the generated reaction network in a copy of the input pan
             database. If a test directory has been set, the database copy is placed there with a
             derived filename, e.g., "my-PAN.db" is copied to a file like "TEST/my-PAN-spiba5e7.db".
-            If False, store the reaction network in the input pan database, overwriting any that is
-            already stored.
+            If False, store the reaction network in the input pan database, overwriting any network
+            that is already stored.
 
         consensus_threshold : float, None
             With the default of None, the protein annotation most frequent among genes in a cluster
@@ -9633,7 +9591,7 @@ class Tester:
             pan_db_target = pan_db
 
         con = Constructor(
-            ko_dir=self.ko_dir,
+            kegg_dir=self.kegg_dir,
             modelseed_dir=self.modelseed_dir,
             run=self.run,
             progress=self.progress
@@ -9655,51 +9613,28 @@ class Tester:
             pan_db_target, genomes_storage_db, stats_file=load_stats_file_target
         )
 
-        # Check that the statistics on the network constructed and saved in the pan database are the
-        # same as the statistics on the same network loaded back into memory from the pan database.
-        # At the moment, this is used as the best substitute for an equality method that compares
-        # every item in two networks.
-        make_stats_table = pd.read_csv(
-            make_stats_file_target,
-            sep='\t',
-            header=0,
-            index_col='Statistic',
-            usecols=['Statistic', 'Value']
+        # Check that the statistics for the network constructed and saved in the pan database are
+        # the same as the statistics for the same network loaded back into memory from the pan
+        # database.
+        inconsistent_stats = self._get_inconsistent_statistics(
+            make_stats_file_target, load_stats_file_target
         )
-        make_stats_table = make_stats_table.rename({'Value': 'make'}, axis=1)
-        load_stats_table = pd.read_csv(
-            load_stats_file_target,
-            sep='\t',
-            header=0,
-            index_col='Statistic',
-            usecols=['Statistic', 'Value']
-        )
-        load_stats_table = load_stats_table.rename({'Value': 'load'}, axis=1)
-        stats_table = pd.merge(
-            make_stats_table, load_stats_table, left_index=True, right_index=True
-        )
-        inconsistent_stats: Dict[str, Tuple[float, float]] = {}
-        for row in stats_table.itertuples():
-            if row.make != row.load:
-                inconsistent_stats[row.Index] = (row.make, row.load)
         if inconsistent_stats:
-            s = ""
+            msg = ""
             for stat, stat_tuple in inconsistent_stats.items():
-                s += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
-            s = s[:-2]
+                msg += f"{stat}: {stat_tuple[0]}, {stat_tuple[1]}; "
+            msg = msg[:-2]
             raise AssertionError(
-                f"""\
-                Statistics on the network constructed and saved to the pan database differ from\
-                what should be the same statistics on the same network loaded from the pan\
-                database. Here are the different statistics, with the value from network\
-                construction before the value from network loading: {s}\
-                """
+                "Statistics on the network constructed and saved to the pan database differ from "
+                "what should be the same statistics on the same network loaded from the pan "
+                "database. Here are the different statistics, with the value from network "
+                f"construction before the value from network loading: {msg}"
             )
 
         self.run.info_single(
             "PURGE OF METABOLITES WITHOUT FORMULA:", mc='magenta', nl_before=1, level=0
         )
-        network.copy().remove_metabolites_without_formula(
+        deepcopy(network).remove_metabolites_without_formula(
             output_path=os.path.join(test_dir, "removed.tsv")
         )
         print()
@@ -9707,58 +9642,21 @@ class Tester:
         self.progress.new("Testing network purge methods")
         self.progress.update("...")
         # Network pruning tests use a random sample of half the network items (nodes) of each type.
-        random.seed(RANDOM_SEED)
-        metabolite_sample = set(random.sample(
-            list(network.metabolites), math.ceil(len(network.metabolites) / 2)
-        ))
-        random.seed(RANDOM_SEED)
-        reaction_sample = set(random.sample(
-            list(network.reactions), math.ceil(len(network.reactions) / 2)
-        ))
-        random.seed(RANDOM_SEED)
-        ko_sample = set(random.sample(list(network.kos), math.ceil(len(network.kos) / 2)))
-        random.seed(RANDOM_SEED)
+        sample_proportion = 0.5
+        sample_seed = RANDOM_SEED
+        samples = self._get_common_item_samples(
+            network, proportion=sample_proportion, seed=sample_seed
+        )
+
+        random.seed(sample_seed)
         gene_cluster_sample = set(random.sample(
-            list(network.gene_clusters), math.ceil(len(network.gene_clusters) / 2)
+            list(network.gene_clusters), sample_proportion * math.ceil(len(network.gene_clusters))
         ))
 
-        copied_network = network.copy()
-        # The basic tests of the copy method check that the network-level attributes appear to
-        # contain the same items. What remains untested is that all of the references between nodes
-        # are identical, e.g., the reactions referenced by each KO.
-        assert list(network.metabolites) == list(copied_network.metabolites)
-        assert list(network.reactions) == list(copied_network.reactions)
-        assert list(network.kos) == list(copied_network.kos)
-        assert list(network.gene_clusters) == list(copied_network.gene_clusters)
-        assert network.kegg_modelseed_aliases == copied_network.kegg_modelseed_aliases
-        assert network.modelseed_kegg_aliases == copied_network.modelseed_kegg_aliases
-        assert network.ec_number_modelseed_aliases == copied_network.ec_number_modelseed_aliases
-        assert network.modelseed_ec_number_aliases == copied_network.modelseed_ec_number_aliases
-        removed = copied_network.purge_metabolites(metabolite_sample)
-        # The most basic test of the purge (pruning) method is that the network no longer contains
-        # the items that were requested to be removed. What remains untested, and would require a
-        # curated test dataset, is the removal of certain other "upstream" and "downstream" nodes
-        # associated with the nodes requested to be removed, e.g., KOs and gene clusters upstream
-        # and metabolites downstream of requested reactions.
-        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
-        assert not metabolite_sample.difference(
-            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
-        )
+        self._test_common_prune(network, samples)
 
-        copied_network = network.copy()
-        removed = copied_network.purge_reactions(reaction_sample)
-        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
-        assert not reaction_sample.difference(
-            set([reaction.modelseed_id for reaction in removed['reaction']])
-        )
-
-        copied_network = network.copy()
-        removed = copied_network.purge_kos(ko_sample)
-        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
-        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
-
-        copied_network = network.copy()
-        removed = copied_network.purge_gene_clusters(gene_cluster_sample)
+        copied_network = deepcopy(network)
+        removed = copied_network.prune(gene_clusters_to_remove=gene_cluster_sample)
         assert (
             gene_cluster_sample.difference(set(copied_network.gene_clusters)) ==
             gene_cluster_sample
@@ -9770,33 +9668,41 @@ class Tester:
 
         self.progress.new("Testing network subset methods")
         self.progress.update("...")
-        subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
-        # The most basic test of the subset method is that the new network contains the requested
-        # items. What remains untested, and would require a curated test dataset, is the inclusion
-        # of certain other "upstream" and "downstream" nodes associated with the nodes requested to
-        # be removed, e.g., KOs and gene clusters upstream and metabolites downstream of requested
-        # reactions.
-        assert not metabolite_sample.difference(set(subnetwork.metabolites))
-
-        subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
-        assert not reaction_sample.difference(set(subnetwork.reactions))
-
-        subnetwork = network.subset_network(kos_to_subset=ko_sample)
-        assert not ko_sample.difference(set(subnetwork.kos))
+        self._test_common_subset(network, samples)
 
         subnetwork = network.subset_network(gene_clusters_to_subset=gene_cluster_sample)
         assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
 
-        # Network merging functionality is tested within the following command.
+        # Test network merging functionality by subsetting samples of items of all types.
+        metabolite_sample: Set[str] = samples['metabolite']
+        reaction_sample: Set[str] = samples['reaction']
+        ko_sample: Set[str] = samples['ko']
+        module_sample: Set[str] = samples['module']
+        pathway_sample: Set[str] = samples['pathway']
+        hierarchy_sample: Set[str] = samples['hierarchy']
+        category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
         subnetwork = network.subset_network(
             gene_clusters_to_subset=gene_cluster_sample,
             kos_to_subset=ko_sample,
+            modules_to_subset=module_sample,
+            pathways_to_subset=pathway_sample,
+            hierarchies_to_subset=hierarchy_sample,
+            categories_to_subset=category_sample_dict,
             reactions_to_subset=reaction_sample,
             metabolites_to_subset=metabolite_sample
         )
         assert not metabolite_sample.difference(set(subnetwork.metabolites))
         assert not reaction_sample.difference(set(subnetwork.reactions))
         assert not ko_sample.difference(set(subnetwork.kos))
+        assert not module_sample.difference(set(subnetwork.modules))
+        assert not pathway_sample.difference(set(subnetwork.pathways))
+        assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+        remaining_category_ids: List[str] = []
+        for categorizations in subnetwork.categories.values():
+            for categories in categorizations.values():
+                remaining_category_ids.append(categories[-1].id)
+        category_sample: Set[str] = samples['category']
+        assert not category_sample.difference(set(remaining_category_ids))
         assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
         self.progress.end()
 
@@ -9814,14 +9720,298 @@ class Tester:
         self.run.info_single("Purge select metabolites")
         self.run.info_single("Purge select reactions")
         self.run.info_single("Purge select KOs")
+        self.run.info_single("Purge KOs in select KEGG modules")
+        self.run.info_single("Purge KOs in select KEGG pathways")
+        self.run.info_single("Purge KOs in select KEGG BRITE hierarchies")
+        self.run.info_single("Purge KOs in select KEGG BRITE hierarchy categories")
         self.run.info_single("Purge select gene clusters")
         self.run.info_single("Subset select metabolites")
         self.run.info_single("Subset select reactions")
         self.run.info_single("Subset select KOs")
+        self.run.info_single("Subset KOs in select KEGG modules")
+        self.run.info_single("Subset KOs in select KEGG pathways")
+        self.run.info_single("Subset KOs in select KEGG BRITE hierarchies")
+        self.run.info_single("Subset KOs in select KEGG BRITE hierarchy categories")
         self.run.info_single("Subset select gene clusters")
         self.run.info_single(
             "Subset select metabolites, reactions, KOs, and gene clusters", nl_after=1
         )
+
+    def _get_inconsistent_statistics(
+        self,
+        make_stats_file_target: str,
+        load_stats_file_target: str
+    ) -> Dict[str, Tuple[float, float]]:
+        """
+        Compare statistics for the network constructed and saved in an anvi'o database with
+        statistics for what should be the same network loaded back into memory from the database,
+        returning any inconsistent statistics.
+
+        Parameters
+        ==========
+        make_stats_file_target : str
+            Path to file of statistics for network construction.
+
+        load_stats_file_target : str
+            Path to file of statistics for network loading.
+
+        Returns
+        =======
+        Dict[str, Tuple[float, float]]
+            Inconsistent statistics, with keys being names of the statistics and values being pairs
+            of the statistic from network construction and loading, respectively.
+        """
+        make_stats_table = pd.read_csv(
+            make_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        make_stats_table = make_stats_table.rename({'Value': 'make'}, axis=1)
+
+        load_stats_table = pd.read_csv(
+            load_stats_file_target,
+            sep='\t',
+            header=0,
+            index_col='Statistic',
+            usecols=['Statistic', 'Value']
+        )
+        load_stats_table = load_stats_table.rename({'Value': 'load'}, axis=1)
+        stats_table = pd.merge(
+            make_stats_table, load_stats_table, left_index=True, right_index=True
+        )
+
+        inconsistent_stats: Dict[str, Tuple[float, float]] = {}
+        for row in stats_table.itertuples():
+            if row.make != row.load:
+                inconsistent_stats[row.Index] = (row.make, row.load)
+
+        return inconsistent_stats
+
+    def _get_common_item_samples(
+        self,
+        network: ReactionNetwork,
+        proportion: float = 0.5,
+        seed: int = 0
+    ) -> Dict:
+        """
+        Get a random sample of half of the network items (nodes) of each type shared in common
+        between genomic and pangenomic networks.
+
+        Parameters
+        ==========
+        network : ReactionNetwork
+            Network generated from gene or gene cluster KO annotations.
+
+        proportion : float, 0.5
+            Proportion to be randomly sampled of network items of each type.
+
+        seed : int, 0
+            Seed for random number generation.
+
+        Returns
+        =======
+        dict
+            Dictionary with keys indicating item type and values being samples of item IDs.
+        """
+        samples = {}
+
+        random.seed(seed)
+        samples['metabolite'] = set(random.sample(
+            list(network.metabolites), math.ceil(proportion * len(network.metabolites))
+        ))
+
+        random.seed(seed)
+        samples['reaction'] = set(
+            random.sample(list(network.reactions), math.ceil(proportion * len(network.reactions)))
+        )
+
+        random.seed(seed)
+        samples['ko'] = set(
+            random.sample(list(network.kos), math.ceil(proportion * len(network.kos)))
+        )
+
+        random.seed(seed)
+        samples['module'] = set(
+            random.sample(list(network.modules), math.ceil(proportion * len(network.modules)))
+        )
+
+        random.seed(seed)
+        samples['pathway'] = set(
+            random.sample(list(network.pathways), math.ceil(proportion * len(network.pathways)))
+        )
+
+        random.seed(seed)
+        samples['pathway'] = set(random.sample(
+            list(network.hierarchies), math.ceil(proportion * len(network.hierarchies))
+        ))
+
+        random.seed(seed)
+        all_category_ids: List[str] = []
+        for categorizations in network.categories.values():
+            for categories in categorizations.values():
+                all_category_ids.append(categories[-1].id)
+        samples['category'] = category_sample = set(
+            random.sample(all_category_ids, math.ceil(proportion * len(all_category_ids)))
+        )
+        # Reformat the category IDs into an argument for pruning and subsetting.
+        category_sample_dict: Dict[str, List[Tuple[str]]] = {}
+        hierarchy_id_pattern = re.compile('ko\d{5}')
+        for category_id in category_sample:
+            hierarchy_id = category_id.split(':')[0]
+            assert re.fullmatch(hierarchy_id_pattern, hierarchy_id)
+            try:
+                categorizations = category_sample_dict[hierarchy_id]
+            except KeyError:
+                category_sample_dict[hierarchy_id] = categorizations = []
+            categorizations.append(tuple(category_id[len(hierarchy_id) + 2:].split(' >>> ')))
+        samples['category_dict'] = category_sample_dict
+
+        return samples
+
+    def _test_common_prune(
+        self,
+        network: Union[GenomicNetwork, PangenomicNetwork],
+        samples: Dict
+    ) -> None:
+        """
+        Test the prune method of the reaction network, purging items of types in common to genomic
+        and pangenomic networks.
+
+        Parameters
+        ==========
+        network : Union[GenomicNetwork, PangenomicNetwork]
+            Network generated from gene or gene cluster KO annotations.
+
+        samples : Dict
+            Dictionary with keys indicating item type and values being samples of item IDs.
+
+        Returns
+        =======
+        None
+        """
+        copied_network = deepcopy(network)
+        metabolite_sample: Set[str] = samples['metabolite']
+        removed = copied_network.prune(metabolites_to_remove=metabolite_sample)
+        # The most basic test of the purge (pruning) method is that the network no longer contains
+        # the items that were requested to be removed. What remains untested, and would require a
+        # curated test dataset, is the removal of certain other "upstream" and "downstream" nodes
+        # associated with the nodes requested to be removed, e.g., KOs and genes or gene clusters
+        # upstream and metabolites downstream of requested reactions.
+        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
+        assert not metabolite_sample.difference(
+            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        )
+
+        copied_network = deepcopy(network)
+        reaction_sample: Set[str] = samples['reaction']
+        removed = copied_network.prune(reactions_to_remove=reaction_sample)
+        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
+        assert not reaction_sample.difference(
+            set([reaction.modelseed_id for reaction in removed['reaction']])
+        )
+
+        copied_network = deepcopy(network)
+        ko_sample: Set[str] = samples['ko']
+        removed = copied_network.prune(kos_to_remove=ko_sample)
+        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
+        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+
+        copied_network = deepcopy(network)
+        module_sample: Set[str] = samples['module']
+        removed = copied_network.prune(modules_to_remove=module_sample)
+        assert module_sample.difference(set(copied_network.modules)) == module_sample
+        assert not module_sample.difference(set([module.id for module in removed['module']]))
+
+        copied_network = deepcopy(network)
+        pathway_sample: Set[str] = samples['pathway']
+        removed = copied_network.prune(pathways_to_remove=pathway_sample)
+        assert pathway_sample.difference(set(copied_network.pathways)) == pathway_sample
+        assert not pathway_sample.difference(set([pathway.id for pathway in removed['pathway']]))
+
+        copied_network = deepcopy(network)
+        hierarchy_sample: Set[str] = samples['hierarchy']
+        removed = copied_network.prune(hierarchies_to_remove=hierarchy_sample)
+        assert hierarchy_sample.difference(set(copied_network.hierarchies)) == hierarchy_sample
+        assert not hierarchy_sample.difference(
+            set([hierarchy.id for hierarchy in removed['hierarchies']])
+        )
+
+        copied_network = deepcopy(network)
+        category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
+        removed = copied_network.prune(categories_to_remove=category_sample_dict)
+        remaining_category_ids: List[str] = []
+        for categorizations in copied_network.categories.values():
+            for categories in categorizations.values():
+                remaining_category_ids.append(categories[-1].id)
+        category_sample: Set[str] = samples['category']
+        assert category_sample.difference(set(remaining_category_ids)) == category_sample
+        removed_category_ids: List[str] = []
+        for category in removed['category']:
+            category: BRITECategory
+            removed_category_ids.append(category.id)
+        assert not category_sample.difference(set(removed_category_ids))
+
+    def _test_common_subset(
+        self,
+        network: Union[GenomicNetwork, PangenomicNetwork],
+        samples: Dict
+    ) -> None:
+        """
+        Test the subset method of the reaction network, subsetting items of types in common to
+        genomic and pangenomic networks.
+
+        Parameters
+        ==========
+        network : Union[GenomicNetwork, PangenomicNetwork]
+            Network generated from gene or gene cluster KO annotations.
+
+        samples : Dict
+            Dictionary with keys indicating item type and values being samples of item IDs.
+
+        Returns
+        =======
+        None
+        """
+        metabolite_sample: Set[str] = samples['metabolite']
+        subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
+        # The most basic test of the subset method is that the new network contains the requested
+        # items. What remains untested, and would require a curated test dataset, is the inclusion
+        # of certain other "upstream" and "downstream" nodes associated with the nodes requested to
+        # be removed, e.g., KOs and gene clusters upstream and metabolites downstream of requested
+        # reactions.
+        # Assert that all of the items requested to be subsetted were subsetted.
+        assert not metabolite_sample.difference(set(subnetwork.metabolites))
+
+        reaction_sample: Set[str] = samples['reaction']
+        subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
+        assert not reaction_sample.difference(set(subnetwork.reactions))
+
+        ko_sample: Set[str] = samples['ko']
+        subnetwork = network.subset_network(kos_to_subset=ko_sample)
+        assert not ko_sample.difference(set(subnetwork.kos))
+
+        module_sample: Set[str] = samples['module']
+        subnetwork = network.subset_network(modules_to_subset=module_sample)
+        assert not module_sample.difference(set(subnetwork.modules))
+
+        pathway_sample: Set[str] = samples['pathway']
+        subnetwork = network.subset_network(pathways_to_subset=pathway_sample)
+        assert not pathway_sample.difference(set(subnetwork.pathways))
+
+        hierarchy_sample: Set[str] = samples['hierarchy']
+        subnetwork = network.subset_network(hierarchies_to_subset=hierarchy_sample)
+        assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+
+        category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
+        subnetwork = network.subset_network(categories_to_subset=category_sample_dict)
+        remaining_category_ids: List[str] = []
+        for categorizations in subnetwork.categories.values():
+            for categories in categorizations.values():
+                remaining_category_ids.append(categories[-1].id)
+        category_sample: Set[str] = samples['category']
+        assert not category_sample.difference(set(remaining_category_ids))
 
 def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
