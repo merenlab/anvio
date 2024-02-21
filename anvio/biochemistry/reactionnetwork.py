@@ -5267,8 +5267,8 @@ class KEGGData:
         Parameters
         ==========
         kegg_dir : str, None
-            The directory containing the anvi'o KEGG database. The default argument of None expects
-            the KEGG database to be set up in the default directory used by the program
+            Directory containing an anvi'o KEGG database. The default argument of None expects the
+            KEGG database to be set up in the default directory used by the program
             `anvi-setup-kegg-data`.
         """
         args = argparse.Namespace()
@@ -8243,13 +8243,13 @@ class Constructor:
             Data on ModelSEED reactions aliasing the newly encountered EC numbers.
 
         network : ReactionNetwork
-            The reaction network under construction.
+            Reaction network under construction.
 
         modelseed_compounds_table : pandas.core.frame.DataFrame
             Loaded compounds table of ModelSEED Biochemistry database set up by anvi'o.
 
         ko : KO
-            The KO being added to the network.
+            KO being added to the network.
 
         old_kegg_reaction_ids : Set[str]
             KEGG REACTION IDs referenced by the KO that are in the network.
@@ -8522,21 +8522,21 @@ class Constructor:
         Parameters
         ==========
         modelseed_reaction_data : Dict
-            The dictionary representation of a row of the ModelSEED reaction table set up by anvi'o,
+            Dictionary representation of a row of the ModelSEED reaction table set up by anvi'o,
             containing data on the reaction.
 
         modelseed_compounds_table : pandas.core.frame.DataFrame
             Loaded ModelSEED Biochemistry compounds database.
 
         network : ReactionNetwork, None
-            The reaction network under construction, with reaction compound objects drawn from the
+            Reaction network under construction, with reaction compound objects drawn from the
             network, if possible, rather than created anew, as is done when a network is not
             provided. New reaction and compound objects are not added to the network by this method.
 
         Returns
         =======
         ModelSEEDReaction
-            The representation of the reaction with data sourced from ModelSEED Biochemistry.
+            Representation of the reaction with data sourced from ModelSEED Biochemistry.
 
         List[ModelSEEDCompound]
             Representations of metabolites involved in the reaction, with data sourced from
@@ -8714,10 +8714,10 @@ class Constructor:
             EC numbers previously added to the network.
 
         network : ReactionNetwork
-            The reaction network under construction.
+            Reaction network under construction.
 
         ko : KO
-            The KO being added to the network.
+            KO being added to the network.
 
         ko_kegg_reaction_ids : Set[str]
             KEGG REACTION IDs associated with the KO under consideration in network construction.
@@ -8776,10 +8776,10 @@ class Constructor:
         Parameters
         ==========
         ko : KO
-            The KO being added to the network.
+            KO being added to the network.
 
         network : ReactionNetwork
-            The reaction network under construction.
+            Reaction network under construction.
 
         ko_info : Dict[str, Any]
             Information on the KO loaded from the anvi'o KEGG database.
