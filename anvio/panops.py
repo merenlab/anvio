@@ -1698,7 +1698,6 @@ class Pangraph():
 
         self.run.info_single("Done")
 
-    # TODO Fusion of same position paralog GCs
     def run_synteny_layout_algorithm(self):
 
         self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
@@ -1835,7 +1834,6 @@ class Pangraph():
         groups_rev = {}
 
         # TODO Currently no seperation between unequal genome context
-
         if self.gene_cluster_grouping_threshold == -1:
             self.run.info_single("Setting algorithm to 'no grouping'")
         else:
@@ -2013,9 +2011,6 @@ class Pangraph():
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single(f"Done")
 
-    # TODO rework that section for better debugging and add more features as an example fuse start and top
-    # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
-    # edges section for (k,o) in circular edges and for (k,o) in pangenome edges. Change and test while reworking.
     def get_json_dict_for_graph(self):
         self.run.warning(None, header="Exporting network to JSON", lc="green")
 
