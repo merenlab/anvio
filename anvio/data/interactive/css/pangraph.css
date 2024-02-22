@@ -136,3 +136,7 @@ html *
   .bin-icon-size{
     font-size: 14px;
   }
+
+  #toggle-panel-left{
+    z-index: 1;
+  }
