@@ -587,10 +587,10 @@
           </div>
           <div class="modal-footer d-flex justify-content-center" id="InfoModalFooter">
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button class="btn btn-primary" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-dismiss="modal">
                 <i class="bi bi-arrow-left-square"></i>
               </button>
-              <button class="btn btn-primary" data-bs-target="#AlignmentModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-target="#AlignmentModal" data-toggle="modal" data-dismiss="modal">
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="InfoDownload">
@@ -607,16 +607,18 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title border-bottom-0" id="AlignmentModalTitle">Genecluster Alignment</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
           <div class="modal-body" id="AlignmentModalBody">
           </div>
           <div class="modal-footer d-flex justify-content-center" id="AlignmentModalFooter">
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button class="btn btn-primary" data-bs-target="#InfoModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-target="#InfoModal" data-toggle="modal" data-dismiss="modal">
                 <i class="bi bi-arrow-left-square"></i>
               </button>
-              <button class="btn btn-primary" data-bs-target="#GenomeModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-target="#GenomeModal" data-toggle="modal" data-dismiss="modal">
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="AlignmentDownload">
@@ -648,16 +650,18 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title border-bottom-0" id="GenomeModalTitle">Genecall Information</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
           <div class="modal-body" id="GenomeModalBody">
           </div>
           <div class="modal-footer d-flex justify-content-center" id="GenomeModalFooter">
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button class="btn btn-primary" data-bs-target="#AlignmentModal" data-bs-toggle="modal" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-target="#AlignmentModal" data-toggle="modal" data-dismiss="modal">
                 <i class="bi bi-arrow-left-square"></i>
               </button>
-              <button class="btn btn-primary" data-bs-dismiss="modal">
+              <button class="btn btn-primary" data-dismiss="modal">
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="GenomeDownload">
@@ -670,13 +674,13 @@
     </div>
 
     <div class="btn-group btn-bot mt-3 align-self-center" role="group" aria-label="Basic example">
-      <button type="button" id="plus" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+      <button type="button" id="plus" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
         <i class="user-handle bi bi-zoom-in"></i>
       </button>
-      <button type="button" id="minus" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+      <button type="button" id="minus" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
         <i class="user-handle bi bi-zoom-out"></i>
       </button>
-      <button type="button" id="fit" class="btn btn-secondary" data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">
+      <button type="button" id="fit" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
         <i class="user-handle bi bi-arrows-fullscreen"></i>
       </button>
     </div>
