@@ -4879,7 +4879,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bins_metabolism_superdict, bins_ko_superdict
 
 
-    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
+    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig, return_superdicts=False):
         """This function handles metabolism estimation for an entire metagenome.
 
         We treat each contig in the metagenome to be its own 'bin' or 'genome' and estimate
@@ -4889,13 +4889,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         ==========
         kofam_gene_split_contig : list
             (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        return_superdicts : Boolean
+            whether or not to return the superdicts. False by default to save on memory.
 
         RETURNS
         =======
         metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
-            dictionary mapping metagenome name to its metabolism completeness dictionary
+            dictionary mapping metagenome name to its metabolism completeness dictionary 
+            (will be empty dictionary if return_superdicts is False)
         metagenome_ko_superdict : dictionary of dictionary of dictionaries
             dictionary mapping metagenome name to its KOfam hits dictionary
+            (will be empty dictionary if return_superdicts is False)
         """
 
         metagenome_metabolism_superdict = {}
@@ -4918,12 +4922,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
             if not self.store_json_without_estimation:
+                if not return_superdicts:
+                    raise ConfigError("Uh oh. Someone requested JSON-formatted estimation data from estimate_for_contigs_db_for_metagenome() "
+                                      "without setting 'return_superdicts' parameter to True. ")
                 metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
                 single_contig_module_superdict = {contig: metagenome_metabolism_superdict[contig]}
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
             else:
-                metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
-                metagenome_ko_superdict[contig] = ko_dict_for_contig
+                if return_superdicts:
+                    metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
+                    metagenome_ko_superdict[contig] = ko_dict_for_contig
                 single_contig_module_superdict = {contig: metabolism_dict_for_contig}
 
 
@@ -5308,7 +5316,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     self.genome_mode = True
                     kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
                 elif self.metagenome_mode:
-                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info, return_superdicts=return_superdicts)
                 else:
                     raise ConfigError("This class doesn't know how to deal with that yet :/")
 
