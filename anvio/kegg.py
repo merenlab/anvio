@@ -4465,7 +4465,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
         the value obtained by evaluating the resulting arithmetic expression.
 
-        Some steps are defined by other modules. When module accessions are found, [FIXME]
+        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but 
+        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the 
+        component module's copy number in the calculation instead).
 
         PARAMETERS
         ==========
