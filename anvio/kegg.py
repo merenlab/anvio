@@ -4922,16 +4922,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
             if not self.store_json_without_estimation:
+                single_contig_module_superdict = {contig: self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)}
+                if return_superdicts:
+                    metagenome_metabolism_superdict[contig] = single_contig_module_superdict[contig]
+                    metagenome_ko_superdict[contig] = ko_dict_for_contig
+            else:
                 if not return_superdicts:
                     raise ConfigError("Uh oh. Someone requested JSON-formatted estimation data from estimate_for_contigs_db_for_metagenome() "
                                       "without setting 'return_superdicts' parameter to True. ")
-                metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
-                single_contig_module_superdict = {contig: metagenome_metabolism_superdict[contig]}
+                metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
-            else:
-                if return_superdicts:
-                    metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
-                    metagenome_ko_superdict[contig] = ko_dict_for_contig
                 single_contig_module_superdict = {contig: metabolism_dict_for_contig}
 
 
