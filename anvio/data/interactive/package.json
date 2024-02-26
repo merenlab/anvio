@@ -32,6 +32,7 @@
     "jquery-ui": "1.12.1",
     "marked": "0.3.6",
     "randomcolor": "0.6.2",
+    "sortable-tablesort": "^3.2.2",
     "svg-pan-zoom": "^3.6.1",
     "toastr": "2.1.2"
   }
