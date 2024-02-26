@@ -982,9 +982,10 @@ function main () {
       //     node._tippy.destroy();
       //   }
       // });
-
-      $(document).off().find("*").off();
-      main()
+      $(document).off();
+      $("*").off();
+  
+      main();
 
     })
 
@@ -996,15 +997,10 @@ function main () {
       data['condtr'] = $('#condtr')[0].value
       data['maxlength'] = $('#maxlength')[0].value
 
-      $("#genomecolors :input[type='checkbox']").each((index, element) => {
-
-        var genome = $(element).attr('name')
-        if ($(element).prop('checked') == true){
-          data[genome] = 'on'
-        } else {
-          data[genome] = 'off'
-        }
-      })
+      $("#genomecolors :input[type='checkbox']").each(function(index, element) {
+        var genome = $(element).attr('name');
+        data[genome] = $(element).prop('checked') ? 'on' : 'off';
+      });
 
       $.ajax({
           url: "/pangraph/settings",
@@ -1021,8 +1017,10 @@ function main () {
       //   }
       // });
 
-      $(document).off().find("*").off();
-      main()
+      $(document).off();
+      $("*").off();
+  
+      main();
     })
 
     // console.log(data)
@@ -1108,72 +1106,62 @@ function main () {
     })
 
     //ANCHOR - Main panel response functions
-    if ($('#conntr')[0].value == -1){
-      // $('#customRange1').prop('disabled', true);
+    if ($('#conntr').val() == -1) {
       $('#flexconntr').prop('checked', false);
     }
-
-    if ($('#condtr')[0].value == -1){
-      // $('#customRange2').prop('disabled', true);
-      $('#flexcondtr').prop('checked', false);
+    
+    if ($('#condtr').val() == -1) {
+        $('#flexcondtr').prop('checked', false);
     }
-
-    if ($('#maxlength')[0].value == -1){
-      // $('#customRange3').prop('disabled', true);
-      $('#flexmaxlength').prop('checked', false);
+    
+    if ($('#maxlength').val() == -1) {
+        $('#flexmaxlength').prop('checked', false);
     }
-
-    if ($('#groupcompress')[0].value == -1){
-      $('#flexgroupcompress').prop('checked', false);
+    
+    if ($('#groupcompress').val() == -1) {
+        $('#flexgroupcompress').prop('checked', false);
     }
-
+    
     $('#flexconntr').change(function() {
-      if ($(this).prop('checked') == true){
-        $('#conntr')[0].value = 0;
-        // $('#customRange1')[0].value = 0;
-        // $('#customRange1').prop('disabled', false);
-      } else {
-        $('#conntr')[0].value = -1;
-        // $('#customRange1')[0].value = 0;
-        // $('#customRange1').prop('disabled', true);
-      }
-    })
-
+        if ($(this).prop('checked')) {
+            $('#conntr').val(0);
+            // $('#customRange1').val(0).prop('disabled', false);
+        } else {
+            $('#conntr').val(-1);
+            // $('#customRange1').val(0).prop('disabled', true);
+        }
+    });
+    
     $('#flexcondtr').change(function() {
-      if ($(this).prop('checked') == true){
-        $('#condtr')[0].value = 2;
-        // $('#customRange2')[0].value = 2;
-        // $('#customRange2').prop('disabled', false);
-      } else {
-        $('#condtr')[0].value = -1;
-        // $('#customRange2')[0].value = 2;
-        // $('#customRange2').prop('disabled', true);
-      }
-    })
-
+        if ($(this).prop('checked')) {
+            $('#condtr').val(2);
+            // $('#customRange2').val(2).prop('disabled', false);
+        } else {
+            $('#condtr').val(-1);
+            // $('#customRange2').val(2).prop('disabled', true);
+        }
+    });
+    
     $('#flexmaxlength').change(function() {
-      if ($(this).prop('checked') == true){
-        $('#maxlength')[0].value = 1;
-        // $('#customRange3')[0].value = 1;
-        // $('#customRange3').prop('disabled', false);
-      } else {
-        $('#maxlength')[0].value = -1;
-        // $('#customRange3')[0].value = 1;
-        // $('#customRange3').prop('disabled', true);
-      }
-    })
-
+        if ($(this).prop('checked')) {
+            $('#maxlength').val(1);
+            // $('#customRange3').val(1).prop('disabled', false);
+        } else {
+            $('#maxlength').val(-1);
+            // $('#customRange3').val(1).prop('disabled', true);
+        }
+    });
+    
     $('#flexgroupcompress').change(function() {
-      if ($(this).prop('checked') == true){
-        $('#groupcompress')[0].value = 0;
-        $('#customRange4')[0].value = 0;
-        $('#customRange4').prop('disabled', false);
-      } else {
-        $('#groupcompress')[0].value = -1;
-        $('#customRange4')[0].value = 0;
-        $('#customRange4').prop('disabled', true);
-      }
-    })
+        if ($(this).prop('checked')) {
+            $('#groupcompress').val(0);
+            // $('#customRange4').val(0).prop('disabled', false);
+        } else {
+            $('#groupcompress').val(-1);
+            // $('#customRange4').val(0).prop('disabled', true);
+        }
+    });
+  
 
     $(function () {
       $(".grid").sortable({
@@ -1189,7 +1177,7 @@ function main () {
 
       var id = $('#name').attr('name')
       var call = this.innerText;
-      var genome = this.parentNode.parentNode.firstChild.innerText;
+      var genome = $(this).parent().parent().children(":first").text();
 
       var name = data['elements']['nodes'][id]['name'];
       var length = data['elements']['nodes'][id]['genome'][genome]['length'];
@@ -1211,8 +1199,8 @@ function main () {
     });
 
     $(document).on("click", ".choice li a", function() {
-      var name = $(this).attr('name')
-      var dropitem = $(this).parent().parent().parent().children(":first")
+      var name = $(this).attr('name');
+      var dropitem = $(this).parent().parent().parent().children(":first");
 
       dropitem[0].name = name
       dropitem.empty()
@@ -1226,130 +1214,124 @@ function main () {
     //ANCHOR - Bin dropdown choice function
     $(document).on("click", ".binremove", function() {
 
-      var id = $(this).attr('name')
-      var binid = $(this).attr('bin')
+      var id = $(this).attr('name');
+      var binid = $(this).attr('bin');
 
       var name = document.getElementById(id);
       bins = marknode(name, data, binid, bins);
 
-      $(this).parent().parent().parent().remove()
+      $(this).parent().parent().parent().remove();
 
     })
 
     //ANCHOR - Change GC in group window
     $(document).on("click", ".gcchoice li a", function() {
 
-      var id = $(this).attr('name')
-      var drop = $('#drop')
-      var group = drop.attr('name')
+      var id = $(this).attr('name');
+      var drop = $('#drop');
+      var group = drop.attr('name');
       var name = data['elements']['nodes'][id]['name']
 
-      var dropitem = $('#name')
-      dropitem[0].name = id
-      dropitem.empty()
+      var dropitem = $('#name');
+      dropitem[0].name = id;
+      dropitem.empty();
       dropitem.append(
-        $('<span class="caret"></span>').append(
-          name
-        )
-      )
+        $('<span class="caret"></span>').append(name)
+      );
 
       var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
       var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
       var gene_cluster_data = data['elements']['nodes'][id]['genome'];
 
-      $('#InfoModalBody').empty()
-      var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-      $('#InfoModalBody').append(
-        bodyinfo
-      )
+      $('#InfoModalBody').empty();
+      var bodyinfo = $('<div class="card-body overflow-scroll"></div>');
+      $('#InfoModalBody').append(bodyinfo);
 
-      basic_info = {'Name': id, 'Genomes': genomes, 'Position': position}
-      bodyinfo.append(get_gene_cluster_display_tables('', basic_info, gene_cluster_data))
+      basic_info = {'Name': id, 'Genomes': genomes, 'Position': position};
+      bodyinfo.append(get_gene_cluster_display_tables('', basic_info, gene_cluster_data));
 
       var alignment = {}
 
       if (id != 'start' && id != 'stop') {
         for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
-          alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']]
+          alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']];
         }
       }
 
       $('#AlignmentModalBody').empty()
-      var bodyalign = $('<div class="card-body overflow-scroll"></div>')
-      $('#AlignmentModalBody').append(
-        bodyalign
-      )
+      var bodyalign = $('<div class="card-body overflow-scroll"></div>');
+      $('#AlignmentModalBody').append(bodyalign);
       appendalignment(bodyalign, alignment)
     });
 
     //ANCHOR - Bin dropdown choice function
     $(document).on("click", ".binchoice li a", function() {
 
-      var id = $(this).attr('name')
-      var drop = $(this).parent().parent().parent()
-      var group = drop.attr('name')
-      var name = data['elements']['nodes'][id]['name']
-
-      var dropitem = $('#' + group + 'name')
-      dropitem[0].name = id
-      dropitem.empty()
+      var id = $(this).attr('name');
+      var drop = $(this).parent().parent().parent();
+      var group = drop.attr('name');
+      var name = data['elements']['nodes'][id]['name'];
+  
+      var dropitem = $('#' + group + 'name');
+      dropitem[0].name = id;
+      dropitem.empty();
       dropitem.append(
-        $('<span class="caret"></span>').append(
-          name
-        )
-      )
-
+          $('<span class="caret"></span>').append(name)
+      );
+  
       var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
       var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
       var gene_cluster_data = data['elements']['nodes'][id]['genome'];
-
-      var body = $('#' + group + 'div')
-      body.empty()
-
-      basic_info = {'Name': id, 'Genomes': genomes, 'Position': position}
-      body.append(get_gene_cluster_display_tables(group, basic_info, gene_cluster_data))
-    })
+  
+      var body = $('#' + group + 'div');
+      body.empty();
+  
+      var basic_info = {'Name': id, 'Genomes': genomes, 'Position': position};
+      body.append(get_gene_cluster_display_tables(group, basic_info, gene_cluster_data));
+  });
+  
 
     //ANCHOR - Bin creation
-    var bins = {"bin1": []}
-    var binnum = 1
-
-    //ANCHOR - Add bin
+    var bins = {"bin1": []};
+    var binnum = 1;
+    
+    // ANCHOR - Add bin
     $('#binadd').on('click', function() {
-      binnum += 1
-
-      $('#bingrid').append(
-        $('<div class="col-12" id="bin' + binnum + '"></div>').append(
-          $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
-            $('<div class="col-2"></div>').append(
-              $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
+        binnum += 1;
+    
+        $('#bingrid').append(
+            $('<div class="col-12" id="bin' + binnum + '"></div>').append(
+                $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
+                    )
+                ).append(
+                    $('<div class="col-6"></div>').append(
+                        $('<input class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
+                    )
+                ).append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value="0" readonly>')
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
+                    )
+                )
             )
-          ).append(
-            $('<div class="col-6"></div>').append(
-              $('<input class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
-            )
-          ).append(
-            $('<div class="col-2"></div>').append(
-              $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value=0 readonly>')
-            )
-          ).append(
-            $('<div class="d-flex col-2"></div>').append(
-              $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
-            )
-          )
-        )
-      )
-
-      bins['bin' + binnum] = []
-    })
+        );
+    
+        bins['bin' + binnum] = [];
+    });
+    
 
     //ANCHOR - Remove bin
     $('#binremove').on('click', function() {
 
-      var selection = document.querySelector('input[name="binradio"]:checked')
+      var selection = document.querySelector('input[name="binradio"]:checked');
 
       if (selection !== null) {
-        var binid = selection.value
+        var binid = selection.value;
 
         for (var node of bins[binid]) {
           var name = document.getElementById(node);
@@ -1371,12 +1353,12 @@ function main () {
     //ANCHOR - Change bin
     $(document).on("change", ".colorchange", function() {
 
-      var binid = this.name
-      var nodes = bins[binid]
+      var binid = this.name;
+      var nodes = bins[binid];
 
       for (var node of nodes) {
 
-        bins[binid] = bins[binid].filter(item => item !== node)
+        bins[binid] = bins[binid].filter(item => item !== node);
         var name = document.getElementById(node);
         bins = marknode(name, data, binid, bins);
 
@@ -1387,24 +1369,23 @@ function main () {
     //ANCHOR - Info bin
     $('#bininfo').on('click', function() {
 
-      var selection = document.querySelector('input[name="binradio"]:checked')
+      var selection = document.querySelector('input[name="binradio"]:checked');
 
       // if (selection !== null) {
-      var binid = selection.value
-      var appendlist = []
+      var binid = selection.value;
+      var appendlist = [];
 
-      $('#BinModalBody').empty()
+      $('#BinModalBody').empty();
       for (var id of bins[binid]) {
         var element = document.getElementById(id);
         if (element.getAttribute('class') == 'group') {
 
-          var drop = $('<div class="dropdown" id="' + id + 'drop" name="' + id + '"></div>')
-
+          var drop = $('<div class="dropdown" id="' + id + 'drop" name="' + id + '"></div>');
           drop.append(
             $('<a class= "btn border-1 m-0 p-0 dropdown-toggle" id="' + id + 'name" name="Choose GC" data-bs-toggle="dropdown" href="#"></a>').append(
               $('<span class="caret"></span>').append('Choose GC')
             )
-          )
+          );
 
           var dropitem = $('<ul class="dropdown-menu pre-scrollable binchoice"></ul>')
           var grouplist = data['infos']['groups'][id]
@@ -1414,16 +1395,16 @@ function main () {
               $('<li class="caret"></li>').append(
                 $('<a class="dropdown-item" name="' + listitem + '" href="#">' + data['elements']['nodes'][listitem]['name'] + '</a>')
               )
-            )
+            );
           }
           drop.append(dropitem)
 
-          var position = ''
-          var genomes = ''
-          var group = id
-          var gene_cluster_data = ''
+          var position = '';
+          var genomes = '';
+          var group = id;
+          var gene_cluster_data = '';
 
-          appendlist.push([id, drop, position, genomes, group, gene_cluster_data])
+          appendlist.push([id, drop, position, genomes, group, gene_cluster_data]);
         } else {
 
           var drop = $('<div id="' + id + 'name" name="' + id + '"></div>').append(
@@ -1463,14 +1444,14 @@ function main () {
 
     $('#InfoDownload').on('click', async function() {
 
-      var id = $('#name').attr('name')
-      var name = $('#name')[0].innerText;
+      var id = $('#name').attr('name');
+      var name = $('#name').text();
 
       if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
 
-        var group = $('#group')[0].innerText;
-        var genomes = $('#genomes')[0].innerText;
-        var position = $('#position')[0].innerText;
+        var group = $('#group').text();
+        var genomes = $('#genomes').text();
+        var position = $('#position').text();
 
         var csv = "Name\t" + name + "\nGroup\t" + group + "\nGenomes\t" + genomes + "\nPosition\t" + position + "\nSource\tAccession\tFunction\tConfidence";
 
@@ -1489,16 +1470,16 @@ function main () {
 
 
       var id = $('#name').attr('name')
-      var name = $('#name')[0].innerText;
+      var name = $('#name').text();
 
       if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
 
-        var genome = $('#genome')[0].innerText;
-        var genecall = $('#genecall')[0].innerText;
-        var length = $('#length')[0].innerText;
-        var partial = $('#partial')[0].innerText;
-        var paralog = $('#paralog')[0].innerText;
-        var direction = $('#direction')[0].innerText;
+        var genome = $('#genome').text();
+        var genecall = $('#genecall').text();
+        var length = $('#length').text();
+        var partial = $('#partial').text();
+        var paralog = $('#paralog').text();
+        var direction = $('#direction').text();
 
         var csv = "Genome\t" + genome + "\nGenecall\t" + genecall + "\nLength\t" + length + "\Partial\t" + partial + "\ParalogS\t" + paralog + "\Direction\t" + direction + "\nSource\tAccession\tFunction\te-Value";
 
@@ -1516,7 +1497,7 @@ function main () {
     $('#AlignmentDownload').on('click', async function() {
 
       var id = $('#name').attr('name')
-      var name = $('#name')[0].innerText;
+      var name = $('#name').text();
 
       if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
 
