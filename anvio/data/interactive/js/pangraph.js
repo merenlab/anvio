@@ -989,6 +989,10 @@ function main () {
 
     })
 
+    // This title must update with Generic data from JSON
+    $('#title-panel-first-line').text('TITLE');
+    $('#title-panel-second-line').text('Pangraph Detail');
+
     $('#settings').on('click', function() {
 
       var data = new Object;

@@ -140,3 +140,15 @@ html *
   #toggle-panel-left{
     z-index: 1;
   }
+
+  #toggle-panel-top{
+    z-index: 1;
+  }
+
+  #title-panel{
+    z-index: 1;
+  }
+
+  #title-alter-panel{
+    z-index: 1;
+  }
