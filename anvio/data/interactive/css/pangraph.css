@@ -137,6 +137,10 @@ html *
     font-size: 14px;
   }
 
+  #panel-left {
+    z-index: 2;
+  }
+
   #toggle-panel-left{
     z-index: 1;
   }
