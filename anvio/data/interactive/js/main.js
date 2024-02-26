@@ -194,8 +194,8 @@ $(document).ready(function() {
         }
     });
 
-    if (!$.browser.chrome)
-    {
+
+    if (!(/Chrome/.test(navigator.userAgent))) {
         toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser.\
                         For the best performance, and to avoid unexpected issues, please consider using anvi'o with\
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
