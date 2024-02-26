@@ -35,11 +35,24 @@
   </head>
 
   <body>
-
-    <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
-      <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+    <div id="wrapper">
+      <div class="invisible" id="toggle-panel-top" onclick="$('#toggle-panel-top').toggleClass('visible invisible'); $('#title-panel').show();">
+          &#9660; TITLE
+      </div>
+      <div id="title-panel">
+          <div id="title-alter-panel">
+              <span id="title-panel-first-line"></span><br>
+              <span id="title-panel-second-line"></span>
+              <div id="title-panel-close-button">
+                  <a href="#" class="close-thick" onclick="$('#title-panel').hide(); $('#toggle-panel-top').toggleClass('invisible visible');"></a>
+              </div>
+          </div>
+      </div>
+      <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
+        <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+      </div>
     </div>
-  
+
     <div id="svgbox"></div>
 
     <div id="panel-left">
@@ -96,7 +109,7 @@
                               </a>
                           </li>
                           <li class="nav-bottom-alignment pb-2">
-                              <a href="#" class="navbar-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural">
+                              <a id="fit" href="#" class="navbar-btn d-block justify-content-center" data-help="return-to-natural">
                                   <i class="icon-unlock bi bi-align-middle fs-2x"></i><span class="d-block">Align</span>
                               </a>
                           </li>
@@ -672,18 +685,6 @@
         </div>
       </div>
     </div>
-
-    <div class="btn-group btn-bot mt-3 align-self-center" role="group" aria-label="Basic example">
-      <button type="button" id="plus" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-        <i class="user-handle bi bi-zoom-in"></i>
-      </button>
-      <button type="button" id="minus" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-        <i class="user-handle bi bi-zoom-out"></i>
-      </button>
-      <button type="button" id="fit" class="btn btn-secondary" data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-        <i class="user-handle bi bi-arrows-fullscreen"></i>
-      </button>
-    </div>
-
+    
   </body>
 </html>
