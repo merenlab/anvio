@@ -275,8 +275,6 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            //$("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
-            //$("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
 
             sortable('#tbody_layers', {
                 forcePlaceholderSize: true,
