@@ -88,7 +88,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
     basic_info = {'Gene Cluster': gene_cluster_id, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
     basic_info_table = `<p class="modal_header">Basics</p>`;
-    basic_info_table += `<table class="table table-striped table-bordered" id="node_basics_table">`;
+    basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
     basic_info_table += `<tbody>`;
 
     basic_info_table += `<thead class="thead-light"><tr>`;
@@ -109,7 +109,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
 
 function get_gene_cluter_functions_table(gene_cluster_id, data) {
     functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
-    functions_table += `<table class="table table-striped" id="node_functions_table">`;
+    functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
     functions_table += `<thead class="thead-dark"><tr>`;
     functions_table += `<th scope="col">Source</th>`;
     functions_table += `<th scope="col">Accession</th>`;
@@ -398,7 +398,7 @@ async function appendalignment(alignment) {
     }
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
-    alignments_table += `<table class="table table-striped" id="node_sequence_alignments_table">`;
+    alignments_table += `<table class="table table-striped sortable" id="node_sequence_alignments_table">`;
     alignments_table += `<thead><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
