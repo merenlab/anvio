@@ -8,12 +8,14 @@
 
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="./node_modules/jquery-ui/themes/base/draggable.css">
     <!-- <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/themes/light.css" />
     <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/dist/tippy.css" /> -->
     <link type="text/css" rel="stylesheet" href="css/pangraph.css" />
     <link rel="shortcut icon" href="#">
     <link href="./node_modules/sortable-tablesort/sortable.min.css" rel="stylesheet">
     <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
 
     <script>$.uiBackCompat = false; //Do not change the order of jquery-ui files</script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/jquery-patch.js" onerror='alertDependencyError("jquery-patch")'></script>
@@ -319,7 +321,7 @@
                     </div>
                     <span class="settings-secondary-header mb-3 mt-3">Genomes</span>
                     
-                    <div id="genomecolors" class="row grid align-items-center">
+                    <div id="genomecolors" class="row grid align-items-center sortable">
                     </div>
                   </div>
                 </div>
@@ -609,7 +611,7 @@
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="InfoDownload">
-                <i class="user-handle bi bi-download"></i>
+                <i class="bi bi-download"></i>
               </button>
             </div>
           </div>
@@ -637,7 +639,7 @@
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="AlignmentDownload">
-                <i class="user-handle bi bi-download"></i>
+                <i class="bi bi-download"></i>
               </button>
             </div>
           </div>
@@ -680,7 +682,7 @@
                 <i class="bi bi-arrow-right-square"></i>
               </button>
               <button class="btn btn-primary" id="GenomeDownload">
-                <i class="user-handle bi bi-download"></i>
+                <i class="bi bi-download"></i>
               </button>
             </div>
           </div>

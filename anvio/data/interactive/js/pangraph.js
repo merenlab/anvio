@@ -1054,7 +1054,7 @@ function main () {
           $('<div class="col-12 d-flex mb-1">').append(
               $('<div class="col-2 d-flex align-items-center">').append(
                 $('<div class="form-switch d-flex">').append(
-                  $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+                  $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top"' + state + '>')
                 )
               )
             ).append(
@@ -1062,23 +1062,23 @@ function main () {
                 genome
               )
             ).append(
-              $('<div class="col-1 d-flex align-items-center">').append(
-                $('<i class="user-handle bi bi-arrows-expand"></i>')
+              $('<div class="col-1 d-flex align-items-center user-handle">').append(
+                $('<i class="bi bi-arrows-expand"></i>')
               )
             ).append(
               $('<div class="col-2 d-flex align-items-center">').append(
-                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
               )
             )
         )
 
         $('#RightOffcanvasBodyTop').append(
           $('<tr>').append(
-            $('<td class="col-8" scope="row">').append(
+            $('<td class="col-8">').append(
               genome
             )
             ).append(
-              $('<td class="col-4 text-end" scope="row" id="number_' + genome + '">').append(
+              $('<td class="col-4 text-end" id="number_' + genome + '">').append(
                 0
               )
           )
@@ -1175,13 +1175,10 @@ function main () {
     });
   
 
-    $(function () {
-      $(".grid").sortable({
-        tolerance: 'pointer',
-        revert: 'invalid',
-        handle: ".user-handle",
-        forceHelperSize: true
-      });
+    sortable('#genomecolors', {
+      forcePlaceholderSize: true,
+      handle: '.user-handle',
+      items: 'div'
     });
 
     //ANCHOR - Choose genecall
@@ -1394,7 +1391,7 @@ function main () {
 
           var drop = $('<div class="dropdown" id="' + id + 'drop" name="' + id + '"></div>');
           drop.append(
-            $('<a class= "btn border-1 m-0 p-0 dropdown-toggle" id="' + id + 'name" name="Choose GC" data-bs-toggle="dropdown" href="#"></a>').append(
+            $('<a class= "btn border-1 m-0 p-0 dropdown-toggle" id="' + id + 'name" name="Choose GC" data-toggle="dropdown" href="#"></a>').append(
               $('<span class="caret"></span>').append('Choose GC')
             )
           );

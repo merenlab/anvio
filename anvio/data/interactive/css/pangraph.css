@@ -156,3 +156,7 @@ html *
   #title-alter-panel{
     z-index: 1;
   }
+
+  .user-handle:hover{
+    background: var(--secondary-100);
+  }
