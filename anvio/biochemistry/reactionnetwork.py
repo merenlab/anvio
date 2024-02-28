@@ -9304,7 +9304,7 @@ class Constructor:
         for ko_id, ko in network.kos.items():
             ko_data = {}
             assert re.fullmatch(ko_id_pattern, ko_id)
-            ko_data['id'] = ko_id
+            ko_data['kegg_id'] = ko_id
             ko_data['name'] = ko.name
             ko_data['modules'] = ', '.join(ko.module_ids)
             ko_data['pathways'] = ', '.join(ko.pathway_ids)
@@ -9322,7 +9322,7 @@ class Constructor:
         for module_id, module in network.modules.items():
             module_data = {}
             assert re.fullmatch(module_id_pattern, module_id)
-            module_data['id'] = module_id
+            module_data['kegg_id'] = module_id
             module_data['name'] = module.name
             module_data['modules'] = ''
             module_data['pathways'] = ', '.join(module.pathway_ids)
@@ -9337,7 +9337,7 @@ class Constructor:
         for pathway_id, pathway in network.pathways.items():
             pathway_data = {}
             assert re.fullmatch(pathway_id_pattern, pathway_id)
-            pathway_data['id'] = pathway_id
+            pathway_data['kegg_id'] = pathway_id
             pathway_data['name'] = pathway.name
             pathway_data['modules'] = ''
             pathway_data['pathways'] = ''
@@ -9354,7 +9354,7 @@ class Constructor:
             # that do not resolve to KOs, such as reactions and drugs, have IDs that start with 'br'
             # rather than 'ko'.
             assert re.fullmatch(hierarchy_id_pattern, hierarchy_id)
-            hierarchy_data['id'] = hierarchy_id
+            hierarchy_data['kegg_id'] = hierarchy_id
             hierarchy_data['name'] = hierarchy.name
             hierarchy_data['modules'] = ''
             hierarchy_data['pathways'] = ''
