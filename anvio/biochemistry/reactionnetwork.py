@@ -2523,25 +2523,25 @@ class ReactionNetwork:
             else:
                 irreversible_count += 1
             encountered_compound_ids = []
-            for compartment, coefficient, modelseed_compound_id in zip(
+            for compartment, coefficient, compound_id in zip(
                 reaction.compartments, reaction.coefficients, reaction.compound_ids
             ):
                 if compartment == 'c':
-                    cytoplasmic_compound_ids.append(modelseed_compound_id)
+                    cytoplasmic_compound_ids.append(compound_id)
                 else:
-                    extracellular_compound_ids.append(modelseed_compound_id)
+                    extracellular_compound_ids.append(compound_id)
                 if reaction.reversibility:
-                    consumed_compound_ids.append(modelseed_compound_id)
-                    produced_compound_ids.append(modelseed_compound_id)
+                    consumed_compound_ids.append(compound_id)
+                    produced_compound_ids.append(compound_id)
                 elif coefficient < 0:
-                    consumed_compound_ids.append(modelseed_compound_id)
+                    consumed_compound_ids.append(compound_id)
                 else:
-                    produced_compound_ids.append(modelseed_compound_id)
-                if modelseed_compound_id not in encountered_compound_ids:
+                    produced_compound_ids.append(compound_id)
+                if compound_id not in encountered_compound_ids:
                     try:
-                        compound_reaction_counts[modelseed_compound_id] += 1
+                        compound_reaction_counts[compound_id] += 1
                     except KeyError:
-                        compound_reaction_counts[modelseed_compound_id] = 1
+                        compound_reaction_counts[compound_id] = 1
         stats_group['Reversible reactions'] = reversible_count
         stats_group['Irreversible reactions'] = irreversible_count
         cytoplasmic_compound_ids = set(cytoplasmic_compound_ids)
@@ -2864,11 +2864,11 @@ class GenomicNetwork(ReactionNetwork):
                 filesnpaths.is_output_file_writable(path)
 
         metabolites_to_remove: List[str] = []
-        for modelseed_compound_id, metabolite in self.metabolites.items():
+        for compound_id, metabolite in self.metabolites.items():
             # ModelSEED compounds without a formula have a formula value of None in the network
             # object.
             if metabolite.formula is None:
-                metabolites_to_remove.append(modelseed_compound_id)
+                metabolites_to_remove.append(compound_id)
         removed = self.purge_metabolites(metabolites_to_remove)
 
         if self.verbose:
