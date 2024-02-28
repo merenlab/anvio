@@ -4507,7 +4507,8 @@ class PangenomicNetwork(ReactionNetwork):
         hierarchies_to_subset: Union[str, Iterable[str]] = None,
         categories_to_subset: Dict[str, List[Tuple[str]]] = None,
         reactions_to_subset: Union[str, Iterable[str]] = None,
-        metabolites_to_subset: Union[str, Iterable[str]] = None
+        metabolites_to_subset: Union[str, Iterable[str]] = None,
+        inclusive: bool = False
     ) -> PangenomicNetwork:
         """
         Subset a smaller network from the metabolic network.
@@ -4520,15 +4521,25 @@ class PangenomicNetwork(ReactionNetwork):
         gene cluster, KO, reaction, metabolite, and other objects are created and added to the
         subsetted network.
 
-        Network items (e.g., gene clusters, KOs, reactions, and metabolites) associated with
-        requested items (e.g., gene clusters in the network referencing requested KOs; requested
-        reactions referencing metabolites in the network) are added to the subsetted network. KOs
-        (and by extension, gene clusters assigned the KOs) that are added to the subsetted network
-        due to references to requested reactions will be missing references to any other unrequested
-        reactions. In other words, certain reaction annotations can be selected to the exclusion of
-        others, e.g., a KO encoding two reactions can be restricted to encode one requested reaction
-        in the subsetted network; a KO encoding multiple reactions can be restricted to encode only
-        those reactions involving requested metabolites.
+        Network items (e.g., gene clusters, KOs, reactions, and metabolites) that are associated with
+        requested items (e.g., gene clusters in the network that reference requested KOs; metabolites
+        referenced by requested reactions) are added to the subsetted network.
+
+        The choice of "inclusive" or, by default, "exclusive" subsetting determines which associated
+        items are included in the subsetted network. In exclusive subsetting, KOs (and by extension,
+        gene clusters assigned the KOs) that are added to the subsetted network due to references to
+        requested reactions will be missing references to any other unrequested reactions. In other
+        words, certain reaction annotations can be selected to the exclusion of others, e.g., a KO
+        encoding two reactions can be restricted to encode one requested reaction in the subsetted
+        network; a KO encoding multiple reactions can be restricted to encode only those reactions
+        involving requested metabolites.
+
+        "Inclusive" subsetting applies a "Midas touch" where all items in the network that are
+        however associated with requested reactions and metabolites are "turned to gold" and
+        included in the subsetted network. KOs and gene clusters that are added to the subsetted
+        network due to references to requested reactions and metabolites will include all their
+        other references to unrequested reactions and metabolites. Inclusive subsetting precludes
+        the emendation of KO reaction annotations.
 
         Parameters
         ==========
@@ -4572,6 +4583,14 @@ class PangenomicNetwork(ReactionNetwork):
 
         metabolites_to_subset : Union[str, Iterable[str]], None
             ModelSEED compound ID(s) to subset.
+
+        inclusive : bool, False
+            If True, "inclusive" subsetting applies a "Midas touch" where all items in the network
+            that are however associated with requested reactions and metabolites are "turned to
+            gold" and included in the subsetted network. In default "exclusive" subsetting, KOs and
+            gene clusters that are added to the subsetted network due to references to requested
+            reactions and metabolites will be missing references to any other unrequested reactions
+            and metabolites.
 
         Returns
         =======
@@ -4646,9 +4665,13 @@ class PangenomicNetwork(ReactionNetwork):
         first_subnetwork = None
         for items_to_subset, subset_network_method in (
             (gene_clusters_to_subset, self._subset_network_by_gene_clusters),
-            (kos_to_subset, self._subset_network_by_kos),
-            (reactions_to_subset, self._subset_network_by_reactions),
-            (metabolites_to_subset, self._subset_network_by_metabolites)
+            (kos_to_subset, functools.partial(self._subset_network_by_kos, inclusive=inclusive)),
+            (reactions_to_subset, functools.partial(
+                self._subset_network_by_reactions, inclusive=inclusive
+            )),
+            (metabolites_to_subset, functools.partial(
+                self._subset_network_by_metabolites, inclusive=inclusive
+            ))
         ):
             if not items_to_subset:
                 continue
