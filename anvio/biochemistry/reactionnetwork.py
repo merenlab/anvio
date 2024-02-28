@@ -6933,19 +6933,19 @@ class Constructor:
                 continue
 
             reaction = ModelSEEDReaction()
-            modelseed_reaction_id: str = row.modelseed_reaction_id
-            reaction.modelseed_id = modelseed_reaction_id
+            reaction_id: str = row.modelseed_reaction_id
+            reaction.modelseed_id = reaction_id
             reaction.modelseed_name = row.modelseed_reaction_name
-            network.reactions[modelseed_reaction_id] = reaction
+            network.reactions[reaction_id] = reaction
 
             modelseed_compound_ids: str = row.metabolite_modelseed_ids
             reaction_compound_ids = []
-            for modelseed_compound_id in modelseed_compound_ids.split(', '):
-                reaction_compound_ids.append(modelseed_compound_id)
-                if modelseed_compound_id not in network.metabolites:
+            for compound_id in modelseed_compound_ids.split(', '):
+                reaction_compound_ids.append(compound_id)
+                if compound_id not in network.metabolites:
                     metabolite = ModelSEEDCompound()
-                    metabolite.modelseed_id = modelseed_compound_id
-                    network.metabolites[modelseed_compound_id] = metabolite
+                    metabolite.modelseed_id = compound_id
+                    network.metabolites[compound_id] = metabolite
             reaction.compound_ids = tuple(reaction_compound_ids)
 
             stoichiometry: str = row.stoichiometry
@@ -6963,23 +6963,23 @@ class Constructor:
                 reaction.kegg_aliases += other_kegg_reaction_ids.split(', ')
             reaction.kegg_aliases = tuple(reaction.kegg_aliases)
 
-            network.modelseed_kegg_aliases[modelseed_reaction_id] = modelseed_kegg_aliases = []
+            network.modelseed_kegg_aliases[reaction_id] = modelseed_kegg_aliases = []
             for kegg_reaction_id, kos in kegg_reaction_kos.items():
                 # Record the ModelSEED reaction as one of the aliases of the KEGG reaction in the
                 # network.
                 try:
-                    network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
+                    network.kegg_modelseed_aliases[kegg_reaction_id].append(reaction_id)
                 except KeyError:
-                    network.kegg_modelseed_aliases[kegg_reaction_id] = [modelseed_reaction_id]
+                    network.kegg_modelseed_aliases[kegg_reaction_id] = [reaction_id]
                 modelseed_kegg_aliases.append(kegg_reaction_id)
                 for ko in kos:
-                    if not modelseed_reaction_id in ko.reaction_ids:
+                    if not reaction_id in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
-                        ko.reaction_ids.append(modelseed_reaction_id)
+                        ko.reaction_ids.append(reaction_id)
                     try:
-                        ko.kegg_reaction_aliases[modelseed_reaction_id].append(kegg_reaction_id)
+                        ko.kegg_reaction_aliases[reaction_id].append(kegg_reaction_id)
                     except KeyError:
-                        ko.kegg_reaction_aliases[modelseed_reaction_id] = [kegg_reaction_id]
+                        ko.kegg_reaction_aliases[reaction_id] = [kegg_reaction_id]
 
             # Record *all* EC number aliases of the ModelSEED reaction, including those not
             # associated with KO annotations.
@@ -6990,23 +6990,23 @@ class Constructor:
             reaction.ec_number_aliases = tuple(reaction.ec_number_aliases)
 
             modelseed_ec_number_aliases = []
-            network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases
+            network.modelseed_ec_number_aliases[reaction_id] = modelseed_ec_number_aliases
             for ec_number, kos in ec_number_kos.items():
                 # Record the ModelSEED reaction as one of the aliases of the EC number in the
                 # network.
                 try:
-                    network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
+                    network.ec_number_modelseed_aliases[ec_number].append(reaction_id)
                 except KeyError:
-                    network.ec_number_modelseed_aliases[ec_number] = [modelseed_reaction_id]
+                    network.ec_number_modelseed_aliases[ec_number] = [reaction_id]
                 modelseed_ec_number_aliases.append(ec_number)
                 for ko in kos:
-                    if not modelseed_reaction_id in ko.reactions:
+                    if not reaction_id in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
-                        ko.reaction_ids.append(modelseed_reaction_id)
+                        ko.reaction_ids.append(reaction_id)
                     try:
-                        ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
+                        ko.ec_number_aliases[reaction_id].append(ec_number)
                     except KeyError:
-                        ko.ec_number_aliases[modelseed_reaction_id] = [ec_number]
+                        ko.ec_number_aliases[reaction_id] = [ec_number]
 
     def _load_modelseed_compounds(
         self,
