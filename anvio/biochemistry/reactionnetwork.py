@@ -1981,33 +1981,11 @@ class ReactionNetwork:
             except KeyError:
                 subnetwork.ec_number_modelseed_aliases[ec_number] = [reaction_id]
 
-        if subnetwork.kegg_modelseed_aliases:
-            subnetwork_kegg_modelseed_aliases = subnetwork.kegg_modelseed_aliases
-            for kegg_id, modelseed_ids in kegg_modelseed_aliases.items():
-                try:
-                    subnetwork_kegg_modelseed_aliases[kegg_id] += modelseed_ids
-                except KeyError:
-                    subnetwork_kegg_modelseed_aliases[kegg_id] = modelseed_ids
-        else:
-            subnetwork.kegg_modelseed_aliases = kegg_modelseed_aliases
-
-        if subnetwork.ec_number_modelseed_aliases:
-            subnetwork_ec_number_modelseed_aliases = subnetwork.ec_number_modelseed_aliases
-            for ec_number, modelseed_ids in ec_number_modelseed_aliases.items():
-                try:
-                    subnetwork_ec_number_modelseed_aliases[ec_number] += modelseed_ids
-                except KeyError:
-                    subnetwork_ec_number_modelseed_aliases[ec_number] = modelseed_ids
-        else:
-            subnetwork.ec_number_modelseed_aliases = ec_number_modelseed_aliases
-
-        if subset_referencing_kos:
-            # Add KOs that are annotated by the subsetted reactions to the network.
-            self._subset_kos_via_reactions(subnetwork)
-
-        return subnetwork
-
-    def _subset_kos_via_reactions(self, subnetwork: ReactionNetwork) -> None:
+    def _subset_kos_via_reactions(
+        self,
+        subnetwork: ReactionNetwork,
+        inclusive: bool = False
+    ) -> None:
         """
         Add KOs that are annotated with subsetted reactions to the subsetted network.
 
@@ -2017,6 +1995,14 @@ class ReactionNetwork:
         ==========
         subnetwork : ReactionNetwork
             The subsetted reaction network under construction.
+
+        inclusive : bool, False
+            This option applies to genomic and not pangenomic networks. If True, "inclusive"
+            subsetting applies a "Midas touch" where all items in the network that are however
+            associated with requested KOs are "turned to gold" and included in the subsetted
+            network. In default "exclusive" subsetting, a gene added to the subsetted network due to
+            references to requested KOs will be missing its references to any other unrequested KOs
+            in the source network.
 
         Returns
         =======
@@ -2029,21 +2015,65 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        subsetted_reaction_ids = list(subnetwork.reactions)
-        subnetwork_kos = subnetwork.kos
         for ko_id, ko in self.kos.items():
             # Check all KOs in the source network for subsetted reactions.
+            subsetted_reaction_ids: List[str] = []
             for reaction_id in ko.reaction_ids:
-                if reaction_id not in subsetted_reaction_ids:
-                    # The KO is not annotated by the subsetted reaction.
-                    continue
-                # Copy the KO to the subsetted network.
-                subnetwork_kos[ko_id] = deepcopy(ko)
-                break
+                if reaction_id in subnetwork.reactions:
+                    # The KO is annotated by the subsetted reaction.
+                    subsetted_reaction_ids.append(reaction_id)
+            if not subsetted_reaction_ids:
+                # The KO is not annotated by any subsetted reactions.
+                continue
+
+            if inclusive:
+                # Copy the KO, including all its references, to the subsetted network.
+                subnetwork.kos[ko_id] = deepcopy(ko)
+
+                # Add "unrequested" reactions associated with the KO to the subsetted network if not
+                # already added.
+                for reaction_id in ko.reaction_ids:
+                    if reaction_id in subsetted_reaction_ids:
+                        continue
+                    self._subset_reaction(subnetwork, self.reactions[reaction_id])
+                continue
+
+            # Subsetting is exclusive, not inclusive. Add the KO only with references to subsetted
+            # reactions.
+            subnetwork_ko = KO(
+                id=ko_id,
+                name=ko.name,
+                module_ids=ko.module_ids.copy(),
+                hierarchies=deepcopy(ko.hierarchies),
+                pathway_ids=ko.pathway_ids.copy()
+            )
+
+            for reaction_id in subsetted_reaction_ids:
+                subnetwork_ko.reaction_ids.append(reaction_id)
+
+            for kegg_id, modelseed_reaction_ids in ko.kegg_reaction_aliases.items():
+                for reaction_id in modelseed_reaction_ids:
+                    if reaction_id not in subsetted_reaction_ids:
+                        continue
+                    try:
+                        subnetwork_ko.kegg_reaction_aliases[kegg_id].append(reaction_id)
+                    except KeyError:
+                        subnetwork_ko.kegg_reaction_aliases[kegg_id] = [reaction_id]
+
+            for ec_number, modelseed_reaction_ids in ko.ec_number_aliases.items():
+                for reaction_id in modelseed_reaction_ids:
+                    if reaction_id not in subsetted_reaction_ids:
+                        continue
+                    try:
+                        subnetwork_ko.ec_number_aliases[ec_number].append(reaction_id)
+                    except KeyError:
+                        subnetwork_ko.ec_number_aliases[ec_number] = [reaction_id]
+
+            subnetwork.kos[ko_id] = subnetwork_ko
 
         if isinstance(self, GenomicNetwork):
             # Copy genes that are annotated with the added KOs to the subsetted network.
-            self._subset_genes_via_kos(subnetwork)
+            self._subset_genes_via_kos(subnetwork, inclusive=inclusive)
         elif isinstance(self, PangenomicNetwork):
             # Copy gene clusters that are annotated with the added KOs to the subsetted network.
             self._subset_gene_clusters_via_kos(subnetwork)
