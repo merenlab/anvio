@@ -8085,6 +8085,8 @@ class Constructor:
                 kegg_hierarchies_data
             )
 
+        self._relate_modules_pathways(network, kegg_modules_data)
+
         if DEBUG:
             for gene_cluster in network.gene_clusters.values():
                 ko = network.kos[gene_cluster.ko_id]
