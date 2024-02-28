@@ -10155,6 +10155,7 @@ class Tester:
         =======
         None
         """
+        copied_network = deepcopy(network)
         metabolite_sample: Set[str] = samples['metabolite']
         subnetwork = network.subset_network(metabolites_to_subset=metabolite_sample)
         # The most basic test of the subset method is that the new network contains the requested
@@ -10165,26 +10166,32 @@ class Tester:
         # Assert that all of the items requested to be subsetted were subsetted.
         assert not metabolite_sample.difference(set(subnetwork.metabolites))
 
+        copied_network = deepcopy(network)
         reaction_sample: Set[str] = samples['reaction']
         subnetwork = network.subset_network(reactions_to_subset=reaction_sample)
         assert not reaction_sample.difference(set(subnetwork.reactions))
 
+        copied_network = deepcopy(network)
         ko_sample: Set[str] = samples['ko']
         subnetwork = network.subset_network(kos_to_subset=ko_sample)
         assert not ko_sample.difference(set(subnetwork.kos))
 
+        copied_network = deepcopy(network)
         module_sample: Set[str] = samples['module']
         subnetwork = network.subset_network(modules_to_subset=module_sample)
         assert not module_sample.difference(set(subnetwork.modules))
 
+        copied_network = deepcopy(network)
         pathway_sample: Set[str] = samples['pathway']
         subnetwork = network.subset_network(pathways_to_subset=pathway_sample)
         assert not pathway_sample.difference(set(subnetwork.pathways))
 
+        copied_network = deepcopy(network)
         hierarchy_sample: Set[str] = samples['hierarchy']
         subnetwork = network.subset_network(hierarchies_to_subset=hierarchy_sample)
         assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
 
+        copied_network = deepcopy(network)
         category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
         subnetwork = network.subset_network(categories_to_subset=category_sample_dict)
         remaining_category_ids: List[str] = []
