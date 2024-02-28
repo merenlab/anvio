@@ -10024,7 +10024,7 @@ class Tester:
         )
 
         random.seed(seed)
-        samples['pathway'] = set(random.sample(
+        samples['hierarchy'] = set(random.sample(
             list(network.hierarchies), math.ceil(proportion * len(network.hierarchies))
         ))
 
