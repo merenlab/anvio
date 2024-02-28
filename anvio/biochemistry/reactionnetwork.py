@@ -4912,23 +4912,19 @@ class PangenomicNetwork(ReactionNetwork):
 
         if not (self.pan_db_source_path and self.genomes_storage_db_source_path):
             self.run.info_single(
-                f"""\
-                Since the pangenomic network was not associated with a pan database and genomes
-                storage database, the following statistics could not be calculated and were not
-                reported to the output file: 'Total gene clusters in pangenome', 'Gene clusters
-                assigned protein KOs', and 'Protein KOs assigned to gene clusters'.\
-                """
+                "Since the pangenomic network was not associated with a pan database and genomes "
+                "storage database, the following statistics could not be calculated and were not "
+                "reported to the output file: 'Total gene clusters in pangenome', 'Gene clusters "
+                "assigned protein KOs', and 'Protein KOs assigned to gene clusters'."
             )
         elif self.consistent_annotations is False:
             self.run.info_single(
-                f"""\
-                The network attribute, 'consistent_annotations', is False, which indicates that the
-                reaction network stored in the pan database was made from a different set of KO gene
-                annotations than is currently in the genomes storage database. Therefore, the
-                following statistics were not calculated and reported to the output file to avoid
-                potential inaccuracies: 'Gene clusters assigned protein KO' and 'Protein KOs
-                assigned to gene clusters'.\
-                """
+                "The network attribute, 'consistent_annotations', is False, which indicates that "
+                "the reaction network stored in the pan database was made from a different set of "
+                "KO gene annotations than is currently in the genomes storage database. Therefore, "
+                "the following statistics were not calculated and reported to the output file to "
+                "avoid potential inaccuracies: 'Gene clusters assigned protein KO' and 'Protein "
+                "KOs assigned to gene clusters'."
             )
 
         return stats
