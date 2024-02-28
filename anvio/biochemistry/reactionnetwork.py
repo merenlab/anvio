@@ -5111,15 +5111,15 @@ class PangenomicNetwork(ReactionNetwork):
                     annotation_ko_categories.append(category_id[len(hierarchy_id) + 2:])
 
             # Set up dictionaries needed to fill out reaction entries.
-            for modelseed_reaction_id in ko.reaction_ids:
+            for reaction_id in ko.reaction_ids:
                 try:
-                    reaction_gene_clusters[modelseed_reaction_id].append(cluster_id_str)
+                    reaction_gene_clusters[reaction_id].append(cluster_id_str)
                 except KeyError:
-                    reaction_gene_clusters[modelseed_reaction_id] = [cluster_id_str]
+                    reaction_gene_clusters[reaction_id] = [cluster_id_str]
                 try:
-                    reaction_kos[modelseed_reaction_id].append(ko)
+                    reaction_kos[reaction_id].append(ko)
                 except KeyError:
-                    reaction_kos[modelseed_reaction_id] = [ko]
+                    reaction_kos[reaction_id] = [ko]
 
             if not record_genomes:
                 continue
@@ -5130,18 +5130,18 @@ class PangenomicNetwork(ReactionNetwork):
                 # section of the gene cluster entry.
                 gene_cluster_entry['notes']['genomes'] = genome_names
             if 'reaction' in record_genomes:
-                for modelseed_reaction_id in ko.reaction_ids:
+                for reaction_id in ko.reaction_ids:
                     try:
-                        reaction_genomes[modelseed_reaction_id] += genome_names
+                        reaction_genomes[reaction_id] += genome_names
                     except KeyError:
-                        reaction_genomes[modelseed_reaction_id] = genome_names
+                        reaction_genomes[reaction_id] = genome_names
             if 'metabolite' in record_genomes:
-                for modelseed_reaction_id in ko.reaction_ids:
-                    reaction = self.reactions[modelseed_reaction_id]
-                    for compartment, modelseed_compound_id in zip(
+                for reaction_id in ko.reaction_ids:
+                    reaction = self.reactions[reaction_id]
+                    for compartment, compound_id in zip(
                         reaction.compartments, reaction.compound_ids
                     ):
-                        entry_id = f"{modelseed_compound_id}_{compartment}"
+                        entry_id = f"{compound_id}_{compartment}"
                         try:
                             metabolite_genomes[entry_id] += genome_names
                         except KeyError:
@@ -5149,26 +5149,26 @@ class PangenomicNetwork(ReactionNetwork):
 
         progress.update("Reactions")
         compound_compartments: Dict[str, Set[str]] = {}
-        for modelseed_reaction_id, reaction in self.reactions.items():
+        for reaction_id, reaction in self.reactions.items():
             reaction_entry = JSONStructure.get_reaction_entry()
             json_reactions.append(reaction_entry)
-            reaction_entry['id'] = modelseed_reaction_id
+            reaction_entry['id'] = reaction_id
             reaction_entry['name'] = reaction.modelseed_name
             metabolites = reaction_entry['metabolites']
-            for modelseed_compound_id, compartment, coefficient in zip(
+            for compound_id, compartment, coefficient in zip(
                 reaction.compound_ids, reaction.compartments, reaction.coefficients
             ):
-                metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
+                metabolites[f"{compound_id}_{compartment}"] = coefficient
                 try:
-                    compound_compartments[modelseed_compound_id].add(compartment)
+                    compound_compartments[compound_id].add(compartment)
                 except KeyError:
-                    compound_compartments[modelseed_compound_id] = set(compartment)
+                    compound_compartments[compound_id] = set(compartment)
             if not reaction.reversibility:
                 # By default, the reaction entry was set up to be reversible; here make it
                 # irreversible.
                 reaction_entry['lower_bound'] = 0.0
             reaction_entry['gene_reaction_rule'] = " or ".join(
-                [gcid for gcid in reaction_gene_clusters[modelseed_reaction_id]]
+                [gcid for gcid in reaction_gene_clusters[reaction_id]]
             )
 
             notes = reaction_entry['notes']
@@ -5176,13 +5176,13 @@ class PangenomicNetwork(ReactionNetwork):
             notes['ko'] = ko_notes = {}
             ko_kegg_aliases = []
             ko_ec_number_aliases = []
-            for ko in reaction_kos[modelseed_reaction_id]:
+            for ko in reaction_kos[reaction_id]:
                 try:
-                    kegg_aliases = ko.kegg_reaction_aliases[modelseed_reaction_id]
+                    kegg_aliases = ko.kegg_reaction_aliases[reaction_id]
                 except KeyError:
                     kegg_aliases = []
                 try:
-                    ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                    ec_number_aliases = ko.ec_number_aliases[reaction_id]
                 except KeyError:
                     ec_number_aliases = []
                 ko_notes[ko.id] = {'kegg.reaction': kegg_aliases, 'ec-code': ec_number_aliases}
@@ -5198,18 +5198,18 @@ class PangenomicNetwork(ReactionNetwork):
             }
             if 'reaction' not in record_genomes:
                 continue
-            notes['genomes'] = sorted(set(reaction_genomes[modelseed_reaction_id]))
+            notes['genomes'] = sorted(set(reaction_genomes[reaction_id]))
 
         progress.update("Metabolites")
-        for modelseed_compound_id, metabolite in self.metabolites.items():
+        for compound_id, metabolite in self.metabolites.items():
             modelseed_compound_name = metabolite.modelseed_name
             charge = metabolite.charge
             formula = metabolite.formula
             kegg_compound_aliases = list(metabolite.kegg_aliases)
-            for compartment in compound_compartments[modelseed_compound_id]:
+            for compartment in compound_compartments[compound_id]:
                 metabolite_entry = JSONStructure.get_metabolite_entry()
                 json_metabolites.append(metabolite_entry)
-                entry_id = f"{modelseed_compound_id}_{compartment}"
+                entry_id = f"{compound_id}_{compartment}"
                 metabolite_entry['id'] = entry_id
                 metabolite_entry['name'] = modelseed_compound_name
                 metabolite_entry['compartment'] = compartment
