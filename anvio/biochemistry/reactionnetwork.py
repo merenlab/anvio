@@ -7163,7 +7163,7 @@ class Constructor:
         # and (older) information in the stored network due to a KEGG database update.
         inconsistent_kos: Dict[str, Tuple[str, str]] = {}
         for row in kos_table.itertuples():
-            ko_id: str = row.kegg_id
+            ko_id: str = row.Index
             ko = network.kos[ko_id]
 
             ko_name: str = row.name
