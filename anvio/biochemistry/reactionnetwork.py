@@ -2165,73 +2165,84 @@ class ReactionNetwork:
 
         # Copy unique metabolites from the second network. Assume objects representing the same
         # metabolite in both networks have identical attributes.
-        for modelseed_compound_id, metabolite in network.metabolites.items():
-            if modelseed_compound_id in merged_network.metabolites:
+        for compound_id, metabolite in network.metabolites.items():
+            if compound_id in merged_network.metabolites:
                 continue
-            merged_network.metabolites[modelseed_compound_id] = deepcopy(metabolite)
+            merged_network.metabolites[compound_id] = deepcopy(metabolite)
 
         # Copy unique reactions from the second network. Assume objects representing the same
         # reaction in both networks have identical attributes.
-        for modelseed_reaction_id, reaction in network.reactions.items():
-            if modelseed_reaction_id in merged_network.reactions:
+        for reaction_id, reaction in network.reactions.items():
+            if reaction_id in merged_network.reactions:
                 continue
-            merged_network.reactions[modelseed_reaction_id] = deepcopy(reaction)
+            merged_network.reactions[reaction_id] = deepcopy(reaction)
 
         # Reconcile reaction ID aliases, which can differ between the networks depending on the KO
         # sources of the reactions.
-        merged_kegg_modelseed_aliases = merged_network.kegg_modelseed_aliases
         for kegg_reaction_id, modelseed_reaction_ids in network.kegg_modelseed_aliases.items():
             try:
-                merged_modelseed_reaction_ids = merged_kegg_modelseed_aliases[kegg_reaction_id]
+                merged_modelseed_reaction_ids = merged_network.kegg_modelseed_aliases[
+                    kegg_reaction_id
+                ]
             except KeyError:
-                merged_kegg_modelseed_aliases[kegg_reaction_id] = modelseed_reaction_ids.copy()
+                merged_network.kegg_modelseed_aliases[
+                    kegg_reaction_id
+                ] = modelseed_reaction_ids.copy()
                 continue
-            merged_kegg_modelseed_aliases[kegg_reaction_id] = sorted(
+            merged_network.kegg_modelseed_aliases[kegg_reaction_id] = sorted(
                 set(modelseed_reaction_ids + merged_modelseed_reaction_ids)
             )
 
-        merged_ec_number_modelseed_aliases = merged_network.ec_number_modelseed_aliases
         for ec_number, modelseed_reaction_ids in network.ec_number_modelseed_aliases.items():
             try:
-                merged_modelseed_reaction_ids = merged_ec_number_modelseed_aliases[ec_number]
+                merged_modelseed_reaction_ids = merged_network.ec_number_modelseed_aliases[
+                    ec_number
+                ]
             except KeyError:
-                merged_ec_number_modelseed_aliases[ec_number] = modelseed_reaction_ids.copy()
+                merged_network.ec_number_modelseed_aliases[
+                    ec_number
+                ] = modelseed_reaction_ids.copy()
                 continue
-            merged_ec_number_modelseed_aliases[ec_number] = sorted(
+            merged_network.ec_number_modelseed_aliases[ec_number] = sorted(
                 set(modelseed_reaction_ids + merged_modelseed_reaction_ids)
             )
 
-        merged_modelseed_kegg_aliases = merged_network.modelseed_kegg_aliases
         for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
             try:
-                merged_kegg_reaction_ids = merged_modelseed_kegg_aliases[modelseed_reaction_id]
+                merged_kegg_reaction_ids = merged_network.modelseed_kegg_aliases[
+                    modelseed_reaction_id
+                ]
             except KeyError:
-                merged_modelseed_kegg_aliases[modelseed_reaction_id] = kegg_reaction_ids.copy()
+                merged_network.modelseed_kegg_aliases[
+                    modelseed_reaction_id
+                ] = kegg_reaction_ids.copy()
                 continue
-            merged_modelseed_kegg_aliases[modelseed_reaction_id] = sorted(
+            merged_network.modelseed_kegg_aliases[modelseed_reaction_id] = sorted(
                 set(kegg_reaction_ids + merged_kegg_reaction_ids)
             )
 
-        merged_modelseed_ec_number_aliases = merged_network.modelseed_ec_number_aliases
         for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
             try:
-                merged_ec_numbers = merged_modelseed_ec_number_aliases[modelseed_reaction_id]
+                merged_ec_numbers = merged_network.modelseed_ec_number_aliases[
+                    modelseed_reaction_id
+                ]
             except KeyError:
-                merged_modelseed_ec_number_aliases[modelseed_reaction_id] = ec_numbers.copy()
+                merged_network.modelseed_ec_number_aliases[
+                    modelseed_reaction_id
+                ] = ec_numbers.copy()
                 continue
-            merged_modelseed_ec_number_aliases[modelseed_reaction_id] = sorted(
+            merged_network.modelseed_ec_number_aliases[modelseed_reaction_id] = sorted(
                 set(ec_numbers + merged_ec_numbers)
             )
 
         # Copy KOs from the second network. These can have different reaction annotations, so take
         # the union of the reactions associated with the same KO. Assume KOs with the same ID have
         # the same name.
-        merged_kos = merged_network.kos
         for ko_id, ko in network.kos.items():
             try:
-                merged_ko = merged_kos[ko_id]
+                merged_ko = merged_network.kos[ko_id]
             except KeyError:
-                merged_kos[ko_id] = deepcopy(ko)
+                merged_network.kos[ko_id] = deepcopy(ko)
                 continue
 
             # The KOs should be classified in the same modules, pathways, and hierarchy categories,
@@ -2252,7 +2263,9 @@ class ReactionNetwork:
 
             for kegg_reaction_id, modelseed_reaction_ids in merged_ko.kegg_reaction_aliases.items():
                 try:
-                    merged_modelseed_reaction_ids = merged_ko.kegg_reaction_aliases[kegg_reaction_id]
+                    merged_modelseed_reaction_ids = merged_ko.kegg_reaction_aliases[
+                        kegg_reaction_id
+                    ]
                 except KeyError:
                     merged_ko.kegg_reaction_aliases = modelseed_reaction_ids.copy()
                     continue
@@ -2273,12 +2286,11 @@ class ReactionNetwork:
         # Copy hierarchies from the second network. Hierarchies from the two networks can contain
         # different categories due to different KOs. Assume hierarchies with the same ID have the
         # same name.
-        merged_hierarchies = merged_network.hierarchies
         for hierarchy_id, hierarchy in network.hierarchies.items():
             try:
-                merged_hierarchy = merged_hierarchies[hierarchy_id]
+                merged_hierarchy = merged_network.hierarchies[hierarchy_id]
             except KeyError:
-                merged_hierarchies[hierarchy_id] = deepcopy(hierarchy)
+                merged_network.hierarchies[hierarchy_id] = deepcopy(hierarchy)
                 continue
 
             merged_hierarchy.categorizations = sorted(
