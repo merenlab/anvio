@@ -7031,7 +7031,9 @@ class Constructor:
         """
         # Load the table of compounds data.
         if type(database) is ContigsDatabase:
-            metabolites_table = database.db.get_table_as_dataframe('reaction_network_metabolites')
+            metabolites_table = database.db.get_table_as_dataframe(
+                tables.reaction_network_metabolites_table_name
+            )
             if type(network) is not GenomicNetwork:
                 raise ConfigError(
                     "The provided 'database' was of type 'ContigsDatabase', so the provided "
@@ -7039,7 +7041,9 @@ class Constructor:
                     f"argument was of type '{type(network)}'."
                 )
         elif type(database) is PanDatabase:
-            metabolites_table = database.db.get_table_as_dataframe('gene_cluster_function_metabolites')
+            metabolites_table = database.db.get_table_as_dataframe(
+                tables.pan_reaction_network_metabolites_table_name
+            )
             if type(network) is not PangenomicNetwork:
                 raise ConfigError(
                     "The provided 'database' was of type 'PanDatabase', so the provided 'network' "
