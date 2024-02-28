@@ -3501,36 +3501,11 @@ class GenomicNetwork(ReactionNetwork):
 
         return subnetwork
 
-    def _subset_proteins(self, subnetwork: GenomicNetwork) -> None:
-        """
-        Add protein abundance data to the subsetted network.
-
-        Parameters
-        ==========
-        subnetwork : GenomicNetwork
-            The subsetted reaction network under construction.
-
-        Returns
-        =======
-        None
-        """
-        if not self.proteins:
-            # Protein abundance profile data is not present in the source network.
-            return subnetwork
-
-        # Parse each protein with abundance data.
-        for protein_id, protein in self.proteins.items():
-            for gcid in protein.gcids:
-                if gcid in subnetwork.genes:
-                    # A subsetted gene encodes the protein.
-                    break
-            else:
-                # No genes expressing the protein were subsetted, so the protein data is not added.
-                continue
-
-            subnetwork.proteins[protein_id] = deepcopy(protein)
-
-    def _subset_genes_via_kos(self, subnetwork: GenomicNetwork) -> None:
+    def _subset_genes_via_kos(
+        self,
+        subnetwork: GenomicNetwork,
+        inclusive: bool = False
+    ) -> None:
         """
         Add genes that are annotated with subsetted KOs to the subsetted network.
 
@@ -3542,22 +3517,76 @@ class GenomicNetwork(ReactionNetwork):
         subnetwork : GenomicNetwork
             The subsetted reaction network under construction.
 
+        inclusive : bool, False
+            If True, "inclusive" subsetting applies a "Midas touch" where all items in the network
+            that are however associated with requested KOs are "turned to gold" and included in the
+            subsetted network. In default "exclusive" subsetting, a gene added to the subsetted
+            network due to references to requested KOs will be missing its references to any other
+            unrequested KOs in the source network.
+
         Returns
         =======
         None
         """
-        subsetted_ko_ids = list(subnetwork.kos)
         for gcid, gene in self.genes.items():
             # Check all genes in the source network for subsetted KOs.
+            subsetted_ko_ids: List[str] = []
             for ko_id in gene.ko_ids:
-                if ko_id in subsetted_ko_ids:
-                    # A gene is annotated by the subsetted KO.
-                    break
-            else:
+                if ko_id in subnetwork.kos:
+                    # The gene is annotated by the subsetted KO.
+                    subsetted_ko_ids.append(ko_id)
+            if not subsetted_ko_ids:
                 # The gene is not annotated by any subsetted KOs.
                 continue
 
-            subnetwork.genes[gcid] = deepcopy(gene)
+            if inclusive:
+                # Copy the gene, including all its references, to the subsetted network.
+                subnetwork.genes[gcid] = deepcopy(gene)
+
+                # Only include protein abundances of subsetted genes, ignoring references to
+                # unsubsetted genes not encoding the protein.
+                if gene.protein_id is not None:
+                    try:
+                        subnetwork_protein = subnetwork.proteins[gene.protein_id]
+                    except KeyError:
+                        protein = self.proteins[gene.protein_id]
+                        subnetwork_protein = Protein(id=protein.id, abundances=protein.abundances)
+                        subnetwork.proteins[gene.protein_id] = subnetwork_protein
+                    subnetwork_protein.gcids.append(gcid)
+
+                # Add "unrequested" KOs associated with the gene to the subsetted network if not
+                # already added.
+                for ko_id in gene.ko_ids:
+                    if ko_id in subsetted_ko_ids:
+                        continue
+                    ko = self.kos[ko_id]
+                    subnetwork.kos[ko_id] = deepcopy(ko)
+
+                    # Add reactions associated with the unrequested KO to the subsetted network if
+                    # not already added.
+                    for reaction_id in ko.reaction_ids:
+                        if reaction_id in subnetwork.reactions:
+                            continue
+                        reaction = self.reactions[reaction_id]
+                        self._subset_reaction(subnetwork, reaction)
+                continue
+
+            # Subsetting is exclusive, not inclusive. Add the gene only with references to subsetted
+            # KOs.
+            subnetwork_gene = Gene(gcid=gcid, protein_id=gene.protein_id)
+
+            if gene.protein_id is not None:
+                try:
+                    subnetwork_protein = subnetwork.proteins[gene.protein_id]
+                except KeyError:
+                    protein = self.proteins[gene.protein_id]
+                    subnetwork_protein = Protein(id=protein.id, abundances=protein.abundances)
+                    subnetwork.proteins[gene.protein_id] = subnetwork_protein
+                subnetwork_protein.gcids.append(gcid)
+
+            for ko_id in subsetted_ko_ids:
+                subnetwork_gene.ko_ids.append(ko_id)
+                subnetwork_gene.e_values[ko_id] = gene.e_values[ko_id]
 
     def merge_network(self, network: GenomicNetwork) -> GenomicNetwork:
         """
