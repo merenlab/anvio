@@ -5,8 +5,8 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
 python_script=`readlink -f run_component_tests_for_reaction_network`
 
-INFO "Checking for the required KEGG KO database set up by anvi'o in a default location"
-${python_script} --check-default-ko-database
+INFO "Checking for the required KEGG database set up by anvi'o in a default location"
+${python_script} --check-default-kegg-database
 
 INFO "Setting up the reaction network analysis directory"
 mkdir -p ${output_dir}/
