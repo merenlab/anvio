@@ -7412,11 +7412,9 @@ class Constructor:
         """
         if contigs_db and (pan_db or genomes_storage_db):
             raise ConfigError(
-                f"""\
-                Either a contigs database OR both a pan database and genomes storage database are\
-                required to make either a (meta)genomic reaction network or a pangenomic reaction\
-                network, respectively.\
-                """
+                "Either a contigs database OR both a pan database and genomes storage database are "
+                "required to make either a (meta)genomic reaction network or a pangenomic reaction "
+                "network, respectively."
             )
         elif contigs_db:
             self.run.info_single(
@@ -7445,11 +7443,10 @@ class Constructor:
             )
         else:
             raise ConfigError(
-                f"""\
-                A reaction network cannot be made without a database source. Either a contigs\
-                database OR a pan database and genomes storage database are required to make either\
-                a (meta)genomic reaction network or a pangenomic reaction network, respectively.\
-                """
+                "A reaction network cannot be made without a database source. Either a contigs "
+                "database OR a pan database and genomes storage database are required to make "
+                "either a (meta)genomic reaction network or a pangenomic reaction network, "
+                "respectively."
             )
         return network
 
@@ -7509,11 +7506,9 @@ class Constructor:
         sources: List[str] = cdb.meta['gene_function_sources']
         if not sources or not 'KOfam' in sources:
             raise ConfigError(
-                f"""\
-                The contigs database indicates that genes were never annotated with KOs, which is\
-                required to build a reaction network. This can be solved by running \
-                'anvi-run-kegg-kofams' on the contigs database.\
-                """
+                "The contigs database indicates that genes were never annotated with KOs, which is "
+                "required to build a reaction network. This can be solved by running "
+                "'anvi-run-kegg-kofams' on the contigs database."
             )
         if (
             store and
@@ -7521,10 +7516,8 @@ class Constructor:
             not overwrite_existing_network
         ):
             raise ConfigError(
-                f"""\
-                The existing reaction network in the contigs database must be explicitly\
-                overwritten.\
-                """
+                "The existing reaction network in the contigs database must be explicitly "
+                "overwritten."
             )
 
         self.progress.new("Building reaction network")
