@@ -2869,7 +2869,7 @@ class GenomicNetwork(ReactionNetwork):
             # object.
             if metabolite.formula is None:
                 metabolites_to_remove.append(compound_id)
-        removed = self.purge_metabolites(metabolites_to_remove)
+        removed = self._purge_metabolites(metabolites_to_remove)
 
         if self.verbose:
             self.progress.end()
