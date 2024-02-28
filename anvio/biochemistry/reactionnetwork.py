@@ -6795,7 +6795,7 @@ class Constructor:
                 network.kos[ko_id] = ko
         ko_ids_assigned_gene_cluster = set(ko_ids_assigned_gene_cluster)
 
-        missing_ko_ids = set(reaction_network_ko_ids).difference(set(network.kos.values()))
+        missing_ko_ids = set(reaction_network_ko_ids).difference(set(network.kos))
         if missing_ko_ids:
             self.run.warning(
                 "The following KOs present in the reaction network as it was originally stored are "
