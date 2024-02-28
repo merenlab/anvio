@@ -1446,12 +1446,20 @@ class ReactionNetwork:
 
         if kos_to_remove is None:
             kos_to_remove: List[str] = []
+        else:
+            kos_to_remove = list(set(kos_to_remove))
         if modules_to_remove is None:
             modules_to_remove: List[str] = []
+        else:
+            modules_to_remove = list(set(modules_to_remove))
         if pathways_to_remove is None:
             pathways_to_remove: List[str] = []
+        else:
+            pathways_to_remove = list(set(pathways_to_remove))
         if hierarchies_to_remove is None:
             hierarchies_to_remove: List[str] = []
+        else:
+            hierarchies_to_remove = list(set(hierarchies_to_remove))
         if categories_to_remove is None:
             categories_to_remove: Dict[str, List[Tuple[str]]] = {}
 
@@ -1479,7 +1487,11 @@ class ReactionNetwork:
                 continue
             kos_to_remove += hierarchy.ko_ids
         for hierarchy_id, categorizations in categories_to_remove.items():
-            hierarchy_categorizations = self.categories[hierarchy_id]
+            try:
+                hierarchy_categorizations = self.categories[hierarchy_id]
+            except KeyError:
+                # The requested hierarchy is not in the network.
+                continue
             for categorization in categorizations:
                 try:
                     categories = hierarchy_categorizations[categorization]
@@ -1501,6 +1513,7 @@ class ReactionNetwork:
                 # 'removed_kos' will be empty. Alternatively, this occurs if the KO in
                 # 'kos_to_remove' is not in the network.
                 pass
+        removed_ko_ids = [ko.id for ko in removed_kos]
 
         if not removed_kos:
             removed = {
@@ -1522,151 +1535,95 @@ class ReactionNetwork:
                 raise AssertionError
             return removed
 
-        # Remove modules from the network that exclusively contain removed KOs.
-        modules_to_remove.clear()
-        for removed_ko in removed_kos:
-            for module_id in removed_ko.module_ids:
-                if module_id in modules_to_remove:
-                    # The module has already been considered via another removed KO.
-                    continue
-                removed_kos_in_module: List[str] = []
-                module = self.modules[module_id]
-                for ko_id in module.ko_ids:
-                    if ko_id in kos_to_remove:
-                        removed_kos_in_module.append(ko_id)
-                if len(removed_kos_in_module) == len(module.ko_ids):
-                    # Remove the module since all of its KOs were removed from the network.
-                    modules_to_remove.append(module_id)
-                    continue
-                for ko_id in removed_kos_in_module:
-                    # Remove obsolete KO references from the retained module.
-                    module.ko_ids.remove(ko_id)
+        # Remove modules and pathways from the network that exclusively contain removed KOs.
         removed_modules: List[KEGGModule] = []
-        for module_id in modules_to_remove:
-            module = self.modules.pop(module_id)
-            # Remove obsolete module references from pathways.
-            for pathway_id in module.pathway_ids:
-                pathway = self.pathways[pathway_id]
-                pathway.module_ids.remove(module_id)
-            removed_modules.append(module)
-
-        # Remove pathways from the network that exclusively contain removed KOs.
-        pathways_to_remove.clear()
-        for removed_ko in removed_kos:
-            for pathway_id in removed_ko.pathway_ids:
-                if pathway_id in pathways_to_remove:
-                    # The pathway has already been considered via another removed KO.
-                    continue
-                removed_kos_in_pathway: List[str] = []
-                pathway = self.pathways[pathway_id]
-                for ko_id in pathway.ko_ids:
-                    if ko_id in kos_to_remove:
-                        removed_kos_in_pathway.append(ko_id)
-                if len(removed_kos_in_pathway) == len(pathway.ko_ids):
-                    # Remove the pathway since all of its KOs were removed from the network.
-                    pathways_to_remove.append(pathway_id)
-                    continue
-                for ko_id in removed_kos_in_pathway:
-                    # Remove obsolete KO references from the retained pathway.
-                    pathway.ko_ids.remove(ko_id)
         removed_pathways: List[KEGGPathway] = []
-        for pathway_id in pathways_to_remove:
-            pathway = self.pathways.pop(pathway_id)
-            # Remove obsolete pathway references from modules.
-            for module_id in pathway.module_ids:
-                module.pathway_ids.remove(pathway_id)
-            removed_pathways.append(pathway)
-
-        # For simplicity's sake, remove hierarchies and hierarchy categories from the network
-        # separately.
-        # Remove hierarchies from the network that exclusively contain removed KOs.
-        hierarchies_to_remove.clear()
-        for removed_ko in removed_kos:
-            for hierarchy_id in removed_ko.hierarchies:
-                if hierarchy_id in hierarchies_to_remove:
-                    # The hierarchy has already been considered via another removed KO.
-                    continue
-                removed_kos_in_hierarchy: List[str] = []
-                hierarchy = self.hierarchies[hierarchy_id]
-                for ko_id in hierarchy.ko_ids:
-                    if ko_id in kos_to_remove:
-                        removed_kos_in_hierarchy.append(ko_id)
-                if len(removed_kos_in_hierarchy) == len(hierarchy.ko_ids):
-                    # Remove the hierarchy since all of its KOs were removed from the network.
-                    hierarchies_to_remove.append(hierarchy_id)
-                    continue
-                for ko_id in removed_kos_in_pathway:
-                    # Remove obsolete KO references from the retained hierarchy.
-                    hierarchy.ko_ids.pop(ko_id)
         removed_hierarchies: List[BRITEHierarchy] = []
         removed_categories: List[BRITECategory] = []
-        for hierarchy_id in hierarchies_to_remove:
-            hierarchy = self.hierarchies.pop(hierarchy_id)
-            # All of the categories of the hierarchy are consequently removed. Pathways with
-            # equivalent categories that are here removed would already have been removed.
-            categorizations = self.categories.pop(hierarchy_id)
-            for categorization in categorizations.values():
-                category = categorization[-1]
-                removed_categories.append(category)
-            removed_hierarchies.append(hierarchy)
-
-        # Remove categories from the network that exclusively contain removed KOs.
-        categories_to_remove: List[Tuple[str, Tuple[str]]] = []
         for removed_ko in removed_kos:
+            removed_ko_id = removed_ko.id
+
+            for module_id in removed_ko.module_ids:
+                module = self.modules[module_id]
+                module.ko_ids.remove(removed_ko_id)
+                if not module.ko_ids:
+                    self.modules.pop(module_id)
+                    # Remove obsolete module references from pathways.
+                    for pathway_id in module.pathway_ids:
+                        pathway = self.pathways[pathway_id]
+                        pathway.module_ids.remove(module_id)
+                    removed_modules.append(module)
+
+            for pathway_id in removed_ko.pathway_ids:
+                pathway = self.pathways[pathway_id]
+                pathway.ko_ids.remove(removed_ko_id)
+                if not pathway.ko_ids:
+                    self.pathways.pop(pathway_id)
+                    # Remove obsolete pathway references from modules.
+                    for module_id in pathway.module_ids:
+                        module = self.modules[module_id]
+                        module.pathway_ids.remove(pathway_id)
+                    removed_pathways.append(pathway)
+
             for hierarchy_id, categorizations in removed_ko.hierarchies.items():
-                if hierarchy_id in hierarchies_to_remove:
-                    # The hierarchy, and thus all of its categories, was already removed.
+                hierarchy = self.hierarchies[hierarchy_id]
+                hierarchy.ko_ids.remove(removed_ko_id)
+                if not hierarchy.ko_ids:
+                    self.hierarchies.pop(hierarchy_id)
+                    network_categorizations = self.categories.pop(hierarchy_id)
+                    removed_hierarchies.append(hierarchy)
+                    # Record categories removed along with the hierarchy.
+                    for categorization in hierarchy.categorizations:
+                        removed_categories.append(network_categorizations[categorization][-1])
                     continue
-                removed_kos_in_category: List[str] = []
-                hierarchy_categorizations = self.categories[hierarchy_id]
-                # Consider the (most specific) category and supercategories containing the KO.
+
+                network_categorizations = self.categories[hierarchy_id]
                 for categorization in categorizations:
-                    categories = hierarchy_categorizations[categorization]
-                    is_supercategory_removed = False
+                    categories = network_categorizations[categorization]
+                    supercategory = None
                     for depth, category in enumerate(categories, 1):
-                        focus_categorization = categorization[:depth]
-                        if is_supercategory_removed:
-                            # This category should be removed since it was already established that
-                            # the supercategory in the categorization should be removed.
-                            categories_to_remove.append((hierarchy_id, focus_categorization))
+                        try:
+                            category.ko_ids.remove(removed_ko_id)
+                        except ValueError:
+                            # The KO has already been removed from the supercategory, as it was
+                            # already encountered in another subcategory.
+                            supercategory = category
                             continue
-                        if (hierarchy_id, focus_categorization) in categories_to_remove:
-                            # The category has already been considered via another removed KO.
-                            break
-                        for ko_id in category.ko_ids:
-                            if ko_id in kos_to_remove:
-                                removed_kos_in_category.append(ko_id)
-                        if len(removed_kos_in_category) == len(category.ko_ids):
-                            # Remove the category since all of its KOs were removed from the
-                            # network.
-                            categories_to_remove.append((hierarchy_id, focus_categorization))
-                            is_supercategory_removed = True
+                        if not category.ko_ids:
+                            focus_categorization = categorization[:depth]
+                            # Remove obsolete category references from the hierarchy.
+                            hierarchy.categorizations.remove(focus_categorization)
+                            # Remove obsolete categories from the network.
+                            network_categorizations.pop(focus_categorization)
+                            # Remove obsolete category references from the supercategory if the
+                            # supercategory also hasn't been removed.
+                            if supercategory:
+                                supercategory.subcategory_names.remove(category.name)
+                            supercategory = None
+                            removed_categories.append(category)
                             continue
-                        for ko_id in removed_kos_in_category:
-                            # Remove obsolete KO references from the retained category.
-                            category.ko_ids.remove(ko_id)
-        for hierarchy_id, categorization in categories_to_remove:
-            categories = self.categories[hierarchy_id].pop(categorization)
-            category = categories[-1]
+                        supercategory = category
+
+        if 'ko00001' in self.hierarchies:
+            network_categorizations = self.categories['ko00001']
+            for pathway in removed_pathways:
+                if pathway.categorization is not None:
+                    assert pathway.categorization not in network_categorizations
+        for category in removed_categories:
             if category.pathway_id is not None:
-                # The equivalent pathway should already have been removed from the network.
                 assert category.pathway_id not in self.pathways
-            # Remove the obsolete category reference from the hierarchy.
-            hierarchy = self.hierarchies[hierarchy_id]
-            hierarchy.categorizations.pop(categorization)
-            removed_categories.append(category)
 
         # Purge reactions from the network that are exclusive to removed KOs.
         reactions_to_remove: List[str] = []
         for ko in removed_kos:
-            for modelseed_reaction_id in ko.reaction_ids:
-                reactions_to_remove.append(modelseed_reaction_id)
+            for reaction_id in ko.reaction_ids:
+                reactions_to_remove.append(reaction_id)
         reactions_to_remove = list(set(reactions_to_remove))
         for ko in self.kos.values():
             reactions_to_spare: List[int] = []
-            for modelseed_reaction_id in ko.reaction_ids:
-                for idx, modelseed_reaction_id_to_remove in enumerate(reactions_to_remove):
-                    if modelseed_reaction_id == modelseed_reaction_id_to_remove:
+            for reaction_id in ko.reaction_ids:
+                for idx, reaction_id_to_remove in enumerate(reactions_to_remove):
+                    if reaction_id == reaction_id_to_remove:
                         # The reaction is associated with a retained KO, so do not remove the
                         # reaction.
                         reactions_to_spare.append(idx)
@@ -1699,7 +1656,7 @@ class ReactionNetwork:
             for gcid, gene in self.genes.items():
                 gene_kos_to_remove: List[str] = []
                 for ko_id in gene.ko_ids:
-                    if ko_id in kos_to_remove:
+                    if ko_id in removed_ko_ids:
                         gene_kos_to_remove.append(ko_id)
                 if len(gene_kos_to_remove) == len(gene.ko_ids):
                     # All KOs matching the gene were removed, so remove it as well.
@@ -1719,6 +1676,8 @@ class ReactionNetwork:
                     'ko',
                     'module',
                     'pathway',
+                    'hierarchy',
+                    'category',
                     'reaction',
                     'kegg_reaction',
                     'ec_number',
@@ -1730,14 +1689,25 @@ class ReactionNetwork:
         elif isinstance(self, PangenomicNetwork):
             gene_clusters_to_remove: List[str] = []
             for gene_cluster_id, cluster in self.gene_clusters.items():
-                if cluster.ko_id in kos_to_remove:
+                if cluster.ko_id in removed_ko_ids:
                     gene_clusters_to_remove.append(gene_cluster_id)
             # If this method was called from 'purge_gene_clusters' then the gene clusters that are only
             # associated with KOs removed here were already removed from the network, and
             # 'gene_clusters_to_remove' would be empty.
             if gene_clusters_to_remove:
                 removed_cascading_up = self._purge_gene_clusters(gene_clusters_to_remove)
-                removed_cascading_up.pop('ko')
+                for key in [
+                    'ko',
+                    'module',
+                    'pathway',
+                    'hierarchy',
+                    'category',
+                    'reaction',
+                    'kegg_reaction',
+                    'ec_number',
+                    'metabolite'
+                ]:
+                    removed_cascading_up.pop(key)
             else:
                 removed_cascading_up = {'gene_cluster': []}
         else:
