@@ -697,27 +697,25 @@ class ReactionNetwork:
         """
         # Record the reactions removed as a consequence of involving formulaless metabolites, and
         # record the formulaless metabolites involved in removed reactions.
-        removed_metabolite_ids: List[str] = [metabolite.id for metabolite in removed['metabolite']]
+        removed_metabolites: List[ModelSEEDCompound] = removed['metabolite']
+        removed_metabolite_ids: List[str] = [
+            metabolite.modelseed_id for metabolite in removed_metabolites
+        ]
         metabolite_removed_reactions: Dict[str, List[str]] = {}
         reaction_removed_metabolites: Dict[str, List[str]] = {}
-        for reaction in removed['reaction']:
-            reaction: ModelSEEDReaction
+        removed_reactions: List[ModelSEEDReaction] = removed['reaction']
+        for reaction in removed_reactions:
             reaction_removed_metabolites[reaction.modelseed_id] = metabolite_ids = []
-            for metabolite in reaction.compounds:
-                if metabolite.modelseed_id in removed_metabolite_ids:
+            for compound_id in reaction.compound_ids:
+                if compound_id in removed_metabolite_ids:
                     try:
-                        metabolite_removed_reactions[metabolite.modelseed_id].append(
-                            reaction.modelseed_id
-                        )
+                        metabolite_removed_reactions[compound_id].append(reaction.modelseed_id)
                     except KeyError:
-                        metabolite_removed_reactions[metabolite.modelseed_id] = [
-                            reaction.modelseed_id
-                        ]
-                    metabolite_ids.append(metabolite.modelseed_id)
+                        metabolite_removed_reactions[compound_id] = [reaction.modelseed_id]
+                    metabolite_ids.append(compound_id)
 
         metabolite_table = []
-        for metabolite in removed['metabolite']:
-            metabolite: ModelSEEDCompound
+        for metabolite in removed_metabolites:
             row = []
             row.append(metabolite.modelseed_id)
             row.append(metabolite.modelseed_name)
@@ -736,8 +734,7 @@ class ReactionNetwork:
             row.append(", ".join(sorted(set(removed_reaction_ids))))
 
         reaction_table = []
-        for reaction in removed['reaction']:
-            reaction: ModelSEEDReaction
+        for reaction in removed_reactions:
             row = []
             row.append(reaction.modelseed_id)
             row.append(reaction.modelseed_name)
@@ -746,55 +743,60 @@ class ReactionNetwork:
             row.append(
                 ", ".join(set(reaction_removed_metabolites[reaction.modelseed_id]))
             )
-            row.append(", ".join([metabolite.modelseed_id for metabolite in reaction.compounds]))
+            row.append(", ".join(reaction.compound_ids))
             row.append(get_chemical_equation(reaction))
             reaction_table.append(row)
 
         ko_table = []
-        for ko in removed['ko']:
-            ko: KO
+        removed_kos: List[KO] = removed['ko']
+        for ko in removed_kos:
             row = []
             row.append(ko.id)
             row.append(ko.name)
-            row.append(", ".join(ko.reactions))
+            row.append(", ".join(ko.reaction_ids))
             ko_table.append(row)
 
         module_table = []
-        for module in removed['module']:
-            module: KEGGModule
+        removed_modules: List[KEGGModule] = removed['module']
+        for module in removed_modules:
             row = []
             row.append(module.id)
             row.append(module.name)
-            row.append(", ".join(module.kos))
+            row.append(", ".join(module.ko_ids))
             module_table.append(row)
 
         pathway_table = []
-        for pathway in removed['pathway']:
-            pathway: KEGGPathway
+        removed_pathways: List[KEGGPathway] = removed['pathway']
+        for pathway in removed_pathways:
             row = []
             row.append(pathway.id)
             row.append(pathway.name)
-            row.append(", ".join(pathway.kos))
-            row.append(", ".join(pathway.modules))
+            row.append(", ".join(pathway.ko_ids))
+            row.append(", ".join(pathway.module_ids))
             pathway_table.append(row)
 
         hierarchy_table = []
-        for hierarchy in removed['hierarchy']:
-            hierarchy: BRITEHierarchy
+        removed_hierarchies: List[BRITEHierarchy] = removed['hierarchy']
+        removed_hierarchy_names: Dict[str, str] = {}
+        for hierarchy in removed_hierarchies:
             row = []
             row.append(hierarchy.id)
             row.append(hierarchy.name)
-            row.append(", ".join(hierarchy.kos))
+            row.append(", ".join(hierarchy.ko_ids))
             pathway_table.append(row)
+            removed_hierarchy_names[hierarchy.id] = hierarchy.name
 
         category_table = []
-        for category in removed['category']:
-            category: BRITECategory
+        removed_categories: List[BRITECategory] = removed['category']
+        for category in removed_categories:
             row = []
-            row.append(category.hierarchy.id)
-            row.append(category.hierarchy.name)
-            row.append(category.id[len(category.hierarchy.id) + 2:])
-            row.append(", ".join(category.kos))
+            row.append(category.hierarchy_id)
+            try:
+                row.append(self.hierarchies[category.hierarchy_id].name)
+            except KeyError:
+                row.append(removed_hierarchy_names[category.hierarchy_id])
+            row.append(category.id[len(category.hierarchy_id) + 2:])
+            row.append(", ".join(category.ko_ids))
             category_table.append(row)
 
         path_basename, path_extension = os.path.splitext(output_path)
