@@ -9091,9 +9091,40 @@ class Constructor:
                         hierarchy.categorizations.append(focus_categorization)
                         network_hierarchy_categories[focus_categorization] = tuple(categories)
 
-                for category in categories:
-                    category.ko_ids.append(ko_id)
+    def _relate_modules_pathways(
+        self,
+        network: ReactionNetwork,
+        kegg_modules_data: Dict[str, Dict[str, Any]]
+    ) -> None:
+        """
+        Link modules and pathways.
 
+        Certain KOs but not others in a module can be in a pathway. Only KOs in the network are
+        relevant. A module is only linked to pathways via KOs in the network, so relationships
+        between modules and pathways in the network are only resolved here after all KOs have been
+        added to the network.
+
+        Parameters
+        ==========
+        network : ReactionNetwork
+            Reaction network under construction.
+
+        kegg_modules_data : Dict[str, Dict[str, Any]]
+            This dictionary of KEGG reference data relates module IDs to module names and pathways.
+
+        Returns
+        =======
+        None
+        """
+        for module_id, module in network.modules.items():
+            module_info = kegg_modules_data[module_id]
+            for pathway_id in module_info['PTH']:
+                try:
+                    pathway = network.pathways[pathway_id]
+                except KeyError:
+                    continue
+                module.pathway_ids.append(pathway_id)
+                pathway.module_ids.append(module_id)
 
     def _get_database_reactions_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
