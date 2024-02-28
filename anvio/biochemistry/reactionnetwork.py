@@ -7233,33 +7233,35 @@ class Constructor:
                 hierarchy.ko_ids.append(ko_id)
 
                 try:
-                    hierarchy_categorizations = network.categories[hierarchy_id]
+                    network_categorizations = network.categories[hierarchy_id]
                 except KeyError:
-                    network.categories[hierarchy_id] = hierarchy_categorizations = {}
+                    network.categories[hierarchy_id] = network_categorizations = {}
 
                 for categorization in categorizations:
                     if categorization in hierarchy.categorizations:
-                        # Another KO was loaded that is classified in the hierarchy.
-                        categories: List[BRITECategory] = hierarchy_categorizations[categorization]
+                        # Another KO was loaded that is classified in the category.
+                        categories = network_categorizations[categorization]
                         for category in categories:
-                            category.ko_ids.append(ko_id)
+                            if ko_id not in category.ko_ids:
+                                category.ko_ids.append(ko_id)
                         continue
 
                     hierarchy.categorizations.append(categorization)
-                    hierarchy_categorizations[categorization] = categories = []
+                    categories: List[BRITECategory] = []
 
                     # Add the category and unencountered supercategories to the network.
                     for depth, category_name in enumerate(categorization, 1):
                         focus_categorization = categorization[:depth]
                         try:
                             # Another KO was loaded that is classified in the supercategory.
-                            category = hierarchy_categorizations[focus_categorization]
+                            category = network_categorizations[focus_categorization][-1]
                             is_added = True
                         except KeyError:
                             is_added = False
 
                         if is_added:
-                            category.ko_ids.append(ko_id)
+                            if ko_id not in category.ko_ids:
+                                category.ko_ids.append(ko_id)
                             categories.append(category)
                             continue
 
@@ -7268,12 +7270,12 @@ class Constructor:
                             categories[-1].subcategory_names.append(category_name)
 
                         category = BRITECategory()
-                        category.id = f'{hierarchy_id}: {" >>> ".join(categorization[:depth])}'
+                        category.id = f'{hierarchy_id}: {" >>> ".join(focus_categorization)}'
                         category.name = category_name
                         category.hierarchy_id = hierarchy_id
                         category.ko_ids.append(ko_id)
                         categories.append(category)
-                        hierarchy_categorizations[focus_categorization] = tuple(categories)
+                        network_categorizations[focus_categorization] = tuple(categories)
 
         if inconsistent_kos:
             msg = ''
@@ -7303,7 +7305,7 @@ class Constructor:
             module_name: str = row.name
             module.name = module_name
 
-            pathway_ids: str = row.pathway_ids
+            pathway_ids: str = row.pathways
             if not pathway_ids:
                 continue
             for pathway_id in pathway_ids.split(', '):
@@ -7328,8 +7330,8 @@ class Constructor:
             full_categorization = categorization_str.split(' >>> ')
             hierarchy_id = full_categorization[0]
             assert hierarchy_id == 'ko00001'
-            categorization = full_categorization[1:]
-            pathway.categorization = tuple(categorization)
+            categorization = tuple(full_categorization[1:])
+            pathway.categorization = categorization
             category = network.categories[hierarchy_id][categorization][-1]
             category.pathway_id = pathway_id
 
