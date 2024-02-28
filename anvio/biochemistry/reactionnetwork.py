@@ -8102,23 +8102,19 @@ class Constructor:
 
         if DEBUG:
             self.run.info_single(
-                f"""\
-                The following ModelSEED reactions would have been added to the reaction network had
-                there been a chemical equation in the ModelSEED database; perhaps it is worth
-                investigating the ModelSEED reactions table to understand why this is not the case:
-                {', '.join(undefined_modelseed_reaction_ids)}\
-                """
+                "The following ModelSEED reactions would have been added to the reaction network "
+                "had there been a chemical equation in the ModelSEED database; perhaps it is worth "
+                "investigating the ModelSEED reactions table to understand why this is not the "
+                f"case: {', '.join(undefined_modelseed_reaction_ids)}"
             )
 
         if undefined_ko_ids:
             self.run.info_single(
-                f"""\
-                Certain gene clusters were assigned KOs that were not found in the KEGG reference
-                database. These KOs will not be used in network construction. It could be that the
-                KOfams used to annotate genes were not from the same KEGG database version as the
-                reference. Here are the unrecognized KO IDs from the pangenomic databases:
-                {','.join(undefined_ko_ids)}\
-                """
+                "Certain gene clusters were assigned KOs that were not found in the KEGG reference "
+                "database. These KOs will not be used in network construction. It could be that "
+                "the KOfams used to annotate genes were not from the same KEGG database version as "
+                "the reference. Here are the unrecognized KO IDs from the pangenomic databases: "
+                f"{','.join(undefined_ko_ids)}"
             )
 
         ko_dir = kegg_db.kegg_context.kegg_data_dir
