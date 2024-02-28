@@ -955,9 +955,9 @@ class ReactionNetwork:
         """
         metabolites_to_remove = set(metabolites_to_remove)
         removed_metabolites: List[ModelSEEDCompound] = []
-        for modelseed_compound_id in metabolites_to_remove:
+        for compound_id in metabolites_to_remove:
             try:
-                removed_metabolites.append(self.metabolites.pop(modelseed_compound_id))
+                removed_metabolites.append(self.metabolites.pop(compound_id))
             except KeyError:
                 # This can occur for two reasons. First, the metabolite from 'metabolites_to_remove'
                 # could not be in the network.
@@ -972,6 +972,8 @@ class ReactionNetwork:
                 # removed from 'self.metabolites' in the original '_purge_metabolites' call. This
                 # KeyError occurs when trying to remove those already-removed metabolites.
                 pass
+        removed_metabolite_ids = [metabolite.modelseed_id for metabolite in removed_metabolites]
+
         if not removed_metabolites:
             removed = {
                 'metabolite': [],
@@ -996,10 +998,10 @@ class ReactionNetwork:
 
         # Purge reactions from the record that involve removed metabolites.
         reactions_to_remove: List[str] = []
-        for modelseed_reaction_id, reaction in self.reactions.items():
-            for modelseed_compound_id in reaction.compound_ids:
-                if modelseed_compound_id in metabolites_to_remove:
-                    reactions_to_remove.append(modelseed_reaction_id)
+        for reaction_id, reaction in self.reactions.items():
+            for compound_id in reaction.compound_ids:
+                if compound_id in removed_metabolite_ids:
+                    reactions_to_remove.append(reaction_id)
                     break
 
         removed = {'metabolite': removed_metabolites}
