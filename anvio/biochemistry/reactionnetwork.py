@@ -6472,7 +6472,7 @@ class Constructor:
         ]
         gene_ko_hits_table = gene_ko_hits_table.reset_index().set_index('gene_callers_id')
         for row in gene_ko_hits_table.itertuples():
-            gcid = row.gene_callers_id
+            gcid = row.Index
             ko_id = row.accession
             ko_name = row.function
             e_value = float(row.e_value)
