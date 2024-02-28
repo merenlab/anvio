@@ -1865,7 +1865,8 @@ class ReactionNetwork:
     def _subset_network_by_reactions(
         self,
         reaction_ids: Iterable[str],
-        subnetwork: ReactionNetwork = None
+        subnetwork: ReactionNetwork = None,
+        inclusive: bool = False
     ) -> ReactionNetwork:
         """
         Subset the network by ModelSEED reactions.
@@ -1878,6 +1879,13 @@ class ReactionNetwork:
         subnetwork : ReactionNetwork, None
             This network under construction is provided when the reactions being added to the
             network annotate already subsetted KOs.
+
+        inclusive : bool, False
+            If True, "inclusive" subsetting applies a "Midas touch" where all items in the network
+            that are however associated with requested reactions are "turned to gold" and included
+            in the subsetted network. In default "exclusive" subsetting, KOs and genes or gene
+            clusters that are added to the subsetted network due to references to requested
+            reactions will be missing references to any other unrequested reactions.
 
         Returns
         =======
@@ -1908,20 +1916,20 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        # Map subsetted reaction aliases.
-        kegg_modelseed_aliases: Dict[str, List[str]] = {}
-        ec_number_modelseed_aliases: Dict[str, List[str]] = {}
-
-        subnetwork_reactions = subnetwork.reactions
-        subnetwork_metabolites = subnetwork.metabolites
-        subnetwork_modelseed_kegg_aliases = subnetwork.modelseed_kegg_aliases
-        subnetwork_modelseed_ec_number_aliases = subnetwork.modelseed_ec_number_aliases
         for reaction_id in reaction_ids:
             try:
                 reaction = self.reactions[reaction_id]
             except KeyError:
                 # This occurs if the requested reaction is not in the source network.
                 continue
+            self._subset_reaction(subnetwork, reaction)
+
+        if subset_referencing_kos:
+            # Add KOs that are annotated by the subsetted reactions to the network.
+            self._subset_kos_via_reactions(subnetwork, inclusive=inclusive)
+
+        return subnetwork
+
     def _subset_reaction(self, subnetwork: ReactionNetwork, reaction: ModelSEEDReaction) -> None:
         """
         Add a reaction to a subsetted network along with metabolites involved in the reaction.
