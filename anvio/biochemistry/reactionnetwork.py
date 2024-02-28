@@ -9140,9 +9140,9 @@ class Constructor:
 
         # Transfer data from reaction objects to dictionaries mapping to table entries.
         reactions_data: Dict[str, Dict] = {}
-        for modelseed_reaction_id, reaction in network.reactions.items():
+        for reaction_id, reaction in network.reactions.items():
             reaction_data = {}
-            reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
+            reaction_data['modelseed_reaction_id'] = reaction_id
             reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
             reaction_data['metabolite_modelseed_ids'] = ', '.join(reaction.compound_ids)
             reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
@@ -9152,15 +9152,15 @@ class Constructor:
             # are *NOT* associated with gene KO annotations; associated aliases are recorded later.
             reaction_data['other_kegg_reaction_ids'] = ', '.join(
                 set(reaction.kegg_aliases).difference(
-                    set(network.modelseed_kegg_aliases[modelseed_reaction_id])
+                    set(network.modelseed_kegg_aliases[reaction_id])
                 )
             )
             reaction_data['other_ec_numbers'] = ', '.join(
                 set(reaction.ec_number_aliases).difference(
-                    set(network.modelseed_ec_number_aliases[modelseed_reaction_id])
+                    set(network.modelseed_ec_number_aliases[reaction_id])
                 )
             )
-            reactions_data[modelseed_reaction_id] = reaction_data
+            reactions_data[reaction_id] = reaction_data
 
         # Get *KO* KEGG REACTION ID and EC number aliases of each ModelSEED reaction. These are not
         # all possible aliases, but only those associated with KOs that matched genes. Structure
@@ -9253,14 +9253,14 @@ class Constructor:
 
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
         metabolites_data = {}
-        for modelseed_compound_id, metabolite in network.metabolites.items():
+        for compound_id, metabolite in network.metabolites.items():
             metabolite_data = {}
-            metabolite_data['modelseed_compound_id'] = modelseed_compound_id
+            metabolite_data['modelseed_compound_id'] = compound_id
             metabolite_data['modelseed_compound_name'] = metabolite.modelseed_name
             metabolite_data['kegg_aliases'] = ', '.join(metabolite.kegg_aliases)
             metabolite_data['formula'] = metabolite.formula
             metabolite_data['charge'] = metabolite.charge
-            metabolites_data[modelseed_compound_id] = metabolite_data
+            metabolites_data[compound_id] = metabolite_data
 
         metabolites_table = pd.DataFrame.from_dict(
             metabolites_data, orient='index'
