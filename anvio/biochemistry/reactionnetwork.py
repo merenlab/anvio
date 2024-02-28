@@ -7058,9 +7058,9 @@ class Constructor:
 
         # Each row of the table contains information on a different ModelSEED compound.
         for row in metabolites_table.itertuples():
-            modelseed_compound_id = row.modelseed_compound_id
+            compound_id = row.modelseed_compound_id
             try:
-                metabolite = network.metabolites[modelseed_compound_id]
+                metabolite = network.metabolites[compound_id]
             except KeyError:
                 # The metabolite in the stored network is not loaded. The metabolite only
                 # participates in reactions that also were not loaded. The reactions are only
