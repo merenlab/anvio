@@ -6634,10 +6634,8 @@ class Constructor:
         if len(metabolite_abundances_table) == 0:
             return
 
-        for modelseed_compound_id, metabolite_table in metabolite_abundances_table.groupby(
-            'reference_id'
-        ):
-            metabolite = network.metabolites[modelseed_compound_id]
+        for compound_id, metabolite_table in metabolite_abundances_table.groupby('reference_id'):
+            metabolite = network.metabolites[compound_id]
             for row in metabolite_table.itertuples():
                 metabolite.abundances[row.sample_name] = row.abundance_value
 
