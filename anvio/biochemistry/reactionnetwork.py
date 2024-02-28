@@ -3754,12 +3754,10 @@ class GenomicNetwork(ReactionNetwork):
 
         if not self.contigs_db_source_path:
             self.run.info_single(
-                f"""\
-                Since the genomic network was not associated with a contigs database, the following
-                statistics could not be calculated and were not reported to the output file:
-                'Total gene calls in genome', 'Genes annotated with protein KOs', and 'Protein KOs
-                annotating genes'.\
-                """
+                "Since the genomic network was not associated with a contigs database, the "
+                "following statistics could not be calculated and were not reported to the output "
+                "file: 'Total gene calls in genome', 'Genes annotated with protein KOs', and "
+                "'Protein KOs annotating genes'."
             )
 
         return stats
