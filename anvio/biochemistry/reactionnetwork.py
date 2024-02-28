@@ -7887,11 +7887,9 @@ class Constructor:
         gs_sources: str = gs_info.get_self_table()['gene_function_sources']
         if 'KOfam' not in [source.strip() for source in gs_sources.split(',')]:
             raise ConfigError(
-                f"""\
-                The genomes of the pangenome were not annotated with KOs, which can be rectified\
-                by running `anvi-run-kegg-kofams` on the genome contigs databases and remaking\
-                the pangenome.\
-                """
+                "The genomes of the pangenome were not annotated with KOs, which can be rectified "
+                "by running `anvi-run-kegg-kofams` on the genome contigs databases and remaking "
+                "the pangenome."
             )
         pan_super.init_gene_clusters()
         pan_super.init_gene_clusters_functions()
