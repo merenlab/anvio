@@ -726,7 +726,10 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
+                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
+                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
