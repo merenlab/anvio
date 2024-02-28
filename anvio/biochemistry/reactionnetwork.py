@@ -10116,7 +10116,7 @@ class Tester:
         removed = copied_network.prune(hierarchies_to_remove=hierarchy_sample)
         assert hierarchy_sample.difference(set(copied_network.hierarchies)) == hierarchy_sample
         assert not hierarchy_sample.difference(
-            set([hierarchy.id for hierarchy in removed['hierarchies']])
+            set([hierarchy.id for hierarchy in removed['hierarchy']])
         )
 
         copied_network = deepcopy(network)
