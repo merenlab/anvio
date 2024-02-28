@@ -8842,9 +8842,9 @@ class Constructor:
             charge = modelseed_compound_data['charge']
             if pd.isna(charge):
                 raise ConfigError(
-                    f"The charge of a ModelSEED compound, '{compound.modelseed_id}', was not recorded "
-                    "in 'compounds.tsv' but is expected to be present as an integer. Here is the data "
-                    f"in the row for the compound: '{modelseed_compound_data}'"
+                    f"The charge of a ModelSEED compound, '{compound.modelseed_id}', was not "
+                    "recorded in 'compounds.tsv' but is expected to be present as an integer. Here "
+                    f"is the data in the row for the compound: '{modelseed_compound_data}'"
                 )
             compound.charge = charge
 
