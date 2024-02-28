@@ -8977,8 +8977,6 @@ class Constructor:
             ko.hierarchies[hierarchy_id] = ko_hierarchy_categorizations
 
         # Fill out module objects in the network.
-        # Track module membership of pathways to facilitate pathway object creation.
-        pathway_modules: Dict[str, List[str]] = {}
         for module_id in ko.module_ids:
             try:
                 # The module has already been added to the network via another KO.
@@ -8988,16 +8986,11 @@ class Constructor:
                 module_info = kegg_modules_data[module_id]
                 module = KEGGModule(id=module_id)
                 module.name = module_info['NAME']
-                for pathway_id in module_info['PTH']:
-                    if pathway_id not in kegg_pathways_data:
-                        # Only pathways that are equivalent to categories in the KO BRITE hierarchy,
-                        # 'ko00001', are considered.
-                        continue
-                    module.pathway_ids.append(pathway_id)
-                    try:
-                        pathway_modules[pathway_id].append(module_id)
-                    except KeyError:
-                        pathway_modules[pathway_id] = [module_id]
+                # Do not yet add pathway ID references in the module. Certain KOs but not others in
+                # a module can be in a pathway. Only KOs in the network are relevant. The module is
+                # only linked to pathways via KOs in the network, so relationships between modules
+                # and pathways in the network can only be resolved after all KOs have been added to
+                # the network.
                 network.modules[module_id] = module
             module.ko_ids.append(ko_id)
 
@@ -9018,15 +9011,6 @@ class Constructor:
                 pathway.categorization = categorization
                 category_pathways[categorization] = pathway_id
                 network.pathways[pathway_id] = pathway
-
-            try:
-                # The KO was associated with newly encountered modules, which need to be referenced
-                # by the pathway.
-                module_ids = pathway_modules[pathway_id]
-                for module_id in module_ids:
-                    pathway.module_ids.append(module_id)
-            except KeyError:
-                pass
 
             pathway.ko_ids.append(ko_id)
 
@@ -9052,6 +9036,9 @@ class Constructor:
                 try:
                     # The category has already been added to the network via another KO.
                     categories = network_hierarchy_categories[categorization]
+                    for category in categories:
+                        if ko_id not in category.ko_ids:
+                            category.ko_ids.append(ko_id)
                 except KeyError:
                     # Add a category object to the network for each level of the categorization.
                     categories: List[BRITECategory] = []
@@ -9060,6 +9047,10 @@ class Constructor:
                         try:
                             # The supercategory has already been added to the network.
                             focus_categories = network_hierarchy_categories[focus_categorization]
+                            category = focus_categories[-1]
+                            if ko_id not in category.ko_ids:
+                                # It is not the supercategory of another category containing the KO.
+                                category.ko_ids.append(ko_id)
                             categories = list(focus_categories)
                             continue
                         except KeyError:
@@ -9067,9 +9058,10 @@ class Constructor:
 
                         # Add the previously unencountered category to the network.
                         category = BRITECategory()
-                        category.id = f'{hierarchy_id}: {">>>".join(focus_categorization)}'
+                        category.id = f'{hierarchy_id}: {" >>> ".join(focus_categorization)}'
                         category.name = focus_category_name
                         category.hierarchy_id = hierarchy_id
+                        category.ko_ids.append(ko_id)
                         if depth == len(categorization) and hierarchy_id == 'ko00001':
                             try:
                                 category.pathway_id = category_pathways[categorization]
