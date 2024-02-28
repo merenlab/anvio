@@ -10220,7 +10220,7 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
     equation = ""
     leftside = True
-    for coefficient, modelseed_compound_id, compartment in zip(
+    for coefficient, compound_id, compartment in zip(
         reaction.coefficients, reaction.compound_ids, reaction.compartments
     ):
         if leftside and coefficient > 0:
@@ -10234,7 +10234,7 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
             coeff = -coefficient
         else:
             coeff = coefficient
-        equation += f"{coeff} {modelseed_compound_id} [{compartment}] + "
+        equation += f"{coeff} {compound_id} [{compartment}] + "
 
     return equation.rstrip('+ ')
 
