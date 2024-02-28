@@ -1727,7 +1727,8 @@ class ReactionNetwork:
     def _subset_network_by_kos(
         self,
         ko_ids: Iterable[str],
-        subnetwork: ReactionNetwork = None
+        subnetwork: ReactionNetwork = None,
+        inclusive: bool = False
     ) -> ReactionNetwork:
         """
         Subset the network by KOs.
@@ -1740,6 +1741,14 @@ class ReactionNetwork:
         subnetwork : ReactionNetwork, None
             This network under construction is provided when the KOs being added to the network
             annotate already subsetted genes or gene clusters.
+
+        inclusive : bool, False
+            This option applies to genomic and not pangenomic networks. If True, "inclusive"
+            subsetting applies a "Midas touch" where all items in the network that are however
+            associated with requested KOs are "turned to gold" and included in the subsetted
+            network. In default "exclusive" subsetting, a gene added to the subsetted network due to
+            references to requested KOs will be missing its references to any other unrequested KOs
+            in the source network.
 
         Returns
         =======
@@ -1771,11 +1780,6 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        subnetwork_kos = subnetwork.kos
-        subnetwork_modules = subnetwork.modules
-        subnetwork_pathways = subnetwork.pathways
-        subnetwork_hierarchies = subnetwork.hierarchies
-        subnetwork_categories = subnetwork.categories
         for ko_id in ko_ids:
             try:
                 ko = self.kos[ko_id]
@@ -1786,43 +1790,44 @@ class ReactionNetwork:
             # Copy reactions annotating the KO to the subsetted network.
             self._subset_network_by_reactions(ko.reaction_ids, subnetwork=subnetwork)
 
-            subnetwork_kos[ko_id] = deepcopy(ko)
+            subnetwork.kos[ko_id] = deepcopy(ko)
 
             # Copy modules annotating the KO to the subsetted network.
             for module_id in ko.module_ids:
-                if module_id in subnetwork_modules:
+                if module_id in subnetwork.modules:
                     # The module was already added to the subnetwork via another KO.
                     continue
 
                 module = self.modules[module_id]
-                subnetwork_modules[module_id] = deepcopy(module)
+                subnetwork.modules[module_id] = deepcopy(module)
 
             # Copy pathways annotating the KO to the subsetted network.
             for pathway_id in ko.pathway_ids:
-                if pathway_id in subnetwork_pathways:
+                if pathway_id in subnetwork.pathways:
                     # The pathway was already added to the subnetwork via another KO.
                     continue
 
                 pathway = self.pathways[pathway_id]
-                subnetwork_pathways[pathway_id] = deepcopy(pathway)
+                subnetwork.pathways[pathway_id] = deepcopy(pathway)
 
             # Copy hierarchies annotating the KO to the subsetted network.
             for hierarchy_id in ko.hierarchies:
-                if hierarchy_id in subnetwork_hierarchies:
+                if hierarchy_id in subnetwork.hierarchies:
                     # The hierarchy and all categories were already added to the subnetwork via
                     # another KO.
                     continue
 
                 hierarchy = self.hierarchies[hierarchy_id]
-                subnetwork_hierarchies[hierarchy_id] = deepcopy(hierarchy)
+                subnetwork.hierarchies[hierarchy_id] = deepcopy(hierarchy)
+                subnetwork_hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+                subnetwork.categories[hierarchy_id] = subnetwork_hierarchy_categorizations
 
                 # Copy all categories in the hierarchy to the subsetted network.
                 hierarchy_categorizations = self.categories[hierarchy_id]
-                subnetwork_hierarchy_categorizations = subnetwork_categories[hierarchy_id]
                 for categorization in hierarchy.categorizations:
                     if categorization in subnetwork_hierarchy_categorizations:
                         # The category must have been a supercategory of another category already
-                        # copied into the subnetwork along with all of its supercategories.
+                        # copied into the subnetwork along with all of its other supercategories.
                         continue
                     categories = hierarchy_categorizations[categorization]
                     subnetwork_categories = []
@@ -1849,7 +1854,7 @@ class ReactionNetwork:
         if isinstance(self, GenomicNetwork):
             if subset_referencing_genes:
                 # Add genes that are annotated by the subsetted KOs to the network.
-                self._subset_genes_via_kos(subnetwork)
+                self._subset_genes_via_kos(subnetwork, inclusive=inclusive)
         elif isinstance(self, PangenomicNetwork):
             if subset_referencing_gene_clusters:
                 # Add gene clusters that are annotated by the subsetted KOs to the network.
