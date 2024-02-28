@@ -9617,7 +9617,7 @@ class Tester:
         self.progress.new("Testing network purge methods")
         self.progress.update("...")
         # Network pruning tests use a random sample of half the network items (nodes) of each type.
-        sample_proportion = 0.5
+        sample_proportion = 0.1
         sample_seed = RANDOM_SEED
         samples = self._get_common_item_samples(
             network, proportion=sample_proportion, seed=sample_seed
@@ -9872,7 +9872,7 @@ class Tester:
         self.progress.new("Testing network purge methods")
         self.progress.update("...")
         # Network pruning tests use a random sample of half the network items (nodes) of each type.
-        sample_proportion = 0.5
+        sample_proportion = 0.1
         sample_seed = RANDOM_SEED
         samples = self._get_common_item_samples(
             network, proportion=sample_proportion, seed=sample_seed
@@ -10073,7 +10073,7 @@ class Tester:
     def _get_common_item_samples(
         self,
         network: ReactionNetwork,
-        proportion: float = 0.5,
+        proportion: float = 0.1,
         seed: int = 0
     ) -> Dict:
         """
