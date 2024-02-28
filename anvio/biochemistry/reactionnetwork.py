@@ -1126,9 +1126,9 @@ class ReactionNetwork:
         """
         reactions_to_remove = set(reactions_to_remove)
         removed_reactions: List[ModelSEEDReaction] = []
-        for modelseed_reaction_id in reactions_to_remove:
+        for reaction_id in reactions_to_remove:
             try:
-                removed_reactions.append(self.reactions.pop(modelseed_reaction_id))
+                removed_reactions.append(self.reactions.pop(reaction_id))
             except KeyError:
                 # This occurs when the original method called is '_purge_reactions', followed by
                 # '_purge_kos', followed by this method again -- 'removed_reactions' will be empty.
@@ -1136,15 +1136,16 @@ class ReactionNetwork:
                 # network.
                 continue
             try:
-                self.modelseed_kegg_aliases.pop(modelseed_reaction_id)
+                self.modelseed_kegg_aliases.pop(reaction_id)
             except KeyError:
                 # The reaction has no KO KEGG REACTION aliases.
                 pass
             try:
-                self.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+                self.modelseed_ec_number_aliases.pop(reaction_id)
             except KeyError:
                 # The reaction has no KO EC number aliases.
                 pass
+        removed_reaction_ids = [reaction.modelseed_id for reaction in removed_reactions]
 
         if not removed_reactions:
             removed = {
@@ -1172,8 +1173,8 @@ class ReactionNetwork:
         kegg_reactions_to_remove = []
         for kegg_reaction_id, modelseed_reaction_ids in self.kegg_modelseed_aliases.items():
             aliases_to_remove: List[int] = []
-            for idx, modelseed_reaction_id in enumerate(modelseed_reaction_ids):
-                if modelseed_reaction_id in reactions_to_remove:
+            for idx, reaction_id in enumerate(modelseed_reaction_ids):
+                if reaction_id in removed_reaction_ids:
                     aliases_to_remove.append(idx)
             if len(aliases_to_remove) == len(modelseed_reaction_ids):
                 # All ModelSEED reactions aliased by the KEGG reaction were removed, so remove the
@@ -1191,8 +1192,8 @@ class ReactionNetwork:
         ec_numbers_to_remove = []
         for ec_number, modelseed_reaction_ids in self.ec_number_modelseed_aliases.items():
             aliases_to_remove: List[int] = []
-            for idx, modelseed_reaction_id in enumerate(modelseed_reaction_ids):
-                if modelseed_reaction_id in reactions_to_remove:
+            for idx, reaction_id in enumerate(modelseed_reaction_ids):
+                if reaction_id in removed_reaction_ids:
                     aliases_to_remove.append(idx)
             if len(aliases_to_remove) == len(modelseed_reaction_ids):
                 # All ModelSEED reactions aliased by the EC number were removed, so remove the EC
@@ -1209,19 +1210,23 @@ class ReactionNetwork:
         # Purge metabolites from the network that are exclusive to removed reactions.
         metabolites_to_remove: List[str] = []
         for reaction in removed_reactions:
-            for modelseed_compound_id in reaction.compound_ids:
-                metabolites_to_remove.append(modelseed_compound_id)
+            for compound_id in reaction.compound_ids:
+                metabolites_to_remove.append(compound_id)
         metabolites_to_remove = list(set(metabolites_to_remove))
-        for reaction in self.reactions.values():
-            metabolites_to_spare: List[int] = []
-            for metabolite in reaction.compound_ids:
-                for idx, modelseed_compound_id in enumerate(metabolites_to_remove):
-                    if modelseed_compound_id == metabolite.modelseed_id:
-                        # Do not remove the metabolite, because it participates in a retained
-                        # reaction.
+        metabolites_to_spare: List[int] = []
+        for idx, compound_id in enumerate(metabolites_to_remove):
+            for reaction in self.reactions.values():
+                for reaction_compound_id in reaction.compound_ids:
+                    if compound_id == reaction_compound_id:
+                        # Do not remove the metabolite, as it participates in a retained reaction.
                         metabolites_to_spare.append(idx)
-            for idx in sorted(metabolites_to_spare, reverse=True):
-                metabolites_to_remove.pop(idx)
+                        break
+                else:
+                    continue
+                break
+        for idx in sorted(metabolites_to_spare, reverse=True):
+            metabolites_to_remove.pop(idx)
+
         if metabolites_to_remove:
             removed_cascading_down = self._purge_metabolites(metabolites_to_remove)
             for key in [
@@ -1252,23 +1257,23 @@ class ReactionNetwork:
         kos_to_remove = []
         for ko_id, ko in self.kos.items():
             ko_reactions_to_remove = []
-            for modelseed_reaction_id in ko.reaction_ids:
-                if modelseed_reaction_id in reactions_to_remove:
-                    ko_reactions_to_remove.append(modelseed_reaction_id)
+            for reaction_id in ko.reaction_ids:
+                if reaction_id in removed_reaction_ids:
+                    ko_reactions_to_remove.append(reaction_id)
             if len(ko_reactions_to_remove) == len(ko.reaction_ids):
                 # All reactions associated with the KO were removed, so remove the KO as well.
                 kos_to_remove.append(ko_id)
                 continue
-            for modelseed_reaction_id in ko_reactions_to_remove:
+            for reaction_id in ko_reactions_to_remove:
                 # Only some of the reactions associated with the KO are invalid.
-                ko.reaction_ids.remove(modelseed_reaction_id)
+                ko.reaction_ids.remove(reaction_id)
                 try:
-                    ko.kegg_reaction_aliases.pop(modelseed_reaction_id)
+                    ko.kegg_reaction_aliases.pop(reaction_id)
                 except KeyError:
                     # The reaction has no KO KEGG REACTION aliases.
                     pass
                 try:
-                    ko.ec_number_aliases.pop(modelseed_reaction_id)
+                    ko.ec_number_aliases.pop(reaction_id)
                 except KeyError:
                     # The reaction has no KO EC number aliases.
                     pass
