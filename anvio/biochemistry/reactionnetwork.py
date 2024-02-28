@@ -9603,7 +9603,7 @@ class Tester:
                 "Statistics on the network constructed and saved to the contigs database differ "
                 "from what should be the same statistics on the same network loaded from the "
                 "contigs database. Here are the different statistics, with the value from network "
-                f"construction before the value from network loading: {msg}"
+                f"construction before the value from network loading. {msg}"
             )
 
         self.run.info_single(
