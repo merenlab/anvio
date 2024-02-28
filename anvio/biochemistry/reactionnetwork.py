@@ -4591,6 +4591,8 @@ class PangenomicNetwork(ReactionNetwork):
 
         if kos_to_subset is None:
             kos_to_subset: List[str] = []
+        else:
+            kos_to_subset = list(kos_to_subset)
         if modules_to_subset is None:
             modules_to_subset: List[str] = []
         if pathways_to_subset is None:
@@ -4623,7 +4625,11 @@ class PangenomicNetwork(ReactionNetwork):
                 continue
             kos_to_subset += hierarchy.ko_ids
         for hierarchy_id, categorizations in categories_to_subset.items():
-            hierarchy_categorizations = self.categories[hierarchy_id]
+            try:
+                hierarchy_categorizations = self.categories[hierarchy_id]
+            except KeyError:
+                # The requested hierarchy is not in the network.
+                continue
             for categorization in categorizations:
                 try:
                     categories = hierarchy_categorizations[categorization]
@@ -4632,6 +4638,7 @@ class PangenomicNetwork(ReactionNetwork):
                     continue
                 category = categories[-1]
                 kos_to_subset += category.ko_ids
+        kos_to_subset = set(kos_to_subset)
 
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
