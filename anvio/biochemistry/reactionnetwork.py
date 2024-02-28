@@ -3635,12 +3635,11 @@ class GenomicNetwork(ReactionNetwork):
 
         # Copy genes from the second network. Assume the same gene KO references have the same
         # e-values. Assume identical protein abundance assignments.
-        merged_genes = merged_network.genes
         for gcid, gene in network.genes.items():
             try:
-                merged_gene = merged_genes[gcid]
+                merged_gene = merged_network.genes[gcid]
             except KeyError:
-                merged_genes[gcid] = deepcopy(gene)
+                merged_network.genes[gcid] = deepcopy(gene)
                 continue
 
             merged_gene.ko_ids = sorted(set(gene.ko_ids + merged_gene.ko_ids))
