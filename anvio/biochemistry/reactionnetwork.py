@@ -3497,7 +3497,16 @@ class GenomicNetwork(ReactionNetwork):
 
             subnetwork.genes[gcid] = deepcopy(gene)
 
-        self._subset_proteins(subnetwork)
+            # Only include protein abundances of subsetted genes, ignoring references to unsubsetted
+            # genes not encoding the protein.
+            if gene.protein_id is not None:
+                try:
+                    subnetwork_protein = subnetwork.proteins[gene.protein_id]
+                except KeyError:
+                    protein = self.proteins[gene.protein_id]
+                    subnetwork_protein = Protein(id=protein.id, abundances=protein.abundances)
+                    subnetwork.proteins[gene.protein_id] = subnetwork_protein
+                subnetwork_protein.gcids.append(gcid)
 
         return subnetwork
 
