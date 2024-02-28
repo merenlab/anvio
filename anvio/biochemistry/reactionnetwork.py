@@ -3051,8 +3051,8 @@ class GenomicNetwork(ReactionNetwork):
 
         if genes_to_remove or proteins_to_remove:
             for item_type, removed_items in self._purge_genes(
-                genes_to_remove=list(genes_to_remove),
-                proteins_to_remove=list(proteins_to_remove)
+                genes_to_remove=genes_to_remove,
+                proteins_to_remove=proteins_to_remove
             ).items():
                 removed[item_type] += removed_items
 
@@ -3064,24 +3064,20 @@ class GenomicNetwork(ReactionNetwork):
             categories_to_remove
         ):
             for item_type, removed_items in self._purge_kos(
-                kos_to_remove=list(kos_to_remove),
-                modules_to_remove=list(modules_to_remove),
-                pathways_to_remove=list(pathways_to_remove),
-                hierarchies_to_remove=list(hierarchies_to_remove),
-                categories_to_remove=list(categories_to_remove)
+                kos_to_remove=kos_to_remove,
+                modules_to_remove=modules_to_remove,
+                pathways_to_remove=pathways_to_remove,
+                hierarchies_to_remove=hierarchies_to_remove,
+                categories_to_remove=categories_to_remove
             ).items():
                 removed[item_type] += removed_items
 
         if reactions_to_remove:
-            for item_type, removed_items in self._purge_reactions(
-                list(reactions_to_remove)
-            ).items():
+            for item_type, removed_items in self._purge_reactions(reactions_to_remove).items():
                 removed[item_type] += removed_items
 
         if metabolites_to_remove:
-            for item_type, removed_items in self._purge_metabolites(
-                list(metabolites_to_remove)
-            ).items():
+            for item_type, removed_items in self._purge_metabolites(metabolites_to_remove).items():
                 removed[item_type] += removed_items
 
         return removed
