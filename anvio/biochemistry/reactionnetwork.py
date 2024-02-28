@@ -7161,7 +7161,7 @@ class Constructor:
         # Fill out KEGG classification attributes of KO objects in the loaded network.
         # Record KOs that have names that differ between (newer) gene annotations in the database
         # and (older) information in the stored network due to a KEGG database update.
-        inconsistent_kos = Dict[str, Tuple[str, str]] = {}
+        inconsistent_kos: Dict[str, Tuple[str, str]] = {}
         for row in kos_table.itertuples():
             ko_id: str = row.kegg_id
             ko = network.kos[ko_id]
