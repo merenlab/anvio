@@ -2283,6 +2283,40 @@ class ReactionNetwork:
                     set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
                 )
 
+        # Copy modules from the second network. Modules from the two networks can contain different
+        # KOs.
+        module_pathway_ids: List[str] = []
+        for module_id, module in network.modules.items():
+            try:
+                merged_module = merged_network.modules[module_id]
+            except KeyError:
+                merged_network.modules[module_id] = deepcopy(module)
+                continue
+
+            merged_module.ko_ids = sorted(set(module.ko_ids + merged_module.ko_ids))
+            merged_module.pathway_ids = sorted(set(module.pathway_ids + merged_module.pathway_ids))
+            module_pathway_ids += merged_module.pathway_ids
+
+        # Copy pathways from the second network. Pathways from the two networks can contain
+        # different KOs.
+        pathway_module_ids: List[str] = []
+        for pathway_id, pathway in network.pathways.items():
+            try:
+                merged_pathway = merged_network.pathways[pathway_id]
+            except KeyError:
+                merged_network.pathways[pathway_id] = deepcopy(pathway)
+                continue
+
+            merged_pathway.ko_ids = sorted(set(pathway.ko_ids + merged_pathway.ko_ids))
+            merged_pathway.module_ids = sorted(set(pathway.module_ids + merged_pathway.module_ids))
+            pathway_module_ids += merged_pathway.module_ids
+            assert pathway.categorization == merged_pathway.categorization
+
+        for pathway_id in module_pathway_ids:
+            assert pathway_id in merged_network.pathways
+        for module_id in pathway_module_ids:
+            assert module_id in merged_network.modules
+
         # Copy hierarchies from the second network. Hierarchies from the two networks can contain
         # different categories due to different KOs. Assume hierarchies with the same ID have the
         # same name.
@@ -2346,6 +2380,8 @@ class ReactionNetwork:
                     merged_hierarchy_categorizations[focus_categorization] = tuple(
                         copied_categories
                     )
+
+        return merged_network
 
     def _get_common_overview_statistics(
         self,
