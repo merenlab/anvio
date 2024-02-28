@@ -3398,6 +3398,8 @@ class GenomicNetwork(ReactionNetwork):
 
         if kos_to_subset is None:
             kos_to_subset: List[str] = []
+        else:
+            kos_to_subset = list(kos_to_subset)
         if modules_to_subset is None:
             modules_to_subset: List[str] = []
         if pathways_to_subset is None:
@@ -3439,6 +3441,7 @@ class GenomicNetwork(ReactionNetwork):
                     continue
                 category = categories[-1]
                 kos_to_subset += category.ko_ids
+        kos_to_subset = set(kos_to_subset)
 
         # Sequentially subset the network for each type of request. Upon generating two subsetted
         # networks from two types of request, merge the networks into a single subsetted network;
