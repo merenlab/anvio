@@ -9831,7 +9831,7 @@ class Tester:
 
         random.seed(sample_seed)
         gene_cluster_sample = set(random.sample(
-            list(network.gene_clusters), sample_proportion * math.ceil(len(network.gene_clusters))
+            list(network.gene_clusters), math.ceil(sample_proportion * len(network.gene_clusters))
         ))
 
         self._test_common_prune(network, samples)
