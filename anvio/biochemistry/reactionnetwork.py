@@ -5799,8 +5799,10 @@ class KODatabase:
             if os.path.isdir(dir):
                 ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')
             else:
-                raise ConfigError(f"There is no such directory, '{dir}'. You should create it "
-                                   "first if you want to use it.")
+                raise ConfigError(
+                    f"There is no such directory, '{dir}'. You should create it first if you want "
+                    "to use it."
+                )
         else:
             ko_dir = KODatabase.default_dir
             parent_dir = os.path.dirname(ko_dir)
@@ -5854,7 +5856,9 @@ class KODatabase:
             input_queue = manager.Queue()
             output_queue = manager.Queue()
             for ko_id in ko_ids:
-                input_queue.put((f'{download_root}get/{ko_id}', os.path.join(ko_dir, f'{ko_id}.txt')))
+                input_queue.put(
+                    (f'{download_root}get/{ko_id}', os.path.join(ko_dir, f'{ko_id}.txt'))
+                )
             workers: List[mp.Process] = []
             for _ in range(num_threads):
                 worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
@@ -5876,8 +5880,9 @@ class KODatabase:
                 worker.terminate()
             if undownloaded:
                 raise ConfigError(
-                    "Unfortunately, files for the following KOs failed to download despite multiple attempts, "
-                    f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+                    "Unfortunately, files for the following KOs failed to download despite "
+                    "multiple attempts, and so the database needs to be set up again: "
+                    f"{', '.join(undownloaded)}"
                 )
 
             # Get the database version after download.
@@ -5900,7 +5905,7 @@ class KODatabase:
                 run.warning(
                     "It's your lucky day! The version of KEGG appears to have changed from "
                     f"'{release_before}' to '{release_after}' while anvi'o was downloading files "
-                    "from the KO database. Anvi'o will now attempt to redownload all of the files. "
+                    "from the KO database. Anvi'o will now attempt to redownload all of the files."
                 )
         run.info(f"Total number of KOs/entry files", total)
         run.info("KEGG KO database version", release_after)
