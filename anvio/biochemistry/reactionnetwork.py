@@ -653,17 +653,13 @@ class ReactionNetwork:
                 id_string += f"{original_id} ({modelseed_id}), "
             id_string = id_string[:-2]
             self.run.info_single(
-                f"""\
-                The following metabolites were removed from the biomass objective, with the original
-                IDs aliasing the ModelSEED compound IDs in parentheses: {id_string}\
-                """
+                "The following metabolites were removed from the biomass objective, with the "
+                f"original IDs aliasing the ModelSEED compound IDs in parentheses: {id_string}"
             )
         else:
             self.run.info_single(
-                f"""\
-                The following metabolites, given by their ModelSEED compound IDs, were removed from
-                the biomass objective: {', '.join(missing_metabolite_ids)}\
-                """
+                "The following metabolites, given by their ModelSEED compound IDs, were removed "
+                f"from the biomass objective: {', '.join(missing_metabolite_ids)}"
             )
 
     def _write_remove_metabolites_without_formula_output(
