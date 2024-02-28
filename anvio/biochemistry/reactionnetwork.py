@@ -8776,31 +8776,27 @@ class Constructor:
             return reaction, []
 
         reaction_metabolites: List[ModelSEEDCompound] = []
-        for modelseed_compound_id in modelseed_compound_ids:
+        for compound_id in modelseed_compound_ids:
             if network:
                 try:
                     # The ModelSEED compound ID has been encountered in previously processed
                     # reactions, so there is already a 'ModelSEEDCompound' object for it.
-                    reaction_metabolites.append(network.metabolites[modelseed_compound_id])
+                    reaction_metabolites.append(network.metabolites[compound_id])
                     continue
                 except KeyError:
                     pass
 
             # Generate a new metabolite object.
             try:
-                modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[
-                    modelseed_compound_id
-                ]
+                modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[compound_id]
             except KeyError:
                 raise ConfigError(
-                    f"""\
-                    A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected\
-                    but not found in the ModelSEED compounds table. This ID was found in the\
-                    equation for the ModelSEED reaction, '{modelseed_reaction_id}'.\
-                    """
+                    f"A row for the ModelSEED compound ID, '{compound_id}', was expected but not "
+                    "found in the ModelSEED compounds table. This ID was found in the equation for "
+                    f"the ModelSEED reaction, '{modelseed_reaction_id}'."
                 )
             modelseed_compound_data = modelseed_compound_series.to_dict()
-            modelseed_compound_data['id'] = modelseed_compound_id
+            modelseed_compound_data['id'] = compound_id
             metabolite = self._get_modelseed_compound(modelseed_compound_data)
             reaction_metabolites.append(metabolite)
 
