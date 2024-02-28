@@ -7713,6 +7713,8 @@ class Constructor:
                 kegg_hierarchies_data
             )
 
+        self._relate_modules_pathways(network, kegg_modules_data)
+
         if DEBUG:
             for gene in network.genes.values():
                 for ko_id in gene.ko_ids:
