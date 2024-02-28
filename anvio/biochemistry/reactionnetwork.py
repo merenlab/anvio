@@ -2078,7 +2078,11 @@ class ReactionNetwork:
             # Copy gene clusters that are annotated with the added KOs to the subsetted network.
             self._subset_gene_clusters_via_kos(subnetwork)
 
-    def _subset_network_by_metabolites(self, compound_ids: Iterable[str]) -> ReactionNetwork:
+    def _subset_network_by_metabolites(
+        self,
+        compound_ids: Iterable[str],
+        inclusive: bool = False
+    ) -> ReactionNetwork:
         """
         Subset the network by metabolites.
 
@@ -2086,6 +2090,14 @@ class ReactionNetwork:
         ==========
         compound_ids : Iterable[str]
             ModelSEED compound IDs to subset.
+
+        inclusive : bool, False
+            If True, "inclusive" subsetting applies a "Midas touch" where all items in the network
+            that are however associated with requested metabolites are "turned to gold" and included
+            in the subsetted network. In default "exclusive" subsetting, KOs and genes or gene
+            clusters that are added to the subsetted network due to references to reactions
+            involving requested metabolites will be missing references to any other reactions not
+            involving any requested metabolites.
 
         Returns
         =======
@@ -2099,29 +2111,19 @@ class ReactionNetwork:
         else:
             raise AssertionError
 
-        subnetwork_metabolites = subnetwork.metabolites
-        for reaction_id, reaction in self.reactions.items():
+        for reaction in self.reactions.values():
             # Check all reactions in the source network for subsetted metabolites.
-            for modelseed_compound_id in reaction.compound_ids:
-                if modelseed_compound_id in compound_ids:
+            for compound_id in reaction.compound_ids:
+                if compound_id in compound_ids:
                     break
             else:
                 # The reaction does not involve any of the requested metabolites.
                 continue
-
-            # Copy the reaction to the subsetted network.
-            subnetwork.reactions[reaction_id] = deepcopy(reaction)
-
-            # Copy the metabolites involved in the reaction to the subsetted network.
-            for modelseed_compound_id in reaction.compound_ids:
-                if modelseed_compound_id in subnetwork_metabolites:
-                    continue
-                metabolite = self.metabolites[modelseed_compound_id]
-                subnetwork_metabolites[modelseed_compound_id] = deepcopy(metabolite)
+            self._subset_reaction(subnetwork, reaction)
 
         # Add KOs that are annotated with the added reactions to the subsetted network, and then add
         # genes or gene clusters annotated with the added KOs to the subsetted network.
-        self._subset_kos_via_reactions(subnetwork)
+        self._subset_kos_via_reactions(subnetwork, inclusive=inclusive)
 
         return subnetwork
 
