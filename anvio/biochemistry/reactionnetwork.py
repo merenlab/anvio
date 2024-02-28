@@ -1922,40 +1922,56 @@ class ReactionNetwork:
             except KeyError:
                 # This occurs if the requested reaction is not in the source network.
                 continue
-            subnetwork_reactions[reaction_id] = deepcopy(reaction)
+    def _subset_reaction(self, subnetwork: ReactionNetwork, reaction: ModelSEEDReaction) -> None:
+        """
+        Add a reaction to a subsetted network along with metabolites involved in the reaction.
 
-            # Copy metabolites involved in the reaction to the subnetwork.
-            for modelseed_compound_id in reaction.compound_ids:
-                if modelseed_compound_id in subnetwork_metabolites:
-                    continue
-                metabolite = self.metabolites[modelseed_compound_id]
-                subnetwork_metabolites[modelseed_compound_id] = deepcopy(metabolite)
+        Parameters
+        ==========
+        subnetwork : ReactionNetwork
 
+        reaction : ModelSEEDReaction
+
+        Returns
+        =======
+        None
+        """
+        reaction_id = reaction.modelseed_id
+        subnetwork.reactions[reaction_id] = deepcopy(reaction)
+
+        # Copy metabolites involved in the reaction to the subnetwork.
+        for compound_id in reaction.compound_ids:
+            if compound_id in subnetwork.metabolites:
+                continue
+            metabolite = self.metabolites[compound_id]
+            subnetwork.metabolites[compound_id] = deepcopy(metabolite)
+
+        # Add KEGG reaction and EC number aliases of the reaction to the subsetted network.
+        try:
+            subnetwork.modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+        except KeyError:
+            subnetwork.modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+
+        try:
+            subnetwork.modelseed_ec_number_aliases[reaction_id] += list(
+                reaction.ec_number_aliases
+            )
+        except KeyError:
+            subnetwork.modelseed_ec_number_aliases[reaction_id] = list(
+                reaction.ec_number_aliases
+            )
+
+        for kegg_id in reaction.kegg_aliases:
             try:
-                subnetwork_modelseed_kegg_aliases[reaction_id] += list(reaction.kegg_aliases)
+                subnetwork.kegg_modelseed_aliases[kegg_id].append(reaction_id)
             except KeyError:
-                subnetwork_modelseed_kegg_aliases[reaction_id] = list(reaction.kegg_aliases)
+                subnetwork.kegg_modelseed_aliases[kegg_id] = [reaction_id]
 
+        for ec_number in reaction.ec_number_aliases:
             try:
-                subnetwork_modelseed_ec_number_aliases[reaction_id] += list(
-                    reaction.ec_number_aliases
-                )
+                subnetwork.ec_number_modelseed_aliases[ec_number].append(reaction_id)
             except KeyError:
-                subnetwork_modelseed_ec_number_aliases[reaction_id] = list(
-                    reaction.ec_number_aliases
-                )
-
-            for kegg_id in reaction.kegg_aliases:
-                try:
-                    kegg_modelseed_aliases[kegg_id].append(reaction_id)
-                except KeyError:
-                    kegg_modelseed_aliases[kegg_id] = [reaction_id]
-
-            for ec_number in reaction.ec_number_aliases:
-                try:
-                    ec_number_modelseed_aliases[ec_number].append(reaction_id)
-                except KeyError:
-                    ec_number_modelseed_aliases[ec_number] = [reaction_id]
+                subnetwork.ec_number_modelseed_aliases[ec_number] = [reaction_id]
 
         if subnetwork.kegg_modelseed_aliases:
             subnetwork_kegg_modelseed_aliases = subnetwork.kegg_modelseed_aliases
