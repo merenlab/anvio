@@ -6030,26 +6030,20 @@ class ModelSEEDDatabase:
         sha_path = os.path.join(modelseed_dir, 'sha.txt')
         if not os.path.isfile(sha_path):
             raise ConfigError(
-                f"""\
-                No required file named 'sha.txt' was found in the ModelSEED directory,\
-                '{modelseed_dir}'.\
-                """
+                "No required file named 'sha.txt' was found in the ModelSEED directory, "
+                f"'{modelseed_dir}'."
             )
         reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
         if not os.path.isfile(reactions_path):
             raise ConfigError(
-                f"""\
-                No required file named 'reactions.tsv' was found in the ModelSEED directory,\
-                '{modelseed_dir}'.\
-                """
+                "No required file named 'reactions.tsv' was found in the ModelSEED directory, "
+                f"'{modelseed_dir}'."
             )
         compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
         if not os.path.isfile(compounds_path):
             raise ConfigError(
-                f"""\
-                No required file named 'compounds.tsv' was found in the ModelSEED directory,\
-                '{modelseed_dir}'.\
-                """
+                "No required file named 'compounds.tsv' was found in the ModelSEED directory, "
+                f"'{modelseed_dir}'."
             )
 
         with open(sha_path) as f:
@@ -6140,10 +6134,8 @@ class ModelSEEDDatabase:
                 shutil.rmtree(modelseed_dir)
             else:
                 raise ConfigError(
-                    f"""\
-                    The ModelSEED database directory, '{modelseed_dir}', already exists. 'reset'\
-                    can be used to remove the database at this location and set it up again.\
-                    """
+                    f"The ModelSEED database directory, '{modelseed_dir}', already exists. 'reset' "
+                    "can be used to remove the database at this location and set it up again."
                 )
         os.mkdir(modelseed_dir)
 
@@ -6159,11 +6151,9 @@ class ModelSEEDDatabase:
                     num_tries += 1
                     if num_tries > max_num_tries:
                         raise ConnectionResetError(
-                            f"""\
-                            The connection was reset by the peer more than {max_num_tries} times,\
-                            the maximum number of attempts. Try setting up the ModelSEED database\
-                            again.\
-                            """
+                            f"The connection was reset by the peer more than {max_num_tries} times, "
+                            "the maximum number of attempts. Try setting up the ModelSEED database "
+                            "again."
                         )
                     time.sleep(wait_secs)
         # The commit SHA taken from the following file is stored in a text file to track the version
