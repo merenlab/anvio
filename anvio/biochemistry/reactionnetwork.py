@@ -9634,16 +9634,9 @@ class Tester:
         removed = copied_network.prune(genes_to_remove=gene_sample)
         assert gene_sample.difference(set(copied_network.genes)) == gene_sample
         assert not gene_sample.difference(set([gene.gcid for gene in removed['gene']]))
-        self.progress.end()
 
-        self.progress.new("Testing network subset methods")
-        self.progress.update("...")
-        self._test_common_subset(network, samples)
-
-        subnetwork = network.subset_network(genes_to_subset=gene_sample)
-        assert not gene_sample.difference(set(subnetwork.genes))
-
-        # Test network merging functionality by subsetting samples of items of all types.
+        # Test the pruning of multiple types of items at once.
+        copied_network = deepcopy(network)
         metabolite_sample: Set[str] = samples['metabolite']
         reaction_sample: Set[str] = samples['reaction']
         ko_sample: Set[str] = samples['ko']
@@ -9651,29 +9644,85 @@ class Tester:
         pathway_sample: Set[str] = samples['pathway']
         hierarchy_sample: Set[str] = samples['hierarchy']
         category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
-        subnetwork = network.subset_network(
-            genes_to_subset=gene_sample,
-            kos_to_subset=ko_sample,
-            modules_to_subset=module_sample,
-            pathways_to_subset=pathway_sample,
-            hierarchies_to_subset=hierarchy_sample,
-            categories_to_subset=category_sample_dict,
-            reactions_to_subset=reaction_sample,
-            metabolites_to_subset=metabolite_sample
+        removed = copied_network.prune(
+            genes_to_remove=gene_sample,
+            kos_to_remove=ko_sample,
+            modules_to_remove=module_sample,
+            pathways_to_remove=pathway_sample,
+            hierarchies_to_remove=hierarchy_sample,
+            categories_to_remove=category_sample_dict,
+            reactions_to_remove=reaction_sample,
+            metabolites_to_remove=metabolite_sample
         )
-        assert not metabolite_sample.difference(set(subnetwork.metabolites))
-        assert not reaction_sample.difference(set(subnetwork.reactions))
-        assert not ko_sample.difference(set(subnetwork.kos))
-        assert not module_sample.difference(set(subnetwork.modules))
-        assert not pathway_sample.difference(set(subnetwork.pathways))
-        assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
+        assert not metabolite_sample.difference(
+            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        )
+        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
+        assert not reaction_sample.difference(
+            set([reaction.modelseed_id for reaction in removed['reaction']])
+        )
+        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
+        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+        assert module_sample.difference(set(copied_network.modules)) == module_sample
+        assert not module_sample.difference(set([module.id for module in removed['module']]))
+        assert pathway_sample.difference(set(copied_network.pathways)) == pathway_sample
+        assert not pathway_sample.difference(set([pathway.id for pathway in removed['pathway']]))
+        assert hierarchy_sample.difference(set(copied_network.hierarchies)) == hierarchy_sample
+        assert not hierarchy_sample.difference(
+            set([hierarchy.id for hierarchy in removed['hierarchy']])
+        )
         remaining_category_ids: List[str] = []
-        for categorizations in subnetwork.categories.values():
+        for categorizations in copied_network.categories.values():
             for categories in categorizations.values():
                 remaining_category_ids.append(categories[-1].id)
         category_sample: Set[str] = samples['category']
-        assert not category_sample.difference(set(remaining_category_ids))
+        assert category_sample.difference(set(remaining_category_ids)) == category_sample
+        removed_category_ids: List[str] = []
+        for category in removed['category']:
+            category: BRITECategory
+            removed_category_ids.append(category.id)
+        assert not category_sample.difference(set(removed_category_ids))
+        assert gene_sample.difference(set(copied_network.genes)) == gene_sample
+        assert not gene_sample.difference(set([gene.gcid for gene in removed['gene']]))
+        self.progress.end()
+
+        self.progress.new("Testing network subset methods")
+        self.progress.update("...")
+        self._test_common_subset(network, samples)
+
+        copied_network = deepcopy(network)
+        subnetwork = copied_network.subset_network(genes_to_subset=gene_sample)
         assert not gene_sample.difference(set(subnetwork.genes))
+
+        # Test network merging functionality by subsetting samples of items of all types at the same
+        # time. Test subsetting with and without the "inclusive" option.
+        for inclusive in (False, True):
+            copied_network = deepcopy(network)
+            subnetwork = copied_network.subset_network(
+                genes_to_subset=gene_sample,
+                kos_to_subset=ko_sample,
+                modules_to_subset=module_sample,
+                pathways_to_subset=pathway_sample,
+                hierarchies_to_subset=hierarchy_sample,
+                categories_to_subset=category_sample_dict,
+                reactions_to_subset=reaction_sample,
+                metabolites_to_subset=metabolite_sample,
+                inclusive=inclusive
+            )
+            assert not metabolite_sample.difference(set(subnetwork.metabolites))
+            assert not reaction_sample.difference(set(subnetwork.reactions))
+            assert not ko_sample.difference(set(subnetwork.kos))
+            assert not module_sample.difference(set(subnetwork.modules))
+            assert not pathway_sample.difference(set(subnetwork.pathways))
+            assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+            remaining_category_ids: List[str] = []
+            for categorizations in subnetwork.categories.values():
+                for categories in categorizations.values():
+                    remaining_category_ids.append(categories[-1].id)
+            category_sample: Set[str] = samples['category']
+            assert not category_sample.difference(set(remaining_category_ids))
+            assert not gene_sample.difference(set(subnetwork.genes))
         self.progress.end()
 
         if self.test_dir is None:
@@ -9845,16 +9894,9 @@ class Tester:
         assert not gene_cluster_sample.difference(
             set([gene_cluster.gene_cluster_id for gene_cluster in removed['gene_cluster']])
         )
-        self.progress.end()
 
-        self.progress.new("Testing network subset methods")
-        self.progress.update("...")
-        self._test_common_subset(network, samples)
-
-        subnetwork = network.subset_network(gene_clusters_to_subset=gene_cluster_sample)
-        assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
-
-        # Test network merging functionality by subsetting samples of items of all types.
+        # Test the pruning of multiple types of items at the same time.
+        copied_network = deepcopy(network)
         metabolite_sample: Set[str] = samples['metabolite']
         reaction_sample: Set[str] = samples['reaction']
         ko_sample: Set[str] = samples['ko']
@@ -9862,29 +9904,87 @@ class Tester:
         pathway_sample: Set[str] = samples['pathway']
         hierarchy_sample: Set[str] = samples['hierarchy']
         category_sample_dict: Dict[str, List[Tuple[str]]] = samples['category_dict']
-        subnetwork = network.subset_network(
-            gene_clusters_to_subset=gene_cluster_sample,
-            kos_to_subset=ko_sample,
-            modules_to_subset=module_sample,
-            pathways_to_subset=pathway_sample,
-            hierarchies_to_subset=hierarchy_sample,
-            categories_to_subset=category_sample_dict,
-            reactions_to_subset=reaction_sample,
-            metabolites_to_subset=metabolite_sample
+        removed = copied_network.prune(
+            gene_clusters_to_remove=gene_cluster_sample,
+            kos_to_remove=ko_sample,
+            modules_to_remove=module_sample,
+            pathways_to_remove=pathway_sample,
+            hierarchies_to_remove=hierarchy_sample,
+            categories_to_remove=category_sample_dict,
+            reactions_to_remove=reaction_sample,
+            metabolites_to_remove=metabolite_sample
         )
-        assert not metabolite_sample.difference(set(subnetwork.metabolites))
-        assert not reaction_sample.difference(set(subnetwork.reactions))
-        assert not ko_sample.difference(set(subnetwork.kos))
-        assert not module_sample.difference(set(subnetwork.modules))
-        assert not pathway_sample.difference(set(subnetwork.pathways))
-        assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+        assert metabolite_sample.difference(set(copied_network.metabolites)) == metabolite_sample
+        assert not metabolite_sample.difference(
+            set([metabolite.modelseed_id for metabolite in removed['metabolite']])
+        )
+        assert reaction_sample.difference(set(copied_network.reactions)) == reaction_sample
+        assert not reaction_sample.difference(
+            set([reaction.modelseed_id for reaction in removed['reaction']])
+        )
+        assert ko_sample.difference(set(copied_network.kos)) == ko_sample
+        assert not ko_sample.difference(set([ko.id for ko in removed['ko']]))
+        assert module_sample.difference(set(copied_network.modules)) == module_sample
+        assert not module_sample.difference(set([module.id for module in removed['module']]))
+        assert pathway_sample.difference(set(copied_network.pathways)) == pathway_sample
+        assert not pathway_sample.difference(set([pathway.id for pathway in removed['pathway']]))
+        assert hierarchy_sample.difference(set(copied_network.hierarchies)) == hierarchy_sample
+        assert not hierarchy_sample.difference(
+            set([hierarchy.id for hierarchy in removed['hierarchy']])
+        )
         remaining_category_ids: List[str] = []
-        for categorizations in subnetwork.categories.values():
+        for categorizations in copied_network.categories.values():
             for categories in categorizations.values():
                 remaining_category_ids.append(categories[-1].id)
         category_sample: Set[str] = samples['category']
-        assert not category_sample.difference(set(remaining_category_ids))
+        assert category_sample.difference(set(remaining_category_ids)) == category_sample
+        removed_category_ids: List[str] = []
+        for category in removed['category']:
+            category: BRITECategory
+            removed_category_ids.append(category.id)
+        assert not category_sample.difference(set(removed_category_ids))
+        assert gene_cluster_sample.difference(set(copied_network.gene_clusters)) == gene_cluster_sample
+        assert not gene_cluster_sample.difference(
+            set([gene_cluster.gene_cluster_id for gene_cluster in removed['gene_cluster']])
+        )
+        self.progress.end()
+
+        self.progress.new("Testing network subset methods")
+        self.progress.update("...")
+        self._test_common_subset(network, samples)
+
+        copied_network = deepcopy(network)
+        subnetwork = copied_network.subset_network(gene_clusters_to_subset=gene_cluster_sample)
         assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
+
+        # Test network merging functionality by subsetting samples of items of all types. Test
+        # subsetting with and without the "inclusive" option.
+        for inclusive in (False, True):
+            copied_network = deepcopy(network)
+            subnetwork = copied_network.subset_network(
+                gene_clusters_to_subset=gene_cluster_sample,
+                kos_to_subset=ko_sample,
+                modules_to_subset=module_sample,
+                pathways_to_subset=pathway_sample,
+                hierarchies_to_subset=hierarchy_sample,
+                categories_to_subset=category_sample_dict,
+                reactions_to_subset=reaction_sample,
+                metabolites_to_subset=metabolite_sample,
+                inclusive=inclusive
+            )
+            assert not metabolite_sample.difference(set(subnetwork.metabolites))
+            assert not reaction_sample.difference(set(subnetwork.reactions))
+            assert not ko_sample.difference(set(subnetwork.kos))
+            assert not module_sample.difference(set(subnetwork.modules))
+            assert not pathway_sample.difference(set(subnetwork.pathways))
+            assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
+            remaining_category_ids: List[str] = []
+            for categorizations in subnetwork.categories.values():
+                for categories in categorizations.values():
+                    remaining_category_ids.append(categories[-1].id)
+            category_sample: Set[str] = samples['category']
+            assert not category_sample.difference(set(remaining_category_ids))
+            assert not gene_cluster_sample.difference(set(subnetwork.gene_clusters))
         self.progress.end()
 
         if self.test_dir is None:
