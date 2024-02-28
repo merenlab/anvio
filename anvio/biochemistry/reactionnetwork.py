@@ -9624,9 +9624,9 @@ class Tester:
         )
 
         random.seed(sample_seed)
-        gene_sample = set(random.sample(
-            list(network.genes), sample_proportion * math.ceil(len(network.genes) / 2)
-        ))
+        gene_sample = set(
+            random.sample(list(network.genes), math.ceil(sample_proportion * len(network.genes)))
+        )
 
         self._test_common_prune(network, samples)
 
