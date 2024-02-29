@@ -60,7 +60,7 @@ def get_args() -> Namespace:
 
     groupB = parser.add_argument_group(
         "PANGENOME INPUT",
-        "Generate a reaction network from a pan database and genomes storage database, "
+        "Generate a reaction network from a pan database and associated genomes storage database, "
         "and store the network in the pan database."
     )
     groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
