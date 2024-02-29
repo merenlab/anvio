@@ -6437,6 +6437,7 @@ class Constructor:
             if check_gene_annotations:
                 raise ConfigError(
                     "The reaction network stored in the contigs database was made from a different "
+                    "set of KEGG KO gene annotations than is current in the database. There are "
                     "two solutions to this problem. First, 'anvi-reaction-network' can be run "
                     "again to overwrite the existing network stored in the database with a new "
                     "network from the new KO gene annotations. Second, 'check_gene_annotations' "
