@@ -13,8 +13,7 @@ __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
-# versions of anvi'o databases
-contigs_db_version = "22"
+contigs_db_version = "23"
 profile_db_version = "40"
 genes_db_version = "6"
 pan_db_version = "17"

@@ -512,6 +512,8 @@ class KeggSetup(KeggContext):
         self.only_download = True if A('only_download') else False
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
+        self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
+
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -3044,6 +3046,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
+        # a warning for high memory usage with metagenome mode in certain situations
+        if self.metagenome_mode and (self.matrix_format or self.json_output_file_path):
+            self.run.warning("ALERT! You are running this program in --metagenome-mode, which can have a VERY LARGE "
+                             "memory footprint when used with --matrix-format or --get-raw-data-as-json, since both "
+                             "of those options require storing all the per-contig data in memory. You have been warned. "
+                             "The OOM-Killer may strike.")
+
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
@@ -4456,7 +4465,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
         the value obtained by evaluating the resulting arithmetic expression.
 
-        Some steps are defined by other modules. When module accessions are found, [FIXME]
+        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but 
+        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the 
+        component module's copy number in the calculation instead).
 
         PARAMETERS
         ==========
@@ -4506,7 +4517,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             sub_copy_num = self.get_step_copy_number(sub_step, enzyme_hit_counts)
 
             # parse the rest of the string and combine with the copy number of the stuff within parentheses
-            step_copy_num = 0
+            step_copy_num = None
             # handle anything prior to parentheses
             if open_parens_idx > 0:
                 previous_str = step_string[:open_parens_idx]
@@ -4516,9 +4527,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 combo_element = previous_str[-1]
                 if combo_element == ',': # OR
-                    step_copy_num += (prev_copy + sub_copy_num)
+                    step_copy_num = (prev_copy + sub_copy_num)
                 if combo_element == ' ' or combo_element == '+': # AND
-                    step_copy_num += min(prev_copy,sub_copy_num)
+                    step_copy_num = min(prev_copy,sub_copy_num)
 
             # handle anything following parentheses
             if close_parens_idx < len(step_string) - 1:
@@ -4528,14 +4539,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
 
                 combo_element = step_string[close_parens_idx+1]
-                if combo_element == ',': # OR
-                    step_copy_num += (sub_copy_num + post_copy)
-                if combo_element == ' ' or combo_element == '+': # AND
-                    step_copy_num += min(sub_copy_num,post_copy)
+                if step_copy_num is None:
+                    # no previous clause, so we only combine the parenthetical clause and what comes after
+                    if combo_element == ',': # OR
+                        step_copy_num = (sub_copy_num + post_copy)
+                    if combo_element == ' ' or combo_element == '+': # AND
+                        step_copy_num = min(sub_copy_num,post_copy)
+                else:
+                    # we have to combine the post clause with the already-combined previous clause
+                    # and parenthetical clause
+                    if combo_element == ',': # OR
+                        step_copy_num += post_copy
+                    if combo_element == ' ' or combo_element == '+': # AND
+                        step_copy_num = min(step_copy_num,post_copy)
 
             # handle edge case where parentheses circles entire step
             if (open_parens_idx == 0) and (close_parens_idx == len(step_string) - 1):
-                step_copy_num += sub_copy_num
+                step_copy_num = sub_copy_num
 
             return step_copy_num
 
@@ -4868,7 +4888,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bins_metabolism_superdict, bins_ko_superdict
 
 
-    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
+    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig, return_superdicts=False):
         """This function handles metabolism estimation for an entire metagenome.
 
         We treat each contig in the metagenome to be its own 'bin' or 'genome' and estimate
@@ -4878,13 +4898,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         ==========
         kofam_gene_split_contig : list
             (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        return_superdicts : Boolean
+            whether or not to return the superdicts. False by default to save on memory.
 
         RETURNS
         =======
         metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
-            dictionary mapping metagenome name to its metabolism completeness dictionary
+            dictionary mapping metagenome name to its metabolism completeness dictionary 
+            (will be empty dictionary if return_superdicts is False)
         metagenome_ko_superdict : dictionary of dictionary of dictionaries
             dictionary mapping metagenome name to its KOfam hits dictionary
+            (will be empty dictionary if return_superdicts is False)
         """
 
         metagenome_metabolism_superdict = {}
@@ -4907,10 +4931,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
             if not self.store_json_without_estimation:
-                metagenome_metabolism_superdict[contig] = self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)
-                single_contig_module_superdict = {contig: metagenome_metabolism_superdict[contig]}
-                metagenome_ko_superdict[contig] = ko_dict_for_contig
+                single_contig_module_superdict = {contig: self.estimate_for_list_of_splits(metabolism_dict_for_contig, bin_name=contig)}
+                if return_superdicts:
+                    metagenome_metabolism_superdict[contig] = single_contig_module_superdict[contig]
+                    metagenome_ko_superdict[contig] = ko_dict_for_contig
             else:
+                if not return_superdicts:
+                    raise ConfigError("Uh oh. Someone requested JSON-formatted estimation data from estimate_for_contigs_db_for_metagenome() "
+                                      "without setting 'return_superdicts' parameter to True. ")
                 metagenome_metabolism_superdict[contig] = metabolism_dict_for_contig
                 metagenome_ko_superdict[contig] = ko_dict_for_contig
                 single_contig_module_superdict = {contig: metabolism_dict_for_contig}
@@ -5297,7 +5325,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     self.genome_mode = True
                     kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
                 elif self.metagenome_mode:
-                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info, return_superdicts=return_superdicts)
                 else:
                     raise ConfigError("This class doesn't know how to deal with that yet :/")
 

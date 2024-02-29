@@ -161,15 +161,108 @@
                                         </select>
                                     </div>
                             </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>
-                                    <div class="col-md-8">
-                                        <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
-                                        <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                            <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
+
+                            <span id="toggle-chevron-legend" class="settings-header btn d-flex chart-icon-padding mt-5 align-items-center" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-legend').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/legend-chart.svg" alt="Item Icon"/>
+                                Legends
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                            <div class="collapse multi-collapse show" id="legend-collapse-main">
+                                <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OPTION Tab -->
+                    <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
+                        <div id="additional_settings">
+                            <span id="toggle-chevron-item-option" class="settings-header mt-3 btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/item-chart.svg" alt="Item Icon"/>
+                                Items
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
+                            <div class="collapse multi-collapse show" id="item-collapse-option">
+                                <div class="ml-3">
+                                    <span class="settings-secondary-header">Bins Selection</span>
+                                    <div class="form-group form-margin d-flex pt-1 mt-3 align-items-center">
+                                            <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
+                                            <div class="col-6 d-flex align-item-center input-align">
+                                                <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex align-items-center">
+                                            <label class="col-2 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label d-flex" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
+                                            <div class="col-12 input-align d-flex">
+                                                <input class="mr-4" type="checkbox" id="show_bin_labels" name="checkbox"
+                                                value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" checked>
+                                                <div class="col-8">
+                                                    <div class="bin_labels_details input-align" style="display: flex;">
+                                                        <span class="d-flex align-items-center">Font Size:</span>
+                                                        <input id="bin_labels_font_size" class="form-control input-xs col-2" size="5" value="128" onchange="emit('bin-settings-changed');" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin bin_labels_details d-flex">
+                                            <label class="col-3 settings-label d-flex" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
+                                            <div class="col-12 d-flex input-align">
+                                                <input class="mr-4" type="checkbox" id="autorotate_bin_labels" name="checkbox"
+                                                value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" checked>
+                                                <div class="d-flex">
+                                                    <div class="col-8 align-items-center" id="span_bin_labels_angle" style="display: none;">
+                                                        <div class="d-flex input-align">
+                                                            <span class="d-flex align-items-center mr-4">Angle:</span>
+                                                            <input class="form-control input-xs col-8 d-flex" size="5" value="0" id="bin_labels_angle" onchange="emit('bin-settings-changed');" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
+                                        <div class="col-4 input-align d-flex">
+                                            <input class="" type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                            <div id="grid_color" style="display: none !important;" class="colorpicker colorpicker-width" style="background-color: #FFFFFF" color="#FFFFFF"></div>
+                                            <div class="col-8 d-flex pl-0 align-items-center">
+                                                <div class="d-flex">
+                                                    <div class="grid_details display-settings" style="display: none;">
+                                                        <span class="d-flex align-items-center pl-1 mr-1">Width:</span>
+                                                        <input class="form-control input-xs d-flex ml-4 col-8"  size="5" value="10" id="grid_width" onchange="emit('bin-settings-changed');" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label d-flex" for="show_shade_for_bins" data-help="show-shade">Show shade: </label>
+                                            <div class="col-12 input-align d-flex">
+                                                <input class="mr-4" type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
+                                                <div class="col-8 align-items-center">
+                                                    <div class="shade_details input-align align-items-center" style="display: flex;">
+                                                        <span>Opacity:</span>
+                                                        <input class="form-control input-xs col-2 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1"  name="checkbox" id="shade_fill_opacity" onchange="emit('bin-settings-changed')" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex" id="invert_shade_div">
+                                        <label class="col-3 settings-label d-flex" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </label>
+                                        <div class="col-7 input-align d-flex">
+                                            <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color, #inverse_color_input').show(); } else { $('.inverse_details, #inverse_color, #inverse_color_input').hide(); }" style="float: left;" unchecked>
+                                            <div id="inverse_color" onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker colorpicker-width" style="background-color: #000" color="#000"></div>
+                                            <div style="display: none !important;" id="inverse_color_input">
+                                                <div class="inverse_details d-flex">
+                                                    <span class="pt-1">Opacity:</span>        
+                                                    <input class="form-control input-xs col-5 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
+                                                </div> 
+                                            </div>
                                         </div>
                                     </div>
                             </div>

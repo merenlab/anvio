@@ -20,11 +20,10 @@ ANVIO_WORKFLOWS = {
             ('Sequence search against various databases', ['DIAMOND'])
             ],
         "one_sentence_summary": "From FASTA files to annotated anvi'o contigs databases",
-        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
-            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+        "one_paragraph_summary": ("This workflow is useful for converting a bunch of genomes into an anvi'o-compatible "
+            "format. It generates contigs databases from each input FASTA file, and subsequently runs a variety of "
+            "annotation programs of your choice to populate these databases with some useful information for your downstream "
+            "work (i.e. functions, single-copy-core genes, taxonomy, etc).")
     },
 
     "metagenomics": {
@@ -42,11 +41,13 @@ ANVIO_WORKFLOWS = {
             ('Read recruitment', ['Bowtie2'])
             ],
         "one_sentence_summary": "From FASTA and/or FASTQ files to anvi'o contigs and profile databases",
-        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
-            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+        "one_paragraph_summary": ("This workflow is for anyone who wants to do some high-throughput read recruitment. "
+            "It has a few different modes depending on your input data. By default, it works with metagenomic short reads "
+            "and will assemble those, use the assembly as a reference for read-recruitment, and create databases ready for "
+            "anvi-interactive (i.e. for binning). If you don't need to assemble anything, you can also just give this "
+            "program a set of reference contigs for read-recruitment. Regardless, you'll end up with at least one "
+            "contigs database + merged profile database pair. Oh, and since this workflow internally uses the contigs "
+            "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
     "ecophylo": {
         "authors": ['mschecht'],

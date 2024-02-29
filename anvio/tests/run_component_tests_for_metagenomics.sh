@@ -932,6 +932,9 @@ cp $files/mock_data_for_pangenomics/E_faecalis*.db $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
 cp $files/example_description.md $output_dir/
 
+INFO "Migrating mock external genome data"
+anvi-migrate --migrate-safely $output_dir/*.db
+
 INFO "Dereplicating genomes using pyANI"
 anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
                          -e $output_dir/external-genomes.txt \
