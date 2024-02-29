@@ -280,6 +280,24 @@ class SequencesForHMMHits:
                                   "Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
         hmm_hits = list(self.hmm_hits.values())
+        models_to_remove = {}
+        if dont_include_models_with_multiple_domain_hits:
+            observed_gcids_to_sources = {}
+            # first get list of HMM hits, HMM model names and sources for each gene callers id
+            for index, entry in enumerate(hmm_hits):
+                source = entry['source']
+                gcid = entry['gene_callers_id']
+                model = entry['gene_name']
+                if source in sources:
+                    if gcid in observed_gcids_to_sources:
+                        observed_gcids_to_sources[gcid]['hit_indices'].append(index)
+                        if source not in observed_gcids_to_sources[gcid]['hmm_models']:
+                            observed_gcids_to_sources[gcid]['hmm_models'][source] = set([])
+                        observed_gcids_to_sources[gcid]['hmm_models'][source].add(model)
+                    else:
+                        observed_gcids_to_sources[gcid] = {'hit_indices': [index],
+                                                           'hmm_models': {source: set([model])}}
+
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
