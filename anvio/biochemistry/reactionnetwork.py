@@ -93,6 +93,10 @@ class ModelSEEDCompound:
         The formula of the ModelSEED compound, e.g., 'cpd00001' has the formula, 'H2O'. When absent
         in the database, assumes a value of None.
 
+    smiles : str, None
+        The SMILES string encoding the structure of the ModelSEED compound, e.g., 'cpd00001' has the
+        SMILES string, 'O'. When absent in the database, assumes a value of None.
+
     abundances : Dict[str, float], dict()
         Abundance profile data (from metabolomics, for instance) with each key being a sample name
         and each value being the abundance of the ModelSEED compound in that sample.
@@ -102,6 +106,7 @@ class ModelSEEDCompound:
     kegg_aliases: Tuple[str] = None
     charge: int = None
     formula: str = None
+    smiles: str = None
     abundances: Dict[str, float] = field(default_factory=dict)
 
 @dataclass
@@ -7082,6 +7087,8 @@ class Constructor:
             metabolite.formula = formula
             charge: int = row.charge
             metabolite.charge = None if np.isnan(charge) else int(charge)
+            smiles: str = row.smiles
+            metabolite.smiles = smiles
 
 
     def _load_ko_classifications(
@@ -8848,6 +8855,12 @@ class Constructor:
                 )
             compound.charge = charge
 
+        smiles = modelseed_compound_data['smiles']
+        if pd.isna(smiles):
+            compound.smiles = None
+        else:
+            compound.smiles = smiles
+
         return compound
 
     def _process_added_reactions(
@@ -9260,6 +9273,7 @@ class Constructor:
             metabolite_data['kegg_aliases'] = ', '.join(metabolite.kegg_aliases)
             metabolite_data['formula'] = metabolite.formula
             metabolite_data['charge'] = metabolite.charge
+            metabolite_data['smiles'] = metabolite.smiles
             metabolites_data[compound_id] = metabolite_data
 
         metabolites_table = pd.DataFrame.from_dict(

@@ -52,8 +52,8 @@ pan_reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'mo
 pan_reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
 
 pan_reaction_network_metabolites_table_name      = 'reaction_network_metabolites'
-pan_reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
-pan_reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
+pan_reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
+pan_reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
 
 pan_reaction_network_kegg_table_name             = 'reaction_network_kegg'
 pan_reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
@@ -102,8 +102,8 @@ reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'models
 reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'         ,       'text'      ,          'text'           ,      'text'    ,     'text'    ,      'bool'    ]
 
 reaction_network_metabolites_table_name      = 'reaction_network_metabolites'
-reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
-reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
+reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
+reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
 
 reaction_network_kegg_table_name             = 'reaction_network_kegg'
 reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
