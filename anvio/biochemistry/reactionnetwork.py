@@ -5998,6 +5998,14 @@ class ModelSEEDDatabase:
 
     Attributes
     ==========
+    default_dir : str
+        Class attribute recording anvi'o default directory of ModelSEED files.
+
+    compartment_ids : Dict[int, str]
+        Class attribute linking the integer and string codes ModelSEED uses for cellular
+        compartments recording the locations of compounds in reactions. ModelSEED codes the
+        cytosolic compartment as 0 and 'c' and the extracellular compartment as 1 and 'e'.
+
     sha : str
         The git commit SHA used to track the version of the downloaded ModelSEED database.
 
