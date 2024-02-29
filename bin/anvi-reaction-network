@@ -24,7 +24,7 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    constructor = Constructor(ko_dir=args.ko_dir, modelseed_dir=args.modelseed_dir)
+    constructor = Constructor(kegg_dir=args.kegg_dir, modelseed_dir=args.modelseed_dir)
     if args.contigs_db:
         constructor.make_network(
             contigs_db=args.contigs_db,
@@ -83,8 +83,8 @@ def get_args() -> Namespace:
         "DATABASE", "KEGG and ModelSEED reference database information"
     )
     groupC.add_argument(
-        '--ko-dir', type=str, metavar='PATH', help=
-        "Path to KEGG KO database directory. If this option is not used, the program expects a "
+        '--kegg-dir', type=str, metavar='PATH', help=
+        "Path to KEGG database directory. If this option is not used, the program expects a "
         "database set up in the default location used by 'anvi-setup-kegg-data'."
     )
     groupC.add_argument(
