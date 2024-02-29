@@ -349,9 +349,6 @@ function showTaxonomyTableDialog(title, content)
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
 }
 
 
@@ -386,10 +383,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 
@@ -428,10 +422,7 @@ function showDraggableDialog(title, content, updateOnly)
     $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 //--------------------------------------------------------------------------------------------------
