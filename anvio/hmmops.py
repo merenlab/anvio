@@ -307,9 +307,27 @@ class SequencesForHMMHits:
                             models_to_remove[s].update(m_set)
                         else:
                             models_to_remove[s] = m_set
+            
+            # inform the user what is going on
+            num_models_affected = 0
+            num_model_strs = []
+            for s, m_set in models_to_remove.items():
+                num = len(m_set)
+                num_models_affected += num
+                num_model_strs.append(f"{num} from {s}")
+            self.run.warning(f"Hello there from the SequencesForHMMHits.get_gene_hit_counts_per_hmm_source() function. "
+                             f"Just so you know, someone asked for SCG HMMs that belong to multiple sources *not* to be "
+                             f"counted, and this will result in {num_models_affected} models "
+                             f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
+                             f"run this program with the `--debug` flag if you want to see a list of the models that we "
+                             f"will ignore from each HMM source.")
+        
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
+
+            if anvio.DEBUG and models_to_remove[source]:
+                self.run.info_single(f"Models to be ignored for source {source}: {', '.join(models_to_remove[source])}")
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
         for entry in hmm_hits:
