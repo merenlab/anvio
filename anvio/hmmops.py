@@ -330,12 +330,17 @@ class SequencesForHMMHits:
                 self.run.info_single(f"Models to be ignored for source {source}: {', '.join(models_to_remove[source])}")
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
+                name = gene_name.strip()
+                # avoid counting the problematic models
+                if (not dont_include_models_with_multiple_domain_hits) or (name not in models_to_remove[source]):
+                    gene_hit_counts[source][name] = 0
+        
         for entry in hmm_hits:
             source    = entry['source']
-            gene_name = entry['gene_name']
+            gene_name = entry['gene_name'].strip()
 
-            if source in sources:
-                gene_hit_counts[source][gene_name.strip()] += 1
+            if source in sources and (not dont_include_models_with_multiple_domain_hits or gene_name not in models_to_remove[source]):
+                gene_hit_counts[source][gene_name] += 1
 
         return gene_hit_counts
 
