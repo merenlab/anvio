@@ -279,14 +279,13 @@ class SequencesForHMMHits:
                                   "in its databases, but some of the sources you requested do not seem to be found anywhere :/ "
                                   "Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
+        hmm_hits = list(self.hmm_hits.values())
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
-                gene_hit_counts[source][gene_name.strip()] = 0
-
-        for entry in list(self.hmm_hits.values()):
+        for entry in hmm_hits:
             source    = entry['source']
             gene_name = entry['gene_name']
 
