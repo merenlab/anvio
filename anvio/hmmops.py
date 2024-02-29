@@ -251,7 +251,21 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_gene_hit_counts_per_hmm_source(self, sources=None):
+    def get_gene_hit_counts_per_hmm_source(self, sources=None, dont_include_models_with_multiple_domain_hits=False):
+        """This function returns a 2-level dictionary mapping genes to their number of HMM hits.
+        
+        The outer dictionary is keyed by HMM source and the inner dictionary is keyed by gene name.
+
+        PARAMETERS
+        ==========
+        sources : list of str
+            A list of HMM sources to count hits for. If not provided, will use all possible sources in the HMM hits table
+        dont_include_models_with_multiple_domain_hits : Boolean
+            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is 
+            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple 
+            single-copy core gene domains to avoid double-counting. See https://github.com/merenlab/anvio/issues/2231 for details
+        """
+
         if not sources:
             sources = [source for source in self.hmm_hits_info]
         else:
@@ -288,7 +302,7 @@ class SequencesForHMMHits:
         if not len(SCG_sources):
             return {}
 
-        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources)
+        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources, dont_include_models_with_multiple_domain_hits=True)
 
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:
