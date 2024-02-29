@@ -298,6 +298,15 @@ class SequencesForHMMHits:
                         observed_gcids_to_sources[gcid] = {'hit_indices': [index],
                                                            'hmm_models': {source: set([model])}}
 
+            # then we identify the models with multi-domain hits
+            for g, info in observed_gcids_to_sources.items():
+                s_list = info['hmm_models'].keys()
+                if len(s_list) > 1:
+                    for s, m_set in info['hmm_models'].items():
+                        if s in models_to_remove:
+                            models_to_remove[s].update(m_set)
+                        else:
+                            models_to_remove[s] = m_set
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
