@@ -989,12 +989,6 @@ function main () {
 
     })
 
-    // Prevent the default action when a click event occurs on an element with the ID 'inner-sidebar'.
-    // If the element with the ID 'inner-sidebar' is clicked, this function will be executed.
-    // The default action of the click event (typically following the link) is prevented using event.preventDefault().
-    $('#inner-sidebar').click(function(event) { 
-      event.preventDefault();
-    });
 
     // This title must update with Generic data from JSON
     $('#title-panel-first-line').text('TITLE');
