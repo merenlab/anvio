@@ -315,7 +315,8 @@ class SequencesForHMMHits:
                 num = len(m_set)
                 num_models_affected += num
                 num_model_strs.append(f"{num} from {s}")
-            self.run.warning(f"Hello there from the SequencesForHMMHits.get_gene_hit_counts_per_hmm_source() function. "
+            if num_models_affected > 0:
+                self.run.warning(f"Hello there from the SequencesForHMMHits.get_gene_hit_counts_per_hmm_source() function. "
                              f"Just so you know, someone asked for SCG HMMs that belong to multiple sources *not* to be "
                              f"counted, and this will result in {num_models_affected} models "
                              f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
