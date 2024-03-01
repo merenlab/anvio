@@ -1480,7 +1480,7 @@ class KOfamDownload(KeggSetup):
         
         This includes: 
         1. identification and download of the KEGG GENES sequences in this family
-        2. `hmmsearch` of the KO model against these sequences to get bit scores
+        2. `hmmscan` of the KO model against these sequences to get bit scores
         3. computing the minimum bit score to use as a threshold for annotating this family
 
         Parameters
@@ -1489,7 +1489,7 @@ class KOfamDownload(KeggSetup):
             KEGG identifier for the orphan KO
         Returns
         =======
-        bitscore : float
+        threshold : float
             estimated bit score threshold for the KO's HMM
         """
 
@@ -1529,6 +1529,15 @@ class KOfamDownload(KeggSetup):
         
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE')
         search_results_dict = parser.get_search_results()
+        
+        # take the minimum of hits from current KO model as bit score threshold
+        all_relevant_bitscores = []
+        for hit, hit_info_dict in search_results_dict.items():
+            if hit_info_dict['gene_name'] == ko:
+                all_relevant_bitscores.append(hit_info_dict['bit_score'])
+        
+        threshold = min(all_relevant_bitscores)
+        return threshold
             
     
     def process_all_orphan_kos(self):
