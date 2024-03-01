@@ -1389,7 +1389,7 @@ class KOfamDownload(KeggSetup):
                              % (len(no_data_file_list), self.orphan_data_dir))
 
     
-    def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path)
+    def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path):
         """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate 
         `hmmpress` command and deletes the log file afterwards if it was successful.
         """
