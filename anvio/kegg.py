@@ -1521,14 +1521,14 @@ class KOfamDownload(KeggSetup):
 
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
         target_file_dict = {'AA:GENE': genes_fasta}
-        hmmer = HMMer(target_file_dict)
+        hmmer = HMMer(target_file_dict, progress=progress_quiet, run=run_quiet)
         hmm_hits_file = hmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(genes_acc_list), self.orphan_ko_hmm_file_path, None, None)
         
         if not hmm_hits_file:
             raise ConfigError(f"No HMM hits were found for the orphan KO model {ko}. This is seriously concerning, because we were running it against "
                               f"gene sequences that were used to generate the model.")
         
-        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE')
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', run=run_quiet)
         search_results_dict = parser.get_search_results()
         
         # take the minimum of hits from current KO model as bit score threshold
