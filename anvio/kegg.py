@@ -1386,6 +1386,22 @@ class KOfamDownload(KeggSetup):
                              "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
                              % (len(no_data_file_list), self.orphan_data_dir))
 
+    
+    def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path)
+        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate 
+        `hmmpress` command and deletes the log file afterwards if it was successful.
+        """
+
+        cmd_line = ['hmmpress', hmm_file_path]
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
+
 
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
@@ -1406,17 +1422,9 @@ class KOfamDownload(KeggSetup):
         if not anvio.DEBUG:
             shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
 
-        self.progress.update('Running hmmpress...')
-        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
-        ret_val = utils.run_command(cmd_line, log_file_path)
+        self.progress.update('Running hmmpress on KOs...')
+        self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
-        if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
-                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
-        else:
-            # getting rid of the log file because hmmpress was successful
-            os.remove(log_file_path)
 
         self.progress.end()
 
