@@ -1164,6 +1164,44 @@ class KeggSetup(KeggContext):
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
 
+    
+    def extract_data_field_from_kegg_file(self, file_path, target_field):
+        """This function parses a KEGG file and returns the data associated with the given target field.
+        
+        It can work on flat-text files obtained via the REST API (ie, self.kegg_rest_api_get).
+        """
+
+        data_to_return = []
+
+        f = open(file_path, 'r')
+        current_data_name = None
+        
+        for line in f.readlines():
+            line = line.strip('\n')
+
+            fields = re.split('\s{2,}', line)
+            data_vals = None
+            data_def = None
+            line_entries = []
+
+            # when data name unknown, parse from first field
+            if not current_data_name:
+                if line[0] == ' ':
+                    raise ConfigError(f"Uh oh. While trying to parse the KEGG file at {file_path}, we couldn't "
+                    "find the data field associated with the line '{line}'.")
+
+                current_data_name = fields[0]
+            # note that if data name is known, first field still exists but is actually the empty string ''
+            if len(fields) > 1:
+                data_vals = fields[1:]
+
+            if (current_data_name == target_field) and (data_vals is not None):
+                data_to_return.append(data_vals)
+
+        f.close()
+
+        return data_to_return
+
 
     def create_user_modules_dict(self):
         """This function establishes the self.module_dict parameter for user modules.
