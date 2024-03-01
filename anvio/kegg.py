@@ -1501,7 +1501,7 @@ class KOfamDownload(KeggSetup):
         genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
 
     
-    def process_all_orphan_kos(self)
+    def process_all_orphan_kos(self):
         """This driver function calls process_orphan_ko() on each orphan KO and creates a file of bit score thresholds for them."""
 
         num_orphans = len(self.ko_no_threshold_list)
