@@ -1245,10 +1245,12 @@ class KOfamDownload(KeggSetup):
     """
 
     def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.args = args
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
+        self.include_orphan_kos = True if A('include_orphan_kos') else False
 
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
@@ -1425,6 +1427,9 @@ class KOfamDownload(KeggSetup):
         self.progress.update('Running hmmpress on KOs...')
         self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
+        if self.include_orphan_kos:
+            self.progress.update('Running hmmpress on orphan KOs (without bit score thresholds)...')
+            self.exec_hmmpress_command_on_ko_file(self.orphan_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
 
         self.progress.end()
 
