@@ -1518,7 +1518,10 @@ class KOfamDownload(KeggSetup):
 
         self.orphan_ko_file_dir = os.path.join(self.orphan_data_dir, "00_ORPHAN_KO_FILES")
         self.orphan_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_ORPHAN_GENES_FILES")
+        self.orphan_ko_seqs_dir = os.path.join(self.orphan_data_dir, "02_ORPHAN_GENES_FASTA")
         filesnpaths.gen_output_directory(self.orphan_ko_file_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.orphan_ko_genes_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.orphan_ko_seqs_dir, delete_if_exists=True)
 
         cur_num = 0
         for k in self.ko_no_threshold_list:
