@@ -1502,7 +1502,7 @@ class KOfamDownload(KeggSetup):
 
         # next we use that file to identify and download the KEGG GENES for this family
         genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
-        for acc in genes_acc_list:
+        for i, acc in enumerate(genes_acc_list):
             acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
             org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
             gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
@@ -1514,7 +1514,7 @@ class KOfamDownload(KeggSetup):
             # then we search through that file to obtain the sequence and save the sequence to a fasta file
             aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
             with open(genes_fasta, 'a') as fasta:
-                fasta.write(f">{kegg_genes_code}\n")
+                fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
                 for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
                     fasta.write(f"{seq}\n")
             
