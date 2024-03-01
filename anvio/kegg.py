@@ -1166,7 +1166,7 @@ class KeggSetup(KeggContext):
 
     
     def extract_data_field_from_kegg_file(self, file_path, target_field):
-        """This function parses a KEGG file and returns the data associated with the given target field.
+        """This function parses a KEGG file and returns the data value associated with the given target field.
         
         It can work on flat-text files obtained via the REST API (ie, self.kegg_rest_api_get).
         """
@@ -1185,15 +1185,15 @@ class KeggSetup(KeggContext):
             line_entries = []
 
             # when data name unknown, parse from first field
-            if not current_data_name:
-                if line[0] == ' ':
-                    raise ConfigError(f"Uh oh. While trying to parse the KEGG file at {file_path}, we couldn't "
-                    "find the data field associated with the line '{line}'.")
-
+            if line[0] != ' ':
                 current_data_name = fields[0]
+            if line[0] == ' ' and not current_data_name:
+                raise ConfigError(f"Uh oh. While trying to parse the KEGG file at {file_path}, we couldn't "
+                "find the data field associated with the line '{line}'.")
+
             # note that if data name is known, first field still exists but is actually the empty string ''
             if len(fields) > 1:
-                data_vals = fields[1:]
+                data_vals = fields[1]
 
             if (current_data_name == target_field) and (data_vals is not None):
                 data_to_return.append(data_vals)
