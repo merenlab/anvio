@@ -312,6 +312,7 @@ class KeggContext(object):
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.orphan_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # concatenated hmms for orphan KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
+        self.orphan_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_orphan_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
@@ -1553,14 +1554,21 @@ class KOfamDownload(KeggSetup):
         filesnpaths.gen_output_directory(self.orphan_ko_genes_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.orphan_ko_seqs_dir, delete_if_exists=True)
 
+        threshold_dict = {}
         cur_num = 0
         for k in self.ko_no_threshold_list:
             self.progress.update(f"Working on {k} [{cur_num} of {num_orphans}]")
             self.progress.increment(increment_to=cur_num)
-            bitscore_for_k = self.process_orphan_ko(k)
+            threshold_dict[k] = self.process_orphan_ko(k)
             cur_num += 1
 
         self.progress.end()
+
+        # write the thresholds to a file
+        with open(self.orphan_ko_thresholds_file, 'w') as out:
+            out.write("knum\tthreshold\tscore_type")
+            for k, t in threshold_dict.items():
+                out.write(f"{k}\t{t}\tfull")
 
 
     def setup_kofams(self):
