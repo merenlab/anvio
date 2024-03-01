@@ -1475,6 +1475,52 @@ class KOfamDownload(KeggSetup):
         self.progress.end()
 
 
+    def process_orphan_ko(self, ko):
+        """This function handles the processing of a single orphan KO.
+        
+        This includes: 
+        1. identification and download of the KEGG GENES sequences in this family
+        2. `hmmsearch` of the KO model against these sequences to get bit scores
+        3. computing the minimum bit score to use as a threshold for annotating this family
+
+        Parameters
+        ==========
+        ko : str
+            KEGG identifier for the orphan KO
+        Returns
+        =======
+        bitscore : float
+            estimated bit score threshold for the KO's HMM
+        """
+
+        # first we download its KO file
+        ko_file_path = os.path.join(self.orphan_ko_file_dir, ko)
+        utils.download_file(self.kegg_rest_api_get + '/' + ko, ko_file_path)
+
+        # next we use that file to identify the KEGG GENES for this family
+        genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
+
+    
+    def process_all_orphan_kos(self)
+        """This driver function calls process_orphan_ko() on each orphan KO and creates a file of bit score thresholds for them."""
+
+        num_orphans = len(self.ko_no_threshold_list)
+        self.progress.new('Processing Orphan KOs', progress_total_items=num_orphans)
+
+        self.orphan_ko_file_dir = os.path.join(self.orphan_data_dir, "00_ORPHAN_KO_FILES")
+        self.orphan_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_ORPHAN_GENES_FILES")
+        filesnpaths.gen_output_directory(self.orphan_ko_file_dir, delete_if_exists=True)
+
+        cur_num = 0
+        for k in self.ko_no_threshold_list:
+            self.progress.update(f"Working on {k} [{cur_num} of {num_orphans}]")
+            self.progress.increment(increment_to=cur_num)
+            bitscore_for_k = self.process_orphan_ko(k)
+            cur_num += 1
+
+        self.progress.end()
+
+
     def setup_kofams(self):
         """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
 
@@ -1485,6 +1531,9 @@ class KOfamDownload(KeggSetup):
             self.decompress_profiles()
             self.setup_ko_dict() # get ko dict attribute
             self.run_hmmpress()
+
+            if self.include_orphan_kos:
+                self.process_all_orphan_kos()
 
 
 class ModulesDownload(KeggSetup):
@@ -1522,7 +1571,6 @@ class ModulesDownload(KeggSetup):
         # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
-        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
         # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
