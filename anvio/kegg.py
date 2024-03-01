@@ -1497,6 +1497,9 @@ class KOfamDownload(KeggSetup):
         ko_file_path = os.path.join(self.orphan_ko_file_dir, ko)
         utils.download_file(self.kegg_rest_api_get + '/' + ko, ko_file_path)
 
+        # the fasta file to hold the amino acid sequences for associated genes
+        genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
+
         # next we use that file to identify and download the KEGG GENES for this family
         genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
         for acc in genes_acc_list:
@@ -1508,7 +1511,13 @@ class KOfamDownload(KeggSetup):
             gene_file_path = os.path.join(self.orphan_ko_genes_dir, kegg_genes_code)
             utils.download_file(self.kegg_rest_api_get + '/' + kegg_genes_code, gene_file_path)
 
-
+            # then we search through that file to obtain the sequence and save the sequence to a fasta file
+            aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
+            with open(genes_fasta, 'a') as fasta:
+                fasta.write(f">{kegg_genes_code}\n")
+                for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
+                    fasta.write(f"{seq}\n")
+            
     
     def process_all_orphan_kos(self):
         """This driver function calls process_orphan_ko() on each orphan KO and creates a file of bit score thresholds for them."""
