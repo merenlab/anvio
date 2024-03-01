@@ -1517,6 +1517,18 @@ class KOfamDownload(KeggSetup):
                 fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
                 for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
                     fasta.write(f"{seq}\n")
+
+        # we run hmmscan of the KO against its associated GENES sequences and process the hits
+        target_file_dict = {'AA:GENE': genes_fasta}
+        hmmer = HMMer(target_file_dict)
+        hmm_hits_file = hmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(genes_acc_list), self.orphan_ko_hmm_file_path, None, None)
+        
+        if not hmm_hits_file:
+            raise ConfigError(f"No HMM hits were found for the orphan KO model {ko}. This is seriously concerning, because we were running it against "
+                              f"gene sequences that were used to generate the model.")
+        
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE')
+        search_results_dict = parser.get_search_results()
             
     
     def process_all_orphan_kos(self):
