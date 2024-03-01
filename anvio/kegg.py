@@ -310,7 +310,7 @@ class KeggContext(object):
 
         # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.orphan_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm") # concatenated hmms for orphan KOs
+        self.orphan_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # concatenated hmms for orphan KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
@@ -1346,10 +1346,10 @@ class KOfamDownload(KeggSetup):
             raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
                               "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
 
-        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
+        no_kofam_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_no_kofams.hmm")
         no_kofam_file_list = []
         no_threshold_file_list = []
-        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
+        no_data_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_data.hmm")
         no_data_file_list = []
 
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
