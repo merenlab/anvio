@@ -327,7 +327,7 @@ class SequencesForHMMHits:
         for source in sources:
             gene_hit_counts[source] = {}
 
-            if anvio.DEBUG and models_to_remove[source]:
+            if anvio.DEBUG and source in models_to_remove:
                 self.run.info_single(f"Models to be ignored for source {source}: {', '.join(models_to_remove[source])}")
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
