@@ -558,6 +558,9 @@ class KeggSetup(KeggContext):
         self.expect_modeling_files_in_archive = True if 'no_modeling_data' in self.snapshot_dict[self.target_snapshot].keys() and \
                                                     (not self.snapshot_dict[self.target_snapshot]['no_modeling_data']) else False
 
+        # the KEGG API URL, in case its needed downstream
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
                              f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
