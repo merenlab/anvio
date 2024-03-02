@@ -10463,7 +10463,11 @@ class Tester:
         category_sample: Set[str] = samples['category']
         assert not category_sample.difference(set(remaining_category_ids))
 
-def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
+def get_chemical_equation(
+    reaction: ModelSEEDReaction,
+    use_compound_names: Iterable[str] = None,
+    ignore_compartments: bool = False
+) -> str:
     """
     Get a decent-looking chemical equation.
 
@@ -10471,6 +10475,15 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     ==========
     reaction : ModelSEEDReaction
         The representation of the reaction with data sourced from ModelSEED Biochemistry.
+
+    use_compound_names : Iterable[str], None
+        Rather than showing ModelSEED compound IDs in the equation, show ModelSEED compound names --
+        except for compounds lacking a name, in which case ID is shown instead. Provide the compound
+        names to be used in lieu of IDs, in the same order as the compound IDs in the reaction, and
+        with entries of None for nameless compounds.
+
+    ignore_compartments : bool, False
+        If True, do not show metabolite compartments in the equation.
 
     Returns
     =======
@@ -10482,11 +10495,21 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
     """
     equation = ""
     leftside = True
-    for coefficient, compound_id, compartment in zip(
-        reaction.coefficients, reaction.compound_ids, reaction.compartments
+    if use_compound_names:
+        compounds: List[str] = []
+        for compound_name, compound_id in zip(use_compound_names, reaction.compound_ids):
+            if compound_name:
+                compounds.append(compound_name)
+            else:
+                compounds.append(compound_id)
+    else:
+        compounds = reaction.compound_ids
+    for coefficient, compound, compartment in zip(
+        reaction.coefficients, compounds, reaction.compartments
     ):
         if leftside and coefficient > 0:
             leftside = False
+            equation = equation.rstrip('+ ') + ' '
             if reaction.reversibility:
                 equation += "<-> "
             else:
@@ -10496,7 +10519,10 @@ def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
             coeff = -coefficient
         else:
             coeff = coefficient
-        equation += f"{coeff} {compound_id} [{compartment}] + "
+        if ignore_compartments:
+            equation += f"{coeff} {compound} + "
+        else:
+            equation += f"{coeff} {compound} [{compartment}] + "
 
     return equation.rstrip('+ ')
 
