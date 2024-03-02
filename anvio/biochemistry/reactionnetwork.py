@@ -9829,6 +9829,18 @@ class Tester:
             assert not metabolite_sample.difference(set(subnetwork.metabolites))
             assert not reaction_sample.difference(set(subnetwork.reactions))
             assert not ko_sample.difference(set(subnetwork.kos))
+            ko_module_sample: Set[str] = samples['ko_module']
+            assert not ko_module_sample.difference(set(subnetwork.modules))
+            ko_pathway_sample: Set[str] = samples['ko_pathway']
+            assert not ko_pathway_sample.difference(set(subnetwork.pathways))
+            ko_hierarchy_sample: Set[str] = samples['ko_hierarchy']
+            assert not ko_hierarchy_sample.difference(set(subnetwork.hierarchies))
+            ko_category_sample: Set[str] = samples['ko_category']
+            subnetwork_category_ids: List[str] = []
+            for hierarchy_categorizations in subnetwork.categories.values():
+                for categories in hierarchy_categorizations.values():
+                    subnetwork_category_ids.append(categories[-1].id)
+            assert not ko_category_sample.difference(set(subnetwork_category_ids))
             assert not module_sample.difference(set(subnetwork.modules))
             assert not pathway_sample.difference(set(subnetwork.pathways))
             assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
@@ -10089,6 +10101,18 @@ class Tester:
             assert not metabolite_sample.difference(set(subnetwork.metabolites))
             assert not reaction_sample.difference(set(subnetwork.reactions))
             assert not ko_sample.difference(set(subnetwork.kos))
+            ko_module_sample: Set[str] = samples['ko_module']
+            assert not ko_module_sample.difference(set(subnetwork.modules))
+            ko_pathway_sample: Set[str] = samples['ko_pathway']
+            assert not ko_pathway_sample.difference(set(subnetwork.pathways))
+            ko_hierarchy_sample: Set[str] = samples['ko_hierarchy']
+            assert not ko_hierarchy_sample.difference(set(subnetwork.hierarchies))
+            ko_category_sample: Set[str] = samples['ko_category']
+            subnetwork_category_ids: List[str] = []
+            for hierarchy_categorizations in subnetwork.categories.values():
+                for categories in hierarchy_categorizations.values():
+                    subnetwork_category_ids.append(categories[-1].id)
+            assert not ko_category_sample.difference(set(subnetwork_category_ids))
             assert not module_sample.difference(set(subnetwork.modules))
             assert not pathway_sample.difference(set(subnetwork.pathways))
             assert not hierarchy_sample.difference(set(subnetwork.hierarchies))
@@ -10226,6 +10250,25 @@ class Tester:
         samples['ko'] = set(
             random.sample(list(network.kos), math.ceil(proportion * len(network.kos)))
         )
+        ko_module_ids = []
+        ko_pathway_ids = []
+        ko_hierarchies = []
+        ko_categorizations = []
+        for ko_id in samples['ko']:
+            ko = network.kos[ko_id]
+            ko_module_ids += ko.module_ids
+            ko_pathway_ids += ko.pathway_ids
+            for hierarchy_id, categorizations in ko.hierarchies.items():
+                ko_hierarchies.append(hierarchy_id)
+                for categorization in categorizations:
+                    for depth in range(1, len(categorization) + 1):
+                        ko_categorizations.append(
+                            f"{hierarchy_id}: {' >>> '.join(categorization[:depth])}"
+                        )
+        samples['ko_module'] = set(ko_module_ids)
+        samples['ko_pathway'] = set(ko_pathway_ids)
+        samples['ko_hierarchy'] = set(ko_hierarchies)
+        samples['ko_category'] = set(ko_categorizations)
 
         random.seed(seed)
         samples['module'] = set(
@@ -10386,8 +10429,19 @@ class Tester:
         ko_sample: Set[str] = samples['ko']
         subnetwork = network.subset_network(kos_to_subset=ko_sample)
         assert not ko_sample.difference(set(subnetwork.kos))
+        ko_module_sample: Set[str] = samples['ko_module']
+        assert not ko_module_sample.difference(set(subnetwork.modules))
+        ko_pathway_sample: Set[str] = samples['ko_pathway']
+        assert not ko_pathway_sample.difference(set(subnetwork.pathways))
+        ko_hierarchy_sample: Set[str] = samples['ko_hierarchy']
+        assert not ko_hierarchy_sample.difference(set(subnetwork.hierarchies))
+        ko_category_sample: Set[str] = samples['ko_category']
+        subnetwork_category_ids: List[str] = []
+        for hierarchy_categorizations in subnetwork.categories.values():
+            for categories in hierarchy_categorizations.values():
+                subnetwork_category_ids.append(categories[-1].id)
+        assert not ko_category_sample.difference(set(subnetwork_category_ids))
 
-        copied_network = deepcopy(network)
         module_sample: Set[str] = samples['module']
         subnetwork = network.subset_network(modules_to_subset=module_sample)
         assert not module_sample.difference(set(subnetwork.modules))
