@@ -1537,6 +1537,69 @@ class KOfamDownload(KeggSetup):
         
         return undownloaded
 
+    
+    def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True)
+        """Multi-threaded download of KEGG GENES files.
+        
+        Parameters
+        ==========
+        genes_to_download: list of str
+            List of KEGG GENES accessions to download. Example format: "ctc:CTC_p60" (lowercase organism code, colon, gene accession)
+        destination_dir: file path
+            Where to download the files to
+        dont_raise : Boolean
+            If True (default), this function won't raise an error if some files failed to download.
+        Returns
+        =======
+        undownloaded : List
+            List of files that failed to download (will be empty if all were successful).
+        """
+
+        num_genes = len(genes_to_download)
+        self.progress.new('Downloading KEGG GENES files', progress_total_items=num_genes)
+
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for g in genes_to_download:
+            genes_file_path = os.path.join(destination_dir, g)
+            url = self.kegg_rest_api_get + '/' + g
+            input_queue.put((url, genes_file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < num_genes:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {num_genes} KEGG GENES files downloaded")
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+
+        self.progress.end()
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            if dont_raise:
+                self.run.warning(f"Files for the following KEGG GENES failed to download despite multiple attempts: "
+                                f"{', '.join(undownloaded)}. If this is unacceptable to you, you can try to "
+                                f"re-run this program to see if things will work on the next try.")
+            else:
+                raise ConfigError(f"Files for the following KEGG GENES failed to download despite multiple attempts: "
+                                  f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
+                                  f"told to quit should this happen, well, here we are. If skipping these failed KOs "
+                                  f"is okay, you could always run this function with `dont_raise=True`.")
+        
+        return undownloaded
+
+
     def process_orphan_ko(self, ko):
         """This function handles the processing of a single orphan KO.
         
