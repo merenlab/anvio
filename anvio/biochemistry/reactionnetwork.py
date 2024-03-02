@@ -1797,64 +1797,7 @@ class ReactionNetwork:
 
             subnetwork.kos[ko_id] = deepcopy(ko)
 
-            # Copy modules annotating the KO to the subsetted network.
-            for module_id in ko.module_ids:
-                if module_id in subnetwork.modules:
-                    # The module was already added to the subnetwork via another KO.
-                    continue
-
-                module = self.modules[module_id]
-                subnetwork.modules[module_id] = deepcopy(module)
-
-            # Copy pathways annotating the KO to the subsetted network.
-            for pathway_id in ko.pathway_ids:
-                if pathway_id in subnetwork.pathways:
-                    # The pathway was already added to the subnetwork via another KO.
-                    continue
-
-                pathway = self.pathways[pathway_id]
-                subnetwork.pathways[pathway_id] = deepcopy(pathway)
-
-            # Copy hierarchies annotating the KO to the subsetted network.
-            for hierarchy_id in ko.hierarchies:
-                if hierarchy_id in subnetwork.hierarchies:
-                    # The hierarchy and all categories were already added to the subnetwork via
-                    # another KO.
-                    continue
-
-                hierarchy = self.hierarchies[hierarchy_id]
-                subnetwork.hierarchies[hierarchy_id] = deepcopy(hierarchy)
-                subnetwork_hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
-                subnetwork.categories[hierarchy_id] = subnetwork_hierarchy_categorizations
-
-                # Copy all categories in the hierarchy to the subsetted network.
-                hierarchy_categorizations = self.categories[hierarchy_id]
-                for categorization in hierarchy.categorizations:
-                    if categorization in subnetwork_hierarchy_categorizations:
-                        # The category must have been a supercategory of another category already
-                        # copied into the subnetwork along with all of its other supercategories.
-                        continue
-                    categories = hierarchy_categorizations[categorization]
-                    subnetwork_categories = []
-                    for depth, category in enumerate(categories, 1):
-                        focus_categorization = categorization[:depth]
-                        try:
-                            # The supercategory must have been a supercategory of another category
-                            # already copied into the subnetwork.
-                            subnetwork_category = subnetwork_hierarchy_categorizations[
-                                focus_categorization
-                            ]
-                            is_category_added = True
-                        except KeyError:
-                            is_category_added = False
-                        if not is_category_added:
-                            subnetwork_category = deepcopy(category)
-                        subnetwork_categories.append(subnetwork_category)
-                        if is_category_added:
-                            continue
-                        subnetwork_hierarchy_categorizations[focus_categorization] = tuple(
-                            subnetwork_categories
-                        )
+            self._subset_ko_classifications(subnetwork, ko)
 
         if isinstance(self, GenomicNetwork):
             if subset_referencing_genes:
@@ -1866,6 +1809,147 @@ class ReactionNetwork:
                 self._subset_gene_clusters_via_kos(subnetwork)
 
         return subnetwork
+
+    def _subset_ko_classifications(self, subnetwork: ReactionNetwork, ko: KO) -> None:
+        """
+        Add KEGG modules, pathways, and BRITE hierarchies/categories that contain the subsetted KO
+        to the subsetted network.
+
+        Subsetted module, pathway, hierarchy, and category objects only reference subsetted KOs and
+        not other KOs also classified in them which are not subsetted.
+
+        Parameters
+        ==========
+        subnetwork : ReactionNetwork
+            Subsetted reaction network under construction.
+
+        ko : KO
+            KO copied from the source network to the subsetted network.
+        """
+        ko_id = ko.id
+
+        for module_id in ko.module_ids:
+            try:
+                # The module was already added to the subnetwork via another KO.
+                subnetwork_module = subnetwork.modules[module_id]
+                is_module_added = True
+            except KeyError:
+                is_module_added = False
+            module = self.modules[module_id]
+
+            if is_module_added:
+                subnetwork_module.ko_ids.append(ko_id)
+                for pathway_id in module.pathway_ids:
+                    if pathway_id in subnetwork_module.pathway_ids:
+                        # The pathway was already linked to the module via another KO.
+                        continue
+                    # Only link pathways to the module that also contain the KO.
+                    if pathway_id in ko.pathway_ids:
+                        subnetwork_module.pathway_ids.append(pathway_id)
+                continue
+
+            subnetwork_module = KEGGModule(
+                id=module_id,
+                name=module.name,
+                ko_ids=[ko_id]
+            )
+            # Only link pathways to the module that also contain the KO.
+            for pathway_id in module.pathway_ids:
+                if pathway_id in ko.pathway_ids:
+                    subnetwork_module.pathway_ids.append(pathway_id)
+            subnetwork.modules[module_id] = subnetwork_module
+
+        for pathway_id in ko.pathway_ids:
+            try:
+                # The pathway was already added to the subnetwork via another KO.
+                subnetwork_pathway = subnetwork.pathways[pathway_id]
+                is_pathway_added = True
+            except KeyError:
+                is_pathway_added = False
+
+            pathway = self.pathways[pathway_id]
+            if is_pathway_added:
+                subnetwork_pathway.ko_ids.append(ko_id)
+                for module_id in pathway.module_ids:
+                    if module_id in subnetwork_pathway.module_ids:
+                        # The module was already linked to the pathway via another KO.
+                        continue
+                    # Only link modules to the pathway that also contain the KO.
+                    if module_id in ko.module_ids:
+                        subnetwork_pathway.module_ids.append(module_id)
+                continue
+
+            subnetwork_pathway = KEGGPathway(
+                id=pathway_id,
+                name=pathway.name,
+                categorization=pathway.categorization,
+                ko_ids = [ko_id]
+            )
+            # Only link modules to the pathway that also contain the KO.
+            for module_id in pathway.module_ids:
+                if module_id in ko.module_ids:
+                    subnetwork_pathway.module_ids.append(module_id)
+            subnetwork.pathways[pathway_id] = subnetwork_pathway
+
+        for hierarchy_id, categorizations in ko.hierarchies.items():
+            try:
+                # The hierarchy was already added to the subnetwork via another KO.
+                subnetwork_hierarchy = subnetwork.hierarchies[hierarchy_id]
+                is_hierarchy_added = True
+            except KeyError:
+                is_hierarchy_added = False
+
+            if is_hierarchy_added:
+                subnetwork_hierarchy_categorizations = subnetwork.categories[hierarchy_id]
+            else:
+                hierarchy = self.hierarchies[hierarchy_id]
+                subnetwork_hierarchy = BRITEHierarchy(
+                    id=hierarchy_id,
+                    name=hierarchy.name,
+                    ko_ids=[ko_id]
+                )
+                subnetwork.hierarchies[hierarchy_id] = subnetwork_hierarchy
+                subnetwork_hierarchy_categorizations: Dict[Tuple[str], Tuple[BRITECategory]] = {}
+                subnetwork.categories[hierarchy_id] = subnetwork_hierarchy_categorizations
+
+            subnetwork_hierarchy.ko_ids.append(ko_id)
+
+            network_hierarchy_categorizations = self.categories[hierarchy_id]
+            for categorization in categorizations:
+                if categorization in subnetwork_hierarchy.categorizations:
+                    # The category and all supercategories were already added to the subsetted
+                    # network.
+                    continue
+                categories = network_hierarchy_categorizations[categorization]
+                subnetwork_categories: List[BRITECategory] = []
+                for depth, category in enumerate(categories, 1):
+                    focus_categorization = categorization[:depth]
+                    try:
+                        # The supercategory was already added to the subsetted network.
+                        subnetwork_category = subnetwork_hierarchy_categorizations[
+                            focus_categorization
+                        ][-1]
+                        is_category_added = True
+                    except KeyError:
+                        is_category_added = False
+
+                    if is_category_added:
+                        subnetwork_category.ko_ids.append(ko_id)
+                        subnetwork_categories.append(subnetwork_category)
+                        continue
+
+                    subnetwork_category = BRITECategory(
+                        id=category.id,
+                        name=category.name,
+                        hierarchy_id=hierarchy_id,
+                        pathway_id=category.pathway_id,
+                        ko_ids=[ko_id]
+                    )
+                    subnetwork_categories.append(subnetwork_category)
+                    # Add the category to the subnetwork.
+                    subnetwork_hierarchy_categorizations[focus_categorization] = tuple(
+                        subnetwork_categories
+                    )
 
     def _subset_network_by_reactions(
         self,
@@ -2041,6 +2125,9 @@ class ReactionNetwork:
                     if reaction_id in subsetted_reaction_ids:
                         continue
                     self._subset_reaction(subnetwork, self.reactions[reaction_id])
+
+                self._subset_ko_classifications(subnetwork, ko)
+
                 continue
 
             # Subsetting is exclusive, not inclusive. Add the KO only with references to subsetted
@@ -2075,6 +2162,8 @@ class ReactionNetwork:
                         subnetwork_ko.ec_number_aliases[ec_number] = [reaction_id]
 
             subnetwork.kos[ko_id] = subnetwork_ko
+
+            self._subset_ko_classifications(subnetwork, ko)
 
         if isinstance(self, GenomicNetwork):
             # Copy genes that are annotated with the added KOs to the subsetted network.
@@ -3583,6 +3672,9 @@ class GenomicNetwork(ReactionNetwork):
                             continue
                         reaction = self.reactions[reaction_id]
                         self._subset_reaction(subnetwork, reaction)
+
+                    self._subset_ko_classifications(subnetwork, ko)
+
                 continue
 
             # Subsetting is exclusive, not inclusive. Add the gene only with references to subsetted
