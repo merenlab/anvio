@@ -1678,10 +1678,21 @@ class KOfamDownload(KeggSetup):
             
     
     def process_all_orphan_kos(self):
-        """This driver function calls process_orphan_ko() on each orphan KO and creates a file of bit score thresholds for them."""
+        """This driver function processes each orphan KO and creates a file of bit score thresholds for them.
+        
+        The following steps are run for each orphan KO:
+        1. download of its KO file
+        2. identification and download of the KEGG GENES sequences in this family
+        3. `hmmscan` of the KO model against these sequences to get bit scores
+        4. computing the minimum bit score to use as a threshold for annotating this family
+        """
+
+        # import libraries needed for multithreaded download
+        import multiprocessing as mp
+        from anvio.biochemistry.reactionnetwork import _download_worker
 
         num_orphans = len(self.ko_no_threshold_list)
-        self.progress.new('Processing Orphan KOs', progress_total_items=num_orphans)
+        self.run.info("Number of Orphan KOs to process", num_orphans)
 
         self.orphan_ko_file_dir = os.path.join(self.orphan_data_dir, "00_ORPHAN_KO_FILES")
         self.orphan_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_ORPHAN_GENES_FILES")
@@ -1689,6 +1700,12 @@ class KOfamDownload(KeggSetup):
         filesnpaths.gen_output_directory(self.orphan_ko_file_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.orphan_ko_genes_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.orphan_ko_seqs_dir, delete_if_exists=True)
+
+        ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.orphan_ko_file_dir)
+
+        ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
+        self.run.info("Number of Orphan KO files successfully downloaded", len(ko_files_to_process))
+
 
         threshold_dict = {}
         cur_num = 0
