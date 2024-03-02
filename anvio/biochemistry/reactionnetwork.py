@@ -3682,6 +3682,7 @@ class GenomicNetwork(ReactionNetwork):
             # Subsetting is exclusive, not inclusive. Add the gene only with references to subsetted
             # KOs.
             subnetwork_gene = Gene(gcid=gcid, protein_id=gene.protein_id)
+            subnetwork.genes[gcid] = subnetwork_gene
 
             if gene.protein_id is not None:
                 try:
