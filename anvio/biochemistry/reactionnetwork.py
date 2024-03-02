@@ -2026,8 +2026,10 @@ class ReactionNetwork:
         Parameters
         ==========
         subnetwork : ReactionNetwork
+            Subsetted reaction network under construction.
 
         reaction : ModelSEEDReaction
+            Reaction object from the source network to be added to the subnetwork.
 
         Returns
         =======
@@ -3613,7 +3615,7 @@ class GenomicNetwork(ReactionNetwork):
         Add genes that are annotated with subsetted KOs to the subsetted network.
 
         These gene objects only reference subsetted KOs and not other KOs that also annotate the
-        gene but are not subsetted.
+        gene but which are not subsetted.
 
         Parameters
         ==========
