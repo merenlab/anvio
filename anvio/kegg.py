@@ -1640,7 +1640,7 @@ class KOfamDownload(KeggSetup):
         return ko_to_genes
 
 
-    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, ko_model_file):
+    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_file_dir, ko_model_file):
         """This function estimates the bitscore of a single KEGG Ortholog.
 
         It runs `hmmscan` of the KO model against the provided list of its KEGG GENE
@@ -1652,7 +1652,9 @@ class KOfamDownload(KeggSetup):
         ko : str
             KEGG identifier for the KO
         kegg_genes_for_ko : list of str
-            List of KEGG GENE accessions that were used to generate the KO model
+            List of KEGG GENE accessions that were used to generate the KO model.
+        kegg_genes_file_dir : str
+            Path to directory where the KEGG GENES files are stored
         ko_model_file : str
             File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
             but must be hmmpressed already)
@@ -1666,7 +1668,7 @@ class KOfamDownload(KeggSetup):
         genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
 
         for i, code in enumerate(kegg_genes_code_list):
-            gene_file_path = os.path.join(self.orphan_ko_genes_dir, code)
+            gene_file_path = os.path.join(kegg_genes_file_dir, code)
 
             # obtain the amino acid sequence and save it to the fasta file
             aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
@@ -1742,7 +1744,8 @@ class KOfamDownload(KeggSetup):
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
-            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=, ko_model_file=self.orphan_ko_hmm_file_path)
+            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
+                                        kegg_genes_file_dir=self.orphan_ko_genes_dir, ko_model_file=self.orphan_ko_hmm_file_path)
             cur_num += 1
 
         # write the thresholds to a file
