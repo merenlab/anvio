@@ -1746,6 +1746,15 @@ class KOfamDownload(KeggSetup):
         ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
         self.run.info("Number of Orphan KO files successfully downloaded", len(ko_files_to_process))
 
+        ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.orphan_ko_file_dir)
+        kegg_genes_to_download = []
+        for acc_list in ko_to_gene_accessions.values():
+            kegg_genes_to_download.extend(acc_list)
+
+        kegg_genes_not_downloaded = self.download_kegg_genes_files(kegg_genes_to_download, self.orphan_ko_genes_dir)
+        kegg_genes_downloaded = list(set(kegg_genes_to_download) - set(kegg_genes_not_downloaded))
+        self.run.info("Number of KEGG GENES files successfully downloaded", len(kegg_genes_downloaded))
+
 
         threshold_dict = {}
         cur_num = 0
