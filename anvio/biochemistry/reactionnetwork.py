@@ -3016,15 +3016,15 @@ class GenomicNetwork(ReactionNetwork):
 
     def prune(
         self,
-        genes_to_remove: Union[str, Iterable[int]] = None,
-        proteins_to_remove: Union[str, Iterable[str]] = None,
-        kos_to_remove: Union[str, Iterable[str]] = None,
-        modules_to_remove: Union[str, Iterable[str]] = None,
-        pathways_to_remove: Union[str, Iterable[str]] = None,
-        hierarchies_to_remove: Union[str, Iterable[str]] = None,
+        genes_to_remove: Iterable[int] = None,
+        proteins_to_remove: Iterable[str] = None,
+        kos_to_remove: Iterable[str] = None,
+        modules_to_remove: Iterable[str] = None,
+        pathways_to_remove: Iterable[str] = None,
+        hierarchies_to_remove: Iterable[str] = None,
         categories_to_remove: Dict[str, List[Tuple[str]]] = None,
-        reactions_to_remove: Union[str, Iterable[str]] = None,
-        metabolites_to_remove: Union[str, Iterable[str]] = None
+        reactions_to_remove: Iterable[str] = None,
+        metabolites_to_remove: Iterable[str] = None
     ) -> Dict[str, List]:
         """
         Prune items from the metabolic network.
