@@ -1774,6 +1774,13 @@ class KOfamDownload(KeggSetup):
         self.run.info("File with estimated bit score thresholds", self.orphan_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
 
+        # clean up downloaded files
+        if not anvio.DEBUG:
+            for d in [self.orphan_ko_file_dir, self.orphan_ko_genes_dir, self.orphan_ko_seqs_dir]:
+                os.remove(d)
+            self.run.warning("The KO and GENES files downloaded from KEGG for the orphan KOs are now deleted to save space. "
+                             "If you want to keep them, next time run the program with `--debug`.")
+
 
     def setup_kofams(self):
         """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
