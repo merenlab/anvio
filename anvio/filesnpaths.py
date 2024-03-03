@@ -151,7 +151,7 @@ def is_output_file_writable(file_path, ok_if_exists=True):
         raise FilesNPathsError(f"The path you have provided for your output file ('{os.path.abspath(file_path)}') "
                                f"already is used by a directory :/")
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
-        raise FilesNPathsError(f"It seems you are not autorhized to create an output file at '{file_path}' (lol).")
+        raise FilesNPathsError(f"It seems you are not authorized to create an output file at '{file_path}' (lol).")
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
         raise FilesNPathsError(f"You do not have write access to the file at '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
