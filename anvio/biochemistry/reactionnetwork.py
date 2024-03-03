@@ -10463,6 +10463,39 @@ class Tester:
         category_sample: Set[str] = samples['category']
         assert not category_sample.difference(set(remaining_category_ids))
 
+class FormulaMatcher:
+    def __init__(self, network: Union[GenomicNetwork, PangenomicNetwork], formula_file: str = None) -> None:
+        self.network = network
+
+        if not formula_file:
+            self.formula_table = None
+            self.formula_path = None
+            return
+
+        filesnpaths.is_file_tab_delimited(formula_file)
+        self.formula_table = pd.read_csv(formula_file, sep='\t', header=0)
+        assert self.formula_table.columns[0] == 'formula'
+        self.formula_path = formula_file
+
+    def match_metabolites(self, formula: str) -> List[ModelSEEDCompound]:
+        metabolites: List[ModelSEEDCompound] = []
+        for metabolite in self.network.metabolites.values():
+            if formula == metabolite.formula:
+                metabolites.append(metabolite)
+
+        return metabolites
+
+    def match_metabolites_network(self, formula: str) -> Tuple[List[ModelSEEDCompound], ReactionNetwork]:
+        metabolites = self.match_metabolites(formula)
+        if not metabolites:
+            return metabolites, None
+
+        subnetwork = self.network.subset_network(
+            metabolites_to_subset=[metabolite.modelseed_id for metabolite in metabolites]
+        )
+
+        return metabolites, subnetwork
+
 def get_chemical_equation(
     reaction: ModelSEEDReaction,
     use_compound_names: Iterable[str] = None,
