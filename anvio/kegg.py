@@ -1521,6 +1521,7 @@ class KOfamDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {num_kos} KO files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
@@ -1583,6 +1584,7 @@ class KOfamDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {num_genes} KEGG GENES files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
@@ -1939,7 +1941,7 @@ class ModulesDownload(KeggSetup):
         self.run.info("Number of KEGG Modules to download", total)
         self.run.info("Number of threads used for download", self.num_threads)
 
-        self.progress.new("Downloading KEGG Module files")
+        self.progress.new("Downloading KEGG Module files", progress_total_items=total)
         manager = mp.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -1961,6 +1963,7 @@ class ModulesDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {total} module files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
@@ -2141,7 +2144,7 @@ class ModulesDownload(KeggSetup):
 
         total = len(self.brite_dict)
         self.run.info("Number of BRITE hierarchies to download", total)
-        self.progress.new("Downloading BRITE files")
+        self.progress.new("Downloading BRITE files", progress_total_items=total)
         manager = mp.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -2169,6 +2172,7 @@ class ModulesDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {total} files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
