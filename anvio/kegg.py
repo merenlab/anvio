@@ -1766,10 +1766,10 @@ class KOfamDownload(KeggSetup):
         # write the thresholds to a file
         thresholds_not_none = 0
         with open(self.orphan_ko_thresholds_file, 'w') as out:
-            out.write("knum\tthreshold\tscore_type")
+            out.write("knum\tthreshold\tscore_type\n")
             for k, t in threshold_dict.items():
                 if t:
-                    out.write(f"{k}\t{t}\tfull")
+                    out.write(f"{k}\t{t}\tfull\n")
                     thresholds_not_none += 1
         self.run.info("File with estimated bit score thresholds", self.orphan_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
