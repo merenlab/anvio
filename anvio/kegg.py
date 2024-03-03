@@ -1538,7 +1538,7 @@ class KOfamDownload(KeggSetup):
         return undownloaded
 
     
-    def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True)
+    def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True):
         """Multi-threaded download of KEGG GENES files.
         
         Parameters
