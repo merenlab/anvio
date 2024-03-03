@@ -1735,16 +1735,15 @@ class KOfamDownload(KeggSetup):
         kegg_genes_downloaded = list(set(kegg_genes_to_download) - set(kegg_genes_not_downloaded))
         self.run.info("Number of KEGG GENES files successfully downloaded", len(kegg_genes_downloaded))
 
-
+        self.progress.new("Estimating bit score threshold for orphan KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
         cur_num = 0
-        for k in self.ko_no_threshold_list:
-            self.progress.update(f"Working on {k} [{cur_num} of {num_orphans}]")
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
-            threshold_dict[k] = self.process_orphan_ko(k)
+            downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
+            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=, ko_model_file=self.orphan_ko_hmm_file_path)
             cur_num += 1
-
-        self.progress.end()
 
         # write the thresholds to a file
         with open(self.orphan_ko_thresholds_file, 'w') as out:
