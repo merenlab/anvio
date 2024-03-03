@@ -3016,15 +3016,15 @@ class GenomicNetwork(ReactionNetwork):
 
     def prune(
         self,
-        genes_to_remove: Iterable[int] = None,
-        proteins_to_remove: Iterable[str] = None,
-        kos_to_remove: Iterable[str] = None,
-        modules_to_remove: Iterable[str] = None,
-        pathways_to_remove: Iterable[str] = None,
-        hierarchies_to_remove: Iterable[str] = None,
+        genes_to_remove: Union[int, Iterable[int]] = None,
+        proteins_to_remove: Union[str, Iterable[str]] = None,
+        kos_to_remove: Union[str, Iterable[str]] = None,
+        modules_to_remove: Union[str, Iterable[str]] = None,
+        pathways_to_remove: Union[str, Iterable[str]] = None,
+        hierarchies_to_remove: Union[str, Iterable[str]] = None,
         categories_to_remove: Dict[str, List[Tuple[str]]] = None,
-        reactions_to_remove: Iterable[str] = None,
-        metabolites_to_remove: Iterable[str] = None
+        reactions_to_remove: Union[str, Iterable[str]] = None,
+        metabolites_to_remove: Union[str, Iterable[str]] = None
     ) -> Dict[str, List]:
         """
         Prune items from the metabolic network.
@@ -3128,6 +3128,23 @@ class GenomicNetwork(ReactionNetwork):
             reactions_to_remove or
             metabolites_to_remove
         )
+
+        if type(genes_to_remove) == int:
+            genes_to_remove = [genes_to_remove]
+        if type(proteins_to_remove) == str:
+            proteins_to_remove = [proteins_to_remove]
+        if type(kos_to_remove) == str:
+            kos_to_remove = [kos_to_remove]
+        if type(modules_to_remove) == str:
+            modules_to_remove = [modules_to_remove]
+        if type(pathways_to_remove) == str:
+            pathways_to_remove = [pathways_to_remove]
+        if type(hierarchies_to_remove) == str:
+            hierarchies_to_remove = [hierarchies_to_remove]
+        if type(reactions_to_remove) == str:
+            reactions_to_remove = [reactions_to_remove]
+        if type(metabolites_to_remove) == str:
+            metabolites_to_remove = [metabolites_to_remove]
 
         removed: Dict[str, List] = {
             'gene': [],
