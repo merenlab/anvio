@@ -1734,6 +1734,9 @@ class KOfamDownload(KeggSetup):
 
         ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
         self.run.info("Number of Orphan KO files successfully downloaded", len(ko_files_to_process))
+        if ko_files_not_downloaded:
+            self.run.warning(f"FYI, some orphan KOs failed to download from KEGG. We will not estimate their bit score thresholds "
+                             f"and you will not be able to annotate them later. Here they are: {', '.join(ko_files_not_downloaded)}")
 
         ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.orphan_ko_file_dir)
         kegg_genes_to_download = []
@@ -1743,6 +1746,9 @@ class KOfamDownload(KeggSetup):
         kegg_genes_not_downloaded = self.download_kegg_genes_files(kegg_genes_to_download, self.orphan_ko_genes_dir)
         kegg_genes_downloaded = list(set(kegg_genes_to_download) - set(kegg_genes_not_downloaded))
         self.run.info("Number of KEGG GENES files successfully downloaded", len(kegg_genes_downloaded))
+        if kegg_genes_not_downloaded:
+            self.run.warning(f"FYI, some KEGG GENES files failed to download from KEGG. They will not be used for "
+                             f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
 
         self.progress.new("Estimating bit score threshold for orphan KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
@@ -1756,10 +1762,15 @@ class KOfamDownload(KeggSetup):
             cur_num += 1
 
         # write the thresholds to a file
+        thresholds_not_none = 0
         with open(self.orphan_ko_thresholds_file, 'w') as out:
             out.write("knum\tthreshold\tscore_type")
             for k, t in threshold_dict.items():
-                out.write(f"{k}\t{t}\tfull")
+                if t:
+                    out.write(f"{k}\t{t}\tfull")
+                    thresholds_not_none += 1
+        self.run.info("File with estimated bit score thresholds", self.orphan_ko_thresholds_file)
+        self.run.info("Number of estimated thresholds", thresholds_not_none)
 
 
     def setup_kofams(self):
