@@ -1600,6 +1600,46 @@ class KOfamDownload(KeggSetup):
         return undownloaded
 
 
+    def get_kegg_gene_accessions_from_ko_files(self, ko_list, ko_file_dir):
+        """Extracts KEGG GENES accessions from KO files and returns a dictionary mapping KO to its GENES.
+        
+        Parameters
+        ==========
+        ko_list: list of str
+            List of KEGG accessions to process.
+        ko_file_dir: file path
+            Where the KO files are located
+        Returns
+        =======
+        ko_to_genes : dict
+            Dictionary with KOs as keys and list of KEGG GENES accessions as values
+        """
+
+        ko_to_genes = {k : [] for k in ko_list}
+
+        for ko in ko_list:
+            ko_file_path = os.path.join(ko_file_dir, ko)
+            genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
+
+            kegg_genes_code_list = []
+            for i, acc in enumerate(genes_acc_list):
+                acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
+                org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
+                gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
+
+                # sometimes we have multiple genes per organism, like this: "PSOM: 113322169 113340172"
+                if ' ' in gene_name:
+                    all_genes = gene_name.split(' ')
+                    for g in all_genes:
+                        kegg_genes_code = f"{org_code}:{g}"
+                        kegg_genes_code_list.append(kegg_genes_code)
+                else:
+                    kegg_genes_code_list.append(f"{org_code}:{gene_name}")
+            ko_to_genes[ko] = kegg_genes_code_list
+
+        return ko_to_genes
+
+
     def process_orphan_ko(self, ko):
         """This function handles the processing of a single orphan KO.
         
