@@ -1640,68 +1640,48 @@ class KOfamDownload(KeggSetup):
         return ko_to_genes
 
 
-    def process_orphan_ko(self, ko):
-        """This function handles the processing of a single orphan KO.
-        
-        This includes: 
-        1. identification and download of the KEGG GENES sequences in this family
-        2. `hmmscan` of the KO model against these sequences to get bit scores
-        3. computing the minimum bit score to use as a threshold for annotating this family
+    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, ko_model_file):
+        """This function estimates the bitscore of a single KEGG Ortholog.
+
+        It runs `hmmscan` of the KO model against the provided list of its KEGG GENE
+        sequences, and then computes the minimum bit score to use as a threshold for
+        annotating this protein family.
 
         Parameters
         ==========
         ko : str
-            KEGG identifier for the orphan KO
+            KEGG identifier for the KO
+        kegg_genes_for_ko : list of str
+            List of KEGG GENE accessions that were used to generate the KO model
+        ko_model_file : str
+            File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
+            but must be hmmpressed already)
         Returns
         =======
         threshold : float
             estimated bit score threshold for the KO's HMM
         """
 
-        # first we download its KO file
-        ko_file_path = os.path.join(self.orphan_ko_file_dir, ko)
-        utils.download_file(self.kegg_rest_api_get + '/' + ko, ko_file_path)
-
         # the fasta file to hold the amino acid sequences for associated genes
         genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
 
-        # next we use that file to identify and download the KEGG GENES for this family
-        genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
-        num_genes_found = 0
-        for i, acc in enumerate(genes_acc_list):
-            acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
-            org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
-            gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
+        for i, code in enumerate(kegg_genes_code_list):
+            gene_file_path = os.path.join(self.orphan_ko_genes_dir, code)
 
-            kegg_genes_code_list = []
-            # sometimes we have multiple genes per organism, like this: "PSOM: 113322169 113340172"
-            if ' ' in gene_name:
-                all_genes = gene_name.split(' ')
-                for g in all_genes:
-                    kegg_genes_code = f"{org_code}:{g}"
-                    kegg_genes_code_list.append(kegg_genes_code)
-            else:
-                kegg_genes_code_list.append(f"{org_code}:{gene_name}")
-
-            for code in kegg_genes_code_list:
-                num_genes_found += 1
-                gene_file_path = os.path.join(self.orphan_ko_genes_dir, code)
-                utils.download_file(self.kegg_rest_api_get + '/' + code, gene_file_path)
-
-                # then we search through that file to obtain the sequence and save the sequence to a fasta file
-                aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
-                with open(genes_fasta, 'a') as fasta:
-                    fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
-                    for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
-                        fasta.write(f"{seq}\n")
+            # obtain the amino acid sequence and save it to the fasta file
+            aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
+            with open(genes_fasta, 'a') as fasta:
+                fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
+                for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
+                    fasta.write(f"{seq}\n")
 
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
         target_file_dict = {'AA:GENE': genes_fasta}
-        hmmer = HMMer(target_file_dict, progress=progress_quiet, run=run_quiet)
-        hmm_hits_file = hmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, num_genes_found, self.orphan_ko_hmm_file_path, None, None)
+        hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
+        hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_code_list), ko_model_file, None, None)
         
         if not hmm_hits_file:
-            raise ConfigError(f"No HMM hits were found for the orphan KO model {ko}. This is seriously concerning, because we were running it against "
+            raise ConfigError(f"No HMM hits were found for the KO model {ko}. This is seriously concerning, because we were running it against "
                               f"gene sequences that were used to generate the model.")
         
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', run=run_quiet)
