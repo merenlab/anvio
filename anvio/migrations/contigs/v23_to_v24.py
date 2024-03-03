@@ -11,7 +11,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
-from anvio.biochemistry.reactionnetwork import ModelSEEDDatabase
+from anvio.reactionnetwork import ModelSEEDDatabase
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
