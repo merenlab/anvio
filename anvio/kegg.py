@@ -1661,8 +1661,15 @@ class KOfamDownload(KeggSetup):
         Returns
         =======
         threshold : float
-            estimated bit score threshold for the KO's HMM
+            estimated bit score threshold for the KO's HMM. Will be None if kegg_genes_for_ko is empty
         """
+
+        # sanity check for empty KEGG GENES list
+        if not kegg_genes_for_ko:
+            self.run.warning(f"The function estimate_bitscore_for_ko() received an empty list of KEGG GENES "
+                             f"for {ko}, so it cannot estimate a bit score threshold. The function will return "
+                             f"a threshold of `None` for this KO.")
+            return None
 
         # the fasta file to hold the amino acid sequences for associated genes
         genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
