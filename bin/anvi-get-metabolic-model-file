@@ -5,7 +5,7 @@ DESCRIPTION = """This program exports a metabolic reaction network to a file sui
 from sys import exit
 from argparse import Namespace
 
-import anvio.biochemistry.reactionnetwork as reactionnetwork
+import anvio.reactionnetwork as reactionnetwork
 
 from anvio import A, K
 from anvio.errors import ConfigError

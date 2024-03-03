@@ -23,7 +23,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
-import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -1620,7 +1619,7 @@ class ModulesDownload(KeggSetup):
         from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
-        from anvio.biochemistry.reactionnetwork import _download_worker
+        from anvio.reactionnetwork import _download_worker
 
         total = len(self.module_dict.keys())
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
@@ -1838,7 +1837,7 @@ class ModulesDownload(KeggSetup):
         from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
-        from anvio.biochemistry.reactionnetwork import _download_worker
+        from anvio.reactionnetwork import _download_worker
 
         total = len(self.brite_dict)
         self.run.info("Number of BRITE hierarchies to download", total)

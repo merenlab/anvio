@@ -7,9 +7,9 @@ import sys
 from argparse import Namespace
 
 from anvio.argparse import ArgumentParser
+from anvio.reactionnetwork import Constructor
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio import A as A, K as K, __version__ as VERSION
-from anvio.biochemistry.reactionnetwork import Constructor
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"

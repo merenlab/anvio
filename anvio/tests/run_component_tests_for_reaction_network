@@ -5,7 +5,7 @@ DESCRIPTION = """Run by the shell script of the same name that tests anvi'o reac
 from argparse import Namespace
 
 import anvio.terminal as terminal
-import anvio.biochemistry.reactionnetwork as rn
+import anvio.reactionnetwork as rn
 
 from anvio import A, K
 from anvio.errors import ConfigError

@@ -7,10 +7,9 @@ import argparse
 import anvio
 import anvio.kegg as kegg
 
-from anvio.biochemistry.reactionnetwork import KODatabase
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 from anvio.ttycolors import color_text as c
+from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
