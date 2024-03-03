@@ -1777,7 +1777,7 @@ class KOfamDownload(KeggSetup):
         # clean up downloaded files
         if not anvio.DEBUG:
             for d in [self.orphan_ko_file_dir, self.orphan_ko_genes_dir, self.orphan_ko_seqs_dir]:
-                os.remove(d)
+                os.rmdir(d)
             self.run.warning("The KO and GENES files downloaded from KEGG for the orphan KOs are now deleted to save space. "
                              "If you want to keep them, next time run the program with `--debug`.")
 
