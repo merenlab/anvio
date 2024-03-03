@@ -1680,7 +1680,7 @@ class KOfamDownload(KeggSetup):
         # the fasta file to hold the amino acid sequences for associated genes
         genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
 
-        for i, code in enumerate(kegg_genes_code_list):
+        for i, code in enumerate(kegg_genes_for_ko):
             gene_file_path = os.path.join(kegg_genes_file_dir, code)
 
             # obtain the amino acid sequence and save it to the fasta file
@@ -1693,7 +1693,7 @@ class KOfamDownload(KeggSetup):
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
         target_file_dict = {'AA:GENE': genes_fasta}
         hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
-        hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_code_list), ko_model_file, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_for_ko), ko_model_file, None, None)
         
         if not hmm_hits_file:
             raise ConfigError(f"No HMM hits were found for the KO model {ko}. This is seriously concerning, because we were running it against "
