@@ -1104,7 +1104,7 @@ class DGR_Finder:
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FLASE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
-                ("Temporary Directoy", self.temp_dir if self.temp_dir else None),
+                ("Temporary Directory", self.temp_dir if self.temp_dir else None),
                 ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
                 ("Departure from Reference (Percentage)", self.departure_from_reference_percentage if self.departure_from_reference_percentage else "0.1"),
