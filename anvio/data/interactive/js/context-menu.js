@@ -27,7 +27,8 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
-    let all = options.all
+    let all = options.all;
+    let internal_node = true;
 
     this.menu_items = {
         'select': {
@@ -244,7 +245,7 @@ ContextMenu = function(options) {
                         'newick': clusteringData,
                         'left_most': left_most.label,
                         'right_most': right_most.label,
-                        'internal_node': internal_node_value
+                        'internal_node': internal_node
                     },
                     success: function(data) {
                         collapsedNodes = [];
