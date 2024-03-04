@@ -1092,7 +1092,7 @@ D = {
              'action': 'store_true',
              'help': "'Orphan KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
                      "If you want to include these protein families in your annotations and downstream analyses, then "
-                     "you can use this flag. Anvi'o will do something very basic to estimate a bit score threshold for "
+                     "you can use this flag. Anvi'o does something very basic to estimate a bit score threshold for "
                      "annotating these KOs, which is (1) to download the 1-2 KEGG GENES sequences associated with each family, "
                      "(2) to run HMMER of each KO against its associated sequences, and (3) to take the minimum bit score of "
                      "those hits as the bit score threshold for the KO. This is a very conservative strategy because we want to "
