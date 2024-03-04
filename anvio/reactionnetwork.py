@@ -10506,18 +10506,27 @@ class Tester:
         assert not category_sample.difference(set(remaining_category_ids))
 
 class FormulaMatcher:
-    def __init__(self, network: Union[GenomicNetwork, PangenomicNetwork], formula_file: str = None) -> None:
+    def __init__(self, network: Union[GenomicNetwork, PangenomicNetwork], formula_file: str = None, formula_table: pd.DataFrame = None) -> None:
         self.network = network
 
-        if not formula_file:
+        if not formula_file and not formula_table:
             self.formula_table = None
             self.formula_path = None
             return
 
-        filesnpaths.is_file_tab_delimited(formula_file)
-        self.formula_table = pd.read_csv(formula_file, sep='\t', header=0)
-        assert self.formula_table.columns[0] == 'formula'
-        self.formula_path = formula_file
+        if formula_file and formula_table:
+            raise AssertionError
+
+        if formula_file:
+            filesnpaths.is_file_tab_delimited(formula_file)
+            self.formula_table = pd.read_csv(formula_file, sep='\t', header=0)
+            assert self.formula_table.columns[0] == 'formula'
+            self.formula_path = formula_file
+
+        if formula_table:
+            self.formula_table = formula_table
+            assert self.formula_table.columns[0] == 'formula'
+            self.formula_path = None
 
     def match_metabolites(self, formula: str) -> List[ModelSEEDCompound]:
         metabolites: List[ModelSEEDCompound] = []
