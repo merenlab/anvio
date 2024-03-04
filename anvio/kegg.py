@@ -1296,7 +1296,9 @@ class KOfamDownload(KeggSetup):
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
-        self.include_orphan_kos = True if A('include_orphan_kos') else False
+
+        self.run.info_single("Info from KOfam Download")
+        self.run.info("Orphan KOs will be processed (`--include-orphan-kos` flag)", self.include_orphan_kos)
 
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
@@ -1819,6 +1821,8 @@ class ModulesDownload(KeggSetup):
         self.skip_init = skip_init
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
+
+        self.run.info_single("Info from MODULES Download")
 
         # we also need the init of the superclass
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)

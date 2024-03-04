@@ -4588,6 +4588,7 @@ class KODatabase:
 
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
         """
+        run.info_single("Info from Reaction Network Download") # delineates output specific to this data from `anvi-setup-kegg-data`
         if dir:
             if os.path.isdir(dir):
                 ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')
