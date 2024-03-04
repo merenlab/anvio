@@ -1416,26 +1416,26 @@ class KOfamDownload(KeggSetup):
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_kofam_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_kofam_file_list)} "
+                             f"HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
+                             f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
             utils.concatenate_files(self.orphan_ko_hmm_file_path, no_threshold_file_list, remove_concatenated_files=True)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_threshold_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
+                             f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
+                             f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'. "
+                             f"If you used the flag --include-orphan-KOs, we will estimate their bit score thresholds using KEGG GENES "
+                             f"data so that you can annotate these KOs downstream if you wish.")
 
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
-                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_data_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_data_file_list)} "
+                             f"HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
+                             f"We have removed those HMM profiles from the final database. You can find them under the directory "
+                             f"'{self.orphan_data_dir}'.")
 
     
     def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path):
