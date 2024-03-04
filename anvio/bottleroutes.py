@@ -1425,6 +1425,7 @@ class BottleApplication(Bottle):
     def reroot_tree(self):
         # Get the Newick tree string from the form data
         newick = request.forms.get('newick')
+        internal_node = request.forms.get('internal_node')
 
         # Create an Ete3 Tree object from the Newick string, specifying format=1
         # which means that branch support values are stored as node.name and
@@ -1445,12 +1446,13 @@ class BottleApplication(Bottle):
         branch_support_value = {1:''}
         unique_index = 1
 
+        if not internal_node:
         # for every node that is not leaf or root, associate with a unique index
-        for node in tree.traverse():
-            if not node.is_leaf() and not node.is_root():
-                unique_index += 1
-                branch_support_value[unique_index] = node.name
-                node.support = unique_index
+            for node in tree.traverse():
+                if not node.is_leaf() and not node.is_root():
+                    unique_index += 1
+                    branch_support_value[unique_index] = node.name
+                    node.support = unique_index
 
         # Find the leftmost and rightmost nodes based on the provided names
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
@@ -1462,10 +1464,11 @@ class BottleApplication(Bottle):
         # Set the new root as the outgroup
         tree.set_outgroup(new_root)
 
-        # Assign support values as node names for non-leaf and non-root nodes
-        for node in tree.traverse():
-            if not node.is_leaf() and not node.is_root():
-                node.name = branch_support_value[node.support]
+        if not internal_node:
+            # Assign support values as node names for non-leaf and non-root nodes
+            for node in tree.traverse():
+                if not node.is_leaf() and not node.is_root():
+                    node.name = branch_support_value[node.support]
 
         # Encode node names using base32 encoding
         for node in tree.traverse('preorder'):
