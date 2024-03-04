@@ -1794,13 +1794,19 @@ class KOfamDownload(KeggSetup):
             cur_num += 1
         self.progress.end()
 
+        # we need to re-load the ko dictionary so that we have access to the definitions of the orphan KOs
+        # cannot do this before this point because the absence of an orphan KO from this dict controls whether it is moved to the 
+        # orphan data directory (and we want to keep the orphans separate since we process them specially)
+        self.setup_ko_dict(exclude_threshold=(not self.include_orphan_kos))
+
         # write the thresholds to a file
         thresholds_not_none = 0
         with open(self.orphan_ko_thresholds_file, 'w') as out:
-            out.write("knum\tthreshold\tscore_type\n")
+            out.write("knum\tthreshold\tscore_type\tdefinition\n")
             for k, t in threshold_dict.items():
                 if t:
-                    out.write(f"{k}\t{t}\tfull\n")
+                    ko_definition = self.ko_dict[k]['definition']
+                    out.write(f"{k}\t{t}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
         self.run.info("File with estimated bit score thresholds", self.orphan_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
