@@ -1296,6 +1296,7 @@ class KOfamDownload(KeggSetup):
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
+        self.include_orphan_kos = True if A('include_orphan_KOs') else False
 
         self.run.info_single("Info from KOfam Download")
         self.run.info("Orphan KOs will be processed (`--include-orphan-kos` flag)", self.include_orphan_kos)
