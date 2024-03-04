@@ -389,6 +389,33 @@ class KeggContext(object):
         else:
             self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
+    
+    def setup_orphan_ko_dict(self):
+        """This class sets up a dictionary of predicted bit score thresholds for orphan KOs, if possible.
+        
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-orphan-KOs` 
+        (see KOfamDownload.process_all_orphan_kos()), and are stored in a file that looks like this:
+
+        knum	threshold	score_type
+        K20809	823.4	full
+        
+        The dictionary structure is identical to that of self.ko_dict.
+
+        If thresholds have not been predicted, then this function throws an error.
+        """
+
+        if os.path.exists(self.orphan_ko_thresholds_file):
+            self.orphan_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.orphan_ko_thresholds_file)
+        else:
+            raise ConfigError(f"You've requested to include orphan KO models in your analysis, but we cannot find the "
+                              f"estimated bit score thresholds for these models, which can be generated during "
+                              f"`anvi-setup-kegg-data` and stored at the following path: {self.orphan_ko_thresholds_file}. This "
+                              f"means that `anvi-setup-kegg-data` was run without the `--include-orphan-KOs` flag for the KEGG "
+                              f"data directory that you are using. You have two options: 1) give up on including these models and "
+                              f"re-run your command without the `--include-orphan-KOs` flag, or 2) change the KEGG data that you "
+                              f"are using, which could be as simple as specifying a new `--kegg-data-dir` or as complex as re-running "
+                              f"`anvi-setup-kegg-data` to obtain a dataset with predicted thresholds for orphan KO models.")
+
 
     def get_ko_skip_list(self):
         """The purpose of this function is to determine which KO numbers have no associated data or just no score threshold in the ko_list file.
@@ -2252,6 +2279,7 @@ class RunKOfams(KeggContext):
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
+        self.orphan_ko_dict = None # should be set up by setup_orphan_ko_dict(), if possible
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -2270,6 +2298,13 @@ class RunKOfams(KeggContext):
         filesnpaths.is_output_file_writable(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
+        if self.include_orphan_kos:
+            self.setup_orphan_ko_dict()
+            self.run.warning("Please note! Because you used the flag `--include-orphan-KOs`, anvi'o will annotate "
+                             "your genes with KO models that do not come with a bit score threshold defined by KEGG. "
+                             "We have estimated rather conservative thresholds for these models ourselves. To learn "
+                             "how we did that, please read the documentation page for `anvi-setup-kegg-data`: "
+                             "https://anvio.org/help/main/programs/anvi-setup-kegg-data/")
 
         # load existing kegg modules db, if one exists
         if os.path.exists(self.kegg_modules_db_path):
