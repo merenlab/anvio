@@ -2790,7 +2790,13 @@ class RunKOfams(KeggContext):
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
-        if not hmm_hits_file:
+        has_orphan_hits = False
+        orphan_hits_file = None
+        if self.include_orphan_kos:
+            orphan_hits_file = hmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(self.orphan_ko_dict), self.orphan_ko_hmm_file_path, None, None)
+            has_orphan_hits = True if orphan_hits_file else False
+
+        if not hmm_hits_file and not has_orphan_hits:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
                              "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
                              "and gracefully quit.", nl_before=1, nl_after=1)
