@@ -2406,7 +2406,7 @@ class RunKOfams(KeggContext):
         return ret_value
 
 
-    def parse_kofam_hits(self, hits_dict):
+    def parse_kofam_hits(self, hits_dict, hits_label = "KOfam", next_key=None):
         """This function applies bitscore thresholding (if requested) to establish the self.functions_dict
         which can then be used to store annotations in the contigs DB.
 
@@ -2420,6 +2420,12 @@ class RunKOfams(KeggContext):
         ===========
         hits_dict : dictionary
             The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        hits_label : str
+            A label for the set of hits we are working on, used to keep sets separate from each other and to enable
+            us to match gene caller ids to hits in different dictionaries later
+        next_key : int
+            The next integer key that is available for adding functions to self.functions_dict. If None is provided,
+            the keys will start at 0.
 
         RETURNS
         ========
@@ -2431,6 +2437,8 @@ class RunKOfams(KeggContext):
         total_num_hits = len(hits_dict.values())
         self.progress.new(f"Parsing {hits_label} hits", progress_total_items=total_num_hits)
         counter = 0
+        if next_key:
+            counter = next_key
         num_hits_removed = 0
         cur_num_hit = 0
         for hit_key,hmm_hit in hits_dict.items():
@@ -2445,28 +2453,47 @@ class RunKOfams(KeggContext):
 
             # later, we will need to quickly access the hits for each gene call. So we map gcids to the keys in the raw hits dictionary
             if gcid not in self.gcids_to_hits_dict:
-                self.gcids_to_hits_dict[gcid] = [hit_key]
+                self.gcids_to_hits_dict[gcid] = {hits_label : [hit_key]}
             else:
-                self.gcids_to_hits_dict[gcid].append(hit_key)
+                if hits_label not in self.gcids_to_hits_dict[gcid]:
+                    self.gcids_to_hits_dict[gcid][hits_label] = [hit_key]
+                else:
+                    self.gcids_to_hits_dict[gcid][hits_label].append(hit_key)
 
-            if knum not in self.ko_dict:
+            if (knum not in self.ko_dict and (self.orphan_ko_dict is not None and knum not in self.orphan_ko_dict)) or \
+                (knum not in self.ko_dict and self.orphan_ko_dict is None):
                 self.progress.reset()
-                raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
+                raise ConfigError(f"Something went wrong while parsing the {hits_label} HMM hits. It seems that KO "
                                   f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
                                   "not know how to distinguish strong hits from weak ones for this KO. "
                                   "Anvi'o will fail now :( Please contact a developer about this error to "
                                   "get this mess fixed. ")
             # if hit is above the bitscore threshold, we will keep it
-            if self.ko_dict[knum]['score_type'] == 'domain':
-                if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
-                    keep = True
-            elif self.ko_dict[knum]['score_type'] == 'full':
-                if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
-                    keep = True
+            if knum in self.ko_dict:
+                if self.ko_dict[knum]['score_type'] == 'domain':
+                    if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                        keep = True
+                elif self.ko_dict[knum]['score_type'] == 'full':
+                    if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                        keep = True
+                else:
+                    self.progress.reset()
+                    raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
+                                    f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
+            elif knum in self.orphan_ko_dict:
+                if self.orphan_ko_dict[knum]['score_type'] == 'domain':
+                    if hmm_hit['domain_bit_score'] >= float(self.orphan_ko_dict[knum]['threshold']):
+                        keep = True
+                elif self.orphan_ko_dict[knum]['score_type'] == 'full':
+                    if hmm_hit['bit_score'] >= float(self.orphan_ko_dict[knum]['threshold']):
+                        keep = True
+                else:
+                    self.progress.reset()
+                    raise ConfigError(f"The KO noise cutoff dictionary for the orphan KO {knum} has a strange score type which "
+                                    f"is unknown to anvi'o: {self.orphan_ko_dict[knum]['score_type']}")
             else:
-                self.progress.reset()
-                raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
-                                  f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
+                raise ConfigError(f"We cannot find KO {knum} in either self.ko_dict or in self.orphan_ko_dict. This is likely a "
+                                  f"problem for the developers.")
 
             if keep or self.keep_all_hits:
                 self.functions_dict[counter] = {
@@ -2527,8 +2554,8 @@ class RunKOfams(KeggContext):
                 num_hits_removed += 1
 
         self.progress.end()
-        self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
-        self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
+        self.run.info(f"Number of weak hits removed by {hits_label} parser", num_hits_removed)
+        self.run.info(f"Number of hits currently in annotation dict", len(self.functions_dict.keys()))
 
         return counter
 
