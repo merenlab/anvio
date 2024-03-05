@@ -2823,17 +2823,20 @@ class RunKOfams(KeggContext):
         # parse hmmscan output
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
-
-        # add functions and KEGG modules info to database
         next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
+        super_hits_dict["KOfam"] = search_results_dict
+
         if has_orphan_hits:
             self.run.info_single("Now parsing hits to orphan KOs...")
             oparser = parser_modules['search']['hmmer_table_output'](orphan_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
             orphan_search_results = oparser.get_search_results()
             next_key_in_functions_dict = self.parse_kofam_hits(orphan_search_results, hits_label = "Orphan KO", next_key=next_key_in_functions_dict)
             super_hits_dict["Orphan KO"] = orphan_search_results
+
         if not self.skip_bitscore_heuristic:
-            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
+            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, super_hits_dict, next_key=next_key_in_functions_dict)
+        
+        # add functions and KEGG modules info to database
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
