@@ -2691,7 +2691,7 @@ class RunKOfams(KeggContext):
 
                         if self.kegg_modules_db and not self.skip_brite_hierarchies:
                             # get BRITE categorization information in the form to be added to the contigs database
-                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(best_knum, gcid)
                             if ortholog_categorizations_dict:
                                 self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
