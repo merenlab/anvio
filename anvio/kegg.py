@@ -2560,7 +2560,7 @@ class RunKOfams(KeggContext):
         return counter
 
 
-    def update_dict_for_genes_with_missing_annotations(self, gcids_list, hits_dict, next_key):
+    def update_dict_for_genes_with_missing_annotations(self, gcids_list, super_hits_dict, next_key):
         """This function adds functional annotations for genes with missing hits to the dictionary.
 
         The reason this is necessary is that the bitscore thresholds can be too stringent, causing
@@ -2579,8 +2579,9 @@ class RunKOfams(KeggContext):
         gcids_list : list
             The list of gene caller ids in the contigs database. We will use this to figure out which
             genes have no annotations
-        hits_dict : dictionary
-            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        super_hits_dict : dictionary
+            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output 
+            from the hmmsearch parser, which should contain all hits from the set (ie, weak hits not yet removed)
         next_key : int
             The next integer key that is available for adding functions to self.functions_dict
         """
@@ -2609,35 +2610,48 @@ class RunKOfams(KeggContext):
                 decent_hit_kos = set()
                 best_e_value = 100 # just an arbitrary positive value that will be larger than any evalue
                 best_hit_key = None
+                best_hit_label = None
 
-                # if no annotation, get all hits for gene caller id from hits_dict
+                # if no annotation, get all hits for gene caller id from the hits dictionaries
                 if gcid in self.gcids_to_hits_dict:
-                    for hit_key in self.gcids_to_hits_dict[gcid]:
-                        knum = hits_dict[hit_key]['gene_name']
-                        ko_threshold = float(self.ko_dict[knum]['threshold'])
+                    for hit_label in self.gcids_to_hits_dict[gcid]:
+                        for hit_key in self.gcids_to_hits_dict[gcid][hit_label]:
+                            knum = super_hits_dict[hit_label][hit_key]['gene_name']
+                            ko_threshold = None
+                            ko_score_type = None
+                            if knum in self.ko_dict:
+                                ko_threshold = float(self.ko_dict[knum]['threshold'])
+                                ko_score_type = self.ko_dict[knum]['score_type']
+                            elif self.include_orphan_kos and knum in self.orphan_ko_dict:
+                                ko_threshold = float(self.orphan_ko_dict[knum]['threshold'])
+                                ko_score_type = self.orphan_ko_dict[knum]['score_type']
+                            else:
+                                raise ConfigError(f"panik. the function update_dict_for_genes_with_missing_annotations() "
+                                                  f"cannot find the bit score threshold for {knum}.")
 
-                        # get set of hits that fit specified heuristic parameters
-                        if self.ko_dict[knum]['score_type'] == 'domain':
-                            hit_bitscore = hits_dict[hit_key]['domain_bit_score']
-                        elif self.ko_dict[knum]['score_type'] == 'full':
-                            hit_bitscore = hits_dict[hit_key]['bit_score']
-                        if hits_dict[hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
-                            decent_hit_kos.add(knum)
-                            # keep track of hit with lowest e-value we've seen so far
-                            if hits_dict[hit_key]['e_value'] <= best_e_value:
-                                best_e_value = hits_dict[hit_key]['e_value']
-                                best_hit_key = hit_key
+                            # get set of hits that fit specified heuristic parameters
+                            if ko_score_type == 'domain':
+                                hit_bitscore = super_hits_dict[hit_label][hit_key]['domain_bit_score']
+                            elif ko_score_type == 'full':
+                                hit_bitscore = super_hits_dict[hit_label][hit_key]['bit_score']
+                            if super_hits_dict[hit_label][hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
+                                decent_hit_kos.add(knum)
+                                # keep track of hit with lowest e-value we've seen so far
+                                if super_hits_dict[hit_label][hit_key]['e_value'] <= best_e_value:
+                                    best_e_value = super_hits_dict[hit_label][hit_key]['e_value']
+                                    best_hit_key = hit_key
+                                    best_hit_label = hit_label
 
                     # if unique KO, add annotation with best e-value to self.functions_dict
                     if len(decent_hit_kos) == 1:
-                        best_knum = hits_dict[best_hit_key]['gene_name']
+                        best_knum = super_hits_dict[best_hit_label][best_hit_key]['gene_name']
                         ## TODO: WE NEED A GENERIC FUNCTION FOR THIS SINCE IT IS SAME AS ABOVE
                         self.functions_dict[next_key] = {
                             'gene_callers_id': gcid,
                             'source': 'KOfam',
                             'accession': best_knum,
                             'function': self.get_annotation_from_ko_dict(best_knum, ok_if_missing_from_dict=True),
-                            'e_value': hits_dict[best_hit_key]['e_value'],
+                            'e_value': super_hits_dict[best_hit_label][best_hit_key]['e_value'],
                         }
                         # we may never access this downstream but let's add to it to be consistent
                         self.gcids_to_functions_dict[gcid] = [next_key]
