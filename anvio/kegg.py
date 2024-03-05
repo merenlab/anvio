@@ -2821,17 +2821,22 @@ class RunKOfams(KeggContext):
         super_hits_dict = {} # will store the hits from each set of HMMs
 
         # parse hmmscan output
+        self.run.warning('', header='HMM hit parsing for KOfams', lc='green')
+        self.run.info("HMM output table", hmm_hits_file)
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
         next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
         super_hits_dict["KOfam"] = search_results_dict
+        self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
         if has_orphan_hits:
-            self.run.info_single("Now parsing hits to orphan KOs...")
+            self.run.warning('', header='HMM hit parsing for Orphan KOs', lc='green')
+            self.run.info("HMM output table", orphan_hits_file)
             oparser = parser_modules['search']['hmmer_table_output'](orphan_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
             orphan_search_results = oparser.get_search_results()
             next_key_in_functions_dict = self.parse_kofam_hits(orphan_search_results, hits_label = "Orphan KO", next_key=next_key_in_functions_dict)
             super_hits_dict["Orphan KO"] = orphan_search_results
+            self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
         if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, super_hits_dict, next_key=next_key_in_functions_dict)
