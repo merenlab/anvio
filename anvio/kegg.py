@@ -2419,13 +2419,7 @@ class RunKOfams(KeggContext):
         """
 
         total_num_hits = len(hits_dict.values())
-        self.progress.new("Parsing KOfam hits", progress_total_items=total_num_hits)
-        self.functions_dict = {}
-        self.kegg_module_names_dict = {}
-        self.kegg_module_classes_dict = {}
-        self.kegg_brite_categorizations_dict = {}
-        self.gcids_to_hits_dict = {}
-        self.gcids_to_functions_dict = {}
+        self.progress.new(f"Parsing {hits_label} hits", progress_total_items=total_num_hits)
         counter = 0
         num_hits_removed = 0
         cur_num_hit = 0
@@ -2759,6 +2753,15 @@ class RunKOfams(KeggContext):
             gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
+
+        # set up some attributes that we'll need later
+        self.functions_dict = {}
+        self.kegg_module_names_dict = {}
+        self.kegg_module_classes_dict = {}
+        self.kegg_brite_categorizations_dict = {}
+        self.gcids_to_hits_dict = {}
+        self.gcids_to_functions_dict = {}
+        super_hits_dict = {} # will store the hits from each set of HMMs
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
