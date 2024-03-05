@@ -2435,6 +2435,7 @@ class RunKOfams(KeggContext):
         """
 
         total_num_hits = len(hits_dict.values())
+        starting_annotations_in_dict = len(self.functions_dict.keys())
         self.progress.new(f"Parsing {hits_label} hits", progress_total_items=total_num_hits)
         counter = 0
         if next_key:
@@ -2554,8 +2555,9 @@ class RunKOfams(KeggContext):
                 num_hits_removed += 1
 
         self.progress.end()
+        ending_annotations_in_dict = len(self.functions_dict.keys())
         self.run.info(f"Number of weak hits removed by {hits_label} parser", num_hits_removed)
-        self.run.info(f"Number of hits currently in annotation dict", len(self.functions_dict.keys()))
+        self.run.info(f"Number of annotations added for {hits_label}", ending_annotations_in_dict - starting_annotations_in_dict)
 
         return counter
 
