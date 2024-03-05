@@ -7,6 +7,7 @@ v2020-04-27:
     hash: b893b7b915cb
     modules_db_version: 1
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2020-06-23:
     url: https://ndownloader.figshare.com/files/23701919
@@ -14,6 +15,7 @@ v2020-06-23:
     hash: 4a75508b48aa
     modules_db_version: 2
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2020-08-06:
     url: https://ndownloader.figshare.com/files/25464530
@@ -21,6 +23,7 @@ v2020-08-06:
     hash: 8f88ef165f4c
     modules_db_version: 2
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2020-12-23:
     url: https://ndownloader.figshare.com/files/25878342
@@ -28,6 +31,7 @@ v2020-12-23:
     hash: 45b7cc2e4fdc
     modules_db_version: 2
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2021-12-18:
     url: https://figshare.com/ndownloader/files/31959416
@@ -35,6 +39,7 @@ v2021-12-18:
     hash: 58937b64c44c
     modules_db_version: 3
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2022-04-14:
     url: https://figshare.com/ndownloader/files/34817812
@@ -42,6 +47,7 @@ v2022-04-14:
     hash: 666feeac5de2
     modules_db_version: 4
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2023-01-10:
     url: https://figshare.com/ndownloader/files/38799687
@@ -49,6 +55,7 @@ v2023-01-10:
     hash: d20a0dcd2128
     modules_db_version: 4
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2023-09-18:
     url: https://figshare.com/ndownloader/files/42381873
@@ -56,12 +63,14 @@ v2023-09-18:
     hash: a2b5bde358bb
     modules_db_version: 4
     no_modeling_data: True
+    no_orphan_KOs: True
 
 v2023-09-22:
     url: https://figshare.com/ndownloader/files/42428115
     archive_name: KEGG_build_2023-09-22_a2b5bde358bb.tar.gz
     hash: a2b5bde358bb
     modules_db_version: 4
+    no_orphan_KOs: True
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
