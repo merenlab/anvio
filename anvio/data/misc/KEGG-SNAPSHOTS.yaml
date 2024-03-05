@@ -81,7 +81,7 @@ v2024-03-04:
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
-#    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5`
+#    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5 --include-orphan-KOs`
 # 2. get the hash value and version info from the MODULES.db:
 #    `anvi-db-info ./KEGG/MODULES.db`
 # 3. archive that directory:
