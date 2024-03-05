@@ -2597,6 +2597,7 @@ class RunKOfams(KeggContext):
                          "the e-value/bitscore parameters (see the help page for more info).")
 
         num_annotations_added = 0
+        num_orphan_KOs_added = 0
         total_num_genes = len(gcids_list)
         self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
 
@@ -2658,6 +2659,10 @@ class RunKOfams(KeggContext):
                         # we may never access this downstream but let's add to it to be consistent
                         self.gcids_to_functions_dict[gcid] = [next_key]
 
+                        # track how many of orphan KOs are added back
+                        if best_hit_label == "Orphan KO":
+                            num_orphan_KOs_added += 1
+
                         # add associated KEGG module information to database
                         mods = None
                         if self.kegg_modules_db:
@@ -2702,6 +2707,9 @@ class RunKOfams(KeggContext):
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
+        if self.include_orphan_kos:
+            self.run.info("... of these, number of regular KOs is", num_annotations_added - num_orphan_KOs_added)
+            self.run.info("... of these, number of orphan KOs is", num_orphan_KOs_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
 
