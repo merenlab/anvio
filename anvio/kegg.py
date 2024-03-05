@@ -2793,7 +2793,8 @@ class RunKOfams(KeggContext):
         has_orphan_hits = False
         orphan_hits_file = None
         if self.include_orphan_kos:
-            orphan_hits_file = hmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(self.orphan_ko_dict), self.orphan_ko_hmm_file_path, None, None)
+            ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
+            orphan_hits_file = ohmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(self.orphan_ko_dict), self.orphan_ko_hmm_file_path, None, None)
             has_orphan_hits = True if orphan_hits_file else False
 
         if not hmm_hits_file and not has_orphan_hits:
