@@ -2385,15 +2385,25 @@ class RunKOfams(KeggContext):
             raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is "
                               "extremely displeased and unable to function properly. Please refrain from calling this "
                               "function until after setup_ko_dict() has been called.")
+        if self.include_orphan_kos and not self.orphan_ko_dict:
+            raise ConfigError("Oops! The bit score thresholds for orphan KOs have not been properly loaded, so "
+                              "get_annotation_from_ko_dict() is unable to work properly. If you plan to use "
+                              "--include-orphan-KOs, then make sure you run the setup_orphan_ko_dict() function before "
+                              "calling this one.")
 
-        if not knum in self.ko_dict:
+        ret_value = None
+        if knum in self.ko_dict:
+            ret_value = self.ko_dict[knum]['definition']
+        elif self.include_orphan_kos and knum in self.orphan_ko_dict:
+            ret_value = self.orphan_ko_dict[knum]['definition']
+        else:
             if ok_if_missing_from_dict:
                 return "Unknown function with KO num %s" % knum
             else:
                 raise ConfigError("It seems %s found a KO number that does not exist "
                                   "in the KOfam ko_list file: %s" % (self.hmm_program, knum))
 
-        return self.ko_dict[knum]['definition']
+        return ret_value
 
 
     def parse_kofam_hits(self, hits_dict):
