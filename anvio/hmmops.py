@@ -340,7 +340,8 @@ class SequencesForHMMHits:
             source    = entry['source']
             gene_name = entry['gene_name'].strip()
 
-            if source in sources and (not dont_include_models_with_multiple_domain_hits or gene_name not in models_to_remove[source]):
+            if source in sources and (not dont_include_models_with_multiple_domain_hits or (source not in models_to_remove) or \
+                                                    gene_name not in models_to_remove[source]):
                 gene_hit_counts[source][gene_name] += 1
 
         return gene_hit_counts
