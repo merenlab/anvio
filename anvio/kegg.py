@@ -1676,7 +1676,27 @@ class KOfamDownload(KeggSetup):
         return ko_to_genes
 
 
-    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_file_dir, ko_model_file):
+    def kegg_gene_sequences_to_fasta_file(self, kegg_genes_files, target_fasta_file):
+        """This function extracts the amino acid sequences for a list of KEGG GENES and prints them to a FASTA file.
+        
+         Parameters
+        ==========
+        kegg_genes_files : List of str
+            List of paths to KEGG GENES file to extract sequences from
+        target_fasta_file : list of str
+            Path to FASTA file in which to store the sequences
+        """
+
+        for i, gene_file_path in enumerate(kegg_genes_files):
+            # obtain the amino acid sequence and save it to the fasta file
+            aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
+            with open(target_fasta_file, 'a') as fasta:
+                fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
+                for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
+                    fasta.write(f"{seq}\n")
+
+
+    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_fasta, ko_model_file):
         """This function estimates the bitscore of a single KEGG Ortholog.
 
         It runs `hmmscan` of the KO model against the provided list of its KEGG GENE
@@ -1689,8 +1709,8 @@ class KOfamDownload(KeggSetup):
             KEGG identifier for the KO
         kegg_genes_for_ko : list of str
             List of KEGG GENE accessions that were used to generate the KO model.
-        kegg_genes_file_dir : str
-            Path to directory where the KEGG GENES files are stored
+        kegg_genes_fasta : str
+            Path to FASTA file where the KEGG GENES sequences for this KO are stored
         ko_model_file : str
             File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
             but must be hmmpressed already)
@@ -1705,23 +1725,10 @@ class KOfamDownload(KeggSetup):
             self.run.warning(f"The function estimate_bitscore_for_ko() received an empty list of KEGG GENES "
                              f"for {ko}, so it cannot estimate a bit score threshold. The function will return "
                              f"a threshold of `None` for this KO.")
-            return None
-
-        # the fasta file to hold the amino acid sequences for associated genes
-        genes_fasta = os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
-
-        for i, code in enumerate(kegg_genes_for_ko):
-            gene_file_path = os.path.join(kegg_genes_file_dir, code)
-
-            # obtain the amino acid sequence and save it to the fasta file
-            aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
-            with open(genes_fasta, 'a') as fasta:
-                fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
-                for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
-                    fasta.write(f"{seq}\n")
+            return None 
 
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
-        target_file_dict = {'AA:GENE': genes_fasta}
+        target_file_dict = {'AA:GENE': kegg_genes_fasta}
         hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
         hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_for_ko), ko_model_file, None, None)
         
@@ -1782,6 +1789,17 @@ class KOfamDownload(KeggSetup):
             self.run.warning(f"FYI, some KEGG GENES files failed to download from KEGG. They will not be used for "
                              f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
 
+        self.progress.new("Extracting amino acid sequences for Stray KOs", progress_total_items=len(ko_files_to_process))
+        cur_num = 0
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
+            self.progress.increment(increment_to=cur_num)
+            downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
+            gene_file_paths = [os.path.join(self.stray_ko_genes_dir, code) for code in downloaded_genes_list]
+            self.kegg_gene_sequences_to_fasta_file(gene_file_paths, os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{ko}.fa"))
+            cur_num += 1
+        self.progress.end()
+
         self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
         cur_num = 0
@@ -1790,7 +1808,8 @@ class KOfamDownload(KeggSetup):
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
             threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
-                                        kegg_genes_file_dir=self.stray_ko_genes_dir, ko_model_file=self.stray_ko_hmm_file_path)
+                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{ko}.fa"), 
+                                        ko_model_file=self.stray_ko_hmm_file_path)
             cur_num += 1
         self.progress.end()
 
