@@ -314,9 +314,9 @@ class KeggContext(object):
 
         # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.orphan_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # concatenated hmms for orphan KOs
+        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # concatenated hmms for stray KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
-        self.orphan_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_orphan_kos.txt")
+        self.stray_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_stray_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
@@ -373,15 +373,15 @@ class KeggContext(object):
         # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
         # of the KOs that have no scoring threshold
         if self.__class__.__name__ in ['KeggSetup', 'KOfamDownload']:
-            orphan_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
-            orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
+            stray_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
+            stray_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
 
             if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-                raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                                  "yet, but it needs to in order for the setup_ko_dict() function to work." % self.orphan_data_dir)
-            orphan_ko_path = os.path.join(self.orphan_data_dir, "01_ko_fams_with_no_threshold.txt")
-            orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
-            utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
+                raise ConfigError(f"Hmm. Something is out of order. The orphan data directory {self.orphan_data_dir} does not exist "
+                                  f"yet, but it needs to in order for the setup_ko_dict() function to work.")
+            stray_ko_path = os.path.join(self.orphan_data_dir, "kofams_with_no_threshold.txt")
+            stray_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
+            utils.store_dict_as_TAB_delimited_file(stray_ko_dict, stray_ko_path, key_header="knum", headers=stray_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         if exclude_threshold:
@@ -390,11 +390,11 @@ class KeggContext(object):
             self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
     
-    def setup_orphan_ko_dict(self):
-        """This class sets up a dictionary of predicted bit score thresholds for orphan KOs, if possible.
+    def setup_stray_ko_dict(self):
+        """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
         
-        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-orphan-KOs` 
-        (see KOfamDownload.process_all_orphan_kos()), and are stored in a file that looks like this:
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
+        (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
 
         knum	threshold	score_type
         K20809	823.4	full
@@ -404,17 +404,17 @@ class KeggContext(object):
         If thresholds have not been predicted, then this function throws an error.
         """
 
-        if os.path.exists(self.orphan_ko_thresholds_file):
-            self.orphan_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.orphan_ko_thresholds_file)
+        if os.path.exists(self.stray_ko_thresholds_file):
+            self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
-            raise ConfigError(f"You've requested to include orphan KO models in your analysis, but we cannot find the "
+            raise ConfigError(f"You've requested to include stray KO models in your analysis, but we cannot find the "
                               f"estimated bit score thresholds for these models, which can be generated during "
-                              f"`anvi-setup-kegg-data` and stored at the following path: {self.orphan_ko_thresholds_file}. This "
-                              f"means that `anvi-setup-kegg-data` was run without the `--include-orphan-KOs` flag for the KEGG "
+                              f"`anvi-setup-kegg-data` and stored at the following path: {self.stray_ko_thresholds_file}. This "
+                              f"means that `anvi-setup-kegg-data` was run without the `--include-stray-KOs` flag for the KEGG "
                               f"data directory that you are using. You have two options: 1) give up on including these models and "
-                              f"re-run your command without the `--include-orphan-KOs` flag, or 2) change the KEGG data that you "
+                              f"re-run your command without the `--include-stray-KOs` flag, or 2) change the KEGG data that you "
                               f"are using, which could be as simple as specifying a new `--kegg-data-dir` or as complex as re-running "
-                              f"`anvi-setup-kegg-data` to obtain a dataset with predicted thresholds for orphan KO models.")
+                              f"`anvi-setup-kegg-data` to obtain a dataset with predicted thresholds for stray KO models.")
 
 
     def get_ko_skip_list(self):
@@ -1323,10 +1323,10 @@ class KOfamDownload(KeggSetup):
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
-        self.include_orphan_kos = True if A('include_orphan_KOs') else False
+        self.include_stray_kos = True if A('include_stray_KOs') else False
 
         self.run.info_single("Info from KOfam Download")
-        self.run.info("Orphan KOs will be processed (`--include-orphan-kos` flag)", self.include_orphan_kos)
+        self.run.info("Stray KOs will be processed (`--include-stray-KOs` flag)", self.include_stray_kos)
 
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
@@ -1419,8 +1419,8 @@ class KOfamDownload(KeggSetup):
         """
 
         if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+            raise ConfigError(f"Hmm. Something is out of order. The orphan data directory {self.orphan_data_dir} does not exist "
+                              "yet, but it needs to in order for the move_orphan_files() function to work.")
 
         no_kofam_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_no_kofams.hmm")
         no_kofam_file_list = []
@@ -1439,7 +1439,7 @@ class KOfamDownload(KeggSetup):
                 else:
                     no_kofam_file_list.append(hmm_file)
 
-        # now we concatenate the orphan KO hmms into the orphan data directory
+        # now we concatenate the orphan and stray KO hmms into the orphan data directory
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
@@ -1448,12 +1448,12 @@ class KOfamDownload(KeggSetup):
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
-            utils.concatenate_files(self.orphan_ko_hmm_file_path, no_threshold_file_list, remove_concatenated_files=True)
+            utils.concatenate_files(self.stray_ko_hmm_file_path, no_threshold_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'. "
-                             f"If you used the flag --include-orphan-KOs, we will estimate their bit score thresholds using KEGG GENES "
+                             f"If you used the flag --include-stray-KOs, we will estimate their bit score thresholds using KEGG GENES "
                              f"data so that you can annotate these KOs downstream if you wish.")
 
         if no_data_file_list:
@@ -1503,9 +1503,9 @@ class KOfamDownload(KeggSetup):
         self.progress.update('Running hmmpress on KOs...')
         self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
-        if self.include_orphan_kos:
-            self.progress.update('Running hmmpress on orphan KOs (without bit score thresholds)...')
-            self.exec_hmmpress_command_on_ko_file(self.orphan_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
+        if self.include_stray_kos:
+            self.progress.update('Running hmmpress on stray KOs (without bit score thresholds)...')
+            self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
 
         self.progress.end()
 
@@ -1528,7 +1528,7 @@ class KOfamDownload(KeggSetup):
         """
 
         num_kos = len(kos_to_download)
-        self.progress.new('Downloading KO files for Orphan KOs', progress_total_items=num_kos)
+        self.progress.new('Downloading KO files', progress_total_items=num_kos)
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -1708,7 +1708,7 @@ class KOfamDownload(KeggSetup):
             return None
 
         # the fasta file to hold the amino acid sequences for associated genes
-        genes_fasta = os.path.join(self.orphan_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
+        genes_fasta = os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{ko}.fa")
 
         for i, code in enumerate(kegg_genes_for_ko):
             gene_file_path = os.path.join(kegg_genes_file_dir, code)
@@ -1742,47 +1742,47 @@ class KOfamDownload(KeggSetup):
         return threshold
             
     
-    def process_all_orphan_kos(self):
-        """This driver function processes each orphan KO and creates a file of bit score thresholds for them.
+    def process_all_stray_kos(self):
+        """This driver function processes each stray KO and creates a file of bit score thresholds for them.
         
-        The following steps are run for each orphan KO:
+        The following steps are run for each stray KO:
         1. download of its KO file
         2. identification and download of the KEGG GENES sequences in this family
         3. `hmmscan` of the KO model against these sequences to get bit scores
         4. computing the minimum bit score to use as a threshold for annotating this family
         """
 
-        num_orphans = len(self.ko_no_threshold_list)
-        self.run.info("Number of Orphan KOs to process", num_orphans)
+        num_strays = len(self.ko_no_threshold_list)
+        self.run.info("Number of Stray KOs to process", num_strays)
 
-        self.orphan_ko_file_dir = os.path.join(self.orphan_data_dir, "00_ORPHAN_KO_FILES")
-        self.orphan_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_ORPHAN_GENES_FILES")
-        self.orphan_ko_seqs_dir = os.path.join(self.orphan_data_dir, "02_ORPHAN_GENES_FASTA")
-        filesnpaths.gen_output_directory(self.orphan_ko_file_dir, delete_if_exists=True)
-        filesnpaths.gen_output_directory(self.orphan_ko_genes_dir, delete_if_exists=True)
-        filesnpaths.gen_output_directory(self.orphan_ko_seqs_dir, delete_if_exists=True)
+        self.stray_ko_file_dir = os.path.join(self.orphan_data_dir, "00_STRAY_KO_FILES")
+        self.stray_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_STRAY_GENES_FILES")
+        self.stray_ko_seqs_dir = os.path.join(self.orphan_data_dir, "02_STRAY_GENES_FASTA")
+        filesnpaths.gen_output_directory(self.stray_ko_file_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_genes_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_seqs_dir, delete_if_exists=True)
 
-        ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.orphan_ko_file_dir)
+        ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.stray_ko_file_dir)
 
         ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
-        self.run.info("Number of Orphan KO files successfully downloaded", len(ko_files_to_process))
+        self.run.info("Number of Stray KO files successfully downloaded", len(ko_files_to_process))
         if ko_files_not_downloaded:
-            self.run.warning(f"FYI, some orphan KOs failed to download from KEGG. We will not estimate their bit score thresholds "
+            self.run.warning(f"FYI, some stray KOs failed to download from KEGG. We will not estimate their bit score thresholds "
                              f"and you will not be able to annotate them later. Here they are: {', '.join(ko_files_not_downloaded)}")
 
-        ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.orphan_ko_file_dir)
+        ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.stray_ko_file_dir)
         kegg_genes_to_download = []
         for acc_list in ko_to_gene_accessions.values():
             kegg_genes_to_download.extend(acc_list)
 
-        kegg_genes_not_downloaded = self.download_kegg_genes_files(kegg_genes_to_download, self.orphan_ko_genes_dir)
+        kegg_genes_not_downloaded = self.download_kegg_genes_files(kegg_genes_to_download, self.stray_ko_genes_dir)
         kegg_genes_downloaded = list(set(kegg_genes_to_download) - set(kegg_genes_not_downloaded))
         self.run.info("Number of KEGG GENES files successfully downloaded", len(kegg_genes_downloaded))
         if kegg_genes_not_downloaded:
             self.run.warning(f"FYI, some KEGG GENES files failed to download from KEGG. They will not be used for "
                              f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
 
-        self.progress.new("Estimating bit score threshold for orphan KOs", progress_total_items=len(ko_files_to_process))
+        self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
         cur_num = 0
         for k in ko_files_to_process:
@@ -1790,32 +1790,32 @@ class KOfamDownload(KeggSetup):
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
             threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
-                                        kegg_genes_file_dir=self.orphan_ko_genes_dir, ko_model_file=self.orphan_ko_hmm_file_path)
+                                        kegg_genes_file_dir=self.stray_ko_genes_dir, ko_model_file=self.stray_ko_hmm_file_path)
             cur_num += 1
         self.progress.end()
 
-        # we need to re-load the ko dictionary so that we have access to the definitions of the orphan KOs
-        # cannot do this before this point because the absence of an orphan KO from this dict controls whether it is moved to the 
-        # orphan data directory (and we want to keep the orphans separate since we process them specially)
-        self.setup_ko_dict(exclude_threshold=(not self.include_orphan_kos))
+        # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
+        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
+        # stray data directory (and we want to keep the strays separate since we process them specially)
+        self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos))
 
         # write the thresholds to a file
         thresholds_not_none = 0
-        with open(self.orphan_ko_thresholds_file, 'w') as out:
+        with open(self.stray_ko_thresholds_file, 'w') as out:
             out.write("knum\tthreshold\tscore_type\tdefinition\n")
             for k, t in threshold_dict.items():
                 if t:
                     ko_definition = self.ko_dict[k]['definition']
                     out.write(f"{k}\t{t}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
-        self.run.info("File with estimated bit score thresholds", self.orphan_ko_thresholds_file)
+        self.run.info("File with estimated bit score thresholds", self.stray_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
 
         # clean up downloaded files
         if not anvio.DEBUG:
-            for d in [self.orphan_ko_file_dir, self.orphan_ko_genes_dir, self.orphan_ko_seqs_dir]:
+            for d in [self.stray_ko_file_dir, self.stray_ko_genes_dir, self.stray_ko_seqs_dir]:
                 shutil.rmtree(d)
-            self.run.warning("The KO and GENES files downloaded from KEGG for the orphan KOs are now deleted to save space. "
+            self.run.warning("The KO and GENES files downloaded from KEGG for processing the stray KOs are now deleted to save space. "
                              "If you want to keep them, next time run the program with `--debug`.")
 
 
@@ -1830,8 +1830,8 @@ class KOfamDownload(KeggSetup):
             self.setup_ko_dict() # get ko dict attribute
             self.run_hmmpress()
 
-            if self.include_orphan_kos:
-                self.process_all_orphan_kos()
+            if self.include_stray_kos:
+                self.process_all_stray_kos()
 
 
 class ModulesDownload(KeggSetup):
@@ -2277,7 +2277,7 @@ class RunKOfams(KeggContext):
         self.contigs_db_path = A('contigs_db')
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
-        self.include_orphan_kos = True if A('include_orphan_KOs') else False
+        self.include_stray_kos = True if A('include_stray_KOs') else False
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
@@ -2285,7 +2285,7 @@ class RunKOfams(KeggContext):
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
-        self.orphan_ko_dict = None # should be set up by setup_orphan_ko_dict(), if possible
+        self.stray_ko_dict = None # should be set up by setup_stray_ko_dict(), if possible
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -2304,9 +2304,9 @@ class RunKOfams(KeggContext):
         filesnpaths.is_output_file_writable(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
-        if self.include_orphan_kos:
-            self.setup_orphan_ko_dict()
-            self.run.warning("Please note! Because you used the flag `--include-orphan-KOs`, anvi'o will annotate "
+        if self.include_stray_kos:
+            self.setup_stray_ko_dict()
+            self.run.warning("Please note! Because you used the flag `--include-stray-KOs`, anvi'o will annotate "
                              "your genes with KO models that do not come with a bit score threshold defined by KEGG. "
                              "We have estimated rather conservative thresholds for these models ourselves. To learn "
                              "how we did that, please read the documentation page for `anvi-setup-kegg-data`: "
@@ -2385,17 +2385,17 @@ class RunKOfams(KeggContext):
             raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is "
                               "extremely displeased and unable to function properly. Please refrain from calling this "
                               "function until after setup_ko_dict() has been called.")
-        if self.include_orphan_kos and not self.orphan_ko_dict:
-            raise ConfigError("Oops! The bit score thresholds for orphan KOs have not been properly loaded, so "
+        if self.include_stray_kos and not self.stray_ko_dict:
+            raise ConfigError("Oops! The bit score thresholds for stray KOs have not been properly loaded, so "
                               "get_annotation_from_ko_dict() is unable to work properly. If you plan to use "
-                              "--include-orphan-KOs, then make sure you run the setup_orphan_ko_dict() function before "
+                              "--include-stray-KOs, then make sure you run the setup_stray_ko_dict() function before "
                               "calling this one.")
 
         ret_value = None
         if knum in self.ko_dict:
             ret_value = self.ko_dict[knum]['definition']
-        elif self.include_orphan_kos and knum in self.orphan_ko_dict:
-            ret_value = self.orphan_ko_dict[knum]['definition']
+        elif self.include_stray_kos and knum in self.stray_ko_dict:
+            ret_value = self.stray_ko_dict[knum]['definition']
         else:
             if ok_if_missing_from_dict:
                 return "Unknown function with KO num %s" % knum
@@ -2461,8 +2461,8 @@ class RunKOfams(KeggContext):
                 else:
                     self.gcids_to_hits_dict[gcid][hits_label].append(hit_key)
 
-            if (knum not in self.ko_dict and (self.orphan_ko_dict is not None and knum not in self.orphan_ko_dict)) or \
-                (knum not in self.ko_dict and self.orphan_ko_dict is None):
+            if (knum not in self.ko_dict and (self.stray_ko_dict is not None and knum not in self.stray_ko_dict)) or \
+                (knum not in self.ko_dict and self.stray_ko_dict is None):
                 self.progress.reset()
                 raise ConfigError(f"Something went wrong while parsing the {hits_label} HMM hits. It seems that KO "
                                   f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
@@ -2481,19 +2481,19 @@ class RunKOfams(KeggContext):
                     self.progress.reset()
                     raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
                                     f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
-            elif knum in self.orphan_ko_dict:
-                if self.orphan_ko_dict[knum]['score_type'] == 'domain':
-                    if hmm_hit['domain_bit_score'] >= float(self.orphan_ko_dict[knum]['threshold']):
+            elif knum in self.stray_ko_dict:
+                if self.stray_ko_dict[knum]['score_type'] == 'domain':
+                    if hmm_hit['domain_bit_score'] >= float(self.stray_ko_dict[knum]['threshold']):
                         keep = True
-                elif self.orphan_ko_dict[knum]['score_type'] == 'full':
-                    if hmm_hit['bit_score'] >= float(self.orphan_ko_dict[knum]['threshold']):
+                elif self.stray_ko_dict[knum]['score_type'] == 'full':
+                    if hmm_hit['bit_score'] >= float(self.stray_ko_dict[knum]['threshold']):
                         keep = True
                 else:
                     self.progress.reset()
-                    raise ConfigError(f"The KO noise cutoff dictionary for the orphan KO {knum} has a strange score type which "
-                                    f"is unknown to anvi'o: {self.orphan_ko_dict[knum]['score_type']}")
+                    raise ConfigError(f"The KO noise cutoff dictionary for the stray KO {knum} has a strange score type which "
+                                    f"is unknown to anvi'o: {self.stray_ko_dict[knum]['score_type']}")
             else:
-                raise ConfigError(f"We cannot find KO {knum} in either self.ko_dict or in self.orphan_ko_dict. This is likely a "
+                raise ConfigError(f"We cannot find KO {knum} in either self.ko_dict or in self.stray_ko_dict. This is likely a "
                                   f"problem for the developers.")
 
             if keep or self.keep_all_hits:
@@ -2597,7 +2597,7 @@ class RunKOfams(KeggContext):
                          "the e-value/bitscore parameters (see the help page for more info).")
 
         num_annotations_added = 0
-        num_orphan_KOs_added = 0
+        num_stray_KOs_added = 0
         total_num_genes = len(gcids_list)
         self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
 
@@ -2625,9 +2625,9 @@ class RunKOfams(KeggContext):
                             if knum in self.ko_dict:
                                 ko_threshold = float(self.ko_dict[knum]['threshold'])
                                 ko_score_type = self.ko_dict[knum]['score_type']
-                            elif self.include_orphan_kos and knum in self.orphan_ko_dict:
-                                ko_threshold = float(self.orphan_ko_dict[knum]['threshold'])
-                                ko_score_type = self.orphan_ko_dict[knum]['score_type']
+                            elif self.include_stray_kos and knum in self.stray_ko_dict:
+                                ko_threshold = float(self.stray_ko_dict[knum]['threshold'])
+                                ko_score_type = self.stray_ko_dict[knum]['score_type']
                             else:
                                 raise ConfigError(f"panik. the function update_dict_for_genes_with_missing_annotations() "
                                                   f"cannot find the bit score threshold for {knum}.")
@@ -2659,9 +2659,9 @@ class RunKOfams(KeggContext):
                         # we may never access this downstream but let's add to it to be consistent
                         self.gcids_to_functions_dict[gcid] = [next_key]
 
-                        # track how many of orphan KOs are added back
-                        if best_hit_label == "Orphan KO":
-                            num_orphan_KOs_added += 1
+                        # track how many of stray KOs are added back
+                        if best_hit_label == "Stray KO":
+                            num_stray_KOs_added += 1
 
                         # add associated KEGG module information to database
                         mods = None
@@ -2707,9 +2707,9 @@ class RunKOfams(KeggContext):
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
-        if self.include_orphan_kos:
-            self.run.info("... of these, number of regular KOs is", num_annotations_added - num_orphan_KOs_added)
-            self.run.info("... of these, number of orphan KOs is", num_orphan_KOs_added)
+        if self.include_stray_kos:
+            self.run.info("... of these, number of regular KOs is", num_annotations_added - num_stray_KOs_added)
+            self.run.info("... of these, number of stray KOs is", num_stray_KOs_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
 
@@ -2800,14 +2800,14 @@ class RunKOfams(KeggContext):
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
-        has_orphan_hits = False
-        orphan_hits_file = None
-        if self.include_orphan_kos:
+        has_stray_hits = False
+        stray_hits_file = None
+        if self.include_stray_kos:
             ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-            orphan_hits_file = ohmmer.run_hmmer('Orphan KOs', 'AA', 'GENE', None, None, len(self.orphan_ko_dict), self.orphan_ko_hmm_file_path, None, None)
-            has_orphan_hits = True if orphan_hits_file else False
+            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, None)
+            has_stray_hits = True if stray_hits_file else False
 
-        if not hmm_hits_file and not has_orphan_hits:
+        if not hmm_hits_file and not has_stray_hits:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
                              "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
                              "and gracefully quit.", nl_before=1, nl_after=1)
@@ -2840,13 +2840,13 @@ class RunKOfams(KeggContext):
         super_hits_dict["KOfam"] = search_results_dict
         self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
-        if has_orphan_hits:
-            self.run.warning('', header='HMM hit parsing for Orphan KOs', lc='green')
-            self.run.info("HMM output table", orphan_hits_file)
-            oparser = parser_modules['search']['hmmer_table_output'](orphan_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-            orphan_search_results = oparser.get_search_results()
-            next_key_in_functions_dict = self.parse_kofam_hits(orphan_search_results, hits_label = "Orphan KO", next_key=next_key_in_functions_dict)
-            super_hits_dict["Orphan KO"] = orphan_search_results
+        if has_stray_hits:
+            self.run.warning('', header='HMM hit parsing for Stray KOs', lc='green')
+            self.run.info("HMM output table", stray_hits_file)
+            oparser = parser_modules['search']['hmmer_table_output'](stray_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+            stray_search_results = oparser.get_search_results()
+            next_key_in_functions_dict = self.parse_kofam_hits(stray_search_results, hits_label = "Stray KO", next_key=next_key_in_functions_dict)
+            super_hits_dict["Stray KO"] = stray_search_results
             self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
         if not self.skip_bitscore_heuristic:
