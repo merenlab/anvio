@@ -370,9 +370,9 @@ class KeggContext(object):
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
 
-        # if we are currently setting up KEGG, we should generate a text file with the ko_list entries
+        # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
         # of the KOs that have no scoring threshold
-        if self.__class__.__name__ in ['KeggSetup']:
+        if self.__class__.__name__ in ['KeggSetup', 'KOfamDownload']:
             orphan_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
             orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
 
