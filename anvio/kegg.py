@@ -1848,7 +1848,7 @@ class KOfamDownload(KeggSetup):
 
         self.progress.new("Aligning genes and creating new HMMs for Stray KOs", progress_total_items=len(ko_files_to_process))
         list_of_new_HMMs = []
-        hmmbuild_log = os.path.join(self.orphan_data_directory, "hmmbuild.log")
+        hmmbuild_log = os.path.join(self.orphan_data_dir, "hmmbuild.log")
         cur_num = 0
         for k in ko_files_to_process:
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
