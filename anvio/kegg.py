@@ -31,6 +31,7 @@ from anvio.biochemistry.reactionnetwork import _download_worker
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
+from anvio.drivers.muscle import Muscle
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
@@ -1331,6 +1332,9 @@ class KOfamDownload(KeggSetup):
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
         filesnpaths.is_program_exists('hmmpress')
+        if self.include_stray_kos:
+            filesnpaths.is_program_exists('hmmbuild')
+            filesnpaths.is_program_exists('muscle')
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
