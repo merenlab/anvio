@@ -1714,6 +1714,33 @@ class KOfamDownload(KeggSetup):
         return seq_tuples
 
 
+    def build_HMM_from_seqs(self, hmm_name, tuple_of_seqs, hmm_output_file, log_file_path):
+        """This function aligns sequences and builds an HMM from them using `muscle` and `hmmbuild`.
+        
+        Parameters
+        ==========
+        hmm_name : str
+            What to name the model (ie 'NAME' field in the .hmm file)
+        tuple_of_seqs : List of (sequence name, sequence) tuples
+            The sequences to align with 'muscle' to create the `hmmbuild` input. 
+            See anvio.drivers.muscle for example format
+        hmm_output_file : str
+            File path where to store the new HMM model
+        log_file_path : str
+            File path for the log file of `hmmbuild`
+        """
+
+        m = Muscle(progress=progress_quiet, run=run_quiet)
+        clw_alignment = m.run_stdin(tuple_of_seqs, debug=anvio.DEBUG, clustalw_format=True)
+
+        hmmbuild_cmd_line = ['hmmbuild', '-n', hmm_name, '--informat', 'clustallike', hmm_output_file, '-'] # sending '-' in place of an alignment file so it reads from stdin
+        utils.run_command_STDIN(hmmbuild_cmd_line, log_file_path, clw_alignment)
+
+        if not os.path.exists(hmm_output_file):
+            raise ConfigError(f"It seems that the `hmmbuild` command failed because there is no output model at {hmm_output_file}. "
+                              f"Perhaps the log file {log_file_path} will hold some answers for you.")
+
+
     def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_fasta, ko_model_file):
         """This function estimates the bitscore of a single KEGG Ortholog.
 
