@@ -1896,9 +1896,11 @@ class KOfamDownload(KeggSetup):
 
         # clean up downloaded files
         if not anvio.DEBUG:
-            for d in [self.stray_ko_file_dir, self.stray_ko_genes_dir, self.stray_ko_seqs_dir]:
+            os.remove(hmmbuild_log)
+            for d in [self.stray_ko_file_dir, self.stray_ko_genes_dir, self.stray_ko_seqs_dir, self.stray_ko_hmms_dir]:
                 shutil.rmtree(d)
-            self.run.warning("The KO and GENES files downloaded from KEGG for processing the stray KOs are now deleted to save space. "
+            self.run.warning("The KO and GENES files downloaded from KEGG for processing the stray KOs, as well as the "
+                             "individual new HMM files that anvi'o generated for these KOs, are now deleted to save space. "
                              "If you want to keep them, next time run the program with `--debug`.")
 
 
