@@ -315,7 +315,8 @@ class KeggContext(object):
 
         # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # concatenated hmms for stray KOs
+        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "anvio_hmm_profiles_for_stray_KOs.hmm") # anvi'o-generated concatenated hmms for stray KOs
+        self.stray_ko_hmms_from_kegg = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # original concatentated hmms for stray KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.stray_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_stray_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
@@ -1452,7 +1453,7 @@ class KOfamDownload(KeggSetup):
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
-            utils.concatenate_files(self.stray_ko_hmm_file_path, no_threshold_file_list, remove_concatenated_files=True)
+            utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
