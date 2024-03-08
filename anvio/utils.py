@@ -4636,11 +4636,12 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
-                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
-                          "anvi'o environment. The reason why the standard anvi'o package does not include "
-                          "this module is both complicated and really unimportant. Re-running the migration "
-                          "after `h5py` is installed will make things go smootly.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! "
+                          "To continue, please first install the newest version of the Python module `h5py` "
+                          "by running `pip install h5py` in your anvi'o environment. "
+                          "The reason why the standard anvi'o package does not include this module is both "
+                          "complicated and really unimportant. Re-running the migration after `h5py` is installed "
+                          "will make things go smoothly.")
 
 
 def RepresentsInt(s):
