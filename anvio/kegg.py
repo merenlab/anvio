@@ -1866,7 +1866,7 @@ class KOfamDownload(KeggSetup):
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
             threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
                                         kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"), 
-                                        ko_model_file=self.stray_ko_hmm_file_path)
+                                        ko_model_file=os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm"))
             cur_num += 1
         self.progress.end()
 
