@@ -2395,7 +2395,7 @@ class RunKOfams(KeggContext):
             self.setup_stray_ko_dict()
             self.run.warning("Please note! Because you used the flag `--include-stray-KOs`, anvi'o will annotate "
                              "your genes with KO models that do not come with a bit score threshold defined by KEGG. "
-                             "We have estimated rather conservative thresholds for these models ourselves. To learn "
+                             "We have generated new models and estimated rather conservative thresholds for them ourselves. To learn "
                              "how we did that, please read the documentation page for `anvi-setup-kegg-data`: "
                              "https://anvio.org/help/main/programs/anvi-setup-kegg-data/")
 
