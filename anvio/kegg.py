@@ -1683,21 +1683,35 @@ class KOfamDownload(KeggSetup):
     def kegg_gene_sequences_to_fasta_file(self, kegg_genes_files, target_fasta_file):
         """This function extracts the amino acid sequences for a list of KEGG GENES and prints them to a FASTA file.
         
-         Parameters
+        Parameters
         ==========
         kegg_genes_files : List of str
             List of paths to KEGG GENES file to extract sequences from
         target_fasta_file : list of str
             Path to FASTA file in which to store the sequences
+
+        Returns
+        =======
+        seq_tuples : List of tuples
+            Each sequence added to the FASTA file is also returned in this list, where each tuple contains 
+            (KEGG GENES name, amino acid sequence). Note that the seq name is taken from the name of the KEGG GENES file.
         """
 
+        seq_tuples = []
         for i, gene_file_path in enumerate(kegg_genes_files):
+            seq_name = os.path.basename(gene_file_path)
             # obtain the amino acid sequence and save it to the fasta file
             aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
+
+            aaseq = ""
             with open(target_fasta_file, 'a') as fasta:
                 fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
                 for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
                     fasta.write(f"{seq}\n")
+                    aaseq += seq
+            seq_tuples.append((seq_name, aaseq))
+
+        return seq_tuples
 
 
     def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_fasta, ko_model_file):
