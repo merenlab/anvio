@@ -1810,6 +1810,7 @@ class KOfamDownload(KeggSetup):
         self.stray_ko_file_dir = os.path.join(self.orphan_data_dir, "00_STRAY_KO_FILES")
         self.stray_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_STRAY_GENES_FILES")
         self.stray_ko_seqs_dir = os.path.join(self.orphan_data_dir, "02_STRAY_GENES_FASTA")
+        self.stray_ko_hmms_dir = os.path.join(self.orphan_data_dir, "03_STRAY_KO_HMMS")
         filesnpaths.gen_output_directory(self.stray_ko_file_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.stray_ko_genes_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.stray_ko_seqs_dir, delete_if_exists=True)
@@ -1835,13 +1836,27 @@ class KOfamDownload(KeggSetup):
                              f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
 
         self.progress.new("Extracting amino acid sequences for Stray KOs", progress_total_items=len(ko_files_to_process))
+        ko_to_gene_seqs_list = {} # we'll store the sequences to align with muscle here. yes, we just stored them in a file.
         cur_num = 0
         for k in ko_files_to_process:
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
             gene_file_paths = [os.path.join(self.stray_ko_genes_dir, code) for code in downloaded_genes_list]
-            self.kegg_gene_sequences_to_fasta_file(gene_file_paths, os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"))
+            ko_to_gene_seqs_list[k] = self.kegg_gene_sequences_to_fasta_file(gene_file_paths, os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"))
+            cur_num += 1
+        self.progress.end()
+
+        self.progress.new("Aligning genes and creating new HMMs for Stray KOs", progress_total_items=len(ko_files_to_process))
+        list_of_new_HMMs = []
+        hmmbuild_log = os.path.join(self.orphan_data_directory, "hmmbuild.log")
+        cur_num = 0
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
+            self.progress.increment(increment_to=cur_num)
+            hmm_model_file = os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm")
+            self.build_HMM_from_seqs(f"{k}_anvio_version", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
+            list_of_new_HMMs.append(hmm_model_file)
             cur_num += 1
         self.progress.end()
 
