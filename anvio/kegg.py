@@ -1750,7 +1750,8 @@ class KOfamDownload(KeggSetup):
         ko : str
             KEGG identifier for the KO
         kegg_genes_for_ko : list of str
-            List of KEGG GENE accessions that were used to generate the KO model.
+            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and 
+            number of sequences)
         kegg_genes_fasta : str
             Path to FASTA file where the KEGG GENES sequences for this KO are stored
         ko_model_file : str
@@ -1797,8 +1798,9 @@ class KOfamDownload(KeggSetup):
         The following steps are run for each stray KO:
         1. download of its KO file
         2. identification and download of the KEGG GENES sequences in this family
-        3. `hmmscan` of the KO model against these sequences to get bit scores
-        4. computing the minimum bit score to use as a threshold for annotating this family
+        3. alignment with `muscle` and `hmmbuild` to create a new model (since KEGG GENES updates faster than KOfam models do)
+        4. `hmmscan` of the new KO model against these sequences to get bit scores
+        5. computing the minimum bit score to use as a threshold for annotating this family
         """
 
         num_strays = len(self.ko_no_threshold_list)
