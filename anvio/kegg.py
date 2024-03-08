@@ -1813,6 +1813,7 @@ class KOfamDownload(KeggSetup):
         filesnpaths.gen_output_directory(self.stray_ko_file_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.stray_ko_genes_dir, delete_if_exists=True)
         filesnpaths.gen_output_directory(self.stray_ko_seqs_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_hmms_dir, delete_if_exists=True)
 
         ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.stray_ko_file_dir)
 
