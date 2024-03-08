@@ -1508,10 +1508,6 @@ class KOfamDownload(KeggSetup):
         self.progress.update('Running hmmpress on KOs...')
         self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
-        if self.include_stray_kos:
-            self.progress.update('Running hmmpress on stray KOs (without bit score thresholds)...')
-            self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
-
         self.progress.end()
 
 
