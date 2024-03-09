@@ -1404,13 +1404,13 @@ class KOfamDownload(KeggSetup):
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
             if k not in self.ko_skip_list:
-                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
+                hmm_path = os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm")
                 if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
-                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
-                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
-                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
-                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
+                    raise ConfigError(f"The KOfam HMM profile at {hmm_path} does not exist. This probably means that something went wrong "
+                                      f"while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
+                                      f"flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      f"If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      f"setup KEGG with the --kegg-archive flag.")
 
 
     def move_orphan_files(self):
