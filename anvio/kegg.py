@@ -1501,10 +1501,6 @@ class KOfamDownload(KeggSetup):
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
         utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
-        # there is no reason to keep the original HMM profiles around, unless we are debugging
-        if not anvio.DEBUG:
-            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
-
         self.progress.update('Running hmmpress on KOs...')
         self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
@@ -1925,6 +1921,10 @@ class KOfamDownload(KeggSetup):
 
             if self.include_stray_kos:
                 self.process_all_stray_kos()
+            
+            # there is no reason to keep the original HMM profiles around, unless we are debugging
+            if not anvio.DEBUG:
+                shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
 
 
 class ModulesDownload(KeggSetup):
