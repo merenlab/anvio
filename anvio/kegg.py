@@ -1455,10 +1455,11 @@ class KOfamDownload(KeggSetup):
         if no_threshold_file_list:
             utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
             filesnpaths.gen_output_directory(os.path.join(self.orphan_data_dir, "profiles"), delete_if_exists=True)
-            for k in no_threshold_file_list:
+            for k_path in no_threshold_file_list:
+                k = os.path.basename(k_path)
                 # move individual profiles temporarily to the orphan data dir, so they don't get combined with the regular KOs
                 # but we can still use them later if necessary for --include-stray-KOs
-                os.rename(os.path.join(self.kegg_data_dir, f"profiles/{k}"), os.path.join(self.orphan_data_dir, f"profiles/{k}"))
+                os.rename(k_path, os.path.join(self.orphan_data_dir, f"profiles/{k}"))
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
