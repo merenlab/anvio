@@ -2426,6 +2426,11 @@ class RunKOfams(KeggContext):
         utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_output_file_writable(self.contigs_db_path)
 
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
+                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
         if self.include_stray_kos:
             self.setup_stray_ko_dict()
@@ -2450,11 +2455,6 @@ class RunKOfams(KeggContext):
                              "program with a data directory including a modules database (which you can obtain by running "
                              "`anvi-setup-kegg-data` again with the right mode(s).")
             self.kegg_modules_db = None
-
-        # reminder to be a good citizen
-        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
-                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
-                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def check_hash_in_contigs_db(self):
