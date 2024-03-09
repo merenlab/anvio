@@ -1852,12 +1852,27 @@ class KOfamDownload(KeggSetup):
         list_of_new_HMMs = []
         hmmbuild_log = os.path.join(self.orphan_data_dir, "hmmbuild.log")
         cur_num = 0
+        new_models = 0
+        old_models = 0
+        models_without_genes = []
         for k in ko_files_to_process:
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
-            hmm_model_file = os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm")
-            self.build_HMM_from_seqs(f"{k}_anvio_version", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
-            list_of_new_HMMs.append(hmm_model_file)
+            if not len(ko_to_gene_seqs_list[k]):
+                models_without_genes.append(k)
+            elif len(ko_to_gene_seqs_list[k]) == 1:
+                # with only 1 sequence, we don't need to build a new model and can just use KEGG's since it is guaranteed to fit this sequence
+                kegg_model_file = os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm")
+                if not os.path.exists(kegg_model_file):
+                    models_without_genes.append(k) # if we don't have the OG model, we just skip this one
+                else:
+                    list_of_new_HMMs.append(kegg_model_file)
+                    old_models += 1
+            else:
+                hmm_model_file = os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm")
+                self.build_HMM_from_seqs(f"{k}_anvio_version", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
+                list_of_new_HMMs.append(hmm_model_file)
+                new_models += 1
             cur_num += 1
         self.progress.end()
 
