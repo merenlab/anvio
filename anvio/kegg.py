@@ -1875,6 +1875,12 @@ class KOfamDownload(KeggSetup):
                 new_models += 1
             cur_num += 1
         self.progress.end()
+        if models_without_genes:
+            self.run.warning(f"We weren't able to download any KEGG GENE sequences for some stray KOs, and therefore will not "
+                             f"be able to estimate bit score threshold for these KOs. Here they are: {', '.join(models_without_genes)}")
+            ko_files_to_process = list(set(ko_files_to_process) - set(models_without_genes))
+        self.run.info("Number of Stray KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
+        self.run.info("Number of Stray KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
 
         self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
