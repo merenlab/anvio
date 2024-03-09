@@ -1865,6 +1865,7 @@ class KOfamDownload(KeggSetup):
         old_models = 0
         models_without_genes = []
         kos_with_one_gene = []
+        models_with_anvio_version = []
         for k in ko_files_to_process:
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
@@ -1883,6 +1884,7 @@ class KOfamDownload(KeggSetup):
                 self.build_HMM_from_seqs(f"{k}_anvio_version", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
                 list_of_new_HMMs.append(hmm_model_file)
                 new_models += 1
+                models_with_anvio_version.append(k)
             cur_num += 1
         self.progress.end()
 
@@ -1931,8 +1933,11 @@ class KOfamDownload(KeggSetup):
             out.write("knum\tthreshold\tscore_type\tdefinition\n")
             for k, t in threshold_dict.items():
                 if t:
+                    model_name = k
+                    if k in models_with_anvio_version:
+                        model_name = f"{k}_anvio_version"
                     ko_definition = self.ko_dict[k]['definition']
-                    out.write(f"{k}\t{t}\tfull\t{ko_definition}\n")
+                    out.write(f"{model_name}\t{t}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
         self.run.info("File with estimated bit score thresholds", self.stray_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
