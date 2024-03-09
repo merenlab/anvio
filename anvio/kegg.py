@@ -1453,7 +1453,7 @@ class KOfamDownload(KeggSetup):
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
-            utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=True)
+            utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
