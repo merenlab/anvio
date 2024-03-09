@@ -1891,6 +1891,13 @@ class KOfamDownload(KeggSetup):
             self.run.info("Number of KOs without HMMs", len(kos_with_one_gene))
             ko_files_to_process = list(set(ko_files_to_process) - set(kos_with_one_gene))
 
+        self.progress.new('Concatenating new Stray HMM files...')
+        utils.concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
+        self.progress.update('Running hmmpress on new Stray KO HMMs...')
+        self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
+        self.progress.end()
+        self.run.info("File storing all new HMMs generated for Stray KOs", self.stray_ko_hmm_file_path)
+
         self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
         cur_num = 0
@@ -1900,16 +1907,9 @@ class KOfamDownload(KeggSetup):
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
             threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
                                         kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"), 
-                                        ko_model_file=os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm"))
+                                        ko_model_file=self.stray_ko_hmm_file_path)
             cur_num += 1
         self.progress.end()
-
-        self.progress.new('Concatenating new Stray HMM files...')
-        utils.concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
-        self.progress.update('Running hmmpress on new Stray KO HMMs...')
-        self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
-        self.progress.end()
-        self.run.info("File storing all new HMMs generated for Stray KOs", self.stray_ko_hmm_file_path)
 
         # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
         # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
