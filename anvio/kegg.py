@@ -344,7 +344,7 @@ class KeggContext(object):
                                   f"the safest way to handle things.")
 
 
-    def setup_ko_dict(self, exclude_threshold=True):
+    def setup_ko_dict(self, exclude_threshold=True, suppress_warnings=False):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
@@ -367,6 +367,8 @@ class KeggContext(object):
         ==========
         exclude_threshold : Boolean
             If this is true, we remove KOs without a bitscore threshold from the ko_dict
+        suppress_warnings : Boolean
+            If this is true, we don't print the warning message about stray KOs
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
@@ -389,7 +391,8 @@ class KeggContext(object):
         if exclude_threshold:
             [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
         else:
-            self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
+            if not suppress_warnings:
+                self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
     
     def setup_stray_ko_dict(self):
@@ -1920,7 +1923,7 @@ class KOfamDownload(KeggSetup):
         # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
         # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
         # stray data directory (and we want to keep the strays separate since we process them specially)
-        self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos))
+        self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos), suppress_warnings=True)
 
         # write the thresholds to a file
         thresholds_not_none = 0
