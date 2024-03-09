@@ -2438,6 +2438,7 @@ class RunKOfams(KeggContext):
                          "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
+        self.run.info("Stray KOs will be annotated", self.include_stray_kos)
         if self.include_stray_kos:
             self.setup_stray_ko_dict()
             self.run.warning("Please note! Because you used the flag `--include-stray-KOs`, anvi'o will annotate "
