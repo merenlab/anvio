@@ -1458,7 +1458,7 @@ class KOfamDownload(KeggSetup):
             for k in no_threshold_file_list:
                 # move individual profiles temporarily to the orphan data dir, so they don't get combined with the regular KOs
                 # but we can still use them later if necessary for --include-stray-KOs
-                os.rename(os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm"), os.path.join(self.orphan_data_dir, f"profiles/{k}.hmm"))
+                os.rename(os.path.join(self.kegg_data_dir, f"profiles/{k}"), os.path.join(self.orphan_data_dir, f"profiles/{k}"))
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
