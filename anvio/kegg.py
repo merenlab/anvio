@@ -1786,7 +1786,7 @@ class KOfamDownload(KeggSetup):
         # take the minimum of hits from current KO model as bit score threshold
         all_relevant_bitscores = []
         for hit, hit_info_dict in search_results_dict.items():
-            if hit_info_dict['gene_name'] == ko:
+            if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}_anvio_version":
                 all_relevant_bitscores.append(hit_info_dict['bit_score'])
         
         threshold = min(all_relevant_bitscores)
