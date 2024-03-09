@@ -1725,7 +1725,7 @@ class KOfamDownload(KeggSetup):
 
         if len(tuple_of_seqs) < 2:
             raise ConfigError(f"The function build_HMM_from_seqs() can't build an alignment from less than "
-                              f"2 sequences, but that is what it got. Here are the sequences passed to this "
+                              f"2 sequences, but that is what it got. Here is the sequence (if any) passed to this "
                               f"function: {tuple_of_seqs}. No alignment, no HMM. Sorry!")
 
         m = Muscle(progress=progress_quiet, run=run_quiet)
