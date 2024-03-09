@@ -1855,16 +1855,17 @@ class KOfamDownload(KeggSetup):
         new_models = 0
         old_models = 0
         models_without_genes = []
+        kos_with_one_gene = []
         for k in ko_files_to_process:
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
             if not len(ko_to_gene_seqs_list[k]):
                 models_without_genes.append(k)
             elif len(ko_to_gene_seqs_list[k]) == 1:
-                # with only 1 sequence, we don't need to build a new model and can just use KEGG's since it is guaranteed to fit this sequence
+                # with only 1 sequence, we can't build a new model. We can try to use KEGG's since it is guaranteed to fit this sequence
                 kegg_model_file = os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm")
                 if not os.path.exists(kegg_model_file):
-                    models_without_genes.append(k) # if we don't have the OG model, we just skip this one
+                    kos_with_one_gene.append(k) # if we don't have the OG model, we just skip this one
                 else:
                     list_of_new_HMMs.append(kegg_model_file)
                     old_models += 1
@@ -1875,12 +1876,20 @@ class KOfamDownload(KeggSetup):
                 new_models += 1
             cur_num += 1
         self.progress.end()
+
+        self.run.info("Number of Stray KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
+        self.run.info("Number of Stray KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
         if models_without_genes:
             self.run.warning(f"We weren't able to download any KEGG GENE sequences for some stray KOs, and therefore will not "
                              f"be able to estimate bit score threshold for these KOs. Here they are: {', '.join(models_without_genes)}")
+            self.run.info("Number of KOs without downloaded gene sequences", len(models_without_genes))
             ko_files_to_process = list(set(ko_files_to_process) - set(models_without_genes))
-        self.run.info("Number of Stray KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
-        self.run.info("Number of Stray KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
+        if kos_with_one_gene:
+            self.run.warning(f"The following stray KOs had exactly one KEGG GENE sequence, so we couldn't build a new HMM for them, "
+                             f"but we also couldn't find their models from KEGG, so we won't estimate bit score thresholds for them: "
+                             f"{', '.join(kos_with_one_gene)}")
+            self.run.info("Number of KOs without HMMs", len(kos_with_one_gene))
+            ko_files_to_process = list(set(ko_files_to_process) - set(kos_with_one_gene))
 
         self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
