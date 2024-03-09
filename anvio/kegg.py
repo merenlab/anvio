@@ -1959,7 +1959,8 @@ class KOfamDownload(KeggSetup):
             
             # there is no reason to keep the original HMM profiles around, unless we are debugging
             if not anvio.DEBUG:
-                shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
+                shutil.rmtree(os.path.join(self.kegg_data_dir, "profiles"))
+                shutil.rmtree(os.path.join(self.orphan_data_dir, "profiles"))
 
 
 class ModulesDownload(KeggSetup):
