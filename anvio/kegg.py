@@ -1454,6 +1454,11 @@ class KOfamDownload(KeggSetup):
 
         if no_threshold_file_list:
             utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
+            filesnpaths.gen_output_directory(os.path.join(self.orphan_data_dir, "profiles"), delete_if_exists=True)
+            for k in no_threshold_file_list:
+                # move individual profiles temporarily to the orphan data dir, so they don't get combined with the regular KOs
+                # but we can still use them later if necessary for --include-stray-KOs
+                os.rename(os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm"), os.path.join(self.orphan_data_dir, f"profiles/{k}.hmm"))
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
@@ -1863,7 +1868,7 @@ class KOfamDownload(KeggSetup):
                 models_without_genes.append(k)
             elif len(ko_to_gene_seqs_list[k]) == 1:
                 # with only 1 sequence, we can't build a new model. We can try to use KEGG's since it is guaranteed to fit this sequence
-                kegg_model_file = os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm")
+                kegg_model_file = os.path.join(self.orphan_data_dir, f"profiles/{k}.hmm")
                 if not os.path.exists(kegg_model_file):
                     kos_with_one_gene.append(k) # if we don't have the OG model, we just skip this one
                 else:
