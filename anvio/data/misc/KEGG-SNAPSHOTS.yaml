@@ -72,9 +72,9 @@ v2023-09-22:
     modules_db_version: 4
     no_orphan_KOs: True
 
-v2024-03-04:
-    url: https://figshare.com/ndownloader/files/44851735
-    archive_name: KEGG_build_2024-03-04_23910d68b4f2.tar.gz
+v2024-03-09:
+    url: https://figshare.com/ndownloader/files/44953354
+    archive_name: KEGG_build_2024-03-09_23910d68b4f2.tar.gz
     hash: 23910d68b4f2
     modules_db_version: 4
     no_modeling_data: True
