@@ -3717,6 +3717,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
             self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
+            if self.include_stray_kos:
+                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=True)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
