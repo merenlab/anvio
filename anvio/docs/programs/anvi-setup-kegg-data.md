@@ -123,11 +123,15 @@ However, in early 2024 we came up with a strategy to estimate bit score threshol
 - run `hmmscan` of the KO's model (either the new one or the original) against the KEGG GENE sequences belonging to this family to get a distribution of 'positive' matches to the model
 - take the minimum bit score of these 'positive' matches to use as the bit score threshold for the model
 
-When this is complete for every KO, the program saves the estimated bit score thresholds to a tab-delimited file, located in your anvi'o installation at `orphan_data/estimated_thresholds_for_stray_kos.txt`. It also concatenates the relevant model (new or original) for each KO family into one file (at `orphan_data/anvio_hmm_profiles_for_stray_KOs.hmm`), and runs `hmmpress` on it so that these models can be used for annotation downstream (if requested).
+When this is complete for every KO, the program saves the estimated bit score thresholds to a tab-delimited file, located in your KEGG data directory at `orphan_data/estimated_thresholds_for_stray_kos.txt`. It also concatenates the relevant model (new or original) for each KO family into one file (at `orphan_data/anvio_hmm_profiles_for_stray_KOs.hmm`), and runs `hmmpress` on it so that these models can be used for annotation downstream (if requested).
 
 Astute readers will notice that this process is similar to half of the workflow that KEGG uses to estimate bit scores on the larger KO families; that is, we use the 'positive' matches of the model against the gene sequences used to create it to find the minimum bit score that is required to annotate these orthologous sequences. For the sake of time and computational resources, we skip [KEGG's more rigorous process](https://doi.org/10.1093/bioinformatics/btz859) of dividing the 'positive' set into 3 random groups (which cannot be done anyway with these small families, otherwise KEGG would have done it for us already) and also including a 'negative' set of sequences that aren't orthologous to refine the bit score threshold.
 
 Our resulting bit score thresholds are not perfect, but they are rather conservative and should mostly avoid the introduction of garbage annotations with these models downstream. Still, we always encourage caution and oversight of your data/results, especially if you decide to use these downstream (which you can do by using the `--include-stray-KOs` flag with %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s). :)
+
+{:.notice}
+If you want to download a snapshot of KEGG data that includes these stray KOs processed and ready to use for annotation and beyond, you should check the `anvio/anvio/data/misc/KEGG-SNAPSHOTS.yaml` file in your anvi'o directory to see which ones have this data. Look for entries that _do not_ have `no_stray_KOs: True`.
+
 
 **Why do we create new HMMs for some of these KOs?**
 
