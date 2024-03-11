@@ -401,10 +401,13 @@ class KeggContext(object):
         Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
         (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
 
-        knum	threshold	score_type
-        K20809	823.4	full
+        knum	threshold	score_type	definition
+        K11700	800.4	full	poly(A) RNA polymerase Cid12 [EC:2.7.7.19]
+        K14747_anvio_version	1054.2	full	benzoylacetate-CoA ligase [EC:6.2.1.-]
         
-        The dictionary structure is identical to that of self.ko_dict.
+        The dictionary structure is identical to that of self.ko_dict. Note that the `knum` column can contain
+        normal KEGG Ortholog accessions (for KOs whose HMMs we haven't updated) and accessions that end with
+        "_anvio_version" (for KOs that we created new models for).
 
         If thresholds have not been predicted, then this function throws an error.
         """
