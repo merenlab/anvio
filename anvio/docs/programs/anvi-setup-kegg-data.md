@@ -74,6 +74,17 @@ Not sure what KEGG snapshots are available for you to request? Well, you could c
 anvi-setup-kegg-data --kegg-snapshot hahaha
 {{ codestop }}
 
+Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data OR models/thresholds for 'stray KOs':
+
+```
+v2023-09-18:
+    url: https://figshare.com/ndownloader/files/42381873
+    archive_name: KEGG_build_2023-09-18_a2b5bde358bb.tar.gz
+    hash: a2b5bde358bb
+    modules_db_version: 4
+    no_modeling_data: True
+    no_stray_KOs: True
+```
 
 ## Getting the most up-to-date KEGG data: downloading directly from KEGG
 
