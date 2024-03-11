@@ -5326,7 +5326,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 for acc in enzymes[1:]:
                     derep_enzyme_hits[acc] -= 1
                 
-                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on):
+                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on) and self.add_copy_number::
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
                                      f"within the same step of a metabolic pathway ({enz_str}), and these enzymes "
