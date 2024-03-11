@@ -2718,10 +2718,10 @@ D = {
              'action': 'store_true',
              'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
                      "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
-                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
-                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
-                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
-                     "can use it with all input types."}
+                     "from bad hits (anvi-run-kegg-kofams does not annotate these KOs unless you use the "
+                     "--include-stray-KOs flag). But if you got your annotations outside of anvi'o and you want to "
+                     "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
+                     "in the case of enzymes-txt input, though you can use it with all input types."}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
