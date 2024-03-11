@@ -4245,6 +4245,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         mod_str = "/".join(present_in_mods)
                         bin_level_module_dict[m]["warnings"].add(f"{ko} is present in multiple modules: {mod_str}")
 
+                    # point out use of anvi'o-specific KO models
+                    if ko.endswith("_anvio_version"):
+                        bin_level_module_dict[m]["warnings"].add(f"used '{ko}_anvio_version' model to annotate {ko}")
+
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
             if contig in bin_level_ko_dict[ko]["contigs_to_genes"]:
