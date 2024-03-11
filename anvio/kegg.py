@@ -3217,6 +3217,15 @@ class KeggEstimatorArgs():
                     self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
 
+                # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
+                k_anvio = f"{k}_anvio_version"
+                if self.include_stray_kos and k_anvio in self.ko_dict:
+                    if k_anvio not in self.all_kos_in_db:
+                        src = 'KOfam'
+                        func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else self.ko_dict[k_anvio]['definition']
+                        self.all_kos_in_db[k_anvio] = {'modules': [], 'annotation_source': src, 'function': func}
+                    self.all_kos_in_db[k_anvio]['modules'].append(mod)
+
 
     def init_paths_for_module(self, mnum, mod_db=None):
         """This function unrolls the module DEFINITION for the module provided and returns a list of all paths through it.
