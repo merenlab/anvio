@@ -6094,7 +6094,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if not c_dict["warnings"]:
                 d[self.modules_unique_id]["warnings"] = "None"
             else:
-                d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+                d[self.modules_unique_id]["warnings"] = ",".join(sorted(c_dict["warnings"]))
 
         # list of enzymes unique to module
         unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
