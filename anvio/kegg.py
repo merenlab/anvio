@@ -6822,11 +6822,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
                 # reminder, an entry in gene_functions_in_genome_dict looks like this:
                 # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                #print(gene_functions_in_genome_dict)
                 for gcid, func_dict in gene_functions_in_genome_dict.items():
                     for source, func_tuple in func_dict.items():
                         if func_tuple:
-                            acc_string, func_def, eval = func_tuple
+                            acc_string, func_def, evalue = func_tuple
                             for acc in acc_string.split('!!!'):
                                 if acc not in self.ko_dict:
                                     self.ko_dict[acc] = {'definition': func_def}
