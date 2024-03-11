@@ -3438,8 +3438,13 @@ class KeggEstimatorArgs():
         metadata_dict = {}
         metadata_dict["modules_with_enzyme"] = mod_list_str
 
-        if knum not in self.ko_dict:
-            # if we can't find the enzyme in the KO dictionary, try to find it in the database
+        if knum in self.ko_dict:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict:
+            # if we can't find the enzyme in the KO dictionary, try to find it in the stray KO dictionary (if it exists)
+            metadata_dict["enzyme_definition"] = self.stray_ko_dict[knum]['definition']
+        else:
+            # if we still can't find the enzyme, try to find it in the database
             if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
                 metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
             elif dont_fail_if_not_found:
@@ -3449,11 +3454,9 @@ class KeggEstimatorArgs():
                 metadata_dict["enzyme_definition"] = "UNKNOWN"
             else:
                 raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                                  f"for enzyme {knum} but this enzyme is not in "
-                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
-        else:
-            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-
+                                  f"for enzyme {knum} but this enzyme is not in the enzyme dictionary "
+                                  "(self.ko_dict, or (self.stray_ko_dict) in some cases). This should never have happened.")
+        
         return metadata_dict
 
 
