@@ -395,7 +395,7 @@ class KeggContext(object):
                 self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
     
-    def setup_stray_ko_dict(self):
+    def setup_stray_ko_dict(self, add_entries_to_regular_ko_dict=False):
         """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
         
         Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
@@ -410,10 +410,20 @@ class KeggContext(object):
         "_anvio_version" (for KOs that we created new models for).
 
         If thresholds have not been predicted, then this function throws an error.
+
+        Parameters
+        ==========
+        add_entries_to_regular_ko_dict : Boolean
+            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the 
+            regular self.ko_dict attribute. Useful if you don't need to keep the two sets separate.
         """
 
         if os.path.exists(self.stray_ko_thresholds_file):
-            self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+            if add_entries_to_regular_ko_dict:
+                stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+                self.ko_dict.update(stray_kos)
+            else:
+                self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
             raise ConfigError(f"You've requested to include stray KO models in your analysis, but we cannot find the "
                               f"estimated bit score thresholds for these models, which can be generated during "
