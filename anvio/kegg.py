@@ -3047,6 +3047,7 @@ class KeggEstimatorArgs():
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
+        self.include_stray_kos = True if A('include_stray_KOs') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
