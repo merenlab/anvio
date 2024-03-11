@@ -2723,6 +2723,15 @@ D = {
                      "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
                      "in the case of enzymes-txt input, though you can use it with all input types."}
                 ),
+    'ignore-unknown-KOs': (
+            ['--ignore-unknown-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If we find an annotation that we don't recognize, usually this program throws an error. If you'd "
+                     "rather that we gracefully ignored such annotations, use this flag. But since errors about unrecognized "
+                     "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
+                     "behavior on until you have seen these errors and are absolutely sure that you do not care."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',

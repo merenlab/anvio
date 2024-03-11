@@ -117,6 +117,7 @@ if __name__ == '__main__':
                                                             "estimates, then you should apply the same flag here. This is kind of similar to the "
                                                             "`--include-kos-not-in-kofam` flag, but it applies only to the stray KOs that you can "
                                                             "annotate with `anvi-run-kegg-kofams --include-stray-KOs`."}))
+    groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))

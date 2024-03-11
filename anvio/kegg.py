@@ -3061,6 +3061,7 @@ class KeggEstimatorArgs():
         self.add_copy_number = True if A('add_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_stray_KOs') else False
+        self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -4200,14 +4201,22 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
                 if ko not in bin_level_ko_dict:
+                    if self.ignore_unknown_kos:
+                        continue
                     raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
-                                      f"annotated in your data. This usually happens when you are using `KOfam` annotations that are "
-                                      f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
-                                      f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
-                                      f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
-                                      f"you will have to re-run this program with the flag --include-kos-not-in-kofam. If you just now "
-                                      f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
-                                      f"or remove them from your input --enzymes-txt file.")
+                                      f"annotated in your data. There are 3 main ways this can happen: (1) you are using --enzymes-txt input "
+                                      f"that includes KOs that are different from the set used for annotation with `anvi-run-kegg-kofams`, "
+                                      f"(2) your contigs database was annotated with `anvi-run-kegg-kofams --include-stray-KOs` but you didn't "
+                                      f"use the `--include-stray-KOs` flag for `anvi-estimate-metabolism`, or (3) you imported external annotations "
+                                      f"with the source name `KOfam` that include KOs not in the KEGG data directory currently being used. "
+                                      f"You have a few options to get around this error depending on which case applies to your situation. "
+                                      f"If this is case (2) and you want to include these enzymes in the analysis, then re-run `anvi-estimate-metabolism` "
+                                      f"with the flag `--include-stray-KOs`. If this is case (1) or (3) and you want to include these enzymes in the "
+                                      f"analysis, then re-run `anvi-estimate-metabolism` with the flag `--include-kos-not-in-kofam`. And no matter "
+                                      f"what the situation is, if you want to IGNORE these unknown annotations for the purposes of estimating "
+                                      f"metabolism, you can re-run `anvi-estimate-metablism` with the flag `--ignore-unknown-KOs`. If this message "
+                                     f"made you worry, you could also re-do your annotations or remove these unknown enzymes from your input "
+                                     f"--enzymes-txt file to be on the safe side.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
