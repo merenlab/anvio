@@ -4225,6 +4225,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if len(present_in_mods) == 1:
                     is_unique = True
 
+                # make sure we can count annotations to anvi'o versions of stray KO models by using KEGG's original accession
+                is_anvio_version = False
+                if ko.endswith("_anvio_version"):
+                    is_anvio_version = True
+                    ko = ko.replace("_anvio_version")
+
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
                     if ko in bin_level_module_dict[m]["kofam_hits"] and gene_call_id not in bin_level_module_dict[m]["kofam_hits"][ko]:
@@ -4246,7 +4252,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         bin_level_module_dict[m]["warnings"].add(f"{ko} is present in multiple modules: {mod_str}")
 
                     # point out use of anvi'o-specific KO models
-                    if ko.endswith("_anvio_version"):
+                    if is_anvio_version:
                         bin_level_module_dict[m]["warnings"].add(f"used '{ko}_anvio_version' model to annotate {ko}")
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
