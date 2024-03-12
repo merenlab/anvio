@@ -840,12 +840,13 @@ class Inversions:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
+                    # add default gene color before checking for existing functions
+                    gene['has_functions'] = False
+                    gene['COLOR'] = '#c3c3c3'
                     if 'functions' in gene.keys():
-                        gene['has_functions'] = True
-                        gene['COLOR'] = '#008000'
-                    else:
-                        gene['has_functions'] = False
-                        gene['COLOR'] = '#c3c3c3'
+                        if gene['functions']:
+                            gene['has_functions'] = True
+                            gene['COLOR'] = '#008000'
 
                     gene['RX'] = gene['start_t']
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)

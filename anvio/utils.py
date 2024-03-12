@@ -44,9 +44,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
-with SuppressAllOutput():
-    from ete3 import Tree
-
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
     try:
@@ -1122,6 +1119,10 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    # import ete3
+    with SuppressAllOutput():
+        from ete3 import Tree
+
     filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
@@ -4636,11 +4637,12 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
-                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
-                          "anvi'o environment. The reason why the standard anvi'o package does not include "
-                          "this module is both complicated and really unimportant. Re-running the migration "
-                          "after `h5py` is installed will make things go smootly.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! "
+                          "To continue, please first install the newest version of the Python module `h5py` "
+                          "by running `pip install h5py` in your anvi'o environment. "
+                          "The reason why the standard anvi'o package does not include this module is both "
+                          "complicated and really unimportant. Re-running the migration after `h5py` is installed "
+                          "will make things go smoothly.")
 
 
 def RepresentsInt(s):
