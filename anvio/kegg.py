@@ -284,6 +284,7 @@ OUTPUT_HEADERS = {'module' : {
                   }
 
 DEFAULT_OUTPUT_MODE = 'modules'
+STRAY_KO_ANVIO_SUFFIX = "_anvio_version"
 
 # global metadata header lists for matrix format
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
@@ -407,7 +408,7 @@ class KeggContext(object):
         
         The dictionary structure is identical to that of self.ko_dict. Note that the `knum` column can contain
         normal KEGG Ortholog accessions (for KOs whose HMMs we haven't updated) and accessions that end with
-        "_anvio_version" (for KOs that we created new models for).
+        STRAY_KO_ANVIO_SUFFIX (for KOs that we created new models for).
 
         If thresholds have not been predicted, then this function throws an error.
 
@@ -1808,7 +1809,7 @@ class KOfamDownload(KeggSetup):
         # take the minimum of hits from current KO model as bit score threshold
         all_relevant_bitscores = []
         for hit, hit_info_dict in search_results_dict.items():
-            if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}_anvio_version":
+            if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}{STRAY_KO_ANVIO_SUFFIX}":
                 all_relevant_bitscores.append(hit_info_dict['bit_score'])
         
         threshold = min(all_relevant_bitscores)
@@ -1894,7 +1895,7 @@ class KOfamDownload(KeggSetup):
                     old_models += 1
             else:
                 hmm_model_file = os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm")
-                self.build_HMM_from_seqs(f"{k}_anvio_version", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
+                self.build_HMM_from_seqs(f"{k}{STRAY_KO_ANVIO_SUFFIX}", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
                 list_of_new_HMMs.append(hmm_model_file)
                 new_models += 1
                 models_with_anvio_version.append(k)
@@ -1948,7 +1949,7 @@ class KOfamDownload(KeggSetup):
                 if t:
                     model_name = k
                     if k in models_with_anvio_version:
-                        model_name = f"{k}_anvio_version"
+                        model_name = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
                     ko_definition = self.ko_dict[k]['definition']
                     out.write(f"{model_name}\t{t}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
@@ -3219,7 +3220,7 @@ class KeggEstimatorArgs():
                 self.all_kos_in_db[k]['modules'].append(mod)
 
                 # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
-                k_anvio = f"{k}_anvio_version"
+                k_anvio = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
                 if self.include_stray_kos and k_anvio in self.ko_dict:
                     if k_anvio not in self.all_kos_in_db:
                         src = 'KOfam'
@@ -4158,7 +4159,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             because we need access to the self.ko_dict
             """
             if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict \
-                        and (f"{knum}_anvio_version" not in self.ko_dict) and self.exclude_kos_no_threshold:
+                        and (f"{knum}{STRAY_KO_ANVIO_SUFFIX}" not in self.ko_dict) and self.exclude_kos_no_threshold:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -4227,9 +4228,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 # make sure we can count annotations to anvi'o versions of stray KO models by using KEGG's original accession
                 is_anvio_version = False
-                if ko.endswith("_anvio_version"):
+                if ko.endswith(STRAY_KO_ANVIO_SUFFIX):
                     is_anvio_version = True
-                    ko = ko.replace("_anvio_version")
+                    ko = ko.replace(STRAY_KO_ANVIO_SUFFIX, "")
 
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
@@ -4253,7 +4254,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     # point out use of anvi'o-specific KO models
                     if is_anvio_version:
-                        bin_level_module_dict[m]["warnings"].add(f"used '{ko}_anvio_version' model to annotate {ko}")
+                        bin_level_module_dict[m]["warnings"].add(f"used '{ko}{STRAY_KO_ANVIO_SUFFIX}' model to annotate {ko}")
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
