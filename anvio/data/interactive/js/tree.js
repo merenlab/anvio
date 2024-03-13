@@ -34,7 +34,7 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.max_child_path = 0;
-    this.branch_support = 0;
+    this.branch_support = "";
 }
 
 
@@ -186,6 +186,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/:/g, "|:|");
     str = str.replace(/;/g, "|;|");
     str = str.replace(/\|\|/g, "|");
+    str = str.replace(/\//g, "/");
     str = str.replace(/^\|/, "");
     str = str.replace(/\|$/, "");
 
@@ -204,15 +205,24 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
         switch (state) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    if (isNumber(token[i]) && mode != 'gene') {
+                    if (isNumber(token[i]) && mode != 'gene' && !isNaN(token[i])) {
                         curnode.branch_support = parseFloat(token[i]);
                         this.has_branch_supports = true;
+                        i++;
+                    } else if (token[i + 1] && token[i + 1] === '/') {
+                        if (isNumber(token[i]) && isNumber(token[i + 2])) {
+                            curnode.branch_support = token[i] + '/' + token[i + 2];
+                            this.has_branch_supports = true;
+                            i += 3;
+                        } else {
+                            state = 99;
+                            this.error = 1; // syntax
+                        }
                     } else {
                         this.label_to_leaves[token[i]] = curnode;
                         curnode.label = token[i];
+                        i++;
                     }
-
-                    i++;
                     state = 1;
                 } else {
                     switch (token[i]) {
@@ -317,13 +327,30 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 
             case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    if (isNumber(token[i]) && mode != 'gene') {
+                    if (isNumber(token[i]) && mode != 'gene' && !isNaN(token[i])) {
                         curnode.branch_support = parseFloat(token[i]);
                         this.has_branch_supports = true;
+                        i++;
+                    } else if (token[i + 1] && token[i + 1] === '/') {
+                        if (isNumber(token[i]) && isNumber(token[i + 2])) {
+                            curnode.branch_support = token[i] + '/' + token[i + 2];
+                            console.log(curnode.has_branch_supports);
+                            this.has_branch_supports = true;
+                            i += 3;
+                        } else {
+                            state = 99;
+                            this.error = 1; // syntax
+                        }
                     } else {
-                        curnode.label = token[i];
+                        if (token[i] != 'R' && token[i] == '100/100'){
+                            console.log(token[i]);
+                            this.has_branch_supports = true;
+                            curnode.has_branch_supports = token[i];
+                        }else{
+                            curnode.label = token[i];
+                        }
+                        i++;
                     }
-                    i++;
                 } else {
                     switch (token[i]) {
                         case ':':
