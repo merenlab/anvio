@@ -215,7 +215,7 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family','Roboto','Helvetica','Arial');
+                text.setAttribute('font-family',"monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
