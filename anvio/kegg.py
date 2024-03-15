@@ -3036,7 +3036,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
-            estimation_mode = "Bins in a metagenome"
+            if not self.metagenome_mode:
+                estimation_mode = "Bins in a metagenome"
+            else:
+                estimation_mode = "Individual contigs within a collection in a metagenome"
         elif self.metagenome_mode:
             estimation_mode = "Individual contigs in a metagenome"
         elif self.enzymes_txt:
@@ -3275,6 +3278,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                      f"{min_contig_length_in_profile_db} nts. Anvi'o hopes that this explains some things.")
                     splits_to_use = split_names_in_profile_db
 
+            # second, if we are working with a collection, we can limit the splits to use with those from the collection
+            if self.collection_name:
+                splits_to_use = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
+                self.progress.reset()
+                self.run.warning(f"Since a collection name was provided, we will only work with gene calls "
+                                 f"from the subset of {len(splits_to_use)} splits in the collection for the "
+                                 f"purposes of estimating metabolism.")
 
         self.progress.update('Loading gene call data from contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
