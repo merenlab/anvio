@@ -457,3 +457,20 @@
       inst: Quadram Institute Bioscience
       inst_link: https://quadram.ac.uk
       current: true
+
+- github: Vlasovets
+  name: Oleg Vlasovets
+  twitter: ovlasovets
+  web: https://ovlasovets.netlify.app/
+  avatar: Vlasovets.jpg
+  email: otorrent@mail.ru
+  linkedin: ovlasovets
+  orcid: 0000-0001-5259-9674
+  bio: "Data Scientist studying bacteria in human gut."
+  intellectual-contributions:
+    - contribution: "Working on high-dimensioanl statistcs methods for anvi'o"
+  affiliations:
+    - title: PhD Candidate
+      inst: Helmholtz Munich
+      inst_link: https://www.helmholtz-munich.de/en
+      current: true
