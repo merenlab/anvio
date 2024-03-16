@@ -101,6 +101,21 @@ Please note teh presence of a new flag in this particular command line, `--retur
 
 ## Tips
 
+### Performance optimization for aligners by passing additional params
+
+When `--concatenate-genes` flag is used for phylogenomics applications, %(anvi-gen-phylogenomic-tree)s relies on sequence alignment using `muscle` by default. For very large number of sequences this step may fail due to various reasons, such as running out of memory, exceeding the time allocated for the job, etc. If you are having such performance issues, you may want to pass additional parameters to the aligner. For this, you can use BASH environmental variables. For instance, if you wish `muscle` to do only two iterations of alignment and stop after, you can pass that request to the anvi'o driver for `muscle` the following way by exporting a shell varaible called `MUSCLE_PARAMS`:
+
+``` bash
+# export a shell variable with additional params you learned from
+# the help menu of muscle:
+export MUSCLE_PARAMS="-maxiters 2"
+
+# then run anvi-get-sequences-for-hmm-hits exactly the same way
+anvi-get-sequences-for-hmm-hits (...)
+```
+
+If you are trying to make sure things are going the way you expect, feel free to turn on the debug outputs by adding `--debug` to your command line. This will allow you to see exactly what commands are running behind hte scenes, and will keep the temporary directories for each alignment so you can find the log files in them to see raw outputs from `muscle`. See the anvi'o GitHub issue [#2200](https://github.com/merenlab/anvio/issues/2200) for an extreme case and example ways to debug the process with example commands and outputs.
+
 ### Get amino acid seqeunces for each gene in a model individually
 
 If you are interested in recovering HMM hits for each gene in a model anvi'o knows about as a separate FASTA file, you can do it with a `for` loop easily. After learning your genes of interest, first run this to make sure your terminal environment knows about them (this is an example with a few genes from the HMM source `Bacteria_71`, but you can add as many genes as you like and use any HMM source anvi'o recognizes, of course):

@@ -96,13 +96,13 @@ class TablesForHMMHits(Table):
             sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
 
             if 'Ribosomal_RNAs' in sources_in_db and len([s for s in sources if s.startswith('Ribosomal_RNA_')]):
-                raise ConfigError("Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
-                                  "already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
-                                  "its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
-                                  "database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
-                                  "as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
-                                  "model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
-                                  "sword. Here it is for your grace: \"anvi-delete-hmms -c CONTIGS.db --hmm-source Ribosomal_RNAs\".")
+                raise ConfigError(f"Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
+                                  f"already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
+                                  f"its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
+                                  f"database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
+                                  f"as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
+                                  f"model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
+                                  f"sword. Here it is for your grace: \"anvi-delete-hmms -c {self.db_path} --hmm-source Ribosomal_RNAs\".")
 
             sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
 

@@ -7,8 +7,8 @@
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
     <script type='text/javascript' src='js/contigs-plot.js'></script>
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.bundle.js"></script>
     <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
     <script type="text/javascript">
         var contigs_stats;
@@ -92,6 +92,7 @@
                             .append('a')
                                 .attr('href', '#' + plot_container_id)
                                 .attr('data-toggle', 'tab')
+                                .attr('class', 'nav-link')
                                 .text(source.replace(/_/g, ' '));
 
 
@@ -212,7 +213,7 @@
             table_str += array_to_table(tables['basic_stats'], 'No Basic Stats Found');
             table_str += create_table_header('Raw number of HMM Hits');
             table_str += array_to_table(tables['hmm'], '<i>HMMs were not run</i>');
-            table_str += create_table_header('Approx. number of genomes <a href="http://merenlab.org/2015/12/07/predicting-number-of-genomes/">[?]</a>');
+            table_str += create_table_header('Approx. number of genomes <a href="https://anvio.org/help/main/programs/anvi-display-contigs-stats/#how-do-we-predict-the-number-of-genomes">[?]</a>');
             table_str += array_to_table(tables['scg'], '<i>SCG HMMs were not run</i>');
             $('.table-details>tbody').empty().append(table_str);
         }

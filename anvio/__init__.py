@@ -513,6 +513,26 @@ D = {
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
                 ),
+    'skip-edges': (
+            ['--skip-edges'],
+            {'default': 0,
+             'type': int,
+             'metavar': 'NUM NUCLEOTIDES',
+             'choices': range(0, 51),
+             'help': "By default, anvi'o will report variable nucleotides and their allele frequencies from any nucleotide ."
+                     "position in a given short read found in the BAM file. Although, there are some applications where the "
+                     "observed variation in short reads will depend on the location of the nucleotide positions in the read. "
+                     "For instance, in ancient DNA sequencing, the start and the end of short reads are often suffer from "
+                     "DNA damage, leading to an increased number of single-nucleotide variants that emerge from the edges of "
+                     "short reads when they are aligned to a reference. This parameter offers a means to ameliorate the "
+                     "inflation of SNVs due to biases associated with short-read edges by enabling the user to ask anvi'o "
+                     "to ignore a few number of nucleotides from the beginning and the end of short reads as they're being "
+                     "profiled. For instance, a parameter of `5` will make sure that the mismatches of a given read to the "
+                     "reference sequence at the first and the last 5 nucleotides will not be reported in the variability "
+                     "table. Please note that the coverage data will not be impacted by the use of this parameter -- "
+                     "only what is reported as variants will be impacted, decreasing the impact of noise in specific "
+                     "applications."}
+                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
@@ -706,7 +726,10 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
+                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
+                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
@@ -1063,6 +1086,19 @@ D = {
                      "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
              ),
+    'include-stray-KOs': (
+            ['--include-stray-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "'Stray KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
+                     "If you want to include these protein families in your annotations and downstream analyses, then "
+                     "you can use this flag. Anvi'o does something very basic to estimate a bit score threshold for "
+                     "annotating these KOs, which is (1) to download the KEGG GENES sequences associated with each family, "
+                     "(2) to build a new HMM from these GENES (since KEGG GENES updates with new sequences faster than KOfam "
+                     "updates its models), (3) to run HMMER of each new model against the KO's associated sequences, and (4) "
+                     "to take the minimum bit score of those hits as the bit score threshold for the KO. Downstream, we use "
+                     "the anvi'o-generated models to annotate these KO families with their estimated bit score thresholds."}
+             ),
     'kegg-snapshot': (
             ['--kegg-snapshot'],
             {'default': None,
@@ -1376,6 +1412,20 @@ D = {
              'default': None,
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
+                ),
+    'ignore-genes-longer-than': (
+            ['--ignore-genes-longer-than'],
+            {'metavar': 'MAX_LENGTH',
+             'default': 0,
+             'type': int,
+             'help': "In some cases the gene calling step can identify open reading frames that span across extremely long "
+                     "stretches of genomes. Such mistakes can lead to downstream issues, especially when concatenate flag "
+                     "is used, including failure to align genes. This flag allows anvi'o to ignore extremely long gene calls to "
+                     "avoid unintended issues (i.e., during phylogenomic analyses). If you use this flag, please carefully "
+                     "examine the output messages from the program to see which genes are removed from the analysis. "
+                     "Please note that the length parameter considers the nucleotide lenght of the open reading frame, "
+                     "even if you asked for amino acid sequences to be returned. Setting this parameter to small values, "
+                     "such as less than 10000 nucleotides may lead to the removal of genuine genes, so please use it carefully."}
                 ),
     'align-with': (
             ['--align-with'],
@@ -2153,7 +2203,7 @@ D = {
             ['-I', '--ip-address'],
             {'metavar': 'IP_ADDR',
              'type': str,
-             'default': '0.0.0.0',
+             'default': 'localhost',
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should "
                      "work just fine for most."}
                 ),
@@ -2668,10 +2718,19 @@ D = {
              'action': 'store_true',
              'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
                      "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
-                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
-                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
-                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
-                     "can use it with all input types."}
+                     "from bad hits (anvi-run-kegg-kofams does not annotate these KOs unless you use the "
+                     "--include-stray-KOs flag). But if you got your annotations outside of anvi'o and you want to "
+                     "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
+                     "in the case of enzymes-txt input, though you can use it with all input types."}
+                ),
+    'ignore-unknown-KOs': (
+            ['--ignore-unknown-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If we find an annotation that we don't recognize, usually this program throws an error. If you'd "
+                     "rather that we gracefully ignored such annotations, use this flag. But since errors about unrecognized "
+                     "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
+                     "behavior on until you have seen these errors and are absolutely sure that you do not care."}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],

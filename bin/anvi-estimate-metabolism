@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
                 "external-genomes", "internal-genomes", "metagenomes", "user-modules-data",
-                "enzymes-txt"]
+                "enzymes-txt", "pan-db", "genomes-storage-db"]
 __provides__ = ["kegg-metabolism","user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
@@ -54,7 +54,11 @@ if __name__ == '__main__':
                                                    "The minimum you must provide this program is a contigs database. In which case "
                                                    "anvi'o will attempt to estimate metabolism for all contigs in it, assuming that "
                                                    "the contigs database represents a single genome. If the contigs database is actually "
-                                                   "a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
+                                                   "an unbinned metagenome and you want per-contig estimates instead, you can use the "
+                                                   "`--metagenome` flag to explicitly declare that. It is also acceptable to run this "
+                                                   "program on metagenomes without using metagenome mode if you want community-level "
+                                                   "metabolism estimates (ie, combining information across all contigs from different "
+                                                   "populations in the community).")
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
 
@@ -69,11 +73,14 @@ if __name__ == '__main__':
 
     groupM = parser.add_argument_group('INPUT #3 - MULTI-MODE', "If you have multiple contigs databases to work with, you can put them all into a file. "
                                                    "Then anvi'o will run estimation separately on each database and generate a single output file for all. "
-                                                   "There are 3 types of input files to choose from depending on whether you have single genomes (external), "
-                                                   "genomes in collections (internal), or metagenomes in your contigs DBs.")
+                                                   "There are 3 types of input files to choose from depending on whether you want to treat your DBs as "
+                                                   "single genomes (external), genomes in collections (internal), or unbinned metagenomes (for contig-level "
+                                                   "estimates, i.e. 'metagenome mode') in your contigs DBs.")
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
+    groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes', {'help': "Same format as an external genomes file, but choosing this option "
+                                                                                "ensures each DB in the input file is analyzed "
+                                                                                "with 'metagenome mode' for per-contig estimates."}))
 
     groupX = parser.add_argument_group('INPUT #4 - ESTIMATION ON A LIST OF ENZYMES',
                                                    "If all you have is a list of enzymes, you can use them to estimate metabolism "
@@ -84,6 +91,15 @@ if __name__ == '__main__':
                                                    "metabolic capabilities encoded by this list of enzymes.")
     groupX.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt', {'required': False}))
 
+    groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME', 
+                                                   "If you have a collection of binned gene clusters in a pangenome, you can estimate "
+                                                   "metabolism on each bin. You will need to provide the collection name (and optionally, "
+                                                   "bin name(s)) -- see INPUT #2 section above. This program will use the most common "
+                                                   "annotation (for each annotation source) from each gene cluster. Note that this input "
+                                                   "option is not compatible with the `--add-copy-number` or `--add-coverage` flags.")
+    groupN.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupN.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+
     groupC = parser.add_argument_group('OUTPUT - GENERAL OPTIONS', "Parameters for controlling estimation output of any type. The output will be "
                                                  "TAB-delimited files which by default are prefixed with 'kegg-metabolism', but you can of course "
                                                  "change that name here.")
@@ -93,6 +109,15 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
     groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
     groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
+    groupC.add_argument(*anvio.A('include-stray-KOs'), **anvio.K('include-stray-KOs', {'help': "'Stray KOs' are what we call KEGG Orthlogs "
+                                                            "that KEGG does not provide a bit score threshold for. Anvi'o can estimate "
+                                                            "thresholds (and sometimes updates the HMMs) for these KOs, and you can annotate "
+                                                            "them in your data if you run `anvi-run-kegg-kofams` with the `--include-stray-KOs` "
+                                                            "flag. If you did that, and you now want to include those annotations in metabolism "
+                                                            "estimates, then you should apply the same flag here. This is kind of similar to the "
+                                                            "`--include-kos-not-in-kofam` flag, but it applies only to the stray KOs that you can "
+                                                            "annotate with `anvi-run-kegg-kofams --include-stray-KOs`."}))
+    groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))

@@ -44,9 +44,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
-with SuppressAllOutput():
-    from ete3 import Tree
-
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
     try:
@@ -826,6 +823,56 @@ def add_to_2D_numeric_array(x, y, a, count=1):
     return a
 
 
+def is_all_submodules_present():
+    """A function to test whether all anvi'o submodules are present.
+
+    This check is particularly important for those who run anvi'o from a git clone
+    rather than using it via a regular installation.
+    """
+
+    # find the root directory of anvi'o module
+    anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+
+    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+
+    if not os.path.exists(gitmodules_path):
+        # if this file does not exist, we are likely looking at a case where anvi'o is
+        # installed on the user's computer, so we will let them go.
+        return True
+
+    gitmodules = configparser.ConfigParser()
+
+    try:
+        gitmodules.read(gitmodules_path)
+    except Exception:
+        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
+                          "needs an adult :(")
+
+    # figure out missing modules
+    missing_gitmodules = []
+    for gitmodule in gitmodules.sections():
+        for key, value in gitmodules.items(gitmodule):
+            if key == 'path':
+                gitmodule_path = os.path.join(anvio_module_path, '..', value)
+
+                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
+                    missing_gitmodules.append(value)
+
+    if len(missing_gitmodules):
+        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
+                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
+        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
+                          "codebase. If you run the commands shown above, you should be golden to try "
+                          "again.")
+    else:
+        return True
+
+
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
     columns = get_columns_of_TAB_delim_file(file_path)
     return False if len([False for c in columns if c not in columns]) else True
@@ -1072,6 +1119,10 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    # import ete3
+    with SuppressAllOutput():
+        from ete3 import Tree
+
     filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
@@ -3033,7 +3084,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
         raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should "
-                           "be different from the the input file path...")
+                           "be different from the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
@@ -4274,6 +4325,18 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     return True
 
 
+def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
+    pdb = dbi(pan_db_path)
+    gdb = dbi(genomes_storage_path)
+
+    if pdb.hash != gdb.hash:
+        raise ConfigError(f"The pan database and the genomes storage database do not seem to "
+                          f"be compatible. More specifically, the genomes storage database is "
+                          f"not the one that was used when the pangenome was created. "
+                          f"({pdb.hash} != {gdb.hash})")
+
+    return True
+
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
@@ -4574,11 +4637,12 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
-                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
-                          "anvi'o environment. The reason why the standard anvi'o package does not include "
-                          "this module is both complicated and really unimportant. Re-running the migration "
-                          "after `h5py` is installed will make things go smootly.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! "
+                          "To continue, please first install the newest version of the Python module `h5py` "
+                          "by running `pip install h5py` in your anvi'o environment. "
+                          "The reason why the standard anvi'o package does not include this module is both "
+                          "complicated and really unimportant. Re-running the migration after `h5py` is installed "
+                          "will make things go smoothly.")
 
 
 def RepresentsInt(s):

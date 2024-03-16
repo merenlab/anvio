@@ -212,9 +212,9 @@ function loadAll() {
 
                 $('#range-box').append(`<div style="display: inline-block; margin-bottom:10px;" class="form-inline"> \
                                         Selection range from
-                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
+                                            <input class="form-control input-xs col-4" id="brush_start" type="text" value="0" size="3">
                                         to
-                                            <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
+                                            <input class="form-control input-xs col-4" id="brush_end" type="text" value="${sequence.length}" size="3">\
                                     </div>`);
 
                 info("Checking for gene functional annotations");
@@ -1172,7 +1172,7 @@ function showSetMaxValuesDialog() {
                 <td style="text-align: center;"><div class="input-group">\
                     <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
                         <span class="input-group-btn"> \
-                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
                         </span> \
                     </div> \
                 </td> \

@@ -48,8 +48,8 @@ class FilterHmmHitsTable(object):
         self.contigs_db_path=A("contigs_db")
         self.domtblout=A("domain_hits_table")
         self.hmm_source=A("hmm_source")
-        self.gene_coverage=A("gene_coverage")
-        self.model_coverage=A("model_coverage")
+        self.min_gene_coverage=A("min_gene_coverage")
+        self.min_model_coverage=A("min_model_coverage")
         self.list_hmm_sources=A("list_hmm_sources")
         self.hmm_profile_dir=A("hmm_profile_dir")
         self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
@@ -109,26 +109,35 @@ class FilterHmmHitsTable(object):
         filesnpaths.is_file_exists(self.domtblout)
         self.run.info("Domtblout Path", self.domtblout)
 
-        if not self.model_coverage or self.gene_coverage:
+        if not self.min_model_coverage and not self.min_gene_coverage:
             raise ConfigError("You didn't provide anvi-script-filter-hmm-hits-table with either a "
-                              "--model-coverage or --gene-coverage. Please provide at least one "
+                              "--min-model-coverage or --min-gene-coverage. Please provide at least one "
                               "so anvi'o can filter hmm_hits for you :)")
 
-        if self.model_coverage:
-            if self.model_coverage < 0:
-                raise ConfigError(f"--model-coverage must be a percentage between 0 and 1 "
-                                  f"and you put a negative number: {self.model_coverage}")
-            if self.model_coverage > 1:
-                raise ConfigError(f"--model-coverage must be a percentage between 0 and 1 "
-                                  f"and you put a a value larger than 100%: {self.model_coverage}")
+        if self.min_model_coverage:
+            if self.min_model_coverage < 0:
+                raise ConfigError(f"--min-model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.min_model_coverage}")
+            if self.min_model_coverage > 1:
+                raise ConfigError(f"--min-model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.min_model_coverage}")
 
-        if self.gene_coverage:
-            if self.gene_coverage < 0:
-                raise ConfigError(f"--gene-coverage must be a percentage between 0 and 1 "
-                                  f"and you put a negative number: {self.gene_coverage}")
-            if self.gene_coverage > 1:
-                raise ConfigError(f"--gene-coverage must be a percentage between 0 and 1 "
-                                  f"and you put a a value larger than 100%: {self.gene_coverage}")
+        if self.min_gene_coverage:
+            if self.min_gene_coverage < 0:
+                raise ConfigError(f"--min-gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.min_gene_coverage}")
+            if self.min_gene_coverage > 1:
+                raise ConfigError(f"--min-gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.min_gene_coverage}")
+
+        if self.min_gene_coverage and self.min_model_coverage:
+            self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            self.run.info("Minimum model coverage", self.min_model_coverage)
+        else:
+            if self.min_gene_coverage:
+                self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            if self.min_model_coverage:
+                self.run.info("Minimum model coverage", self.min_model_coverage)
 
         if not self.hmm_source:
             raise ConfigError("Please provide a hmm-source :)")
@@ -302,8 +311,8 @@ class FilterHmmHitsTable(object):
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
 
-        self.df['model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
-        self.df['gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+        self.df['min_model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['min_gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
 
     def filter_domtblout(self):
@@ -315,14 +324,37 @@ class FilterHmmHitsTable(object):
             str: The file path of the temporary file where the filtered DataFrame is saved.
         """
 
+        # FIXME: Down below, we allow the user to filter ALL hits in the DOM table based on
+        # a single min model coveage value and/or a single min gene coverage value. But
+        # different models in a list of HMMs and different genes they target will have
+        # different min mode/gene coverage cutoff optimals. As an additional option,
+        # we could allow users to pass a YAML file where for each model name gene/model
+        # min coverage cutoffs are explicitly defined, which cuold look like this:
+        #
+        #    >>> MODEL_NAME_X:
+        #    >>>   min_model_coverage: 0.7
+        #    >>>   min_gene_coverage: 0.6
+        #    >>> MODEL_NAME_Y:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.9
+        #    >>> MODEL_NAME_Z:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.25
+        #    >>> (...)
+        #
+        # Whenever a model name matches to a model name mentioned in this file, the
+        # values defined under would take priority over the defaults. Such a solution
+        # would dramatically increase the utility of the approach and its suitability
+        # to more complex filtering tasks.
+
         # Alignment coverage filtering conditions
-        if self.model_coverage and self.gene_coverage:
-            df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) &
-                                (self.df['gene_coverage'] > float(self.gene_coverage))]
-        elif self.gene_coverage:
-            df_filtered = self.df[self.df['gene_coverage'] > float(self.gene_coverage)]
-        elif self.model_coverage:
-            df_filtered = self.df[self.df['model_coverage'] > float(self.model_coverage)]
+        if self.min_model_coverage and self.min_gene_coverage:
+            df_filtered = self.df[(self.df['min_model_coverage'] > float(self.min_model_coverage)) &
+                                (self.df['min_gene_coverage'] > float(self.min_gene_coverage))]
+        elif self.min_gene_coverage:
+            df_filtered = self.df[self.df['min_gene_coverage'] > float(self.min_gene_coverage)]
+        elif self.min_model_coverage:
+            df_filtered = self.df[self.df['min_model_coverage'] > float(self.min_model_coverage)]
         else:
             df_filtered = self.df.copy()
 
@@ -331,8 +363,8 @@ class FilterHmmHitsTable(object):
         self.run.info("Num hmm-hits after alignment filtering", df_filtered.shape[0])
         self.run.info("Num hmm-hits filtered from alignment coverage", self.df.shape[0] - df_filtered.shape[0])
 
-        # Reformat domtblout back to the original format by dropping 'model_coverage' and 'gene_coverage' columns
-        df_final = df_filtered.drop(columns=['model_coverage', 'gene_coverage'])
+        # Reformat domtblout back to the original format by dropping 'min_model_coverage' and 'min_gene_coverage' columns
+        df_final = df_filtered.drop(columns=['min_model_coverage', 'min_gene_coverage'])
 
         # Additional filtering for partial gene calls if required
         if self.filter_out_partial_gene_calls:
@@ -418,9 +450,9 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
     parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. "
                         "You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
-    parser.add_argument('--gene-coverage',type=float, help="Percent of the gene that is covered by the profile HMM after hmmsearch. "
+    parser.add_argument('--min-gene-coverage',type=float, help="The minimum percent of the gene that is covered by the profile HMM after hmmsearch. "
                         "This is the formula using the domtblout from hmmsearch: (ali_coord_to - ali_coord_from)/target_length")
-    parser.add_argument('--model-coverage', type=float, help="Percent of the profile HMM model that is covered by the gene after hmmsearch. "
+    parser.add_argument('--min-model-coverage', type=float, help="The minimum percent of the profile HMM model that is covered by the gene after hmmsearch. "
                         "This is the formula using the domtblout from hmmsearch: (hmm_coord_to - hmm_coord_from)/hmm_length")
     parser.add_argument('--merge-partial-hits-within-X-nts', metavar='LENGTH', default=0, type=int, help="Filtering HMM hits based on "
                         "target or query coverage can be difficult when a gene is covered by multiple independent hits of a single "
