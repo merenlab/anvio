@@ -106,9 +106,9 @@ def main(args):
             for accession in failed_accession_ids:
                 pfam_accession_ids.remove(accession)
         else:
-            raise ConfigError("Anvi'o couldn't downlaod any of your accession ids. This could be due to bad "
-                              "accession ids that don't exist on PFAM database, or bad internet connection "
-                              "on either side :/")
+            raise ConfigError("Anvi'o couldn't download any of your accession ids. This could be due to bad "
+                              "accession ids that don't exist in the PFAM database, or a bad connection"
+                              "to the server :/")
 
     # make sure all models have the GA cutoff defined
     pfam_hmms_without_ga = [p for p in pfam_accession_ids if not data_dict[p]['ga']]
@@ -117,8 +117,8 @@ def main(args):
             os.remove(data_dict[pfam_accession]['temp_file_path'])
 
         raise ConfigError(f"Not all PFAM accession ids you are interested in seem to have 'GA' "
-                          f"noise cutoff defined in them :/ This script is only able to setup "
-                          f"anvi'o HMM directories from data_dict that have that cutoff defined in them. "
+                          f"noise cutoff defined :/ This script is only able to setup "
+                          f"anvi'o HMM directories from data_dict that have that cutoff defined. "
                           f"So this is kind of the end of the road for us. Here are the PFAM accessions "
                           f"that violate this: {', '.join(pfam_hmms_without_ga)}.")
 
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
                 "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "
                 "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`. "
-                "We suggest you to use a name that does not include an of those millenial characters "
+                "We suggest you use a name that does not include any of those millenial characters "
                 "(like space, question mark, comma, and such, you know).")
 
     args = parser.get_args(parser)
