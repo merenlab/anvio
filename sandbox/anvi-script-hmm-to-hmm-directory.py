@@ -45,8 +45,8 @@ def get_attribute_from_hmm_file(file_path, attribute):
 
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    hmm_files = A('hmm-list')
-    hmm_sources = A('hmm-sourcest')
+    hmm_files = A('hmm_list')
+    hmm_sources = A('hmm_sources')
 
     # Check input exists
     if hmm_files is None:
