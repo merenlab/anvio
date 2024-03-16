@@ -67,10 +67,10 @@ def main(args):
     if hmm_sources is None:
         raise ConfigError("You must provide at least one source for your HMMs using `--hmm-source` :/")
 
-    if len(hmm_sources) > 1 not len(hmm_files) == len(hmm_sources):
+    if len(hmm_sources) > 1 and not len(hmm_files) == len(hmm_sources):
         raise ConfigError("You must provide either only one source for your HMMs or as many sources as there are HMMs "
                           "using `--hmm-source` :/")
-    else if len(hmm_sources) == 1:
+    elif len(hmm_sources) == 1:
         hmm_sources = [hmm_sources[0]] * len(hmm_files)
 
     # Check output
