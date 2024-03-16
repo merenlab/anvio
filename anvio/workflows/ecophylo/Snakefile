@@ -118,9 +118,9 @@ rule anvi_run_hmms_hmmsearch:
             # Load contigs_db
             contigs_db = ContigsDatabase(contigs_db_path)
             # Check if anvi-run-scg-taxonomy has been run
-            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
+            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_database_version']
 
-            if scg_taxonomy_was_run_value != 1:
+            if scg_taxonomy_was_run_value !=  "GTDB: v214.1; Anvi'o: v1":
                 print(f"Running anvi-run-scg-taxonomy on {contigs_db_path} since the {wildcards.hmm} is in anvio's collection of SCGs")
                 shell("anvi-run-scg-taxonomy -c {contigs_db_path} --num-threads {threads} {params.additional_params}")
         else:
@@ -183,7 +183,7 @@ rule filter_hmm_hits_by_model_coverage:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "{sample_name}-{hmm}-DB_filtered.done"),
         hmm_hits_filtered = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "hmm_hits_filtered.txt")
     params:
-        model_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', '--model-coverage']),
+        model_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', '--min-model-coverage']),
         partial_ORFs = M.get_rule_param('filter_hmm_hits_by_model_coverage', '--filter-out-partial-gene-calls'),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_model_coverage')
@@ -212,7 +212,7 @@ rule filter_hmm_hits_by_model_coverage:
                 shell("anvi-script-filter-hmm-hits-table -c {contigs_db} \
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {hmm_source} \
-                                                        --model-coverage {params.model_coverage} \
+                                                        --min-model-coverage {params.model_coverage} \
                                                         {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             else:
@@ -221,7 +221,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-profile-dir {hmm_dir} \
                                                         --hmm-source {hmm_source} \
-                                                        --model-coverage {params.model_coverage} \
+                                                        --min-model-coverage {params.model_coverage} \
                                                         {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             
@@ -1047,7 +1047,7 @@ rule anvi_scg_taxonomy:
         # Concatenate metagenomes.txt and external-genomes.txt
         contigs_db_name_path_list = list(M.contigs_db_name_path_dict.items())
         contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
-        combined_genomes_df_path = "combined_genomes.txt"
+        combined_genomes_df_path = f"{wildcards.hmm}_combined_genomes.txt"
         contigs_db_name_path_df.to_csv(combined_genomes_df_path, sep="\t", index=False, header=True)
 
         if hmm_source in M.internal_hmm_sources:

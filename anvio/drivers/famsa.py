@@ -59,6 +59,10 @@ class FAMSA:
         sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
         cmd_line = [self.program_name, 'STDIN', 'STDOUT']
 
+        additional_params = self.get_additional_params_from_shell()
+        if additional_params:
+            cmd_line += additional_params
+
         output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
         if output[0:5] != 'FAMSA' or output[-6:].strip() != "Done!":
@@ -85,3 +89,28 @@ class FAMSA:
             shutil.rmtree(tmp_dir)
 
         return alignments
+
+
+    def run_default(self, sequences_list, debug=False):
+        """Takes a list of tuples for sequences, performs MSA using famsa, returns a dict.
+
+        Unlike `run_stdin`, runs everything through files rather than passing data via STDIN.
+
+            >>> from anvio.drivers.famsa import FAMSA
+            >>> f = FAMSA()
+            >>> f.run_default([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
+            {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
+
+        But it is not implemented yet. If it becomes a necessity, please do implement :)
+        """
+
+        raise ConfigError("Default alignment option for Famsa is not implemented :/")
+
+
+    def get_additional_params_from_shell(self):
+        """Get additional user-defined params from environmental variables"""
+
+        if 'FAMSA_PARAMS' in os.environ:
+            return os.environ['FAMSA_PARAMS'].split()
+        else:
+            return None

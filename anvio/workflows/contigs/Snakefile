@@ -445,7 +445,7 @@ rule emapper:
     resources: nodes = M.T('emapper')
     run:
         # running emapper
-        shell("python2.7 {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} " + \
+        shell("python {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} " + \
                   "--cpu {threads} {params.database} {params.usemem} {params.override} >> {log} 2>&1")
 
 

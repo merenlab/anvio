@@ -5,7 +5,6 @@
 import os
 import json
 import time
-import pysam
 import shutil
 import tarfile
 import tempfile
@@ -19,8 +18,6 @@ from anvio.terminal import Progress
 from anvio.terminal import SuppressAllOutput
 from anvio.errors import FilesNPathsError
 
-with SuppressAllOutput():
-    from ete3 import Tree
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -37,6 +34,9 @@ is_bad_column_name = lambda col: len([char for char in col if char not in allowe
 
 
 def is_proper_newick(newick_data, dont_raise=False, names_with_only_digits_ok=False):
+
+    with SuppressAllOutput():
+        from ete3 import Tree
     try:
         tree = Tree(newick_data, format=1)
 
@@ -305,8 +305,10 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
 
     is_file_exists(file_path)
 
+    from pysam import AlignmentFile
+
     try:
-        bam_file = pysam.AlignmentFile(file_path, "rb")
+        bam_file = AlignmentFile(file_path, "rb")
     except Exception as e:
         if dont_raise:
             return False

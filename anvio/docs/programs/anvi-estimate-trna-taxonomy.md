@@ -51,7 +51,7 @@ will give you an output file containing all taxonomic levels found and their cov
 
 ### 4: Estimating the taxonomy of bins 
 
-You can use this program to estimate the taxonomy of all of the %(bin)ss in a %(collection)s by providing the the %(collection)s and the associated %(profile-db)s. 
+You can use this program to estimate the taxonomy of all of the %(bin)ss in a %(collection)s by providing the %(collection)s and the associated %(profile-db)s. 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \

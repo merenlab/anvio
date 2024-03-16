@@ -180,3 +180,32 @@
       inst: Section of Ecology and Evolution - University of Copenhagen
       inst_link: https://www.socialsymbioticevolution.com/
       current: true
+
+- github: pbradz
+  name: Patrick J. H. Bradley
+  web: https://bradleylab.science/authors/admin/
+  email: bradley.720@osu.edu
+  avatar: PatBradley.jpg
+  bio: "Bioinformatician interested in Metagenomics, Statistical Modeling, Microbial Evolution, Functional Genomics and Metabolism"
+  affiliations:
+    - title: Assistant Professor
+      inst: Department of Microbiology - The Ohio State University
+      inst_link: https://microbiology.osu.edu/
+      current: true
+    - title: Assistant Professor
+      inst: Infectious Diseases Institute - The Ohio State University
+      inst_link: https://idi.osu.edu/
+
+- github: Kekananen
+  name: Kathryn Kananen
+  web: https://bradleylab.science/author/kathryn-kananen/
+  email: kekananen@gmail.com
+  avatar: KatKananen.jpg
+  linkedin: kathryn-kananen-85352b109
+  orcid: 0000-0001-6080-0323
+  bio: "Bioinformatician and computational biologist interested in population genetics, automation, and genomic architecture exploration"
+  affiliations:
+    - title: Bioinformatician and Computational Biologist
+      inst: Department of Microbiology - The Ohio State University
+      inst_link: https://microbiology.osu.edu/
+      current: true

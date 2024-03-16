@@ -216,8 +216,8 @@ class GenomeDescriptions(object):
                             genomes_missing_any.add(genome_name)
 
                 raise ConfigError(f"Bad news. {P('An HMM source', len(hmm_sources_missing), alt='Some HMM sources')} "
-                                  f"you really need ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
-                                  f"missing from some of your contigs databases :/ Here is the list: [{', '.join(genomes_missing_any)}].")
+                                  f"you requested ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
+                                  f"missing from {'all' if len(genomes_missing_any) == len(self.genomes) else 'some'} of your contigs databases :/ Here is the list: {', '.join(genomes_missing_any)}")
 
 
         return hmm_sources_in_all_genomes
@@ -1335,7 +1335,7 @@ class AggregateFunctions:
     def do_functional_enrichment_analysis(self):
         """Performs functional enrichment analysis if user defined layer groups.
 
-        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        This function fills in the variable `self.functional_enrichment_stats_dict` so
         the downstream analyses can use it to do fancy things.
         """
 

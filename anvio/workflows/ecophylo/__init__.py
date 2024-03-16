@@ -20,6 +20,7 @@ from anvio.workflows import WorkflowSuperClass
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.genomedescriptions import MetagenomeDescriptions
 
+import anvio.constants as constants
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -72,12 +73,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
         self.general_params.extend(['gene_caller_to_use']) # designate gene-caller for all contig-dbs if not default Prodigal
         self.general_params.extend(['run_genomes_sanity_check']) # run GenomeDescriptions and MetagenomesDescriptions
+        self.general_params.extend(['scg_taxonomy_database_version']) # run GenomeDescriptions and MetagenomesDescriptions
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', '--filter-out-partial-gene-calls', 'additional_params']
+        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--min-model-coverage', '--min-gene-coverage', '--filter-out-partial-gene-calls', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
@@ -96,7 +98,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'filter_hmm_hits_by_model_coverage': {'threads': 5, '--model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
+            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
@@ -121,7 +123,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_scg_taxonomy': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
             'anvi_import_everything': {'threads': 2},
-            'run_genomes_sanity_check': True
+            'run_genomes_sanity_check': True,
+            'scg_taxonomy_database_version': "GTDB: v214.1; Anvi'o: v1",
             })
 
         # Directory structure for Snakemake workflow
@@ -444,6 +447,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
+                if hmm not in constants.default_scgs_for_taxonomy:
+                    raise ConfigError(f"EcoPhylo currently does not support the HMM {hmm} in {hmm_source} because it is incompatible with anvi-estimate-scg-taxonomy. "
+                                      f"anvi'o is really sorry about this and hopes one of these other HMMs in {hmm_source} will be adequate to profile "
+                                      f"your dataset: {constants.default_scgs_for_taxonomy}")
 
             if not filesnpaths.is_file_exists(hmm_path, dont_raise=True):
                 if hmm_path == 'INTERNAL':

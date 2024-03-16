@@ -12,7 +12,7 @@ which include,
 
 * **Edit [DEVELOPERS.yaml](https://github.com/merenlab/anvio/blob/master/anvio/data/misc/PEOPLE/DEVELOPERS.yaml) _or_ [CONTRIBUTORS.yaml](https://github.com/merenlab/anvio/blob/master/anvio/data/misc/PEOPLE/DEVELOPERS.yaml) files to add
 a new entry** for the new person (please benefit from previous examples).
-* **Add a new photo** under the the `AVATARS` directory. It should be
+* **Add a new photo** under the `AVATARS` directory. It should be
 a 900px x 900px head-shot (see previous examples).
 
 Most fields are optional, but please note that every person mentioned

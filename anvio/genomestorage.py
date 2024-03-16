@@ -436,7 +436,7 @@ class GenomeStorage(object):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
 
 
-    def gen_combined_aa_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False, report_with_genome_name=False):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         total_num_aa_sequences = 0
@@ -461,7 +461,10 @@ class GenomeStorage(object):
 
                 aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
 
-                fasta_output.write_id('%s_%d' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
+                if report_with_genome_name:
+                    fasta_output.write_id('%s_%d' % (genome_name, int(gene_caller_id)))
+                else:
+                    fasta_output.write_id('%s_%d' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
                 fasta_output.write_seq(aa_sequence, split=False)
 
                 total_num_aa_sequences += 1
