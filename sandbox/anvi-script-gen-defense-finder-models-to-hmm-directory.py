@@ -3,8 +3,8 @@
 
 import os
 import sys
+import json
 import tarfile
-import requests
 
 import anvio
 import anvio.utils as utils
@@ -45,17 +45,16 @@ def get_attribute_from_hmm_file(file_path, attribute):
     return value
 
 
-def download_latest_release():
+def download_latest_defense_finder_release():
     progress.new("Downloading", progress_total_items=len(data_dict))
     progress.update('...')
 
     repo_url = "https://api.github.com/repos/mdmparis/defense-finder-models/releases/latest"
-    response = requests.get(repo_url)
-    data = response.json()
+    response = utils.get_remote_file_content(repo_url)
+    data = json.loads(response)
     download_url = [asset["browser_download_url"] for asset in data["assets"] if asset["name"].endswith(".tar.gz")][0]
-    response = requests.get(download_url)
-    with open("latest_release.tar.gz", "wb") as f:
-        f.write(response.content)
+    response = utils.download_file(download_url, "latest_release.tar.gz", progress, run)
+
     with tarfile.open("latest_release.tar.gz", "r:gz") as tar:
         tar.extractall()
     os.remove("latest_release.tar.gz")
@@ -75,8 +74,8 @@ def main(args):
     run.info('The output directory', output_directory_path)
 
     # Download Defense Finder Models
-    download_latest_release()
     source_folder = "defense-finder-models"
+    download_latest_defense_finder_release()
     filesnpaths.is_file_exists("defense-finder-models/metadata.yml")
 
     # Parse all the HMM files
