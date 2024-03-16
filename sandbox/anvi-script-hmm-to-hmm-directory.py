@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 
 import anvio
 import anvio.utils as utils
@@ -46,18 +47,18 @@ def get_attribute_from_hmm_file(file_path, attribute):
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     hmm_files = A('hmm_list')
-    hmm_sources = A('hmm_sources')
+    hmm_sources = A('hmm_source')
 
     # Check input exists
     if hmm_files is None:
         raise ConfigError("You must provide at least one path to a HMM file using `--hmm-list` :/")
 
-    hmm_files = [hmm_files.strip() for e in hmm_files]
+    hmm_files = [e.strip() for e in hmm_files]
     for f in hmm_files:
         if not filesnpaths.is_file_exists(f):
             raise ConfigError(f"The path you provided {f} does not point to a file that exists.")
 
-    if len(hmm_files) == len(set(hmm_files)):
+    if len(hmm_files) > len(set(hmm_files)):
         run.warning("You've specified at least one file more than once in `--hmm-list` this is Ok for Anvi'o but you"
                     "probably should restart the program with a corrected list. "
                     "Otherwise, you might get undefined behaviour downstream. We'll wait a second before continuing.")
@@ -112,7 +113,7 @@ def main(args):
     with open(J('genes.txt'), 'w') as genestxt:
         genestxt.write("gene\taccession\thmmsource\n")
         for e in data_dict.values():
-            genestxt.write(f"{e['gene']}\t{e['accession']}\te['source']\n")
+            genestxt.write(f"{e['gene']}\t{e['accession']}\t{e['source']}\n")
 
     # kind
     W('kind.txt', os.path.basename(output_directory_path))
