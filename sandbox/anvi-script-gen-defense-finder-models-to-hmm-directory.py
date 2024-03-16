@@ -4,6 +4,7 @@
 import os
 import sys
 import json
+import shutil
 import tarfile
 
 import anvio
@@ -39,21 +40,24 @@ def get_attribute_from_hmm_file(file_path, attribute):
                 value = [f.strip() for f in line.split(attribute) if len(f)][0]
                 break
 
-    if value is None:
+    if value is None and attribute == "ACC":
+        return get_attribute_from_hmm_file(file_path, "NAME")
+
+    elif value is None:
         raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {attribute}. "
                           f"You should report this issue on the Defense-Finder-Models GitHub.")
     return value
 
 
 def download_latest_defense_finder_release():
-    progress.new("Downloading", progress_total_items=len(data_dict))
+    progress.new("Downloading", progress_total_items=0)
     progress.update('...')
 
     repo_url = "https://api.github.com/repos/mdmparis/defense-finder-models/releases/latest"
     response = utils.get_remote_file_content(repo_url)
     data = json.loads(response)
     download_url = [asset["browser_download_url"] for asset in data["assets"] if asset["name"].endswith(".tar.gz")][0]
-    response = utils.download_file(download_url, "latest_release.tar.gz", progress, run)
+    response = utils.download_file(download_url, "latest_release.tar.gz")
 
     with tarfile.open("latest_release.tar.gz", "r:gz") as tar:
         tar.extractall()
@@ -66,33 +70,30 @@ def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     # Check output
-    output_directory_path = A('output_directory')
+    output_directory_path = "DefenseFinder_HMM"
     filesnpaths.check_output_directory(output_directory_path)
-
-    # Update the user
-    run.info('HMM files to work with', ', '.join(hmm_files))
-    run.info('The output directory', output_directory_path)
 
     # Download Defense Finder Models
     source_folder = "defense-finder-models"
+    source_profile_folder = os.path.join(source_folder, "profiles")
     download_latest_defense_finder_release()
     filesnpaths.is_file_exists("defense-finder-models/metadata.yml")
 
     # Parse all the HMM files
-    progress.new("Parsing", progress_total_items=len(os.listdir(os.path.join(source_folder, "profiles"))))
+    progress.new("Parsing", progress_total_items=len(os.listdir(source_profile_folder)))
     progress.update('...')
     data_dict = {}
 
-    for hmm_name in os.listdir(os.path.join(source_folder, "profiles")):
+    for hmm_name in os.listdir(source_profile_folder):
         hmm_path = os.path.join(source_profile_folder, hmm_name)
 
         progress.update(hmm_name + ' ...', increment=True)
 
         data_dict[hmm_name] = {}
-        data_dict[hmm_name]['ga'] = get_attribute_from_hmm_file(hmm_file, 'GA ')
-        data_dict[hmm_name]['gene'] = get_attribute_from_hmm_file(hmm_file, 'NAME')
-        data_dict[hmm_name]['accession'] = get_attribute_from_hmm_file(hmm_file, 'ACC')
-        data_dict[hmm_name]['source'] = hmm_source
+        data_dict[hmm_name]['ga'] = get_attribute_from_hmm_file(hmm_path, 'GA ')
+        data_dict[hmm_name]['gene'] = get_attribute_from_hmm_file(hmm_path, 'NAME')
+        data_dict[hmm_name]['accession'] = get_attribute_from_hmm_file(hmm_path, 'ACC')
+        data_dict[hmm_name]['source'] = "https://github.com/mdmparis/defense-finder-models"
         data_dict[hmm_name]['hmm_fp'] = hmm_path
     progress.end()
 
@@ -130,7 +131,7 @@ def main(args):
     W('target.txt', "AA:GENE")
 
     # Delete files
-    os.removedirs(source_folder)
+    shutil.rmtree(source_folder)
     progress.end()
 
     run.info_single(f"Congratulations. Your anvi'o formatted HMM directory for "
