@@ -29,21 +29,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def get_attribute_from_hmm_file(file_path, attribute):
-    filesnpaths.is_file_exists(file_path)
-    value = None
-    with open(file_path) as hmm:
-        for line in hmm.readlines():
-            if line.startswith(attribute):
-                value = [f.strip() for f in line.split(attribute) if len(f)][0]
-                break
-
-    if value is None:
-        raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {attribute}. This is probably an "
-                          f"issue with your file.")
-    return value
-
-
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     hmm_files = A('hmm_list')

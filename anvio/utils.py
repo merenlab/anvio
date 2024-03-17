@@ -4012,6 +4012,26 @@ def get_HMM_sources_dictionary(source_dirs=[]):
     return sources
 
 
+def get_attribute_from_hmm_file(file_path, attribute):
+    """
+    Retrieves the value of attribute from an HMMER/3 formatted HMM file.
+    - file_path: (str) absolute file path to the .HMM file
+    - attribute: (str) the attribute to get from the HMM file
+    """
+    filesnpaths.is_file_exists(file_path)
+    value = None
+    with open(file_path) as hmm:
+        for line in hmm.readlines():
+            if line.startswith(attribute):
+                value = [f.strip() for f in line.split(attribute) if len(f)][0]
+                break
+
+    if value is None:
+        raise ValueError(f"The HMM file {file_path} did not contain {attribute}.")
+
+    return value
+
+
 def check_misc_data_keys_for_format(data_keys_list):
     """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
@@ -4065,7 +4085,7 @@ def sanity_check_hmm_model(model_path, genes):
 
 def sanity_check_pfam_accessions(pfam_accession_ids):
     """This function sanity checks a list of Pfam accession IDs
-    
+
     Parameters
     ==========
     pfam_accession_ids: list

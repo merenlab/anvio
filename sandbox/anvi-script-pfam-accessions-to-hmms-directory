@@ -28,18 +28,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def get_attribute_from_hmm_file(file_path, attribute):
-    filesnpaths.is_file_exists(file_path)
-    value = None
-    with open(file_path) as hmm:
-        for line in hmm.readlines():
-            if line.startswith(attribute):
-                value = [f.strip() for f in line.split(attribute) if len(f)][0]
-                break
-
-    return value
-
-
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     pfam_accessions_list = A('pfam_accessions_list')
@@ -88,12 +76,18 @@ def main(args):
         except:
             failed_accession_ids.add(pfam_accession)
             continue
+        
+        try:
+            data_dict[pfam_accession] = {}
+            data_dict[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
+            data_dict[pfam_accession]['gene'] = utils.get_attribute_from_hmm_file(fp, 'NAME')
+            data_dict[pfam_accession]['accession'] = utils.get_attribute_from_hmm_file(fp, 'ACC')
+            data_dict[pfam_accession]['temp_file_path'] = fp
 
-        data_dict[pfam_accession] = {}
-        data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
-        data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
-        data_dict[pfam_accession]['accession'] = get_attribute_from_hmm_file(fp, 'ACC')
-        data_dict[pfam_accession]['temp_file_path'] = fp
+        except ValueError:
+            run.warning(f"The PFAM accession {pfam_accession} could not be included due to a missing attribute. "
+                        f"Anvi'o will continue without it")
+        
     progress.end()
 
     if len(failed_accession_ids):

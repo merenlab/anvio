@@ -31,24 +31,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def get_attribute_from_hmm_file(file_path, attribute):
-    filesnpaths.is_file_exists(file_path)
-    value = None
-    with open(file_path) as hmm:
-        for line in hmm.readlines():
-            if line.startswith(attribute):
-                value = [f.strip() for f in line.split(attribute) if len(f)][0]
-                break
-
-    if value is None and attribute == "ACC":
-        return get_attribute_from_hmm_file(file_path, "NAME")
-
-    elif value is None:
-        raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {attribute}. "
-                          f"You should report this issue on the Defense-Finder-Models GitHub.")
-    return value
-
-
 def download_latest_defense_finder_release():
     progress.new("Downloading", progress_total_items=0)
     progress.update('...')
@@ -88,11 +70,23 @@ def main(args):
         hmm_path = os.path.join(source_profile_folder, hmm_name)
 
         progress.update(hmm_name + ' ...', increment=True)
-
+        
+        try:
+            acc = utils.get_attribute_from_hmm_file(hmm_path, 'ACC')
+        
+        try:
+            acc = get_attribute_from_hmm_file(file_path, "NAME") if acc is None else acc
+            ga = utils.get_attribute_from_hmm_file(hmm_path, 'GA ')
+            name = utils.get_attribute_from_hmm_file(hmm_path, 'NAME')
+        
+        except ValueError:
+            raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {none_variable}. "
+                              f"You should report this issue on the Defense-Finder-Models GitHub.")
+        
         data_dict[hmm_name] = {}
-        data_dict[hmm_name]['ga'] = get_attribute_from_hmm_file(hmm_path, 'GA ')
-        data_dict[hmm_name]['gene'] = get_attribute_from_hmm_file(hmm_path, 'NAME')
-        data_dict[hmm_name]['accession'] = get_attribute_from_hmm_file(hmm_path, 'ACC')
+        data_dict[hmm_name]['ga'] = ga
+        data_dict[hmm_name]['gene'] = name
+        data_dict[hmm_name]['accession'] = acc
         data_dict[hmm_name]['source'] = "https://github.com/mdmparis/defense-finder-models"
         data_dict[hmm_name]['hmm_fp'] = hmm_path
     progress.end()
