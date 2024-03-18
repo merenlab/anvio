@@ -21,7 +21,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ge0rges']
 __provides__ = ["hmm-source"]
-__requires__ = ["hmm"]
+__requires__ = []
 __description__ = ("This program generates an anvi'o compatible HMM directory to be used with `anvi-run-hmms` "
                    "from the MDMParis Defense Finder Models.")
 

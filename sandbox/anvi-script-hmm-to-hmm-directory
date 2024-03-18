@@ -18,8 +18,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ge0rges']
+__requires__ = ["hmm-file"]
 __provides__ = ["hmm-source"]
-__requires__ = ["hmm"]
 __description__ = ("You give this program one or more HMM files from `hmmbuild`, and it generates "
                    "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")
 

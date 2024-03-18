@@ -17,8 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
+__requires__ = ["pfam-accession"]
 __provides__ = ["hmm-source"]
-__requires__ = []
 __description__ = ("You give this program one or more PFAM accession ids, and it generates "
                    "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")
 
@@ -76,7 +76,7 @@ def main(args):
         except:
             failed_accession_ids.add(pfam_accession)
             continue
-        
+
         try:
             data_dict[pfam_accession] = {}
             data_dict[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
@@ -87,7 +87,7 @@ def main(args):
         except ValueError:
             run.warning(f"The PFAM accession {pfam_accession} could not be included due to a missing attribute. "
                         f"Anvi'o will continue without it")
-        
+
     progress.end()
 
     if len(failed_accession_ids):
@@ -154,11 +154,11 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--pfam-accessions-list', nargs='+', help="One or more PFAM accession IDs "
-                "(such as PF14437.6). If you have multiple accessions, you can separate them from "
+                "(such as PF14437). If you have multiple accessions, you can separate them from "
                 "each other with a space. If you have too many, consider using the "
                 "`--pfam-accessions-file` parameter instead.", metavar='PFAM_ACCESSION')
     parser.add_argument('--pfam-accessions-file', help="A single column text file where each column "
-                "is a single PFAM accession ID (such as PF14437.6). You may have as many accession "
+                "is a single PFAM accession ID (such as PF14437). You may have as many accession "
                 "ids as you like in this file.", metavar='FILE')
     parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
                 "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "

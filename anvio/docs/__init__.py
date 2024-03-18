@@ -377,11 +377,23 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user":True
     },
+    "pfam-accession": {
+        "name": "PFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "hmm-file": {
+        "name": "HMM MODEL FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "hmm-hits": {
         "name": "HMM PROFILE",
