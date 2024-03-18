@@ -75,9 +75,9 @@ def main(args):
         progress.update(hmm_file + ' ...', increment=True)
 
         data_dict[hmm_file] = {}
-        data_dict[hmm_file]['ga'] = get_attribute_from_hmm_file(hmm_file, 'GA ')
-        data_dict[hmm_file]['gene'] = get_attribute_from_hmm_file(hmm_file, 'NAME')
-        data_dict[hmm_file]['accession'] = get_attribute_from_hmm_file(hmm_file, 'ACC')
+        data_dict[hmm_file]['ga'] = utils.get_attribute_from_hmm_file(hmm_file, 'GA ')
+        data_dict[hmm_file]['gene'] = utils.get_attribute_from_hmm_file(hmm_file, 'NAME')
+        data_dict[hmm_file]['accession'] = utils.get_attribute_from_hmm_file(hmm_file, 'ACC')
         data_dict[hmm_file]['source'] = hmm_source
     progress.end()
 
