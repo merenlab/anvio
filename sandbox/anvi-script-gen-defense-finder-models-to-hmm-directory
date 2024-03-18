@@ -19,9 +19,9 @@ __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['ge0rges']
+__authors__ = ['Ge0rges']
 __provides__ = ["hmm-source"]
-__requires__ = []
+__requires__ = ["hmm"]
 __description__ = ("This program generates an anvi'o compatible HMM directory to be used with `anvi-run-hmms` "
                    "from the MDMParis Defense Finder Models.")
 
@@ -70,19 +70,21 @@ def main(args):
         hmm_path = os.path.join(source_profile_folder, hmm_name)
 
         progress.update(hmm_name + ' ...', increment=True)
-        
+
         try:
             acc = utils.get_attribute_from_hmm_file(hmm_path, 'ACC')
-        
+        except ValueError:
+            continue
+
         try:
             acc = get_attribute_from_hmm_file(file_path, "NAME") if acc is None else acc
             ga = utils.get_attribute_from_hmm_file(hmm_path, 'GA ')
             name = utils.get_attribute_from_hmm_file(hmm_path, 'NAME')
-        
+
         except ValueError:
             raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {none_variable}. "
                               f"You should report this issue on the Defense-Finder-Models GitHub.")
-        
+
         data_dict[hmm_name] = {}
         data_dict[hmm_name]['ga'] = ga
         data_dict[hmm_name]['gene'] = name
