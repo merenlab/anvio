@@ -789,6 +789,37 @@ Drawer.prototype.draw_internal_node = function(p) {
     {
         var p0 = [];
         var p1 = [];
+        const branch_support_values = [];
+
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            
+            branch_support_values.push(branch_support_value0, branch_support_value1);
+
+            if (branch_support_values.length > 0) {
+                const min_support = Math.min(...branch_support_values);
+                const max_support = Math.max(...branch_support_values);
+            
+                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                    min_branch_support_value_seen = min_support;
+                } else {
+                    this.min_support = null;
+                }
+            
+                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                    max_branch_support_value_seen = max_support - 0.01;
+                } else {
+                    this.max_support = null;
+                }
+            } 
+
+        } else {
+                // If there are no string branch support value like '100/100':
+                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        }
 
         p0['x'] = p.xy['x'];
         p0['y'] = p.xy['y'];
@@ -809,11 +840,6 @@ Drawer.prototype.draw_internal_node = function(p) {
 
             drawLine(this.tree_svg_id, p, p0, p1);
 
-            // support value business happens here:
-            min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-            max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-            p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-            p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
             this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);
@@ -997,7 +1023,7 @@ Drawer.prototype.draw_categorical_layers = function() {
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
-                if(this.layerdata_dict[q.label] && this.layerdata_dict[q.label][layer.index]){
+                if(this.layerdata_dict[q.label][layer.index]){
                     layer_items.push(this.layerdata_dict[q.label][layer.index]);
                 }
             }
