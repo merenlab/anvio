@@ -247,11 +247,11 @@ class AnvioPrograms(AnvioAuthors):
         known_authors_in_programs = set([])
         for program in self.programs:
             for author in self.programs[program].meta_info['authors']['value']:
-                if author not in self.authors:
+                if author.lowercase() not in self.authors:
                     programs_with_unknown_authors.add(program)
-                    unknown_authors.add(author)
+                    unknown_authors.add(author.lowercase())
                 else:
-                    known_authors_in_programs.add(author)
+                    known_authors_in_programs.add(author.lowercase())
 
         if len(programs_with_unknown_authors):
             raise ConfigError(f"The following programs have authors who are not defined in the authors YAML file "
