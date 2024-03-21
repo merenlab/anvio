@@ -3146,7 +3146,7 @@ function checkMaxSupportValueSeen() {
             // we know nothing Jon Snow.
             return;
         }
-    } else if (max_branch_support_value_seen == 0 && $('#support_value_checkbox').is(':checked')) {
+    } else if (max_branch_support_value_seen === 0 && $('#support_value_checkbox').is(':checked')) {
         // this means we alrady know min/max values for branch support (`max_branch_support_value_seen`
         // is not `null`) but the max is zero. bad news.
         $('#max_branch_support_value_seen_is_zero_warning').show();
