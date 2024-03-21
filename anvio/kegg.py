@@ -14,7 +14,10 @@ import hashlib
 import collections
 import pandas as pd
 import numpy as np
+import multiprocessing as mp
+
 from scipy import stats
+from typing import List
 
 import anvio
 import anvio.db as db
@@ -23,9 +26,11 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
+from anvio.reactionnetwork import _download_worker
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
+from anvio.drivers.muscle import Muscle
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
@@ -278,6 +283,7 @@ OUTPUT_HEADERS = {'module' : {
                   }
 
 DEFAULT_OUTPUT_MODE = 'modules'
+STRAY_KO_ANVIO_SUFFIX = "_anvio_version"
 
 # global metadata header lists for matrix format
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
@@ -310,7 +316,10 @@ class KeggContext(object):
 
         # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "anvio_hmm_profiles_for_stray_KOs.hmm") # anvi'o-generated concatenated hmms for stray KOs
+        self.stray_ko_hmms_from_kegg = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # original concatentated hmms for stray KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
+        self.stray_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_stray_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
@@ -337,7 +346,7 @@ class KeggContext(object):
                                   f"the safest way to handle things.")
 
 
-    def setup_ko_dict(self, exclude_threshold=True):
+    def setup_ko_dict(self, exclude_threshold=True, suppress_warnings=False):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
@@ -360,29 +369,72 @@ class KeggContext(object):
         ==========
         exclude_threshold : Boolean
             If this is true, we remove KOs without a bitscore threshold from the ko_dict
+        suppress_warnings : Boolean
+            If this is true, we don't print the warning message about stray KOs
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
 
-        # if we are currently setting up KEGG, we should generate a text file with the ko_list entries
+        # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
         # of the KOs that have no scoring threshold
-        if self.__class__.__name__ in ['KeggSetup']:
-            orphan_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
-            orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
+        if self.__class__.__name__ in ['KeggSetup', 'KOfamDownload']:
+            stray_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
+            stray_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
 
             if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-                raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                                  "yet, but it needs to in order for the setup_ko_dict() function to work." % self.orphan_data_dir)
-            orphan_ko_path = os.path.join(self.orphan_data_dir, "01_ko_fams_with_no_threshold.txt")
-            orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
-            utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
+                raise ConfigError(f"Hmm. Something is out of order. The orphan data directory {self.orphan_data_dir} does not exist "
+                                  f"yet, but it needs to in order for the setup_ko_dict() function to work.")
+            stray_ko_path = os.path.join(self.orphan_data_dir, "kofams_with_no_threshold.txt")
+            stray_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
+            utils.store_dict_as_TAB_delimited_file(stray_ko_dict, stray_ko_path, key_header="knum", headers=stray_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         if exclude_threshold:
             [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
         else:
-            self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
+            if not suppress_warnings:
+                self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
+
+    
+    def setup_stray_ko_dict(self, add_entries_to_regular_ko_dict=False):
+        """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
+        
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
+        (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
+
+        knum	threshold	score_type	definition
+        K11700	800.4	full	poly(A) RNA polymerase Cid12 [EC:2.7.7.19]
+        K14747_anvio_version	1054.2	full	benzoylacetate-CoA ligase [EC:6.2.1.-]
+        
+        The dictionary structure is identical to that of self.ko_dict. Note that the `knum` column can contain
+        normal KEGG Ortholog accessions (for KOs whose HMMs we haven't updated) and accessions that end with
+        STRAY_KO_ANVIO_SUFFIX (for KOs that we created new models for).
+
+        If thresholds have not been predicted, then this function throws an error.
+
+        Parameters
+        ==========
+        add_entries_to_regular_ko_dict : Boolean
+            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the 
+            regular self.ko_dict attribute. Useful if you don't need to keep the two sets separate.
+        """
+
+        if os.path.exists(self.stray_ko_thresholds_file):
+            if add_entries_to_regular_ko_dict:
+                stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+                self.ko_dict.update(stray_kos)
+            else:
+                self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+        else:
+            raise ConfigError(f"You've requested to include stray KO models in your analysis, but we cannot find the "
+                              f"estimated bit score thresholds for these models, which can be generated during "
+                              f"`anvi-setup-kegg-data` and stored at the following path: {self.stray_ko_thresholds_file}. This "
+                              f"means that `anvi-setup-kegg-data` was run without the `--include-stray-KOs` flag for the KEGG "
+                              f"data directory that you are using. You have two options: 1) give up on including these models and "
+                              f"re-run your command without the `--include-stray-KOs` flag, or 2) change the KEGG data that you "
+                              f"are using, which could be as simple as specifying a new `--kegg-data-dir` or as complex as re-running "
+                              f"`anvi-setup-kegg-data` to obtain a dataset with predicted thresholds for stray KO models.")
 
 
     def get_ko_skip_list(self):
@@ -539,7 +591,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2023-09-22'
+        self.target_snapshot = self.kegg_snapshot or 'v2024-03-09'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -555,6 +607,9 @@ class KeggSetup(KeggContext):
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
         self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+
+        # the KEGG API URL, in case its needed downstream
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
 
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
@@ -1178,6 +1233,44 @@ class KeggSetup(KeggContext):
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
 
+    
+    def extract_data_field_from_kegg_file(self, file_path, target_field):
+        """This function parses a KEGG file and returns the data value associated with the given target field.
+        
+        It can work on flat-text files obtained via the REST API (ie, self.kegg_rest_api_get).
+        """
+
+        data_to_return = []
+
+        f = open(file_path, 'r')
+        current_data_name = None
+        
+        for line in f.readlines():
+            line = line.strip('\n')
+
+            fields = re.split('\s{2,}', line)
+            data_vals = None
+            data_def = None
+            line_entries = []
+
+            # when data name unknown, parse from first field
+            if line[0] != ' ':
+                current_data_name = fields[0]
+            if line[0] == ' ' and not current_data_name:
+                raise ConfigError(f"Uh oh. While trying to parse the KEGG file at {file_path}, we couldn't "
+                "find the data field associated with the line '{line}'.")
+
+            # note that if data name is known, first field still exists but is actually the empty string ''
+            if len(fields) > 1:
+                data_vals = fields[1]
+
+            if (current_data_name == target_field) and (data_vals is not None):
+                data_to_return.append(data_vals)
+
+        f.close()
+
+        return data_to_return
+
 
     def create_user_modules_dict(self):
         """This function establishes the self.module_dict parameter for user modules.
@@ -1262,14 +1355,22 @@ class KOfamDownload(KeggSetup):
     """
 
     def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.args = args
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
+        self.include_stray_kos = True if A('include_stray_KOs') else False
+
+        self.run.info_single("Info from KOfam Download")
+        self.run.info("Stray KOs will be processed (`--include-stray-KOs` flag)", self.include_stray_kos)
 
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
         filesnpaths.is_program_exists('hmmpress')
+        if self.include_stray_kos:
+            filesnpaths.is_program_exists('hmmbuild')
+            filesnpaths.is_program_exists('muscle')
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
@@ -1338,13 +1439,13 @@ class KOfamDownload(KeggSetup):
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
             if k not in self.ko_skip_list:
-                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
+                hmm_path = os.path.join(self.kegg_data_dir, f"profiles/{k}.hmm")
                 if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
-                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
-                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
-                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
-                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
+                    raise ConfigError(f"The KOfam HMM profile at {hmm_path} does not exist. This probably means that something went wrong "
+                                      f"while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
+                                      f"flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      f"If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      f"setup KEGG with the --kegg-archive flag.")
 
 
     def move_orphan_files(self):
@@ -1358,14 +1459,13 @@ class KOfamDownload(KeggSetup):
         """
 
         if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+            raise ConfigError(f"Hmm. Something is out of order. The orphan data directory {self.orphan_data_dir} does not exist "
+                              "yet, but it needs to in order for the move_orphan_files() function to work.")
 
-        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
+        no_kofam_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_no_kofams.hmm")
         no_kofam_file_list = []
-        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
         no_threshold_file_list = []
-        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
+        no_data_path = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_data.hmm")
         no_data_file_list = []
 
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
@@ -1379,30 +1479,52 @@ class KOfamDownload(KeggSetup):
                 else:
                     no_kofam_file_list.append(hmm_file)
 
-        # now we concatenate the orphan KO hmms into the orphan data directory
+        # now we concatenate the orphan and stray KO hmms into the orphan data directory
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_kofam_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_kofam_file_list)} "
+                             f"HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
+                             f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
+            utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
+            filesnpaths.gen_output_directory(os.path.join(self.orphan_data_dir, "profiles"), delete_if_exists=True)
+            for k_path in no_threshold_file_list:
+                k = os.path.basename(k_path)
+                # move individual profiles temporarily to the orphan data dir, so they don't get combined with the regular KOs
+                # but we can still use them later if necessary for --include-stray-KOs
+                os.rename(k_path, os.path.join(self.orphan_data_dir, f"profiles/{k}"))
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_threshold_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
+                             f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
+                             f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'. "
+                             f"If you used the flag --include-stray-KOs, we will estimate their bit score thresholds using KEGG GENES "
+                             f"data so that you can annotate these KOs downstream if you wish.")
 
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
-                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_data_file_list), self.orphan_data_dir))
+            self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_data_file_list)} "
+                             f"HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
+                             f"We have removed those HMM profiles from the final database. You can find them under the directory "
+                             f"'{self.orphan_data_dir}'.")
+
+    
+    def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path):
+        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate 
+        `hmmpress` command and deletes the log file afterwards if it was successful.
+        """
+
+        cmd_line = ['hmmpress', hmm_file_path]
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
 
 
     def run_hmmpress(self):
@@ -1420,23 +1542,446 @@ class KOfamDownload(KeggSetup):
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
         utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
-        # there is no reason to keep the original HMM profiles around, unless we are debugging
-        if not anvio.DEBUG:
-            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
-
-        self.progress.update('Running hmmpress...')
-        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
-        ret_val = utils.run_command(cmd_line, log_file_path)
-
-        if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
-                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
-        else:
-            # getting rid of the log file because hmmpress was successful
-            os.remove(log_file_path)
+        self.progress.update('Running hmmpress on KOs...')
+        self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
 
         self.progress.end()
+
+
+    def download_ko_files(self, kos_to_download, destination_dir, dont_raise=True):
+        """Multi-threaded download of KEGG Orthology files.
+        
+        Parameters
+        ==========
+        kos_to_download: list of str
+            List of KOs to download Orthology files for
+        destination_dir: file path
+            Where to download the files to
+        dont_raise : Boolean
+            If True (default), this function won't raise an error if some files failed to download.
+        Returns
+        =======
+        undownloaded : list of str
+            List of KOs that failed to download (will be empty if all were successful).
+        """
+
+        num_kos = len(kos_to_download)
+        self.progress.new('Downloading KO files', progress_total_items=num_kos)
+
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for ko in kos_to_download:
+            ko_file_path = os.path.join(destination_dir, ko)
+            url = self.kegg_rest_api_get + '/' + ko
+            input_queue.put((url, ko_file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < num_kos:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {num_kos} KO files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+
+        self.progress.end()
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            if dont_raise:
+                self.run.warning(f"Files for the following KOs failed to download despite multiple attempts: "
+                                f"{', '.join(undownloaded)}. If this is unacceptable to you, you can try to "
+                                f"re-run this program to see if things will work on the next try.")
+            else:
+                raise ConfigError(f"Files for the following KOs failed to download despite multiple attempts: "
+                                  f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
+                                  f"told to quit should this happen, well, here we are. If skipping these failed KOs "
+                                  f"is okay, you could always run this function with `dont_raise=True`.")
+        
+        return undownloaded
+
+    
+    def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True):
+        """Multi-threaded download of KEGG GENES files.
+        
+        Parameters
+        ==========
+        genes_to_download: list of str
+            List of KEGG GENES accessions to download. Example format: "ctc:CTC_p60" (lowercase organism code, colon, gene accession)
+        destination_dir: file path
+            Where to download the files to
+        dont_raise : Boolean
+            If True (default), this function won't raise an error if some files failed to download.
+        Returns
+        =======
+        undownloaded : List
+            List of files that failed to download (will be empty if all were successful).
+        """
+
+        num_genes = len(genes_to_download)
+        self.progress.new('Downloading KEGG GENES files', progress_total_items=num_genes)
+
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for g in genes_to_download:
+            genes_file_path = os.path.join(destination_dir, g)
+            url = self.kegg_rest_api_get + '/' + g
+            input_queue.put((url, genes_file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < num_genes:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {num_genes} KEGG GENES files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+
+        self.progress.end()
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            if dont_raise:
+                self.run.warning(f"Files for the following KEGG GENES failed to download despite multiple attempts: "
+                                f"{', '.join(undownloaded)}. If this is unacceptable to you, you can try to "
+                                f"re-run this program to see if things will work on the next try.")
+            else:
+                raise ConfigError(f"Files for the following KEGG GENES failed to download despite multiple attempts: "
+                                  f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
+                                  f"told to quit should this happen, well, here we are. If skipping these failed KOs "
+                                  f"is okay, you could always run this function with `dont_raise=True`.")
+        
+        return undownloaded
+
+
+    def get_kegg_gene_accessions_from_ko_files(self, ko_list, ko_file_dir):
+        """Extracts KEGG GENES accessions from KO files and returns a dictionary mapping KO to its GENES.
+        
+        Parameters
+        ==========
+        ko_list: list of str
+            List of KEGG accessions to process.
+        ko_file_dir: file path
+            Where the KO files are located
+        Returns
+        =======
+        ko_to_genes : dict
+            Dictionary with KOs as keys and list of KEGG GENES accessions as values
+        """
+
+        ko_to_genes = {k : [] for k in ko_list}
+
+        for ko in ko_list:
+            ko_file_path = os.path.join(ko_file_dir, ko)
+            genes_acc_list = self.extract_data_field_from_kegg_file(ko_file_path, target_field="GENES")
+
+            kegg_genes_code_list = []
+            for i, acc in enumerate(genes_acc_list):
+                acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
+                org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
+                gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
+
+                # sometimes we have multiple genes per organism, like this: "PSOM: 113322169 113340172"
+                if ' ' in gene_name:
+                    all_genes = gene_name.split(' ')
+                    for g in all_genes:
+                        kegg_genes_code = f"{org_code}:{g}"
+                        kegg_genes_code_list.append(kegg_genes_code)
+                else:
+                    kegg_genes_code_list.append(f"{org_code}:{gene_name}")
+            ko_to_genes[ko] = kegg_genes_code_list
+
+        return ko_to_genes
+
+
+    def kegg_gene_sequences_to_fasta_file(self, kegg_genes_files, target_fasta_file):
+        """This function extracts the amino acid sequences for a list of KEGG GENES and prints them to a FASTA file.
+        
+        Parameters
+        ==========
+        kegg_genes_files : List of str
+            List of paths to KEGG GENES file to extract sequences from
+        target_fasta_file : list of str
+            Path to FASTA file in which to store the sequences
+
+        Returns
+        =======
+        seq_tuples : List of tuples
+            Each sequence added to the FASTA file is also returned in this list, where each tuple contains 
+            (KEGG GENES name, amino acid sequence). Note that the seq name is taken from the name of the KEGG GENES file.
+        """
+
+        seq_tuples = []
+        for i, gene_file_path in enumerate(kegg_genes_files):
+            seq_name = os.path.basename(gene_file_path)
+            # obtain the amino acid sequence and save it to the fasta file
+            aa_sequence_data = self.extract_data_field_from_kegg_file(gene_file_path, target_field="AASEQ")
+
+            aaseq = ""
+            with open(target_fasta_file, 'a') as fasta:
+                fasta.write(f">{i}\n") # we label the gene with its index because the HMMER parser expects an int, not a string, as the gene name
+                for seq in aa_sequence_data[1:]: # we skip the first element, which is the sequence length
+                    fasta.write(f"{seq}\n")
+                    aaseq += seq
+            seq_tuples.append((seq_name, aaseq))
+
+        return seq_tuples
+
+
+    def build_HMM_from_seqs(self, hmm_name, tuple_of_seqs, hmm_output_file, log_file_path):
+        """This function aligns sequences and builds an HMM from them using `muscle` and `hmmbuild`.
+        
+        Parameters
+        ==========
+        hmm_name : str
+            What to name the model (ie 'NAME' field in the .hmm file)
+        tuple_of_seqs : List of (sequence name, sequence) tuples
+            The sequences to align with 'muscle' to create the `hmmbuild` input. 
+            See anvio.drivers.muscle for example format
+        hmm_output_file : str
+            File path where to store the new HMM model
+        log_file_path : str
+            File path for the log file of `hmmbuild`
+        """
+
+        if len(tuple_of_seqs) < 2:
+            raise ConfigError(f"The function build_HMM_from_seqs() can't build an alignment from less than "
+                              f"2 sequences, but that is what it got. Here is the sequence (if any) passed to this "
+                              f"function: {tuple_of_seqs}. No alignment, no HMM. Sorry!")
+
+        m = Muscle(progress=progress_quiet, run=run_quiet)
+        clw_alignment = m.run_stdin(tuple_of_seqs, debug=anvio.DEBUG, clustalw_format=True)
+
+        hmmbuild_cmd_line = ['hmmbuild', '-n', hmm_name, '--informat', 'clustallike', hmm_output_file, '-'] # sending '-' in place of an alignment file so it reads from stdin
+        utils.run_command_STDIN(hmmbuild_cmd_line, log_file_path, clw_alignment)
+
+        if not os.path.exists(hmm_output_file):
+            raise ConfigError(f"It seems that the `hmmbuild` command failed because there is no output model at {hmm_output_file}. "
+                              f"Perhaps the log file {log_file_path} will hold some answers for you.")
+
+
+    def estimate_bitscore_for_ko(self, ko, kegg_genes_for_ko, kegg_genes_fasta, ko_model_file):
+        """This function estimates the bitscore of a single KEGG Ortholog.
+
+        It runs `hmmscan` of the KO model against the provided list of its KEGG GENE
+        sequences, and then computes the minimum bit score to use as a threshold for
+        annotating this protein family.
+
+        Parameters
+        ==========
+        ko : str
+            KEGG identifier for the KO
+        kegg_genes_for_ko : list of str
+            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and 
+            number of sequences)
+        kegg_genes_fasta : str
+            Path to FASTA file where the KEGG GENES sequences for this KO are stored
+        ko_model_file : str
+            File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
+            but must be hmmpressed already)
+        Returns
+        =======
+        threshold : float
+            estimated bit score threshold for the KO's HMM. Will be None if kegg_genes_for_ko is empty
+        """
+
+        # sanity check for empty KEGG GENES list
+        if not kegg_genes_for_ko:
+            self.run.warning(f"The function estimate_bitscore_for_ko() received an empty list of KEGG GENES "
+                             f"for {ko}, so it cannot estimate a bit score threshold. The function will return "
+                             f"a threshold of `None` for this KO.")
+            return None 
+
+        # we run hmmscan of the KO against its associated GENES sequences and process the hits
+        target_file_dict = {'AA:GENE': kegg_genes_fasta}
+        hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
+        hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_for_ko), ko_model_file, None, None)
+        
+        if not hmm_hits_file:
+            raise ConfigError(f"No HMM hits were found for the KO model {ko}. This is seriously concerning, because we were running it against "
+                              f"gene sequences that were used to generate the model.")
+        
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', run=run_quiet)
+        search_results_dict = parser.get_search_results()
+        
+        # take the minimum of hits from current KO model as bit score threshold
+        all_relevant_bitscores = []
+        for hit, hit_info_dict in search_results_dict.items():
+            if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}{STRAY_KO_ANVIO_SUFFIX}":
+                all_relevant_bitscores.append(hit_info_dict['bit_score'])
+        
+        threshold = min(all_relevant_bitscores)
+        return threshold
+            
+    
+    def process_all_stray_kos(self):
+        """This driver function processes each stray KO and creates a file of bit score thresholds for them.
+        
+        The following steps are run for each stray KO:
+        1. download of its KO file
+        2. identification and download of the KEGG GENES sequences in this family
+        3. alignment with `muscle` and `hmmbuild` to create a new model (since KEGG GENES updates faster than KOfam models do)
+        4. `hmmscan` of the new KO model against these sequences to get bit scores
+        5. computing the minimum bit score to use as a threshold for annotating this family
+        """
+
+        num_strays = len(self.ko_no_threshold_list)
+        self.run.info("Number of Stray KOs to process", num_strays)
+
+        self.stray_ko_file_dir = os.path.join(self.orphan_data_dir, "00_STRAY_KO_FILES")
+        self.stray_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_STRAY_GENES_FILES")
+        self.stray_ko_seqs_dir = os.path.join(self.orphan_data_dir, "02_STRAY_GENES_FASTA")
+        self.stray_ko_hmms_dir = os.path.join(self.orphan_data_dir, "03_STRAY_KO_HMMS")
+        filesnpaths.gen_output_directory(self.stray_ko_file_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_genes_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_seqs_dir, delete_if_exists=True)
+        filesnpaths.gen_output_directory(self.stray_ko_hmms_dir, delete_if_exists=True)
+
+        ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.stray_ko_file_dir)
+
+        ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
+        self.run.info("Number of Stray KO files successfully downloaded", len(ko_files_to_process))
+        if ko_files_not_downloaded:
+            self.run.warning(f"FYI, some stray KOs failed to download from KEGG. We will not estimate their bit score thresholds "
+                             f"and you will not be able to annotate them later. Here they are: {', '.join(ko_files_not_downloaded)}")
+
+        ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.stray_ko_file_dir)
+        kegg_genes_to_download = []
+        for acc_list in ko_to_gene_accessions.values():
+            kegg_genes_to_download.extend(acc_list)
+
+        kegg_genes_not_downloaded = self.download_kegg_genes_files(kegg_genes_to_download, self.stray_ko_genes_dir)
+        kegg_genes_downloaded = list(set(kegg_genes_to_download) - set(kegg_genes_not_downloaded))
+        self.run.info("Number of KEGG GENES files successfully downloaded", len(kegg_genes_downloaded))
+        if kegg_genes_not_downloaded:
+            self.run.warning(f"FYI, some KEGG GENES files failed to download from KEGG. They will not be used for "
+                             f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
+
+        self.progress.new("Extracting amino acid sequences for Stray KOs", progress_total_items=len(ko_files_to_process))
+        ko_to_gene_seqs_list = {} # we'll store the sequences to align with muscle here. yes, we just stored them in a file.
+        cur_num = 0
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
+            self.progress.increment(increment_to=cur_num)
+            downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
+            gene_file_paths = [os.path.join(self.stray_ko_genes_dir, code) for code in downloaded_genes_list]
+            ko_to_gene_seqs_list[k] = self.kegg_gene_sequences_to_fasta_file(gene_file_paths, os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"))
+            cur_num += 1
+        self.progress.end()
+
+        self.progress.new("Aligning genes and creating new HMMs for Stray KOs", progress_total_items=len(ko_files_to_process))
+        list_of_new_HMMs = []
+        hmmbuild_log = os.path.join(self.orphan_data_dir, "hmmbuild.log")
+        cur_num = 0
+        new_models = 0
+        old_models = 0
+        models_without_genes = []
+        kos_with_one_gene = []
+        models_with_anvio_version = []
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
+            self.progress.increment(increment_to=cur_num)
+            if not len(ko_to_gene_seqs_list[k]):
+                models_without_genes.append(k)
+            elif len(ko_to_gene_seqs_list[k]) == 1:
+                # with only 1 sequence, we can't build a new model. We can try to use KEGG's since it is guaranteed to fit this sequence
+                kegg_model_file = os.path.join(self.orphan_data_dir, f"profiles/{k}.hmm")
+                if not os.path.exists(kegg_model_file):
+                    kos_with_one_gene.append(k) # if we don't have the OG model, we just skip this one
+                else:
+                    list_of_new_HMMs.append(kegg_model_file)
+                    old_models += 1
+            else:
+                hmm_model_file = os.path.join(self.stray_ko_hmms_dir, f"{k}_anvio.hmm")
+                self.build_HMM_from_seqs(f"{k}{STRAY_KO_ANVIO_SUFFIX}", ko_to_gene_seqs_list[k], hmm_model_file, hmmbuild_log)
+                list_of_new_HMMs.append(hmm_model_file)
+                new_models += 1
+                models_with_anvio_version.append(k)
+            cur_num += 1
+        self.progress.end()
+
+        self.run.info("Number of Stray KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
+        self.run.info("Number of Stray KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
+        if models_without_genes:
+            self.run.warning(f"We weren't able to download any KEGG GENE sequences for some stray KOs, and therefore will not "
+                             f"be able to estimate bit score threshold for these KOs. Here they are: {', '.join(models_without_genes)}")
+            self.run.info("Number of KOs without downloaded gene sequences", len(models_without_genes))
+            ko_files_to_process = list(set(ko_files_to_process) - set(models_without_genes))
+        if kos_with_one_gene:
+            self.run.warning(f"The following stray KOs had exactly one KEGG GENE sequence, so we couldn't build a new HMM for them, "
+                             f"but we also couldn't find their models from KEGG, so we won't estimate bit score thresholds for them: "
+                             f"{', '.join(kos_with_one_gene)}")
+            self.run.info("Number of KOs without HMMs", len(kos_with_one_gene))
+            ko_files_to_process = list(set(ko_files_to_process) - set(kos_with_one_gene))
+
+        self.progress.new('Concatenating new Stray HMM files...')
+        utils.concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
+        self.progress.update('Running hmmpress on new Stray KO HMMs...')
+        self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
+        self.progress.end()
+        self.run.info("File storing all new HMMs generated for Stray KOs", self.stray_ko_hmm_file_path)
+
+        self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
+        threshold_dict = {}
+        cur_num = 0
+        for k in ko_files_to_process:
+            self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
+            self.progress.increment(increment_to=cur_num)
+            downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
+            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
+                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"), 
+                                        ko_model_file=self.stray_ko_hmm_file_path)
+            cur_num += 1
+        self.progress.end()
+
+        # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
+        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
+        # stray data directory (and we want to keep the strays separate since we process them specially)
+        self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos), suppress_warnings=True)
+
+        # write the thresholds to a file
+        thresholds_not_none = 0
+        with open(self.stray_ko_thresholds_file, 'w') as out:
+            out.write("knum\tthreshold\tscore_type\tdefinition\n")
+            for k, t in threshold_dict.items():
+                if t:
+                    model_name = k
+                    if k in models_with_anvio_version:
+                        model_name = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
+                    ko_definition = self.ko_dict[k]['definition']
+                    out.write(f"{model_name}\t{t}\tfull\t{ko_definition}\n")
+                    thresholds_not_none += 1
+        self.run.info("File with estimated bit score thresholds", self.stray_ko_thresholds_file)
+        self.run.info("Number of estimated thresholds", thresholds_not_none)
+
+        # clean up downloaded files
+        if not anvio.DEBUG:
+            os.remove(hmmbuild_log)
+            for d in [self.stray_ko_file_dir, self.stray_ko_genes_dir, self.stray_ko_seqs_dir, self.stray_ko_hmms_dir]:
+                shutil.rmtree(d)
+            self.run.warning("The KO and GENES files downloaded from KEGG for processing the stray KOs, as well as the "
+                             "individual new HMM files that anvi'o generated for these KOs, are now deleted to save space. "
+                             "If you want to keep them, next time run the program with `--debug`.")
 
 
     def setup_kofams(self):
@@ -1449,6 +1994,14 @@ class KOfamDownload(KeggSetup):
             self.decompress_profiles()
             self.setup_ko_dict() # get ko dict attribute
             self.run_hmmpress()
+
+            if self.include_stray_kos:
+                self.process_all_stray_kos()
+            
+            # there is no reason to keep the original HMM profiles around, unless we are debugging
+            if not anvio.DEBUG:
+                shutil.rmtree(os.path.join(self.kegg_data_dir, "profiles"))
+                shutil.rmtree(os.path.join(self.orphan_data_dir, "profiles"))
 
 
 class ModulesDownload(KeggSetup):
@@ -1475,6 +2028,8 @@ class ModulesDownload(KeggSetup):
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.skip_binary_relations = A('skip_binary_relations')
         self.overwrite_modules_db = A('overwrite_output_destinations')
+
+        self.run.info_single("Info from MODULES Download")
 
         # we also need the init of the superclass
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
@@ -1616,17 +2171,12 @@ class ModulesDownload(KeggSetup):
     def download_modules(self):
         """This function downloads the KEGG modules."""
 
-        from typing import List
-        # import the function for multithreaded download
-        import multiprocessing as mp
-        from anvio.reactionnetwork import _download_worker
-
         total = len(self.module_dict.keys())
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
         self.run.info("Number of KEGG Modules to download", total)
         self.run.info("Number of threads used for download", self.num_threads)
 
-        self.progress.new("Downloading KEGG Module files")
+        self.progress.new("Downloading KEGG Module files", progress_total_items=total)
         manager = mp.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -1648,6 +2198,7 @@ class ModulesDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {total} module files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
@@ -1834,14 +2385,9 @@ class ModulesDownload(KeggSetup):
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
-        from typing import List
-        # import the function for multithreaded download
-        import multiprocessing as mp
-        from anvio.reactionnetwork import _download_worker
-
         total = len(self.brite_dict)
         self.run.info("Number of BRITE hierarchies to download", total)
-        self.progress.new("Downloading BRITE files")
+        self.progress.new("Downloading BRITE files", progress_total_items=total)
         manager = mp.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -1869,6 +2415,7 @@ class ModulesDownload(KeggSetup):
             if output is True:
                 downloaded_count += 1
                 self.progress.update(f"{downloaded_count} / {total} files downloaded")
+                self.progress.increment(increment_to=downloaded_count)
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
@@ -1967,6 +2514,7 @@ class RunKOfams(KeggContext):
         self.contigs_db_path = A('contigs_db')
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
+        self.include_stray_kos = True if A('include_stray_KOs') else False
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
@@ -1974,6 +2522,7 @@ class RunKOfams(KeggContext):
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
+        self.stray_ko_dict = None # should be set up by setup_stray_ko_dict(), if possible
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -1991,7 +2540,20 @@ class RunKOfams(KeggContext):
         utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_output_file_writable(self.contigs_db_path)
 
+        # reminder to be a good citizen
+        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
+                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
+                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
+        self.run.info("Stray KOs will be annotated", self.include_stray_kos)
+        if self.include_stray_kos:
+            self.setup_stray_ko_dict()
+            self.run.warning("Please note! Because you used the flag `--include-stray-KOs`, anvi'o will annotate "
+                             "your genes with KO models that do not come with a bit score threshold defined by KEGG. "
+                             "We have generated new models and estimated rather conservative thresholds for them ourselves. To learn "
+                             "how we did that, please read the documentation page for `anvi-setup-kegg-data`: "
+                             "https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them")
 
         # load existing kegg modules db, if one exists
         if os.path.exists(self.kegg_modules_db_path):
@@ -2008,11 +2570,6 @@ class RunKOfams(KeggContext):
                              "program with a data directory including a modules database (which you can obtain by running "
                              "`anvi-setup-kegg-data` again with the right mode(s).")
             self.kegg_modules_db = None
-
-        # reminder to be a good citizen
-        self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
-                         "Aramaki et al (doi:10.1093/bioinformatics/btz859) When you publish your findings, "
-                         "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def check_hash_in_contigs_db(self):
@@ -2066,18 +2623,28 @@ class RunKOfams(KeggContext):
             raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is "
                               "extremely displeased and unable to function properly. Please refrain from calling this "
                               "function until after setup_ko_dict() has been called.")
+        if self.include_stray_kos and not self.stray_ko_dict:
+            raise ConfigError("Oops! The bit score thresholds for stray KOs have not been properly loaded, so "
+                              "get_annotation_from_ko_dict() is unable to work properly. If you plan to use "
+                              "--include-stray-KOs, then make sure you run the setup_stray_ko_dict() function before "
+                              "calling this one.")
 
-        if not knum in self.ko_dict:
+        ret_value = None
+        if knum in self.ko_dict:
+            ret_value = self.ko_dict[knum]['definition']
+        elif self.include_stray_kos and knum in self.stray_ko_dict:
+            ret_value = self.stray_ko_dict[knum]['definition']
+        else:
             if ok_if_missing_from_dict:
                 return "Unknown function with KO num %s" % knum
             else:
                 raise ConfigError("It seems %s found a KO number that does not exist "
                                   "in the KOfam ko_list file: %s" % (self.hmm_program, knum))
 
-        return self.ko_dict[knum]['definition']
+        return ret_value
 
 
-    def parse_kofam_hits(self, hits_dict):
+    def parse_kofam_hits(self, hits_dict, hits_label = "KOfam", next_key=None):
         """This function applies bitscore thresholding (if requested) to establish the self.functions_dict
         which can then be used to store annotations in the contigs DB.
 
@@ -2091,6 +2658,12 @@ class RunKOfams(KeggContext):
         ===========
         hits_dict : dictionary
             The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        hits_label : str
+            A label for the set of hits we are working on, used to keep sets separate from each other and to enable
+            us to match gene caller ids to hits in different dictionaries later
+        next_key : int
+            The next integer key that is available for adding functions to self.functions_dict. If None is provided,
+            the keys will start at 0.
 
         RETURNS
         ========
@@ -2100,14 +2673,11 @@ class RunKOfams(KeggContext):
         """
 
         total_num_hits = len(hits_dict.values())
-        self.progress.new("Parsing KOfam hits", progress_total_items=total_num_hits)
-        self.functions_dict = {}
-        self.kegg_module_names_dict = {}
-        self.kegg_module_classes_dict = {}
-        self.kegg_brite_categorizations_dict = {}
-        self.gcids_to_hits_dict = {}
-        self.gcids_to_functions_dict = {}
+        starting_annotations_in_dict = len(self.functions_dict.keys())
+        self.progress.new(f"Parsing {hits_label} hits", progress_total_items=total_num_hits)
         counter = 0
+        if next_key:
+            counter = next_key
         num_hits_removed = 0
         cur_num_hit = 0
         for hit_key,hmm_hit in hits_dict.items():
@@ -2122,28 +2692,47 @@ class RunKOfams(KeggContext):
 
             # later, we will need to quickly access the hits for each gene call. So we map gcids to the keys in the raw hits dictionary
             if gcid not in self.gcids_to_hits_dict:
-                self.gcids_to_hits_dict[gcid] = [hit_key]
+                self.gcids_to_hits_dict[gcid] = {hits_label : [hit_key]}
             else:
-                self.gcids_to_hits_dict[gcid].append(hit_key)
+                if hits_label not in self.gcids_to_hits_dict[gcid]:
+                    self.gcids_to_hits_dict[gcid][hits_label] = [hit_key]
+                else:
+                    self.gcids_to_hits_dict[gcid][hits_label].append(hit_key)
 
-            if knum not in self.ko_dict:
+            if (knum not in self.ko_dict and (self.stray_ko_dict is not None and knum not in self.stray_ko_dict)) or \
+                (knum not in self.ko_dict and self.stray_ko_dict is None):
                 self.progress.reset()
-                raise ConfigError("Something went wrong while parsing the KOfam HMM hits. It seems that KO "
+                raise ConfigError(f"Something went wrong while parsing the {hits_label} HMM hits. It seems that KO "
                                   f"{knum} is not in the noise cutoff dictionary for KOs. That means we do "
                                   "not know how to distinguish strong hits from weak ones for this KO. "
                                   "Anvi'o will fail now :( Please contact a developer about this error to "
                                   "get this mess fixed. ")
             # if hit is above the bitscore threshold, we will keep it
-            if self.ko_dict[knum]['score_type'] == 'domain':
-                if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
-                    keep = True
-            elif self.ko_dict[knum]['score_type'] == 'full':
-                if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
-                    keep = True
+            if knum in self.ko_dict:
+                if self.ko_dict[knum]['score_type'] == 'domain':
+                    if hmm_hit['domain_bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                        keep = True
+                elif self.ko_dict[knum]['score_type'] == 'full':
+                    if hmm_hit['bit_score'] >= float(self.ko_dict[knum]['threshold']):
+                        keep = True
+                else:
+                    self.progress.reset()
+                    raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
+                                    f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
+            elif knum in self.stray_ko_dict:
+                if self.stray_ko_dict[knum]['score_type'] == 'domain':
+                    if hmm_hit['domain_bit_score'] >= float(self.stray_ko_dict[knum]['threshold']):
+                        keep = True
+                elif self.stray_ko_dict[knum]['score_type'] == 'full':
+                    if hmm_hit['bit_score'] >= float(self.stray_ko_dict[knum]['threshold']):
+                        keep = True
+                else:
+                    self.progress.reset()
+                    raise ConfigError(f"The KO noise cutoff dictionary for the stray KO {knum} has a strange score type which "
+                                    f"is unknown to anvi'o: {self.stray_ko_dict[knum]['score_type']}")
             else:
-                self.progress.reset()
-                raise ConfigError(f"The KO noise cutoff dictionary for {knum} has a strange score type which "
-                                  f"is unknown to anvi'o: {self.ko_dict[knum]['score_type']}")
+                raise ConfigError(f"We cannot find KO {knum} in either self.ko_dict or in self.stray_ko_dict. This is likely a "
+                                  f"problem for the developers.")
 
             if keep or self.keep_all_hits:
                 self.functions_dict[counter] = {
@@ -2204,13 +2793,14 @@ class RunKOfams(KeggContext):
                 num_hits_removed += 1
 
         self.progress.end()
-        self.run.info("Number of weak hits removed by KOfam parser", num_hits_removed)
-        self.run.info("Number of hits remaining in annotation dict ", len(self.functions_dict.keys()))
+        ending_annotations_in_dict = len(self.functions_dict.keys())
+        self.run.info(f"Number of weak hits removed by {hits_label} parser", num_hits_removed)
+        self.run.info(f"Number of annotations added for {hits_label}", ending_annotations_in_dict - starting_annotations_in_dict)
 
         return counter
 
 
-    def update_dict_for_genes_with_missing_annotations(self, gcids_list, hits_dict, next_key):
+    def update_dict_for_genes_with_missing_annotations(self, gcids_list, super_hits_dict, next_key):
         """This function adds functional annotations for genes with missing hits to the dictionary.
 
         The reason this is necessary is that the bitscore thresholds can be too stringent, causing
@@ -2229,8 +2819,9 @@ class RunKOfams(KeggContext):
         gcids_list : list
             The list of gene caller ids in the contigs database. We will use this to figure out which
             genes have no annotations
-        hits_dict : dictionary
-            The output from the hmmsearch parser, which should contain all hits (ie, weak hits not yet removed)
+        super_hits_dict : dictionary
+            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output 
+            from the hmmsearch parser, which should contain all hits from the set (ie, weak hits not yet removed)
         next_key : int
             The next integer key that is available for adding functions to self.functions_dict
         """
@@ -2244,6 +2835,7 @@ class RunKOfams(KeggContext):
                          "the e-value/bitscore parameters (see the help page for more info).")
 
         num_annotations_added = 0
+        num_stray_KOs_added = 0
         total_num_genes = len(gcids_list)
         self.progress.new("Relaxing bitscore threshold", progress_total_items=total_num_genes)
 
@@ -2259,38 +2851,55 @@ class RunKOfams(KeggContext):
                 decent_hit_kos = set()
                 best_e_value = 100 # just an arbitrary positive value that will be larger than any evalue
                 best_hit_key = None
+                best_hit_label = None
 
-                # if no annotation, get all hits for gene caller id from hits_dict
+                # if no annotation, get all hits for gene caller id from the hits dictionaries
                 if gcid in self.gcids_to_hits_dict:
-                    for hit_key in self.gcids_to_hits_dict[gcid]:
-                        knum = hits_dict[hit_key]['gene_name']
-                        ko_threshold = float(self.ko_dict[knum]['threshold'])
+                    for hit_label in self.gcids_to_hits_dict[gcid]:
+                        for hit_key in self.gcids_to_hits_dict[gcid][hit_label]:
+                            knum = super_hits_dict[hit_label][hit_key]['gene_name']
+                            ko_threshold = None
+                            ko_score_type = None
+                            if knum in self.ko_dict:
+                                ko_threshold = float(self.ko_dict[knum]['threshold'])
+                                ko_score_type = self.ko_dict[knum]['score_type']
+                            elif self.include_stray_kos and knum in self.stray_ko_dict:
+                                ko_threshold = float(self.stray_ko_dict[knum]['threshold'])
+                                ko_score_type = self.stray_ko_dict[knum]['score_type']
+                            else:
+                                raise ConfigError(f"panik. the function update_dict_for_genes_with_missing_annotations() "
+                                                  f"cannot find the bit score threshold for {knum}.")
 
-                        # get set of hits that fit specified heuristic parameters
-                        if self.ko_dict[knum]['score_type'] == 'domain':
-                            hit_bitscore = hits_dict[hit_key]['domain_bit_score']
-                        elif self.ko_dict[knum]['score_type'] == 'full':
-                            hit_bitscore = hits_dict[hit_key]['bit_score']
-                        if hits_dict[hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
-                            decent_hit_kos.add(knum)
-                            # keep track of hit with lowest e-value we've seen so far
-                            if hits_dict[hit_key]['e_value'] <= best_e_value:
-                                best_e_value = hits_dict[hit_key]['e_value']
-                                best_hit_key = hit_key
+                            # get set of hits that fit specified heuristic parameters
+                            if ko_score_type == 'domain':
+                                hit_bitscore = super_hits_dict[hit_label][hit_key]['domain_bit_score']
+                            elif ko_score_type == 'full':
+                                hit_bitscore = super_hits_dict[hit_label][hit_key]['bit_score']
+                            if super_hits_dict[hit_label][hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
+                                decent_hit_kos.add(knum)
+                                # keep track of hit with lowest e-value we've seen so far
+                                if super_hits_dict[hit_label][hit_key]['e_value'] <= best_e_value:
+                                    best_e_value = super_hits_dict[hit_label][hit_key]['e_value']
+                                    best_hit_key = hit_key
+                                    best_hit_label = hit_label
 
                     # if unique KO, add annotation with best e-value to self.functions_dict
                     if len(decent_hit_kos) == 1:
-                        best_knum = hits_dict[best_hit_key]['gene_name']
+                        best_knum = super_hits_dict[best_hit_label][best_hit_key]['gene_name']
                         ## TODO: WE NEED A GENERIC FUNCTION FOR THIS SINCE IT IS SAME AS ABOVE
                         self.functions_dict[next_key] = {
                             'gene_callers_id': gcid,
                             'source': 'KOfam',
                             'accession': best_knum,
                             'function': self.get_annotation_from_ko_dict(best_knum, ok_if_missing_from_dict=True),
-                            'e_value': hits_dict[best_hit_key]['e_value'],
+                            'e_value': super_hits_dict[best_hit_label][best_hit_key]['e_value'],
                         }
                         # we may never access this downstream but let's add to it to be consistent
                         self.gcids_to_functions_dict[gcid] = [next_key]
+
+                        # track how many of stray KOs are added back
+                        if best_hit_label == "Stray KO":
+                            num_stray_KOs_added += 1
 
                         # add associated KEGG module information to database
                         mods = None
@@ -2327,7 +2936,7 @@ class RunKOfams(KeggContext):
 
                         if self.kegg_modules_db and not self.skip_brite_hierarchies:
                             # get BRITE categorization information in the form to be added to the contigs database
-                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(best_knum, gcid)
                             if ortholog_categorizations_dict:
                                 self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
@@ -2336,6 +2945,9 @@ class RunKOfams(KeggContext):
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
+        if self.include_stray_kos:
+            self.run.info("... of these, number of regular KOs is", num_annotations_added - num_stray_KOs_added)
+            self.run.info("... of these, number of stray KOs is", num_stray_KOs_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
 
@@ -2426,7 +3038,14 @@ class RunKOfams(KeggContext):
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
-        if not hmm_hits_file:
+        has_stray_hits = False
+        stray_hits_file = None
+        if self.include_stray_kos:
+            ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
+            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, None)
+            has_stray_hits = True if stray_hits_file else False
+
+        if not hmm_hits_file and not has_stray_hits:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
                              "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
                              "and gracefully quit.", nl_before=1, nl_after=1)
@@ -2441,14 +3060,37 @@ class RunKOfams(KeggContext):
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
+        # set up some attributes that we'll need later
+        self.functions_dict = {}
+        self.kegg_module_names_dict = {}
+        self.kegg_module_classes_dict = {}
+        self.kegg_brite_categorizations_dict = {}
+        self.gcids_to_hits_dict = {}
+        self.gcids_to_functions_dict = {}
+        super_hits_dict = {} # will store the hits from each set of HMMs
+
         # parse hmmscan output
+        self.run.warning('', header='HMM hit parsing for KOfams', lc='green')
+        self.run.info("HMM output table", hmm_hits_file)
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
-
-        # add functions and KEGG modules info to database
         next_key_in_functions_dict = self.parse_kofam_hits(search_results_dict)
+        super_hits_dict["KOfam"] = search_results_dict
+        self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
+
+        if has_stray_hits:
+            self.run.warning('', header='HMM hit parsing for Stray KOs', lc='green')
+            self.run.info("HMM output table", stray_hits_file)
+            oparser = parser_modules['search']['hmmer_table_output'](stray_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+            stray_search_results = oparser.get_search_results()
+            next_key_in_functions_dict = self.parse_kofam_hits(stray_search_results, hits_label = "Stray KO", next_key=next_key_in_functions_dict)
+            super_hits_dict["Stray KO"] = stray_search_results
+            self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
+
         if not self.skip_bitscore_heuristic:
-            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
+            self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, super_hits_dict, next_key=next_key_in_functions_dict)
+        
+        # add functions and KEGG modules info to database
         self.store_annotations_in_db()
 
         # If requested, store bit scores of each hit in file
@@ -2504,6 +3146,8 @@ class KeggEstimatorArgs():
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
+        self.include_stray_kos = True if A('include_stray_KOs') else False
+        self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -2659,6 +3303,15 @@ class KeggEstimatorArgs():
                     func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else 'UNKNOWN'
                     self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
+
+                # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
+                k_anvio = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
+                if self.include_stray_kos and k_anvio in self.ko_dict:
+                    if k_anvio not in self.all_kos_in_db:
+                        src = 'KOfam'
+                        func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else self.ko_dict[k_anvio]['definition']
+                        self.all_kos_in_db[k_anvio] = {'modules': [], 'annotation_source': src, 'function': func}
+                    self.all_kos_in_db[k_anvio]['modules'].append(mod)
 
 
     def init_paths_for_module(self, mnum, mod_db=None):
@@ -2881,8 +3534,13 @@ class KeggEstimatorArgs():
         metadata_dict = {}
         metadata_dict["modules_with_enzyme"] = mod_list_str
 
-        if knum not in self.ko_dict:
-            # if we can't find the enzyme in the KO dictionary, try to find it in the database
+        if knum in self.ko_dict:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict:
+            # if we can't find the enzyme in the KO dictionary, try to find it in the stray KO dictionary (if it exists)
+            metadata_dict["enzyme_definition"] = self.stray_ko_dict[knum]['definition']
+        else:
+            # if we still can't find the enzyme, try to find it in the database
             if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
                 metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
             elif dont_fail_if_not_found:
@@ -2892,11 +3550,9 @@ class KeggEstimatorArgs():
                 metadata_dict["enzyme_definition"] = "UNKNOWN"
             else:
                 raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                                  f"for enzyme {knum} but this enzyme is not in "
-                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
-        else:
-            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-
+                                  f"for enzyme {knum} but this enzyme is not in the enzyme dictionary "
+                                  "(self.ko_dict, or (self.stray_ko_dict) in some cases). This should never have happened.")
+        
         return metadata_dict
 
 
@@ -3120,7 +3776,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
-            estimation_mode = "Bins in a metagenome"
+            if not self.metagenome_mode:
+                estimation_mode = "Bins in a metagenome"
+            else:
+                estimation_mode = "Individual contigs within a collection in a metagenome"
         elif self.metagenome_mode:
             estimation_mode = "Individual contigs in a metagenome"
         elif self.enzymes_txt:
@@ -3157,6 +3816,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
             self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
+            if self.include_stray_kos:
+                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=True)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
@@ -3359,6 +4020,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                      f"{min_contig_length_in_profile_db} nts. Anvi'o hopes that this explains some things.")
                     splits_to_use = split_names_in_profile_db
 
+            # second, if we are working with a collection, we can limit the splits to use with those from the collection
+            if self.collection_name:
+                splits_to_use = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
+                self.progress.reset()
+                self.run.warning(f"Since a collection name was provided, we will only work with gene calls "
+                                 f"from the subset of {len(splits_to_use)} splits in the collection for the "
+                                 f"purposes of estimating metabolism.")
 
         self.progress.update('Loading gene call data from contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
@@ -3585,7 +4253,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
             because we need access to the self.ko_dict
             """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and self.exclude_kos_no_threshold:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict \
+                        and (f"{knum}{STRAY_KO_ANVIO_SUFFIX}" not in self.ko_dict) and self.exclude_kos_no_threshold:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -3628,14 +4297,22 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
                 if ko not in bin_level_ko_dict:
+                    if self.ignore_unknown_kos:
+                        continue
                     raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
-                                      f"annotated in your data. This usually happens when you are using `KOfam` annotations that are "
-                                      f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
-                                      f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
-                                      f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
-                                      f"you will have to re-run this program with the flag --include-kos-not-in-kofam. If you just now "
-                                      f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
-                                      f"or remove them from your input --enzymes-txt file.")
+                                      f"annotated in your data. There are 3 main ways this can happen: (1) you are using --enzymes-txt input "
+                                      f"that includes KOs that are different from the set used for annotation with `anvi-run-kegg-kofams`, "
+                                      f"(2) your contigs database was annotated with `anvi-run-kegg-kofams --include-stray-KOs` but you didn't "
+                                      f"use the `--include-stray-KOs` flag for `anvi-estimate-metabolism`, or (3) you imported external annotations "
+                                      f"with the source name `KOfam` that include KOs not in the KEGG data directory currently being used. "
+                                      f"You have a few options to get around this error depending on which case applies to your situation. "
+                                      f"If this is case (2) and you want to include these enzymes in the analysis, then re-run `anvi-estimate-metabolism` "
+                                      f"with the flag `--include-stray-KOs`. If this is case (1) or (3) and you want to include these enzymes in the "
+                                      f"analysis, then re-run `anvi-estimate-metabolism` with the flag `--include-kos-not-in-kofam`. And no matter "
+                                      f"what the situation is, if you want to IGNORE these unknown annotations for the purposes of estimating "
+                                      f"metabolism, you can re-run `anvi-estimate-metablism` with the flag `--ignore-unknown-KOs`. If this message "
+                                     f"made you worry, you could also re-do your annotations or remove these unknown enzymes from your input "
+                                     f"--enzymes-txt file to be on the safe side.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
@@ -3643,6 +4320,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 is_unique = False
                 if len(present_in_mods) == 1:
                     is_unique = True
+
+                # make sure we can count annotations to anvi'o versions of stray KO models by using KEGG's original accession
+                is_anvio_version = False
+                if ko.endswith(STRAY_KO_ANVIO_SUFFIX):
+                    is_anvio_version = True
+                    ko = ko.replace(STRAY_KO_ANVIO_SUFFIX, "")
 
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
@@ -3663,6 +4346,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         mod_str = "/".join(present_in_mods)
                         bin_level_module_dict[m]["warnings"].add(f"{ko} is present in multiple modules: {mod_str}")
+
+                    # point out use of anvi'o-specific KO models
+                    if is_anvio_version:
+                        bin_level_module_dict[m]["warnings"].add(f"used '{ko}{STRAY_KO_ANVIO_SUFFIX}' model to annotate {ko}")
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
@@ -4778,8 +5465,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # and for all other annotations, we reduce the count of hits by one
                 for acc in enzymes[1:]:
                     derep_enzyme_hits[acc] -= 1
-
-                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on):
+                
+                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on) and self.add_copy_number:
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
                                      f"within the same step of a metabolic pathway ({enz_str}), and these enzymes "
@@ -5522,7 +6209,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if not c_dict["warnings"]:
                 d[self.modules_unique_id]["warnings"] = "None"
             else:
-                d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+                d[self.modules_unique_id]["warnings"] = ",".join(sorted(c_dict["warnings"]))
 
         # list of enzymes unique to module
         unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
@@ -6275,11 +6962,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
                 # reminder, an entry in gene_functions_in_genome_dict looks like this:
                 # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                #print(gene_functions_in_genome_dict)
                 for gcid, func_dict in gene_functions_in_genome_dict.items():
                     for source, func_tuple in func_dict.items():
                         if func_tuple:
-                            acc_string, func_def, eval = func_tuple
+                            acc_string, func_def, evalue = func_tuple
                             for acc in acc_string.split('!!!'):
                                 if acc not in self.ko_dict:
                                     self.ko_dict[acc] = {'definition': func_def}

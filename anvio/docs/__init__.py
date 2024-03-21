@@ -104,6 +104,10 @@ ANVIO_WORKFLOWS = {
     },
 }
 
+# Make usernames lowercase as in GitHub
+for a in ANVIO_WORKFLOWS:
+    ANVIO_WORKFLOWS[a]["authors"] = [n.lower() for n in ANVIO_WORKFLOWS[a]["authors"]]
+
 # the purpose of this variable is to have a list of third-party programs used from
 # within anvi'o workflows.
 THIRD_PARTY_PROGRAMS = {
@@ -377,11 +381,23 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user":True
     },
+    "pfam-accession": {
+        "name": "PFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "hmm-file": {
+        "name": "HMM MODEL FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "hmm-hits": {
         "name": "HMM PROFILE",

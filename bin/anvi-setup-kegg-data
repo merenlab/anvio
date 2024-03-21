@@ -25,7 +25,9 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                            'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
-                                                           'definition': anvio.K('only-processing')}
+                                                           'definition': anvio.K('only-processing')},
+                                          'include-stray-KOs': {'flags': anvio.A('include-stray-KOs'),
+                                                           'definition': anvio.K('include-stray-KOs')}                 
                                           }
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
@@ -73,6 +75,20 @@ def main(args, unknown_args):
     # Here we parse mode-specific parameters that aren't recognized by the parent parser
     mode = args.mode
     mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
+
+    # if mode is 'all', we can also accept the mode-specific params
+    if mode == "all":
+        for sub in DOWNLOAD_MODES.keys():
+            if sub != "all":
+                submode_args, submode_unknown = subparsers[sub].parse_known_args(unknown_args)
+                new_args_dict = vars(mode_args).copy()
+                new_args_dict.update(vars(submode_args))
+                mode_args = argparse.Namespace(**new_args_dict)
+                for p in new_args_dict:
+                    p_flag = "--" + p.replace("_", "-")
+                    if p_flag in mode_unknown:
+                        mode_unknown.remove(p_flag)
+    
     args = argparse.Namespace(**vars(args), **vars(mode_args))
     # global flags are already handled by anvi'o and shouldn't be in the unknown list
     # these are coming from __init__.py and not all are relevant to this code but we catch them anyway

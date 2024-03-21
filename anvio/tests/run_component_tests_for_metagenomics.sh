@@ -156,6 +156,16 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               --no-progress \
               $thread_controller
 
+INFO "Generating an HMM source from a user HMM file"
+cp $files/example_HMM_file/PF01029.hmm $output_dir/
+anvi-script-hmm-to-hmm-directory --hmm-list $output_dir/PF01029.hmm \
+                                 --hmm-source "Pfam" \
+                                 -o $output_dir/PF01029
+
+INFO "Running an HMM source generated from a user HMM file"
+anvi-run-hmms -c $output_dir/CONTIGS.db \
+              -H $output_dir/PF01029
+
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Ribosomal_RNA_16S \

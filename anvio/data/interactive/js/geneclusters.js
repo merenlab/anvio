@@ -215,7 +215,7 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family','Roboto','Helvetica','Arial');
+                text.setAttribute('font-family',"monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
@@ -257,16 +257,10 @@ function createDisplay(){
 
     calculateLayout();
 
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
+    $('[data-toggle="popover"]').popover({"html": true, sanitize: false,"trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
+      var popover = $(e.target).data("bs.popover").tip;
 
       if ($(popover).css('top').charAt(0) === '-') {
         $(popover).css('top', '0px');
