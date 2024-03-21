@@ -247,11 +247,11 @@ class AnvioPrograms(AnvioAuthors):
         known_authors_in_programs = set([])
         for program in self.programs:
             for author in self.programs[program].meta_info['authors']['value']:
-                if author.lowercase() not in self.authors:
+                if author not in self.authors:
                     programs_with_unknown_authors.add(program)
-                    unknown_authors.add(author.lowercase())
+                    unknown_authors.add(author)
                 else:
-                    known_authors_in_programs.add(author.lowercase())
+                    known_authors_in_programs.add(author)
 
         if len(programs_with_unknown_authors):
             raise ConfigError(f"The following programs have authors who are not defined in the authors YAML file "
@@ -502,9 +502,9 @@ class AnvioWorkflows:
                                       f"in anvio/docs/__init__.py")
 
         # sanity check of author names
-        author_names_apper_in_workflows = set([])
-        [author_names_apper_in_workflows.update(w['authors']) for w in self.workflows.values()]
-        author_names_missing_in_authors_file = [a for a in author_names_apper_in_workflows if a not in self.authors]
+        author_names_appear_in_workflows = set([])
+        [author_names_appear_in_workflows.update(w['authors']) for w in self.workflows.values()]
+        author_names_missing_in_authors_file = [a for a in author_names_appear_in_workflows if a not in self.authors]
         if len(author_names_missing_in_authors_file):
             self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
             self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')
