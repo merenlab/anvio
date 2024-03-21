@@ -456,48 +456,48 @@ class COGsSetup:
         # description of COG primary files per version
         self.cog_files = {'COG14':
                              {'cog2003-2014.csv': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2014/data/cog2003-2014.csv',
                                   'func': self.format_p_id_to_cog_id_cPickle,
                                   'type': 'essential',
                                   'formatted_file_name': 'PID-TO-CID.cPickle'},
                               'cognames2003-2014.tab': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2014/data/cognames2003-2014.tab',
                                   'func': self.format_cog_names,
                                   'type': 'essential',
                                   'formatted_file_name': 'COG.txt'},
                               'fun2003-2014.tab': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2014/data/fun2003-2014.tab',
                                   'func': self.format_categories,
                                   'type': 'essential',
                                   'formatted_file_name': 'CATEGORIES.txt'},
                               'prot2003-2014.fa.gz': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2014/data/prot2003-2014.fa.gz',
                                   'func': self.format_protein_db,
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
                              },
                         'COG20':
                              {'cog-20.cog.csv': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.cog.csv',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.cog.csv',
                                   'func': self.format_p_id_to_cog_id_cPickle,
                                   'type': 'essential',
                                   'formatted_file_name': 'PID-TO-CID.cPickle'},
                               'cog-20.def.tab': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.def.tab',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.def.tab',
                                   'func': self.format_cog_names,
                                   'type': 'essential',
                                   'formatted_file_name': 'COG.txt'},
                               'fun-20.tab': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/fun-20.tab',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/fun-20.tab',
                                   'func': self.format_categories,
                                   'type': 'essential',
                                   'formatted_file_name': 'CATEGORIES.txt'},
                               'checksum.md5.txt': {  # No func as it is called by the setup_raw_data function
-                                   'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
+                                   'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/checksums.md5.txt',
                                    'type': 'non-essential',
                                    'formatted_file_name': 'CHECKSUMS.txt'},
                               'cog-20.fa.gz': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz',
+                                  'url': 'ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz',
                                   'func': self.format_protein_db,
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
