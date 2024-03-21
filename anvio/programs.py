@@ -344,6 +344,10 @@ class Program:
                 else:
                     info = info.replace('\n', ' ')
 
+            # Lower case the github usernames
+            if info_type == "authors":
+                info = [a.lower() for a in info]
+
             self.meta_info[info_type]['value'] = info
 
 

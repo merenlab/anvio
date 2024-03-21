@@ -106,7 +106,7 @@ ANVIO_WORKFLOWS = {
 
 # Make usernames lowercase as in GitHub
 for a in ANVIO_WORKFLOWS:
-    a["authors"] = [n.lower() for n in a["authors"]]
+    ANVIO_WORKFLOWS[a]["authors"] = [n.lower() for n in ANVIO_WORKFLOWS[a]["authors"]]
 
 # the purpose of this variable is to have a list of third-party programs used from
 # within anvi'o workflows.
