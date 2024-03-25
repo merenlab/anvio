@@ -128,3 +128,8 @@ footer {
 .card-title{
     margin-bottom: 0px;
 }
+
+#summary-card{
+    min-width: max-content;
+    font-size: x-small;
+}

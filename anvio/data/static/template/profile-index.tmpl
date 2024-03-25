@@ -171,7 +171,7 @@
     <!-- SUMMARY of BINS PANEL -->
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="bins_panel">
+            <div class="card" id="bins_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
@@ -180,7 +180,7 @@
                     <div class="card-body">
                         <p class="m-2 text-secondary">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
-                        <div class="card ">
+                        <div class="card" id="summary-card">
                             <div class="card-body">
                                 <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
@@ -212,17 +212,17 @@
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"source" }}</td>
 
                                             {% if meta|lookup:"contigs"|lookup:"scg_taxonomy_was_run" %}
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"taxon" }}"><button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#modTaxonomy_{{bin}}"><i>{{ collection|lookup:bin|lookup:"scg_taxonomy_simple" }}</i></button></td>
                                             {% else %}
                                             <td class="text-center">N/A</td>
                                             {% endif %}
 
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"total_length" }}"><button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#modFiles_{{bin}}">{{ collection|lookup:bin|lookup:"total_length"|humanize_n }}</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"num_contigs" }}">{{ collection|lookup:bin|lookup:"num_contigs"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
-                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
+                                            <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_f }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_f }}%</td>
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"scg_domain" }}</td>
                                             {% else %}
@@ -281,7 +281,7 @@
 
     <!-- FILES FOR GROUP -->
     <div class="modal fade" id="modFiles_{{bin}}" role="dialog" aria-labelledby="modFiles" aria-hidden="true">
-      <div class="modal-dialog" style="width: 900px;">
+      <div class="modal-dialog" style="min-width: min-content;">
         <div class="modal-content">
           <div class="modal-header">
             <h4 class="modal-title">Static files for {{ bin|humanize }}</h4>
@@ -370,7 +370,7 @@
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
     <div class="container mt-3">
-        <div class="card border-info" id="bins_across_samples_panel">
+        <div class="card" id="bins_across_samples_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
             </div>
@@ -447,7 +447,7 @@
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="bins_percent_recruitment_panel">
+            <div class="card" id="bins_percent_recruitment_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
                 </div>
@@ -507,7 +507,7 @@
     <!-- GENES PANEL -->
     <section>
     <div class="container mt-3">
-        <div class="card border-info" id="genes_panel">
+        <div class="card" id="genes_panel">
             <div class="card-header">
                 <h1 class="card-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
             </div>
@@ -573,7 +573,7 @@
     <!-- NON-SINLGE-COPY HMMs PANEL -->
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="hmms_panel">
+            <div class="card" id="hmms_panel">
                 <div class="card-header">
                     <h1 class="card-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
                 </div>
@@ -695,7 +695,7 @@
     <!-- MISC DATA PANEL -->
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="misc_data_panel">
+            <div class="card" id="misc_data_panel">
                 <div class="card-header">
                     <h1 class="card-title">Misc Data</h1>
                 </div>
