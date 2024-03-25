@@ -772,6 +772,7 @@ Drawer.prototype.draw_leaf = function(p) {
 
 Drawer.prototype.draw_internal_node = function(p) {
     let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
+    const branch_support_values = [];
 
     let supportValueData = {
         numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
@@ -789,7 +790,38 @@ Drawer.prototype.draw_internal_node = function(p) {
     {
         var p0 = [];
         var p1 = [];
-        const branch_support_values = [];
+
+        p0['x'] = p.xy['x'];
+        p0['y'] = p.xy['y'];
+
+        var anc = p.ancestor;
+        // if has ancestor we are going to draw vertical line
+        if (anc) {
+            p0 = p.xy;
+            p1 = p.backarc;
+
+            // we draw two lines because one is transparent and makes clicking easier.
+            // you can see same thing happening multiple times in this function.
+            // ---
+            // also actual line drawing should be placed before padding line drawing funtion.
+            // in an ideal world they should not share same element ID but they do to trigger
+            // same mouse events. So when bin changes color first object with that ID changes color.
+            // padding line should placed second to avoid that.
+
+            drawLine(this.tree_svg_id, p, p0, p1);
+
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
+
+            let line = drawLine(this.tree_svg_id, p, p0, p1);
+            line.setAttribute('style', 'stroke:rgba(0,0,0,0);stroke-width:16;');
+            line.classList.add('clone');
+
+        }
+
+        p0 = p.child.backarc;
+        p1 = p.child.GetRightMostSibling().backarc;
+
+        var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
 
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
             const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
@@ -820,37 +852,6 @@ Drawer.prototype.draw_internal_node = function(p) {
                 p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
                 p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
         }
-
-        p0['x'] = p.xy['x'];
-        p0['y'] = p.xy['y'];
-
-        var anc = p.ancestor;
-        // if has ancestor we are going to draw vertical line
-        if (anc) {
-            p0 = p.xy;
-            p1 = p.backarc;
-
-            // we draw two lines because one is transparent and makes clicking easier.
-            // you can see same thing happening multiple times in this function.
-            // ---
-            // also actual line drawing should be placed before padding line drawing funtion.
-            // in an ideal world they should not share same element ID but they do to trigger
-            // same mouse events. So when bin changes color first object with that ID changes color.
-            // padding line should placed second to avoid that.
-
-            drawLine(this.tree_svg_id, p, p0, p1);
-
-            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
-
-            let line = drawLine(this.tree_svg_id, p, p0, p1);
-            line.setAttribute('style', 'stroke:rgba(0,0,0,0);stroke-width:16;');
-            line.classList.add('clone');
-
-        }
-        p0 = p.child.backarc;
-        p1 = p.child.GetRightMostSibling().backarc;
-
-        var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
 
         drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
 
@@ -891,10 +892,35 @@ Drawer.prototype.draw_internal_node = function(p) {
         drawLine(this.tree_svg_id, p, p0, p1, true);
 
         // support value business happens here:
-        min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-        max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-        p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-        p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            
+            branch_support_values.push(branch_support_value0, branch_support_value1);
+
+            if (branch_support_values.length > 0) {
+                const min_support = Math.min(...branch_support_values);
+                const max_support = Math.max(...branch_support_values);
+            
+                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                    min_branch_support_value_seen = min_support;
+                } else {
+                    this.min_support = null;
+                }
+            
+                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                    max_branch_support_value_seen = max_support - 0.01;
+                } else {
+                    this.max_support = null;
+                }
+            } 
+
+        } else {
+                // If there are no string branch support value like '100/100':
+                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        }
         this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
