@@ -354,7 +354,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '    </select>' +
                 '</td>' +
                 '<td>' +
-                '    <select onChange="update_samples_layer_min_max(this);" class="normalization type type_multiple form-control form-control-sm col-12 select-sm">' +
+                '    <select onChange="update_samples_layer_min_max(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
