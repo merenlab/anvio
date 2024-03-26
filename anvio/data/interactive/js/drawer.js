@@ -997,9 +997,7 @@ Drawer.prototype.draw_categorical_layers = function() {
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
-                if(this.layerdata_dict[q.label][layer.index]){
-                    layer_items.push(this.layerdata_dict[q.label][layer.index]);
-                }
+                layer_items.push(this.layerdata_dict[q.label][layer.index]);
             }
             else
             {
