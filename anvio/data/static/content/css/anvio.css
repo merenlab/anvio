@@ -130,6 +130,10 @@ footer {
 }
 
 #summary-card{
-    min-width: max-content;
+    overflow: auto;
     font-size: x-small;
+}
+
+#scg-hit-sum{
+    overflow: auto;
 }
