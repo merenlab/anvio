@@ -180,9 +180,9 @@
                     <div class="card-body">
                         <p class="m-2 text-secondary">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
-                        <div class="card" id="summary-card">
+                        <div class="card col-12" id="summary-card">
                             <div class="card-body">
-                                <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th data-defaultsort='disabled' class="text-center"></th>
@@ -519,7 +519,7 @@
 
                     <div class="card ">
                         <div class="card-body">
-                            <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
+                            <table class="table table-striped sortable" id="tblGrid_bin">
                                 <thead id="tblHead_bin">
                                     <tr>
                                         <th data-defaultsort='disabled' class="text-center"></th>
@@ -587,7 +587,7 @@
                         <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER HMM PROFILE: -->
                         <div class="card ">
                             <div class="card-body">
-                                <table class="table table-striped sortable table-responsive" id="tblGrid_bin">
+                                <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                        <tr>
                                            <th data-defaultsort='disabled' class="text-center"></th>
@@ -633,9 +633,9 @@
                                     <p class="m-3 text-secondary">HMM hits in bins for {{ hmm_profile }} (<a href="{{ files|lookup:'hmms'|lookup:hmm_profile }}">from {{ files|lookup:'hmms'|lookup:hmm_profile }}</a>):</p>
 
                                     <!-- INDIVIDUAL TABLES PER HMM ITEM and HMM PROFILE -->
-                                    <div class="card ">
+                                    <div class="card">
                                         <div class="card-body">
-                                        <table class="table table-striped sortable table-responsive" style="margin: 10px;">
+                                        <table class="table table-striped sortable">
                                             <thead id="tblHead_bin">
                                                <tr>
                                                    <th data-defaultsort='disabled' class="text-center"></th>
