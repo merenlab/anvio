@@ -1095,22 +1095,7 @@ position: relative;
 @include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
 }
 
-
-@media only screen and (min-width: 768px) and (max-width: 992px) {
-    .fa-2x {
-        font-size: 1.5em !important;
-    }
-}
-
-@media only screen and (min-width:1280px){
-    /* styles for browsers larger than 1280px; */
-    *:not(text) {
-        font-size: 12px;
-        line-height: 1.428;
-    }
-}
-
-@media only screen and (max-width:1460px){
+@media only screen and (min-width:1460px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
@@ -1119,5 +1104,31 @@ position: relative;
     .glyphicon {
         top: 4px;
         font-size: 15px;
+    }
+
+    .fs-2x {
+        font-size: 2em !important;
+    }
+}
+
+@media only screen and (min-width:1280px) and (max-width: 1460px){
+    /* styles for browsers larger than 1280px; */
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
+    }
+
+    .fs-2x {
+        font-size: 1.7em !important;
+    }
+}
+
+@media only screen and (min-width: 768px) and (max-width: 1280px) {
+    .fa-2x {
+        font-size: 1.5em !important;
+    }
+
+    .fs-2x {
+        font-size: 1.7em !important;
     }
 }
