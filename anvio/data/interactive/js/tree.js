@@ -34,7 +34,7 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.max_child_path = 0;
-    this.branch_support = "";
+    this.branch_support = 0;
 }
 
 
