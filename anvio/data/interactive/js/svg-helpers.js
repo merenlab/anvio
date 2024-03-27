@@ -247,11 +247,18 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 }
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
-    function checkInRange(){ // check to see if SV data point is within user specified range
-        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
-            return true
+    function checkInRange(){
+        /**
+         * Check if the branch support values fall within the given number range.
+         * @return {bool}    True if the branch support values are within the specified range, False otherwise.
+        */
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            const min_support = Math.min(branch_support_value0, branch_support_value1);
+            const max_support = Math.max(branch_support_value0, branch_support_value1);
+            return min_support >= supportValueData.numberRange[0] && max_support <= supportValueData.numberRange[1];
         } else {
-            return false
+            return p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1];
         }
     }
 
