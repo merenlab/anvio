@@ -839,7 +839,7 @@ Drawer.prototype.draw_internal_node = function(p) {
                 }
             
                 if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
-                    max_branch_support_value_seen = max_support - 0.01;
+                    max_branch_support_value_seen = max_support;
                 } else {
                     this.max_support = null;
                 }
@@ -853,6 +853,7 @@ Drawer.prototype.draw_internal_node = function(p) {
                 p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
         }
 
+        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
         drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
 
         let arc = drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
@@ -908,7 +909,7 @@ Drawer.prototype.draw_internal_node = function(p) {
                 }
             
                 if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
-                    max_branch_support_value_seen = max_support - 0.01;
+                    max_branch_support_value_seen = max_support;
                 } else {
                     this.max_support = null;
                 }
