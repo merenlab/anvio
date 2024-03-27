@@ -1062,12 +1062,13 @@ class Pangraph():
         # learn what gene annotation sources are present across all genomes
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
 
-        self.priority_genome = 'wPip'
+        self.priority_genome = ''
 
         # this is the dictionary that wil keep all data that is going to be loaded
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
         self.genome_coloring = {}
+        self.genomes = []
 
         self.initial_graph = nx.DiGraph()
         self.pangenome_graph = nx.DiGraph()
@@ -1105,7 +1106,7 @@ class Pangraph():
         if self.external_genomes_txt:
             filesnpaths.is_file_tab_delimited(self.external_genomes_txt)
 
-            if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt, including_first_column=True):
+            if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt):
                 raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
                                   "in an external genomes file :/")
 
@@ -1124,7 +1125,7 @@ class Pangraph():
 
         # contextualize paralogs
         # TODO Incorporate gene direction
-        self.contextualize_paralogs()
+        self.run_contextualize_paralogs_algorithm()
 
         # build graph
         self.build_graph()
@@ -1133,21 +1134,8 @@ class Pangraph():
         # a flow network from left to right
         self.run_tree_to_flow_network_algorithm()
         
-        ##### START OF ALEX TESTING AREA
-        # self.new_run_tree_to_flow_network_algorithm()
-        ##### END OF ALEX TESTING AREA
-
-        # process edges and nodes to extract unique paths
-        # from the nework
-        # TODO Edge direction overlay
-        self.calculate_component_paths()
-
         # run Alex's layout algorithm
-        # TODO Rework the algorithm
         self.run_synteny_layout_algorithm()
-
-        # condense gene clusters into groups
-        self.condense_gene_clusters_into_groups()
 
         # store network in the database
         self.store_network()
@@ -1174,6 +1162,8 @@ class Pangraph():
                 self.genome_coloring[genome] = "on"
 
             if self.genome_coloring[genome] != "off":
+                self.genomes.append(genome)
+
                 args = argparse.Namespace(contigs_db=contigs_db_path.item())
                 contigs_db = dbops.ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
@@ -1200,7 +1190,7 @@ class Pangraph():
         self.run.info_single("Done")
 
 
-    def contextualize_paralogs(self):
+    def run_contextualize_paralogs_algorithm(self):
         """A function that resolves the graph context of paralogs based on gene synteny information across genomes"""
         self.run.warning(None, header="Select paralog context", lc="green")
 
@@ -1252,11 +1242,11 @@ class Pangraph():
                         elif stop == len(genome_gc_order):
                             gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
-                            print("Sanity Error.")
+                            print("Sanity Error. Code 1.")
                             exit()
 
                         if len(gc_k) != 1 + (2 * self.k):
-                            print("Sanity Error.")
+                            print("Sanity Error. Code 2.")
                             exit()
 
                         gc = gc_k[int(len(gc_k) / 2)]
@@ -1276,7 +1266,7 @@ class Pangraph():
                                 #     self.genome_gc_occurence[gc_k[::-1]][genome] = 1
                                 # else:
                                 #     self.genome_gc_occurence[gc_k[::-1]][genome] += 1
-                                print('Sanity Error.')
+                                print('Sanity Error. Code 3.')
                                 exit()
 
             for gc, genome_gc_frequency in self.genome_gc_occurence.items():
@@ -1285,7 +1275,7 @@ class Pangraph():
                     unresolved = True
                     drop.add(gc[int(len(gc)/2)])
 
-            self.run.info_single(f"Iteration #{str(self.k)}: {pp(len(self.genome_gc_occurence))} GCs containing {len(drop)} paralogs")
+            # self.run.info_single(f"Iteration #{str(self.k)}: {pp(len(self.genome_gc_occurence))} GCs containing {len(drop)} paralogs")
             
             if self.k == 0:
                 self.paralog_dict = copy.deepcopy(self.genome_gc_occurence)
@@ -1299,6 +1289,7 @@ class Pangraph():
                 solved = set([gc[int(len(gc)/2)] for gc in self.genome_gc_occurence.keys()])
                 self.k += 1
 
+        self.run.info_single(f"{pp(self.k+1)} iteration(s) to expand {pp(len(self.paralog_dict.keys()))} GCs to {pp(len(self.genome_gc_occurence.keys()))} GCs without paralogs")
         syn_calls = 0
         for genome in self.gene_synteny_data_dict.keys():
 
@@ -1322,8 +1313,9 @@ class Pangraph():
                         gc_k = tuple([place] * (self.k - i) + entry)
                     elif stop == len(genome_gc_order):
                         gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
-                    # else:
-                    #     print("Problem!")
+                    else:
+                        print("Sanity Error. Code 4.")
+                        exit()
 
                     for j in range(0, self.k+1):
 
@@ -1336,12 +1328,6 @@ class Pangraph():
                             syn_calls += 1
                             break
 
-                        # elif gc_group[::-1] in self.genome_gc_occurence.keys():
-
-                        #     self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group[::-1])
-                        #     self.gene_synteny_data_dict[genome][contig][gene_call]["max_paralog"] = self.paralog_dict[tuple([name])][genome]
-                        #     break
-
                         else:
                             pass
 
@@ -1350,12 +1336,11 @@ class Pangraph():
             num_calls += sum(value.values()) 
 
         if num_calls != syn_calls:
-            print("Sanity Error.")
+            print("Sanity Error. Code 5.")
             exit()
 
         self.run.info_single("Done")
 
-    # ANCHOR Node adding
     def add_node_to_graph(self, gene_cluster, name, info):
 
         if not self.initial_graph.has_node(gene_cluster):
@@ -1372,11 +1357,10 @@ class Pangraph():
             self.initial_graph.nodes[gene_cluster]['genome'].update(info)
 
 
-    # ANCHOR Edge adding
     def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info):
 
         if self.priority_genome in info.keys():
-            weight_add = 1000000
+            weight_add = 10
         else:
             weight_add = 0
 
@@ -1386,12 +1370,14 @@ class Pangraph():
             self.initial_graph.add_edge(
                 *(gene_cluster_i, gene_cluster_j),
                 weight=1 + weight_add,
+                # weight=0 + weight_add,
                 genome=draw,
                 bended=[],
                 direction='R'
             )
 
         else:
+            # self.initial_graph[gene_cluster_i][gene_cluster_j]['weight'] += weight_add
             self.initial_graph[gene_cluster_i][gene_cluster_j]['weight'] += 1 + weight_add
             self.initial_graph[gene_cluster_i][gene_cluster_j]['genome'].update(draw)
 
@@ -1450,8 +1436,8 @@ class Pangraph():
             'start',
             name='start',
             pos=(0, 0),
-            weight=len(self.genome_coloring.keys()),
-            genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()}
+            weight=len(self.genomes),
+            genome={genome: {'draw': 'on'} for genome in self.genomes}
         )
 
         for u in add_start:
@@ -1467,10 +1453,15 @@ class Pangraph():
                 direction='R'
             )
 
-        # ANCHOR Edmonds Algorithm
         selfloops = list(nx.selfloop_edges(self.pangenome_graph))
-        self.run.info_single(f"Found and removed {pp(len(selfloops))} selfloop edge(s).")
+        self.run.info_single(f"Found and removed {pp(len(selfloops))} selfloop edge(s)")
         self.pangenome_graph.remove_edges_from(selfloops)
+
+        # for i,j in self.pangenome_graph.edges():
+        #     i_genomes = set(self.pangenome_graph.nodes[i]['genome'].keys())
+        #     j_genomes = set(self.pangenome_graph.nodes[j]['genome'].keys())
+
+        #     self.pangenome_graph[i][j]['weight'] += len(i_genomes & j_genomes) / len(self.genomes)
 
         self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
         nx.set_edge_attributes(self.edmonds_graph, {(i, j): d for i, j, d in self.pangenome_graph.edges(data=True) if (i, j) in self.edmonds_graph.edges()})
@@ -1487,8 +1478,6 @@ class Pangraph():
                 return(pred)
             else:
                 self.find_next_branching_point(pred)
-
-    ##### START OF ALEX TESTING AND DEVELOPMENT AREA #####
 
     def mean_edmonds_graph_path_weight(self, source, target):
         path = nx.shortest_path(G=self.edmonds_graph, source=source, target=target, weight='weight')
@@ -1519,16 +1508,22 @@ class Pangraph():
             else:
                 leaves.update(set([current_branch_successor]))
                 break
-
-            # if edmonds_graph_successors[current_branch_successor]:
-            #     for successor in edmonds_graph_successors[current_branch_successor]:
-            #         leaves.update(self.get_leaves(successor, edmonds_graph_successors))
-            # else:
-            #     leaves.update(set([current_branch_successor]))
             
         return(leaves)  
 
-    def new_run_tree_to_flow_network_algorithm(self):
+    def edge_check(self, node_i, node_j, data):
+        
+        new_data = copy.deepcopy(data)
+
+        if self.edmonds_graph.has_edge(node_i, node_j):
+            old_data = self.edmonds_graph[node_i][node_j]
+            new_data['genome'].update(old_data['genome'])
+            new_data['weight'] += old_data['weight']
+            new_data['direction'] = 'B'
+        
+        return(new_data)
+
+    def run_tree_to_flow_network_algorithm(self):
 
         self.run.warning(None, header="Building flow network F from M and G", lc="green")
 
@@ -1547,18 +1542,16 @@ class Pangraph():
                 'stop',
                 name='stop',
                 pos=(0, 0),
-                weight=len(self.genome_coloring.keys()),
-                genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()}
+                weight=len(self.genomes),
+                genome={genome: {'draw': 'on'} for genome in self.genomes}
             )
             graph.add_edge(
                 *(edmonds_graph_end, 'stop'),
-                genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
-                weight=len(self.genome_coloring.keys()),
+                genome={genome: {'draw': 'on'} for genome in self.genomes},
+                weight=len(self.genomes),
                 bended=[],
                 direction='R'
             )
-
-        # edmonds_graph_clean = nx.DiGraph(self.edmonds_graph)
 
         edmonds_graph_nodes.add('stop')
         edmonds_graph_predecessors = {edmonds_graph_node: list(self.edmonds_graph.predecessors(edmonds_graph_node))[0] for edmonds_graph_node in edmonds_graph_nodes if edmonds_graph_node != 'start'}
@@ -1584,7 +1577,6 @@ class Pangraph():
             
                 self.progress.update(f"{str(len(resolved_nodes)).rjust(len(str(len(pangenome_graph_nodes) + 1)), ' ')} / {len(pangenome_graph_nodes) + 1}")
 
-                # print(i, len(resolved_nodes), "/", len(pangenome_graph_nodes) + 1)
                 if pred:
                     current_branch_root = pred
                     pred = ''
@@ -1599,8 +1591,6 @@ class Pangraph():
                     if current_branch_successor not in visited_nodes and current_branch_successor != current_node:
                         successor_branch_leaves.update(self.get_leaves(current_branch_successor, edmonds_graph_successors))
 
-                # print(successor_branch_leaves)
-                
                 if not successor_branch_leaves:
                     current_node = current_branch_root
                 else:
@@ -1612,88 +1602,76 @@ class Pangraph():
                     connected = False
                 
                 if connected != True or x == 1:
-                    # print(current_node)
                     for current_node_successor in pangenome_graph_successors[current_node]:
-                        # print(current_node, current_node_successor, current_node_successor in nx.ancestors(self.edmonds_graph, current_node))
                         
                         if current_node_successor in resolved_nodes:
 
-                            # self.edmonds_graphAYBE BOTH?
-                            # if current_node_successor in nx.ancestors(self.edmonds_graph, current_node):
-                            # if current_node_successor not in visited_nodes:
                             if current_node_successor in nx.ancestors(self.edmonds_graph, current_node) or current_node_successor not in visited_nodes:
-                                # print('possible reverse')
                                 if (current_node, current_node_successor) in edmonds_graph_removed_edges:
                                     current_backward_connected.append(current_node_successor)
-                                    # print('reverse')
-                
+                                    
                             else:
-                                # print('possible forward')
                                 if (current_node, current_node_successor) in edmonds_graph_removed_edges:
                                     current_forward_connected.append(current_node_successor)
-                                    # print('forward')
                                     connected = True
                 
                                 else:
-                                    # print('exist')
                                     connected = True
                 
                     if connected == False:
-                        # print(current_node, list(self.pangenome_graph.successors(current_node)))
-                        
                         if len(list(self.pangenome_graph.successors(current_node))) == 0:
                             pangenome_graph_edge_data = {
-                                'genome':{genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
-                                'weight':len(self.genome_coloring.keys()),
+                                'genome':{genome: {'draw': 'on'} for genome in self.genomes},
+                                'weight':len(self.genomes),
                                 'bended': [],
                                 'direction': 'R'
                             }
                         
-                            self.edmonds_graph.add_edge(current_node, 'stop', **pangenome_graph_edge_data)
+                            new_data = self.edge_check(current_node, 'stop', pangenome_graph_edge_data)
+                            self.edmonds_graph.add_edge(current_node, 'stop', **new_data)
                             connected = True
                 
-                    # print("connected is ", connected)
                     if connected == True:
                         for current_forward in current_forward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_forward, reverse = False)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+                            
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_forward))
-                
+                            
                         for current_backward in current_backward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_backward, reverse = True)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_backward))
-                        
+                            
                         resolved_nodes.add(current_node)
                 
                     else:
                         if current_backward_connected:
                 
-                            # print('backward event', current_node, current_backward_connected)
-
                             # number = random.randint(0,len(current_backward_connected)-1)
                             number = max([(self.pangenome_graph.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
 
                             node_i, node_j, data = self.get_edge(current_node, current_backward_connected[number], reverse = True)
-                            # print('add ', node_i, ' to ', node_j)
-                            # print('remove ', edmonds_graph_predecessors[current_node], ' to ', current_node)
                             self.edmonds_graph.remove_edge(edmonds_graph_predecessors[current_node], current_node)
-                            self.edmonds_graph.add_edge(node_i, node_j, **data)
+
+                            new_data = self.edge_check(node_i, node_j, data)
+                            self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             
                             edmonds_graph_removed_edges.remove((current_node, current_backward_connected[number]))
                             edmonds_graph_removed_edges.add((edmonds_graph_predecessors[current_node], current_node))
                 
                             edmonds_graph_successors[edmonds_graph_predecessors[current_node]].remove(current_node)
                             edmonds_graph_successors[current_backward_connected[number]] += [current_node]
-                
+
                             pred = edmonds_graph_predecessors[current_node]
 
                             edmonds_graph_predecessors.pop(current_node, None)
                             edmonds_graph_predecessors[current_node] = current_backward_connected[number] 
                 
                             edmonds_graph_distances[current_node] = self.mean_edmonds_graph_path_weight('start', current_node)
-
-                            # print("removed", edmonds_graph_removed_edges, "\nsuccessors", edmonds_graph_successors, "\npredecessors", edmonds_graph_predecessors)
                 
                             resolved_nodes.add(current_node)
                             
@@ -1702,249 +1680,48 @@ class Pangraph():
                 visited_nodes.add(current_node)
             
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-                    print('Sanity Error.')
-                    print(pred, current_node)
+                    print('Sanity Error. Code 6.')
                     exit()
 
         self.progress.end()
 
         remaining_stops = [node for node in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(node) == 0 and node != 'stop']
-        self.run.info_single(f"{i} iterations to solve the graph.") 
+        self.run.info_single(f"{pp(i)} iterations to solve the graph") 
 
         for stop in remaining_stops:
 
             pangenome_graph_edge_data = {
-                'genome':{genome: {'draw': 'on'} for genome in self.genome_coloring.keys()},
-                'weight':len(self.genome_coloring.keys()),
+                'genome':{genome: {'draw': 'on'} for genome in self.genomes},
+                'weight':len(self.genomes),
                 'bended': [],
                 'direction': 'R'
             }
-        
-            self.edmonds_graph.add_edge(stop, 'stop', **pangenome_graph_edge_data)
+
+            new_data = self.edge_check(stop, 'stop', pangenome_graph_edge_data)
+            self.edmonds_graph.add_edge(stop, 'stop', **new_data)
+
+            edmonds_graph_successors[stop] += ['stop']
+
+        if not nx.is_directed_acyclic_graph(self.edmonds_graph):
+            print('Sanity Error. Code 7.')
+            exit()
+
+        self.run.info_single("Done")
+
+    # TODO Fusion of same position paralog GCs
+    def run_synteny_layout_algorithm(self):
+
+        self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
 
         # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
         #     self.x_list[x] = generation
         #     for node in generation:
-        #         self.position[node] = (x, 0)
-        
-        temp_graph = nx.DiGraph(self.edmonds_graph)
-        nx.set_edge_attributes(temp_graph, values=-1, name='weight')
-        temp_graph.remove_node('stop')
-    
-        leafs = [node for node in temp_graph.nodes() if temp_graph.out_degree(node) == 0]
-        leaf_values = [(nx.single_source_bellman_ford(temp_graph, 'start', leaf, 'weight')[0]*(-1), leaf) for leaf in leafs]
-        length, end_leaf = max(leaf_values)
-        
-        self.x_list = {i:[] for i in range(length + 2)}
-
-        for node in temp_graph.nodes():
-            if node in nx.ancestors(temp_graph, end_leaf):
-                dist = length - nx.single_source_bellman_ford(temp_graph, node, end_leaf, 'weight')[0]*(-1)
-            else:
-                common = nx.lowest_common_ancestor(temp_graph, node, end_leaf)
-                dist = (length - nx.single_source_bellman_ford(temp_graph, common, end_leaf, 'weight')[0]*(-1)) + nx.single_source_bellman_ford(temp_graph, common, node, 'weight')[0]*(-1)
-
-            self.x_list[dist].append(node)
-            self.position[node] = (dist, 0)
-
-        self.x_list[length+1].append('stop')
-        self.position['stop'] = (length+1, 0)
-
-        edmonds_graph_edges = list(self.edmonds_graph.edges())
-        for i, j in edmonds_graph_edges:
-            if abs(self.position[j][0] - self.position[i][0]) > self.max_edge_length_filter and self.max_edge_length_filter != -1:
-                self.edmonds_graph.remove_edge(i, j)
-                self.removed_edges += 1
-
-        self.run.info_single(f"{self.fusion_events} fusion events.") 
-        self.run.info_single(f"{self.removed_edges} removed edges due to length cutoff.")
-        self.run.info_single(f"Done.")	
-
-    ##### END OF ALEX TESTING AND DEVELOPMENT AREA #####
-
-    def run_tree_to_flow_network_algorithm(self):
-
-        self.run.warning(None, header="Building flow network F from M and G", lc="green")
-
-        edmonds_graph_removed_edges = [(i, j) for i,j in self.pangenome_graph.edges() if (i, j) not in list(self.edmonds_graph.edges())]
-        edmonds_graph_edges = list(self.pangenome_graph.edges())
-        edmonds_graph_added_edges = []
-
-        edmonds_graph_paths = {}
-        edmonds_graph_distances = {}
-        edmonds_graph_nodes = [node for node in self.edmonds_graph.nodes() if node != 'start']
-        edmonds_graph_predecessors = {}
-
-        pangenome_graph_successors = {}
-        pangenome_graph_predecessors = {}
-
-        self.progress.new("Calculating node distances")
-        for i, node in enumerate(edmonds_graph_nodes):
-
-            node_path = nx.shortest_path(G=self.edmonds_graph, source='start', target=node, weight='weight')
-            edmonds_graph_paths[node] = node_path
-
-            # TODO Maybe use mean distance by the number of nodes instead:
-            # edmonds_graph_distances[node] = nx.path_weight(G=self.edmonds_graph, path=node_path, weight='weight') / len(node_path)
-            edmonds_graph_distances[node] = nx.path_weight(G=self.edmonds_graph, path=node_path, weight='weight')
-            edmonds_graph_predecessors[node] = list(self.edmonds_graph.predecessors(node))[0]
-            pangenome_graph_successors[node] = list(self.pangenome_graph.successors(node))
-            pangenome_graph_predecessors[node] = list(self.pangenome_graph.predecessors(node))
-
-            self.progress.update(f"{str(i).rjust(len(str(len(edmonds_graph_nodes))), ' ')} / {len(edmonds_graph_nodes)}")
-
-        self.progress.end()
-
-        edmonds_graph_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0]
-        self.run.info_single(f"Current iteration number of leaves {len(edmonds_graph_leaves)}")
-
-        end_successors = max([(edmonds_graph_distances[node], node) for node in edmonds_graph_nodes if self.edmonds_graph.out_degree(node) > 1])[1]
-        end_branch = self.edmonds_graph.subgraph(nx.dfs_tree(self.edmonds_graph, source=end_successors, depth_limit=None).nodes())
-        end_branch_leaves = [x for x in end_branch.nodes() if end_branch.out_degree(x) == 0]
-        edmonds_graph_end = max([(edmonds_graph_distances[leaf], leaf) for leaf in end_branch_leaves])[1]
-
-        weight = self.pangenome_graph.nodes[edmonds_graph_end]['weight']
-        genomes = self.pangenome_graph.nodes[edmonds_graph_end]['genome'].keys()
-
-        self.edmonds_graph.add_node(
-            'stop',
-            name='stop',
-            pos=(0, 0),
-            weight=len(self.genome_coloring.keys()),
-            genome={genome: {'draw': 'on'} for genome in self.genome_coloring.keys()}
-        )
-
-        self.edmonds_graph.add_edge(
-            *(edmonds_graph_end, 'stop'),
-            genome={genome: {'draw': 'on'} for genome in genomes},
-            weight=weight,
-            bended=[],
-            direction='R'
-        )
-
-        edmonds_graph_closed = set([edmonds_graph_end])
-        edmonds_graph_open = set()
-        current_node = edmonds_graph_end
-
-        while True:
-            current_root = edmonds_graph_predecessors[current_node]
-            successors_branch_leaves = []
-            # TODO Decide by connectability of the leaves instead of weight to pick the first leave to connect
-            for successors in self.edmonds_graph.successors(current_root):
-                if successors not in edmonds_graph_closed and successors not in edmonds_graph_open and successors != current_node:
-                    successors_branch = self.edmonds_graph.subgraph(nx.dfs_tree(self.edmonds_graph, source=successors, depth_limit=None).nodes())
-                    successors_branch_leaves += [x for x in successors_branch.nodes() if successors_branch.out_degree(x) == 0]
-
-            if not successors_branch_leaves:
-                current_node = current_root
-            else:
-                current_node = max([(edmonds_graph_distances[leaf], leaf) for leaf in successors_branch_leaves])[1]
-
-            if current_node == 'start':
-                break
-
-            connected = False
-            for node_successor in pangenome_graph_successors[current_node]:
-                if (current_node, node_successor) in edmonds_graph_removed_edges:
-
-                    if node_successor in edmonds_graph_closed:
-                        pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(current_node, node_successor)
-                        edmonds_graph_added_edges.append((current_node, node_successor, pangenome_graph_edge_data))
-                        connected = True
-                    
-                elif (current_node, node_successor) in edmonds_graph_edges and node_successor in edmonds_graph_closed:
-                    connected = True
-
-            if connected == False and len(list(self.pangenome_graph.successors(current_node))) == 0:
-                
-                weight = self.pangenome_graph.nodes[current_node]['weight']
-                genomes = self.pangenome_graph.nodes[current_node]['genome'].keys()
-                
-                pangenome_graph_edge_data = {
-                    'genome':{genome: {'draw': 'on'} for genome in genomes},
-                    'weight':weight,
-                    'bended': [],
-                    'direction': 'R'
-                }
-                edmonds_graph_added_edges.append((current_node, 'stop', pangenome_graph_edge_data))
-                connected = True
-
-            if connected == True:
-                to_be_closed = set()
-                edmonds_graph_closed.add(current_node)
-
-                for node_predecessor in pangenome_graph_predecessors[current_node]:
-                    if (node_predecessor, current_node) in edmonds_graph_removed_edges:
-
-                        if node_predecessor in edmonds_graph_open:
-
-                            lowest_common_ancestor = nx.lowest_common_ancestor(self.edmonds_graph, node_predecessor, current_node)
-                            first_node_path = nx.shortest_path(self.edmonds_graph, lowest_common_ancestor, node_predecessor, weight="weight")
-                            first_node = first_node_path[1]
-
-                            if lowest_common_ancestor == current_node:
-                                if first_node in edmonds_graph_open:                            
-                                    print('This is a direct loop A -> B -> C -> A of length ', len(first_node_path))
-                                    pangenome_graph_edge_data = {y:z if y != 'direction' else node_predecessor for y,z in self.pangenome_graph.get_edge_data(node_predecessor, current_node).items()}
-                                    edmonds_graph_added_edges.append((current_node, 'stop', pangenome_graph_edge_data))
-                                else:
-                                    pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_predecessor, current_node).items()}
-                                    edmonds_graph_added_edges.append((current_node, node_predecessor, pangenome_graph_edge_data))    
-
-                            elif first_node in edmonds_graph_closed:
-
-                                pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_predecessor, current_node).items()}
-                                edmonds_graph_added_edges.append((current_node, node_predecessor, pangenome_graph_edge_data))
-
-                            elif first_node in edmonds_graph_open:
-                                to_be_closed.update(set(first_node_path[1:]))
-
-                                pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(node_predecessor, current_node)
-                                edmonds_graph_added_edges.append((node_predecessor, current_node, pangenome_graph_edge_data))
-
-                            else:
-                                print('Sanity Error.')
-                                exit()
-
-                for closed in to_be_closed:
-        
-                    for (i, j, d) in edmonds_graph_added_edges:
-
-                        if i == closed or j == closed:
-                            print(closed)
-                    edmonds_graph_closed.add(closed)
-                    edmonds_graph_open.discard(closed)
-
-            else:
-                edmonds_graph_open.add(current_node)
-
-        self.edmonds_graph.add_edges_from(edmonds_graph_added_edges)
-        edmonds_graph_remaining_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0 and x != edmonds_graph_end]
-
-        self.run.info_single(f"Current iteration number of leaves {len(edmonds_graph_remaining_leaves)}")
-        self.run.info_single(f"Current iteration acyclic nature is {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
-
-        for curr_node in edmonds_graph_open:
-
-            predecessor = edmonds_graph_predecessors[curr_node]
-            edmonds_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.edmonds_graph.get_edge_data(predecessor, curr_node).items()}
-            self.edmonds_graph.remove_edge(predecessor, curr_node)
-            self.edmonds_graph.add_edge(curr_node, predecessor, **edmonds_graph_edge_data)
-
-        edmonds_graph_remaining_leaves = [x for x in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(x) == 0 and x != edmonds_graph_end]
-
-        self.run.info_single(f"Current iteration number of leaves {len(edmonds_graph_remaining_leaves)}")
-        self.run.info_single(f"Current iteration acyclic nature is {nx.is_directed_acyclic_graph(self.edmonds_graph)}")
-
-        if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-            print('Sanity Error.')
-            exit()
+        #         self.position[node] = (x, -1)
 
         for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
             nodes = {}
-            self.x_list[x] = generation
+            self.x_list[x] = []
             for node in generation:
-                self.position[node] = (x, 0)
                 node_list = node.split(',')
 
                 if node_list[int(len(node_list)/2)] in nodes.keys():
@@ -1959,222 +1736,123 @@ class Pangraph():
                             self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
 
                             nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
+                            nx.contracted_nodes(self.pangenome_graph, contractor, node, copy=False)
+
                             self.fusion_events += 1
                             found = True
                             break
 
                     if found == False:
                         nodes[node_list[int(len(node_list)/2)]] += [node]
+                        self.x_list[x].append(node)
+                        self.position[node] = (x, -1)
 
                 else:
                     nodes[node_list[int(len(node_list)/2)]] = [node]
+                    self.x_list[x].append(node)
+                    self.position[node] = (x, -1)
+            
+        self.global_x = x
 
-        edmonds_graph_edges = list(self.edmonds_graph.edges())
-        for i, j in edmonds_graph_edges:
-            if abs(self.position[j][0] - self.position[i][0]) > self.max_edge_length_filter and self.max_edge_length_filter != -1:
-                self.edmonds_graph.remove_edge(i, j)
-                self.removed_edges += 1
+        self.ancest = nx.DiGraph(self.edmonds_graph)
+        nx.set_edge_attributes(self.ancest, values=-1, name='weight')
+        # self.ancest.remove_node('stop')
+        layout_graph_nodes = list(self.ancest.nodes())
+        layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
-        self.run.info_single(f"{self.fusion_events} fusion events.") 
-        self.run.info_single(f"{self.removed_edges} removed edges due to length cutoff.")
-        self.run.info_single(f"Removed long range edges can point to reorganisation events.")
-        self.run.info_single(f"Done.")
+        removed = set()
+        n_removed = 0
+        ghost = 0
+        for x in range(self.global_x-1, 0, -1):
+            for node in self.x_list[x]:
+                node_x_position = self.position[node][0]
 
-    # TODO Speed up component path finding (multithreading)
-    def calculate_component_paths(self):
-
-        self.run.warning(None, header="Extracting component paths from F", lc="green")
-
-        self.progress.new("Solving Path")
-
-        edmonds_graph_edges = list(self.edmonds_graph.edges())
-        number = len(str(len(edmonds_graph_edges)))
-
-        j = 0
-        for i, (node_i, node_j) in enumerate(edmonds_graph_edges):
-
-            self.progress.update(f"{str(i).rjust(number, ' ')} / {len(edmonds_graph_edges)}")
-
-            if nx.has_path(self.edmonds_graph, 'start', node_i) and nx.has_path(self.edmonds_graph, node_j, 'stop'):
-
-                path_leaf = nx.shortest_path(self.edmonds_graph, 'start', node_i, method='bellman-ford')
-                path_succ = nx.shortest_path(self.edmonds_graph, node_j, 'stop', method='bellman-ford')
-                full_path = path_leaf + path_succ
-
-                value = nx.path_weight(self.edmonds_graph, full_path, 'weight')/len(full_path)
-
-                self.leaf_path.append((value, full_path))
-
-            else:
-                j += 1
-
-        self.progress.end()
-
-        self.run.info_single(f"Removed {j} unsolvable edges.")
-        self.run.info_single("Done.")
-
-    # ANCHOR Sub path calculation script
-    def calculate_unknown_edges(self, path, known):
-
-        ancest_nodes = list(self.ancest.nodes())
-
-        unknown_edges = []
-        sub_edges = []
-
-        for k, o in map(tuple, zip(path, path[1:])):
-            if not (k, o) in known:
-
-                if k in ancest_nodes and o in ancest_nodes:
-                    if sub_edges:
-                        unknown_edges.append(sub_edges)
-                        sub_edges = []
-
-                    unknown_edges.append([(k, o)])
-
-                elif o in ancest_nodes:
-                    sub_edges.append((k, o))
-                    unknown_edges.append(sub_edges)
-                    sub_edges = []
-
-                else:
-                    sub_edges.append((k, o))
-
-            else:
-                if sub_edges:
-                    unknown_edges.append(sub_edges)
-                    sub_edges = []
-
-        if sub_edges:
-            unknown_edges.append(sub_edges)
-            sub_edges = []
-
-        return(unknown_edges)
-
-    # ANCHOR Main position calculation
-    # TODO Recalculate Topo Coordinated
-    # It is possible that the topological x positions have to be recalculated here as
-    # change of the graph can happen after the first topological sorting by removing / adding
-    # more edges.
-    def run_synteny_layout_algorithm(self):
-
-        self.run.warning(None, header="Calculating graph P node positions", lc="green")
-
-        self.ancest.add_edge("start", "stop", weight=1)
-        known = set([('start', 'stop')])
-
-        paths = [value for value in sorted(self.leaf_path, key=lambda x: x[0], reverse=True)]
-        self.progress.new("Running path")
-
-        number = len(str(len(paths)))
-        for i, (_, path) in enumerate(paths):
-            self.progress.update(f"{str(i).rjust(number, ' ')} / {len(paths)}")
-
-            try:
-                unknown_edges = self.calculate_unknown_edges(path, known)
-
-                for sub_edges in unknown_edges:
-
-                    known.update(sub_edges)
-
-                    node_start = sub_edges[0][0]
-                    node_stop = sub_edges[-1][1]
-
-                    sub_path = path[path.index(node_start): path.index(node_stop)+1]
-
-                    node_start_x, node_start_y = self.position[node_start]
-                    node_stop_x, node_stop_y = self.position[node_stop]
-
-                    for z in range(node_start_x, node_stop_x+1):
-                        if sub_path[z-node_start_x] not in self.x_list[z]:
-
-                            sub_path = sub_path[:z-node_start_x] + ["Ghost_" + str(self.ghost)] + sub_path[z-node_start_x:]
-
-                            self.x_list[z].append("Ghost_" + str(self.ghost))
-
-                            self.ghost += 1
-
-                    curr_path = []
-                    for s in sub_path:
-                        if not s.startswith('Ghost_'):
-                            if len(curr_path) > 1:
-                                curr_path.append(s)
-                                self.edges.append(curr_path)
-                            curr_path = [s]
+                change = []
+                for successor in layout_graph_successors[node]:
+                    if successor != 'stop':
+                        successor_x_position = self.position[successor][0]
+                        
+                        if successor_x_position <= node_x_position:
+                            print('Sanity Error. Code 8.')
+                            exit()
                         else:
-                            curr_path.append(s)
+                            change.append((successor_x_position, successor))
 
-                    sub_path = sub_path[1:-1]
+                if change:
+                    if min(change)[0] > 1:
+                        new_x_position = min([(x, n) for (x, n) in change if x > 1])[0] - 1
+                        self.position[node] = (new_x_position, -1)
 
-                    next_y = self.y_shifting(sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y)
+                    for (position, extend_successor) in change:
+                        x_difference = position - new_x_position
 
-                    self.add_new_edges(sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x)
+                        if x_difference <= self.max_edge_length_filter or self.max_edge_length_filter == -1:
 
-                    if node_start == 'start':
-                        t = node_start_x + 1
-                        for node in sub_path:
-                            if node.startswith('Ghost_'):
-                                self.x_list[t].remove(node)
-                                self.ancest.remove_node(node)
-                                t += 1
+                            path_list = [node]
+
+                            for i in range(1, x_difference):
+                                path_list += ['Ghost_' + str(ghost)]
+                                self.position['Ghost_' + str(ghost)] = (new_x_position + i, -1)
+                                ghost += 1
+
+                            path_list += [extend_successor]
+
+                            self.ancest.remove_edge(node, extend_successor)
+
+                            self.edges.append(path_list)
+
+                            if len(path_list) == 2:
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
                             else:
-                                break
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-0.5)
 
-                    if node_stop == 'stop':
-                        s = node_stop_x - 1
-                        for node in sub_path[::-1]:
-                            if node.startswith('Ghost_'):
-                                self.x_list[s].remove(node)
-                                self.ancest.remove_node(node)
-                                s -= 1
-                            else:
-                                break
+                        else:
+                            n_removed += 1
+                            # small change here, adding to set instead of removing directly from edmonds and ancest
+                            removed.add((node, extend_successor))
 
-            except Exception as error:
-                print('Sanity Error')
+        for i, j in self.ancest.edges():
+
+            if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop' and (i,j) not in removed:
+                print('Sanity Error. Code 9.')
                 exit()
 
-        self.progress.end()
+        self.run.info_single(f"{self.fusion_events} fusion events.")
 
-        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
+        if self.max_edge_length_filter == -1:
+            self.run.info_single("Setting algorithm to 'keep all edges'")
+        else:
+            self.run.info_single(f"Setting algorithm to 'max edge length < {pp(self.max_edge_length_filter)}'")
 
-        for edge in self.edges:
-            if edge[-1] != 'stop' and edge[0] != 'start':
-                self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
-                self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
-                self.ancest.remove_nodes_from(edge[1:-1])
+        self.run.info_single(f"Removed {pp(n_removed)} edge(s) due to length cutoff")
 
-        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
+        longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
+        # print(longest_path)
+        
+        m = set(longest_path)
 
-        for node in self.ancest.nodes():
-            self.ancest.nodes[node]['pos'] = self.position[node]
+        # starts = [node for node in self.ancest.nodes() if self.ancest.in_degree(node) == 0]
+        # dfs_list = list(nx.edge_dfs(self.ancest, source=starts))
 
-        self.ancest.remove_edge('start', 'stop')
+        starts = [node for node in self.ancest.nodes() if self.ancest.in_degree(node) == 0 if node != 'start']
+        for st in starts:
+            self.ancest.add_edge('start', st, weight=-1)
+        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
+        
+        group = 0
+        # degree = dict(self.ancest.degree())
+        groups = {}
+        groups_rev = {}
 
-        self.run.info_single(f"Final graph {len(self.ancest.nodes())} nodes and {len(self.ancest.edges())} edges.")
-        self.run.info_single(f"Done.")
-
-    # ANCHOR Gene Cluster grouping
-    # TODO Degree is calculated by pangenome graph not edmonds graph probably not a bad idea due
-    # to easier adding of additional edges.
-    def condense_gene_clusters_into_groups(self):
-
-        self.run.warning(None, header="Grouping GCs to gene cluster groups (GCGs)", lc="green")
+        # TODO Currently no seperation between unequal genome context
 
         if self.gene_cluster_grouping_threshold == -1:
             self.run.info_single("Setting algorithm to 'no grouping'")
         else:
-            self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {str(self.gene_cluster_grouping_threshold)}'")
-
-        dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
-
-        group = 0
-        degree = dict(self.ancest.degree())
-        groups = {}
-        groups_rev = {}
+            self.run.info_single(f"Setting algorithm to 'Grouping single connected chains size > {pp(self.gene_cluster_grouping_threshold)}'")
 
         for node_v, node_w in dfs_list:
-
-            if node_v != 'start' and node_w != 'stop' and degree[node_v] == 2 and degree[node_w] == 2 and set(self.ancest.nodes[node_v]['genome'].keys()) == set(self.ancest.nodes[node_w]['genome'].keys()):
+            if node_v != 'start' and self.ancest.in_degree(node_v) == 1 and self.ancest.out_degree(node_v) == 1 and self.ancest.in_degree(node_w) == 1 and self.ancest.out_degree(node_w) == 1:
 
                 if node_v not in groups_rev.keys():
                     group_name = 'GCG_' + str(group).zfill(8)
@@ -2188,127 +1866,163 @@ class Pangraph():
                     groups[group_name] += [node_w]
                     groups_rev[node_w] = group_name
 
+        # print(len(sum(groups.values(), [])))
+        # for key in groups.keys():
+        #     if 'GC_00000628,GC_00000044,GC_00002584' in groups[key]:
+        #         print(groups[key])
+
         for label, condense_nodes in groups.items():
+
+            condense_nodes = [node for node in condense_nodes if not node.startswith('Ghost_')]
 
             if len(condense_nodes) >= self.gene_cluster_grouping_threshold and self.gene_cluster_grouping_threshold != -1:
                 self.grouping[label] = condense_nodes
 
-        self.run.info_single(f"Created {len(groups.keys())} groups.")
-        self.run.info_single("Done")
+        self.run.info_single(f"Grouped {pp(len(sum(self.grouping.values(), [])))} nodes in {pp(len(self.grouping.keys()))} groups")
 
-    # ANCHOR y-shifting script
-    # TODO Wrong hierarchy bug:
-    # Sometimes very small branches are included on top of way longer and higher weighted ones I'm currently
-    # not completely sure why this occures and have to solve it.
-    def y_shifting(self, sub_path, node_start_x, node_stop_x, node_start_y, node_stop_y):
-        current_start_x = node_start_x + 1
-        current_stop_x = node_stop_x - 1
-        current_path_length = (current_stop_x - current_start_x) - 1
-        current_y = max(node_start_y, node_stop_y) + 1
+        for st in starts:
+            self.ancest.remove_edge('start', st)
 
-        next_y = -1
+        self.ancest.remove_edges_from(removed)
+        self.edmonds_graph.remove_edges_from(removed)
 
-        increase_layer = []
+        branches = {}
+        sortable = []
+        for g in groups.keys():
+            branch = groups[g]
 
-        while current_y <= self.global_y + 1:
+            if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
+                print('Sanity Error. Code 10.')
+                break
 
-            node = ''
-            current_layer_start_x = self.global_x
-            current_layer_stop_x = 0
-            layer_branches = []
-            sub_branch = []
-            layer_size = 0
+            elif set(branch).isdisjoint(m):
 
-            z = current_start_x
-            while z <= current_stop_x:
-                for check in self.x_list[z]:
-                    if check not in sub_path and self.position[check] == (z, current_y):
-                        node = check
+                start = self.position[branch[0]][0]
+                length = len(branch)
 
-                        if not sub_branch or node not in sub_branch:
+                if start in branches.keys():
+                    if length in branches[start].keys():
+                        if branches[start][length].keys():
+                            num = max(branches[start][length].keys()) + 1
+                        else:
+                            num = 1
 
-                            sub_branch = self.path[node]
-
-                            if (current_y, sub_branch) not in layer_branches:
-                                layer_branches.append((current_y, sub_branch))
-
-                                sub_branch_start_x, _ = self.position[sub_branch[0]]
-                                sub_branch_stop_x, _ = self.position[sub_branch[-1]]
-
-                                layer_size += sub_branch_stop_x - sub_branch_start_x + 1
-
-                                current_layer_start_x = sub_branch_start_x if sub_branch_start_x < current_layer_start_x else current_layer_start_x
-                                current_layer_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_layer_stop_x else current_layer_stop_x
-
-                                current_start_x = sub_branch_start_x if sub_branch_start_x < current_start_x else current_start_x
-                                current_stop_x = sub_branch_stop_x if sub_branch_stop_x > current_stop_x else current_stop_x
-
-                                z = current_layer_stop_x
-
-                z += 1
-
-            if layer_size > current_path_length:
-
-                if next_y == -1:
-                    next_y = current_y
-
-            if next_y != -1:
-                increase_layer.extend(layer_branches)
-
-            if not sub_branch:
-                if current_y != max(node_start_y, node_stop_y):
-                    break
-                else:
-                    current_y += 1
-            else:
-                current_y += 1
-
-        for _, layer_branch in sorted(increase_layer, reverse=True):
-            for node_branch in layer_branch:
-                node_branch_x = self.position[node_branch][0]
-                node_branch_y = self.position[node_branch][1]
-
-                self.position[node_branch] = (node_branch_x, node_branch_y + 1)
-
-        if next_y == -1:
-            next_y = current_y
-
-        self.global_y = current_y if current_y > self.global_y else self.global_y
-        self.global_x = self.position["stop"][0] if self.position["stop"][0] > self.global_x else self.global_x
-
-        return(next_y)
-
-    # ANCHOR adding new nodes and edges
-    # TODO take a closer look at the len(sub_path) == 0 situation for now added if sub_path
-    # keep in mind this can become a error later
-    def add_new_edges(self, sub_path, next_y, node_start, node_stop, node_start_x, node_stop_x):
-        if sub_path:
-            if sub_path[0].startswith('Ghost_'):
-                self.ancest.add_edge(node_start, sub_path[0], weight=0)
-
-            else:
-                self.ancest.add_edge(node_start, sub_path[0], weight=1)
-
-            for i, new in enumerate(sub_path, 1):
-                self.path[new] = sub_path
-
-                if new == sub_path[-1]:
-                    self.position[new] = (node_stop_x - 1, next_y)
-                else:
-                    self.position[new] = (node_start_x + i, next_y)
-
-                if new != sub_path[-1]:
-                    if sub_path[i].startswith('Ghost_') or new.startswith('Ghost_') or (sub_path[i].startswith('Ghost_') and new.startswith('Ghost_')):
-                        self.ancest.add_edge(new, sub_path[i], weight=0)
+                        branches[start][length][num] = branch
                     else:
-                        self.ancest.add_edge(new, sub_path[i], weight=1)
+                        num = 1
+                        branches[start][length] = {num: branch}
+                else:
+                    num = 1
+                    branches[start] = {length: {num: branch}}
 
-            if sub_path[-1].startswith('Ghost_'):
-                self.ancest.add_edge(sub_path[-1], node_stop, weight=0)
-            else:
-                self.ancest.add_edge(sub_path[-1], node_stop, weight=1)
+                sortable += [(start, length, num)]
 
-    # ANCHOR Converting network to JSON data
+
+        left_nodes = set(self.ancest.nodes()) - set(groups_rev.keys())
+        for n in left_nodes:
+
+            if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
+                print('Sanity Error. Code 11.')
+                break
+
+            elif set([n]).isdisjoint(m):
+                start = self.position[n][0]
+                length = 1
+                if n != 'start' and n != 'stop':
+                    if start in branches.keys():
+                        if length in branches[start].keys():
+                            if branches[start][length].keys():
+                                num = max(branches[start][length].keys()) + 1
+                            else:
+                                num = 1
+
+                            branches[start][length][num] = [n]
+                        else:
+                            num = 1
+                            branches[start][length] = {num: [n]}
+                    else:
+                        num = 1
+                        branches[start] = {length: {num: [n]}}
+
+                    sortable += [(start, length, num)]
+
+        # print(sorted(sortable, key=lambda x: (x[0], x[1]), reverse = False))
+
+        used = set()
+        finished = set()
+
+        y_new = 0
+        for node in longest_path:
+            x_pos = self.position[node][0]
+            self.position[node] = (x_pos, y_new)
+            used.add((x_pos, y_new))
+            finished.add(node)
+
+        stack = [longest_path]
+        while stack:
+
+            current = stack[0]
+
+            remove = True
+            for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
+                branch = branches[i][j][k]
+                branch_pred = set(self.ancest.predecessors(branch[0]))
+                branch_succ = set(self.ancest.successors(branch[-1]))
+                # if (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(finished)) or (not branch_succ.isdisjoint(set(current)) and not branch_pred.isdisjoint(finished)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+                if (not branch_pred.isdisjoint(set(current))) or (not branch_succ.isdisjoint(set(current))) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+
+                    remove = False
+                    sortable.remove((i,j,k))
+                    y_new = max(sum([[self.position[ypred][1] for ypred in branch_pred], [self.position[ysucc][1] for ysucc in branch_succ]], []))
+                        
+                    stack = [branch] + stack
+                    while True:
+                        repeat = False
+                        for xnew in range(i, i+j):
+                            if (xnew, y_new) in used:
+                                repeat = True
+
+                        if repeat == False:
+                            break
+                        else:
+                            y_new += 1
+
+                    for node in branch:
+                        x_pos = self.position[node][0]
+                        self.position[node] = (x_pos, y_new)
+                        used.add((x_pos, y_new))
+                        finished.add(node)
+
+                        self.global_y = y_new if y_new > self.global_y else self.global_y
+
+                    break
+
+            if remove == True:
+                stack.remove(current)
+
+        if len(set(self.position.values())) != len(self.position.values()):
+            print(len(self.position.values()) - len(set(self.position.values())))
+            print('Sanity Error. Code 12.')
+            exit()
+
+        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
+
+        for edge in self.edges:            
+            self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
+            self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+            self.ancest.remove_nodes_from(edge[1:-1])
+
+        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
+
+        for node in self.ancest.nodes():
+            self.ancest.nodes[node]['pos'] = self.position[node]
+
+        # self.ancest.remove_edge('start', 'stop')
+        # self.ancest.remove_nodes_from(['start', 'stop'])
+
+        self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
+        self.run.info_single(f"Done")
+
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
     # edges section for (k,o) in circular edges and for (k,o) in pangenome edges. Change and test while reworking.
@@ -2317,13 +2031,13 @@ class Pangraph():
 
         jsondata = {}
 
-        instances_pangenome_graph = 0
-        for node, attr in self.pangenome_graph.nodes(data=True):
-            instances_pangenome_graph += len(list(attr['genome'].keys()))
+        # instances_pangenome_graph = 0
+        # for node, attr in self.pangenome_graph.nodes(data=True):
+        #     instances_pangenome_graph += len(list(attr['genome'].keys()))
 
-        instances_ancest_graph = 0
-        for node, attr in self.ancest.nodes(data=True):
-            instances_ancest_graph += len(list(attr['genome'].keys()))
+        # instances_ancest_graph = 0
+        # for node, attr in self.ancest.nodes(data=True):
+        #     instances_ancest_graph += len(list(attr['genome'].keys()))
 
         instances_pangenome_graph = 0
         for node, attr in self.pangenome_graph.nodes(data=True):
@@ -2336,9 +2050,7 @@ class Pangraph():
                 instances_ancest_graph += len(list(attr['genome'].keys()))
 
         self.run.info_single(f"Total fraction of recovered genecall information {round((instances_ancest_graph/instances_pangenome_graph)*100, 3)}%")
-        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())+self.fusion_events-2)/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
-
-        self.ancest.remove_nodes_from(['start', 'stop'])
+        self.run.info_single(f"Total fraction of recovered geneclusters {round((len(self.ancest.nodes())-2)/(len(self.pangenome_graph.nodes())-2)*100, 3)}%")
 
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
@@ -2382,6 +2094,7 @@ class Pangraph():
             jsondata["elements"]["edges"]['E_' + str(l).zfill(8)] = {
                 "source": k,
                 "target": o,
+                "shown": 1,
                 "genome": m["genome"],
                 "weight": m["weight"],
                 "direction": m["direction"],
@@ -2395,8 +2108,6 @@ class Pangraph():
     def store_network(self):
         """Function to store final graph structure in a pan-db and/or JSON flat text output file"""
 
-        self.run.warning(None, header="Storing the graph structure", lc="green")
-
         if self.json_output_file_path:
             with open(self.json_output_file_path, 'w') as output:
                 output.write(json.dumps(self.get_json_dict_for_graph(), indent=2))
@@ -2408,7 +2119,6 @@ class Pangraph():
             raise ConfigError("The storage of graph data in pan-db is not yet implemented :/")
         else:
             self.run.info("Into the pan-db", "Skipped (but OK)", mc='red')
-
 
     def get_genome_gc_fused(self):
         return(self.genome_gc_fused)

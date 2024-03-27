@@ -622,6 +622,7 @@ function pickcolor (edgecoloring, genomes) {
 }
 
 //ANCHOR - All in one SVG creation function
+//ANCHOR - All in one SVG creation function
 async function generate_svg(body, data) {
 
   var edgecoloring = {}
@@ -722,30 +723,44 @@ async function generate_svg(body, data) {
 
     if (edge['direction'] == 'L') {
       var stroke = ' stroke-dasharray="5,5" '
+    } else if (edge['direction'] == 'B') {
+      var stroke = ' stroke-dasharray="15,5" '
     } else {
       var stroke = ''
     }
 
     var source = edge['source']
     var target = edge['target']
-    if (source !=  'start' && target != 'stop'){
+
+    if (source !=  'start' && target != 'stop' && edge['shown'] == 1){
+
       if (edge['bended'] == ""){
+
         var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
         var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
+
         svg.append(
           $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
         )
+
       } else {
+
         var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
         var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
         var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+
         for(var j in edge['bended']) {
+
           var bend_n_x = edge['bended'][j]['x']
           var bend_n_y = edge['bended'][j]['y']
           var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
+
           circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
+
         }
+
         circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
+
         svg.append(
           $(circle_svg)
         )
@@ -982,10 +997,8 @@ function main () {
       //     node._tippy.destroy();
       //   }
       // });
-      $(document).off();
-      $("*").off();
-  
-      main();
+      $(document).off().find("*").off();
+      main()
 
     })
 
@@ -999,14 +1012,18 @@ function main () {
 
       var data = new Object;
 
-      data['conntr'] = $('#conntr')[0].value
       data['condtr'] = $('#condtr')[0].value
       data['maxlength'] = $('#maxlength')[0].value
 
-      $("#genomecolors :input[type='checkbox']").each(function(index, element) {
-        var genome = $(element).attr('name');
-        data[genome] = $(element).prop('checked') ? 'on' : 'off';
-      });
+      $("#genomecolors :input[type='checkbox']").each((index, element) => {
+
+        var genome = $(element).attr('name')
+        if ($(element).prop('checked') == true){
+          data[genome] = 'on'
+        } else {
+          data[genome] = 'off'
+        }
+      })
 
       $.ajax({
           url: "/pangraph/settings",
@@ -1014,7 +1031,10 @@ function main () {
           async: false,
           data: JSON.stringify(data),
           contentType: "application/json",
-          dataType: "json"
+          dataType: "json",
+          success: function(data){
+            console.log(data)
+          }
       });
 
       // [...document.querySelectorAll('*')].forEach(node => {
@@ -1023,19 +1043,16 @@ function main () {
       //   }
       // });
 
-      $(document).off();
-      $("*").off();
-  
-      main();
+      $(document).off().find("*").off();
+      main()
     })
 
     // console.log(data)
 
     if (!$('#genomecolors').children().length) {
 
-      $("#conntr")[0].value = -1;
-      $("#condtr")[0].value = data['infos']['max_edge_length_filter']
-      $("#maxlength")[0].value = data['infos']['gene_cluster_grouping_threshold']
+      $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
+      $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
 
       for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 
@@ -1045,38 +1062,39 @@ function main () {
         }
 
         $('#genomecolors').append(
-          $('<div class="col-12 d-flex mb-1">').append(
-              $('<div class="col-2 d-flex align-items-center">').append(
-                $('<div class="form-switch d-flex">').append(
-                  $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top"' + state + '>')
+          $('<div class="col-12">').append(
+            $('<div class="row gy-0 align-items-center">').append(
+              $('<div class="col-2">').append(
+                $('<div class="form-switch">').append(
+                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
                 )
               )
             ).append(
-              $('<div class="col-7 d-flex align-items-center">').append(
+              $('<div class="col-7">').append(
                 genome
               )
             ).append(
-              $('<div class="col-1 d-flex align-items-center user-handle">').append(
-                $('<i class="bi bi-arrows-expand"></i>')
+              $('<div class="col-1">').append(
+                $('<i class="user-handle bi bi-arrows-expand"></i>')
               )
             ).append(
-              $('<div class="col-2 d-flex align-items-center">').append(
-                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+              $('<div class="d-flex col-2">').append(
+                $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
               )
             )
+          )
         )
 
         $('#RightOffcanvasBodyTop').append(
-          $('<tr>').append(
-            $('<td class="col-8">').append(
-              genome
-            )
-            ).append(
-              $('<td class="col-4 text-end" id="number_' + genome + '">').append(
-                0
-              )
+          $('<div class="col-8">').append(
+            genome
+          )
+        ).append(
+          $('<div class="col-4 text-end" id="number_' + genome + '">').append(
+            0
           )
         )
+
       }
     }
 
@@ -1112,62 +1130,56 @@ function main () {
     })
 
     //ANCHOR - Main panel response functions
-    if ($('#conntr').val() == -1) {
-      $('#flexconntr').prop('checked', false);
+    
+    if ($('#condtr')[0].value == -1){
+      // $('#customRange2').prop('disabled', true);
+      $('#flexcondtr').prop('checked', false);
     }
-    
-    if ($('#condtr').val() == -1) {
-        $('#flexcondtr').prop('checked', false);
+
+    if ($('#maxlength')[0].value == -1){
+      // $('#customRange3').prop('disabled', true);
+      $('#flexmaxlength').prop('checked', false);
     }
-    
-    if ($('#maxlength').val() == -1) {
-        $('#flexmaxlength').prop('checked', false);
+
+    if ($('#groupcompress')[0].value == -1){
+      $('#flexgroupcompress').prop('checked', false);
     }
-    
-    if ($('#groupcompress').val() == -1) {
-        $('#flexgroupcompress').prop('checked', false);
-    }
-    
-    $('#flexconntr').change(function() {
-        if ($(this).prop('checked')) {
-            $('#conntr').val(0);
-            // $('#customRange1').val(0).prop('disabled', false);
-        } else {
-            $('#conntr').val(-1);
-            // $('#customRange1').val(0).prop('disabled', true);
-        }
-    });
-    
+
     $('#flexcondtr').change(function() {
-        if ($(this).prop('checked')) {
-            $('#condtr').val(2);
-            // $('#customRange2').val(2).prop('disabled', false);
-        } else {
-            $('#condtr').val(-1);
-            // $('#customRange2').val(2).prop('disabled', true);
-        }
-    });
-    
+      if ($(this).prop('checked') == true){
+        $('#condtr')[0].value = 2;
+        // $('#customRange2')[0].value = 2;
+        // $('#customRange2').prop('disabled', false);
+      } else {
+        $('#condtr')[0].value = -1;
+        // $('#customRange2')[0].value = 2;
+        // $('#customRange2').prop('disabled', true);
+      }
+    })
+
     $('#flexmaxlength').change(function() {
-        if ($(this).prop('checked')) {
-            $('#maxlength').val(1);
-            // $('#customRange3').val(1).prop('disabled', false);
-        } else {
-            $('#maxlength').val(-1);
-            // $('#customRange3').val(1).prop('disabled', true);
-        }
-    });
-    
+      if ($(this).prop('checked') == true){
+        $('#maxlength')[0].value = 1;
+        // $('#customRange3')[0].value = 1;
+        // $('#customRange3').prop('disabled', false);
+      } else {
+        $('#maxlength')[0].value = -1;
+        // $('#customRange3')[0].value = 1;
+        // $('#customRange3').prop('disabled', true);
+      }
+    })
+
     $('#flexgroupcompress').change(function() {
-        if ($(this).prop('checked')) {
-            $('#groupcompress').val(0);
-            // $('#customRange4').val(0).prop('disabled', false);
-        } else {
-            $('#groupcompress').val(-1);
-            // $('#customRange4').val(0).prop('disabled', true);
-        }
-    });
-  
+      if ($(this).prop('checked') == true){
+        $('#groupcompress')[0].value = 0;
+        $('#customRange4')[0].value = 0;
+        $('#customRange4').prop('disabled', false);
+      } else {
+        $('#groupcompress')[0].value = -1;
+        $('#customRange4')[0].value = 0;
+        $('#customRange4').prop('disabled', true);
+      }
+    })
 
     sortable('#genomecolors', {
       forcePlaceholderSize: true,
