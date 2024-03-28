@@ -340,8 +340,10 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
             let branch_support_values = p.branch_support.split('/').map(parseFloat);
             first_circle = makeCircle(branch_support_values[0], 0);
+            first_circle.setAttribute('transform', 'translate(-10, -10)'); // Should change
             second_circle = makeCircle(branch_support_values[1], 1);
-            second_circle.setAttribute('transform', 'translate(30, 0)');
+            second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+            second_circle.setAttribute('transform', 'translate(10,10)'); // Should change
         } else {
             first_circle = makeCircle(p.branch_support, 0);
         }

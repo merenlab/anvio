@@ -1604,6 +1604,7 @@ function serializeSettings(use_layer_names) {
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
+    state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
 
@@ -2830,6 +2831,10 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('support-symbol-color')){
         $('#support_symbol_color').attr('color', state['support-symbol-color'])
         $('#support_symbol_color').css('background-color', state['support-symbol-color'])
+    }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
+        $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
     }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
