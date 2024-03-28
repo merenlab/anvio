@@ -21,6 +21,7 @@ import getpass
 import argparse
 import datetime
 import importlib
+import networkx as nx
 
 from hashlib import md5
 from ete3 import Tree
@@ -1492,11 +1493,296 @@ class BottleApplication(Bottle):
 
 
     def get_pangraph_json_data(self):
-        return self.interactive.pan_graph_json
+
+        # return self.interactive.pan_graph_json()
+
+        return self.interactive.get_pangraph_json()
 
     def get_pangraph_settings(self):
-        pass
-        # Rerun function
+        
+        # try:
+        payload = request.json
+        max_edge_length_filter = int(payload['maxlength'])
+        gene_cluster_grouping_threshold = int(payload['condtr'])
+
+        ancest = nx.DiGraph()
+        x_list = {}
+        position = {}
+        edges = []
+
+        data = json.load(open(self.interactive.pan_graph_json_path))
+
+        # with open("test.json", "r") as pangraph_json:
+        #     data = json.load(pangraph_json)
+
+        global_x = int(data["infos"]["meta"]["global_x"])
+        global_y = -1
+
+        for x in range(0, global_x+1):
+            x_list[x] = []
+
+        for node in data["elements"]["nodes"]:
+            x = data["elements"]["nodes"][node]["position"]["x"]
+            x_list[x].append(node)
+            position[node] = (x, -1)
+
+        for edge in data["elements"]["edges"]:
+            source = data["elements"]["edges"][edge]["source"]
+            target = data["elements"]["edges"][edge]["target"]
+
+            ancest.add_edge(source, target, weight=-1, bended=[])
+
+        layout_graph_nodes = list(ancest.nodes())
+        layout_graph_successors = {layout_graph_node: list(ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
+
+        n_removed = 0
+        removed = set()
+        ghost = 0
+        for x in range(global_x-1, 0, -1):
+            for node in x_list[x]:
+
+                node_x_position = position[node][0]
+
+                change = []
+                for successor in layout_graph_successors[node]:
+                    if successor != 'stop':
+                        successor_x_position = position[successor][0]
+                        
+                        if successor_x_position <= node_x_position:
+                            print('Sanity Error. Code 1.')
+                        else:
+                            change.append((successor_x_position, successor))
+
+                if change:
+                    if min(change)[0] > 1:
+                        new_x_position = min([(x, n) for (x, n) in change if x > 1])[0] - 1
+                        position[node] = (new_x_position, -1)
+
+                    for (pos, extend_successor) in change:
+                        x_difference = pos - new_x_position
+
+                        if x_difference <= max_edge_length_filter or max_edge_length_filter == -1:
+
+                            path_list = [node]
+
+                            for i in range(1, x_difference):
+                                path_list += ['Ghost_' + str(ghost)]
+                                position['Ghost_' + str(ghost)] = (new_x_position + i, -1)
+                                ghost += 1
+
+                            path_list += [extend_successor]
+
+                            ancest.remove_edge(node, extend_successor)
+
+                            edges.append(path_list)
+
+                            if len(path_list) == 2:
+                                ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
+                            else:
+                                ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-0.5)
+
+                        else:
+                            n_removed += 1
+                            removed.add((node, extend_successor))
+
+        for i, j in ancest.edges():
+
+            if position[j][0] - position[i][0] != 1 and i != 'start' and j != 'stop' and (i, j) not in removed:
+                print('Sanity Error. Code 2.')
+
+        longest_path = nx.bellman_ford_path(G=ancest, source='start', target='stop', weight='weight')        
+        m = set(longest_path)
+
+        starts = [node for node in ancest.nodes() if ancest.in_degree(node) == 0 if node != 'start']
+        for st in starts:
+            ancest.add_edge('start', st, weight=-1)
+
+        dfs_list = list(nx.dfs_edges(ancest, source='start'))
+
+        # TODO Currently no seperation between unequal genome context
+
+        group = 0
+        # degree = dict(ancest.degree())
+        groups = {}
+        groups_rev = {}
+        grouping = {}
+
+        for node_v, node_w in dfs_list:
+            if node_v != 'start' and ancest.in_degree(node_v) == 1 and ancest.out_degree(node_v) == 1 and ancest.in_degree(node_w) == 1 and ancest.out_degree(node_w) == 1:
+
+                if node_v not in groups_rev.keys():
+                    group_name = 'GCG_' + str(group).zfill(8)
+                    groups[group_name] = [node_v, node_w]
+                    groups_rev[node_v] = group_name
+                    groups_rev[node_w] = group_name
+                    group += 1
+
+                else:
+                    group_name = groups_rev[node_v]
+                    groups[group_name] += [node_w]
+                    groups_rev[node_w] = group_name
+
+        for label, condense_nodes in groups.items():
+
+            condense_nodes = [node for node in condense_nodes if not node.startswith('Ghost_')]
+
+            if len(condense_nodes) >= gene_cluster_grouping_threshold and gene_cluster_grouping_threshold != -1:
+                grouping[label] = condense_nodes
+
+        for st in starts:
+            ancest.remove_edge('start', st)
+        ancest.remove_edges_from(removed)
+
+        branches = {}
+        sortable = []
+        for g in groups.keys():
+            branch = groups[g]
+
+            if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
+                print('Sanity Error. Code 4.')
+
+            elif set(branch).isdisjoint(m):
+
+                start = position[branch[0]][0]
+                length = len(branch)
+
+                if start in branches.keys():
+                    if length in branches[start].keys():
+                        if branches[start][length].keys():
+                            num = max(branches[start][length].keys()) + 1
+                        else:
+                            num = 1
+
+                        branches[start][length][num] = branch
+                    else:
+                        num = 1
+                        branches[start][length] = {num: branch}
+                else:
+                    num = 1
+                    branches[start] = {length: {num: branch}}
+
+                sortable += [(start, length, num)]
+
+
+        left_nodes = set(ancest.nodes()) - set(groups_rev.keys())
+        for n in left_nodes:
+
+            if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
+                print('Sanity Error. Code 5.')
+
+
+            elif set([n]).isdisjoint(m):
+                start = position[n][0]
+                length = 1
+                if n != 'start' and n != 'stop':
+                    if start in branches.keys():
+                        if length in branches[start].keys():
+                            if branches[start][length].keys():
+                                num = max(branches[start][length].keys()) + 1
+                            else:
+                                num = 1
+
+                            branches[start][length][num] = [n]
+                        else:
+                            num = 1
+                            branches[start][length] = {num: [n]}
+                    else:
+                        num = 1
+                        branches[start] = {length: {num: [n]}}
+
+                    sortable += [(start, length, num)]
+
+        used = set()
+        finished = set()
+
+        y_new = 0
+        for node in longest_path:
+            x_pos = position[node][0]
+            position[node] = (x_pos, y_new)
+            used.add((x_pos, y_new))
+            finished.add(node)
+
+        stack = [longest_path]
+        while stack:
+
+            current = stack[0]
+
+            remove = True
+            for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
+                branch = branches[i][j][k]
+                branch_pred = set(ancest.predecessors(branch[0]))
+                branch_succ = set(ancest.successors(branch[-1]))
+                # if (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(finished)) or (not branch_succ.isdisjoint(set(current)) and not branch_pred.isdisjoint(finished)) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+                if (not branch_pred.isdisjoint(set(current))) or (not branch_succ.isdisjoint(set(current))) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
+
+                    remove = False
+                    sortable.remove((i,j,k))
+                    y_new = max(sum([[position[ypred][1] for ypred in branch_pred], [position[ysucc][1] for ysucc in branch_succ]], []))
+                        
+                    stack = [branch] + stack
+                    while True:
+                        repeat = False
+                        for xnew in range(i, i+j):
+                            if (xnew, y_new) in used:
+                                repeat = True
+
+                        if repeat == False:
+                            break
+                        else:
+                            y_new += 1
+
+                    for node in branch:
+                        x_pos = position[node][0]
+                        position[node] = (x_pos, y_new)
+                        used.add((x_pos, y_new))
+                        finished.add(node)
+
+                        global_y = y_new if y_new > global_y else global_y
+
+                    break
+
+            if remove == True:
+                stack.remove(current)
+
+        if len(set(position.values())) != len(position.values()):
+            print('Sanity Error. Code 6.')
+
+        for edge in edges:            
+            ancest.add_edge(edge[0], edge[-1])
+            ancest[edge[0]][edge[-1]]['bended'] = [position[p] for p in edge[1:-1]]
+            ancest.remove_nodes_from(edge[1:-1])
+
+        for node in ancest.nodes():
+            ancest.nodes[node]['pos'] = position[node]
+
+        data["infos"]['meta']['global_y'] = global_y
+        data["infos"]['max_edge_length_filter'] = max_edge_length_filter
+        data["infos"]['gene_cluster_grouping_threshold'] = gene_cluster_grouping_threshold
+        data["infos"]['visualization']['edges'] = len(ancest.edges())
+        data["infos"]['data'] = list(ancest.graph.items())
+        data["infos"]['directed'] = ancest.is_directed()
+        data["infos"]['groups'] = grouping
+
+        data['infos']['grouped'] = {'nodes': len(ancest.nodes()), 'edges': len(ancest.edges())}
+
+        for i, j in ancest.nodes(data=True):
+            # if i != 'start' and i != 'stop':
+            data["elements"]["nodes"][str(i)]["position"]['y'] = j['pos'][1]
+
+        for edge in data["elements"]["edges"]:
+            source = data["elements"]["edges"][edge]["source"]
+            target = data["elements"]["edges"][edge]["target"]
+            data["elements"]["edges"][edge]["shown"] = 1
+
+            if (source, target) in removed:
+                data["elements"]["edges"][edge]["shown"] = 0
+                data["elements"]["edges"][edge]["bended"] = ""
+
+            elif ancest.has_edge(source, target):
+                data["elements"]["edges"][edge]["bended"] = [{'x': x, 'y': y} for x, y in ancest[source][target]["bended"]] if len(ancest[source][target]["bended"]) != 0 else ""
+
+        with open("test.json", 'w') as pangraph_json:
+            pangraph_json.write(json.dumps(data, indent=2))
 
     def get_pangraph_gc_alignment(self):
 
