@@ -1035,6 +1035,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     max-width: 42px;
 }
 
+#second_support_symbol_color{
+    display: none;
+    background-color:#2bab00;
+    min-width: 16px;
+}
+
 @keyframes glowing {
     0% { background-position: 0 0; }
     50% { background-position: 400% 0; }
