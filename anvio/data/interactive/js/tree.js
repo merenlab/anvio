@@ -204,14 +204,14 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
         switch (state) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    if (isNumber(token[i]) && mode != 'gene') {
-                        curnode.branch_support = parseFloat(token[i]);
+                    if (isNumber(token[i]) && mode != 'gene' || isNaN(token[i] && mode != 'gene')){
+                        curnode.branch_support = token[i];
                         this.has_branch_supports = true;
-                    } else {
+                    } 
+                    else {
                         this.label_to_leaves[token[i]] = curnode;
                         curnode.label = token[i];
                     }
-
                     i++;
                     state = 1;
                 } else {
@@ -315,13 +315,14 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 }
                 break;
 
-            case 3: // finishchildren
+                case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    if (isNumber(token[i]) && mode != 'gene') {
-                        curnode.branch_support = parseFloat(token[i]);
+                    if (isNaN(token[i]) && mode != 'gene') {
+                        curnode.branch_support = token[i];
                         this.has_branch_supports = true;
                     } else {
-                        curnode.label = token[i];
+                        curnode.branch_support = parseFloat(token[i]);
+                        this.has_branch_supports = true;
                     }
                     i++;
                 } else {
@@ -553,5 +554,3 @@ PreorderIterator.prototype.Next = function()
     }
     return this.cur;
 };
-
-

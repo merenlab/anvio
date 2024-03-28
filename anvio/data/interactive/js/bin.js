@@ -924,9 +924,14 @@ Bins.prototype.RedrawBins = function() {
     }
 
     var bin = document.getElementById('bin');
-    while (bin.hasChildNodes()) {
-        bin.removeChild(bin.lastChild);
+    if (bin !== null) {
+        while (bin.hasChildNodes()) {
+            bin.removeChild(bin.lastChild);
+        }
+    } else {
+        console.error("bin DOM doesnt exit or null.");
     }
+    
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;

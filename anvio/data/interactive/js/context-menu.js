@@ -27,7 +27,8 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
-    let all = options.all
+    let all = options.all;
+    let internal_node = true;
 
     this.menu_items = {
         'select': {
@@ -228,8 +229,35 @@ ContextMenu = function(options) {
                 drawTree();
             }
         },
-        'reroot': {
-            'title': 'Reroot the tree/denrogram here',
+        'reroot_disabled': {
+            'title': 'Reroot the tree/dendogram here'
+        },
+        'reroot_with_internal_node': {
+            'title': 'Tree has internal node names',
+            'action': (node, layer, param) => {
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': clusteringData,
+                        'left_most': left_most.label,
+                        'right_most': right_most.label,
+                        'internal_node': internal_node
+                    },
+                    success: function(data) {
+                        collapsedNodes = [];
+                        clusteringData = data['newick'];
+                        $('#tree_modified_warning').show();
+                        drawTree();
+                    }
+                });
+            }
+        },
+        'reroot_with_support_values': {
+            'title': 'Tree has branch support values',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -480,12 +508,11 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('blastx_refseq_protein');
             }
 
-            // tree/dendrogram operations
-            // FIXME: this option should not appear when there is no
-            //        tree/dendrogram available
-            menu.push('divider');
-            menu.push('reroot');
-
+            else if (mode == 'manual'){
+                menu.push('reroot_disabled');
+                menu.push('reroot_with_internal_node');
+                menu.push('reroot_with_support_values');
+            }
         }
         else
         {
@@ -500,7 +527,11 @@ ContextMenu.prototype.BuildMenu = function() {
 
                 menu.push('collapse');
                 menu.push('rotate');
-                menu.push('reroot');
+
+                menu.push('divider');
+                menu.push('reroot_disabled');
+                menu.push('reroot_with_internal_node');
+                menu.push('reroot_with_support_values');
             }
         }
 
@@ -524,6 +555,8 @@ ContextMenu.prototype.Show = function() {
     for (const item of this.BuildMenu()) {
         if (item == 'divider') {
             list.innerHTML += `<li class="dropdown-divider"></li>`;
+        } else if (item.includes('disabled')){
+            list.innerHTML += `<li><a class="dropdown-item disabled bold" href="#">${this.menu_items[item]['title']}</a></li>`;
         } else {
             list.innerHTML += `<li><a class="dropdown-item" href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
         }
