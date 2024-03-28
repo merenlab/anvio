@@ -281,43 +281,72 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         drawSymbol()
     }
 
-    function drawSymbol(){
-        let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let radius
-        let maxRadius = supportValueData.maxRadius
-        let rangeLow = parseFloat(supportValueData.numberRange[0])
-        let rangeHigh = parseFloat(supportValueData.numberRange[1])
+    /**
+     * Draw symbols on an SVG canvas based on branch support values.
+     * @returns {Element} The first circle element drawn on the SVG canvas.
+     */
+    function drawSymbol() {
+        let first_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let second_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let maxRadius = supportValueData.maxRadius;
+        let rangeLow = parseFloat(supportValueData.numberRange[0]);
+        let rangeHigh = parseFloat(supportValueData.numberRange[1]);
 
-        function calculatePercentile(){ // calculate percentile of data point in range
-            return (p.branch_support - rangeLow) / (rangeHigh - rangeLow)
+        /**
+         * Calculate the percentile of a support value within the range.
+         * @param {number} support_value - The branch support value.
+         * @returns {number} The calculated percentile.
+         */
+        function calculatePercentile(support_value) {
+            return (support_value - rangeLow) / (rangeHigh - rangeLow);
         }
 
-        function setDetails(percentile){
-            if(percentile > .67){
-                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
-            } else if (percentile < .67 && percentile > .33){
-                radius = maxRadius * .7
+        /**
+         * Set details for the circle based on the percentile.
+         * @param {Element} circle - The SVG circle element.
+         * @param {number} percentile - The percentile value.
+         */
+        function setDetails(circle, percentile) {
+            let radius;
+            if (percentile > 0.67) {
+                supportValueData.invertSymbol ? radius = maxRadius * 0.4 : radius = maxRadius;
+            } else if (percentile < 0.67 && percentile > 0.33) {
+                radius = maxRadius * 0.7;
             } else {
-                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 0.4;
             }
-
+            circle.setAttribute('r', radius);
+            circle.setAttribute('fill', supportValueData.symbolColor);
+            circle.setAttribute('opacity', 0.6);
         }
 
-        function makeCircle(){ // time to make the gravy
-            setDetails(calculatePercentile())
-
-            circle.setAttribute('cx', p.xy.x)
-            circle.setAttribute('cy', p.xy.y)
-            circle.setAttribute('r', radius)
-            circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', supportValueData.symbolColor )
-            circle.setAttribute('opacity', .6)
-
+        /**
+         * Create a circle element based on the support value.
+         * @param {number} support_value - The branch support value.
+         * @param {number} index - The index of the circle.
+         * @returns {Element} The created circle element.
+         */
+        function makeCircle(support_value, index) {
+            let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            setDetails(circle, calculatePercentile(support_value));
+            circle.setAttribute('cx', p.xy.x);
+            circle.setAttribute('cy', p.xy.y);
+            circle.setAttribute('id', p.id + '_' + index);
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
             return circle;
         }
-        return makeCircle()
+
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            let branch_support_values = p.branch_support.split('/').map(parseFloat);
+            first_circle = makeCircle(branch_support_values[0], 0);
+            second_circle = makeCircle(branch_support_values[1], 1);
+            second_circle.setAttribute('transform', 'translate(30, 0)');
+        } else {
+            first_circle = makeCircle(p.branch_support, 0);
+        }
+
+        return first_circle;
     }
 }
 
