@@ -1426,21 +1426,6 @@ class BottleApplication(Bottle):
         # Get the Newick tree string from the form data
         newick = request.forms.get('newick')
         internal_node = request.forms.get('internal_node')
-
-        # Create an Ete3 Tree object from the Newick string, specifying format=1
-        # which means that branch support values are stored as node.name and
-        # a default support value is made for each node ('1')
-        # When rooting, some branch support values have to be moved around (see issue #2043)
-        # but node.name won't! We trick the system by replace the default support value with a unique
-        # number (unique index) and we keep track of node.name + its unique number in branch_support_value dict.
-        # After rooting, we simply go through every node, look at support value and rename the node accordingly.
-        # Wonderful you say? YES. But one big problem that is not really a problem: if the user provide a tree
-        # where the node name are ACTUALLY node names and not support value. Those are not supposed to be moved after rooting.
-        # It would be very bad. Most people would use support value and not node name, but we should be ready for any
-        # situation. TO-DO: either 1) update the help page to explain the situation and NO ONE can use trees with node name
-        # or 2) when someone click on rooting in the interface, we have a popup asking if they want their node name to be
-        # considered support values (therefore moved around) or accutal node name and they should not move.
-        # Then we change the code here to root according to what the user wants.
         tree = Tree(newick, format=1)
 
         branch_support_value = {1:''}
