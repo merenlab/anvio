@@ -37,6 +37,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': True}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': True}))
+    groupA.add_argument(*anvio.A('testing-yaml'), **anvio.K('testing-yaml'))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
@@ -44,6 +45,7 @@ if __name__ == '__main__':
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupB.add_argument(*anvio.A('output-summary'), **anvio.K('output-summary'))
     groupB.add_argument('--skip-storing-in-pan-db', default=False, action="store_true", help="Do not store the resulting graph into "
                                 "the pan-db.")
 

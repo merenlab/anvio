@@ -990,17 +990,17 @@ function main () {
 
   // $.getJSON('static/json/result.json?' + new Date().getTime(), function(data) {
 
-    $('#redraw').on('click', function() {
+    // $('#redraw').on('click', function() {
 
-      // [...document.querySelectorAll('*')].forEach(node => {
-      //   if (node._tippy) {
-      //     node._tippy.destroy();
-      //   }
-      // });
-      $(document).off().find("*").off();
-      main()
+    //   // [...document.querySelectorAll('*')].forEach(node => {
+    //   //   if (node._tippy) {
+    //   //     node._tippy.destroy();
+    //   //   }
+    //   // });
+    //   $(document).off().find("*").off();
+    //   main()
 
-    })
+    // })
 
 
     // This title must update with Generic data from JSON
@@ -1008,7 +1008,7 @@ function main () {
     $('#title-panel-second-line').text('Pangraph Detail');
 
     // It seems unused function after UI changes
-    $('#settings').on('click', function() {
+    $('#redraw').on('click', function() {
 
       var data = new Object;
 
@@ -1062,19 +1062,19 @@ function main () {
         }
 
         $('#genomecolors').append(
-          $('<div class="col-12">').append(
-            $('<div class="row gy-0 align-items-center">').append(
-              $('<div class="col-2">').append(
+          $('<div class="col-12 d-flex mb-1">').append(
+            // $('<div class="row gy-0 align-items-center">').append(
+              $('<div class="col-2 d-flex align-items-center">').append(
                 $('<div class="form-switch">').append(
                   $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
                 )
               )
             ).append(
-              $('<div class="col-7">').append(
+              $('<div class="col-7 d-flex align-items-center">').append(
                 genome
               )
             ).append(
-              $('<div class="col-1">').append(
+              $('<div class="col-1 d-flex align-items-center">').append(
                 $('<i class="user-handle bi bi-arrows-expand"></i>')
               )
             ).append(
@@ -1083,7 +1083,7 @@ function main () {
               )
             )
           )
-        )
+        // )
 
         $('#RightOffcanvasBodyTop').append(
           $('<div class="col-8">').append(
@@ -1172,12 +1172,12 @@ function main () {
     $('#flexgroupcompress').change(function() {
       if ($(this).prop('checked') == true){
         $('#groupcompress')[0].value = 0;
-        $('#customRange4')[0].value = 0;
-        $('#customRange4').prop('disabled', false);
+        // $('#customRange4')[0].value = 0;
+        // $('#customRange4').prop('disabled', false);
       } else {
         $('#groupcompress')[0].value = -1;
-        $('#customRange4')[0].value = 0;
-        $('#customRange4').prop('disabled', true);
+        // $('#customRange4')[0].value = 0;
+        // $('#customRange4').prop('disabled', true);
       }
     })
 

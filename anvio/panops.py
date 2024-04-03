@@ -8,11 +8,14 @@
 
 import os
 import json
+import yaml
 import math
 import copy
 import argparse
 import pandas as pd
 import networkx as nx
+import numpy as np
+from scipy.stats import entropy
 
 from itertools import chain
 
@@ -1051,13 +1054,19 @@ class Pangraph():
         self.pan_db = A('pan_db')
         self.external_genomes_txt = A('external_genomes')
         self.genomes_storage_db = A('genomes_storage')
+        self.testing_yaml = A('testing_yaml')
+
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.debug = anvio.DEBUG
 
+        if self.testing_yaml:
+            self.testing = True
+
         # data storage related variables
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
+        self.summary_output_file_path = A('output_summary')
 
         # learn what gene annotation sources are present across all genomes
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
@@ -1109,7 +1118,7 @@ class Pangraph():
             if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt):
                 raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
                                   "in an external genomes file :/")
-
+    
         # make sure the pan-db and genomes-storage-db are compatible
         utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db, self.genomes_storage_db)
 
@@ -1117,11 +1126,18 @@ class Pangraph():
     def process(self):
         """Primary driver function for the class"""
 
-        # sanity check EVERYTHING
-        self.sanity_check()
+        if self.testing == True:
 
-        # populate self.gene_synteny_data_dict
-        self.get_gene_synteny_data_dict()
+            self.testing_with_yaml()
+
+        else:
+
+            # sanity check EVERYTHING
+            self.sanity_check()
+
+            # populate self.gene_synteny_data_dict
+            self.get_gene_synteny_data_dict()
+
 
         # contextualize paralogs
         # TODO Incorporate gene direction
@@ -1137,9 +1153,51 @@ class Pangraph():
         # run Alex's layout algorithm
         self.run_synteny_layout_algorithm()
 
+        self.generate_data_table()
+
         # store network in the database
         self.store_network()
 
+    def testing_with_yaml(self):
+        print(self.testing_yaml)
+        with open(self.testing_yaml, 'r') as file:
+            yaml_genomes = yaml.safe_load(file)
+
+        # print(yaml_genomes)
+        
+        for genome in yaml_genomes.keys():
+
+            self.gene_synteny_data_dict[genome] = {}
+
+            if genome not in self.genome_coloring.keys():
+                self.genome_coloring[genome] = "on"
+
+            if self.genome_coloring[genome] != "off":
+                self.genomes.append(genome)
+
+            for i, gcs in enumerate(yaml_genomes[genome]):
+
+                contig = genome + '_' + str(i).zfill(5)
+                
+                self.gene_synteny_data_dict[genome][contig] = {}
+
+                for gc in gcs.split(' '):
+                    if gc.endswith('!'):
+                        gc = gc[:-1]
+                        direction = 'f'
+                    else:
+                        direction = 'r'
+
+                    self.gene_synteny_data_dict[genome][contig][gc] = {
+                        'gene_cluster_name': gc, 
+                        'gene_cluster_id': '',
+                        'direction': direction,
+                        'rev_compd': 'False',
+                        'max_paralog': 0,
+                        'draw': 'on'
+                    }
+        
+        print(self.gene_synteny_data_dict)
 
     def get_gene_synteny_data_dict(self):
         """A function to roduce a comprehensive data structure from anvi'o artifacts for
@@ -2022,6 +2080,54 @@ class Pangraph():
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single(f"Done")
+
+    def generate_data_table(self):
+
+        data_table_dict = {}
+        global_entropy = 0
+
+        for x in range(0, self.global_x+1):
+
+            generation = [node for node in self.x_list[x] if node != 'start' and node != 'stop']
+
+            array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
+            sum_occurence = np.sum(array_occurence)
+
+            base = 2
+            pk = array_occurence / sum_occurence
+            H = entropy(pk, base=base)
+
+            for gene_cluster in generation:
+                node = self.ancest.nodes()[gene_cluster]
+
+                name = node['name']
+                num = len(node['genome'].keys())
+                y = node['pos'][1]
+
+                max_paralog_list = []
+                num_dir_r = 0
+
+                for genome in node['genome'].keys():
+                    # for contig in node['genome'][genome].keys():
+                    info = node['genome'][genome]
+
+                    contig = info['contig']
+                    max_paralog_list.append(info['max_paralog'])
+
+                    if info['direction'] == 'r':
+                        num_dir_r += 1
+
+                data_table_dict[gene_cluster] = [name, contig, x, y, max(max_paralog_list), num_dir_r/num, H]
+
+            global_entropy += H
+
+        data_table = pd.DataFrame.from_dict(data_table_dict)
+
+        if self.summary_output_file_path:
+            data_table.to_csv(self.summary_output_file_path, sep=',', index=False, encoding='utf-8')
+            self.run.info("Summary output file", os.path.abspath(self.summary_output_file_path))
+        else:
+            self.run.info("Summary output file", "Skipped (but OK)", mc='red')
 
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove

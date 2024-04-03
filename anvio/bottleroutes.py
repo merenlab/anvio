@@ -1781,7 +1781,9 @@ class BottleApplication(Bottle):
             elif ancest.has_edge(source, target):
                 data["elements"]["edges"][edge]["bended"] = [{'x': x, 'y': y} for x, y in ancest[source][target]["bended"]] if len(ancest[source][target]["bended"]) != 0 else ""
 
-        with open("test.json", 'w') as pangraph_json:
+        # TODO IMPORTANT FILE PATH HARDCODED!!!! RESOLVE ASAP
+
+        with open("pangraph.json", 'w') as pangraph_json:
             pangraph_json.write(json.dumps(data, indent=2))
 
     def get_pangraph_gc_alignment(self):
