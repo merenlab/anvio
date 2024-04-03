@@ -343,9 +343,18 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             second_circle = makeCircle(branch_support_values[1], 1);
             second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
 
-            let firstCircleCx = parseFloat(first_circle.getAttribute('cx'));
-            let updatedCx = firstCircleCx + maxRadius * 2;
-            second_circle.setAttributeNS(null, 'cx', updatedCx.toString());
+            if($('#tree_type').val() == 'circlephylogram'){
+                let length_original = Math.sqrt(p.xy.x**2 + p.xy.y**2);
+                let length_scaled = length_original + 2 * maxRadius;
+                let scaling_factor = length_scaled/length_original;
+                second_circle.setAttribute('cx', p.xy.x * scaling_factor);
+                second_circle.setAttribute('cy', p.xy.y * scaling_factor);
+            } else{
+                let firstCircleCx = parseFloat(first_circle.getAttribute('cx'));
+                let updatedCx = firstCircleCx + maxRadius * 2;
+                second_circle.setAttributeNS(null, 'cx', updatedCx.toString());
+            }
+
         } else {
             first_circle = makeCircle(p.branch_support, 0);
         }
