@@ -2111,20 +2111,32 @@ class Pangraph():
                     # for contig in node['genome'][genome].keys():
                     info = node['genome'][genome]
 
-                    contig = info['contig']
+                    # contig = info['contig']
                     max_paralog_list.append(info['max_paralog'])
 
                     if info['direction'] == 'r':
                         num_dir_r += 1
 
-                data_table_dict[gene_cluster] = [name, contig, x, y, max(max_paralog_list), num_dir_r/num, H]
+                data_table_dict[gene_cluster] = {
+                    'paralogs': {
+                        'value': max(max_paralog_list),
+                        'type': 'heatmap'
+                    },
+                    'direction': {
+                        'value': num_dir_r/num,
+                        'type': 'heatmap'
+                    },
+                    'entropie': {
+                        'value': H,
+                        'type': 'heatmap'
+                    }
+                }
 
-            global_entropy += H
-
-        data_table = pd.DataFrame.from_dict(data_table_dict)
+            # global_entropy += H
 
         if self.summary_output_file_path:
-            data_table.to_csv(self.summary_output_file_path, sep=',', index=False, encoding='utf-8')
+            with open(self.summary_output_file_path, 'w') as output:
+                output.write(json.dumps(data_table_dict, indent=2))
             self.run.info("Summary output file", os.path.abspath(self.summary_output_file_path))
         else:
             self.run.info("Summary output file", "Skipped (but OK)", mc='red')

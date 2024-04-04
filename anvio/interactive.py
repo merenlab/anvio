@@ -2991,9 +2991,13 @@ class PangraphInteractive(PanSuperclass):
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.pan_graph_json_path = A('pan_graph_json')
+        self.pan_graph_summary_path = A('pan_graph_summary')
 
         if self.pan_graph_json_path:
             filesnpaths.is_file_json_formatted(self.pan_graph_json_path)
+
+        if self.pan_graph_summary_path:
+            filesnpaths.is_file_json_formatted(self.pan_graph_summary_path)
 
         if not self.pan_graph_json_path:
             raise ConfigError("Unfortunately you can only use this program with the `--pan-graph-json` parameter.")
@@ -3001,7 +3005,7 @@ class PangraphInteractive(PanSuperclass):
         PanSuperclass.__init__(self, self.args)
 
         self.pan_graph_json = self.get_pangraph_json()
-
+        self.pan_graph_summary = self.get_pangraph_summary()
 
     def get_pangraph_json(self):
         """A function to 'get' pangraph JSON data from wherever appropriate.
@@ -3037,6 +3041,11 @@ class PangraphInteractive(PanSuperclass):
         # all good with the version stuff:
         return json_data
 
+    def get_pangraph_summary(self):
+        if self.pan_graph_summary_path:
+            summary_data = json.load(open(self.pan_graph_summary_path))
+
+            return summary_data
 
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):

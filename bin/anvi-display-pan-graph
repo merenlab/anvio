@@ -35,6 +35,7 @@ if __name__ == '__main__':
                                 "you can also provide it with a JSON file that you have generated previously, in which case the program will skip "
                                 "attempting to read anything from the pan-db and will use the input file to initialize an interface.")
     groupB.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json'))
+    groupB.add_argument(*anvio.A('pan-graph-summary'), **anvio.K('pan-graph-summary'))
 
     groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupC.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
