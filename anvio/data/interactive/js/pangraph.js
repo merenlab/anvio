@@ -752,18 +752,20 @@ async function generate_svg(body, data) {
         var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
         var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
         var circle_svg = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+        var bend_old_y = nodes[source]['position']['y']
 
         for(var j in edge['bended']) {
 
           var bend_n_x = edge['bended'][j]['x']
           var bend_n_y = edge['bended'][j]['y']
+
           var [circle_n_x, circle_n_y] = transform(bend_n_x, bend_n_y, node_distance_y, radius, theta);
 
-          circle_svg += 'L ' + circle_n_x + ' ' + circle_n_y
-
+          circle_svg += 'A ' + (bend_old_y * node_distance_y + radius)  + ' ' + (bend_n_y * node_distance_y + radius) + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+          bend_old_y = bend_n_y
         }
 
-        circle_svg += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
+        circle_svg += 'A ' + (bend_old_y * node_distance_y + radius)  + ' ' + (nodes[target]['position']['y'] * node_distance_y + radius) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
 
         svg.append(
           $(circle_svg)
@@ -849,10 +851,10 @@ async function generate_svg(body, data) {
     var right_pos_x = right_node['position']['x']
     var right_pos_y = right_node['position']['y']
 
-    var [circle_t_x, circle_t_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius + 10, theta);
-    var [circle_u_x, circle_u_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius - 10, theta);
-    var [circle_v_x, circle_v_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius + 10, theta);
-    var [circle_w_x, circle_w_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius - 10, theta);
+    var [circle_t_x, circle_t_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius + node_size, theta);
+    var [circle_u_x, circle_u_y] = transform(left_pos_x, left_pos_y, node_distance_y, radius - node_size, theta);
+    var [circle_v_x, circle_v_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius + node_size, theta);
+    var [circle_w_x, circle_w_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius - node_size, theta);
 
     if (right_pos_x - left_pos_x >= global_x * 0.5) {
       var arc_flag = 1
@@ -863,9 +865,9 @@ async function generate_svg(body, data) {
     svg.append(
       $('<path class="group" id="' + l + '" d="' +
       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
-      'A ' + (left_pos_y * node_distance_y + radius + 10)  + ' ' + (right_pos_y * node_distance_y + radius + 10) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
+      'A ' + (left_pos_y * node_distance_y + radius + node_size)  + ' ' + (right_pos_y * node_distance_y + radius + node_size) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
-      'A ' + (right_pos_y * node_distance_y + radius - 10) + ' ' + (left_pos_y * node_distance_y + radius - 10) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
+      'A ' + (right_pos_y * node_distance_y + radius - node_size) + ' ' + (left_pos_y * node_distance_y + radius - node_size) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
       '" fill="' + lighter_color('#ffffff', group_color, genome / genome_size) + '" stroke="' + draw + '" stroke-width="2"/>')
     )
@@ -913,9 +915,9 @@ async function generate_svg(body, data) {
     svg.append(
       $('<path class="entropy" xpos="' + key + '" name="' + (mean_entropy[key] / max).toFixed(3) + '" d="' +
       'M ' + a_x + ' ' + a_y + ' ' +
-      'A ' + (radius - 2)  + ' ' + (radius - 2) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+      'A ' + (radius - 2 * node_distance_y)  + ' ' + (radius - 2 * node_distance_y) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
       'L' + d_x + ' ' + d_y +  ' ' +
-      'A ' + (radius - 14)  + ' ' + (radius - 14) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+      'A ' + (radius - 14 * node_distance_y)  + ' ' + (radius - 14 * node_distance_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
       'L' + a_x + ' ' + a_y +
       '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
     )
@@ -928,9 +930,9 @@ async function generate_svg(body, data) {
     svg.append(
       $('<path class="marker" id="' + key + '" d="' +
       'M ' + e_x + ' ' + e_y + ' ' +
-      'A ' + (radius - 25)  + ' ' + (radius - 25) + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
+      'A ' + (radius - 25 * node_distance_y)  + ' ' + (radius - 25 * node_distance_y) + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
       'L' + h_x + ' ' + h_y +  ' ' +
-      'A ' + (radius - 40)  + ' ' + (radius - 40) + ' 0 0 1 ' + g_x + ' ' + g_y + ' ' +
+      'A ' + (radius - 40 * node_distance_y)  + ' ' + (radius - 40 * node_distance_y) + ' 0 0 1 ' + g_x + ' ' + g_y + ' ' +
       'L' + e_x + ' ' + e_y +
       '" fill="white" stroke="" stroke-width="2"/>')
     )
