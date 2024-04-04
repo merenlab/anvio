@@ -660,7 +660,7 @@ async function generate_svg(body, data) {
 
   var arrow_start = 0
   var arrow_stop = global_x
-  var pointer_length = 2
+  var pointer_length = global_x / 50
   var pointer_height = 4
   var arow_thickness = 2
   var arrow_y_offset = 21
@@ -736,11 +736,15 @@ async function generate_svg(body, data) {
 
       if (edge['bended'] == ""){
 
+        var left_pos_y = nodes[source]['position']['x']
+        var right_pos_y = nodes[source]['position']['y']
+
         var [circle_i_x, circle_i_y] = transform(nodes[source]['position']['x'], nodes[source]['position']['y'], node_distance_y, radius, theta);
         var [circle_j_x, circle_j_y] = transform(nodes[target]['position']['x'], nodes[target]['position']['y'], node_distance_y, radius, theta);
 
         svg.append(
-          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
+          // $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
+          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + (left_pos_y * node_distance_y + radius)  + ' ' + (right_pos_y * node_distance_y + radius) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
         )
 
       } else {
@@ -850,13 +854,19 @@ async function generate_svg(body, data) {
     var [circle_v_x, circle_v_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius + 10, theta);
     var [circle_w_x, circle_w_y] = transform(right_pos_x, right_pos_y, node_distance_y, radius - 10, theta);
 
+    if (right_pos_x - left_pos_x >= global_x * 0.5) {
+      var arc_flag = 1
+    } else {
+      var arc_flag = 0
+    }
+
     svg.append(
       $('<path class="group" id="' + l + '" d="' +
       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
-      'A ' + (left_pos_y * node_distance_y + radius + 10)  + ' ' + (right_pos_y * node_distance_y + radius + 10) + ' 0 0 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
-      'A 10 10 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
-      'A ' + (right_pos_y * node_distance_y + radius - 10) + ' ' + (left_pos_y * node_distance_y + radius - 10) + ' 0 0 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
-      'A 10 10 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
+      'A ' + (left_pos_y * node_distance_y + radius + 10)  + ' ' + (right_pos_y * node_distance_y + radius + 10) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
+      'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
+      'A ' + (right_pos_y * node_distance_y + radius - 10) + ' ' + (left_pos_y * node_distance_y + radius - 10) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
+      'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
       '" fill="' + lighter_color('#ffffff', group_color, genome / genome_size) + '" stroke="' + draw + '" stroke-width="2"/>')
     )
   };
