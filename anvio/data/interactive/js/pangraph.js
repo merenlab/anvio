@@ -633,6 +633,8 @@ async function generate_svg(body, data) {
 
   var node_size = parseInt($('#size')[0].value);
   var node_thickness = parseInt($('#circ')[0].value);
+  var edge_thickness = parseInt($('#edge')[0].value);
+
   var node_distance_x = parseInt($('#distx')[0].value) + node_size + node_thickness;
   var node_distance_y = parseInt($('#disty')[0].value) + node_size;
   var global_x = data["infos"]["meta"]["global_x"] -1;
@@ -851,7 +853,7 @@ async function generate_svg(body, data) {
       if (edge['bended'] == ""){
 
         svg.append(
-          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + ((i_y + graph_start) * node_distance_y)  + ' ' + ((j_y + graph_start) * node_distance_y) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>')
+          $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + ((i_y + graph_start) * node_distance_y)  + ' ' + ((j_y + graph_start) * node_distance_y) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>')
         )
 
       } else {
@@ -870,7 +872,7 @@ async function generate_svg(body, data) {
           var o_y = n_y
         }
 
-        bended_edge += 'A ' + ((o_y + graph_start) * node_distance_y)  + ' ' + ((j_y + graph_start) * node_distance_y) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="2" fill="none"/>'
+        bended_edge += 'A ' + ((o_y + graph_start) * node_distance_y)  + ' ' + ((j_y + graph_start) * node_distance_y) + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>'
 
         svg.append(
           $(bended_edge)
