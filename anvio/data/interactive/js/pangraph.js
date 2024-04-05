@@ -640,8 +640,6 @@ async function generate_svg(body, data) {
   var global_y = data["infos"]["meta"]["global_y"];
   var group_color = $('#groups')[0].value;
   var node_color = $('#nodes')[0].value;
-
-  var startstop_color = $('#startstop')[0].value;
   var theta = 270 / (global_x)
   
   var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))  
