@@ -555,8 +555,6 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');
                 menu.push('reroot_disabled');
                 menu.push('reroot_default');
-                menu.push('reroot_with_internal_node');
-                menu.push('reroot_with_support_values');
             }
         }
 
