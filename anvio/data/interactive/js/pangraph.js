@@ -692,10 +692,14 @@ async function generate_svg(body, data) {
 
   // var arrow_start = 0
   // var arrow_stop = global_x
-  var pointer_length = global_x / 50
+  var pointer_length = 5/ theta
   var pointer_height = arrow_stop - arrow_start
   var arrow_thickness = pointer_height / 4
-  var steps = 10
+  var steps = Math.round((30 / theta))
+
+  if (steps < 1) {
+    steps = 1
+  }
 
   var [circle_c_x, circle_c_y] = transform(global_x - pointer_length, (arrow_start + arrow_thickness) * node_distance_y, theta)
   var [circle_a_x, circle_a_y] = transform(0, (arrow_start + arrow_thickness) * node_distance_y, theta)
