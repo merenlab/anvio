@@ -196,7 +196,6 @@ class BottleApplication(Bottle):
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
         self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
-        self.route('/pangraph/get_summary',                    callback=self.get_pangraph_summary_data, method="POST")
         self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
 
     def run_application(self, ip, port):
@@ -1498,12 +1497,6 @@ class BottleApplication(Bottle):
         # return self.interactive.pan_graph_json()
 
         return self.interactive.get_pangraph_json()
-    
-    def get_pangraph_summary_data(self):
-
-        # return self.interactive.pan_graph_json()
-
-        return self.interactive.get_pangraph_summary()
 
     def get_pangraph_settings(self):
         

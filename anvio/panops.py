@@ -1066,11 +1066,12 @@ class Pangraph():
         # data storage related variables
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
-        self.summary_output_file_path = A('output_summary')
-
+        
         # learn what gene annotation sources are present across all genomes
+
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
 
+        self.data_table_dict = {}
         self.priority_genome = ''
 
         # this is the dictionary that wil keep all data that is going to be loaded
@@ -1101,6 +1102,8 @@ class Pangraph():
         self.x_list = {}
         self.path = {}
         self.edges = []
+
+        self.layers = []
 
 
     def sanity_check(self):
@@ -2083,7 +2086,6 @@ class Pangraph():
 
     def generate_data_table(self):
 
-        data_table_dict = {}
         global_entropy = 0
 
         for x in range(0, self.global_x+1):
@@ -2100,7 +2102,7 @@ class Pangraph():
             for gene_cluster in generation:
                 node = self.ancest.nodes()[gene_cluster]
 
-                name = node['name']
+                # name = node['name']
                 num = len(node['genome'].keys())
                 y = node['pos'][1]
 
@@ -2117,7 +2119,7 @@ class Pangraph():
                     if info['direction'] == 'r':
                         num_dir_r += 1
 
-                data_table_dict[gene_cluster] = {
+                self.data_table_dict[gene_cluster] = {
                     'paralogs': {
                         'value': max(max_paralog_list),
                         'type': 'heatmap'
@@ -2132,14 +2134,9 @@ class Pangraph():
                     }
                 }
 
-            # global_entropy += H
+                self.layers = ['paralogs', 'direction', 'entropie']
 
-        if self.summary_output_file_path:
-            with open(self.summary_output_file_path, 'w') as output:
-                output.write(json.dumps(data_table_dict, indent=2))
-            self.run.info("Summary output file", os.path.abspath(self.summary_output_file_path))
-        else:
-            self.run.info("Summary output file", "Skipped (but OK)", mc='red')
+            # global_entropy += H
 
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
@@ -2173,27 +2170,43 @@ class Pangraph():
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
-        jsondata["infos"] = {'meta': {'version': anvio.__pangraph__version__,
-                                      'global_x': self.global_x,
-                                      'global_y': self.global_y},
-                             'genomes': self.genome_coloring,
-                             'functional_annotation_sources_available': self.functional_annotation_sources_available,
-                             'num_genomes': len(self.genome_coloring),
-                             'max_edge_length_filter': self.max_edge_length_filter,
-                             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
-                             'original': {'nodes': len(self.pangenome_graph.nodes()),
-                                          'edges': len(self.pangenome_graph.edges()),
-                                          'instances': instances_pangenome_graph},
-                             'visualization': {'nodes': len(self.ancest.nodes()),
-                                               'edges': len(self.ancest.edges()),
-                                               'instances': instances_ancest_graph},
-                             'data': list(self.ancest.graph.items()),
-                             'directed': self.ancest.is_directed(),
-                             'groups': self.grouping}
+        jsondata["infos"] = {
+            'meta': {
+                'version': anvio.__pangraph__version__,
+                'global_x': self.global_x,
+                'global_y': self.global_y
+            },
+            'genomes': self.genome_coloring,
+            'functional_annotation_sources_available': self.functional_annotation_sources_available,
+            'num_genomes': len(self.genome_coloring),
+            'max_edge_length_filter': self.max_edge_length_filter,
+            'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
+            'original': {
+                'nodes': len(self.pangenome_graph.nodes()),
+                'edges': len(self.pangenome_graph.edges()),
+                'instances': instances_pangenome_graph
+            },
+            'final': {
+                'nodes': len(self.ancest.nodes()),
+                'edges': len(self.ancest.edges()),
+                'instances': instances_ancest_graph
+            },
+            'data': list(self.ancest.graph.items()),
+            'directed': self.ancest.is_directed(),
+            'groups': self.grouping,
+            'grouped': {
+                'nodes': len(self.ancest.nodes()),
+                'edges': len(self.ancest.edges())
+            },
+            'layers_data': self.data_table_dict,
+            'layers_names': self.layers
 
-        jsondata['infos']['grouped'] = {'nodes': len(self.ancest.nodes()), 'edges': len(self.ancest.edges())}
+        }
 
-        jsondata["elements"] = {"nodes": {}, "edges": {}}
+        jsondata['elements'] = {
+            'nodes': {}, 
+            'edges': {}
+        }
 
         for i, j in self.ancest.nodes(data=True):
             # if i != 'start' and i != 'stop':

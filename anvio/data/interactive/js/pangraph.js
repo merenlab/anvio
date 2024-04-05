@@ -645,27 +645,44 @@ async function generate_svg(body, data) {
   var theta = 270 / (global_x)
   
   var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))  
-  var start_offset = 200
+  var start_offset = 0
   
-  var arrow_width = 50
+  // Link to Frontend
   var marker_width = 200
-  var entropie_width = 200
+  var marker_start = start_offset / node_distance_y
+  var marker_stop = marker_start + marker_width / node_distance_y
 
-  var sum_layer = arrow_width + marker_width + entropie_width
-
-  var arrow_start = start_offset / node_distance_y
+  // Link to Frontend
+  var arrow_width = 50
+  var arrow_start = marker_stop
   var arrow_stop = arrow_start + arrow_width / node_distance_y
 
-  var marker_start = arrow_stop
-  var marker_stop = marker_start + marker_width / node_distance_y
-  
-  var entropie_start = marker_stop
-  var entropie_stop = entropie_start + entropie_width / node_distance_y
+  var sum_layer = arrow_width + marker_width
+  var current_stop = arrow_stop
 
-  console.log(arrow_start, arrow_stop, marker_start, marker_stop, entropie_start, entropie_stop)
+  var layers = data['infos']['layers_names']
+  var layers_sizes = new Object();
 
-  if (radius < sum_layer + start_offset + node_size + node_thickness / 2) {
-    radius = sum_layer + start_offset + node_size + node_thickness / 2
+  for (var layer in layers) {
+    
+    // Link to Frontend
+    var layer_width = 50
+    var layer_start = current_stop
+    var layer_stop = layer_start + layer_width / node_distance_y
+
+    current_stop = layer_stop
+    sum_layer += layer_width
+
+    var layer_name = data['infos']['layers_names'][layer]
+    layers_sizes[layer_name] = [layer_width, layer_start, layer_stop]
+
+  }
+
+  // console.log(arrow_start, arrow_stop, marker_start, marker_stop, entropie_start, entropie_stop)
+  console.log(layers_sizes)
+
+  if (radius < sum_layer + start_offset + node_distance_y) {
+    radius = sum_layer + start_offset + node_distance_y
   }
 
   graph_start = radius / node_distance_y
@@ -675,31 +692,42 @@ async function generate_svg(body, data) {
 
   // var arrow_start = 0
   // var arrow_stop = global_x
-  var pointer_length = global_x / 100
+  var pointer_length = global_x / 50
   var pointer_height = arrow_stop - arrow_start
   var arrow_thickness = pointer_height / 4
   var steps = 10
 
-  var [circle_c_x, circle_c_y] = transform(global_x - pointer_length - 1, (arrow_start + arrow_thickness) * node_distance_y, theta)
+  var [circle_c_x, circle_c_y] = transform(global_x - pointer_length, (arrow_start + arrow_thickness) * node_distance_y, theta)
   var [circle_a_x, circle_a_y] = transform(0, (arrow_start + arrow_thickness) * node_distance_y, theta)
   var [circle_b_x, circle_b_y] = transform(0, (arrow_stop - arrow_thickness) * node_distance_y, theta)
-  var [circle_d_x, circle_d_y] = transform(global_x - pointer_length - 1, (arrow_stop - arrow_thickness) * node_distance_y, theta)
-  var [circle_f_x, circle_f_y] = transform(global_x - pointer_length - 1, (arrow_stop) * node_distance_y, theta)
-  var [circle_g_x, circle_g_y] = transform(global_x - 1, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
-  var [circle_e_x, circle_e_y] = transform(global_x - pointer_length - 1, (arrow_start) * node_distance_y, theta)
+  var [circle_d_x, circle_d_y] = transform(global_x - pointer_length, (arrow_stop - arrow_thickness) * node_distance_y, theta)
+  var [circle_f_x, circle_f_y] = transform(global_x - pointer_length, (arrow_stop) * node_distance_y, theta)
+  var [circle_g_x, circle_g_y] = transform(global_x, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
+  var [circle_e_x, circle_e_y] = transform(global_x - pointer_length, (arrow_start) * node_distance_y, theta)
+
+  if ((global_x) * theta >= 180) {
+    var arc_flag = 1
+  } else {
+    var arc_flag = 0
+  }
 
   svg.append(
     $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
-    ' A ' + ((arrow_start + arrow_thickness) * node_distance_y) + ' ' + ((arrow_start + arrow_thickness) * node_distance_y) + ' 0 1 1 ' + circle_a_x + ' ' + circle_a_y +
+    ' A ' + ((arrow_start + arrow_thickness) * node_distance_y) + ' ' + ((arrow_start + arrow_thickness) * node_distance_y) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
     ' L ' + circle_b_x + ' ' + circle_b_y +
-    ' A ' + ((arrow_stop - arrow_thickness) * node_distance_y) + ' ' + ((arrow_stop - arrow_thickness) * node_distance_y) + ' 0 1 0 ' + circle_d_x + ' ' + circle_d_y +
+    ' A ' + ((arrow_stop - arrow_thickness) * node_distance_y) + ' ' + ((arrow_stop - arrow_thickness) * node_distance_y) + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
     ' L ' + circle_f_x + ' ' + circle_f_y +
     ' L ' + circle_g_x + ' ' + circle_g_y +
     ' L ' + circle_e_x + ' ' + circle_e_y + 
     ' Z" stroke-width="0" fill="slateGrey"></path>')
   )
 
-  var l = 11
+  var [circle_h_x, circle_h_y] = transform(0, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
+  svg.append(
+    $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-family="sans-serif" fill="black">orientation</text>')
+  )
+
+  var l = 1
   while (l < global_x) {
 
     if (l+steps <= global_x){
@@ -707,8 +735,8 @@ async function generate_svg(body, data) {
     } else {
       var k = steps - ((l+steps) - global_x);
     }
-    var [circle_l_x, circle_l_y] = transform(l, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
-    var rotate = theta * l
+    var [circle_l_x, circle_l_y] = transform(l-0.5, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
+    var rotate = theta * (l-0.5)
     if (rotate >= 90 && rotate <= 180) {
       rotate += 180;
     } else if (rotate >= 180 && rotate <= 270) {
@@ -720,6 +748,71 @@ async function generate_svg(body, data) {
     l += k
   };
 
+  var heatmap_max = 1
+  for (var key = 0; key < global_x; key++ ) {
+
+    // if (key == 1) {
+    //   var add_start = 0
+    //   var add_stop = 0.5
+    // } else if (key == global_x-1) {
+    //   var add_start = 0.5
+    //   var add_stop = 0
+    // } else {
+    //   var add_start = 0.5
+    //   var add_stop = 0.5
+    // }
+
+    var add_start = 0
+    var add_stop = 1
+
+    var [e_x, e_y] = transform(parseInt(key)-add_start, (marker_start * node_distance_y), theta)
+    var [f_x, f_y] = transform(parseInt(key)+add_stop, (marker_start * node_distance_y), theta)
+    var [g_x, g_y] = transform(parseInt(key)-add_start, (marker_stop * node_distance_y), theta)
+    var [h_x, h_y] = transform(parseInt(key)+add_stop, (marker_stop * node_distance_y), theta)
+
+    svg.append(
+      $('<path class="marker" id="' + key + '" d="' +
+      'M ' + e_x + ' ' + e_y + ' ' +
+      'A ' + (marker_start * node_distance_y)  + ' ' + (marker_start * node_distance_y) + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
+      'L' + h_x + ' ' + h_y +  ' ' +
+      'A ' + (marker_stop * node_distance_y)  + ' ' + (marker_stop * node_distance_y) + ' 0 0 1 ' + g_x + ' ' + g_y + ' ' +
+      'L' + e_x + ' ' + e_y +
+      '" fill="white" stroke="" stroke-width="0"/>')
+    )
+
+    for (var layer in layers) {
+
+      var layer_name = data['infos']['layers_names'][layer]
+      var [layer_width, layer_start, layer_stop] = layers_sizes[layer_name]
+      
+      console.log(layer_name, layer_width, layer_start, layer_stop)
+      // console.log(layer_name, ll)
+
+      var [a_x, a_y] = transform(parseInt(key)-add_start, (layer_start * node_distance_y), theta)
+      var [b_x, b_y] = transform(parseInt(key)+add_stop, (layer_start * node_distance_y), theta)
+      var [c_x, c_y] = transform(parseInt(key)-add_start, (layer_stop * node_distance_y), theta)
+      var [d_x, d_y] = transform(parseInt(key)+add_stop, (layer_stop * node_distance_y), theta)
+
+      svg.append(
+        // $('<path class="entropy" xpos="' + key + '" name="' + (mean_entropy[key] / max).toFixed(3) + '" d="' +
+        $('<path class="' + layer_name + '" xpos="' + key + '" name="' + (0 / heatmap_max).toFixed(3) + '" d="' +
+        'M ' + a_x + ' ' + a_y + ' ' +
+        'A ' + (layer_start * node_distance_y)  + ' ' + (layer_start * node_distance_y) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+        'L' + d_x + ' ' + d_y +  ' ' +
+        'A ' + (layer_stop * node_distance_y)  + ' ' + (layer_stop * node_distance_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+        'L' + a_x + ' ' + a_y +
+        // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
+        '" fill="' + lighter_color('#00ff00', '#ff0000', 0 / heatmap_max) + '" stroke="" stroke-width="0"/>')
+      )
+
+      var [circle_h_x, circle_h_y] = transform(0, (layer_start + (layer_stop-layer_start)/2) * node_distance_y, theta)
+      svg.append(
+        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+      )
+    }
+
+  };
+  
   var groups = data['infos']['groups']
   var edges = data['elements']['edges']
   var nodes = data['elements']['nodes']
@@ -754,8 +847,8 @@ async function generate_svg(body, data) {
       var j_x = nodes[target]['position']['x']
       var j_y = nodes[target]['position']['y']
 
-      var [circle_i_x, circle_i_y] = transform(i_x, (i_y + graph_start) * node_distance_y, theta);
-      var [circle_j_x, circle_j_y] = transform(j_x, (j_y + graph_start) * node_distance_y, theta);
+      var [circle_i_x, circle_i_y] = transform(i_x-0.5, (i_y + graph_start) * node_distance_y, theta);
+      var [circle_j_x, circle_j_y] = transform(j_x-0.5, (j_y + graph_start) * node_distance_y, theta);
 
       if (edge['bended'] == ""){
 
@@ -773,7 +866,7 @@ async function generate_svg(body, data) {
           var n_x = edge['bended'][n]['x']
           var n_y = edge['bended'][n]['y']
 
-          var [circle_n_x, circle_n_y] = transform(n_x, (n_y + graph_start) * node_distance_y, theta);
+          var [circle_n_x, circle_n_y] = transform(n_x-0.5, (n_y + graph_start) * node_distance_y, theta);
 
           bended_edge += 'A ' + ((o_y + graph_start) * node_distance_y)  + ' ' + ((n_y + graph_start) * node_distance_y) + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
           var o_y = n_y
@@ -829,7 +922,7 @@ async function generate_svg(body, data) {
         var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
       }
 
-      var [circle_k_x, circle_k_y] = transform(k_x, (k_y + graph_start) * node_distance_y, theta);
+      var [circle_k_x, circle_k_y] = transform(k_x-0.5, (k_y + graph_start) * node_distance_y, theta);
 
       if (k ==  'stop' || k == 'start'){
         svg.append(
@@ -870,12 +963,12 @@ async function generate_svg(body, data) {
 
     var group_offset = node_size / node_distance_y
 
-    var [circle_t_x, circle_t_y] = transform(l_x, (l_y + graph_start + group_offset) * node_distance_y, theta);
-    var [circle_u_x, circle_u_y] = transform(l_x, (l_y + graph_start - group_offset) * node_distance_y, theta);
-    var [circle_v_x, circle_v_y] = transform(m_x, (m_y + graph_start + group_offset) * node_distance_y, theta);
-    var [circle_w_x, circle_w_y] = transform(m_x, (m_y + graph_start - group_offset) * node_distance_y, theta);
+    var [circle_t_x, circle_t_y] = transform(l_x-0.5, (l_y + graph_start + group_offset) * node_distance_y, theta);
+    var [circle_u_x, circle_u_y] = transform(l_x-0.5, (l_y + graph_start - group_offset) * node_distance_y, theta);
+    var [circle_v_x, circle_v_y] = transform(m_x-0.5, (m_y + graph_start + group_offset) * node_distance_y, theta);
+    var [circle_w_x, circle_w_y] = transform(m_x-0.5, (m_y + graph_start - group_offset) * node_distance_y, theta);
 
-    if (m_x - l_x >= global_x-1 * 0.5) {
+    if ((m_x - l_x) * theta >= 180) {
       var arc_flag = 1
     } else {
       var arc_flag = 0
@@ -890,99 +983,6 @@ async function generate_svg(body, data) {
       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
       '" fill="' + lighter_color('#ffffff', group_color, genome / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
     )
-  };
-
-  // var entropy = {}
-  // for (var position of Object.keys(shannon)) {
-
-  //   var res = 0
-  //   var sum = Object.values(shannon[position]).reduce((partialSum, a) => partialSum + a, 0);
-  //   for (var genome of Object.keys(shannon[position])) {
-  //       var ref_freq = shannon[position][genome] / sum
-
-  //       res += -(ref_freq * Math.log2(ref_freq))
-  //   }
-
-  //   entropy[position] = res
-  // }
-
-  // var window = 2
-  // var mean_entropy = {}
-  // for (let i = 0; i < Object.keys(entropy).length; i += 1) {
-  //   if (i in entropy){
-  //     var values = []
-  //     values.push(entropy[i])
-
-  //     for (let j = 1; j <= window; j += 1) {
-  //       if (i-j in entropy) {values.push(entropy[i-j])}
-  //       if (i+j in entropy) {values.push(entropy[i+j])}
-  //     }
-
-  //     mean_entropy[i] = values.reduce((partialSum, a) => partialSum + a, 0) / values.length
-  //   }
-  // }
-
-  // var max = Math.max(...Object.values(mean_entropy))
-  var max = 1
-  for (var key = 1; key < global_x; key++ ) {
-
-    // if (key == 1) {
-    //   var add_start = 0
-    //   var add_stop = 0.5
-    // } else if (key == global_x-1) {
-    //   var add_start = 0.5
-    //   var add_stop = 0
-    // } else {
-    //   var add_start = 0.5
-    //   var add_stop = 0.5
-    // }
-
-    var add_start = 0.5
-    var add_stop = 0.5
-
-    var [a_x, a_y] = transform(parseInt(key)-add_start, (entropie_start * node_distance_y), theta)
-    var [b_x, b_y] = transform(parseInt(key)+add_stop, (entropie_start * node_distance_y), theta)
-    var [c_x, c_y] = transform(parseInt(key)-add_start, (entropie_stop * node_distance_y), theta)
-    var [d_x, d_y] = transform(parseInt(key)+add_stop, (entropie_stop * node_distance_y), theta)
-
-    svg.append(
-      // $('<path class="entropy" xpos="' + key + '" name="' + (mean_entropy[key] / max).toFixed(3) + '" d="' +
-      $('<path class="entropy" xpos="' + key + '" name="' + (0 / max).toFixed(3) + '" d="' +
-      'M ' + a_x + ' ' + a_y + ' ' +
-      'A ' + (entropie_start * node_distance_y)  + ' ' + (entropie_start * node_distance_y) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
-      'L' + d_x + ' ' + d_y +  ' ' +
-      'A ' + (entropie_stop * node_distance_y)  + ' ' + (entropie_stop * node_distance_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
-      'L' + a_x + ' ' + a_y +
-      // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-      '" fill="' + lighter_color('#00ff00', '#ff0000', 0 / max) + '" stroke="" stroke-width="0"/>')
-    )
-
-    var [e_x, e_y] = transform(parseInt(key)-add_start, (marker_start * node_distance_y), theta)
-    var [f_x, f_y] = transform(parseInt(key)+add_stop, (marker_start * node_distance_y), theta)
-    var [g_x, g_y] = transform(parseInt(key)-add_start, (marker_stop * node_distance_y), theta)
-    var [h_x, h_y] = transform(parseInt(key)+add_stop, (marker_stop * node_distance_y), theta)
-
-    svg.append(
-      $('<path class="marker" id="' + key + '" d="' +
-      'M ' + e_x + ' ' + e_y + ' ' +
-      'A ' + (marker_start * node_distance_y)  + ' ' + (marker_start * node_distance_y) + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
-      'L' + h_x + ' ' + h_y +  ' ' +
-      'A ' + (marker_stop * node_distance_y)  + ' ' + (marker_stop * node_distance_y) + ' 0 0 1 ' + g_x + ' ' + g_y + ' ' +
-      'L' + e_x + ' ' + e_y +
-      '" fill="white" stroke="" stroke-width="0"/>')
-    )
-
-    $.ajax({
-      url: "/pangraph/get_summary",
-      type: "POST",
-      cache: false,
-      contentType: "application/json",
-      dataType: "json",
-      success: function(summary){
-        console.log(summary)
-      }
-    })
-
   };
 
   body.append(svg)
@@ -2038,7 +2038,7 @@ function main () {
 //ANCHOR - Main function after loading DOM
 $(document).ready(function() {
 
-  console.log('start pangrah layout creation!')
+  // console.log('start pangrah layout creation!')
   main()
 
 });
