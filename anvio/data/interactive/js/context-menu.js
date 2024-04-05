@@ -232,6 +232,29 @@ ContextMenu = function(options) {
         'reroot_disabled': {
             'title': 'Reroot the tree/dendogram here'
         },
+        'reroot_default': {
+            'title': 'Reroot (default)',
+            'action': (node, layer, param) => {
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': clusteringData,
+                        'left_most': left_most.label,
+                        'right_most': right_most.label
+                    },
+                    success: function(data) {
+                        collapsedNodes = [];
+                        clusteringData = data['newick'];
+                        $('#tree_modified_warning').show();
+                        drawTree();
+                    }
+                });
+            }
+        },
         'reroot_with_internal_node': {
             'title': 'Tree has internal node names',
             'action': (node, layer, param) => {
@@ -510,6 +533,7 @@ ContextMenu.prototype.BuildMenu = function() {
 
             else if (mode == 'manual'){
                 menu.push('reroot_disabled');
+                menu.push('reroot_default');
                 menu.push('reroot_with_internal_node');
                 menu.push('reroot_with_support_values');
             }
@@ -530,6 +554,7 @@ ContextMenu.prototype.BuildMenu = function() {
 
                 menu.push('divider');
                 menu.push('reroot_disabled');
+                menu.push('reroot_default');
                 menu.push('reroot_with_internal_node');
                 menu.push('reroot_with_support_values');
             }
