@@ -21,7 +21,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.diamond import Diamond
-from anvio.genomedescriptions import MetagenomeDescriptions
+from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
 
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
