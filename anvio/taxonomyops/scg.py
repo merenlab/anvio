@@ -682,7 +682,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                     coverages_list = list(d[item]['coverages'].items())
 
                     if len(coverages_list) > 1:
-                        raise ConfigError("The codebase is not ready to handle this :(")
+                        raise ConfigError("We found more than one coverage value per SCG, which means you gave anvi'o a merged profile "
+                        "database (containing multiple samples) associated with your contigs database. The codebase is not ready to "
+                        "handle this :(  You need to provide single profiles instead of merged ones.")
 
                     d[item]['coverage'] = coverages_list[0][1]
                     d[item].pop('coverages')
