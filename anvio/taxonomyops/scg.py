@@ -898,6 +898,25 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
+    
+    def store_scg_taxonomy_super_dict_multi_output_file(self, scg_taxonomy_super_dict_multi):
+        """Generates an output just like TaxonomyEstimatorSingle.store_items_taxonomy_super_dict(), but for multiple inputs."""
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+        headers = ['name', 'total_scgs', 'supporting_scgs']
+        headers += self.ctx.levels_of_taxonomy
+
+        with open(self.output_file_path, 'w') as output:
+            output.write('\t'.join(headers) + '\n')
+            for metagenome in d:
+                for name in d[metagenome]:
+                    # should be only one element in the innermost dictionary
+                    line = [name] + [d[metagenome][name][h] for h in headers[1:]]
+
+                    output.write('\t'.join([str(f) for f in line]) + '\n')
+
+        self.run.info("Output file", self.output_file_path, nl_before=1)
+
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
