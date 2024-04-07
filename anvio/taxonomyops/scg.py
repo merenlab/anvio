@@ -491,7 +491,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
 
-        self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+        if self.output_file_path:
+            self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
+        if self.output_file_prefix:
+            self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
     def estimate_for_metagenomes(self):
@@ -529,7 +532,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if self.sequences_file_path_prefix:
             self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
 
-        self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+        if self.output_file_path:
+            self.store_scg_taxonomy_super_dict_multi_output_file(scg_taxonomy_super_dict_multi)
+        if self.output_file_prefix:
+            self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
     def estimate(self):
