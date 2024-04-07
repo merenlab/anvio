@@ -367,6 +367,56 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         self.profile_dbs_available = False
 
 
+    def init_external_genomes(self):
+        g = GenomeDescriptions(self.args, run=run_quiet, progress=self.progress)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
+
+        # NOTE some enforced flags
+        self.profile_dbs_available = False # we don't load profile dbs for external genomes, so this has to be off
+        if self.metagenome_mode:
+            self.metagenome_mode = False
+
+        genomes_without_scg_taxonomy = [x for x in g.genomes if not g.genomes[x]['scg_taxonomy_was_run']]
+        if genomes_without_scg_taxonomy:
+            n_genomes = len(g.genomes)
+            n_without_tax = len(genomes_without_scg_taxonomy)
+            if n_without_tax == n_genomes:
+                self.progress.end()
+                raise ConfigError(f"Surprise! All of the {n_genomes} genomes had no SCG taxonomy information. You need "
+                                  f"to run `anvi-run-scg-taxonomy` on all of them before you continue.")
+            else:
+                self.progress.end()
+                g_str = ', '.join(genomes_without_scg_taxonomy)
+                raise ConfigError(f"{n_without_tax} of your {n_genomes} genomes has no SCG taxonomy information. Here is the list of "
+                                  f"genomes you need to run `anvi-run-scg-taxonomy` on: '{g_str}'.")
+
+        # check if SCG versions agree with each other and with installed version
+        scg_taxonomy_database_versions_in_genomes = [g.genomes[x]['scg_taxonomy_database_version'] for x in g.genomes]
+        if len(set(scg_taxonomy_database_versions_in_genomes)) > 1:
+            self.progress.reset()
+            self.run.warning("Please note that not all SCG taxonomy database versions across your genomes are identical. "
+                             "This means the program `anvi-run-scg-taxonomy` was run on these database across different versions of "
+                             "the source SCG taxonomy database. This is OK and things will continue to work, but you should consider "
+                             "the fact that taxonomy estimations coming from different versions of the database may not be comparable "
+                             "anymore depending on what has changed between different versions of the database. If your purpose is not "
+                             "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
+                             "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
+                             "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
+                             "version of it). Anvi'o found these versions across your genomes: '%s'." % \
+                                        (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_genomes)))))
+        elif scg_taxonomy_database_versions_in_genomes[0] != self.ctx.scg_taxonomy_database_version:
+            self.progress.reset()
+            self.run.warning("While all of your genomes agree with each other and have the SCG taxonomy database version of %s, "
+                              "this version differs from what is installed on your system, which is %s. If you don't do anything, "
+                              "things will continue to work. But if you would like to get rid of this warning you will need to "
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                                        (scg_taxonomy_database_versions_in_genomes[0], self.ctx.scg_taxonomy_database_version))
+
+        # we keep these attribute names the same as for metagenomes so that we don't have to duplicate every function later
+        self.metagenomes = copy.deepcopy(g.genomes)
+        self.metagenome_names = copy.deepcopy(g.external_genome_names)
+
+
     def init_metagenomes(self):
         self.progress.new("Initializing contigs DBs")
         self.progress.update("...")
