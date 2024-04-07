@@ -471,7 +471,29 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         self.progress.end()
 
 
-    def estimate(self):
+    def estimate_for_genomes(self):
+        if not self.metagenomes:
+            self.init_external_genomes()
+            self.run.info("Num genomes", len(self.metagenome_names))
+
+        self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
+        self.run.info("Output file prefix", self.output_file_prefix)
+        self.run.info("Output in matrix format", self.matrix_format)
+        self.run.info("Output raw data", self.raw_output)
+        self.run.info("SCG coverages will be computed?", self.compute_scg_coverages)
+
+        if self.report_scg_frequencies_path:
+            self.report_scg_frequencies_as_TAB_delimited_file()
+            return
+
+        scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_for_metagenomes()
+
+        if self.sequences_file_path_prefix:
+            self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
+
+        self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+
         if not self.metagenomes:
             self.init_metagenomes()
             self.run.info("Num metagenomes", len(self.metagenome_names))
