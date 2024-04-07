@@ -418,7 +418,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
 
     def init_metagenomes(self):
-        self.progress.new("Initializing contigs DBs")
+        self.progress.new("Initializing contigs DBs for metagenomes")
         self.progress.update("...")
         g = MetagenomeDescriptions(self.args, run=run_quiet, progress=self.progress)
         g.load_metagenome_descriptions(skip_sanity_check=True)
@@ -430,13 +430,16 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         metagenomes_without_scg_taxonomy = [m for m in g.metagenomes if not g.metagenomes[m]['scg_taxonomy_was_run']]
         if metagenomes_without_scg_taxonomy:
-            if len(metagenomes_without_scg_taxonomy) == len(g.metagenomes):
+            n_metagenomes = len(g.metagenomes)
+            n_without_tax = len(metagenomes_without_scg_taxonomy)
+            if n_without_tax == n_metagenomes:
                 self.progress.end()
-                raise ConfigError("Surprise! None of the %d genomes had no SCG taxonomy information." % len(g.metagenomes))
+                raise ConfigError(f"Surprise! None of the {n_metagenomes} metagenomes had SCG taxonomy information.")
             else:
                 self.progress.end()
-                raise ConfigError("%d of your %d genomes has no SCG taxonomy information. Here is the list: '%s'." % \
-                        (len(metagenomes_without_scg_taxonomy), len(g.metagenomes), ', '.join(metagenomes_without_scg_taxonomy)))
+                m_str = ', '.join(metagenomes_without_scg_taxonomy)
+                raise ConfigError(f"{n_without_tax} of your {n_metagenomes} metagenomes has no SCG taxonomy information. "
+                                  f"Here is the list of metagenomes you need to run `anvi-run-scg-taxonomy` on:: '{m_str}'.")
 
         # if we are here, it means SCGs were run for all metagenomes. here we will quickly check if versions agree
         # with each other and with the installed version of SCG taxonomy database
