@@ -477,8 +477,11 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             self.run.info("Num genomes", len(self.metagenome_names))
 
         self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
-        self.run.info("Output file prefix", self.output_file_prefix)
-        self.run.info("Output in matrix format", self.matrix_format)
+        if self.output_file_path:
+            self.run.info("Output file path", self.output_file_path)
+        if self.output_file_prefix:
+            self.run.info("Output file prefix", self.output_file_prefix)
+            self.run.info("Output in matrix format", self.matrix_format)
         self.run.info("Output raw data", self.raw_output)
         self.run.info("SCG coverages will be computed?", self.compute_scg_coverages)
 
@@ -503,8 +506,11 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             self.run.info("Num metagenomes", len(self.metagenome_names))
 
         self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
-        self.run.info("Output file prefix", self.output_file_prefix)
-        self.run.info("Output in matrix format", self.matrix_format)
+        if self.output_file_path:
+            self.run.info("Output file path", self.output_file_path)
+        if self.output_file_prefix:
+            self.run.info("Output file prefix", self.output_file_prefix)
+            self.run.info("Output in matrix format", self.matrix_format)
         self.run.info("Output raw data", self.raw_output)
         self.run.info("SCG coverages will be computed?", self.compute_scg_coverages)
 
