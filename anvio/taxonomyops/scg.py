@@ -283,6 +283,9 @@ class SanityCheck(object):
                 if not self.output_file_prefix and not self.output_file_path:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path or prefix :/")
 
+                if self.output_file_path and not self.output_file_prefix and self.matrix_format:
+                    raise ConfigError("Matrix format output only works if you provide an output file prefix.")
+
                 if self.raw_output and self.matrix_format:
                     raise ConfigError("Please don't request anvi'o to report the output both in raw and matrix format. Anvi'o shall "
                                       "not be confused :(")
