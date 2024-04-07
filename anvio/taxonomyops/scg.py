@@ -1002,8 +1002,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                                      "taxonomy in metagenome mode. So be it. SCG name is set to %s." \
                                         % (self.scg_name_for_metagenome_mode), nl_after=1)
             else:
-                self.run.info_single("Your metagenome file DOES NOT contain profile databases, and you haven't asked anvi'o to "
-                                     "work in `--metagenome-mode`. Your contigs databases will be treated as geomes rather than "
+                self.run.info_single("Your (meta)genome file DOES NOT contain profile databases, and you haven't asked anvi'o to "
+                                     "work in `--metagenome-mode`. Your contigs databases will be treated as genomes rather than "
                                      "metagenomes.", nl_after=1)
 
         self.progress.new("Recovering tax super dict", progress_total_items=len(self.metagenome_names))
