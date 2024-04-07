@@ -532,6 +532,17 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
+    def estimate(self):
+        
+        if self.args.metagenomes:
+            self.estimate_for_metagenomes()
+        elif self.args.external_genomes:
+            self.estimate_for_genomes()
+        else:
+            raise ConfigError("Anvi'o is not sure how things got to this point, but somehow we find ourselves without input for the "
+                              "SCGTaxonomyEstimatorMulti class's estimate() function.")
+
+
     def store_sequences_for_items_multi(self, scg_taxonomy_super_dict_multi):
         """Report sequences for items if possible"""
 
