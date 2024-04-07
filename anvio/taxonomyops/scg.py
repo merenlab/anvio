@@ -494,6 +494,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
+    def estimate_for_metagenomes(self):
         if not self.metagenomes:
             self.init_metagenomes()
             self.run.info("Num metagenomes", len(self.metagenome_names))
