@@ -280,13 +280,8 @@ class SanityCheck(object):
                     raise ConfigError("More than one input file type (external genomes AND metagenomes) has been given to the "
                                       "taxonomy estimation classes. Please run this program with only one input type at a time.")
 
-                if self.output_file_path:
-                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix rather "
-                                      "than an output file path. Anvi'o will use your prefix and will generate many files that start "
-                                      "with that prefix but ends with different names for each taxonomic level.")
-
-                if not self.output_file_prefix:
-                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
+                if not self.output_file_prefix and not self.output_file_path:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path or prefix :/")
 
                 if self.raw_output and self.matrix_format:
                     raise ConfigError("Please don't request anvi'o to report the output both in raw and matrix format. Anvi'o shall "
