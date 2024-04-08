@@ -8,7 +8,6 @@
 
 import os
 import json
-import yaml
 import math
 import copy
 import argparse
@@ -1058,7 +1057,6 @@ class Pangraph():
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
-        self.debug = anvio.DEBUG
 
         if self.testing_yaml:
             self.testing = True
@@ -1067,9 +1065,12 @@ class Pangraph():
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
         
-        # learn what gene annotation sources are present across all genomes
-
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
+        # learn what gene annotation sources are present across all genomes if we
+        # are running things in normal mode
+        if not self.testing:
+            self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
+        else:
+            self.functional_annotation_sources_available = False
 
         self.data_table_dict = {}
         self.priority_genome = ''
@@ -1086,10 +1087,8 @@ class Pangraph():
         self.ancest = nx.DiGraph()
 
         self.fusion_events = 0
-        self.removed_edges = 0
-
-        self.leaf_path = []
         self.grouping = {}
+        self.project_name = ''
 
         self.global_y = 0
         self.global_x = 1
@@ -1130,17 +1129,13 @@ class Pangraph():
         """Primary driver function for the class"""
 
         if self.testing == True:
-
             self.testing_with_yaml()
-
         else:
-
             # sanity check EVERYTHING
             self.sanity_check()
 
             # populate self.gene_synteny_data_dict
             self.get_gene_synteny_data_dict()
-
 
         # contextualize paralogs
         # TODO Incorporate gene direction
@@ -1162,14 +1157,11 @@ class Pangraph():
         self.store_network()
 
     def testing_with_yaml(self):
-        print(self.testing_yaml)
-        with open(self.testing_yaml, 'r') as file:
-            yaml_genomes = yaml.safe_load(file)
+        # print(self.testing_yaml)
+        yaml_genomes = utils.get_yaml_as_dict(self.testing_yaml)
+        self.project_name = 'YAML TEST'
 
-        # print(yaml_genomes)
-        
         for genome in yaml_genomes.keys():
-
             self.gene_synteny_data_dict[genome] = {}
 
             if genome not in self.genome_coloring.keys():
@@ -1184,14 +1176,14 @@ class Pangraph():
                 
                 self.gene_synteny_data_dict[genome][contig] = {}
 
-                for gc in gcs.split(' '):
+                for j, gc in enumerate(gcs.split(' ')):
                     if gc.endswith('!'):
                         gc = gc[:-1]
                         direction = 'f'
                     else:
                         direction = 'r'
 
-                    self.gene_synteny_data_dict[genome][contig][gc] = {
+                    self.gene_synteny_data_dict[genome][contig][j] = {
                         'gene_cluster_name': gc, 
                         'gene_cluster_id': '',
                         'direction': direction,
@@ -1209,6 +1201,8 @@ class Pangraph():
         self.run.warning(None, header="Loading data from database", lc="green")
 
         pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+        self.project_name = pan_db.meta['project_name_str']
 
         pan_db.init_gene_clusters()
         pan_db.init_gene_clusters_functions_summary_dict()
@@ -1395,6 +1389,8 @@ class Pangraph():
         num_calls = 0
         for _, value in self.genome_gc_occurence.items():            
             num_calls += sum(value.values()) 
+
+        print(self.genome_gc_occurence)
 
         if num_calls != syn_calls:
             print("Sanity Error. Code 5.")
@@ -2086,7 +2082,17 @@ class Pangraph():
 
     def generate_data_table(self):
 
-        global_entropy = 0
+        # global_entropy = 0
+        self.layers = ['paralogs', 'direction', 'entropie']
+        self.data_table_dict['paralogs'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+        self.data_table_dict['direction'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+        self.data_table_dict['entropie'] = {'type': 'heatmap',
+                                            'scale': 'global'}
+
+        max_paralogs = 0
+        base = 2
 
         for x in range(0, self.global_x+1):
 
@@ -2095,7 +2101,6 @@ class Pangraph():
             array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
             sum_occurence = np.sum(array_occurence)
 
-            base = 2
             pk = array_occurence / sum_occurence
             H = entropy(pk, base=base)
 
@@ -2104,10 +2109,11 @@ class Pangraph():
 
                 # name = node['name']
                 num = len(node['genome'].keys())
-                y = node['pos'][1]
+                # y = node['pos'][1]
 
                 max_paralog_list = []
                 num_dir_r = 0
+                num_dir_l = 0
 
                 for genome in node['genome'].keys():
                     # for contig in node['genome'][genome].keys():
@@ -2118,23 +2124,18 @@ class Pangraph():
 
                     if info['direction'] == 'r':
                         num_dir_r += 1
+                    else:
+                        num_dir_l += 1
 
-                self.data_table_dict[gene_cluster] = {
-                    'paralogs': {
-                        'value': max(max_paralog_list),
-                        'type': 'heatmap'
-                    },
-                    'direction': {
-                        'value': num_dir_r/num,
-                        'type': 'heatmap'
-                    },
-                    'entropie': {
-                        'value': H,
-                        'type': 'heatmap'
-                    }
-                }
+                max_paralogs = max(max_paralog_list) if max(max_paralog_list) > max_paralogs else max_paralogs
+                
+                self.data_table_dict['paralogs'][gene_cluster] = max(max_paralog_list) - 1
+                self.data_table_dict['direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
+                self.data_table_dict['entropie'][gene_cluster] = H
 
-                self.layers = ['paralogs', 'direction', 'entropie']
+        self.data_table_dict['paralogs']['max'] = max_paralogs - 1
+        self.data_table_dict['direction']['max'] = 0.5
+        self.data_table_dict['entropie']['max'] = 1.0
 
             # global_entropy += H
 
@@ -2170,8 +2171,10 @@ class Pangraph():
         # NOTE: Any change in `jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
+        
         jsondata["infos"] = {
             'meta': {
+                'title': self.project_name,
                 'version': anvio.__pangraph__version__,
                 'global_x': self.global_x,
                 'global_y': self.global_y

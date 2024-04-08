@@ -34,9 +34,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT', "Anvi'o artifacts for the pan graph to be computed.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': True}))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
-    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': True}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
     groupA.add_argument(*anvio.A('testing-yaml'), **anvio.K('testing-yaml'))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
