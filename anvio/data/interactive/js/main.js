@@ -358,7 +358,7 @@ function initData() {
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
-    $('#show_font_size').hide()
+    $('#show-text-option').hide()
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -2841,7 +2841,7 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
         if($('#support_display_number').is(':checked')){
-            $('#show_font_size').show()
+            $('#show-text-option').show()
         }
     }
     if (state.hasOwnProperty('support-font-size')){
