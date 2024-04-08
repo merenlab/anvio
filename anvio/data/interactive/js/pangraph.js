@@ -47,33 +47,35 @@ function modeString(array) {
 //ANCHOR - Fetch GC consensus functions
 function get_gene_cluster_consensus_functions(gene_cluster_data) {
   var d = new Object();
-  for (var source of functional_annotation_sources_available) {
+  if (functional_annotation_sources_available.length > 0) {
+    for (var source of functional_annotation_sources_available) {
 
-    var id = []
-    var func = []
+      var id = []
+      var func = []
 
-    if (gene_cluster_data != '') {
-      for (var element of Object.keys(gene_cluster_data)) {
-        var entry = gene_cluster_data[element][source]
+      if (gene_cluster_data != '') {
+        for (var element of Object.keys(gene_cluster_data)) {
+          var entry = gene_cluster_data[element][source]
 
-        if (entry === 'None' || entry === undefined) {
-          entry = ['-', '-', '-']
+          if (entry === 'None' || entry === undefined) {
+            entry = ['-', '-', '-']
+          }
+
+          id.push(entry[0].split('!!!')[0]);
+          func.push(entry[1].split('!!!')[0]);
         }
 
-        id.push(entry[0].split('!!!')[0]);
-        func.push(entry[1].split('!!!')[0]);
+        var [id_maxEl, id_maxCount] = modeString(id);
+        var [func_maxEl, func_maxCount] = modeString(func);
+      } else {
+
+        var id_maxEl = ''
+        var id_maxCount = ''
+        var func_maxEl = ''
+        var func_maxCount = ''
       }
-
-      var [id_maxEl, id_maxCount] = modeString(id);
-      var [func_maxEl, func_maxCount] = modeString(func);
-    } else {
-
-      var id_maxEl = ''
-      var id_maxCount = ''
-      var func_maxEl = ''
-      var func_maxCount = ''
+      d[source] = [id_maxEl, id_maxCount, func_maxEl, func_maxCount]
     }
-    d[source] = [id_maxEl, id_maxCount, func_maxEl, func_maxCount]
   }
 
   return(d);
