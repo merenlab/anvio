@@ -28,8 +28,8 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('PRIMARY INPUT', "Specify where your pan-db is.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('OPTIONAL INPUT', "By default, this program will read the pan graph data from the pan-db tables. However, "
                                 "you can also provide it with a JSON file that you have generated previously, in which case the program will skip "

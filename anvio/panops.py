@@ -2091,6 +2091,7 @@ class Pangraph():
                                             'scale': 'global'}
 
         max_paralogs = 0
+        max_entropie = 0
         base = 2
 
         for x in range(0, self.global_x+1):
@@ -2101,7 +2102,10 @@ class Pangraph():
             sum_occurence = np.sum(array_occurence)
 
             pk = array_occurence / sum_occurence
+
             H = entropy(pk, base=base)
+
+            max_entropie = H if H > max_entropie else max_entropie
 
             for gene_cluster in generation:
                 node = self.ancest.nodes()[gene_cluster]
@@ -2134,7 +2138,7 @@ class Pangraph():
 
         self.data_table_dict['paralogs']['max'] = max_paralogs - 1
         self.data_table_dict['direction']['max'] = 0.5
-        self.data_table_dict['entropie']['max'] = 1.0
+        self.data_table_dict['entropie']['max'] = max_entropie
 
             # global_entropy += H
 
