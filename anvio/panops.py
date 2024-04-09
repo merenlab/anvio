@@ -1063,6 +1063,7 @@ class Pangraph():
         # data storage related variables
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
+        self.output_yaml = A('output_yaml')
         
         # learn what gene annotation sources are present across all genomes if we
         # are running things in normal mode
@@ -1136,24 +1137,28 @@ class Pangraph():
             # populate self.gene_synteny_data_dict
             self.get_gene_synteny_data_dict()
 
-        # contextualize paralogs
-        # TODO Incorporate gene direction
-        self.run_contextualize_paralogs_algorithm()
+        if self.output_yaml:
+            self.export_gene_synteny_to_yaml(self.output_yaml)
 
-        # build graph
-        self.build_graph()
+        else:
+            # contextualize paralogs
+            # TODO Incorporate gene direction
+            self.run_contextualize_paralogs_algorithm()
 
-        # reconnect open leaves in the graph to generate
-        # a flow network from left to right
-        self.run_tree_to_flow_network_algorithm()
-        
-        # run Alex's layout algorithm
-        self.run_synteny_layout_algorithm()
+            # build graph
+            self.build_graph()
 
-        self.generate_data_table()
+            # reconnect open leaves in the graph to generate
+            # a flow network from left to right
+            self.run_tree_to_flow_network_algorithm()
+            
+            # run Alex's layout algorithm
+            self.run_synteny_layout_algorithm()
 
-        # store network in the database
-        self.store_network()
+            self.generate_data_table()
+
+            # store network in the database
+            self.store_network()
 
     def testing_with_yaml(self):
         # print(self.testing_yaml)
@@ -1178,9 +1183,9 @@ class Pangraph():
                 for j, gc in enumerate(gcs.split(' ')):
                     if gc.endswith('!'):
                         gc = gc[:-1]
-                        direction = 'f'
-                    else:
                         direction = 'r'
+                    else:
+                        direction = 'f'
 
                     self.gene_synteny_data_dict[genome][contig][j] = {
                         'gene_cluster_name': gc, 
@@ -1191,7 +1196,26 @@ class Pangraph():
                         'draw': 'on'
                     }
         
-        print(self.gene_synteny_data_dict)
+        # print(self.gene_synteny_data_dict)
+
+    def export_gene_synteny_to_yaml(self, output_path):
+        gene_synteny_yaml_dict = {}
+        for genome in self.gene_synteny_data_dict.keys():
+            gene_synteny_yaml_dict[genome] = []
+            for contig in self.gene_synteny_data_dict[genome].keys():
+                contig_data = self.gene_synteny_data_dict[genome][contig]
+                
+                contig_string = []
+                
+                for gene_call in contig_data.keys():
+                    if contig_data[gene_call]['direction'] == 'f':
+                        contig_string += [contig_data[gene_call]['gene_cluster_name']]
+                    else:
+                        contig_string += [contig_data[gene_call]['gene_cluster_name'] + '!']
+
+                gene_synteny_yaml_dict[genome] += [' '.join(contig_string)]
+        
+        utils.save_dict_as_yaml(gene_synteny_yaml_dict, output_path)
 
     def get_gene_synteny_data_dict(self):
         """A function to roduce a comprehensive data structure from anvi'o artifacts for

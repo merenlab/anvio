@@ -2081,6 +2081,12 @@ D = {
              'type': str,
              'help': "File path to store results."}
                 ),
+    'output-yaml': (
+            ['--output-yaml'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to store results."}
+                ),
     'log-file': (
             ['--log-file'],
             {'metavar': 'FILE_PATH',
