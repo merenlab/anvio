@@ -2077,7 +2077,7 @@ class Pangraph():
         # self.ancest.remove_nodes_from(['start', 'stop'])
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
-        self.run.info_single(f"Done")
+        self.run.info_single("Done")
 
     def generate_data_table(self):
 
