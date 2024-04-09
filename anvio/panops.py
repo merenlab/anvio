@@ -1201,7 +1201,7 @@ class Pangraph():
 
         pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
-        self.project_name = pan_db.meta['project_name_str']
+        self.project_name = pan_db.p_meta['project_name']
 
         pan_db.init_gene_clusters()
         pan_db.init_gene_clusters_functions_summary_dict()
