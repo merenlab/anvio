@@ -1058,8 +1058,7 @@ class Pangraph():
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
 
-        if self.testing_yaml:
-            self.testing = True
+        self.testing = True if self.testing_yaml else False
 
         # data storage related variables
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
