@@ -1758,7 +1758,7 @@ class BottleApplication(Bottle):
         data["infos"]['meta']['global_y'] = global_y
         data["infos"]['max_edge_length_filter'] = max_edge_length_filter
         data["infos"]['gene_cluster_grouping_threshold'] = gene_cluster_grouping_threshold
-        data["infos"]['visualization']['edges'] = len(ancest.edges())
+        data["infos"]['final']['edges'] = len(ancest.edges())
         data["infos"]['data'] = list(ancest.graph.items())
         data["infos"]['directed'] = ancest.is_directed()
         data["infos"]['groups'] = grouping
@@ -1783,7 +1783,7 @@ class BottleApplication(Bottle):
 
         # TODO IMPORTANT FILE PATH HARDCODED!!!! RESOLVE ASAP
 
-        with open("pangraph.json", 'w') as pangraph_json:
+        with open("pan-graph.json", 'w') as pangraph_json:
             pangraph_json.write(json.dumps(data, indent=2))
 
     def get_pangraph_gc_alignment(self):

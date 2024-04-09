@@ -880,12 +880,12 @@ async function generate_svg(body, data) {
     var edge = data['elements']['edges'][i];
     var genome = Object.keys(edge['genome']).length;
 
-    if ($('#coloredge').prop('checked') == true) {
-      var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
-      var draw = lighter_color('#ffffff', color, genome / genome_size);
-    } else {
-      var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
-    }
+    // if ($('#coloredge').prop('checked') == true) {
+    var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
+    var draw = lighter_color('#ffffff', color, genome / genome_size);
+    // } else {
+    //   var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
+    // }
 
     if (edge['direction'] == 'L') {
       var stroke = ' stroke-dasharray="5,5" '
@@ -988,12 +988,12 @@ async function generate_svg(body, data) {
         var node_class = 'stroke-opacity="0" fill-opacity="0" class="pseudo'
       }
 
-      if ($('#colorgenecluster').prop('checked') == true) {
-        var color = pickcolor (edgecoloring, Object.keys(node['genome']))
-        var draw = lighter_color('#ffffff', color, genome / genome_size);
-      } else {
-        var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
-      }
+      // if ($('#colorgenecluster').prop('checked') == true) {
+      var color = pickcolor (edgecoloring, Object.keys(node['genome']))
+      var draw = lighter_color('#ffffff', color, genome / genome_size);
+      // } else {
+      //   var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
+      // }
 
       var [circle_k_x, circle_k_y] = transform(k_x-0.5, (k_y + graph_start) * node_distance_y + k_y * sum_outer_layer, theta);
 
@@ -1021,12 +1021,12 @@ async function generate_svg(body, data) {
 
     var genome = Object.keys(left_node['genome']).length;
 
-    if ($('#colorgenecluster').prop('checked') == true) {
-      var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
-      var draw = lighter_color('#ffffff', color, genome / genome_size);
-    } else {
-      var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
-    }
+    // if ($('#colorgenecluster').prop('checked') == true) {
+    var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
+    var draw = lighter_color('#ffffff', color, genome / genome_size);
+    // } else {
+    //   var draw = lighter_color('#ffffff', '#000000', genome / genome_size);
+    // }
 
     var l_x = left_node['position']['x']
     var l_y = left_node['position']['y']
