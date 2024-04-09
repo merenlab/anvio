@@ -1783,7 +1783,7 @@ class BottleApplication(Bottle):
 
         # TODO IMPORTANT FILE PATH HARDCODED!!!! RESOLVE ASAP
 
-        with open("pan-graph.json", 'w') as pangraph_json:
+        with open(self.interactive.pan_graph_json_path, 'w') as pangraph_json:
             pangraph_json.write(json.dumps(data, indent=2))
 
     def get_pangraph_gc_alignment(self):
