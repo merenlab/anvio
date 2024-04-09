@@ -1389,7 +1389,7 @@ class Pangraph():
         for _, value in self.genome_gc_occurence.items():            
             num_calls += sum(value.values()) 
 
-        print(self.genome_gc_occurence)
+        # print(self.genome_gc_occurence)
 
         if num_calls != syn_calls:
             print("Sanity Error. Code 5.")
