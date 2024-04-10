@@ -289,6 +289,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         let first_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         let second_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         let maxRadius = supportValueData.maxRadius;
+        let minRadius = supportValueData.minRadius;
         let rangeLow = parseFloat(supportValueData.numberRange[0]);
         let rangeHigh = parseFloat(supportValueData.numberRange[1]);
 
@@ -312,8 +313,14 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
                 supportValueData.invertSymbol ? radius = maxRadius * 0.4 : radius = maxRadius;
             } else if (percentile < 0.67 && percentile > 0.33) {
                 radius = maxRadius * 0.7;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             } else {
                 supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 0.4;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             }
             circle.setAttribute('r', radius);
             circle.setAttribute('fill', supportValueData.symbolColor);

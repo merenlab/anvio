@@ -1602,6 +1602,7 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked')
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
+    state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
@@ -2837,6 +2838,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
+    }
+    if(state.hasOwnProperty('support-min-symbol-size')){
+        $('#support_min_symbol_size').val(state['support-min-symbol-size'])
     }
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
