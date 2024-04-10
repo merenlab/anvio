@@ -1796,4 +1796,6 @@ class BottleApplication(Bottle):
 
             result[genome] = [genecall, sequence]
 
+        print(result)
+
         return(result)

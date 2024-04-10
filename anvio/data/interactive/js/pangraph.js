@@ -166,7 +166,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
 
 
 //ANCHOR - Get tables for GC basic info and functions
-function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data) {
+async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data) {
     // The purpose of this function is to build HTML formatted tables to give access to
     // the details of a gene cluster. The parameters here are,
     //
@@ -211,7 +211,7 @@ function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 
       }
     }
 
-    gene_cluster_sequence_alignments_table = appendalignment(alignment)
+    gene_cluster_sequence_alignments_table = await appendalignment(alignment)
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // MERGE ALL AND RETURN
@@ -410,6 +410,8 @@ async function appendalignment(alignment) {
 
     var d = await fetchalignment(alignment)
 
+    // console.log(d)
+
     for (var [genome, value] of Object.entries(d)) {
       var colored = value[1].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
@@ -420,7 +422,7 @@ async function appendalignment(alignment) {
       alignments_table += `</tr>`
     }
 
-    alignments_table += `</tbody></table>\n\n`;
+    alignments_table += `</tbody></table>\n\n`
 
     // I guess this shouldn't return anything but insert the results into a context?
     // lol sorry if I screwed these thigns up badly :) IDK what I'm doing :p
@@ -506,7 +508,7 @@ function show_node_details_modal(e, data){
 }
 
 // //ANCHOR - Information for the GC
-function nodeinfo(e, data) {
+async function nodeinfo(e, data) {
   var id = e.id;
   var element = document.getElementById(id);
 
@@ -525,13 +527,17 @@ function nodeinfo(e, data) {
   var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
   $('#InfoModalBody').append(bodyinfo)
 
-  bodyinfo.append(get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data))
+  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data)
 
-  $('#AlignmentModalBody').empty()
-  var bodyalign = $('<div class="card-body overflow-scroll"></div>')
-  $('#AlignmentModalBody').append(
-    bodyalign
-  )
+  // console.log(all_info)
+
+  bodyinfo.append(all_info)
+
+  // $('#AlignmentModalBody').empty()
+  // var bodyalign = $('<div class="card-body overflow-scroll"></div>')
+  // $('#AlignmentModalBody').append(
+  //   bodyalign
+  // )
 
   $('#GenomeModalBody').empty()
 
