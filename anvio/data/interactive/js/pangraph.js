@@ -1207,46 +1207,6 @@ function main () {
 
     })
 
-    // //ANCHOR - Change GC in group window
-    // $(document).on("click", ".gcchoice li a", function() {
-
-    //   var id = $(this).attr('name');
-    //   var drop = $('#drop');
-    //   var group = drop.attr('name');
-    //   var name = data['elements']['nodes'][id]['name']
-
-    //   var dropitem = $('#name');
-    //   dropitem[0].name = id;
-    //   dropitem.empty();
-    //   dropitem.append(
-    //     $('<span class="caret"></span>').append(name)
-    //   );
-
-    //   var position = data['elements']['nodes'][id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
-    //   var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + " / " + (data['infos']['num_genomes']);
-    //   var gene_cluster_data = data['elements']['nodes'][id]['genome'];
-
-    //   $('#InfoModalBody').empty();
-    //   var bodyinfo = $('<div class="card-body overflow-scroll"></div>');
-    //   $('#InfoModalBody').append(bodyinfo);
-
-    //   basic_info = {'Name': id, 'Genomes': genomes, 'Position': position};
-    //   bodyinfo.append(get_gene_cluster_display_tables('', basic_info, gene_cluster_data));
-
-    //   var alignment = {}
-
-    //   if (id != 'start' && id != 'stop') {
-    //     for (var genome of Object.keys(data['elements']['nodes'][id]['genome'])) {
-    //       alignment[genome] = [data['elements']['nodes'][id]['genome'][genome]['gene_call'], data['elements']['nodes'][id]['name']];
-    //     }
-    //   }
-
-    //   $('#AlignmentModalBody').empty()
-    //   var bodyalign = $('<div class="card-body overflow-scroll"></div>');
-    //   $('#AlignmentModalBody').append(bodyalign);
-    //   appendalignment(bodyalign, alignment)
-    // });
-
     //ANCHOR - Bin dropdown choice function
     $(document).on("click", ".binchoice li a", function() {
 
@@ -1467,7 +1427,6 @@ function main () {
       }
     });
 
-
     $('#searchadd').on('click', function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
@@ -1686,19 +1645,6 @@ function main () {
       var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
       searchtoast.show()
     })
-
-    // var entropy = document.querySelectorAll(".entropy")
-    // for (var en of entropy) {
-    //   tippy(en, {
-    //     content: '<strong>' + en.getAttribute("name") + '</strong>' + '<br />',
-    //     allowHTML: true,
-    //     arrow: true,
-    //     duration: 0,
-    //     followCursor: true,
-    //     theme: "light",
-    //   });
-    // }
-    // }
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
