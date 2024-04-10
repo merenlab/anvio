@@ -1784,6 +1784,8 @@ class BottleApplication(Bottle):
         with open(self.interactive.pan_graph_json_path, 'w') as pangraph_json:
             pangraph_json.write(json.dumps(data, indent=2))
 
+        return({'status': 1})
+
     def get_pangraph_gc_alignment(self):
 
         payload = request.json
