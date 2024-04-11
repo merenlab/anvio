@@ -105,7 +105,7 @@ html *
   .modal_header {
     font-variant: small-caps;
     font-size: x-large;
-    background: linear-gradient(88deg, #fff0f0, #ffffff);
+    background: linear-gradient(88deg, #f1f8ff, #ffffff);
     padding-left: 10px;
     margin-top: 20px;
     margin-bottom: 5px;
@@ -168,3 +168,7 @@ html *
   /* table  { border-collapse: collapse; width: 100%; }
   th, td { padding: 8px 16px; }
   th     { background:#eee; } */
+
+  #InfoModalBody > .card-body {
+    padding-top: 0;
+  }

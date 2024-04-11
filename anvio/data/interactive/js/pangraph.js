@@ -90,7 +90,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
 
     basic_info = {'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
-    basic_info_table = `<p class="modal_header">Basics</p>`;
+    basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
     basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
     basic_info_table += `<tbody>`;
 
@@ -113,7 +113,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
 function get_gene_cluter_functions_table(gene_cluster_id, data) {
     functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
     functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
-    functions_table += `<thead class="thead-dark"><tr>`;
+    functions_table += `<thead><tr>`;
     functions_table += `<th scope="col">Source</th>`;
     functions_table += `<th scope="col">Accession</th>`;
     functions_table += `<th scope="col">Function</th>`;
@@ -256,7 +256,7 @@ async function appendalignment(alignment) {
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
     alignments_table += `<table class="table table-striped sortable" id="node_sequence_alignments_table">`;
-    alignments_table += `<thead><tr>`;
+    alignments_table += `<thead class="thead-dark"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Sequence</th>`;
@@ -361,6 +361,8 @@ async function nodeinfo(e, data) {
 
   $('#InfoModalBody').empty()
   var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
+  var closeBtn = $('<div class="row justify-content-end"><i class="btn d-flex col-1 justify-content-end text-danger fs-2x bi bi-x-circle-fill" data-dismiss="modal"></i></div>')
+  $('#InfoModalBody').append(closeBtn)
   $('#InfoModalBody').append(bodyinfo)
 
   // console.log(gene_cluster_id, gene_cluster_context)
