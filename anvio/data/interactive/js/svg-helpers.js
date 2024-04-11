@@ -246,7 +246,16 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
-function drawSupportValue(svg_id, p, p0, p1, supportValueData) {    
+function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
+    /**
+     * Render text on the SVG if it's within the specified range and the user has selected to display numbers.
+     * For circle phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly.
+     * For phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly. 
+     * Text rotation is applied based on the user's selection.
+     * @param {string} svg_id - The ID of the SVG element.
+     * @param {object} p - The position object containing xy coordinates.
+    */
+    
     function checkInRange(){
         /**
          * Check if the branch support values fall within the given number range.
