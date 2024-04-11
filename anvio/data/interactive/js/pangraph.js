@@ -95,9 +95,8 @@ function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
 
     basic_info = {'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
-    basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
     if (add_align == 1) {
-      basic_info_table = `<p class="modal_header">Basics</p>`;
+      basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
     } else {
       basic_info_table = ''
     }
