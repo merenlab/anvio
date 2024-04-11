@@ -184,7 +184,6 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
         if (gene_cluster_id == gene_cluster_id_current){
             gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_name + `</span>`;
         } else {
-            // FIXME: we will need to find a way to fix this <a> tag below
             gene_cluster_context_table += `<span class="gene_cluster_id"><a class="btn border-0 m-0 p-0 align-baseline group_choice" context="` + add_align + `" group="` + gene_cluster_context + `" name_id="` + gene_cluster_id + `">` + gene_cluster_name + `</a></span>`;
         }
     }
