@@ -404,7 +404,7 @@ function drawText(svg_id, p, string, font_size, align, color, baseline, supportC
     if (typeof baseline === 'undefined')
         baseline = 'middle';
 
-    text.setAttribute('style', 'alignment-baseline:' + baseline + '; font-size:' + font_size + 'px;');
+    text.setAttribute('style', 'alignment-baseline:' + baseline + '; font-size:' + font_size);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
@@ -464,7 +464,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family, color, maxLength, baseline) {
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
-    text.setAttribute('alignment-baseline', baseline);
+    text.setAttribute('style', 'alignment-baseline: ' + baseline);
     text.setAttribute('x', p['x']);
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
