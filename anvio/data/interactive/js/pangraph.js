@@ -15,6 +15,11 @@ const mapAS = {
 
 // we will fill this later from the incoming data
 var functional_annotation_sources_available = [];
+//ANCHOR - Bin creation
+var bins = {"bin1": []};
+var binnum = 1;
+
+var current_groups = {}
 
 // NOTE - From https://stackoverflow.com/questions/1053843/get-the-element-with-the-highest-occurrence-in-an-array
 function modeString(array) {
@@ -82,7 +87,7 @@ function get_gene_cluster_consensus_functions(gene_cluster_data) {
 }
 
 
-function get_gene_cluster_basics_table(gene_cluster_id, data) {
+function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
     var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
@@ -91,6 +96,12 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
     basic_info = {'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
     basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
+    if (add_align == 1) {
+      basic_info_table = `<p class="modal_header">Basics</p>`;
+    } else {
+      basic_info_table = ''
+    }
+
     basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
     basic_info_table += `<tbody>`;
 
@@ -110,8 +121,13 @@ function get_gene_cluster_basics_table(gene_cluster_id, data) {
 }
 
 
-function get_gene_cluter_functions_table(gene_cluster_id, data) {
-    functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
+    
+    if (add_align == 1) {
+      functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+    } else {
+      functions_table = ''
+    }
     functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
     functions_table += `<thead><tr>`;
     functions_table += `<th scope="col">Source</th>`;
@@ -144,7 +160,7 @@ function get_gene_cluter_functions_table(gene_cluster_id, data) {
 }
 
 
-function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, data) {
+function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, data, add_align) {
     
     if (gene_cluster_context == null){
         return '';
@@ -155,9 +171,12 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
       }
     }
 
-    console.log(gene_cluster_id_current, gene_cluster_context, group_context)
-
-    gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+    // console.log(gene_cluster_id_current, gene_cluster_context, group_context)
+    if (add_align == 1) {
+      gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+    }else {
+      gene_cluster_context_table = ''
+    }
     gene_cluster_context_table += `<div class="gene_cluster_context_items">`;
     for(index in group_context) {
         gene_cluster_id = group_context[index];
@@ -167,7 +186,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
             gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_name + `</span>`;
         } else {
             // FIXME: we will need to find a way to fix this <a> tag below
-            gene_cluster_context_table += `<span class="gene_cluster_id"><a class="btn border-0 m-0 p-0 align-baseline group_choice" group="` + gene_cluster_context + `" name_id="` + gene_cluster_id + `">` + gene_cluster_name + `</a></span>`;
+            gene_cluster_context_table += `<span class="gene_cluster_id"><a class="btn border-0 m-0 p-0 align-baseline group_choice" context="` + add_align + `" group="` + gene_cluster_context + `" name_id="` + gene_cluster_id + `">` + gene_cluster_name + `</a></span>`;
         }
     }
     gene_cluster_context_table += `</div>`;
@@ -178,7 +197,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
 
 
 //ANCHOR - Get tables for GC basic info and functions
-async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data) {
+async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align) {
     // The purpose of this function is to build HTML formatted tables to give access to
     // the details of a gene cluster. The parameters here are,
     //
@@ -190,46 +209,53 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
     //
     // If everything goes alright, this function will return a table that can be displayed in
     // any modal window.
-
     ///////////////////////////////////////////////////////////////////////////////////////////
     // BUILD CONTEXT
     // if this is a gene cluster that is a part of a context, then all others are going to be
     // shown here
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    gene_cluster_context_table = get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context, data);
+    gene_cluster_context_table = get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // BUILD BASIC INFORMATION TABLE
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, data);
+    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // BUILD FUNCTIONS TABLE
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    functions_table = get_gene_cluter_functions_table(gene_cluster_id, data);
+    functions_table = get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
     ///////////////////////////////////////////////////////////////////////////////////////////
-//
-    var alignment = {}
+ 
+    if (add_align == 1) {
 
-    // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
-    for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
-      alignment[genome] = [data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call'], data['elements']['nodes'][gene_cluster_id]['name']]
+      var alignment = {}
+
+      // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
+      for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
+        alignment[genome] = [data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call'], data['elements']['nodes'][gene_cluster_id]['name']]
+      }
+      // }
+
+      gene_cluster_sequence_alignments_table = await appendalignment(alignment)
+
+      ///////////////////////////////////////////////////////////////////////////////////////////
+      // MERGE ALL AND RETURN
+      ///////////////////////////////////////////////////////////////////////////////////////////
+
+      return gene_cluster_context_table + basic_info_table + functions_table + gene_cluster_sequence_alignments_table
+
+    } else {
+
+      return gene_cluster_context_table + basic_info_table + functions_table
+
     }
-    // }
-
-    gene_cluster_sequence_alignments_table = await appendalignment(alignment)
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // MERGE ALL AND RETURN
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    return gene_cluster_context_table + basic_info_table + functions_table + gene_cluster_sequence_alignments_table
 }
 
 //ANCHOR - Fetch GC alignment
@@ -367,7 +393,7 @@ async function nodeinfo(e, data) {
 
   // console.log(gene_cluster_id, gene_cluster_context)
 
-  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data)
+  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=1)
 
   // console.log(all_info)
 
@@ -1181,14 +1207,17 @@ function main () {
 
       var gene_cluster_id = this.getAttribute("name_id");
       var gene_cluster_context = this.getAttribute("group");
+      var add_align = parseInt(this.getAttribute("context"))
 
-      $('#InfoModalBody').empty()
+      var body = $(this).parent().parent().parent().parent()
+
+      body.empty()
       var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-      $('#InfoModalBody').append(bodyinfo)
+      body.append(bodyinfo)
 
       // console.log(gene_cluster_id, gene_cluster_context)
 
-      var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data)
+      var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align)
 
       // console.log(all_info)
 
@@ -1196,49 +1225,68 @@ function main () {
       // nodeinfo(e.target, data);
     })
 
+    //ANCHOR - Recolor nodes after redraw
+    var groups = data['infos']['groups']
+    for (var binid of Object.keys(bins)) {
+      var nodes = bins[binid];
+      var updated_nodes = []
+
+      for (var node of nodes) {
+
+        var name = document.getElementById(node);
+
+        if(name) {
+          if (name.getAttribute('class') == 'pseudo') {
+            for(var g in groups) {
+              var group = data['infos']['groups'][g]
+              if (group.includes(node)) {
+                if (!updated_nodes.includes(g)){
+                  updated_nodes.push(g)
+                }
+              }
+            }
+          } else {
+            updated_nodes.push(node)
+          }
+        } else {
+          updated_nodes.push(...current_groups[node])
+        };
+
+      }
+
+      bins[binid] = updated_nodes
+      // console.log(nodes)
+      // console.log(updated_nodes)
+      for (var node of bins[binid]) {
+
+        bins[binid] = bins[binid].filter(item => item !== node);
+        var name = document.getElementById(node);
+        bins = marknode(name, data, binid, bins);
+
+      }
+    }
+
+    // console.log(bins)
+
+    current_groups = data['infos']['groups']
+
+    // console.log(current_groups)
+
     //ANCHOR - Bin dropdown choice function
     $(document).on("click", ".binremove", function() {
 
-      var id = $(this).attr('name');
+      var id = $(this).attr('name_id');
       var binid = $(this).attr('bin');
 
       var name = document.getElementById(id);
+      // console.log(name)
       bins = marknode(name, data, binid, bins);
 
       $(this).parent().parent().parent().remove();
 
+      // console.log(bins)
+
     })
-
-    //ANCHOR - Bin dropdown choice function
-    $(document).on("click", ".binchoice li a", function() {
-
-      var id = $(this).attr('name');
-      var drop = $(this).parent().parent().parent();
-      var group = drop.attr('name');
-      var name = data['elements']['nodes'][id]['name'];
-  
-      var dropitem = $('#' + group + 'name');
-      dropitem[0].name = id;
-      dropitem.empty();
-      dropitem.append(
-          $('<span class="caret"></span>').append(name)
-      );
-  
-      var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
-      var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
-      var gene_cluster_data = data['elements']['nodes'][id]['genome'];
-  
-      var body = $('#' + group + 'div');
-      body.empty();
-  
-      var basic_info = {'Name': id, 'Genomes': genomes, 'Position': position};
-      body.append(get_gene_cluster_display_tables(group, basic_info, gene_cluster_data));
-  });
-  
-
-    //ANCHOR - Bin creation
-    var bins = {"bin1": []};
-    var binnum = 1;
     
     // ANCHOR - Add bin
     $('#binadd').on('click', function() {
@@ -1312,7 +1360,7 @@ function main () {
     });
 
     //ANCHOR - Info bin
-    $('#bininfo').on('click', function() {
+    $('#bininfo').on('click', async function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked');
 
@@ -1323,55 +1371,38 @@ function main () {
       $('#BinModalBody').empty();
       for (var id of bins[binid]) {
         var element = document.getElementById(id);
+
         if (element.getAttribute('class') == 'group') {
-
-          var drop = $('<div class="dropdown" id="' + id + 'drop" name="' + id + '"></div>');
-          drop.append(
-            $('<a class= "btn border-1 m-0 p-0 dropdown-toggle" id="' + id + 'name" name="Choose GC" data-toggle="dropdown" href="#"></a>').append(
-              $('<span class="caret"></span>').append('Choose GC')
-            )
-          );
-
-          var dropitem = $('<ul class="dropdown-menu pre-scrollable binchoice"></ul>')
-          var grouplist = data['infos']['groups'][id]
-
-          for (var listitem of grouplist) {
-            dropitem.append(
-              $('<li class="caret"></li>').append(
-                $('<a class="dropdown-item" name="' + listitem + '" href="#">' + data['elements']['nodes'][listitem]['name'] + '</a>')
-              )
-            );
-          }
-          drop.append(dropitem)
-
-          var position = '';
-          var genomes = '';
-          var group = id;
-          var gene_cluster_data = '';
-
-          appendlist.push([id, drop, position, genomes, group, gene_cluster_data]);
+          gene_cluster_context = id;
+          gene_cluster_id = data['infos']['groups'][id][0]
         } else {
-
-          var drop = $('<div id="' + id + 'name" name="' + id + '"></div>').append(
-            data['elements']['nodes'][id]['name']
-          )
-          var position = data['elements']['nodes'][id]['position']['x'] + "/" + (data["infos"]["meta"]["global_x"] - 1);
-          var genomes = Object.keys(data['elements']['nodes'][id]['genome']).length + "/" + (data['infos']['genomes'].length);
-          var group = 'None'
-          var gene_cluster_data = data['elements']['nodes'][id]['genome']
-          appendlist.push([id, drop, position, genomes, group, gene_cluster_data])
+          gene_cluster_id = id;
+          gene_cluster_context = null;
         }
+
+        appendlist.push([gene_cluster_id, gene_cluster_context]);
+
       }
 
-      for (var [id, drop, position, genomes, group, gene_cluster_data] of appendlist) {
+      for (var [gene_cluster_id, gene_cluster_context] of appendlist) {
 
-        var body = $('<div class="card-body overflow-scroll" id="' + id + 'div"></div>')
+        var body = $('<div></div>').append(
+          $('<div class="card-body overflow-scroll" id="' + gene_cluster_id + 'div"></div>').append(
+            await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=0)
+          )
+        )
+
+        if (gene_cluster_context == null) {
+          var element_id = gene_cluster_id
+        } else {
+          var element_id = gene_cluster_context
+        }
 
         $('#BinModalBody').append(
           $('<div class="card border mb-3 w-100" style="height:400px;"></div>').append(
             $('<div class="card-header"></div>').append(
               $('<div class="d-flex justify-content-end align-items-center"></div>').append(
-                $('<button class="btn-close binremove" name="' + id + '" bin="' + binid + '"></button>')
+                $('<button class="btn-close binremove" name_id="' + element_id + '" bin="' + binid + '"></button>')
               )
             )
           ).append(
@@ -1379,13 +1410,14 @@ function main () {
           )
         )
 
-        basic_info = {'Gene Cluster': id, 'Genomes': genomes, 'Position': position}
-        body.append(get_gene_cluster_display_tables(id, basic_info, gene_cluster_data))
+        // basic_info = {'Gene Cluster': id, 'Genomes': genomes, 'Position': position}
+        // body.append(get_gene_cluster_display_tables(id, basic_info, gene_cluster_data))
       }
 
       $('#BinModal').modal('show');
       // }
     })
+
 
     $('#InfoDownload').on('click', async function() {
 
@@ -1417,6 +1449,10 @@ function main () {
       var title = data['infos']['meta']['title']
       downloadBlob(blob, title + ".svg");
     });
+
+
+
+
 
     $('#expressiontext, #searchFunctionsValue').on('input', function(){
       // Check the length of #expressiontext and #searchFunctionsValue values
@@ -1647,6 +1683,11 @@ function main () {
       var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
       searchtoast.show()
     })
+
+
+
+
+
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
