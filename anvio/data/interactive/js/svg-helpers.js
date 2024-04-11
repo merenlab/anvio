@@ -246,7 +246,7 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
-function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
+function drawSupportValue(svg_id, p, p0, p1, supportValueData) {    
     function checkInRange(){
         /**
          * Check if the branch support values fall within the given number range.
@@ -264,67 +264,41 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
+            let color = 'black';
             if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
                 const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
-                if(branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue){
-                    if(supportValueData.textRotation == '0'){
-                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    }
-                }else{
-                    if(supportValueData.textRotation == '0'){
-                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    }
+                if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
+                    color = 'green';
                 }
-            }else{ // not string branch support
-                if(branch_support > supportValueData.thresholdValue){
-                    if(supportValueData.textRotation == '0'){
-                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    }
-                }else{
-                    if(supportValueData.textRotation == '0'){
-                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    }
+            } else {
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = 'green';
                 }
+            }
+            
+            let rotation = supportValueData.textRotation === '0' ? 0 : parseInt(supportValueData.textRotation);
+            if (rotation === 0) {
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto', color, '', 'baseline');
+            } else {
+                drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'right', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
             }
         } else { //Phylogram
+            let rotation = (typeof p.branch_support === 'string' && p.branch_support.includes('/')) ? -90 : parseInt(supportValueData.textRotation);
+            let color = 'black';
+            
             if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
                 const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
-                if(branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue){
-                    if(supportValueData.textRotation == '0'){
-                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    }
-                }else{
-                    if(supportValueData.textRotation == '0'){
-                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    }
+                if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
+                    color = 'green';
                 }
-            }else{ // not string branch support
-                if(branch_support > supportValueData.thresholdValue){
-                    if(supportValueData.textRotation == '0'){
-                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
-                    }
-                }else{
-                    if(supportValueData.textRotation == '0'){
-                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    } else {
-                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-                    }
+            } else {
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = 'green';
                 }
             }
+            
+            drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'left', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
+            
         }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
