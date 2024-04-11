@@ -264,16 +264,66 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
-            if(supportValueData.textRotation == '0'){
-                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-            } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                if(branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue){
+                    if(supportValueData.textRotation == '0'){
+                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    }
+                }else{
+                    if(supportValueData.textRotation == '0'){
+                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    }
+                }
+            }else{ // not string branch support
+                if(branch_support > supportValueData.thresholdValue){
+                    if(supportValueData.textRotation == '0'){
+                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    }
+                }else{
+                    if(supportValueData.textRotation == '0'){
+                        drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    }
+                }
             }
-        } else {
-            if(supportValueData.textRotation == '0'){
-                drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
-            } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+        } else { //Phylogram
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                if(branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue){
+                    if(supportValueData.textRotation == '0'){
+                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    }
+                }else{
+                    if(supportValueData.textRotation == '0'){
+                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    }
+                }
+            }else{ // not string branch support
+                if(branch_support > supportValueData.thresholdValue){
+                    if(supportValueData.textRotation == '0'){
+                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'green', '' , 'baseline')
+                    }
+                }else{
+                    if(supportValueData.textRotation == '0'){
+                        drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    } else {
+                        drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                    }
+                }
             }
         }
     }

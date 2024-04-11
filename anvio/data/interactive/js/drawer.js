@@ -785,7 +785,8 @@ Drawer.prototype.draw_internal_node = function(p) {
         symbolColor : this.settings['support-symbol-color'],
         secondSymbolColor : this.settings['second-support-symbol-color'],
         fontSize : this.settings['support-font-size'],
-        textRotation : this.settings['support-text-rotation']
+        textRotation : this.settings['support-text-rotation'],
+        thresholdValue: this.settings['support-threshold']
     }
 
     if (this.settings['tree-type'] == 'circlephylogram')
