@@ -386,8 +386,8 @@ async function nodeinfo(e, data) {
 
   $('#InfoModalBody').empty()
   var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-  var closeBtn = $('<div class="row justify-content-end"><i class="btn d-flex col-1 justify-content-end text-danger fs-2x bi bi-x-circle-fill" data-dismiss="modal"></i></div>')
-  $('#InfoModalBody').append(closeBtn)
+  // var closeBtn = $('<div class="row justify-content-end"><i class="btn d-flex col-1 justify-content-end text-danger fs-2x bi bi-x-circle-fill" data-dismiss="modal"></i></div>')
+  // $('#InfoModalBody').append(closeBtn)
   $('#InfoModalBody').append(bodyinfo)
 
   // console.log(gene_cluster_id, gene_cluster_context)
