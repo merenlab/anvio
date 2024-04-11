@@ -28,10 +28,11 @@
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/button.js" onerror='alertDependencyError("jquery-button")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
     
-    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("popper")'></script>
+    <script type="text/javascript" src="./node_modules/@popperjs/core/dist/umd/popper-lite.js" onerror='alertDependencyError("popper")'></script>
+    <script type="text/javascript" src="./node_modules/tippy.js/dist/tippy-bundle.umd.min.js" onerror='alertDependencyError("tippy-bundle")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap")'></script>
     <script type="text/javascript" src="./node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
     <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
-    <script type="text/javascript" src="./node_modules/tippy.js/dist/tippy-bundle.umd.min.js" onerror='alertDependencyError("tippy-bundle")'></script>
     <script type="text/javascript" src='js/pangraph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
@@ -602,6 +603,20 @@
         </div>
       </div>
     </div>
+
+    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+      <div id="searchtoast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true" data-delay="2000">
+        <div class="toast-header">
+          <strong class="mr-auto">Your search</strong>
+          <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="toast-body" id="searchtoastbody">
+        </div>
+      </div>
+    </div>
+    
 
   </body>
 </html>

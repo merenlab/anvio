@@ -1674,25 +1674,20 @@ function main () {
 
       // console.log(searched)
 
-      var toastbody = $('#toastbody')
+      var toastbody = $('#searchtoastbody')
       toastbody.empty()
       toastbody.append(
         'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
       )
-      var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
-      searchtoast.show()
+      // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
+      $('#searchtoast').toast('show')
     })
-
-
-
-
-
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
     for (var el of divs) {
 
-      if (el.getAttribute("id").startsWith('GCG_')){
+      if (el.getAttribute("class") == 'group'){
         var id = data["infos"]["groups"][el.getAttribute("id")][0]
         var name = el.getAttribute("id")
       } else {
@@ -1700,38 +1695,38 @@ function main () {
         var name = data['elements']['nodes'][el.getAttribute("id")]['name']
       }
 
-      // tippy(el, {
-      //   content: '<strong>' + name + '</strong>' + '<br />',
-      //   allowHTML: true,
-      //   onHide(instance) {
-      //     if (instance.reference.id.startsWith('GCG_')){
-      //       var id = data["infos"]["groups"][instance.reference.id][0]
-      //     } else {
-      //       var id = instance.reference.id
-      //     }
-      //     var elements = Object.keys(data['elements']['nodes'][id]['genome'])
+      tippy(el, {
+        content: '<strong>' + name + '</strong>' + '<br />',
+        allowHTML: true,
+        onHide(instance) {
+          if (instance.reference.id.startsWith('GCG_')){
+            var id = data["infos"]["groups"][instance.reference.id][0]
+          } else {
+            var id = instance.reference.id
+          }
+          var elements = Object.keys(data['elements']['nodes'][id]['genome'])
 
-      //     for (var element of elements) {
-      //       $('#number_' + element)[0].innerText = '0';
-      //     }
-      //   },
-      //   onShow(instance) {
-      //     if (instance.reference.id.startsWith('GCG_')){
-      //       var id = data["infos"]["groups"][instance.reference.id][0]
-      //     } else {
-      //       var id = instance.reference.id
-      //     }
-      //     var elements = Object.keys(data['elements']['nodes'][id]['genome'])
+          for (var element of elements) {
+            $('#number_' + element)[0].innerText = '0';
+          }
+        },
+        onShow(instance) {
+          if (instance.reference.id.startsWith('GCG_')){
+            var id = data["infos"]["groups"][instance.reference.id][0]
+          } else {
+            var id = instance.reference.id
+          }
+          var elements = Object.keys(data['elements']['nodes'][id]['genome'])
 
-      //     for (var element of elements) {
-      //       $('#number_' + element)[0].innerText = '1';
-      //     }
-      //   },
-      //   arrow: true,
-      //   duration: 0,
-      //   followCursor: true,
-      //   theme: "light",
-      // });
+          for (var element of elements) {
+            $('#number_' + element)[0].innerText = '1';
+          }
+        },
+        arrow: false,
+        duration: 0,
+        followCursor: true,
+        theme: "light",
+      });
     };
 
     var isDown = false
