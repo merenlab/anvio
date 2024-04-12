@@ -280,7 +280,7 @@ async function appendalignment(alignment) {
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
     alignments_table += `<table class="table table-striped sortable" id="node_sequence_alignments_table">`;
-    alignments_table += `<thead class="thead-dark"><tr>`;
+    alignments_table += `<thead class="thead-dark gene-sequence"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Sequence</th>`;
