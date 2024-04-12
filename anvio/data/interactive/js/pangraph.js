@@ -616,7 +616,7 @@ async function generate_svg(body, data) {
 
     var [circle_h_x, circle_h_y] = transform(0, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
     svg.append(
-      $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">orientation</text>')
+      $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
     var l = 1
