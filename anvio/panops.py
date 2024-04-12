@@ -2106,12 +2106,12 @@ class Pangraph():
     def generate_data_table(self):
 
         # global_entropy = 0
-        self.layers = ['paralogs', 'direction', 'entropie']
-        self.data_table_dict['paralogs'] = {'type': 'heatmap',
+        self.layers = ['Paralogs', 'Direction', 'Entropie']
+        self.data_table_dict['Paralogs'] = {'type': 'heatmap',
                                             'scale': 'local'}
-        self.data_table_dict['direction'] = {'type': 'heatmap',
+        self.data_table_dict['Direction'] = {'type': 'heatmap',
                                             'scale': 'local'}
-        self.data_table_dict['entropie'] = {'type': 'heatmap',
+        self.data_table_dict['Entropie'] = {'type': 'heatmap',
                                             'scale': 'global'}
 
         max_paralogs = 0
@@ -2156,13 +2156,13 @@ class Pangraph():
 
                 max_paralogs = max(max_paralog_list) if max(max_paralog_list) > max_paralogs else max_paralogs
                 
-                self.data_table_dict['paralogs'][gene_cluster] = max(max_paralog_list) - 1
-                self.data_table_dict['direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
-                self.data_table_dict['entropie'][gene_cluster] = H
+                self.data_table_dict['Paralogs'][gene_cluster] = max(max_paralog_list) - 1
+                self.data_table_dict['Direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
+                self.data_table_dict['Entropie'][gene_cluster] = H
 
-        self.data_table_dict['paralogs']['max'] = max_paralogs - 1
-        self.data_table_dict['direction']['max'] = 0.5
-        self.data_table_dict['entropie']['max'] = max_entropie
+        self.data_table_dict['Paralogs']['max'] = max_paralogs - 1
+        self.data_table_dict['Direction']['max'] = 0.5
+        self.data_table_dict['Entropie']['max'] = max_entropie
 
             # global_entropy += H
 

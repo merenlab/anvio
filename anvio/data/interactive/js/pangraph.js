@@ -514,7 +514,7 @@ async function generate_svg(body, data) {
   var theta = 270 / (global_x)
   
   var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))  
-  var start_offset = 0
+  var start_offset = parseInt($('#inner')[0].value)
   
   // Link to Frontend
   var marker_width = 200
@@ -522,7 +522,7 @@ async function generate_svg(body, data) {
   var marker_stop = marker_start + marker_width / node_distance_y
 
   // Link to Frontend
-  var arrow_width = 50
+  var arrow_width = parseInt($('#arrow')[0].value)
   var arrow_start = marker_stop
   var arrow_stop = arrow_start + arrow_width / node_distance_y
 
@@ -616,7 +616,7 @@ async function generate_svg(body, data) {
 
     var [circle_h_x, circle_h_y] = transform(0, (arrow_start + arrow_thickness * 2) * node_distance_y, theta)
     svg.append(
-      $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-family="sans-serif" fill="black">orientation</text>')
+      $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">orientation</text>')
     )
 
     var l = 1
@@ -635,7 +635,7 @@ async function generate_svg(body, data) {
         rotate -= 180;
       }
       svg.append(
-        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-family="sans-serif" fill="white">' + l + '</text>')
+        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
       )
       l += k
     };
@@ -656,7 +656,7 @@ async function generate_svg(body, data) {
 
       var [circle_h_x, circle_h_y] = transform(0, (layer_start + (layer_stop-layer_start)/2) * node_distance_y, theta)
       svg.append(
-        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
       )
     }
   }
