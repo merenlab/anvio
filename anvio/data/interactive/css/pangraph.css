@@ -8,7 +8,7 @@ html *
 
 
 .gene-sequence{
-  font-family: monospace;
+  font-family: monospace !important;
 }
 
 #svgbox {
