@@ -97,13 +97,13 @@ function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
+      basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
     } else {
       basic_info_table = ''
+      basic_info_table += `<table class="table table-striped table-bordered sortable">`;
     }
 
-    basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
     basic_info_table += `<tbody>`;
-
     basic_info_table += `<thead class="thead-light"><tr>`;
     for (const [key, value] of Object.entries(basic_info)) {
         basic_info_table += `<th scope="row">` + key + `</th>`;
@@ -124,10 +124,11 @@ function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
     
     if (add_align == 1) {
       functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+      functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
     } else {
       functions_table = ''
+      functions_table += `<table class="table table-striped sortable">`;
     }
-    functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
     functions_table += `<thead><tr>`;
     functions_table += `<th scope="col">Source</th>`;
     functions_table += `<th scope="col">Accession</th>`;
@@ -1432,33 +1433,53 @@ function main () {
       // }
     })
 
+    $('#InfoDownload').on('click', function() {
 
-    $('#InfoDownload').on('click', async function() {
+      // Variable to store the final csv data
+      var csv_data = [];
+      var basics = $('#node_basics_table')
+      var functions = $('#node_functions_table')
 
-      var id = $('#name').attr('name');
-      var name = $('#name').text();
-      var title = data['infos']['meta']['title']
+      var basics_rows = basics[0].getElementsByTagName('tr');
+      var function_rows = functions[0].getElementsByTagName('tr');
 
-      if (id !=  'Choose GC' && id != 'start' && id != 'stop'){
+      for (let i = 0; i < function_rows.length; i++) {
+    
+          if (i >= basics_rows.length) {
+            var basics_cols = basics_rows[1].querySelectorAll('td,th');
+            var function_cols = function_rows[i].querySelectorAll('td,th');
+          } else { 
+            var basics_cols = basics_rows[i].querySelectorAll('td,th');
+            var function_cols = function_rows[i].querySelectorAll('td,th');
+          }
+            
+          let csvrow = [];
+          for (let j = 0; j < basics_cols.length; j++) {
+    
+            var info = basics_cols[j].innerHTML
+            csvrow.push(info);
+          }
+          
+          for (let k = 0; k < function_cols.length; k++) {
+    
+            var info = function_cols[k].innerHTML
+            csvrow.push(info);
+          }
+    
+          console.log(csvrow)
 
-        var group = $('#group').text();
-        var genomes = $('#genomes').text();
-        var position = $('#position').text();
-
-        var csv = "Name\t" + name + "\nGroup\t" + group + "\nGenomes\t" + genomes + "\nPosition\t" + position + "\nSource\tAccession\tFunction\tConfidence";
-
-        var func = get_gene_cluster_consensus_functions(data['elements']['nodes'][id]['genome']);
-
-        for (var [key, value] of Object.entries(func)) {
-          csv += "\n" + key + "\t" + value[0] + "\t" + value[1] + "\t" + value[2];
-        };
-
-        var blob = new Blob([csv]);
-        downloadBlob(blob, title + ".csv");
+          // Combine each column value with comma
+          csv_data.push(csvrow.join(","));
       }
+      // Combine each row data with new line character
+      csv_data = csv_data.join('\n');
+    
+      var blob = new Blob([csv_data]);
+      var title = data['infos']['meta']['title']
+      downloadBlob(blob, title + ".csv");
     });
 
-    $('#svgDownload').on('click', async function() {
+    $('#svgDownload').on('click', function() {
       var blob = new Blob([$('#svgbox')[0].innerHTML]);
       var title = data['infos']['meta']['title']
       downloadBlob(blob, title + ".svg");
