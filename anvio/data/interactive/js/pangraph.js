@@ -1113,15 +1113,16 @@ function main () {
         // )
 
         $('#RightOffcanvasBodyTop').append(
-          $('<div class="col-8">').append(
-            genome
-          )
-        ).append(
-          $('<div class="col-4 text-end" id="number_' + genome + '">').append(
-            0
+          $('<tr>').append(
+            $('<td class="col-8">').append(
+              genome
+            )
+            ).append(
+              $('<td class="col-4 text-end" id="number_' + genome + '">').append(
+                0
+              )
           )
         )
-
       }
     }
 
