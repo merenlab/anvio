@@ -1091,10 +1091,9 @@ function main () {
 
         $('#genomecolors').append(
           $('<div class="col-12 d-flex mb-1">').append(
-            // $('<div class="row gy-0 align-items-center">').append(
               $('<div class="col-2 d-flex align-items-center">').append(
-                $('<div class="form-switch">').append(
-                  $('<input class="form-check-input" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
+                $('<div class="form-switch d-flex">').append(
+                  $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top"' + state + '>')
                 )
               )
             ).append(
