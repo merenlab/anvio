@@ -97,7 +97,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
-      basic_info_table += `<table class="table table-striped table-bordered sortable" id="node_basics_table">`;
+      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
     } else {
       basic_info_table = ''
       basic_info_table += `<table class="table table-striped table-bordered sortable">`;
@@ -124,7 +124,7 @@ function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
     
     if (add_align == 1) {
       functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
-      functions_table += `<table class="table table-striped sortable" id="node_functions_table">`;
+      functions_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
     } else {
       functions_table = ''
       functions_table += `<table class="table table-striped sortable">`;
@@ -242,7 +242,7 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
       }
       // }
 
-      gene_cluster_sequence_alignments_table = await appendalignment(alignment)
+      gene_cluster_sequence_alignments_table = await appendalignment(gene_cluster_id, alignment)
 
       ///////////////////////////////////////////////////////////////////////////////////////////
       // MERGE ALL AND RETURN
@@ -273,14 +273,14 @@ function fetchalignment(alignment) {
 };
 
 //ANCHOR - Append GC alignment
-async function appendalignment(alignment) {
+async function appendalignment(gene_cluster_id, alignment) {
     // FIXME: We need to come up with more accurate and explicit function names.
     if (Object.keys(alignment).length == 0) {
         return ''
     }
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
-    alignments_table += `<table class="table table-striped sortable" id="node_sequence_alignments_table">`;
+    alignments_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
     alignments_table += `<thead class="thead-dark gene-sequence"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
@@ -1414,7 +1414,7 @@ function main () {
         }
 
         $('#BinModalBody').append(
-          $('<div class="card border mb-3 w-100" style="height:400px;"></div>').append(
+          $('<div class="card border mb-3 w-100"></div>').append(
             $('<div class="card-header"></div>').append(
               $('<div class="d-flex justify-content-end align-items-center"></div>').append(
                 $('<button class="btn-close binremove" name_id="' + element_id + '" bin="' + binid + '"></button>')
@@ -1438,6 +1438,8 @@ function main () {
       // Variable to store the final csv data
       var csv_data = [];
       var basics = $('#node_basics_table')
+      var title = basics[0].getAttribute("gc_id")
+
       var functions = $('#node_functions_table')
 
       var basics_rows = basics[0].getElementsByTagName('tr');
@@ -1466,7 +1468,7 @@ function main () {
             csvrow.push(info);
           }
     
-          console.log(csvrow)
+          // console.log(csvrow)
 
           // Combine each column value with comma
           csv_data.push(csvrow.join(","));
@@ -1475,8 +1477,41 @@ function main () {
       csv_data = csv_data.join('\n');
     
       var blob = new Blob([csv_data]);
-      var title = data['infos']['meta']['title']
+      // var title = data['infos']['meta']['title']
       downloadBlob(blob, title + ".csv");
+    });
+
+    $('#AlignmentDownload').on('click', function() {
+
+      // Variable to store the final csv data
+      var csv_data = '';
+      var alignment = $('#node_sequence_alignments_table')
+      var title = alignment[0].getAttribute("gc_id")
+      
+      var alignment_rows = alignment[0].getElementsByTagName('tr');
+
+      for (let i = 1; i < alignment_rows.length; i++) {
+    
+          var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
+    
+          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + '\n';
+          var genome = ''
+          
+          var alignment_nucs = alignment_cols[2].getElementsByTagName('span');
+          // console.log(alignment_nucs)
+
+          for (let k = 0; k < alignment_nucs.length; k++) {
+
+            genome += alignment_nucs[k].innerHTML
+          }
+
+          csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
+      }
+      // Combine each row data with new line character
+      
+      var blob = new Blob([csv_data]);
+      // var title = data['infos']['meta']['title']
+      downloadBlob(blob, title + ".fa");
     });
 
     $('#svgDownload').on('click', function() {
