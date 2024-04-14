@@ -2872,7 +2872,7 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
 
-    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
+    if(state['samples-layer-order'] && state['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else if (!state['samples-layers']){
         state['samples-layers'] = serializedState['samples-layers']
