@@ -1936,6 +1936,18 @@ function main () {
         }
       }
     })
+    document.body.addEventListener('keydown', function(ev) {
+
+      if (ev.keyCode === 83) { // S = 83
+          $('#toggle-panel-left').trigger('click');
+      }
+
+      if (ev.keyCode === 84) { // T = 84
+          $('#title-panel').toggle();
+          $('#toggle-panel-top').toggleClass('invisible visible');
+      }
+    });
+
   }})
 
 }
