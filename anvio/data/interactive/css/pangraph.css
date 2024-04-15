@@ -174,3 +174,27 @@
   #gc-alignment-font span{
     font-family: monospace !important;
   }
+
+  #td-genome-cell{
+    position: sticky; 
+    left: 0; 
+    background-color: #e5e5e5; 
+    z-index: 1;
+  }
+
+ #td-value-cell{
+  position: sticky; 
+  left: 109px; 
+  background-color: #e5e5e5; 
+  z-index: 1;
+ }
+
+  .scroll-wrapper {
+    overflow-x: auto;
+    max-height: 200px;
+  }
+
+  .scrollable-content {
+    overflow-x: auto;
+    white-space: nowrap;
+}

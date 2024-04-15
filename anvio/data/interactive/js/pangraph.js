@@ -280,7 +280,7 @@ async function appendalignment(gene_cluster_id, alignment) {
     }
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
-    alignments_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
+    alignments_table += `<div class="scroll-wrapper"><table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
     alignments_table += `<thead class="thead-dark"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
@@ -296,13 +296,13 @@ async function appendalignment(gene_cluster_id, alignment) {
       var colored = value[1].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
       alignments_table += `<tr>`
-      alignments_table += `<td>` + genome + `</td>`
-      alignments_table += `<td>` + value[0] + `</a></td>`
-      alignments_table += `<td id="gc-alignment-font">` + colored + `</td>`
+      alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
+      alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
+      alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }
 
-    alignments_table += `</tbody></table>\n\n`
+    alignments_table += `</tbody></table></div>\n\n`
 
     // I guess this shouldn't return anything but insert the results into a context?
     // lol sorry if I screwed these thigns up badly :) IDK what I'm doing :p
