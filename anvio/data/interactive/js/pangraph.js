@@ -281,7 +281,7 @@ async function appendalignment(gene_cluster_id, alignment) {
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
     alignments_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
-    alignments_table += `<thead class="thead-dark gene-sequence"><tr>`;
+    alignments_table += `<thead class="thead-dark"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Sequence</th>`;
@@ -298,7 +298,7 @@ async function appendalignment(gene_cluster_id, alignment) {
       alignments_table += `<tr>`
       alignments_table += `<td>` + genome + `</td>`
       alignments_table += `<td>` + value[0] + `</a></td>`
-      alignments_table += `<td>` + colored + `</td>`
+      alignments_table += `<td id="gc-alignment-font">` + colored + `</td>`
       alignments_table += `</tr>`
     }
 

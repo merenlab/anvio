@@ -1,12 +1,6 @@
 @import url('variable.css');
 @import url('main.css');
 
-html *
-{
-   font-family: 'Roboto',Helvetica,Arial,sans-serif;
-}
-
-
 .gene-sequence{
   font-family: monospace !important;
 }
@@ -175,4 +169,8 @@ html *
 
   #InfoModalBody > .card-body {
     padding-top: 0;
+  }
+
+  #gc-alignment-font span{
+    font-family: monospace !important;
   }
