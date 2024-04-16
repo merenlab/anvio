@@ -8299,6 +8299,29 @@ class ModulesDatabase(KeggContext):
             # the same or similar, so we arbitrarily return the first one
             return dict_from_mod_table[0]['data_definition']
 
+    
+    def get_ko_reactions_from_modules_table(self, ko_num):
+        """This function returns the KEGG reaction ID for the given KO from its data definition entry in the modules table.
+
+        Reactions are indicated within brackets of the data definition entry, like these: [RN:R05339] or [RN:R01538 R03033]. 
+        This function parses all reactions out of the entry and returns a list in which each reaction ID number is prefixed by 
+        the standard KEGG reaction indicator 'RN:', as in ["RN:R01538", "RN:R03033"].
+        
+        Note that the modules table will only contain information for KOs that belong to modules, so this function 
+        returns None for those KOs that are not in modules.
+        """
+
+        definition_line = self.get_ko_definition_from_modules_table(ko_num)
+        if not definition_line: # this KO was not in the modules db
+            return None
+        
+        def_fields = definition_line.split('[') # the last split should start with RN: and end with ]
+        for f in def_fields:
+            if f.startswith("RN:"):
+                react_ids = f[3:-1].split(' ') # extract the ID numbers (without the initial RN: part or the final ])
+                return ["RN:" + id for id in react_ids]
+
+
 
     def get_kos_in_module(self, mnum):
         """This function returns a list of KOs in the given module.

@@ -1334,7 +1334,6 @@ function buildLayersTable(order, settings)
                     // set default categorical layer type to 'text'
                     // if there are more than 11 unique values and leaf count is less than 300
                     // 301 because layerdata has one extra row for the titles
-                    console.log(layerdata.length);
                     var _unique_items = [];
                     for (var _pos = 1; _pos < layerdata.length; _pos++)
                     {
@@ -1604,6 +1603,7 @@ function serializeSettings(use_layer_names) {
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
+    state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
 
@@ -2806,7 +2806,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (state.hasOwnProperty('show-support-values')){
+    if (!(state.hasOwnProperty('show-support-values'))){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
@@ -2830,6 +2830,10 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('support-symbol-color')){
         $('#support_symbol_color').attr('color', state['support-symbol-color'])
         $('#support_symbol_color').css('background-color', state['support-symbol-color'])
+    }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
+        $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
     }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
@@ -2868,7 +2872,7 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
 
-    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
+    if(state['samples-layer-order'] && state['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else if (!state['samples-layers']){
         state['samples-layers'] = serializedState['samples-layers']

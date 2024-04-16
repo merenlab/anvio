@@ -247,26 +247,33 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 }
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
-    function checkInRange(){ // check to see if SV data point is within user specified range
-        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
-            return true
+    function checkInRange(){
+        /**
+         * Check if the branch support values fall within the given number range.
+         * @return {bool}    True if the branch support values are within the specified range, False otherwise.
+        */
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            const min_support = Math.min(branch_support_value0, branch_support_value1);
+            const max_support = Math.max(branch_support_value0, branch_support_value1);
+            return min_support >= supportValueData.numberRange[0] && max_support <= supportValueData.numberRange[1];
         } else {
-            return false
+            return p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1];
         }
     }
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
             if(supportValueData.textRotation == '0'){
-                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
             }
         } else {
             if(supportValueData.textRotation == '0'){
-                drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'left', supportValueData.fontSize, 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
             }
         }
     }
@@ -274,43 +281,85 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         drawSymbol()
     }
 
-    function drawSymbol(){
-        let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let radius
-        let maxRadius = supportValueData.maxRadius
-        let rangeLow = parseFloat(supportValueData.numberRange[0])
-        let rangeHigh = parseFloat(supportValueData.numberRange[1])
+    /**
+     * Draw symbols on an SVG canvas based on branch support values.
+     * @returns {Element} The first circle element drawn on the SVG canvas.
+     */
+    function drawSymbol() {
+        let first_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let second_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let maxRadius = supportValueData.maxRadius;
+        let rangeLow = parseFloat(supportValueData.numberRange[0]);
+        let rangeHigh = parseFloat(supportValueData.numberRange[1]);
 
-        function calculatePercentile(){ // calculate percentile of data point in range
-            return (p.branch_support - rangeLow) / (rangeHigh - rangeLow)
+        /**
+         * Calculate the percentile of a support value within the range.
+         * @param {number} support_value - The branch support value.
+         * @returns {number} The calculated percentile.
+         */
+        function calculatePercentile(support_value) {
+            return (support_value - rangeLow) / (rangeHigh - rangeLow);
         }
 
-        function setDetails(percentile){
-            if(percentile > .67){
-                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
-            } else if (percentile < .67 && percentile > .33){
-                radius = maxRadius * .7
+        /**
+         * Set details for the circle based on the percentile.
+         * @param {Element} circle - The SVG circle element.
+         * @param {number} percentile - The percentile value.
+         */
+        function setDetails(circle, percentile) {
+            let radius;
+            if (percentile > 0.67) {
+                supportValueData.invertSymbol ? radius = maxRadius * 0.4 : radius = maxRadius;
+            } else if (percentile < 0.67 && percentile > 0.33) {
+                radius = maxRadius * 0.7;
             } else {
-                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 0.4;
             }
-
+            circle.setAttribute('r', radius);
+            circle.setAttribute('fill', supportValueData.symbolColor);
+            circle.setAttribute('opacity', 0.6);
         }
 
-        function makeCircle(){ // time to make the gravy
-            setDetails(calculatePercentile())
-
-            circle.setAttribute('cx', p.xy.x)
-            circle.setAttribute('cy', p.xy.y)
-            circle.setAttribute('r', radius)
-            circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', supportValueData.symbolColor )
-            circle.setAttribute('opacity', .6)
-
+        /**
+         * Create a circle element based on the support value.
+         * @param {number} support_value - The branch support value.
+         * @param {number} index - The index of the circle.
+         * @returns {Element} The created circle element.
+         */
+        function makeCircle(support_value, index) {
+            let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            setDetails(circle, calculatePercentile(support_value));
+            circle.setAttribute('cx', p.xy.x);
+            circle.setAttribute('cy', p.xy.y);
+            circle.setAttribute('id', p.id + '_' + index);
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
             return circle;
         }
-        return makeCircle()
+
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            let branch_support_values = p.branch_support.split('/').map(parseFloat);
+            first_circle = makeCircle(branch_support_values[0], 0);
+            second_circle = makeCircle(branch_support_values[1], 1);
+            second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+
+            if($('#tree_type').val() == 'circlephylogram'){
+                let length_original = Math.sqrt(p.xy.x**2 + p.xy.y**2);
+                let length_scaled = length_original + 2 * maxRadius;
+                let scaling_factor = length_scaled/length_original;
+                second_circle.setAttribute('cx', p.xy.x * scaling_factor);
+                second_circle.setAttribute('cy', p.xy.y * scaling_factor);
+            } else{
+                let firstCircleCx = parseFloat(first_circle.getAttribute('cx'));
+                let updatedCx = firstCircleCx + maxRadius * 2;
+                second_circle.setAttributeNS(null, 'cx', updatedCx.toString());
+            }
+
+        } else {
+            first_circle = makeCircle(p.branch_support, 0);
+        }
+
+        return first_circle;
     }
 }
 

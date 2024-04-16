@@ -349,14 +349,14 @@
                                                         <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
                                                     </td>
                                                     <td>
-                                                        <select class="form-control form-control-sm col-12 select-sm type type_multiple">
-                                                            <option value="bar">Bar</option>
+                                                        <select class="form-control form-control-sm col-12 select-sm type_multiple">
+                                                            <option value="bar" selected>Bar</option>
                                                             <option value="intensity">Intensity</option>
                                                         </select>
                                                     </td>
                                                     <td>
                                                         <select class="form-control form-control-sm col-12 select-sm normalization_multiple">
-                                                            <option value="none">Norm.</option>
+                                                            <option value="none" selected>none</option>
                                                             <option value="sqrt">sqrt</option>
                                                             <option value="log">log</option>
                                                         </select>
@@ -583,7 +583,6 @@
                                                 onclick="checkMaxSupportValueSeen();"
                                                 onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
                                                 id="support_value_checkbox"
-                                                value="true"
                                                 >
                                         </input>
                                     </div>
@@ -619,11 +618,24 @@
                                                 <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
                                             </div>
                                         </div>
+                                        <div class="form-group form-margin" id="support_symbol" style="display: flex;">
+                                            <label class="col-3 settings-label d-flex" for="multiple_support_symbol" data-help="support-value-checkbox">Multiple Support:</label>
+                                            <div class="col-4 input-align d-flex">
+                                                <input type="checkbox" id="multiple_support_symbol" style="float: left;" name="multiple-support-symbol" onclick="if (this.checked) { $('#second_support_symbol_color').show();} else { $('#second_support_symbol_color').hide(); }">
+                                            </div>
+                                        </div>
                                         <div class="form-group form-margin">
                                             <div class="form-group form-margin" style="display: flex;">
                                                 <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
-                                                <div class="col-4 input-align d-flex">
-                                                    <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                                <div class="col-1 input-align d-flex">
+                                                    <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; min-width: 16px;"></div>
+                                                </div>
+                                                <div class="input-align d-flex">
+                                                    <div id="second_support_symbol_color"
+                                                        class="colorpicker"
+                                                        color="#2bab00"
+                                                        >
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -645,10 +657,10 @@
                                                 >
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin" id='show_font_size'>
-                                        <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
-                                        <div class="col-md-8">
-                                            <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                    <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
+                                        <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
