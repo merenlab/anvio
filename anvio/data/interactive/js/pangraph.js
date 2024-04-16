@@ -663,14 +663,6 @@ async function generate_svg(body, data) {
 
     var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
     var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
-    
-    if (edge['direction'] == 'L') {
-      var stroke = ' stroke-dasharray="5,5" '
-    } else if (edge['direction'] == 'B') {
-      var stroke = ' stroke-dasharray="15,5" '
-    } else {
-      var stroke = ''
-    }
 
     var source = edge['source']
     var target = edge['target']
@@ -687,6 +679,15 @@ async function generate_svg(body, data) {
         if (e == genomes.length || (genomes[e] + 'layer' in middle_layers && edge_genomes.includes(genomes[e])) ) {
 
           if (e == genomes.length) {
+
+            if (edge['direction'] == 'L') {
+              var stroke = ' stroke-dasharray="5,5" '
+            } else if (edge['direction'] == 'B') {
+              var stroke = ' stroke-dasharray="15,5" '
+            } else {
+              var stroke = ''
+            }
+
             var [graph_size, graph_start, graph_stop] = outer_layers['graph']
             var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * sum_outer_layer
             var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * sum_outer_layer
@@ -706,6 +707,7 @@ async function generate_svg(body, data) {
               var j_y_size = layer_start + j_y * (layer_width / global_y)
               var draw = edgecoloring[genomes[e]][1]
               var thickness = line_thickness
+              var stroke = ''
             }
           }
 
