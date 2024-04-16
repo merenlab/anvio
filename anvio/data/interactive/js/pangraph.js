@@ -490,14 +490,23 @@ function pickcolor (edgecoloring, genomes) {
 //ANCHOR - All in one SVG creation function
 async function generate_svg(body, data) {
 
+  var svg_search = [];
+  var svg_heatmaps = [];
+  var svg_edges = [];
+  var svg_nodes = [];
+  var svg_groups = [];
+
   var edgecoloring = {}
   $("#genomecolors :input[type='color']").each((index, element) => {
     edgecoloring[element.id] = [index, element.value]
   })
 
+  var outer_margin = parseInt($('#outer_margin')[0].value);
+  var inner_margin = parseInt($('#inner_margin')[0].value);
   var node_size = parseInt($('#size')[0].value);
   var node_thickness = parseInt($('#circ')[0].value);
   var edge_thickness = parseInt($('#edge')[0].value);
+  var line_thickness = parseInt($('#line')[0].value);
   // var node_distance_x = parseInt($('#distx')[0].value);
   // var node_distance_y = parseInt($('#disty')[0].value);
 
@@ -525,10 +534,10 @@ async function generate_svg(body, data) {
   middle_layers['arrow'] = [arrow_size, search_size + start_offset, arrow_size + search_size + start_offset]
 
   var graph_size = node_size * 2 + node_thickness
-  outer_layers['graph'] = [graph_size, 0, 0 + graph_size]
+  outer_layers['graph'] = [graph_size, inner_margin, inner_margin + graph_size]
 
   var sum_middle_layer = start_offset + search_size + arrow_size
-  var sum_outer_layer = graph_size
+  var sum_outer_layer = graph_size + inner_margin
 
   var current_middle_stop = sum_middle_layer
   var current_outer_stop = sum_outer_layer
@@ -542,13 +551,13 @@ async function generate_svg(body, data) {
     if ($('#flex' + layer_name).prop('checked') == true){
       var layer_width = parseInt($('#' + layer_name)[0].value)
 
-      var layer_middle_start = current_middle_stop
+      var layer_middle_start = current_middle_stop + inner_margin
       var layer_middle_stop = layer_middle_start + layer_width
 
       current_middle_stop = layer_middle_stop
-      sum_middle_layer += layer_width
+      sum_middle_layer += layer_width + inner_margin
       
-      middle_layers[layer_name] = [layer_width - edge_thickness, layer_middle_start + edge_thickness * 0.5, layer_middle_stop - edge_thickness * 0.5]
+      middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
     }
   }
 
@@ -559,19 +568,19 @@ async function generate_svg(body, data) {
       var layer_scale = data['infos']['layers_data'][layer_name]['scale']
 
       if (layer_scale == 'global') {
-        var layer_middle_start = current_middle_stop
+        var layer_middle_start = current_middle_stop + inner_margin
         var layer_middle_stop = layer_middle_start + layer_width
 
         current_middle_stop = layer_middle_stop
-        sum_middle_layer += layer_width
+        sum_middle_layer += layer_width + inner_margin
         
         middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
       } else {
-        var layer_outer_start = current_outer_stop
+        var layer_outer_start = current_outer_stop + outer_margin
         var layer_outer_stop = layer_outer_start + layer_width
 
-        current_outer_stop = layer_outer_stop
-        sum_outer_layer += layer_width
+        current_outer_stop = layer_outer_stop 
+        sum_outer_layer += layer_width + outer_margin
         
         outer_layers[layer_name] = [layer_width, layer_outer_start, layer_outer_stop]
       }
@@ -579,7 +588,7 @@ async function generate_svg(body, data) {
   }
 
   var size = (sum_middle_layer + global_y * sum_outer_layer);
-  var svg = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + size + ' -' + size + ' ' + size*2 + ' ' + size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">');
+  var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + size + ' -' + size + ' ' + size*2 + ' ' + size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
 
   if ($('#flexarrow').prop('checked') == true){
     
@@ -608,7 +617,7 @@ async function generate_svg(body, data) {
       var arc_flag = 0
     }
 
-    svg.append(
+    svg_core.append(
       $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
       ' A ' + (arrow_start + arrow_thickness) + ' ' + (arrow_start + arrow_thickness) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
       ' L ' + circle_b_x + ' ' + circle_b_y +
@@ -620,7 +629,7 @@ async function generate_svg(body, data) {
     )
 
     var [circle_h_x, circle_h_y] = transform(0, arrow_start + arrow_thickness * 2, theta)
-    svg.append(
+    svg_core.append(
       $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
@@ -639,7 +648,7 @@ async function generate_svg(body, data) {
       } else if (rotate >= 180 && rotate <= 270) {
         rotate -= 180;
       }
-      svg.append(
+      svg_core.append(
         $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
       )
       l += k
@@ -682,66 +691,80 @@ async function generate_svg(body, data) {
             var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * sum_outer_layer
             var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * sum_outer_layer
             var draw = pick
+            var thickness = edge_thickness
           } else {
             var [layer_width, layer_start, layer_stop] = middle_layers[genomes[e] + 'layer']
-            var i_y_size = layer_start + i_y * (layer_width / global_y)
-            var j_y_size = layer_start + j_y * (layer_width / global_y)
-            var draw = edgecoloring[genomes[e]][1]
+
+            if (layer_width < line_thickness) {
+              var draw = ''
+            } else {
+              layer_width -= line_thickness
+              layer_start += line_thickness * 0.5
+              layer_stop -= line_thickness * 0.5
+
+              var i_y_size = layer_start + i_y * (layer_width / global_y)
+              var j_y_size = layer_start + j_y * (layer_width / global_y)
+              var draw = edgecoloring[genomes[e]][1]
+              var thickness = line_thickness
+            }
           }
 
           var [circle_i_x, circle_i_y] = transform(i_x-0.5, i_y_size, theta);
           var [circle_j_x, circle_j_y] = transform(j_x-0.5, j_y_size, theta);
 
-          if (edge['bended'] == ""){
+          if (draw !== "") {
 
-            if (i_y == j_y) {
-              svg.append(
-                $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>')
-              )  
+            if (edge['bended'] == ""){
+
+              if (i_y == j_y) {
+                svg_edges.push(
+                  $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                )  
+              } else {
+                svg_edges.push(
+                  $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                )
+              }
+
             } else {
-              svg.append(
-                $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>')
+
+              var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+              var o_y = i_y
+
+              for(var n in edge['bended']) {
+
+                var n_x = edge['bended'][n]['x']
+                var n_y = edge['bended'][n]['y']
+
+                if (e == genomes.length) {
+                  var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * sum_outer_layer
+                  var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * sum_outer_layer
+                } else {
+                  var o_y_size = layer_start + o_y * (layer_width / global_y)
+                  var n_y_size = layer_start + n_y * (layer_width / global_y)
+                }
+
+                var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
+
+                if (o_y == n_y) {
+                  bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+                } else {
+                  bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                }
+        
+                var o_y = n_y
+              }
+
+              if (o_y == j_y) {
+                bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+              } else {
+                bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+              }
+
+              svg_edges.push(
+                $(bended_edge)
               )
             }
-
-          } else {
-
-            var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
-            var o_y = i_y
-
-            for(var n in edge['bended']) {
-
-              var n_x = edge['bended'][n]['x']
-              var n_y = edge['bended'][n]['y']
-
-              if (e == genomes.length) {
-                var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * sum_outer_layer
-                var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * sum_outer_layer
-              } else {
-                var o_y_size = layer_start + o_y * (layer_width / global_y)
-                var n_y_size = layer_start + n_y * (layer_width / global_y)
-              }
-
-              var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
-
-              if (o_y == n_y) {
-                bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
-              } else {
-                bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
-              }
-      
-              var o_y = n_y
-            }
-
-            if (o_y == j_y) {
-              bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>'
-            } else {
-              bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + edge_thickness + '" fill="none"/>'
-            }
-
-            svg.append(
-              $(bended_edge)
-            )
           }
         }
       }
@@ -780,7 +803,7 @@ async function generate_svg(body, data) {
       
       var [circle_k_x, circle_k_y] = transform(k_x-0.5, k_y_size, theta);
 
-      svg.append(
+      svg_nodes.push(
         $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_k_x + '" cy="' + circle_k_y + '" r="' + node_size + '" fill="' + lighter_color('#ffffff', node_color, node_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
       )
 
@@ -795,7 +818,7 @@ async function generate_svg(body, data) {
       var [h_x, h_y] = transform(parseInt(k_x)+add_stop, search_stop, theta)
 
       if (!global_values.includes(k_x)) {
-        svg.append(
+        svg_search.push(
           $('<path class="marker" id="' + k_x + '" d="' +
           'M ' + e_x + ' ' + e_y + ' ' +
           'A ' + search_start  + ' ' + search_start + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
@@ -828,7 +851,7 @@ async function generate_svg(body, data) {
           var [d_x, d_y] = transform(parseInt(k_x)+add_stop, layer_stop + k_y_size, theta)
 
           if (layer_scale == 'local' || !global_values.includes(k_x) || (layer_scale == 'local' && !global_values.includes(k_x))) {
-            svg.append(
+            svg_heatmaps.push(
               $('<path class="' + layer_name + '" xpos="' + k_x + '" name="' + (value / max).toFixed(3) + '" d="' +
               'M ' + a_x + ' ' + a_y + ' ' +
               'A ' + (layer_start + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
@@ -887,7 +910,7 @@ async function generate_svg(body, data) {
       var arc_flag = 0
     }
 
-    svg.append(
+    svg_groups.push(
       $('<path class="group" id="' + l + '" d="' +
       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
       'A ' + l_y_size + ' ' + m_y_size + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
@@ -900,28 +923,47 @@ async function generate_svg(body, data) {
 
   for (var layer_name of layers) {
 
-    // var layer_name = data['infos']['layers_names'][layer]
-
     if ($('#flex' + layer_name).prop('checked') == true){
       var layer_scale = data['infos']['layers_data'][layer_name]['scale']
       
       if (layer_scale == 'local'){
         var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
-        var k_y_size = sum_middle_layer + layer_width * 0.5
+        var y_size = sum_middle_layer + layer_width * 0.5
       } else {
         var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-        var k_y_size = layer_width * 0.5
+        var y_size = layer_width * 0.5
       }
 
-      var [circle_h_x, circle_h_y] = transform(0, (layer_start + k_y_size), theta)
-      svg.append(
-        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+      var [circle_x, circle_y] = transform(0, (layer_start + y_size), theta)
+      svg_heatmaps.push(
+        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
       )
     }
   }
 
-  body.append(svg)
+  for (var genome_name of genomes) {
+    if ($('#flex' + genome_name + 'layer').prop('checked') == true){
+      var [layer_width, layer_start, layer_stop] = middle_layers[genome_name + 'layer']
+      
+      if (layer_width >= edge_thickness) {
+      
+        var y_size = layer_start + layer_width * 0.5
 
+        var [circle_x, circle_y] = transform(0, y_size, theta)
+        svg_edges.push(
+          $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+        )
+      }
+    }
+  }
+
+  for (var item of svg_search) svg_core.append(item);
+  for (var item of svg_heatmaps) svg_core.append(item);
+  for (var item of svg_edges) svg_core.append(item);
+  for (var item of svg_nodes) svg_core.append(item);
+  for (var item of svg_groups) svg_core.append(item);
+
+  body.append(svg_core)
   body.html(body.html());
 }
 
