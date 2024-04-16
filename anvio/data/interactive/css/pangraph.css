@@ -175,17 +175,21 @@
     font-family: monospace !important;
   }
 
+  #gc-alignment-font{
+    background-color: #e4e4e4;
+  }
+
   #td-genome-cell{
     position: sticky; 
     left: 0; 
-    background-color: #e5e5e5; 
+    background-color: #e4e4e4; 
     z-index: 1;
   }
 
  #td-value-cell{
   position: sticky; 
   left: 109px; 
-  background-color: #e5e5e5; 
+  background-color: #e4e4e4;
   z-index: 1;
  }
 
@@ -197,4 +201,5 @@
   .scrollable-content {
     overflow-x: auto;
     white-space: nowrap;
+    background-color: #e4e4e4;
 }
