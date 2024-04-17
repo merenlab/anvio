@@ -988,7 +988,7 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
     var d = get_gene_cluster_consensus_functions(node['genome'])
     for (var source of keys) {
       for (var s of searchfunction[source]){
-        if ((d[source][2].includes(s.trim()))) {
+        if ((d[source][2].toLowerCase().includes(s.trim().toLowerCase()))) {
           t = true
         }
       }
@@ -998,9 +998,9 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
     }
   }
     
-  if (append == true){
-    console.log(node)
-  }
+  // if (append == true){
+  //   console.log(node)
+  // }
 
   return append
 }
@@ -1793,7 +1793,7 @@ function main () {
           if (layer_name == 'position') {
             var global_x = data["infos"]["meta"]["global_x"] -1;
             var layerobjects = new Array(global_x - 1).fill().map((d, i) => i + 1);
-            console.log(layerobjects)
+            // console.log(layerobjects)
           } else {
             var layerobjects = document.querySelectorAll("." + layer_name)
           }
@@ -1857,55 +1857,83 @@ function main () {
         
       // console.log(positions)
 
-      var nodes = document.querySelectorAll(".node")
-      for (var node of nodes) {
+      if (expressioncomparison == '' && Object.keys(searchfunction).length == 0 && searchpos == false) {
+        var message = "Please enter search parameters."
+      } else {
+        // console.log(expressioncomparison, searchfunction, searchpos)
 
-        var id = node.getAttribute("id")
-        var node = data['elements']['nodes'][id]
+        var nodes = document.querySelectorAll(".node")
+        for (var node of nodes) {
 
-        if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
-
-          console.log(node)
-          if (!(id in searched)) {
-            searched[id] = [id]
-          }
-        }
-      }
-
-      var groups = document.querySelectorAll(".group")
-      for (var group of groups) {
-        var groupid = group.getAttribute("id")
-        var members = data["infos"]["groups"][groupid]
-        for (var id of members) {
-
-          node = data['elements']['nodes'][id]
+          var id = node.getAttribute("id")
+          var node = data['elements']['nodes'][id]
 
           if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
-            if (!(groupid in searched)) {
-              searched[groupid] = [id]
-            } else {
-              searched[groupid].push(id)
+            if (!(id in searched)) {
+              searched[id] = [id]
             }
           }
         }
-      }
 
-      console.log(searched)
+        var groups = document.querySelectorAll(".group")
+        for (var group of groups) {
+          var groupid = group.getAttribute("id")
+          var members = data["infos"]["groups"][groupid]
+          for (var id of members) {
+
+            node = data['elements']['nodes'][id]
+
+            if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
+              if (!(groupid in searched)) {
+                searched[groupid] = [id]
+              } else {
+                searched[groupid].push(id)
+              }
+            }
+          }
+        }
+        
+        // var table = $('<div class="form-horizontal"></div>')
+
+        // for (var key of Object.keys(searched)) {
+          
+        //   table.append(
+        //     $('<div class="col-12"></div>').append(
+        //       $('<div class="row align-items-center"></div>').append(
+        //         $('<div class="col-3 mb-1">' + searched[key] + '</td>')
+        //       ).append(
+        //         $('<div class="col-9 mb-1">Append to bin</td>')
+        //       )
+        //     )
+        //   )
+        // }
+
+        // $('#searchtable').empty()
+        // $('#searchtable').append(
+        //   $('<div class="pt-3"></div>').append(
+        //     $('<div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter"></div>').append(
+        //       table
+        //     )
+        //   )
+        // )
+
+        var message = 'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
+
+        if (Object.keys(searched).length != 0) {
+          searchEraseButton.disabled = false;
+          searchColorButton.disabled = false;
+          searchAppendBin.disabled = false;
+          searchRemoveBin.disabled = false;
+        }
+      }
 
       var toastbody = $('#searchtoastbody')
       toastbody.empty()
       toastbody.append(
-        'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
+        message
       )
       // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
       $('#searchtoast').toast('show')
-
-      if (Object.keys(searched).length != 0) {
-        searchEraseButton.disabled = false;
-        searchColorButton.disabled = false;
-        searchAppendBin.disabled = false;
-        searchRemoveBin.disabled = false;
-      }
     })
 
 
