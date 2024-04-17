@@ -564,6 +564,7 @@ async function generate_svg(body, data) {
   var layers = data['infos']['layers_names']
   for (var layer_name of layers) {
     if ($('#flex' + layer_name).prop('checked') == true){
+
       var layer_width = parseInt($('#' + layer_name)[0].value)
       var layer_scale = data['infos']['layers_data'][layer_name]['scale']
 
@@ -970,46 +971,35 @@ async function generate_svg(body, data) {
 }
 
 //ANCHOR - Check node
-function checknode(searchpos, positions, node, mingenomes, maxgenomes, minposition, maxposition, searchfunction, expressiondrop, expressioncomparison) {
+function checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) {
 
   var append = true
 
   if (searchpos == true) {
 
-    if (!positions.includes(node['position']['x'].toString())) {
+    if (!positions.includes(parseInt(node['position']['x']))) {
       append = false
     }
   }
 
-  if (mingenomes != '-1'){
-    if (eval(Object.keys(node['genome']).length + '<=' + mingenomes)){
+  var keys = Object.keys(searchfunction)
+  if (keys.length > 0) {
+    var t = false
+    var d = get_gene_cluster_consensus_functions(node['genome'])
+    for (var source of keys) {
+      for (var s of searchfunction[source]){
+        if ((d[source][2].includes(s.trim()))) {
+          t = true
+        }
+      }
+    }
+    if (t == false){
       append = false
     }
   }
-
-  if (maxgenomes != '-1'){
-    if (eval(Object.keys(node['genome']).length + '>=' + maxgenomes)){
-      append = false
-    }
-  }
-
-  if (minposition != '-1'){
-    if (eval(node['position']['x'] + '<=' + minposition)){
-      append = false
-    }
-  }
-
-  if (maxposition != '-1'){
-    if (eval(node['position']['x'] + '>=' + maxposition)){
-      append = false
-    }
-  }
-
-  var d = get_gene_cluster_consensus_functions(node['genome'])
-  for (var source of Object.keys(searchfunction)) {
-    if (!(d[source][2].includes(searchfunction[source]))) {
-      append = false
-    }
+    
+  if (append == true){
+    console.log(node)
   }
 
   return append
@@ -1181,6 +1171,98 @@ function main () {
 
     // learn about the functional annotation sources
     functional_annotation_sources_available = data['infos']['functional_annotation_sources_available'];
+    $('#searchSources').empty()
+    for (var annotation_source of functional_annotation_sources_available){
+      $('#searchSources').append(
+        $('<div class="col-12"></div>').append(
+          $('<div class="row align-items-center"></div>').append(
+            $('<div class="col-2 mb-1"></div>').append(
+              $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+            )
+          ).append(  
+            $('<div class="col-8 mb-1"></div>').append(
+              annotation_source
+            )
+          ).append(
+            $('<div class="col-2 mb-1"></div>')
+          )
+        )
+      )
+    }
+
+    var layers = data['infos']['layers_names']
+
+    $('#expressiondrop').empty()
+    $('#expressiondrop').append($('<option value="Choose item">Choose item</option>'))
+    $('#expressiondrop').append($('<option value="Name">Name</option>'))
+    $('#expressiondrop').append($('<option value="Position">Position</option>'))
+
+    $('#filter').empty()
+    $('#filter').append(
+      $('<div class="col-12"></div>').append(
+        $('<div class="row align-items-center"></div>').append(
+          $('<div class="col-2 mb-1"></div>').append(
+            $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+          )
+        ).append(  
+          $('<div class="col-8 mb-1"></div>').append(
+            'Min graph position'
+          )
+        ).append(
+          $('<div class="col-2 mb-1"></div>').append(
+            $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="minpositiontext" aria-describedby="">')
+          )  
+        ).append(
+          $('<div class="col-2 mb-1"></div>').append(
+            $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+          )
+        ).append( 
+          $('<div class="col-8 mb-1"></div>').append(
+            'Max graph position' 
+          )
+        ).append(
+          $('<div class="col-2 mb-1"></div>').append(
+            $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxpositiontext" aria-describedby="">')
+          )
+        )
+      )
+    )
+
+    for (var layer_name of layers) {
+      if ($('#flex' + layer_name).prop('checked') == true){
+
+        $('#expressiondrop').append($('<option value="' + layer_name + '">' + layer_name + '</option>'))
+        $('#filter').append(
+          $('<div class="col-12"></div>').append(
+            $('<div class="row align-items-center"></div>').append(
+              $('<div class="col-2 mb-1"></div>').append(
+                $('<input class="" type="checkbox" id="min' + layer_name + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+              )
+            ).append(  
+              $('<div class="col-8 mb-1"></div>').append(
+                'Min ' + layer_name
+              )
+            ).append(
+              $('<div class="col-2 mb-1"></div>').append(
+                $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="min' + layer_name + 'text" aria-describedby="">')
+              )  
+            ).append(
+              $('<div class="col-2 mb-1"></div>').append(
+                $('<input class="" type="checkbox" id="max' + layer_name + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+              )
+            ).append( 
+              $('<div class="col-8 mb-1"></div>').append(
+                'Max ' + layer_name
+              )
+            ).append(
+              $('<div class="col-2 mb-1"></div>').append(
+                $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="max' + layer_name + 'text" aria-describedby="">')
+              )
+            )
+          )
+        )
+      }
+    }
 
     generate_svg(body, data);
 
@@ -1569,35 +1651,19 @@ function main () {
       downloadBlob(blob, title + ".svg");
     });
 
-
-
-
-
-    $('#expressiontext, #searchFunctionsValue').on('input', function(){
-      // Check the length of #expressiontext and #searchFunctionsValue values
-      if ($('#expressiontext').val().trim() !== '' || $('#searchFunctionsValue').val().trim() !== '') {
-          // Enable the search button if at least one of them is not empty
-          $('#search').prop('disabled', false);
-      } else {
-          // Disable the search button if both of them are empty
-          $('#search').prop('disabled', true);
-      }
-    });
-
     $('#searchadd').on('click', function() {
 
       var selection = document.querySelector('input[name="binradio"]:checked')
       var binid = selection.value
 
       for (var [id, members] of Object.entries(searched)) {
-        if (!(id in bins[binid])) {
+        if (!(bins[binid].includes(id))) {
 
           var e = document.getElementById(id);
           bins = marknode(e, data, binid, bins);
 
         }
       }
-
     })
 
     $('#searchremove').on('click', function() {
@@ -1606,7 +1672,7 @@ function main () {
       var binid = selection.value
 
       for (var [id, members] of Object.entries(searched)) {
-        if (id in bins[binid]) {
+        if ((bins[binid].includes(id))) {
 
           var e = document.getElementById(id);
           bins = marknode(e, data, binid, bins);
@@ -1643,29 +1709,39 @@ function main () {
     const searchColorButton = document.getElementById('searchcolor');
     const searchAppendBin = document.getElementById('searchadd');
     const searchRemoveBin = document.getElementById('searchremove');
-
+    
     var searched = {}
     $('#search').on('click', function() {
 
-      searchEraseButton.disabled = false;
-      searchColorButton.disabled = false;
-      searchAppendBin.disabled = false;
-      searchRemoveBin.disabled = false;
+      var searchpos = false
 
-      var mingenomes = ($("#mingenomes").prop('checked') == true && !isNaN($("#mingenomestext")[0].value)) ? $("#mingenomestext")[0].value : '-1'
-      var maxgenomes = ($("#maxgenomes").prop('checked') == true && !isNaN($("#maxgenomestext")[0].value)) ? $("#maxgenomestext")[0].value : '-1'
-      var minentropy = ($("#minentropy").prop('checked') == true && !isNaN($("#minentropytext")[0].value)) ? $("#minentropytext")[0].value : '-1'
-      var maxentropy = ($("#maxentropy").prop('checked') == true && !isNaN($("#maxentropytext")[0].value)) ? $("#maxentropytext")[0].value : '-1'
-      var minposition = ($("#minposition").prop('checked') == true && !isNaN($("#minpositiontext")[0].value)) ? $("#minpositiontext")[0].value : '-1'
-      var maxposition = ($("#maxposition").prop('checked') == true && !isNaN($("#maxpositiontext")[0].value)) ? $("#maxpositiontext")[0].value : '-1'
-      var searchfunction = {}
+      //Filter Search
+      var layers_filter = new Object
+      var mingenomes = ($("#mingenomes").prop('checked') == true && !isNaN(parseFloat($("#mingenomestext")[0].value))) ? parseFloat($("#mingenomestext")[0].value) : -1
+      var maxgenomes = ($("#maxgenomes").prop('checked') == true && !isNaN(parseFloat($("#maxgenomestext")[0].value))) ? parseFloat($("#maxgenomestext")[0].value) : -1
+      var minposition = ($("#minposition").prop('checked') == true && !isNaN(parseFloat($("#minpositiontext")[0].value))) ? parseFloat($("#minpositiontext")[0].value) : -1
+      var maxposition = ($("#maxposition").prop('checked') == true && !isNaN(parseFloat($("#maxpositiontext")[0].value))) ? parseFloat($("#maxpositiontext")[0].value) : -1
+      
+      layers_filter['genomes'] = {'min': mingenomes, 'max': maxgenomes}
+      layers_filter['position'] = {'min': minposition, 'max': maxposition}
+
+      var layers = data['infos']['layers_names']
+      for (var layer_name of layers) {
+
+        // console.log("#min" + layer_name + "text")
+        var minlayer = ($("#min" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#min" + layer_name + "text")[0].value))) ? parseFloat($("#min" + layer_name + "text")[0].value) : -1
+        var maxlayer = ($("#max" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#max" + layer_name + "text")[0].value))) ? parseFloat($("#max" + layer_name + "text")[0].value) : -1
+        
+        layers_filter[layer_name] = {'min': minlayer, 'max': maxlayer}
+      }
+
+      //Expression Search
       var expressioncomparison = ''
-
       var expressiondrop = $('#expressiondrop').attr('value')
       var expressionrel = $('#expressionrel').attr('value')
       var expressiontext = $('#expressiontext')[0].value
 
-      if (expressionrel != "Choose operator" && expressiontext != '') {
+      if (expressiondrop != "Choose item" && expressionrel != "Choose operator" && expressiontext != '') {
         if (expressionrel == '=') {
           if (!isNaN(expressiontext)) {
             expressioncomparison = '== ' + expressiontext
@@ -1693,106 +1769,128 @@ function main () {
         } else if (expressionrel == '\u{25AA}\u{25B8}') {
           expressioncomparison = '.startsWith("' + expressiontext + '")'
         }
-      }
+      } 
 
+      //Function Search
+      var searchfunction = {}
+      var searchterms = $('#searchFunctionsValue')[0].value.split(",");
       for (var source of functional_annotation_sources_available) {
-        if ($("#" + source).prop('checked') == true) {
-          searchfunction[source] = $('#functiontext')[0].value
+        if ($("#flex" + source).prop('checked') == true) {
+          searchfunction[source] = searchterms
         }
       }
+
+      var layers_positions = {}
+      for (var layer_name of Object.keys(layers_filter)) {
+        
+        var minlayer = layers_filter[layer_name]['min']
+        var maxlayer = layers_filter[layer_name]['max']
+
+        if (minlayer != -1 || maxlayer != -1 || (minlayer != -1 && maxlayer != -1)) {
+
+          layers_positions[layer_name] = []
+          searchpos = true
+          if (layer_name == 'position') {
+            var global_x = data["infos"]["meta"]["global_x"] -1;
+            var layerobjects = new Array(global_x - 1).fill().map((d, i) => i + 1);
+            console.log(layerobjects)
+          } else {
+            var layerobjects = document.querySelectorAll("." + layer_name)
+          }
+
+          for (var o of layerobjects) {
+
+            var append = true
+            
+            if (layer_name == 'position') {
+              var value = o
+              var result = o
+            } else {
+              var value = o.getAttribute("name")
+              var result = o.getAttribute("xpos")
+            }
+
+            if (minlayer != '-1'){
+              if (eval(value + '<' + minlayer)){
+                append = false
+              }
+            }
+
+            if (maxlayer != '-1'){
+              if (eval(value + '>' + maxlayer)){
+                append = false
+              }
+            }
+
+            if (append == true) {
+              layers_positions[layer_name].push(parseInt(result))
+            }
+
+          }
+        }
+      }
+
+      // console.log(layers_positions)
 
       var positions = []
-      var searchpos = false
+      var keys = Object.keys(layers_positions)
 
-      if ((expressiondrop == "Entropy" && expressionrel != "Choose operator") || minentropy != '-1' || maxentropy != '-1') {
-        var searchpos = true
-        var entropy = document.querySelectorAll(".entropy")
-        for (var en of entropy) {
+      if (keys.length > 0) {
+        for (var pos of layers_positions[keys[0]]) {
 
-          var append = true
-          var value = en.getAttribute("name")
-
-          if (minentropy != '-1'){
-            if (eval(value + '<' + minentropy)){
-              append = false
+          if (keys.length > 0) {
+            var add = true
+            for (let k = 1; k < keys.length; k++) {
+              if (!layers_positions[keys[k]].includes(pos)) {
+                add = false
+              }
             }
-          }
 
-          if (maxentropy != '-1'){
-            if (eval(value + '>' + maxentropy)){
-              append = false
+            if (add == true) {
+              positions.push(pos)
             }
-          }
-
-          if ((expressiondrop == "Entropy" && expressionrel != "Choose operator") && expressionrel != '\u{25C2}\u{25AA}\u{25B8}' && expressionrel != '\u{25AA}\u{25B8}' && expressionrel != '\u{25C2}\u{25AA}') {
-            if (!eval(value + expressioncomparison)) {
-              append = false
-            }
-          }
-
-          if (append == true) {
-            positions.push(en.getAttribute("xpos"))
+          } else {
+            positions.push(pos)
           }
         }
       }
-
+        
       // console.log(positions)
 
-      if ((expressioncomparison != "Choose operator") || Object.keys(searchfunction).length != 0 || mingenomes != '-1' || maxgenomes != '-1' || minposition != '-1' || maxposition != '-1' || searchpos == true) {
+      var nodes = document.querySelectorAll(".node")
+      for (var node of nodes) {
 
-        var nodes = document.querySelectorAll(".node")
-        for (var node of nodes) {
+        var id = node.getAttribute("id")
+        var node = data['elements']['nodes'][id]
 
-          var id = node.getAttribute("id")
-          var node = data['elements']['nodes'][id]
+        if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
 
-          if (checknode(searchpos, positions, node, mingenomes, maxgenomes, minposition, maxposition, searchfunction, expressiondrop, expressioncomparison) == true) {
-            if (expressiondrop == "Name" && expressionrel != '\u{2264}' && expressionrel != '\u{2265}' && expressionrel != '\u{003C}' && expressionrel != '\u{003E}') {
-              if (eval('"' + node["name"] + '"' + expressioncomparison)) {
-                if (!(id in searched)) {
-                  searched[id] = [id]
-                }
-              }
-            } else {
-              if (!(id in searched)) {
-                searched[id] = [id]
-              }
-            }
+          console.log(node)
+          if (!(id in searched)) {
+            searched[id] = [id]
           }
         }
+      }
 
-        var groups = document.querySelectorAll(".group")
-        for (var group of groups) {
-          var groupid = group.getAttribute("id")
-          var members = data["infos"]["groups"][groupid]
-          for (var id of members) {
+      var groups = document.querySelectorAll(".group")
+      for (var group of groups) {
+        var groupid = group.getAttribute("id")
+        var members = data["infos"]["groups"][groupid]
+        for (var id of members) {
 
-            node = data['elements']['nodes'][id]
+          node = data['elements']['nodes'][id]
 
-            if (checknode(searchpos, positions, node, mingenomes, maxgenomes, minposition, maxposition, searchfunction, expressiondrop, expressioncomparison) == true) {
-              if (expressiondrop == "Name" && expressionrel != '\u{2264}' && expressionrel != '\u{2265}' && expressionrel != '\u{003C}' && expressionrel != '\u{003E}') {
-                if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
-
-                  if (!(groupid in searched)) {
-                    searched[groupid] = [id]
-                  } else {
-                    searched[groupid].push(id)
-                  }
-
-                }
-              } else {
-                if (!(groupid in searched)) {
-                  searched[groupid] = [id]
-                } else {
-                  searched[groupid].push(id)
-                }
-              }
+          if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
+            if (!(groupid in searched)) {
+              searched[groupid] = [id]
+            } else {
+              searched[groupid].push(id)
             }
           }
         }
       }
 
-      // console.log(searched)
+      console.log(searched)
 
       var toastbody = $('#searchtoastbody')
       toastbody.empty()
@@ -1801,7 +1899,46 @@ function main () {
       )
       // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
       $('#searchtoast').toast('show')
+
+      if (Object.keys(searched).length != 0) {
+        searchEraseButton.disabled = false;
+        searchColorButton.disabled = false;
+        searchAppendBin.disabled = false;
+        searchRemoveBin.disabled = false;
+      }
     })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
@@ -1985,17 +2122,17 @@ function main () {
         }
       }
     })
-    document.body.addEventListener('keydown', function(ev) {
+    // document.body.addEventListener('keydown', function(ev) {
 
-      if (ev.keyCode === 83) { // S = 83
-          $('#toggle-panel-left').trigger('click');
-      }
+    //   if (ev.keyCode === 83) { // S = 83
+    //       $('#toggle-panel-left').trigger('click');
+    //   }
 
-      if (ev.keyCode === 84) { // T = 84
-          $('#title-panel').toggle();
-          $('#toggle-panel-top').toggleClass('invisible visible');
-      }
-    });
+    //   if (ev.keyCode === 84) { // T = 84
+    //       $('#title-panel').toggle();
+    //       $('#toggle-panel-top').toggleClass('invisible visible');
+    //   }
+    // });
 
   }})
 

@@ -445,10 +445,6 @@
                           <td class="col-3">Item:</td>
                           <td class="col-9">
                             <select class="form-control form-control-sm col-12 select-sm" id="expressiondrop" data-help="search-layer">
-                              <option value="Choose item">Choose item</option>
-                              <option value="Name">Name</option>
-                              <option value="Entropy">Entropy</option>
-                              <option value="Position">Position</option>
                             </select>
                           </td>
                       </tr>
@@ -457,15 +453,15 @@
                           <td class="col-9">
                               <select class="form-control form-control-sm col-12 select-sm" id="expressionrel" data-help="search-operator">
                                   <option value="Choose operator">Choose operator</option>  
-                                  <option value="=">=</option>
-                                  <option class="font-weight-bold" value="&ne;">&ne;</option>
-                                  <option class="font-weight-bold" value="&le;">&le;</option>
-                                  <option class="font-weight-bold" value="&ge;">&ge;</option>
-                                  <option class="font-weight-bold" value="&lt;">&lt;</option>
-                                  <option class="font-weight-bold" value="&gt;">&gt;</option>
-                                  <option class="font-weight-bold" value="&#9666;&#9642;&#9656;">&#9666;&#9642;&#9656;</option>
-                                  <option class="font-weight-bold" value="&#9666;&#9642;">&#9666;&#9642;</option>
-                                  <option class="font-weight-bold" value="&#9642;&#9656;">&#9642;&#9656;</option>
+                                  <option value="=">Equal</option>
+                                  <option class="font-weight-bold" value="&ne;">Unequal</option>
+                                  <option class="font-weight-bold" value="&le;">Less than or equal</option>
+                                  <option class="font-weight-bold" value="&ge;">Greater than or equal</option>
+                                  <option class="font-weight-bold" value="&lt;">Less than</option>
+                                  <option class="font-weight-bold" value="&gt;">Greater than</option>
+                                  <option class="font-weight-bold" value="&#9666;&#9642;&#9656;">Contains</option>
+                                  <option class="font-weight-bold" value="&#9666;&#9642;">Ends with</option>
+                                  <option class="font-weight-bold" value="&#9642;&#9656;">Starts with</option>
                               </select>
                           </td>
                       </tr>
@@ -482,21 +478,24 @@
                 <div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-function">
                   <span class="settings-header mb-3 pt-2">Search functions</span>
                   <div class="form-horizontal">
-                      <table class="col-12">
-                          <tr>
-                              <td class="col-3">Terms:</td>
-                              <td class="col-9">
-                                  <input id="searchFunctionsValue" class="input-search form-control" value="" data-help="search-value" placeholder="You can separate multiple search terms with ','">
-                              </td>
-                          </tr>
-                      </table>
+                    <div id="searchSources" class="row align-items-center">
+                    </div>
+                  
+                    <table class="col-12">
+                        <tr>
+                            <td class="col-3">Terms:</td>
+                            <td class="col-9">
+                                <input id="searchFunctionsValue" class="input-search form-control" value="" data-help="search-value" placeholder="You can separate multiple search terms with ','">
+                            </td>
+                        </tr>
+                    </table>
                   </div>
                 </div>
 
                 <div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter">
                   <span class="settings-header mb-3 pt-2">Filter</span>
                   <div class="form-horizontal">
-                    <div class="row align-items-center">
+                    <div id="filter" class="row align-items-center">
                       <div class="col-12">
                         <div class="row align-items-center"> 
                           <div class="col-2 mb-1">
@@ -516,29 +515,6 @@
                           </div>
                           <div class="col-2 mb-1">
                             <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxgenomestext" aria-describedby="">
-                          </div>
-                        </div>
-                      </div>
-      
-                      <div class="col-12">
-                        <div class="row align-items-center"> 
-                          <div class="col-2 mb-1">
-                            <input class="" type="checkbox" id="minentropy" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-                          </div>
-                          <div class="col-8 mb-1">
-                            Min entropy
-                          </div>
-                          <div class="col-2 mb-1">
-                            <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="minentropytext" aria-describedby="">
-                          </div>
-                          <div class="col-2 mb-1">
-                            <input class="" type="checkbox" id="maxentropy" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-                          </div>
-                          <div class="col-8 mb-1">
-                            Max entropy
-                          </div>
-                          <div class="col-2 mb-1">
-                            <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxentropytext" aria-describedby="">
                           </div>
                         </div>
                       </div>
@@ -571,7 +547,7 @@
 
                 <div class="pt-3">
                   <div class="col-12 pt-2 border-top d-flex align-items-center justify-content-center">
-                    <button type="button" class="col-4 btn btn-outline-primary btn-md mr-1 align-items-center justify-content-center" id="search" disabled>
+                    <button type="button" class="col-4 btn btn-outline-primary btn-md mr-1 align-items-center justify-content-center" id="search">
                       <i class="bi bi-search fa-lg bin-icon-size" aria-hidden="true"></i>
                       <span class="font-weight-bold">Search</span>
                     </button>
