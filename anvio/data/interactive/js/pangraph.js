@@ -1630,10 +1630,10 @@ function main () {
     
           var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
     
-          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + '\n';
+          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + '\n';
           var genome = ''
           
-          var alignment_nucs = alignment_cols[2].getElementsByTagName('span');
+          var alignment_nucs = alignment_cols[3].getElementsByTagName('span');
           // console.log(alignment_nucs)
 
           for (let k = 0; k < alignment_nucs.length; k++) {
