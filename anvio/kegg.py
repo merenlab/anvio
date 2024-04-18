@@ -3045,7 +3045,7 @@ class RunKOfams(KeggContext):
             The list of gene caller ids in the contigs database. We will use this to figure out which
             genes have no annotations
         super_hits_dict : dictionary
-            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output 
+            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output
             from the hmmsearch parser, which should contain all hits from the set (ie, weak hits not yet removed)
         next_key : int
             The next integer key that is available for adding functions to self.functions_dict
@@ -3314,7 +3314,7 @@ class RunKOfams(KeggContext):
 
         if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, super_hits_dict, next_key=next_key_in_functions_dict)
-        
+
         # add functions and KEGG modules info to database
         self.store_annotations_in_db()
 
@@ -3777,7 +3777,7 @@ class KeggEstimatorArgs():
                 raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
                                   f"for enzyme {knum} but this enzyme is not in the enzyme dictionary "
                                   "(self.ko_dict, or (self.stray_ko_dict) in some cases). This should never have happened.")
-        
+
         return metadata_dict
 
 
@@ -5461,8 +5461,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
         the value obtained by evaluating the resulting arithmetic expression.
 
-        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but 
-        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the 
+        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but
+        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the
         component module's copy number in the calculation instead).
 
         PARAMETERS
@@ -5690,7 +5690,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # and for all other annotations, we reduce the count of hits by one
                 for acc in enzymes[1:]:
                     derep_enzyme_hits[acc] -= 1
-                
+
                 if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on) and self.add_copy_number:
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
@@ -5900,7 +5900,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         RETURNS
         =======
         metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
-            dictionary mapping metagenome name to its metabolism completeness dictionary 
+            dictionary mapping metagenome name to its metabolism completeness dictionary
             (will be empty dictionary if return_superdicts is False)
         metagenome_ko_superdict : dictionary of dictionary of dictionaries
             dictionary mapping metagenome name to its KOfam hits dictionary
