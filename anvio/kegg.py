@@ -833,7 +833,7 @@ class KeggSetup(KeggContext):
             is_binary_relation_dir_included = False
             if anvio.DEBUG and not self.skip_binary_relations:
                 self.run.warning(
-                    f"The KEGG archive does not contain the following optional binary relations "
+                    "The KEGG archive does not contain the following optional binary relations "
                     f"directory needed for `anvi-reaction-network`: {binary_relation_data_dir}"
                 )
 
