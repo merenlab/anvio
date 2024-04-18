@@ -1273,10 +1273,10 @@ class KeggSetup(KeggContext):
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
 
-    
+
     def extract_data_field_from_kegg_file(self, file_path, target_field):
         """This function parses a KEGG file and returns the data value associated with the given target field.
-        
+
         It can work on flat-text files obtained via the REST API (ie, self.kegg_rest_api_get).
         """
 
@@ -1284,7 +1284,7 @@ class KeggSetup(KeggContext):
 
         f = open(file_path, 'r')
         current_data_name = None
-        
+
         for line in f.readlines():
             line = line.strip('\n')
 
@@ -1550,9 +1550,9 @@ class KOfamDownload(KeggSetup):
                              f"We have removed those HMM profiles from the final database. You can find them under the directory "
                              f"'{self.orphan_data_dir}'.")
 
-    
+
     def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path):
-        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate 
+        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate
         `hmmpress` command and deletes the log file afterwards if it was successful.
         """
 
@@ -1590,7 +1590,7 @@ class KOfamDownload(KeggSetup):
 
     def download_ko_files(self, kos_to_download, destination_dir, dont_raise=True):
         """Multi-threaded download of KEGG Orthology files.
-        
+
         Parameters
         ==========
         kos_to_download: list of str
@@ -1647,13 +1647,13 @@ class KOfamDownload(KeggSetup):
                                   f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
                                   f"told to quit should this happen, well, here we are. If skipping these failed KOs "
                                   f"is okay, you could always run this function with `dont_raise=True`.")
-        
+
         return undownloaded
 
-    
+
     def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True):
         """Multi-threaded download of KEGG GENES files.
-        
+
         Parameters
         ==========
         genes_to_download: list of str
@@ -1710,13 +1710,13 @@ class KOfamDownload(KeggSetup):
                                   f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
                                   f"told to quit should this happen, well, here we are. If skipping these failed KOs "
                                   f"is okay, you could always run this function with `dont_raise=True`.")
-        
+
         return undownloaded
 
 
     def get_kegg_gene_accessions_from_ko_files(self, ko_list, ko_file_dir):
         """Extracts KEGG GENES accessions from KO files and returns a dictionary mapping KO to its GENES.
-        
+
         Parameters
         ==========
         ko_list: list of str
@@ -1756,7 +1756,7 @@ class KOfamDownload(KeggSetup):
 
     def kegg_gene_sequences_to_fasta_file(self, kegg_genes_files, target_fasta_file):
         """This function extracts the amino acid sequences for a list of KEGG GENES and prints them to a FASTA file.
-        
+
         Parameters
         ==========
         kegg_genes_files : List of str
@@ -1767,7 +1767,7 @@ class KOfamDownload(KeggSetup):
         Returns
         =======
         seq_tuples : List of tuples
-            Each sequence added to the FASTA file is also returned in this list, where each tuple contains 
+            Each sequence added to the FASTA file is also returned in this list, where each tuple contains
             (KEGG GENES name, amino acid sequence). Note that the seq name is taken from the name of the KEGG GENES file.
         """
 
@@ -1790,13 +1790,13 @@ class KOfamDownload(KeggSetup):
 
     def build_HMM_from_seqs(self, hmm_name, tuple_of_seqs, hmm_output_file, log_file_path):
         """This function aligns sequences and builds an HMM from them using `muscle` and `hmmbuild`.
-        
+
         Parameters
         ==========
         hmm_name : str
             What to name the model (ie 'NAME' field in the .hmm file)
         tuple_of_seqs : List of (sequence name, sequence) tuples
-            The sequences to align with 'muscle' to create the `hmmbuild` input. 
+            The sequences to align with 'muscle' to create the `hmmbuild` input.
             See anvio.drivers.muscle for example format
         hmm_output_file : str
             File path where to store the new HMM model
@@ -1832,12 +1832,12 @@ class KOfamDownload(KeggSetup):
         ko : str
             KEGG identifier for the KO
         kegg_genes_for_ko : list of str
-            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and 
+            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and
             number of sequences)
         kegg_genes_fasta : str
             Path to FASTA file where the KEGG GENES sequences for this KO are stored
         ko_model_file : str
-            File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
+            File path of the .hmm file containg the KO model (doesn't need to contain only this model,
             but must be hmmpressed already)
         Returns
         =======
@@ -1850,33 +1850,33 @@ class KOfamDownload(KeggSetup):
             self.run.warning(f"The function estimate_bitscore_for_ko() received an empty list of KEGG GENES "
                              f"for {ko}, so it cannot estimate a bit score threshold. The function will return "
                              f"a threshold of `None` for this KO.")
-            return None 
+            return None
 
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
         target_file_dict = {'AA:GENE': kegg_genes_fasta}
         hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
         hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_for_ko), ko_model_file, None, None)
-        
+
         if not hmm_hits_file:
             raise ConfigError(f"No HMM hits were found for the KO model {ko}. This is seriously concerning, because we were running it against "
                               f"gene sequences that were used to generate the model.")
-        
+
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', run=run_quiet)
         search_results_dict = parser.get_search_results()
-        
+
         # take the minimum of hits from current KO model as bit score threshold
         all_relevant_bitscores = []
         for hit, hit_info_dict in search_results_dict.items():
             if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}{STRAY_KO_ANVIO_SUFFIX}":
                 all_relevant_bitscores.append(hit_info_dict['bit_score'])
-        
+
         threshold = min(all_relevant_bitscores)
         return threshold
-            
-    
+
+
     def process_all_stray_kos(self):
         """This driver function processes each stray KO and creates a file of bit score thresholds for them.
-        
+
         The following steps are run for each stray KO:
         1. download of its KO file
         2. identification and download of the KEGG GENES sequences in this family
@@ -1988,14 +1988,14 @@ class KOfamDownload(KeggSetup):
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
-            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
-                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"), 
+            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list,
+                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"),
                                         ko_model_file=self.stray_ko_hmm_file_path)
             cur_num += 1
         self.progress.end()
 
         # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
-        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
+        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the
         # stray data directory (and we want to keep the strays separate since we process them specially)
         self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos), suppress_warnings=True)
 
@@ -2037,7 +2037,7 @@ class KOfamDownload(KeggSetup):
 
             if self.include_stray_kos:
                 self.process_all_stray_kos()
-            
+
             # there is no reason to keep the original HMM profiles around, unless we are debugging
             if not anvio.DEBUG:
                 shutil.rmtree(os.path.join(self.kegg_data_dir, "profiles"))
