@@ -17,7 +17,7 @@ import numpy as np
 import multiprocessing as mp
 
 from scipy import stats
-from typing import List
+from typing import List, Tuple
 
 import anvio
 import anvio.db as db
