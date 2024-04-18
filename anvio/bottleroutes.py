@@ -1792,11 +1792,11 @@ class BottleApplication(Bottle):
         result = {}
 
         for genome in payload.keys():
-            genecall, name = payload[genome]
+            genecall, contig, name = payload[genome]
             gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
             sequence = gene_cluster_alignment_dict[genome][int(genecall)]
 
-            result[genome] = [genecall, sequence]
+            result[genome] = [genecall, contig, sequence]
 
         print(result)
 

@@ -238,7 +238,10 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
 
       // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
       for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
-        alignment[genome] = [data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call'], data['elements']['nodes'][gene_cluster_id]['name']]
+        var genecall = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call']
+        var contig = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['contig']
+        var name = data['elements']['nodes'][gene_cluster_id]['name']
+        alignment[genome] = [genecall, contig, name]
       }
       // }
 
@@ -284,6 +287,7 @@ async function appendalignment(gene_cluster_id, alignment) {
     alignments_table += `<thead class="thead-dark"><tr>`;
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
+    alignments_table += `<th scope="col">Contig</th>`;
     alignments_table += `<th scope="col">Sequence</th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
@@ -293,11 +297,12 @@ async function appendalignment(gene_cluster_id, alignment) {
     // console.log(d)
 
     for (var [genome, value] of Object.entries(d)) {
-      var colored = value[1].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
+      var colored = value[2].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
       alignments_table += `<tr>`
       alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
       alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
+      alignments_table += `<td id="td-genome-cell">` + value[1] + `</td>`
       alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }
