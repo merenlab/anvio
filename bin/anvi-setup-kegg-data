@@ -32,7 +32,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
                                            'mode if you want to run pathway prediction with `anvi-estimate-metabolism`. This mode does the '
-                                           'necessary set up that allows you to run `anvi-reaction-network`.',
+                                           'necessary setup that allows you to run `anvi-reaction-network` and visualize KEGG pathway maps.',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                             'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
