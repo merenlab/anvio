@@ -2045,8 +2045,9 @@ class KOfamDownload(KeggSetup):
 
 
 class ModulesDownload(KeggSetup):
-    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES,
-    and reaction networks, which require MODULES, BRITE, and binary relation files.
+    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES;
+    reaction networks, which require MODULES, BRITE, and binary relation files;
+    and pathway map images and reference KO, EC, and RN KGML files.
 
     Parameters
     ==========
