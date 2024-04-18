@@ -27,7 +27,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                           'only-processing': {'flags': anvio.A('only-processing'),
                                                            'definition': anvio.K('only-processing')},
                                           'include-stray-KOs': {'flags': anvio.A('include-stray-KOs'),
-                                                           'definition': anvio.K('include-stray-KOs')}                 
+                                                           'definition': anvio.K('include-stray-KOs')}
                                           }
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
@@ -88,7 +88,7 @@ def main(args, unknown_args):
                     p_flag = "--" + p.replace("_", "-")
                     if p_flag in mode_unknown:
                         mode_unknown.remove(p_flag)
-    
+
     args = argparse.Namespace(**vars(args), **vars(mode_args))
     # global flags are already handled by anvi'o and shouldn't be in the unknown list
     # these are coming from __init__.py and not all are relevant to this code but we catch them anyway
