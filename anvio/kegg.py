@@ -310,6 +310,12 @@ class KeggContext(object):
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
         self.binary_relation_data_dir = os.path.join(self.kegg_data_dir, "binary_relations")
+        self.map_image_data_dir = os.path.join(self.kegg_data_dir, "map_images")
+        self.map_image_png_dir = os.path.join(self.map_image_data_dir, "png_2x")
+        self.map_image_kgml_dir = os.path.join(self.map_image_data_dir, "kgml")
+        self.map_image_kgml_ko_dir = os.path.join(self.map_image_kgml_dir, "ko")
+        self.map_image_kgml_ec_dir = os.path.join(self.map_image_kgml_dir, "ec")
+        self.map_image_kgml_rn_dir = os.path.join(self.map_image_kgml_dir, "rn")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -324,6 +330,8 @@ class KeggContext(object):
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
         self.kegg_binary_relation_files = {('KO', 'EC'): "ko2ec.xl", ('KO', 'RN'): "ko2rn.xl"}
+        self.kegg_pathway_list_file = os.path.join(self.kegg_data_dir, "pathway_list.tsv")
+        self.kegg_map_image_kgml_file = os.path.join(self.kegg_data_dir, "map_kgml.tsv")
 
         if self.user_input_dir:
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
