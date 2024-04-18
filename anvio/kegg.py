@@ -2325,6 +2325,9 @@ class ModulesDownload(KeggSetup):
                 if not self.skip_binary_relations:
                     self.download_binary_relations()
                     self.confirm_downloaded_binary_relations()
+
+                if not self.skip_map_images:
+                    self.download_map_images()
             else:
                 # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
@@ -2550,6 +2553,120 @@ class ModulesDownload(KeggSetup):
         self.run.info(
             "Number of KEGG binary relations files found", len(self.kegg_binary_relation_files)
         )
+
+
+    ###### Pathway map image-related functions below ######
+    def download_map_images(self) -> None:
+        """
+        Download high-res pathway map image files and associated KO, EC, and RN KGML files.
+
+        Only maps with at least one of these reference KGML files are downloaded. Write a table
+        indicating whether KO, EC, and RN KGML files are available for each downloaded map.
+
+        Adjust KGML files to rescale objects to match 2x image files.
+        """
+        try:
+            utils.download_file(
+                self.kegg_pathway_list_download_path,
+                self.kegg_pathway_list_file,
+                progress=self.progress,
+                run=self.run
+            )
+        except Exception as e:
+            print(e)
+            raise ConfigError(
+                "Anvi'o failed to download a list of pathways from the KEGG website. Something "
+                "likely changed on the KEGG end. Please contact the developers to see if this is a "
+                "fixable issue or find a workaround."
+            )
+        pathway_table = pd.read_csv(
+            self.kegg_pathway_list_file, sep='\t', header=None, names=['id', 'name']
+        )
+
+        total_map_count = len(pathway_table)
+        self.run.info_single(
+            f"Up to {total_map_count} maps will be downloaded. \"Up to\" because only those found "
+            f"to have associated reference KGML files are downloaded. {self.num_threads} cores "
+            "(threads) will be used in downloading.",
+            nl_before=1
+        )
+        self.progress.new("Downloading KEGG pathway map files")
+        downloaded_map_count = 0
+        self.progress.update(f"{downloaded_map_count} pathway maps downloaded")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for pathway_id in pathway_table['id']:
+            input_queue.put((pathway_id, self.kegg_rest_api_get, self.map_image_data_dir))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(
+                target=_download_pathway_image_worker, args=(input_queue, output_queue)
+            )
+            workers.append(worker)
+            worker.start()
+
+        processed_count = 0
+        failed_pathway_ids: List[str] = []
+        while processed_count < total_map_count:
+            output: Tuple[str] = output_queue.get()
+            if output[-1] is True:
+                downloaded_map_count += 1
+                self.progress.update(
+                    f"{downloaded_map_count} pathway "
+                    f"{'map' if downloaded_map_count == 1 else 'maps'} downloaded"
+                )
+            elif isinstance(output[-1], str):
+                pathway_id = os.path.splitext(output[-1])[0]
+                failed_pathway_ids.append(pathway_id)
+            processed_count += 1
+
+        for worker in workers:
+            worker.terminate()
+        self.progress.end()
+
+        if failed_pathway_ids:
+            raise ConfigError(
+                "Unfortunately, files for the following pathway maps failed to download despite "
+                "multiple attempts, and so the database needs to be set up again: "
+                f"{', '.join(failed_pathway_ids)}"
+            )
+
+        self.run.info_single(f"{downloaded_map_count} maps were downloaded.")
+
+        # Rescale graphical coordinates in KGML files to fit 2x map images.
+        # Record the KGML files available for each map in a table.
+        self.progress.new(
+            "Rescaling map KGML files to 2x resolution", progress_total_items=total_kgml_count
+        )
+        kgml_file_paths = []
+        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_ko_dir, 'ko*.xml'))
+        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_ec_dir, 'ec*.xml'))
+        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_rn_dir, 'rn*.xml'))
+        total_kgml_count = len(kgml_file_paths)
+        kgml_availability = {}
+        rescaled_count = 0
+        for file_path in kgml_file_paths:
+            self.progress.update(f"{rescaled_count} / {total_kgml_count} KGML files rescaled")
+            with open(file_path) as f:
+                kgml_text = f.read()
+            rescaled_kgml_text = self.rescale_kgml_graphics(kgml_text)
+            with open(file_path, 'w') as f:
+                f.write(rescaled_kgml_text)
+
+            kgml_id: str = os.path.splitext(os.path.basename(file_path))[0]
+            pathway_id = f'map{kgml_id[2:]}'
+            try:
+                kgml_availability[pathway_id][kgml_id[:2].upper()] = '1'
+            except KeyError:
+                kgml_availability[pathway_id] = {kgml_id[:2].upper(): 1}
+            rescaled_count += 1
+            self.progress.increment(increment_to=rescaled_count)
+        self.progress.end()
+
+        pd.DataFrame.from_dict(
+            kgml_availability, orient='index', columns=['KO', 'EC', 'RN']
+        ).sort_index().to_csv(self.kegg_map_image_kgml_file, sep='\t')
 
 
     def rescale_kgml_graphics(self, kgml_text: str, factor: float = 2.0) -> str:
