@@ -9752,3 +9752,120 @@ def _download_worker(
         output_queue.put(output)
 
 
+def _download_pathway_image_worker(
+    input_queue: mp.Queue,
+    output_queue: mp.Queue,
+    max_num_tries: int = 100,
+    wait_secs: float = 10.0
+) -> None:
+    """
+    Multiprocessing worker to download files from a queue.
+
+    Parameters
+    ==========
+    input_queue : multiprocessing.Queue
+        Queue of length-three iterables of the pathway ID, the URL stem, and the target map image
+        directory for each file to download. The map image directory must contain subdirectories
+        called "png_2x" and "kgml", and the "kgml" directory must contain subdirectories called
+        "ko", "ec", and "rn".
+
+    output_queue : multiprocessing.Queue
+        Queue in which the success of each download operation is recorded as a length-four tuple,
+        with the respective items being for the KO KGML, EC KGML, RN KGML, and 2x map image. If the
+        item is represented by a value of True, then the file downloaded successfully. If the KGML
+        item is a value of False, then it is not available for download; if the map image if False,
+        then it was not downloaded because no KGML files were available for download. If the item is
+        a string that is the name of the file that would be downloaded, then the download failed
+        (after exceeding the maximum number of tries).
+
+    max_num_tries : int, 100
+        The maximum number of times to try downloading a file (in case of a connection reset).
+
+    wait_secs : float, 10.0
+        The number of seconds to wait between each file download attempt.
+
+    Returns
+    =======
+    None
+    """
+    while True:
+        pathway_id, url, map_image_dir = input_queue.get()
+        pathway_id: str
+        url: str
+        map_image_dir: str
+        map_image_png_dir = os.path.join(map_image_dir, "png_2x")
+        map_image_kgml_dir = os.path.join(map_image_dir, "kgml")
+        map_image_kgml_ko_dir = os.path.join(map_image_kgml_dir, "ko")
+        map_image_kgml_ec_dir = os.path.join(map_image_kgml_dir, "ec")
+        map_image_kgml_rn_dir = os.path.join(map_image_kgml_dir, "rn")
+        ko_kgml_url = f'{url}/{pathway_id.replace("map", "ko")}/kgml'
+        ko_kgml_path = os.path.join(
+            map_image_kgml_ko_dir, f'{pathway_id.replace("map", "ko")}.xml'
+        )
+        ec_kgml_url = f'{url}/{pathway_id.replace("map", "ec")}/kgml'
+        ec_kgml_path = os.path.join(
+            map_image_kgml_ec_dir, f'{pathway_id.replace("map", "ec")}.xml'
+        )
+        rn_kgml_url = f'{url}/{pathway_id.replace("map", "rn")}/kgml'
+        rn_kgml_path = os.path.join(
+            map_image_kgml_rn_dir, f'{pathway_id.replace("map", "rn")}.xml'
+        )
+        output = []
+        max_tries_exceeded = False
+        for kgml_url, kgml_path in (
+            (ko_kgml_url, ko_kgml_path),
+            (ec_kgml_url, ec_kgml_path),
+            (rn_kgml_url, rn_kgml_path)
+        ):
+            num_tries = 0
+            while True:
+                try:
+                    utils.download_file(kgml_url, kgml_path)
+                    output.append(True)
+                    break
+                except ConnectionResetError:
+                    num_tries += 1
+                    if num_tries > max_num_tries:
+                        output.append(os.path.basename(kgml_url))
+                        max_tries_exceeded = True
+                        break
+                    time.sleep(wait_secs)
+                except ConfigError as e:
+                    if 'HTTP Error 404' in str(e):
+                        output.append(False)
+                        break
+                    else:
+                        num_tries += 1
+                        if num_tries > max_num_tries:
+                            output.append(os.path.basename(kgml_url))
+                            max_tries_exceeded = True
+                            break
+                        time.sleep(wait_secs)
+
+        if max_tries_exceeded:
+            # Connection errors prevented any KO, EC, or RN KGML files from being downloaded; it is
+            # unknown if any of these files are actually available for the pathway map.
+            output.append(f'{pathway_id}.png')
+            output_queue.put(tuple(output))
+        elif set(output) == {False}:
+            # No KO, EC, and RN KGML files are available for the pathway map. For instance, this is
+            # the case for drug maps with KEGG IDs starting with 'map07', such as 'map07011',
+            # 'Penicillins'.
+            output.append(False)
+            output_queue.put(tuple(output))
+        else:
+            map_image_url = f'{url}/{pathway_id}/image2x'
+            map_image_path = os.path.join(map_image_png_dir, f'{pathway_id}.png')
+            num_tries = 0
+            while True:
+                try:
+                    utils.download_file(map_image_url, map_image_path)
+                    output.append(True)
+                    break
+                except (ConfigError, ConnectionResetError) as e:
+                    num_tries += 1
+                    if num_tries > max_num_tries:
+                        output.append(f'{pathway_id}.png')
+                        break
+                    time.sleep(wait_secs)
+        output_queue.put(tuple(output))
