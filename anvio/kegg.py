@@ -2260,12 +2260,13 @@ class ModulesDownload(KeggSetup):
 
         for worker in workers:
             worker.terminate()
+        self.progress.end()
+
         if undownloaded:
             raise ConfigError(
                 "Unfortunately, files for the following modules failed to download despite multiple attempts, "
                 f"and so the database needs to be set up again: {', '.join(undownloaded)}"
             )
-        self.progress.end()
 
 
     def confirm_downloaded_modules(self):
