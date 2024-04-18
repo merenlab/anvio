@@ -2068,6 +2068,7 @@ class ModulesDownload(KeggSetup):
         self.skip_init = skip_init
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.skip_binary_relations = A('skip_binary_relations')
+        self.skip_map_images = A('skip_map_images')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
         self.run.info_single("Info from MODULES Download")
