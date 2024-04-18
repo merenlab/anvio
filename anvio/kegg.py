@@ -2552,6 +2552,58 @@ class ModulesDownload(KeggSetup):
         )
 
 
+    def rescale_kgml_graphics(self, kgml_text: str, factor: float = 2.0) -> str:
+        """
+        Adjust KGML objects to fit corresponding map images of varying resolution.
+
+        Parameters
+        ==========
+        kgml_text : str
+            Text of input KGML.
+
+        factor : float = 2.0
+            Rescaling factor.
+
+        Returns
+        =======
+        str
+            Text of rescaled KGML.
+        """
+        # Position and size parameters of KGML objects.
+        params = ['x', 'y', 'width', 'height']
+
+        for param in params:
+            # Example pattern: x="327"
+            pattern = re.compile(f'{param}="(\d+)"')
+            previous_end = None
+
+            for match in re.finditer(pattern, kgml_text):
+                groups = match.groups()
+                assert len(groups) == 1
+                if previous_end:
+                    # Add the text from the previous pattern match through the rescaled match.
+                    new_kgml_text = (
+                        new_kgml_text +
+                        kgml_text[previous_end:match.start(1)] +
+                        str(int(groups[0]) * factor)
+                    )
+                else:
+                    # This is the first pattern match.
+                    new_kgml_text = kgml_text[:match.start(1)] + str(int(groups[0]) * factor)
+                previous_end = match.end(1)
+
+            if previous_end:
+                # Add the text after the end of the final pattern match.
+                new_kgml_text = new_kgml_text + kgml_text[previous_end:]
+            else:
+                # There were no pattern matches.
+                new_kgml_text = kgml_text
+
+            kgml_text = new_kgml_text
+
+        return new_kgml_text
+
+
 class RunKOfams(KeggContext):
     """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
