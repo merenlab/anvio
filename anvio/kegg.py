@@ -827,7 +827,7 @@ class KeggSetup(KeggContext):
         binary_relation_data_dir = os.path.join(
             path_to_kegg_in_archive, os.path.basename(self.binary_relation_data_dir)
         )
-        if os.path.isdir(self.binary_relation_data_dir):
+        if os.path.isdir(binary_relation_data_dir):
             is_binary_relation_dir_included = True
         else:
             is_binary_relation_dir_included = False
