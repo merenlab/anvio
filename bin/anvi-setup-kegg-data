@@ -46,7 +46,9 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                           'skip-brite-hierarchies': {'flags': anvio.A('skip-brite-hierarchies'),
                                                             'definition': anvio.K('skip-brite-hierarchies')},
                                           'skip-binary-relations': {'flags': anvio.A('skip-binary-relations'),
-                                                            'definition': anvio.K('skip-binary-relations')}
+                                                            'definition': anvio.K('skip-binary-relations')},
+                                          'skip-map-images': {'flags': anvio.A('skip-map-images'),
+                                                            'definition': anvio.K('skip-map-images')}
                                         }
                             },
                 'all': {'description': 'Download ALL KEGG data. This is the default mode.',
