@@ -2786,8 +2786,8 @@ class RunKOfams(KeggContext):
 
             if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
                 self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
-                             "which could very well be useful to you. BRITE is guaranteed to be set up "
-                             "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+                                 "which could very well be useful to you. BRITE is guaranteed to be set up "
+                                 "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
         else:
             self.run.warning("No modules database was found in the KEGG data directory you specified. This is fine, but "
                              "you will not get functional annotations related to KEGG MODULES or BRITE hierarchies in your "
