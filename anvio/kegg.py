@@ -2124,6 +2124,15 @@ class ModulesDownload(KeggSetup):
                 filesnpaths.gen_output_directory(
                     self.binary_relation_data_dir, delete_if_exists=args.reset
                 )
+            if not self.skip_map_images:
+                filesnpaths.gen_output_directory(
+                    self.map_image_data_dir, delete_if_exists=args.reset
+                )
+                filesnpaths.gen_output_directory(self.map_image_png_dir)
+                filesnpaths.gen_output_directory(self.map_image_kgml_dir)
+                filesnpaths.gen_output_directory(self.map_image_kgml_ko_dir)
+                filesnpaths.gen_output_directory(self.map_image_kgml_ec_dir)
+                filesnpaths.gen_output_directory(self.map_image_kgml_rn_dir)
 
 
     def download_kegg_module_file(self):
