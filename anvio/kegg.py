@@ -731,6 +731,7 @@ class KeggSetup(KeggContext):
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         archive_contains_binary_relations = self.check_archive_for_binary_relations(unpacked_archive_name)
+        archive_contains_map_images = self.check_archive_for_map_images(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir):
@@ -750,6 +751,14 @@ class KeggSetup(KeggContext):
                     "`anvi-reaction-network`. This is not a problem, and KEGG setup proceeded "
                     "without it. Binary relation files are guaranteed to be set up when "
                     "downloading the latest version of KEGG with `anvi-setup-kegg-data`."
+                )
+
+            if not archive_contains_map_images and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG data archive does not contain the pathway map image files used for "
+                    "pathway visualization. This is not a problem, and KEGG setup proceeded "
+                    "without it. Map image files are guaranteed to be set up when downloading the "
+                    "latest version of KEGG with `anvi-setup-kegg-data`."
                 )
 
             # if necessary, warn user about migrating the modules db
@@ -842,6 +851,29 @@ class KeggSetup(KeggContext):
                 )
 
         return is_binary_relation_dir_included
+
+
+    def check_archive_for_map_images(self, unpacked_archive_path):
+        """
+        Check the archive for the pathway map directory and image files.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        map_image_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.map_image_data_dir)
+        )
+        if os.path.isdir(map_image_data_dir):
+            is_map_image_dir_included = True
+        else:
+            is_map_image_dir_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    f"The KEGG archive does not contain the following optional pathway map images "
+                    f"directory, which is used in pathway visualization."
+                )
+
+        return is_map_image_dir_included
 
 
     def setup_kegg_snapshot(self):
