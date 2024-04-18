@@ -2098,6 +2098,8 @@ class ModulesDownload(KeggSetup):
         self.kegg_binary_relations_download_path = "https://www.genome.jp/kegg-bin/show?file="
         # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
+        # download the list of pathways, used for processing map image files
+        self.kegg_pathway_list_download_path = "https://rest.kegg.jp/list/pathway"
 
         # check if the data is already downloaded
         expected_files_for_modules = [self.kegg_module_file,
