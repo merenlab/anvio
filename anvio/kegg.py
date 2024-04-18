@@ -403,17 +403,17 @@ class KeggContext(object):
             if not suppress_warnings:
                 self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
-    
+
     def setup_stray_ko_dict(self, add_entries_to_regular_ko_dict=False):
         """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
-        
-        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
+
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs`
         (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
 
         knum	threshold	score_type	definition
         K11700	800.4	full	poly(A) RNA polymerase Cid12 [EC:2.7.7.19]
         K14747_anvio_version	1054.2	full	benzoylacetate-CoA ligase [EC:6.2.1.-]
-        
+
         The dictionary structure is identical to that of self.ko_dict. Note that the `knum` column can contain
         normal KEGG Ortholog accessions (for KOs whose HMMs we haven't updated) and accessions that end with
         STRAY_KO_ANVIO_SUFFIX (for KOs that we created new models for).
@@ -423,7 +423,7 @@ class KeggContext(object):
         Parameters
         ==========
         add_entries_to_regular_ko_dict : Boolean
-            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the 
+            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the
             regular self.ko_dict attribute. Useful if you don't need to keep the two sets separate.
         """
 
