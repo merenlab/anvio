@@ -2109,6 +2109,8 @@ class ModulesDownload(KeggSetup):
             expected_files_for_modules.append(self.brite_data_dir)
         if not self.skip_binary_relations:
             expected_files_for_modules.append(self.binary_relation_data_dir)
+        if not self.skip_map_images:
+            expected_files_for_modules.append(self.map_image_data_dir)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
             self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
