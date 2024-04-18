@@ -573,7 +573,8 @@ class KeggSetup(KeggContext):
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
         self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
-
+        self.skip_binary_relations = True if A('skip_binary_relations') else False
+        self.skip_map_images = True if A('skip_map_images') else False
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
