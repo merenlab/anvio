@@ -3214,3 +3214,29 @@ function ShadowBoxSelection(type) {
             result.classList.add('border-warning');
         }
 }
+
+
+function updateScale(delta) {
+    const initialWidth = 100;
+    const maxScaleWidth = 230;
+    let threshold = maxScaleWidth;
+    scale += delta * -0.1;
+
+    scale = Math.max(0.1, scale);
+
+    const scaleBar = document.getElementById('scaleBar');
+    const newWidth = Math.max(initialWidth, Math.min(maxScaleWidth, scale * maxScaleWidth));
+    scaleBar.style.width = newWidth + 'px';
+
+
+    if (scale <= 0.1 && newWidth >= threshold) {
+        scale = 0.1;
+        scaleBar.style.width = initialWidth + 'px';
+        threshold = maxScaleWidth;
+    }
+}
+
+document.addEventListener('wheel', function(event) {
+    const delta = Math.sign(event.deltaY);
+    updateScale(delta);
+});

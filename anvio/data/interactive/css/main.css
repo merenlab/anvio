@@ -1041,6 +1041,30 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     min-width: 16px;
 }
 
+#scaleBar {
+    width: 100px;
+    height: 20px;
+    background-color: #ccc;
+    margin-top: 20px;
+    position: relative;
+}
+#scaleBar #leftEnd, #scaleBar #rightEnd, #scaleBar #midLine {
+    position: absolute;
+    height: 100%;
+    width: 1px;
+    background-color: #000;
+}
+#scaleBar #leftEnd {
+    left: 0;
+}
+#scaleBar #rightEnd {
+    right: 0;
+}
+#scaleBar #midLine {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 @keyframes glowing {
     0% { background-position: 0 0; }
     50% { background-position: 400% 0; }
