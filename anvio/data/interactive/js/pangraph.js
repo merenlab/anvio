@@ -302,7 +302,7 @@ async function appendalignment(gene_cluster_id, alignment) {
       alignments_table += `<tr>`
       alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
       alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
-      alignments_table += `<td id="td-genome-cell">` + value[1] + `</td>`
+      alignments_table += `<td id="td-contig-cell">` + value[1] + `</td>`
       alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }

@@ -187,10 +187,20 @@
   }
 
  #td-value-cell{
-  position: sticky; 
-  left: 109px; 
-  background-color: #e4e4e4;
-  z-index: 1;
+    position: sticky; 
+    left: 109px; 
+    background-color: #e4e4e4;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+ }
+
+ #td-contig-cell{
+    position: sticky; 
+    left: 192px; 
+    background-color: #e4e4e4;
+    z-index: 1;
  }
 
   .scroll-wrapper {
@@ -202,4 +212,4 @@
     overflow-x: auto;
     white-space: nowrap;
     background-color: #e4e4e4;
-}
+  }
