@@ -183,12 +183,12 @@
     position: sticky; 
     left: 0; 
     background-color: #e4e4e4; 
-    z-index: 1;
+    z-index: 2;
+    width: min-content;
   }
 
  #td-value-cell{
     position: sticky; 
-    left: 109px; 
     background-color: #e4e4e4;
     z-index: 1;
     display: flex;
@@ -198,9 +198,17 @@
 
  #td-contig-cell{
     position: sticky; 
-    left: 192px; 
     background-color: #e4e4e4;
     z-index: 1;
+ }
+
+ #td-direction-cell{
+    position: sticky; 
+    background-color: #e4e4e4;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
  }
 
   .scroll-wrapper {

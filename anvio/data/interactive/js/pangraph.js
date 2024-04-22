@@ -286,11 +286,11 @@ async function appendalignment(gene_cluster_id, alignment) {
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
     alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
     alignments_table += `<thead class="thead-dark"><tr>`;
-    alignments_table += `<th scope="col">Genome</th>`;
+    alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Contig</th>`;
     alignments_table += `<th scope="col">Direction</th>`;
-    alignments_table += `<th scope="col">Sequence</th>`;
+    alignments_table += `<th id="th-sequence" scope="col"><span>Sequence</span></th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
 
@@ -304,8 +304,8 @@ async function appendalignment(gene_cluster_id, alignment) {
       alignments_table += `<tr>`
       alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
       alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
-      alignments_table += `<td id="td-genome-cell">` + value[1] + `</td>`
-      alignments_table += `<td id="td-value-cell">` + value[2] + `</a></td>`
+      alignments_table += `<td id="td-contig-cell">` + value[1] + `</td>`
+      alignments_table += `<td id="td-direction-cell">` + value[2] + `</a></td>`
       alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }
