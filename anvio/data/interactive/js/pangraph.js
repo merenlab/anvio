@@ -996,6 +996,7 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
     var d = get_gene_cluster_consensus_functions(node['genome'])
     for (var source of keys) {
       for (var s of searchfunction[source]){
+
         if ((d[source][2].toLowerCase().includes(s.trim().toLowerCase()))) {
           t = true
         }
@@ -1887,6 +1888,10 @@ function main () {
                   searched[id] = [id]
                 }
               }
+            } else {
+              if (!(id in searched)) {
+                searched[id] = [id]
+              }
             }
           }
         }
@@ -1909,6 +1914,12 @@ function main () {
                   } else {
                     searched[groupid].push(id)
                   }
+                }
+              } else {
+                if (!(groupid in searched)) {
+                  searched[groupid] = [id]
+                } else {
+                  searched[groupid].push(id)
                 }
               }
             }
