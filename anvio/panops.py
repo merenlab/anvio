@@ -1229,6 +1229,7 @@ class Pangraph():
 
         pan_db.init_gene_clusters()
         pan_db.init_gene_clusters_functions_summary_dict()
+        # pan_db.
         gene_cluster_dict = pan_db.gene_callers_id_to_gene_cluster
 
         external_genomes = pd.read_csv(self.external_genomes_txt, header=0, sep="\t", names=["name","contigs_db_path"])

@@ -240,8 +240,9 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
       for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
         var genecall = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call']
         var contig = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['contig']
+        var direction = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['direction']
         var name = data['elements']['nodes'][gene_cluster_id]['name']
-        alignment[genome] = [genecall, contig, name]
+        alignment[genome] = [genecall, contig, direction, name]
       }
       // }
 
@@ -288,6 +289,7 @@ async function appendalignment(gene_cluster_id, alignment) {
     alignments_table += `<th scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Contig</th>`;
+    alignments_table += `<th scope="col">Direction</th>`;
     alignments_table += `<th scope="col">Sequence</th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
@@ -297,12 +299,13 @@ async function appendalignment(gene_cluster_id, alignment) {
     // console.log(d)
 
     for (var [genome, value] of Object.entries(d)) {
-      var colored = value[2].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
+      var colored = value[3].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
       alignments_table += `<tr>`
       alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
       alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
       alignments_table += `<td id="td-genome-cell">` + value[1] + `</td>`
+      alignments_table += `<td id="td-value-cell">` + value[2] + `</a></td>`
       alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }
@@ -1630,10 +1633,10 @@ function main () {
     
           var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
     
-          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + '\n';
+          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + "|Direction:" + alignment_cols[3].innerHTML + '\n';
           var genome = ''
           
-          var alignment_nucs = alignment_cols[3].getElementsByTagName('span');
+          var alignment_nucs = alignment_cols[4].getElementsByTagName('span');
           // console.log(alignment_nucs)
 
           for (let k = 0; k < alignment_nucs.length; k++) {
@@ -1742,9 +1745,11 @@ function main () {
 
       //Expression Search
       var expressioncomparison = ''
-      var expressiondrop = $('#expressiondrop').attr('value')
-      var expressionrel = $('#expressionrel').attr('value')
+      var expressiondrop = $('#expressiondrop')[0].value
+      var expressionrel = $('#expressionrel')[0].value
       var expressiontext = $('#expressiontext')[0].value
+
+      console.log(expressiondrop, expressionrel, expressiontext)
 
       if (expressiondrop != "Choose item" && expressionrel != "Choose operator" && expressiontext != '') {
         if (expressionrel == '=') {
@@ -1775,6 +1780,8 @@ function main () {
           expressioncomparison = '.startsWith("' + expressiontext + '")'
         }
       } 
+
+      console.log(expressioncomparison)
 
       //Function Search
       var searchfunction = {}
@@ -1863,7 +1870,7 @@ function main () {
       // console.log(positions)
 
       if (expressioncomparison == '' && Object.keys(searchfunction).length == 0 && searchpos == false) {
-        var message = "Please enter search parameters."
+        var message = "Please enter valid search parameters."
       } else {
         // console.log(expressioncomparison, searchfunction, searchpos)
 
@@ -1874,8 +1881,12 @@ function main () {
           var node = data['elements']['nodes'][id]
 
           if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
-            if (!(id in searched)) {
-              searched[id] = [id]
+            if (expressiondrop == "Name") {
+              if (eval('"' + node["name"] + '"' + expressioncomparison)) {
+                if (!(id in searched)) {
+                  searched[id] = [id]
+                }
+              }
             }
           }
         }
@@ -1889,10 +1900,16 @@ function main () {
             node = data['elements']['nodes'][id]
 
             if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
-              if (!(groupid in searched)) {
-                searched[groupid] = [id]
-              } else {
-                searched[groupid].push(id)
+              
+              if (expressiondrop == "Name") {
+                if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
+
+                  if (!(groupid in searched)) {
+                    searched[groupid] = [id]
+                  } else {
+                    searched[groupid].push(id)
+                  }
+                }
               }
             }
           }
@@ -1940,38 +1957,6 @@ function main () {
       // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
       $('#searchtoast').toast('show')
     })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     var nodes = document.querySelectorAll(".node")
     var divs = document.querySelectorAll(".node, .group");
