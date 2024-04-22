@@ -290,7 +290,7 @@ async function appendalignment(gene_cluster_id, alignment) {
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Contig</th>`;
     alignments_table += `<th scope="col">Direction</th>`;
-    alignments_table += `<th id="th-sequence" scope="col"><span>Sequence</span></th>`;
+    alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
 

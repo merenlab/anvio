@@ -221,3 +221,7 @@
     white-space: nowrap;
     background-color: #e4e4e4;
   }
+#th-sequence{
+  position: sticky;
+  left: 120px;
+}
