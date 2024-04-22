@@ -1070,7 +1070,7 @@ class Pangraph():
         if not self.testing:
             self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
         else:
-            self.functional_annotation_sources_available = False
+            self.functional_annotation_sources_available = []
 
         self.data_table_dict = {}
         self.priority_genome = ''
