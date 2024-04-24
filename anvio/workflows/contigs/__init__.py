@@ -70,7 +70,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
 
-        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
+        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas', '--add-to-functions-table']
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
