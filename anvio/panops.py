@@ -2161,9 +2161,9 @@ class Pangraph():
                 self.data_table_dict['Direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
                 self.data_table_dict['Entropie'][gene_cluster] = H
 
-        self.data_table_dict['Paralogs']['max'] = max_paralogs - 1
+        self.data_table_dict['Paralogs']['max'] = max_paralogs - 1 if max_paralogs - 1 != 0 else 1
         self.data_table_dict['Direction']['max'] = 0.5
-        self.data_table_dict['Entropie']['max'] = max_entropie
+        self.data_table_dict['Entropie']['max'] = max_entropie if max_entropie != 0 else 1
 
             # global_entropy += H
 
@@ -2200,6 +2200,8 @@ class Pangraph():
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
         
+        print(self.global_y)
+
         jsondata["infos"] = {
             'meta': {
                 'title': self.project_name,

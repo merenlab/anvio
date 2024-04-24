@@ -1516,7 +1516,7 @@ class BottleApplication(Bottle):
         #     data = json.load(pangraph_json)
 
         global_x = int(data["infos"]["meta"]["global_x"])
-        global_y = -1
+        global_y = 0
 
         for x in range(0, global_x+1):
             x_list[x] = []

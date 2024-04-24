@@ -523,7 +523,7 @@ async function generate_svg(body, data) {
   var nodes = data['elements']['nodes']
 
   var global_x = data["infos"]["meta"]["global_x"] -1;
-  var global_y = data["infos"]["meta"]["global_y"];
+  var global_y = data["infos"]["meta"]["global_y"] +1;
 
   var group_color = $('#groups')[0].value;
   var node_color = $('#nodes')[0].value;
@@ -712,8 +712,8 @@ async function generate_svg(body, data) {
               layer_start += line_thickness * 0.5
               layer_stop -= line_thickness * 0.5
 
-              var i_y_size = layer_start + i_y * (layer_width / global_y)
-              var j_y_size = layer_start + j_y * (layer_width / global_y)
+              var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
+              var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
               var draw = edgecoloring[genomes[e]][1]
               var thickness = line_thickness
               var stroke = ''
@@ -840,6 +840,30 @@ async function generate_svg(body, data) {
         )
       }
 
+      for (var genome of genomes) {
+
+        var layer_name = genome + 'layer'
+        var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
+
+        var [a_x, a_y] = transform(parseInt(k_x)-add_start, layer_start, theta)
+        var [b_x, b_y] = transform(parseInt(k_x)+add_stop, layer_start, theta)
+        var [c_x, c_y] = transform(parseInt(k_x)-add_start, layer_stop, theta)
+        var [d_x, d_y] = transform(parseInt(k_x)+add_stop, layer_stop, theta)
+
+        if (!global_values.includes(k_x)) {
+          svg_heatmaps.push(
+            $('<path d="' +
+            'M ' + a_x + ' ' + a_y + ' ' +
+            'A ' + (layer_start) + ' ' + (layer_start) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+            'L' + d_x + ' ' + d_y +  ' ' +
+            'A ' + (layer_stop) + ' ' + (layer_stop) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+            'L' + a_x + ' ' + a_y +
+            // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
+            '" fill="lightgray" stroke="" stroke-width="0"/>')
+          )
+        }
+      }
+
       for (var layer_name of layers) {
 
         if ($('#flex' + layer_name).prop('checked') == true){
@@ -865,9 +889,9 @@ async function generate_svg(body, data) {
             svg_heatmaps.push(
               $('<path class="' + layer_name + '" xpos="' + k_x + '" name="' + (value / max).toFixed(3) + '" d="' +
               'M ' + a_x + ' ' + a_y + ' ' +
-              'A ' + (layer_start + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+              'A ' + (layer_start + k_y_size) + ' ' + (layer_start + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
               'L' + d_x + ' ' + d_y +  ' ' +
-              'A ' + (layer_start + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+              'A ' + (layer_stop + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
               'L' + a_x + ' ' + a_y +
               // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
               '" fill="' + lighter_color('#00ff00', '#ff0000', value / max) + '" stroke="" stroke-width="0"/>')
@@ -924,9 +948,9 @@ async function generate_svg(body, data) {
     svg_groups.push(
       $('<path class="group" id="' + l + '" d="' +
       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
-      'A ' + l_y_size + ' ' + m_y_size + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
+      'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
-      'A ' + l_y_size + ' ' + m_y_size + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
+      'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
       '" fill="' + lighter_color('#ffffff', group_color, group_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
     )
@@ -1926,29 +1950,27 @@ function main () {
           }
         }
         
-        // var table = $('<div class="form-horizontal"></div>')
+        var table = $('<div class="form-horizontal"></div>')
 
-        // for (var key of Object.keys(searched)) {
+        for (var key of Object.keys(searched)) {
           
-        //   table.append(
-        //     $('<div class="col-12"></div>').append(
-        //       $('<div class="row align-items-center"></div>').append(
-        //         $('<div class="col-3 mb-1">' + searched[key] + '</td>')
-        //       ).append(
-        //         $('<div class="col-9 mb-1">Append to bin</td>')
-        //       )
-        //     )
-        //   )
-        // }
+          table.append(
+            $('<div class="col-12"></div>').append(
+              $('<div class="row align-items-center"></div>').append(
+                $('<div class="col-12 mb-1">' + searched[key] + '</td>')
+              )
+            )
+          )
+        }
 
-        // $('#searchtable').empty()
-        // $('#searchtable').append(
-        //   $('<div class="pt-3"></div>').append(
-        //     $('<div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter"></div>').append(
-        //       table
-        //     )
-        //   )
-        // )
+        $('#searchtable').empty()
+        $('#searchtable').append(
+          $('<div class="pt-3"></div>').append(
+            $('<div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter"></div>').append(
+              table
+            )
+          )
+        )
 
         var message = 'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
 
