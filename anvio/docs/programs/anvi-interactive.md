@@ -31,7 +31,7 @@ Typically the %(interactive)s displays that will be initiated with `anvi-interac
 {:.notice}
 Some advanced information you should feel free to skip: anvi'o uses a set of %(clustering-configuration)s files to decide which sources of data to use to cluster items. These recipes are essentially a set of configuration files for anvi'o to learn which information to use from %(contigs-db)s, %(profile-db)s, or %(pan-db)s type databases.
 
-Some of the programs that generate dendrograms include %(anvi-merge)s, %(anvi-profile)s, and %(anvi-experimental-organization)s. But since hierarchical clustering is an extremely demanding process, anvi'o will skip this step during %(anvi-merge)s if there are more than 20,000 splits n the database. This is because the computational complexity of this process will get less and less feasible with increasing number of splits. You can force anvi'o to try to cluster your splits regardless of how many of them there are there by using the flag `--enforce-hierarchical-clustering`. However, we strongly advice against it especially if you have more than 30,000 splits since your process will likely to be killed by the operating system, or take a very very long time to finish (plus, if you have that many splits the performance of the interactive interface will be very low).
+Some of the programs that generate dendrograms include %(anvi-merge)s, %(anvi-profile)s, and %(anvi-experimental-organization)s. But since hierarchical clustering is an extremely demanding process, anvi'o will skip this step during %(anvi-merge)s if there are more than 20,000 splits n the database. This is because the computational complexity of this process will get less and less feasible with increasing number of splits. You can force anvi'o to try to cluster your splits regardless of how many of them there are by using the flag `--enforce-hierarchical-clustering`. However, we strongly advice against it especially if you have more than 30,000 splits since your process will likely be killed by the operating system, or take a very very long time to finish (plus, if you have that many splits the performance of the interactive interface will be very low).
 
 What happens if you don't have a hierarchical clustering dendrogram, but you still wish to have an overall understanding of your data, or visualize the coverages of some contigs of interest or any contig at all? There are multiple ways you can do that:
 
@@ -42,7 +42,7 @@ What happens if you don't have a hierarchical clustering dendrogram, but you sti
 
 ### Collection mode: Visualizing *bins* instead of contigs
 
-By default, when run on a profile database that resulted from a metagenomic workflow, %(anvi-interactive)s will initiate each contig as a separate item and organize them based on the clustering dendrograms provided to it (either automatically or by the user). But if there is a %(collection)s stored in the profile database, it is also possible to run %(anvi-interactive)s on a specific collection, during which anvi'o will use the underlying contig data to calculate summary statistics for each bin before displaying them. In collection mode, each item of your central plot will not represent a contig, but a bin within your collection. This is how the collection mode can be initialized in comparison to the default mode:
+By default, when run on a profile database that resulted from a metagenomic workflow, %(anvi-interactive)s will initiate each contig as a separate item and organize them based on the clustering dendrograms provided (either automatically or by the user). But if there is a %(collection)s stored in the profile database, it is also possible to run %(anvi-interactive)s on a specific collection, during which anvi'o will use the underlying contig data to calculate summary statistics for each bin before displaying them. In collection mode, each item of your central plot will not represent a contig, but a bin within your collection. This is how the collection mode can be initialized in comparison to the default mode:
 
 {{ codestart }}
 anvi-interactive -p %(profile-db)s \
@@ -54,7 +54,10 @@ The clustering of %(bin)ss in this case based on their distribution across sampl
 
 ### Genes mode: Visualizing *genes* instead of contigs
 
-You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or bin like in "collection mode").
+You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or 
+
+
+bin like in "collection mode").
 
 To initiate the visualization in gene mode you need the following:
 
@@ -106,7 +109,7 @@ You can also customize various aspects of the interactive interface. For example
 
 ## Password protection
 
-Use `--password-protected` flag to limit access to your interactive instances, which is by default will be accessible to anyone on your network.
+Use `--password-protected` flag to limit access to your interactive instances, which by default will be accessible to anyone on your network.
 
 
 ## Quick solutions for network problems
