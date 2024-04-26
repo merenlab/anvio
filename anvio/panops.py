@@ -2121,12 +2121,12 @@ class Pangraph():
     def generate_data_table(self):
 
         # global_entropy = 0
-        self.layers = ['Paralogs', 'Direction', 'Entropie', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
+        self.layers = ['Paralogs', 'Direction', 'Entropy', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
         self.data_table_dict['Paralogs'] = {'type': 'heatmap',
                                             'scale': 'local'}
         self.data_table_dict['Direction'] = {'type': 'heatmap',
                                             'scale': 'local'}
-        self.data_table_dict['Entropie'] = {'type': 'heatmap',
+        self.data_table_dict['Entropy'] = {'type': 'heatmap',
                                             'scale': 'global'}
         self.data_table_dict['Functional_Homogeneity'] = {'type': 'heatmap',
                                             'scale': 'local'}
@@ -2136,7 +2136,7 @@ class Pangraph():
                                             'scale': 'local'}
 
         max_paralogs = 0
-        max_entropie = 0
+        max_entropy = 0
         base = 2
 
         for x in range(0, self.global_x+1):
@@ -2150,7 +2150,7 @@ class Pangraph():
 
             H = entropy(pk, base=base)
 
-            max_entropie = H if H > max_entropie else max_entropie
+            max_entropy = H if H > max_entropy else max_entropy
 
             for gene_cluster in generation:
                 node = self.ancest.nodes()[gene_cluster]
@@ -2186,14 +2186,14 @@ class Pangraph():
                 
                 self.data_table_dict['Paralogs'][gene_cluster] = max(max_paralog_list) - 1
                 self.data_table_dict['Direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
-                self.data_table_dict['Entropie'][gene_cluster] = H
+                self.data_table_dict['Entropy'][gene_cluster] = H
                 self.data_table_dict['Functional_Homogeneity'][gene_cluster] = 1 - max(func_homogeneity_list)
                 self.data_table_dict['Geometric_Homogeneity'][gene_cluster] = 1 - max(geo_homogeneity_list)
                 self.data_table_dict['Combined_Homogeneity'][gene_cluster] = 1 - max(comb_homogeneity_list)
 
         self.data_table_dict['Paralogs']['max'] = max_paralogs - 1 if max_paralogs - 1 != 0 else 1
         self.data_table_dict['Direction']['max'] = 0.5
-        self.data_table_dict['Entropie']['max'] = max_entropie if max_entropie != 0 else 1
+        self.data_table_dict['Entropy']['max'] = max_entropy if max_entropy != 0 else 1
         self.data_table_dict['Functional_Homogeneity']['max'] = 1
         self.data_table_dict['Geometric_Homogeneity']['max'] = 1
         self.data_table_dict['Combined_Homogeneity']['max'] = 1
