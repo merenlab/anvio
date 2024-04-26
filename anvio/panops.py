@@ -1262,6 +1262,8 @@ class Pangraph():
                 additional_info_df = pd.DataFrame.from_dict(additional_info_cluster, orient="index").rename_axis("gene_cluster_name").reset_index()
                 additional_info_df.rename(columns={entry: entry + "_known" for entry in self.functional_annotation_sources_available}, inplace=True)
 
+                # print(additional_info_df)
+
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster_name", how="left")
                 
                 joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
@@ -2134,9 +2136,6 @@ class Pangraph():
                                             'scale': 'local'}
 
         max_paralogs = 0
-        max_func_homogeneity = 0
-        max_geo_homogeneity = 0
-        max_comb_homogeneity = 0
         max_entropie = 0
         base = 2
 
@@ -2184,23 +2183,20 @@ class Pangraph():
                         num_dir_l += 1
 
                 max_paralogs = max(max_paralog_list) if max(max_paralog_list) > max_paralogs else max_paralogs
-                max_func_homogeneity = max(func_homogeneity_list) if max(func_homogeneity_list) > max_func_homogeneity else max_func_homogeneity
-                max_geo_homogeneity = max(geo_homogeneity_list) if max(geo_homogeneity_list) > max_geo_homogeneity else max_geo_homogeneity
-                max_comb_homogeneity = max(comb_homogeneity_list) if max(comb_homogeneity_list) > max_comb_homogeneity else max_comb_homogeneity
                 
                 self.data_table_dict['Paralogs'][gene_cluster] = max(max_paralog_list) - 1
                 self.data_table_dict['Direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
                 self.data_table_dict['Entropie'][gene_cluster] = H
-                self.data_table_dict['Functional_Homogeneity'][gene_cluster] = max(func_homogeneity_list)
-                self.data_table_dict['Geometric_Homogeneity'][gene_cluster] = max(geo_homogeneity_list)
-                self.data_table_dict['Combined_Homogeneity'][gene_cluster] = max(comb_homogeneity_list)
+                self.data_table_dict['Functional_Homogeneity'][gene_cluster] = 1 - max(func_homogeneity_list)
+                self.data_table_dict['Geometric_Homogeneity'][gene_cluster] = 1 - max(geo_homogeneity_list)
+                self.data_table_dict['Combined_Homogeneity'][gene_cluster] = 1 - max(comb_homogeneity_list)
 
         self.data_table_dict['Paralogs']['max'] = max_paralogs - 1 if max_paralogs - 1 != 0 else 1
         self.data_table_dict['Direction']['max'] = 0.5
         self.data_table_dict['Entropie']['max'] = max_entropie if max_entropie != 0 else 1
-        self.data_table_dict['Functional_Homogeneity']['max'] = max_func_homogeneity
-        self.data_table_dict['Geometric_Homogeneity']['max'] = max_geo_homogeneity
-        self.data_table_dict['Combined_Homogeneity']['max'] = max_comb_homogeneity
+        self.data_table_dict['Functional_Homogeneity']['max'] = 1
+        self.data_table_dict['Geometric_Homogeneity']['max'] = 1
+        self.data_table_dict['Combined_Homogeneity']['max'] = 1
 
             # global_entropy += H
 
