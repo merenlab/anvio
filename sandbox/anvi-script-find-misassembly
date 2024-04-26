@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import anvio
+import argparse
+
+import anvio.bamops as bamops
+import anvio.terminal as terminal
+
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['FlorianTrigodet']
+__provides__ = []
+__requires__ = ["bam-file"]
+__description__ = ("This script report errors in long-read assembly using read-recruitment information. "
+                   "The input file should be the BAM file from the long-reads mapping to its associated assembly")
+
+def main():
+    run = terminal.Run()
+    progress = terminal.Progress()
+
+    bam = bamops.BAMFileObject(args.bam_file, 'rb')
+    run.info('BAM file', args.bam_file)
+
+    progress.new("Computing coverage beep boop")
+
+    def add_clipping_cov(data, pos):
+        if pos not in data[contig]['clipping']:
+            data[contig]['clipping'][pos] = 1
+        else:
+            data[contig]['clipping'][pos] += 1
+
+    # the main dictionary to store coverage information
+    cov_dict = {}
+
+    # read counter
+    read_count = 0
+    total_reads = bam.mapped
+
+    contigs_list = bam.references
+    contigs_length = bam.lengths
+    # make a dict of contig:length
+    contigs_size = {}
+    for i, contig in enumerate(contigs_list):
+        contigs_size[contig] = contigs_length[i]
+
+    # got through each read, compute coverage and idc (insertion, deletion, (hard - soft)clipping).
+    for read in bam:
+        read_count += 1
+        if read_count % 500 == 0:
+            progress.update('%d / %d' % (read_count, total_reads))
+
+        contig = read.reference_name
+        contig_end = contigs_size[contig]
+        if contig not in cov_dict:
+            cov_dict[contig] = {'cov': {x:0 for x in range(contig_end)},
+                            'clipping': {},
+                            'length' : contig_end}
+        current_pos = read.reference_start
+        cigar_tup = read.cigartuples
+        # counting the numb of tup because position index is different for
+        # hard/soft clipping if they are at the begining or at the end of cigar string
+        num_tup = 0
+        for tup in cigar_tup:
+            num_tup += 1
+            # if mapping, compute cov, increase current position
+            if tup[0] == 0:
+                for pos in range(current_pos, current_pos + tup[1], 1):
+                    cov_dict[contig]['cov'][pos] += 1
+                current_pos += tup[1]
+            # if deletion, increase current position
+            if tup[0] == 2:
+                current_pos += tup[1]
+            # if clipping (soft-hard: tup[0] = 4 or 5), then +1 clipping
+            elif tup[0] in [4, 5]:
+                if num_tup == 1:
+                    # if start contig, skip
+                    if current_pos != 0:
+                        add_clipping_cov(cov_dict, current_pos)
+                elif current_pos != contig_end:
+                    add_clipping_cov(cov_dict, current_pos - 1)
+    progress.end()
+
+    clippling_ouput = args.output + '-clipping.txt'
+    run.info('Output file', clippling_ouput)
+    with open(clippling_ouput, 'w') as file:
+        file.write("contig\tlength\tpos\tcov\tclipping\tclipping_ratio\n")
+        for contig, data in cov_dict.items():
+            contig_length = cov_dict[contig]['length']
+            for pos in data['clipping']:
+                cov = cov_dict[contig]['cov'][pos]
+                clipping = cov_dict[contig]['clipping'][pos]
+                clipping_ratio = clipping/cov
+                if clipping_ratio > 0.8:
+                    file.write(f"{contig}\t{contig_length}\t{pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
+
+    zero_ouput = args.output + "-zero_cov.txt"
+    run.info('Output file', zero_ouput)
+    with open(zero_ouput, 'w') as file:
+        file.write("contig\tlength\trange\trange_size\n")
+        for contig, data, in cov_dict.items():
+            contig_length = cov_dict[contig]['length']
+            in_window = False
+            window_start = ''
+            window_end = ''
+            window_length = ''
+            for pos in range(data['length']):
+                if data['cov'][pos] == 0 and in_window == False:
+                    window_start = pos
+                    in_window = True
+                    file.write(f"{contig}\t{contig_length}\t{window_start}-")
+                elif data['cov'][pos] == 0 and in_window == True:
+                    continue
+                elif (data['cov'][pos] > 0 and in_window == True):
+                    window_end = pos
+                    window_length = window_end - window_start
+                    in_window = False
+                    file.write(f"{window_end}\t{window_length}\n")
+                # if end of contig
+                if data['cov'][pos] == 0 and pos == contig_length and in_window:
+                    if in_window:
+                        window_end = pos + 1
+                        window_length = window_end - window_start
+                        in_window = False
+                        file.write(f"{window_end}\t{window_length}\n")
+                    else:
+                        window_start = pos
+                        window_end = pos + 1
+                        window_length = window_end - window_start
+                        in_window = False
+                        file.write(f"{contig}\t{contig_length}\t{window_start}-{window_end}\t{window_length}\n")
+    progress.end()
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description=__description__)
+
+    groupI = parser.add_argument_group(
+        'REQUIRED',
+        'Declare your BAM file here'
+    )
+    groupI.add_argument(
+        '-b',
+        '--bam-file',
+        required = True,
+        help = "Sorted and indexed BAM file to analyze."
+    )
+
+    groupO = parser.add_argument_group(
+        'OUTPUT-PREFIX',
+        ("Choose a prefix for the two output files")
+    )
+    groupO.add_argument(
+        '-o',
+        '--output',
+        required=True,
+        help = ("Output prefix for the two tab-delimited files. Will overwrite existing files.")
+    )
+    args = parser.get_args(parser)
+
+    try:
+        main()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
