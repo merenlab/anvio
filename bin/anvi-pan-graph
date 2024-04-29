@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
-    groupC.add_argument('--max-edge-length-filter', default = 50, type=int, help = "In the final pan graph, edges that connect gene clusters will vary in "
+    groupC.add_argument('--max-edge-length-filter', default = -1, type=int, help = "In the final pan graph, edges that connect gene clusters will vary in "
                                 "their length. The longer edges that connect far gene clusters with one another will add additional layers to the final "
                                 "display, reducing the readability of the overall graph structure. This parameter, which is by default set to %(default)d, "
                                 "will remove edges that span across more than %(default)d gene clusters. You can change the thresold to make graph much "
