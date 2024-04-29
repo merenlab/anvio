@@ -2242,7 +2242,7 @@ class Pangraph():
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
         
-        print(self.global_y)
+        # print(self.global_y)
 
         jsondata["infos"] = {
             'meta': {
