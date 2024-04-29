@@ -19,7 +19,7 @@ from anvio.migrations import migration_scripts
 
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
-__authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10']
+__authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10', 'mschecht']
 __requires__ = ["contigs-db", "profile-db", "pan-db", "genes-db", "genomes-storage-db", "structure-db", "modules-db", "workflow-config"]
 __provides__ = []
 
@@ -270,7 +270,7 @@ class Migrater(object):
                     shutil.move(self.artifact_path, self.artifact_path + '.broken')
 
                     raise ConfigError("Anvi'o has very bad news for you :( Your migration failed, and anvi'o has no backups to restore your "
-                                      "original file. The current artifact is likely in a broken state, and you will unlkely going to be "
+                                      "original file. The current artifact is likely in a broken state, and you will unlikely going to be "
                                       "able to use it. So anvi'o renamed it by adding a prefix '.broken' to its file name. We are very sorry "
                                       "for this error (and anvi'o will certainly not put salt on the wound by reminding you that you could "
                                       "have avoided it by using the `--migrate-safely` flag): \"%s\"." % e)
@@ -301,8 +301,8 @@ if __name__ == '__main__':
                         "all of the files that match to your filters.")
 
     groupB = parser.add_argument_group('SAFETY', "It is up to you. Safe things take much longer and boring. Unsafe things "
-                                                 "are fast, fun, and .. well, don't come to use if your computer loses power "
-                                                 "or somiething.")
+                                                 "are fast, fun, and .. well, don't come to us if your computer loses power "
+                                                 "or something.")
     groupB.add_argument(*anvio.A('migrate-safely'), **anvio.K('migrate-safely'))
     groupB.add_argument(*anvio.A('migrate-quickly'), **anvio.K('migrate-quickly'))
 

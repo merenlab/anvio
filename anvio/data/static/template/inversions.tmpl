@@ -277,7 +277,7 @@
                                         </tr>
                                         <tr>
                                             <td width="25%">Contig in which it was found</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"contig_name" }}</td>
+                                            <td class="long">{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"contig_name" }}</td>
                                         </tr>
                                         <tr>
                                             <td width="25%">Length of the inversion</td>
@@ -297,7 +297,7 @@
                                         </tr>
                                         <tr>
                                             <td width="25%">Sample in which it was observed</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"sample_names" }}</td>
+                                            <td class="long">{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"sample_names" }}</td>
                                         </tr>
                                     </tbody>
                                 </table>

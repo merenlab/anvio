@@ -44,9 +44,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
-with SuppressAllOutput():
-    from ete3 import Tree
-
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
     try:
@@ -852,7 +849,7 @@ def is_all_submodules_present():
 
     try:
         gitmodules.read(gitmodules_path)
-    except Exception as e:
+    except Exception:
         raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
                           "needs an adult :(")
 
@@ -1127,6 +1124,10 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    # import ete3
+    with SuppressAllOutput():
+        from ete3 import Tree
+
     filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
@@ -4016,6 +4017,26 @@ def get_HMM_sources_dictionary(source_dirs=[]):
     return sources
 
 
+def get_attribute_from_hmm_file(file_path, attribute):
+    """
+    Retrieves the value of attribute from an HMMER/3 formatted HMM file.
+    - file_path: (str) absolute file path to the .HMM file
+    - attribute: (str) the attribute to get from the HMM file
+    """
+    filesnpaths.is_file_exists(file_path)
+    value = None
+    with open(file_path) as hmm:
+        for line in hmm.readlines():
+            if line.startswith(attribute):
+                value = [f.strip() for f in line.split(attribute) if len(f)][0]
+                break
+
+    if value is None:
+        raise ValueError(f"The HMM file {file_path} did not contain {attribute}.")
+
+    return value
+
+
 def check_misc_data_keys_for_format(data_keys_list):
     """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
@@ -4069,7 +4090,7 @@ def sanity_check_hmm_model(model_path, genes):
 
 def sanity_check_pfam_accessions(pfam_accession_ids):
     """This function sanity checks a list of Pfam accession IDs
-    
+
     Parameters
     ==========
     pfam_accession_ids: list
@@ -4656,11 +4677,12 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
-                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
-                          "anvi'o environment. The reason why the standard anvi'o package does not include "
-                          "this module is both complicated and really unimportant. Re-running the migration "
-                          "after `h5py` is installed will make things go smootly.")
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! "
+                          "To continue, please first install the newest version of the Python module `h5py` "
+                          "by running `pip install h5py` in your anvi'o environment. "
+                          "The reason why the standard anvi'o package does not include this module is both "
+                          "complicated and really unimportant. Re-running the migration after `h5py` is installed "
+                          "will make things go smoothly.")
 
 
 def RepresentsInt(s):

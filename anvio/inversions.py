@@ -773,7 +773,10 @@ class Inversions:
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity,
-                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+                                # if no function source, it says 'the contigs.db' because it fits with the message 
+                                # displayed in the final index.html. See the inversion template, line 215
+                                # if it works, it works
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
 
         self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
@@ -837,12 +840,13 @@ class Inversions:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
-                    if gene['functions']:
-                        gene['has_functions'] = True
-                        gene['COLOR'] = '#008000'
-                    else:
-                        gene['has_functions'] = False
-                        gene['COLOR'] = '#c3c3c3'
+                    # add default gene color before checking for existing functions
+                    gene['has_functions'] = False
+                    gene['COLOR'] = '#c3c3c3'
+                    if 'functions' in gene.keys():
+                        if gene['functions']:
+                            gene['has_functions'] = True
+                            gene['COLOR'] = '#008000'
 
                     gene['RX'] = gene['start_t']
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
@@ -1196,7 +1200,7 @@ class Inversions:
         self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
-    def use_motif_finder(self, fasta_path, output, log_file_path, num_motifs = "1"):
+    def use_motif_finder(self, fasta_path, output, log_file_path, num_motifs = "1", num_seq = "1000"):
         """Command line instruction for MEME"""
 
         cmd_line = ['meme',
@@ -1205,6 +1209,7 @@ class Inversions:
                     '-pal',
                     '-nmotifs', num_motifs,
                     '-o', output,
+                    '-brief', num_seq,
                     '-p', self.num_threads]
 
         utils.run_command(cmd_line, log_file_path)
@@ -1277,8 +1282,13 @@ class Inversions:
                     for line in individual_fasta:
                         file.write(line)
 
+        # how many sequence are we giving to MEME?
+        # because if more than a 1000, the original sequences are not
+        # included in the output file!
+        num_of_sequence = len(self.consensus_inversions)*4
+
         # search for as many motifs as inversions. Can be time consuming.
-        self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = self.num_of_motifs)
+        self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = self.num_of_motifs, num_seq = num_of_sequence)
 
         # parse the output xml
         self.parse_motif_output(meme_output, meme_log)
@@ -1414,16 +1424,19 @@ class Inversions:
                 num_oligos = len(oligos)
                 oligos_frequency_dict = Counter(oligos)
                 reads_found = False
+                oligo_reference = primers_dict[primer_name]['oligo_reference']
 
                 for oligo, frequency in oligos_frequency_dict.items():
                     if frequency > min_frequency:
                         sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
                         reads_found = True
+                    # the reference oligo is present but under the threshold, add default count of 0
+                    elif oligo == oligo_reference:
+                        sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
                 # if the reference oligo has no frequency but reads were found for other oligo
                 # then add reference oligo with a frequency of 0
-                oligo_reference = primers_dict[primer_name]['oligo_reference']
-                if oligo_reference not in sample_counts and reads_found:
+                if oligo_reference not in oligos_frequency_dict and reads_found:
                     sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
             output_queue.put(sample_counts)
@@ -1799,7 +1812,7 @@ class Inversions:
                                   f"your contigs database knows about :/ Please use the `--gene-caller` parameter to select one "
                                   f"that fits .. such as {PL('this one', len(gene_callers), alt='one of these')}: {', '.join(gene_callers)}.")
 
-        bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] != 'inversions']
+        bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] not in ['inversions', 'distant-inversions']]
         if len(bad_profile_dbs):
             if len(bad_profile_dbs) == len(self.profile_db_paths):
                 if len(bad_profile_dbs) == 1:

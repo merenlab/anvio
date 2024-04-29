@@ -292,9 +292,11 @@ To get an output that can be pasted to markdown-aware editors such as GitHub, so
 
 It is also possible to use anvi'o as a Python library to work with anvi'o artifacts, including %(contigs-db)s. The purpose of this section is to list tips and use cases for programmers, and it is extended by questions we have received from the community. If you have a problem you wish to solve programmatically, but not sure how, please reach out to the community via anvi'o Discord or anvi'o GitHub.
 
-### Get number of approximate number of genomes
+### Get approximate number of genomes
 
-You can get the number of genomes once %(anvi-run-hmms)s is run on an contigs database. Here are some examples:
+You can estimate the number of genomes once %(anvi-run-hmms)s is run on an contigs database. 
+
+Here are some examples of how to do this programmatically (more info on how the estimates are calculated can be found [here](https://anvio.org/help/main/programs/anvi-display-contigs-stats/#how-do-we-predict-the-number-of-genomes)):
 
 ``` python
 from anvio.hmmops import NumGenomesEstimator
@@ -324,3 +326,4 @@ print(num_genomes)
 print(domains_included)
 >>> ['archaea', 'eukarya']
 ```
+

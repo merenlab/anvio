@@ -115,21 +115,7 @@ class AccessionIdToTaxonomy(object):
                 d = {}
                 for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
                     if letter in letter_to_level:
-                        # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
-                        # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
-                        # become Enterococcus
-                        if '_' in taxon:
-                            if letter != 's':
-                                d[letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
-                            else:
-                                # special treatment for species level taxonomy string.
-                                # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
-                                # species itmay have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
-                                # neeed to make sure the subclades are removed from all words in the species level
-                                # taxonomy string.
-                                d[letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
-                        else:
-                            d[letter_to_level[letter]] = taxon
+                        d[letter_to_level[letter]] = taxon
                     else:
                         self.run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
 

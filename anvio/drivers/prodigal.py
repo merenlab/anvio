@@ -46,7 +46,7 @@ class Prodigal:
         self.installed_version = None
         self.available_parsers = {'v2.6.3': self.__parser_1,
                                   'v2.6.2': self.__parser_1,
-                                  'v2.60': self.__parser_1}
+                                  'v2.6.0': self.__parser_1}
 
         self.check_version()
 

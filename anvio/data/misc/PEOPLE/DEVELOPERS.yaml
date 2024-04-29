@@ -116,7 +116,7 @@
 
 - github: ivagljiva
   name: Iva Veseli
-  email: iveseli@uchicago.edu
+  email: iva.veseli@gmail.com
   orcid: 0000-0003-2390-528
   twitter: ivaglj1va
   linkedin: iva-veseli
@@ -456,4 +456,21 @@
     - title: Senior Bioinformatician
       inst: Quadram Institute Bioscience
       inst_link: https://quadram.ac.uk
+      current: true
+
+- github: Vlasovets
+  name: Oleg Vlasovets
+  twitter: ovlasovets
+  web: https://ovlasovets.netlify.app/
+  avatar: Vlasovets.jpg
+  email: otorrent@mail.ru
+  linkedin: ovlasovets
+  orcid: 0000-0001-5259-9674
+  bio: "Data Scientist studying bacteria in human gut."
+  intellectual-contributions:
+    - contribution: "Working on high-dimensional statistcs methods for anvi'o"
+  affiliations:
+    - title: PhD Candidate
+      inst: Helmholtz Munich
+      inst_link: https://www.helmholtz-munich.de/en
       current: true

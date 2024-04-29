@@ -16,9 +16,9 @@ __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren']
+__authors__ = ['meren', 'ge0rges']
+__requires__ = ["pfam-accession"]
 __provides__ = ["hmm-source"]
-__requires__ = []
 __description__ = ("You give this program one or more PFAM accession ids, and it generates "
                    "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")
 
@@ -26,18 +26,6 @@ __description__ = ("You give this program one or more PFAM accession ids, and it
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
-
-def get_attribute_from_hmm_file(file_path, attribute):
-    filesnpaths.is_file_exists(file_path)
-    value = None
-    with open(file_path) as hmm:
-        for line in hmm.readlines():
-            if line.startswith(attribute):
-                value = [f.strip() for f in line.split(attribute) if len(f)][0]
-                break
-
-    return value
 
 
 def main(args):
@@ -89,11 +77,17 @@ def main(args):
             failed_accession_ids.add(pfam_accession)
             continue
 
-        data_dict[pfam_accession] = {}
-        data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
-        data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
-        data_dict[pfam_accession]['accession'] = get_attribute_from_hmm_file(fp, 'ACC')
-        data_dict[pfam_accession]['temp_file_path'] = fp
+        try:
+            data_dict[pfam_accession] = {}
+            data_dict[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
+            data_dict[pfam_accession]['gene'] = utils.get_attribute_from_hmm_file(fp, 'NAME')
+            data_dict[pfam_accession]['accession'] = utils.get_attribute_from_hmm_file(fp, 'ACC')
+            data_dict[pfam_accession]['temp_file_path'] = fp
+
+        except ValueError:
+            run.warning(f"The PFAM accession {pfam_accession} could not be included due to a missing attribute. "
+                        f"Anvi'o will continue without it")
+
     progress.end()
 
     if len(failed_accession_ids):
@@ -106,9 +100,9 @@ def main(args):
             for accession in failed_accession_ids:
                 pfam_accession_ids.remove(accession)
         else:
-            raise ConfigError("Anvi'o couldn't downlaod any of your accession ids. This could be due to bad "
-                              "accession ids that don't exist on PFAM database, or bad internet connection "
-                              "on either side :/")
+            raise ConfigError("Anvi'o couldn't download any of your accession ids. This could be due to bad "
+                              "accession ids that don't exist in the PFAM database, or a bad connection"
+                              "to the server :/")
 
     # make sure all models have the GA cutoff defined
     pfam_hmms_without_ga = [p for p in pfam_accession_ids if not data_dict[p]['ga']]
@@ -117,8 +111,8 @@ def main(args):
             os.remove(data_dict[pfam_accession]['temp_file_path'])
 
         raise ConfigError(f"Not all PFAM accession ids you are interested in seem to have 'GA' "
-                          f"noise cutoff defined in them :/ This script is only able to setup "
-                          f"anvi'o HMM directories from data_dict that have that cutoff defined in them. "
+                          f"noise cutoff defined :/ This script is only able to setup "
+                          f"anvi'o HMM directories from data_dict that have that cutoff defined. "
                           f"So this is kind of the end of the road for us. Here are the PFAM accessions "
                           f"that violate this: {', '.join(pfam_hmms_without_ga)}.")
 
@@ -160,16 +154,16 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--pfam-accessions-list', nargs='+', help="One or more PFAM accession IDs "
-                "(such as PF14437.6). If you have multiple accessions, you can separate them from "
+                "(such as PF14437). If you have multiple accessions, you can separate them from "
                 "each other with a space. If you have too many, consider using the "
                 "`--pfam-accessions-file` parameter instead.", metavar='PFAM_ACCESSION')
     parser.add_argument('--pfam-accessions-file', help="A single column text file where each column "
-                "is a single PFAM accession ID (such as PF14437.6). You may have as many accession "
+                "is a single PFAM accession ID (such as PF14437). You may have as many accession "
                 "ids as you like in this file.", metavar='FILE')
     parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
                 "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "
                 "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`. "
-                "We suggest you to use a name that does not include an of those millenial characters "
+                "We suggest you use a name that does not include any of those millenial characters "
                 "(like space, question mark, comma, and such, you know).")
 
     args = parser.get_args(parser)
