@@ -88,7 +88,7 @@ def main():
                     add_clipping_cov(cov_dict, current_pos - 1)
     progress.end()
 
-    clippling_ouput = args.output + '-clipping.txt'
+    clippling_ouput = args.output_prefix + '-clipping.txt'
     run.info('Output file', clippling_ouput)
     with open(clippling_ouput, 'w') as file:
         file.write("contig\tlength\tpos\tcov\tclipping\tclipping_ratio\n")
@@ -101,7 +101,7 @@ def main():
                 if clipping_ratio > 0.8:
                     file.write(f"{contig}\t{contig_length}\t{pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
 
-    zero_ouput = args.output + "-zero_cov.txt"
+    zero_ouput = args.output_prefix + "-zero_cov.txt"
     run.info('Output file', zero_ouput)
     with open(zero_ouput, 'w') as file:
         file.write("contig\tlength\trange\trange_size\n")
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     )
     groupO.add_argument(
         '-o',
-        '--output',
+        '--output-prefix',
         required=True,
         help = ("Output prefix for the two tab-delimited files. Will overwrite existing files.")
     )
