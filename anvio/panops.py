@@ -1724,7 +1724,7 @@ class Pangraph():
                         
                             new_data = self.edge_check(current_node, 'stop', pangenome_graph_edge_data)
                             self.edmonds_graph.add_edge(current_node, 'stop', **new_data)
-                            print('1', node_i, node_j)
+                            # print('1', node_i, node_j)
                             connected = True
                 
                     if connected == True:
@@ -1733,7 +1733,7 @@ class Pangraph():
                             
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
-                            print('2', node_i, node_j)
+                            # print('2', node_i, node_j)
                             edmonds_graph_removed_edges.remove((current_node, current_forward))
                             
                         for current_backward in current_backward_connected:
@@ -1741,7 +1741,7 @@ class Pangraph():
 
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
-                            print('3', node_i, node_j)
+                            # print('3', node_i, node_j)
                             edmonds_graph_removed_edges.remove((current_node, current_backward))
                             
                         resolved_nodes.add(current_node)
@@ -1757,7 +1757,7 @@ class Pangraph():
 
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
-                            print('4', node_i, node_j)
+                            # print('4', node_i, node_j)
                             
                             edmonds_graph_removed_edges.remove((current_node, current_backward_connected[number]))
                             edmonds_graph_removed_edges.add((edmonds_graph_predecessors[current_node], current_node))
@@ -1778,14 +1778,14 @@ class Pangraph():
             
                 visited_nodes.add(current_node)
             
-                if len(resolved_nodes) == len(pangenome_graph_nodes):
-                    print(current_node, connected, current_backward_connected, current_forward_connected)
+                # if len(resolved_nodes) == len(pangenome_graph_nodes):
+                #     print(current_node, connected, current_backward_connected, current_forward_connected)
 
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
                     print('Sanity Error. Code 6.')
                     exit()
-                else:
-                    print('check')
+                # else:
+                #     print('check')
 
         self.progress.end()
 
