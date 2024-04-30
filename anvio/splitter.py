@@ -1275,7 +1275,7 @@ class LocusSplitter:
         for entry_id in hmm_hits_table_dict:
             hmm_hits_table_dict[entry_id]['gene_callers_id'] = G(hmm_hits_table_dict[entry_id]['gene_callers_id'])
 
-        entries = [[key] + list(value.values()) for key, value in hmm_hits_table_dict.items()]
+        entries = [[k] + list(v.values()) for k, v in hmm_hits_table_dict.items()]
         locus_db.insert_many(t.hmm_hits_table_name, entries=entries)
 
         # hmm_hits_info table
