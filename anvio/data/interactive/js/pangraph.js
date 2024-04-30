@@ -573,6 +573,31 @@ async function generate_svg(body, data) {
       
       middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
     }
+
+    if (Object.keys(middle_layers).includes(layer_name)){
+      for (var i_x = 1; i_x < global_x+1; i_x++) {
+        var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
+
+        var add_start = 1
+        var add_stop = 0
+
+        var [a_x, a_y] = transform(i_x-add_start, layer_start, theta)
+        var [b_x, b_y] = transform(i_x+add_stop, layer_start, theta)
+        var [c_x, c_y] = transform(i_x-add_start, layer_stop, theta)
+        var [d_x, d_y] = transform(i_x+add_stop, layer_stop, theta)
+
+        svg_heatmaps.push(
+          $('<path d="' +
+          'M ' + a_x + ' ' + a_y + ' ' +
+          'A ' + (layer_start) + ' ' + (layer_start) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+          'L' + d_x + ' ' + d_y +  ' ' +
+          'A ' + (layer_stop) + ' ' + (layer_stop) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+          'L' + a_x + ' ' + a_y +
+          // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
+          '" fill="WhiteSmoke" stroke="" stroke-width="0"/>')
+        )
+      }
+    }
   }
 
   var layers = data['infos']['layers_names']
@@ -852,31 +877,6 @@ async function generate_svg(body, data) {
             'L' + e_x + ' ' + e_y +
             '" fill="white" stroke="" stroke-width="0"/>')
           )
-        }
-
-        for (var genome of genomes) {
-          var layer_name = genome + 'layer'
-          if (Object.keys(middle_layers).includes(layer_name)){
-            var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-
-            var [a_x, a_y] = transform(parseInt(k_x)-add_start, layer_start, theta)
-            var [b_x, b_y] = transform(parseInt(k_x)+add_stop, layer_start, theta)
-            var [c_x, c_y] = transform(parseInt(k_x)-add_start, layer_stop, theta)
-            var [d_x, d_y] = transform(parseInt(k_x)+add_stop, layer_stop, theta)
-
-            if (!global_values.includes(k_x)) {
-              svg_heatmaps.push(
-                $('<path d="' +
-                'M ' + a_x + ' ' + a_y + ' ' +
-                'A ' + (layer_start) + ' ' + (layer_start) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
-                'L' + d_x + ' ' + d_y +  ' ' +
-                'A ' + (layer_stop) + ' ' + (layer_stop) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
-                'L' + a_x + ' ' + a_y +
-                // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-                '" fill="WhiteSmoke" stroke="" stroke-width="0"/>')
-              )
-            }
-          }
         }
 
         for (var layer_name of layers) {
