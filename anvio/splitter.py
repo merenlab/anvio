@@ -9,7 +9,6 @@ import os
 import sys
 import copy
 import argparse
-import pandas as pd
 
 from collections import Counter
 
@@ -28,14 +27,13 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.errors import ConfigError
 from anvio.panops import Pangenome
-from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.errors import ConfigError
+from anvio.tables.views import TablesForViews
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.tables.hmmhits import TablesForHMMHits
-from anvio.tables.views import TablesForViews
+from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
