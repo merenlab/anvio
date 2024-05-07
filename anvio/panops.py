@@ -1089,7 +1089,7 @@ class Pangraph():
         self.edmonds_graph = nx.DiGraph()
         self.ancest = nx.DiGraph()
 
-        self.fusion_events = 0
+        # self.fusion_events = 0
         self.grouping = {}
         self.project_name = ''
 
@@ -2003,7 +2003,7 @@ class Pangraph():
                 print('Sanity Error. Code 9.')
                 exit()
 
-        self.run.info_single(f"{self.fusion_events} fusion events.")
+        # self.run.info_single(f"{self.fusion_events} fusion events.")
 
         if self.max_edge_length_filter == -1:
             self.run.info_single("Setting algorithm to 'keep all edges'")
