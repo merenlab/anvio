@@ -116,8 +116,6 @@ def main():
                     window_start = pos
                     in_window = True
                     file.write(f"{contig}\t{contig_length}\t{window_start}-")
-                elif data['cov'][pos] == 0 and in_window == True:
-                    continue
                 elif (data['cov'][pos] > 0 and in_window == True):
                     window_end = pos
                     window_length = window_end - window_start
