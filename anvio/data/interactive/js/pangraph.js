@@ -285,7 +285,7 @@ async function appendalignment(gene_cluster_id, alignment) {
 
     alignments_table = `<p class="modal_header">Sequence alignments</p>`;
     alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
-    alignments_table += `<thead class="thead-dark"><tr>`;
+    alignments_table += `<thead class="thead-dark gc-table-header"><tr>`;
     alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
     alignments_table += `<th scope="col">Contig</th>`;

@@ -224,5 +224,12 @@
 
   #th-sequence{
     position: sticky;
-    left: 20%;
+    left: 25%;
+    z-index: 7;
+  }
+
+  .gc-table-header{
+    position: sticky;
+    top: 0;
+    z-index: 6;
   }
