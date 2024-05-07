@@ -124,7 +124,7 @@ def main():
                     in_window = False
                     file.write(f"{window_end}\t{window_length}\n")
                 # if end of contig
-                if data['cov'][pos] == 0 and pos == contig_length - 1 and in_window:
+                if data['cov'][pos] == 0 and pos == contig_length - 1:
                     if in_window:
                         window_end = pos + 1
                         window_length = window_end - window_start
