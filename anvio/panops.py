@@ -14,7 +14,10 @@ import argparse
 import pandas as pd
 import networkx as nx
 import numpy as np
+import itertools as it
 from scipy.stats import entropy
+from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.spatial.distance import cdist, squareform
 
 from itertools import chain
 
@@ -1283,6 +1286,73 @@ class Pangraph():
         self.run.info_single("Done")
 
 
+    def context_distance(self, a, b):
+        r_val = 0
+        f_val = 0
+        div = len(a)
+
+        if set(self.genome_gc_occurence[tuple(a)].keys()).isdisjoint(set(self.genome_gc_occurence[tuple(b)].keys())):
+            for n, m in zip(a, b):
+                if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
+                    if n[1] != m[1]:
+                        r_val += 1
+                elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
+                    r_val += 1
+                elif n == m:
+                    r_val += 1
+
+            for n, m in zip(a, b[::-1]):
+                if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
+                    if n[1] != m[1]:
+                        f_val += 1
+                elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
+                    f_val += 1
+                elif n == m:
+                    f_val += 1
+
+            if r_val >= f_val:
+                return (1 - r_val / div)
+            else:
+                return (1 - f_val / div)
+
+        elif tuple(a) == tuple(b):
+            return (0)
+
+        else:
+            return (1)
+
+
+    def context_split(self, label):
+
+        if len(label) == 1:
+            result = list(zip(label, [1]))
+            return (result)
+
+        else:
+            X = cdist(np.asarray(label), np.asarray(label), metric=self.context_distance)
+
+            condensed_X = squareform(X)
+
+            Z = linkage(condensed_X, 'ward')
+
+            for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
+                clusters = fcluster(Z, t, criterion='distance')
+                valid = True
+                for c in set(clusters.tolist()):
+                    pos = np.where(clusters == c)[0]
+
+                    for i, j in it.combinations(pos, 2):
+                        if X[i][j] == 1.:
+                            valid = False
+
+                if valid is True:
+                    break
+
+            result = list(zip(label, clusters))
+
+            return (result)
+
+
     def run_contextualize_paralogs_algorithm(self):
         """A function that resolves the graph context of paralogs based on gene synteny information across genomes"""
         self.run.warning(None, header="Select paralog context", lc="green")
@@ -1382,6 +1452,17 @@ class Pangraph():
                 solved = set([gc[int(len(gc)/2)] for gc in self.genome_gc_occurence.keys()])
                 self.k += 1
 
+        g_cleaned = {}
+        gcs = set([gc[int(len(gc)/2)] for gc in self.genome_gc_occurence.keys()])
+
+        for gcp in gcs:
+            label = [gc for gc in self.genome_gc_occurence.keys() if gc[int(len(gc)/2)] == gcp]
+            context = self.context_split(label)
+            # print(context)
+
+            for name, cluster in context:
+                g_cleaned[name] = gcp + '_' + str(cluster)
+
         self.run.info_single(f"{pp(self.k+1)} iteration(s) to expand {pp(len(self.paralog_dict.keys()))} GCs to {pp(len(self.genome_gc_occurence.keys()))} GCs without paralogs")
         syn_calls = 0
         for genome in self.gene_synteny_data_dict.keys():
@@ -1416,7 +1497,8 @@ class Pangraph():
 
                         if gc_group in self.genome_gc_occurence.keys():
 
-                            self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group)
+                            # self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = ','.join(gc_group)
+                            self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_id"] = g_cleaned[gc_group]
                             # self.gene_synteny_data_dict[genome][contig][gene_call]["max_num_paralogs"] = self.paralog_dict[tuple([name])][genome]
                             syn_calls += 1
                             break
@@ -1817,44 +1899,44 @@ class Pangraph():
 
         self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
 
-        # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
-        #     self.x_list[x] = generation
-        #     for node in generation:
-        #         self.position[node] = (x, -1)
-
         for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
-            nodes = {}
-            self.x_list[x] = []
+            self.x_list[x] = generation
             for node in generation:
-                node_list = node.split(',')
+                self.position[node] = (x, -1)
 
-                if node_list[int(len(node_list)/2)] in nodes.keys():
+        # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
+        #     nodes = {}
+        #     self.x_list[x] = []
+        #     for node in generation:
+        #         node_list = node.split(',')
 
-                    found = False
-                    for contractor in nodes[node_list[int(len(node_list)/2)]]:
+        #         if node_list[int(len(node_list)/2)] in nodes.keys():
 
-                        intersection = set(self.edmonds_graph.nodes()[contractor]['genome'].keys()).intersection(set(self.edmonds_graph.nodes()[node]['genome'].keys()))
-                        if not intersection:
+        #             found = False
+        #             for contractor in nodes[node_list[int(len(node_list)/2)]]:
 
-                            self.edmonds_graph.nodes()[contractor]['weight'] += self.edmonds_graph.nodes()[node]['weight']
-                            self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
+        #                 intersection = set(self.edmonds_graph.nodes()[contractor]['genome'].keys()).intersection(set(self.edmonds_graph.nodes()[node]['genome'].keys()))
+        #                 if not intersection:
 
-                            nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
-                            nx.contracted_nodes(self.pangenome_graph, contractor, node, copy=False)
+        #                     self.edmonds_graph.nodes()[contractor]['weight'] += self.edmonds_graph.nodes()[node]['weight']
+        #                     self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
 
-                            self.fusion_events += 1
-                            found = True
-                            break
+        #                     nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
+        #                     nx.contracted_nodes(self.pangenome_graph, contractor, node, copy=False)
 
-                    if found == False:
-                        nodes[node_list[int(len(node_list)/2)]] += [node]
-                        self.x_list[x].append(node)
-                        self.position[node] = (x, -1)
+        #                     self.fusion_events += 1
+        #                     found = True
+        #                     break
 
-                else:
-                    nodes[node_list[int(len(node_list)/2)]] = [node]
-                    self.x_list[x].append(node)
-                    self.position[node] = (x, -1)
+        #             if found == False:
+        #                 nodes[node_list[int(len(node_list)/2)]] += [node]
+        #                 self.x_list[x].append(node)
+        #                 self.position[node] = (x, -1)
+
+        #         else:
+        #             nodes[node_list[int(len(node_list)/2)]] = [node]
+        #             self.x_list[x].append(node)
+        #             self.position[node] = (x, -1)
             
         self.global_x = x
 
@@ -2150,10 +2232,12 @@ class Pangraph():
 
         for x in range(0, self.global_x+1):
 
-            generation = [node for node in self.x_list[x] if node != 'start' and node != 'stop']
+            generation = [node for node, data in self.ancest.nodes(data=True) if data['pos'][0] == x and node != 'start' and node != 'stop']
 
             array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
             sum_occurence = np.sum(array_occurence)
+
+            # print(x, generation, array_occurence, sum_occurence)
 
             pk = array_occurence / sum_occurence
 
