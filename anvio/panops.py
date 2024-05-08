@@ -15,8 +15,9 @@ import pandas as pd
 import networkx as nx
 import numpy as np
 import itertools as it
+import matplotlib.pyplot as plt
 from scipy.stats import entropy
-from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
 from scipy.spatial.distance import cdist, squareform
 
 from itertools import chain
@@ -1322,7 +1323,7 @@ class Pangraph():
             return (1)
 
 
-    def context_split(self, label):
+    def context_split(self, label, gcp):
 
         if len(label) == 1:
             result = list(zip(label, [1]))
@@ -1330,9 +1331,7 @@ class Pangraph():
 
         else:
             X = cdist(np.asarray(label), np.asarray(label), metric=self.context_distance)
-
             condensed_X = squareform(X)
-
             Z = linkage(condensed_X, 'ward')
 
             for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
@@ -1350,6 +1349,13 @@ class Pangraph():
 
             result = list(zip(label, clusters))
 
+            fig = plt.figure(figsize=(25, 10))
+            ax = plt.axes()
+            dn = dendrogram(Z, ax=ax, labels=label, orientation='right')
+            ax.axvline(linestyle='--', x=t)
+            plt.tight_layout()
+            fig.savefig('/home/ahenoch/Desktop/' + gcp + '.pdf')
+
             return (result)
 
 
@@ -1361,7 +1367,8 @@ class Pangraph():
         solved = set()
 
         genome_gc_order_values = {}
-        genome_gc_order_placeholder = {}
+        genome_gc_order_left_placeholder = {}
+        genome_gc_order_right_placeholder = {}
 
         while unresolved:
 
@@ -1375,18 +1382,22 @@ class Pangraph():
                     if self.k == 0:
                         if genome not in genome_gc_order_values:
                             genome_gc_order_values[genome] = {contig: genome_gc_order}
-                            genome_gc_order_placeholder[genome] = {contig: ''}
+                            genome_gc_order_left_placeholder[genome] = {contig: '-0'}
+                            genome_gc_order_right_placeholder[genome] = {contig: '+0'}
                         else:
                             items = list(genome_gc_order_values[genome].values())
                             times = items.count(genome_gc_order)
                             if times == 0:
                                 genome_gc_order_values[genome][contig] = genome_gc_order
-                                genome_gc_order_placeholder[genome][contig] = ''
+                                genome_gc_order_left_placeholder[genome][contig] = '-0'
+                                genome_gc_order_right_placeholder[genome][contig] = '+0'
                             else:
                                 genome_gc_order_values[genome][contig] = genome_gc_order
-                                genome_gc_order_placeholder[genome][contig] = chr(ord('a')+times-1)
+                                genome_gc_order_left_placeholder[genome][contig] = '-' + chr(ord('a')+times-1)
+                                genome_gc_order_right_placeholder[genome][contig] = '+' + chr(ord('a')+times-1)
 
-                    place = genome_gc_order_placeholder[genome][contig]
+                    left_place = genome_gc_order_left_placeholder[genome][contig]
+                    right_place = genome_gc_order_right_placeholder[genome][contig]
 
                     for i in range(0, len(genome_gc_order)):
 
@@ -1399,11 +1410,11 @@ class Pangraph():
                         if len(entry) == 1 + (2 * self.k):
                             gc_k = tuple(entry)
                         elif start == 0 and stop == len(genome_gc_order):
-                            gc_k = tuple([place] * (self.k - i) + entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
+                            gc_k = tuple([left_place] * (self.k - i) + entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                         elif start == 0:
-                            gc_k = tuple([place] * (self.k - i) + entry)
+                            gc_k = tuple([left_place] * (self.k - i) + entry)
                         elif stop == len(genome_gc_order):
-                            gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
+                            gc_k = tuple(entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
                             print("Sanity Error. Code 1.")
                             exit()
@@ -1457,9 +1468,8 @@ class Pangraph():
 
         for gcp in gcs:
             label = [gc for gc in self.genome_gc_occurence.keys() if gc[int(len(gc)/2)] == gcp]
-            context = self.context_split(label)
-            # print(context)
-
+            context = self.context_split(label, gcp)
+            
             for name, cluster in context:
                 g_cleaned[name] = gcp + '_' + str(cluster)
 
@@ -1470,7 +1480,8 @@ class Pangraph():
             for contig in self.gene_synteny_data_dict[genome].keys():
                 genome_gc_order = [(self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"], gene_call) for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
 
-                place = genome_gc_order_placeholder[genome][contig]
+                left_place = genome_gc_order_left_placeholder[genome][contig]
+                right_place = genome_gc_order_right_placeholder[genome][contig]
 
                 for i in range(0, len(genome_gc_order)):
                     start = i-self.k if i-self.k >= 0 else 0
@@ -1482,11 +1493,11 @@ class Pangraph():
                     if len(entry) == 1 + (2 * self.k):
                         gc_k = tuple(entry)
                     elif start == 0 and stop == len(genome_gc_order):
-                        gc_k = tuple([place] * (self.k - i) + entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
+                        gc_k = tuple([left_place] * (self.k - i) + entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                     elif start == 0:
-                        gc_k = tuple([place] * (self.k - i) + entry)
+                        gc_k = tuple([left_place] * (self.k - i) + entry)
                     elif stop == len(genome_gc_order):
-                        gc_k = tuple(entry + [place] * ((i + self.k + 1) - len(genome_gc_order)))
+                        gc_k = tuple(entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                     else:
                         print("Sanity Error. Code 4.")
                         exit()
