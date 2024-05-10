@@ -531,7 +531,13 @@ function drawHighlightBoxes() {
 
   var start = $('#brush_start').val(), end = $('#brush_end').val();
 
-  highlightBoxes.attr("height", curr_height);
+  if (!curr_height){
+    highlightBoxes.attr("height", curr_height);
+  }
+  else{
+    toastr.error("The height of all your read recruitment items are zero - anvio cant draw a split with this! Please add some height to one of your read recruitment item!", "",
+    { 'timeOut': '0', 'extendedTimeOut': '0' });
+  }
   $("#highlightBoxesSvg").empty();
   var nBoxes = nucl_shown ? end - start : 100;
   var endpts = nucl_shown ? getGeneEndpts(start, end) : [];
