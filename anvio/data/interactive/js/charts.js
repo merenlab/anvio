@@ -531,13 +531,7 @@ function drawHighlightBoxes() {
 
   var start = $('#brush_start').val(), end = $('#brush_end').val();
 
-  if (!curr_height){
-    highlightBoxes.attr("height", curr_height);
-  }
-  else{
-    toastr.error("The height of all your read recruitment items are zero - anvio cant draw a split with this! Please add some height to one of your read recruitment item!", "",
-    { 'timeOut': '0', 'extendedTimeOut': '0' });
-  }
+  highlightBoxes.attr("height", curr_height);
   $("#highlightBoxesSvg").empty();
   var nBoxes = nucl_shown ? end - start : 100;
   var endpts = nucl_shown ? getGeneEndpts(start, end) : [];
@@ -1703,8 +1697,16 @@ function createCharts(state){
     $('#context-container').css("width", (width + 150) + "px");
 
     /* Context down below */
-    var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
-
+    try {
+      var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
+    } catch (e) {
+      if (e instanceof TypeError) {
+        toastr.error("The height of all your read recruitment items are zero - anvio cant draw a split with this! Please add some height to one of your read recruitment item!", "",
+        { 'timeOut': '0', 'extendedTimeOut': '0' });
+      } else {
+        throw e;
+      }
+    }
     var contextAxis = d3.svg.axis()
                 .scale(contextXScale)
                 .tickSize(contextHeight);
