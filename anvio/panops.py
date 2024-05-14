@@ -1161,6 +1161,8 @@ class Pangraph():
 
             self.generate_data_table()
 
+            self.get_hypervariable_regions()
+
             # store network in the database
             self.store_network()
 
@@ -2303,6 +2305,102 @@ class Pangraph():
         self.data_table_dict['Combined_Homogeneity']['max'] = 1
 
             # global_entropy += H
+
+
+    def get_hypervariable_regions(self, core_threshold = 0.8):
+
+        hypervariable_region_dict_list = []
+
+        inside_region = False
+        left_flanking_gc = ''
+        right_flanking_gc = ''
+        current_region = []
+
+        for genome in self.gene_synteny_data_dict.keys():
+
+            for contig in self.gene_synteny_data_dict[genome].keys():
+
+                # print('Contig ' + contig)
+
+                gene_calls_of_contig = list(self.gene_synteny_data_dict[genome][contig].keys())
+
+                for gene_call in gene_calls_of_contig:
+                    gene_cluster_id = self.gene_synteny_data_dict[genome][contig][gene_call]['gene_cluster_id']
+                    
+                    core_fraction = len(self.ancest.nodes[gene_cluster_id]['genome'].keys()) / len(self.genomes)
+
+                    if core_fraction >= core_threshold or gene_call == gene_calls_of_contig[-1]:
+                        
+                        # print('Outside of hypervariable region.')
+
+                        if inside_region == False:
+                            left_flanking_gc = gene_cluster_id
+
+                            # print('Found left flanking gc' + gene_cluster_id)
+
+                        else:
+
+                            if core_fraction >= core_threshold:
+                                right_flanking_gc = gene_cluster_id
+
+                                # print('Found right flanking gc ' + gene_cluster_id)
+
+                            for current_region_gene_cluster_id in current_region:
+                                hypervariable_region_dict_list.append({
+                                    'genome': genome,
+                                    'contig': contig,
+                                    'gene_cluster': current_region_gene_cluster_id,
+                                    'left_flanking_gc': left_flanking_gc,
+                                    'right_flanking_gc': right_flanking_gc,
+                                    'length': str(len(current_region))
+                                })
+
+                            inside_region = False
+                            left_flanking_gc = gene_cluster_id
+                            right_flanking_gc = ''
+                            current_region = []
+
+                            # print('Restart')
+                    
+                    else:
+                        current_region += [gene_cluster_id]
+                        inside_region = True
+
+                        # print('Inside of hypervariable region.')
+                        # print('Add ' + gene_cluster_id)
+
+        # print(hypervariable_region_dict)
+
+        hypervariable_region_df = pd.DataFrame.from_dict(hypervariable_region_dict_list)
+
+        groups = hypervariable_region_df.groupby(['left_flanking_gc', 'right_flanking_gc'])
+        
+        hypervariable_region_index = 0
+
+        hypervariable_region_stack_list = []
+
+        for group_name, df_group in groups:
+
+            df_group['name'] = 'HVR' + str(hypervariable_region_index)
+            
+            num_diff_gc = int(df_group['gene_cluster'].count())
+            max_length = int(df_group['length'].max())
+            all_genomes = len(self.genomes)
+            num_genomes = int(df_group['genome'].count())
+            
+            # print(num_diff_gc, max_length, all_genomes, num_genomes)
+
+            df_group['score'] = (num_genomes / all_genomes) * (num_diff_gc / max_length) 
+
+            hypervariable_region_stack_list.append(df_group)
+
+            hypervariable_region_index += 1
+
+        hypervariable_region_stack_df = pd.concat(hypervariable_region_stack_list,ignore_index=True)
+
+        # print(hypervariable_region_stack_df)
+
+        hypervariable_region_stack_df.to_csv('/home/ahenoch/Desktop/test,csv')
 
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
