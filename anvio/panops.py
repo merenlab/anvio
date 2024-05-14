@@ -2304,23 +2304,19 @@ class Pangraph():
         self.data_table_dict['Geometric_Homogeneity']['max'] = 1
         self.data_table_dict['Combined_Homogeneity']['max'] = 1
 
-            # global_entropy += H
-
 
     def get_hypervariable_regions(self, core_threshold = 0.8):
 
         hypervariable_region_dict_list = []
 
-        inside_region = False
-        left_flanking_gc = ''
-        right_flanking_gc = ''
-        current_region = []
-
         for genome in self.gene_synteny_data_dict.keys():
 
             for contig in self.gene_synteny_data_dict[genome].keys():
 
-                # print('Contig ' + contig)
+                inside_region = False
+                left_flanking_core = ''
+                right_flanking_core = ''
+                current_region = []
 
                 gene_calls_of_contig = list(self.gene_synteny_data_dict[genome][contig].keys())
 
@@ -2331,49 +2327,39 @@ class Pangraph():
 
                     if core_fraction >= core_threshold or gene_call == gene_calls_of_contig[-1]:
                         
-                        # print('Outside of hypervariable region.')
-
                         if inside_region == False:
-                            left_flanking_gc = gene_cluster_id
-
-                            # print('Found left flanking gc' + gene_cluster_id)
+                            left_flanking_core = gene_cluster_id
 
                         else:
 
                             if core_fraction >= core_threshold:
-                                right_flanking_gc = gene_cluster_id
+                                right_flanking_core = gene_cluster_id
 
-                                # print('Found right flanking gc ' + gene_cluster_id)
-
-                            for current_region_gene_cluster_id in current_region:
-                                hypervariable_region_dict_list.append({
-                                    'genome': genome,
-                                    'contig': contig,
-                                    'gene_cluster': current_region_gene_cluster_id,
-                                    'left_flanking_gc': left_flanking_gc,
-                                    'right_flanking_gc': right_flanking_gc,
-                                    'length': str(len(current_region))
-                                })
+                            if left_flanking_core != '' and right_flanking_core != '':
+                                for current_region_gene_cluster_id in current_region:
+                                    hypervariable_region_dict_list.append({
+                                        'genome': genome,
+                                        'contig': contig,
+                                        'gene_cluster': current_region_gene_cluster_id,
+                                        'x_position': self.ancest.nodes[current_region_gene_cluster_id]["pos"][0],
+                                        'y_position': self.ancest.nodes[current_region_gene_cluster_id]["pos"][1],
+                                        'left_flanking_core': left_flanking_core,
+                                        'right_flanking_core': right_flanking_core,
+                                        'length': str(len(current_region))
+                                    })
 
                             inside_region = False
-                            left_flanking_gc = gene_cluster_id
-                            right_flanking_gc = ''
+                            left_flanking_core = gene_cluster_id
+                            right_flanking_core = ''
                             current_region = []
 
-                            # print('Restart')
-                    
                     else:
                         current_region += [gene_cluster_id]
                         inside_region = True
 
-                        # print('Inside of hypervariable region.')
-                        # print('Add ' + gene_cluster_id)
-
-        # print(hypervariable_region_dict)
-
         hypervariable_region_df = pd.DataFrame.from_dict(hypervariable_region_dict_list)
 
-        groups = hypervariable_region_df.groupby(['left_flanking_gc', 'right_flanking_gc'])
+        groups = hypervariable_region_df.groupby(['left_flanking_core', 'right_flanking_core'])
         
         hypervariable_region_index = 0
 
@@ -2383,24 +2369,24 @@ class Pangraph():
 
             df_group['name'] = 'HVR' + str(hypervariable_region_index)
             
-            num_diff_gc = int(df_group['gene_cluster'].count())
-            max_length = int(df_group['length'].max())
-            all_genomes = len(self.genomes)
-            num_genomes = int(df_group['genome'].count())
-            
-            # print(num_diff_gc, max_length, all_genomes, num_genomes)
+            graph_length = self.global_x - 1
+            graph_num_genomes = len(self.genomes)
 
-            df_group['score'] = (num_genomes / all_genomes) * (num_diff_gc / max_length) 
+            hvr_num_diff_gc = int(df_group['gene_cluster'].nunique())
+            hvr_length = int(df_group['length'].max())
+            hvr_num_genomes = int(df_group['genome'].nunique())
+            
+            df_group['score'] = (hvr_num_genomes / graph_num_genomes) * (hvr_num_diff_gc / hvr_length) 
+            # df_group['score'] = 100 * (hvr_length / graph_length) * (hvr_num_genomes / graph_num_genomes) * (hvr_num_diff_gc / hvr_length) 
+
+            # print((hvr_length / graph_length), (hvr_num_genomes / graph_num_genomes), (hvr_num_diff_gc / hvr_length))
 
             hypervariable_region_stack_list.append(df_group)
 
             hypervariable_region_index += 1
 
         hypervariable_region_stack_df = pd.concat(hypervariable_region_stack_list,ignore_index=True)
-
-        # print(hypervariable_region_stack_df)
-
-        hypervariable_region_stack_df.to_csv('/home/ahenoch/Desktop/test,csv')
+        hypervariable_region_stack_df.to_csv('/home/ahenoch/Desktop/test.csv', index=False)
 
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
