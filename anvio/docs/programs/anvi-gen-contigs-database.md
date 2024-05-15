@@ -81,7 +81,7 @@ If you want to increase `k` even further, you can re-compile the `sqlite3` libra
 
 Sebastian Treitli shared his workflow for re-compiling `sqlite3` with larger column limits on Discord ([here is the link to the relevant message](https://discord.com/channels/1002537821212512296/1239881490637127701/1240313108799553659)). Here are the initial steps, which are based on [this StackExchange thread](https://dba.stackexchange.com/questions/221508/how-to-increase-column-limit-of-a-table-in-sqlite):
 
-1. Go to download page https://sqlite.org/download.html
+1. Go to download page [https://sqlite.org/download.html](https://sqlite.org/download.html)
 2. Download the pre-release snapshot archive
 3. Extract it with `tar -xvzf "sqlite-snapshot-202405081757.tar.gz"`
 4. Change to that directory: `cd sqlite-snapshot-202405081757`
