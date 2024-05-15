@@ -211,4 +211,13 @@
       current: true
 
 - github: treitlis
-  name: Sebastian Treitli
+  name: Sebastian Cristian Treitli
+  email: sebastian.treitli@gmail.com
+  avatar: SebastianTreitli.png
+  orcid: 0000-0001-8000-1780
+  bio: "Microbiologist and bioinformatician - interested in protists and symbiotic interactions between protists and bacteria."
+  affiliations:
+    - title: Post-Doctoral researcher
+      inst: Max-Planck Institute for Terrestrial Microbiology
+      inst_link: mpi-marburg.mpg.de/
+      current: true
