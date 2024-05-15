@@ -91,7 +91,8 @@ Sebastian Treitli shared his workflow for re-compiling `sqlite3` with larger col
 
 After this, the newly-compiled library has to be moved into your anvi'o environment, at the same location where the original library was installed. This step will differ for everyone depending on their anvi'o installation, but we assume that if you are at this point, you probably know what you are doing :)
 
-8. Copy the compiled library to the conda lib directory, which would look something like this (paths are not exact and depend on your system/anvi'o installation): `cp /path/to/new/library/libsqlite3.so.0.8.6 /home/user/miniconda3/envs/anvio-7.1/lib/libsqlite3.so.0.8.6`
-9. Done :) Go forth and use (slightly) higher k-mer sizes!
+8. Copy the compiled library to the conda `lib` directory, which would look something like this (paths are not exact and depend on your system/anvi'o installation): `cp /path/to/compiled/sqlite/.libs/libsqlite3.so.0.8.6 /home/user/miniconda3/envs/anvio-7.1/lib/libsqlite3.so.0.8.6`
+9. Copy the compiled executable to the conda `bin` directory, which would look something like this (paths are not exact and depend on your system/anvi’o installation): `cp /path/to/compiled/sqlite/sqlite3 /home/user/miniconda3/envs/anvio-7.1/bin/sqlite3`
+10. Done :) Go forth and use (slightly) higher k-mer sizes!
 
 </div>
