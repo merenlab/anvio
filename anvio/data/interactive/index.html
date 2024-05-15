@@ -67,7 +67,7 @@
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")'></script>
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")' defer></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
@@ -103,11 +103,6 @@
         </div>
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
-        </div>
-        <div id="scaleBar">
-            <div id="leftEnd"></div>
-            <div id="rightEnd"></div>
-            <div id="midLine"></div>
         </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
