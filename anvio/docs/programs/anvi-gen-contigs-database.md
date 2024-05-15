@@ -32,7 +32,7 @@ anvi-gen-contigs-database -f Patient_6557_E_faecalis_cultivar.fa \
                           -o E_faecalis_P6557.db
 {{ codestop }}
 
-and a metagenomes:
+and a metagenome:
 
 {{ codestart }}
 anvi-gen-contigs-database -f scaffolds.fa \
@@ -60,3 +60,17 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
                           --external-gene-calls %(external-gene-calls)s \
                           --ignore-internal-stop-codons
 {{ codestop }}
+
+### Changing k-mer size
+
+You can change the k-mer size by modifying the `--kmer-size` parameter:
+
+{{ codestart }}
+anvi-gen-contigs-database -f %(contigs-fasta)s \
+                          -o %(contigs-db)s \
+                          --kmer-size 3
+{{ codestop }}
+
+A word of caution: you can increase the k-mer size up to a maximum of k=5 for standard installations of anvi'o. This is because the contigs database stores the k-mer frequencies in a big table with one column per k-mer, and SQLite has an upper limit on the number of columns per table. [The default limit is 2,000 columns](https://www.sqlite.org/limits.html), which translates into an upper limit of k=5 (with 4^5 = 1,096 possible k-mers). Trying to increase `k` beyond this point will result in the following error: `sqlite3.OperationalError: too many columns on kmer_contigs`.
+
+If you want to increase `k` even further, you can re-compile the `sqlite3` library to increase the column limit (the constant `SQLITE_MAX_COLUMN`). Note that you can only increase this limit up to a maximum of 32,000 columns, which makes k=7 (with 4^7 = 16,384 possible k-mers) the new upper limit for k-mer size.
