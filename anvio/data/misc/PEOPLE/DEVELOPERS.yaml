@@ -474,3 +474,16 @@
       inst: Helmholtz Munich
       inst_link: https://www.helmholtz-munich.de/en
       current: true
+      
+- github: metehaansever
+  name: Metehan Sever
+  twitter: metehaansever
+  avatar: no-avatar.jpg
+  email: metehaansever@gmail.com
+  linkedin: metehaansever
+  orcid: 0000-0003-1043-4956
+  affiliations:
+    - title: Scientific Programmer
+      inst: HIFMB
+      inst_link: https://hifmb.de/
+      current: true
