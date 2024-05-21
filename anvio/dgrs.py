@@ -981,7 +981,7 @@ class DGR_Finder:
         """
         This function creates a dictionary of the HMMs provided that are the closest to the template
         regions, this is done by finding the middle of the template region and the middle of the HMM gene
-        and comparing .
+        and comparing those pairs to each other to find the shortest distance.
         Parameters
         ==========
         DGRs_found_dict : dict
