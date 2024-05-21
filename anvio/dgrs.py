@@ -152,7 +152,7 @@ class DGR_Finder:
                     else:
                         raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
                                         f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
-                                        f"contigs.db.")
+                                        "contigs.db.")
 
             if self.gene_caller_to_consider_in_context:
                 genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
@@ -205,7 +205,7 @@ class DGR_Finder:
                 print("Contents of input_original.fasta:")
                 print(fasta_content)
 
-            blast = BLAST(shredded_sequence_file, target_fasta =self.target_file_path, search_program = 'blastn', output_file=self.blast_output, additional_params = '-dust no')
+            blast = BLAST(shredded_sequence_file, target_fasta = self.target_file_path, search_program = 'blastn', output_file = self.blast_output, additional_params = '-dust no')
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
