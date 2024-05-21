@@ -95,10 +95,12 @@ class DGR_Finder:
 
     def sanity_check(self):
         """Basic checks for a smooth operation"""
-
+        #filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=False)
+        #filesnpaths.check_output_directory(self.output_directory)
+        #filesnpaths.is_output_dir_writable(self.output_directory)
         if os.path.exists(self.output_directory) and not anvio.FORCE_OVERWRITE:
-            raise ConfigError(f"Hold up your directory ({self.output_directory}) exists. To avoid overwriting data we are stopping you right here. You have three options "
-                            "if you want to continue: rename your directory, delete your directory, or rerun with flag `--force-overwrite`.")
+            raise ConfigError(f"Hold up your directory ({self.output_directory}) exists. To avoid overwriting data we are stopping you here. You have three options "
+                            "if you want to continue: rename your directory, delete your existing directory, or rerun with flag `--force-overwrite`.")
         else:
             filesnpaths.gen_output_directory(self.output_directory)
 
