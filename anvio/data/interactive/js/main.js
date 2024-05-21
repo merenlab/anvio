@@ -2101,6 +2101,7 @@ function exportSvg(dontDownload) {
     var detachedSamples = $('#samples_tree path.clone').detach();
     drawTitle(last_settings);
     drawLegend();
+    drawScaleBar(settings, top, left);
 
     var svg = document.getElementById('svg');
     var viewBox = svg.getBBox();
@@ -2119,6 +2120,7 @@ function exportSvg(dontDownload) {
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
+    $('#scale_bar').remove();
 }
 
 

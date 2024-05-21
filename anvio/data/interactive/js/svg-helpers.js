@@ -246,6 +246,56 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
+function drawScaleBar(settings, top, left){
+    this.has_tree = (clusteringData.constructor !== Array);
+    createBin('viewport', 'scale_bar');
+
+    const scaleBarLength = 30;
+    top = top + 170;
+    if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram') && this.has_tree)
+        {
+            drawRectangle('scale_bar', left - 10, top - 20, 80, 300, 'white', 1, 'black');
+            drawText('scale_bar', {
+                'x': left,
+                'y': top
+            }, "Scale Bar", '16px');
+
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('stroke-width', 1);
+            line.setAttribute('stroke', 'black');
+            line.setAttribute('x1', left);
+            line.setAttribute('y1', top + 30);
+            line.setAttribute('x2', left + scaleBarLength * 5);
+            line.setAttribute('y2', top + 30);
+            var svg = document.getElementById('scale_bar');
+            svg.appendChild(line);
+
+            var startLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            startLine.setAttribute('stroke-width', 1);
+            startLine.setAttribute('stroke', 'black');
+            startLine.setAttribute('x1', left);
+            startLine.setAttribute('y1', top + 25);
+            startLine.setAttribute('x2', left);
+            startLine.setAttribute('y2', top + 35);
+            svg.appendChild(startLine);
+
+            var endLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            endLine.setAttribute('stroke-width', 1);
+            endLine.setAttribute('stroke', 'black');
+            endLine.setAttribute('x1', left + scaleBarLength * 5);
+            endLine.setAttribute('y1', top + 25);
+            endLine.setAttribute('x2', left + scaleBarLength * 5);
+            endLine.setAttribute('y2', top + 35);
+            svg.appendChild(endLine);
+
+            drawText('scale_bar', {
+                'x': left + ((scaleBarLength * 5) / 2) - 10,
+                'y': top + 45
+            }, "0.50", '12px');
+
+        }
+}
+
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
     /**
      * Render text on the SVG if it's within the specified range and the user has selected to display numbers.
