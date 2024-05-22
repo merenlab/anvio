@@ -53,6 +53,7 @@ class DGR_Finder:
         self.num_threads = A('num-threads')
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
+        self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.min_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
@@ -75,6 +76,7 @@ class DGR_Finder:
         self.run.info('Discovery mode', self.discovery_mode)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
+        self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
         self.run.info('Output Directory', self.output_directory)
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
         if self.fasta_file_path:
@@ -344,7 +346,6 @@ class DGR_Finder:
             self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
 
             self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
-
             blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
                         output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
             blast.evalue = 10 #set Evalue to be same as blastn default
@@ -751,6 +752,12 @@ class DGR_Finder:
             if mismatch_length_bp == 0:
                 continue
             else:
+                is_VR = False
+                for letter, count in subject_mismatch_counts.items():
+                    non_zero_bases = sum(1 for count in subject_mismatch_counts.values() if count > 0)
+                    if non_zero_bases >= self.min_mismatching_base_types_vr:
+                        is_VR = True
+
                 # Calculate the percentage identity of each alignment
                 is_TR = False
                 for letter, count in query_mismatch_counts.items():
@@ -770,34 +777,42 @@ class DGR_Finder:
                             midline = original_midline
                             base = letter
                             is_reverse_complement = False
-                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
-                        if not self.DGRs_found_dict:
-                            # add first DGR
-                            num_DGR += 1
-                            self.add_new_DGR(num_DGR, True, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
 
-                        else:
-                            was_added = False
-                            for dgr in self.DGRs_found_dict:
-                                if self.DGRs_found_dict[dgr]['TR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
-                                                                                                                query_genome_end_position,
-                                                                                                                self.DGRs_found_dict[dgr]['TR_start_position'],
-                                                                                                                self.DGRs_found_dict[dgr]['TR_end_position']):
-                                    was_added = True
-                                    self.update_existing_DGR(dgr, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
-                                                    query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
-                                                    subject_contig)
-                                    break
-                            if not was_added:
-                                # add new TR and its first VR
+                        # Only add the DGR if both is_TR and is_VR are True
+                        if is_TR and is_VR:
+                            #need to check if the new TR and VR you're looping through exsists in the DGR_found_dict, see if position overlap
+                            if not self.DGRs_found_dict:
+                                # add first DGR
                                 num_DGR += 1
                                 self.add_new_DGR(num_DGR, True, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
+                                            base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
+                                            subject_contig, midline, percentage_of_mismatches)
+
+                            else:
+                                was_added = False
+                                for dgr in self.DGRs_found_dict:
+                                    if self.DGRs_found_dict[dgr]['TR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
+                                                                                                                    query_genome_end_position,
+                                                                                                                    self.DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                                    self.DGRs_found_dict[dgr]['TR_end_position']):
+                                        was_added = True
+                                        self.update_existing_DGR(dgr, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
+                                                        query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
+                                                        subject_contig)
+                                        break
+                                if not was_added:
+                                    # add new TR and its first VR
+                                    num_DGR += 1
+                                    self.add_new_DGR(num_DGR, True, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                            base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
+                                            subject_contig, midline, percentage_of_mismatches)
 
                 if not is_TR:
+                    is_VR = False
+                    for letter, count in query_mismatch_counts.items():
+                        non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
+                        if non_zero_bases >= self.min_mismatching_base_types_vr:
+                            is_VR = True
                     # Calculate the percentage identity of each alignment
                     for letter, count in subject_mismatch_counts.items():
                             percentage_of_mismatches = (count / mismatch_length_bp)
@@ -816,35 +831,37 @@ class DGR_Finder:
                                     midline = original_midline
                                     base = letter
                                     is_reverse_complement = False
-                                #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
-                                if not self.DGRs_found_dict:
-                                    # add first DGR
-                                    num_DGR += 1
-                                    self.add_new_DGR(num_DGR, False, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
 
-                                else:
-                                    was_added = False
-                                    for dgr in self.DGRs_found_dict:
-                                        if self.DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
-                                                                                                                        subject_genome_end_position,
-                                                                                                                        self.DGRs_found_dict[dgr]['TR_start_position'],
-                                                                                                                        self.DGRs_found_dict[dgr]['TR_end_position']):
-                                            was_added = True
-                                            #TODO can rename concensus_TR
-                                            self.update_existing_DGR(dgr, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
-                                                    query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
-                                                    subject_contig)
-                                            break
-
-                                    if not was_added:
-                                        # add new TR and its first VR
+                                # Only add the DGR if both is_TR and is_VR are True
+                                if is_TR and is_VR:
+                                    #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
+                                    if not self.DGRs_found_dict:
+                                        # add first DGR
                                         num_DGR += 1
                                         self.add_new_DGR(num_DGR, False, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
+                                            base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
+                                            subject_contig, midline, percentage_of_mismatches)
 
+                                    else:
+                                        was_added = False
+                                        for dgr in self.DGRs_found_dict:
+                                            if self.DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
+                                                                                                                            subject_genome_end_position,
+                                                                                                                            self.DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                                            self.DGRs_found_dict[dgr]['TR_end_position']):
+                                                was_added = True
+                                                #TODO can rename concensus_TR
+                                                self.update_existing_DGR(dgr, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
+                                                        query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
+                                                        subject_contig)
+                                                break
+
+                                        if not was_added:
+                                            # add new TR and its first VR
+                                            num_DGR += 1
+                                            self.add_new_DGR(num_DGR, False, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                            base, is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position,
+                                            subject_contig, midline, percentage_of_mismatches)
 
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
@@ -1148,6 +1165,7 @@ class DGR_Finder:
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FLASE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
+                ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "3"),
                 ("Temporary Directory", self.temp_dir if self.temp_dir else None),
                 ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
