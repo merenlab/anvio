@@ -1087,7 +1087,7 @@ function main () {
         var element = $('<div class="col-12 d-flex mb-1"></div>').append(
           $('<div class="col-2 d-flex align-items-center"></div>').append(
             $('<div class="form-switch d-flex"></div>').append(
-              $('<input class="" type="checkbox" id="flex' + layer_name + '" name="flex' + layer_name + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>')
+              $('<input class="" type="checkbox" id="flex' + layer_name + '" name="flex' + layer_name + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
             )
           )
         ).append(
@@ -1200,7 +1200,7 @@ function main () {
           var element = $('<div class="col-12 d-flex mb-1"></div>').append(
             $('<div class="col-2 d-flex align-items-center"></div>').append(
               $('<div class="form-switch d-flex"></div>').append(
-                $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>')
+                $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
               )
             )
           ).append(

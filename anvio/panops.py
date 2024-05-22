@@ -1076,6 +1076,9 @@ class Pangraph():
         else:
             self.functional_annotation_sources_available = []
 
+        self.adding_codon_frequency = False
+        self.adding_additional_data = False
+
         self.data_table_dict = {}
         self.priority_genome = ''
 
@@ -2222,23 +2225,112 @@ class Pangraph():
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single("Done")
 
+    def translate(self, sequence, aa_table):
+
+        nnn_table = {
+            'TTT': 'F', 'TCT': 'S', 'TAT': 'Y', 'TGT': 'C', 'TTC': 'F', 'TCC': 'S', 'TAC': 'Y', 'TGC': 'C',
+            'TTA': 'L', 'TCA': 'S', 'TAA': '*', 'TGA': '*', 'TTG': 'L', 'TCG': 'S', 'TAG': '*', 'TGG': 'W',
+            'CTT': 'L', 'CCT': 'P', 'CAT': 'H', 'CGT': 'R', 'CTC': 'L', 'CCC': 'P', 'CAC': 'H', 'CGC': 'R',
+            'CTA': 'L', 'CCA': 'P', 'CAA': 'Q', 'CGA': 'R', 'CTG': 'L', 'CCG': 'P', 'CAG': 'Q', 'CGG': 'R',
+            'ATT': 'I', 'ACT': 'T', 'AAT': 'N', 'AGT': 'S', 'ATC': 'I', 'ACC': 'T', 'AAC': 'N', 'AGC': 'S',
+            'ATA': 'I', 'ACA': 'T', 'AAA': 'K', 'AGA': 'R', 'ATG': 'M', 'ACG': 'T', 'AAG': 'K', 'AGG': 'R',
+            'GTT': 'V', 'GCT': 'A', 'GAT': 'D', 'GGT': 'G', 'GTC': 'V', 'GCC': 'A', 'GAC': 'D', 'GGC': 'G',
+            'GTA': 'V', 'GCA': 'A', 'GAA': 'E', 'GGA': 'G', 'GTG': 'V', 'GCG': 'A', 'GAG': 'E', 'GGG': 'G'
+        }
+
+        nnn_frequency = {
+            'TTT': 0, 'TCT': 0, 'TAT': 0, 'TGT': 0, 'TTC': 0, 'TCC': 0, 'TAC': 0, 'TGC': 0,
+            'TTA': 0, 'TCA': 0, 'TAA': 0, 'TGA': 0, 'TTG': 0, 'TCG': 0, 'TAG': 0, 'TGG': 0,
+            'CTT': 0, 'CCT': 0, 'CAT': 0, 'CGT': 0, 'CTC': 0, 'CCC': 0, 'CAC': 0, 'CGC': 0,
+            'CTA': 0, 'CCA': 0, 'CAA': 0, 'CGA': 0, 'CTG': 0, 'CCG': 0, 'CAG': 0, 'CGG': 0,
+            'ATT': 0, 'ACT': 0, 'AAT': 0, 'AGT': 0, 'ATC': 0, 'ACC': 0, 'AAC': 0, 'AGC': 0,
+            'ATA': 0, 'ACA': 0, 'AAA': 0, 'AGA': 0, 'ATG': 0, 'ACG': 0, 'AAG': 0, 'AGG': 0,
+            'GTT': 0, 'GCT': 0, 'GAT': 0, 'GGT': 0, 'GTC': 0, 'GCC': 0, 'GAC': 0, 'GGC': 0,
+            'GTA': 0, 'GCA': 0, 'GAA': 0, 'GGA': 0, 'GTG': 0, 'GCG': 0, 'GAG': 0, 'GGG': 0
+        }
+ 
+        for dna in sequence:
+            for i in range(0, len(dna), 3):
+                if len(dna) % 3 == 0:
+                    triplet = dna[i:i + 3]
+                    nnn_frequency[triplet] += 1
+
+        for aa in aa_table.keys():
+            aa_sum = 0
+            for codon in aa_table[aa]:
+                aa_sum += nnn_frequency[codon]
+
+            for codon in aa_table[aa]:
+                if aa_sum != 0:
+                    nnn_frequency[codon] = nnn_frequency[codon] / aa_sum
+                else:
+                    nnn_frequency[codon] = 0
+
+        return(nnn_frequency)
+
     def generate_data_table(self):
 
+        aa_table = {
+            'F': ['TTT', 'TTC'],
+            'S': ['TCT', 'TCC', 'TCA', 'TCG', 'AGT', 'AGC'],
+            'Y': ['TAT', 'TAC'],
+            'C': ['TGT', 'TGC'],
+            'L': ['TTA', 'TTG', 'CTT', 'CTC', 'CTA', 'CTG'],
+            '*': ['TAA', 'TGA', 'TAG'],
+            'W': ['TGG'],
+            'P': ['CCT', 'CCC', 'CCA', 'CCG'],
+            'H': ['CAT', 'CAC'],
+            'R': ['CGT', 'CGC', 'CGA', 'CGG', 'AGA', 'AGG'],
+            'Q': ['CAA', 'CAG'],
+            'I': ['ATT', 'ATC', 'ATA'],
+            'T': ['ACT', 'ACC', 'ACA', 'ACG'],
+            'N': ['AAT', 'AAC'],
+            'K': ['AAA', 'AAG'],
+            'M': ['ATG'],
+            'V': ['GTT', 'GTC', 'GTA', 'GTG'],
+            'A': ['GCT', 'GCC', 'GCA', 'GCG'],
+            'D': ['GAT', 'GAC'],
+            'G': ['GGT', 'GGC', 'GGA', 'GGG'],
+            'E': ['GAA', 'GAG']
+        }
+
+        codons = [
+            'TTT', 'TCT', 'TAT', 'TGT', 'TTC', 'TCC', 'TAC', 'TGC', 'TTA', 'TCA', 'TAA', 'TGA', 'TTG', 'TCG', 'TAG', 'TGG', 
+            'CTT', 'CCT', 'CAT', 'CGT', 'CTC', 'CCC', 'CAC', 'CGC', 'CTA', 'CCA', 'CAA', 'CGA', 'CTG', 'CCG', 'CAG', 'CGG',
+            'ATT', 'ACT', 'AAT', 'AGT', 'ATC', 'ACC', 'AAC', 'AGC', 'ATA', 'ACA', 'AAA', 'AGA', 'ATG', 'ACG', 'AAG', 'AGG',
+            'GTT', 'GCT', 'GAT', 'GGT', 'GTC', 'GCC', 'GAC', 'GGC', 'GTA', 'GCA', 'GAA', 'GGA', 'GTG', 'GCG', 'GAG', 'GGG'
+        ]
+
         # global_entropy = 0
-        self.layers = ['Paralogs', 'Direction', 'Entropy', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
+        self.layers = ['Paralogs', 'Direction', 'Entropy']
+        
+        if self.adding_additional_data:
+            self.layers += ['Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
+            self.data_table_dict['Functional_Homogeneity'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+            self.data_table_dict['Geometric_Homogeneity'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+            self.data_table_dict['Combined_Homogeneity'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+
+        if self.adding_codon_frequency:
+            self.layers += ['GC_Content']
+            for aa in aa_table.keys():
+                for codon in aa_table[aa]:
+                    self.data_table_dict['Frequency_' + aa + '_' + codon] = {'type': 'heatmap',
+                                            'scale': 'local'}
+                    self.layers.append('Frequency_' + aa + '_' + codon)
+
+            self.data_table_dict['GC_Content'] = {'type': 'heatmap',
+                                            'scale': 'local'}
+
         self.data_table_dict['Paralogs'] = {'type': 'heatmap',
                                             'scale': 'local'}
         self.data_table_dict['Direction'] = {'type': 'heatmap',
                                             'scale': 'local'}
         self.data_table_dict['Entropy'] = {'type': 'heatmap',
                                             'scale': 'global'}
-        self.data_table_dict['Functional_Homogeneity'] = {'type': 'heatmap',
-                                            'scale': 'local'}
-        self.data_table_dict['Geometric_Homogeneity'] = {'type': 'heatmap',
-                                            'scale': 'local'}
-        self.data_table_dict['Combined_Homogeneity'] = {'type': 'heatmap',
-                                            'scale': 'local'}
-
+        
         max_paralogs = 0
         max_entropy = 0
         base = 2
@@ -2250,12 +2342,8 @@ class Pangraph():
             array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
             sum_occurence = np.sum(array_occurence)
 
-            # print(x, generation, array_occurence, sum_occurence)
-
             pk = array_occurence / sum_occurence
-
             H = entropy(pk, base=base)
-
             max_entropy = H if H > max_entropy else max_entropy
 
             for gene_cluster in generation:
@@ -2272,6 +2360,8 @@ class Pangraph():
                 func_homogeneity_list = []
                 geo_homogeneity_list = []
                 comb_homogeneity_list = []
+                gc_content_list = []
+                sequence_list = []
 
                 for genome in node['genome'].keys():
                     # for contig in node['genome'][genome].keys():
@@ -2279,30 +2369,57 @@ class Pangraph():
 
                     # contig = info['contig']
                     max_paralog_list.append(info['max_num_paralogs'])
-                    func_homogeneity_list.append(info['functional_homogeneity_index'])
-                    geo_homogeneity_list.append(info['geometric_homogeneity_index'])
-                    comb_homogeneity_list.append(info['combined_homogeneity_index'])
+
+                    if self.adding_additional_data:
+                        func_homogeneity_list.append(info['functional_homogeneity_index'])
+                        geo_homogeneity_list.append(info['geometric_homogeneity_index'])
+                        comb_homogeneity_list.append(info['combined_homogeneity_index'])
 
                     if info['direction'] == 'r':
                         num_dir_r += 1
                     else:
                         num_dir_l += 1
 
+                    if self.adding_codon_frequency:
+                        sequence = info['sequence']
+                        gc_content = (sequence.count('G') + sequence.count('C')) / len(sequence)
+                        gc_content_list.append(gc_content)
+                        sequence_list.append(sequence)
+
+                if self.adding_codon_frequency:
+                    nnn_frequency = self.translate(sequence_list, aa_table)
+
+                    for aa in aa_table.keys():
+                        for codon in aa_table[aa]:
+                            self.data_table_dict['Frequency_' + aa + '_' + codon][gene_cluster] = nnn_frequency[codon]
+
+                    self.data_table_dict['GC_Content'][gene_cluster] = sum(gc_content_list) / len(gc_content_list)
+
+                if self.adding_additional_data:
+                    self.data_table_dict['Functional_Homogeneity'][gene_cluster] = 1 - max(func_homogeneity_list)
+                    self.data_table_dict['Geometric_Homogeneity'][gene_cluster] = 1 - max(geo_homogeneity_list)
+                    self.data_table_dict['Combined_Homogeneity'][gene_cluster] = 1 - max(comb_homogeneity_list)
+
                 max_paralogs = max(max_paralog_list) if max(max_paralog_list) > max_paralogs else max_paralogs
                 
                 self.data_table_dict['Paralogs'][gene_cluster] = max(max_paralog_list) - 1
                 self.data_table_dict['Direction'][gene_cluster] = 1 - max(num_dir_r, num_dir_l)/num                    
                 self.data_table_dict['Entropy'][gene_cluster] = H
-                self.data_table_dict['Functional_Homogeneity'][gene_cluster] = 1 - max(func_homogeneity_list)
-                self.data_table_dict['Geometric_Homogeneity'][gene_cluster] = 1 - max(geo_homogeneity_list)
-                self.data_table_dict['Combined_Homogeneity'][gene_cluster] = 1 - max(comb_homogeneity_list)
 
         self.data_table_dict['Paralogs']['max'] = max_paralogs - 1 if max_paralogs - 1 != 0 else 1
         self.data_table_dict['Direction']['max'] = 0.5
         self.data_table_dict['Entropy']['max'] = max_entropy if max_entropy != 0 else 1
-        self.data_table_dict['Functional_Homogeneity']['max'] = 1
-        self.data_table_dict['Geometric_Homogeneity']['max'] = 1
-        self.data_table_dict['Combined_Homogeneity']['max'] = 1
+
+        if self.adding_codon_frequency:
+            self.data_table_dict['GC_Content']['max'] = 1
+            for aa in aa_table.keys():
+                for codon in aa_table[aa]:
+                    self.data_table_dict['Frequency_' + aa + '_' + codon]['max'] = 1.0
+
+        if self.adding_additional_data:
+            self.data_table_dict['Functional_Homogeneity']['max'] = 1
+            self.data_table_dict['Geometric_Homogeneity']['max'] = 1
+            self.data_table_dict['Combined_Homogeneity']['max'] = 1
 
 
     def get_hypervariable_regions(self, core_threshold = 0.8):
