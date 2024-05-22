@@ -2209,32 +2209,52 @@ class Pangraph():
             print('Sanity Error. Code 12.')
             exit()
 
+        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
+
+        for edge in self.edges:            
+            self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
+            self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+            self.ancest.remove_nodes_from(edge[1:-1])
+
+        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
+
         for node in self.ancest.nodes():
             self.ancest.nodes[node]['pos'] = self.position[node]
 
             self.offset[node] = self.position[node][0]
 
-        fraction_group_size = 1
+        fraction_group_size = 1.0
+        x_positions_list = []
 
         for group_name in self.grouping.keys():
             
             group = self.grouping[group_name]
 
             group_size = len(group)
-            group_size_compressed = round(group_size * fraction_group_size)
-            node_distance_factor = group_size_compressed / (group_size - 1)
+            group_size_compressed = round(group_size * fraction_group_size) 
+            compressed_factor = group_size_compressed if group_size_compressed == 0 else group_size_compressed - 1
+
+            node_distance_factor = compressed_factor / (group_size - 1)
 
             start_x = self.ancest.nodes[group[0]]['pos'][0]
 
             for i, node in enumerate(group):
                 self.offset[node] = start_x + i * node_distance_factor
+                # print(self.offset[node], self.position[node][0])
+            
+            compressed_length = int(self.offset[group[-1]] - self.offset[group[0]])
 
-        x_positions = set(self.offset.values())
+            x_positions_list += [i for i in range(start_x, start_x + compressed_length + 1)]
+
+        x_positions_list += list(self.offset.values())
+        x_positions = set(x_positions_list)
         empty_spots = []
 
         for x in range(self.global_x+1):
             if x not in x_positions:
                 empty_spots.append(x)
+
+        # print(empty_spots)
 
         for node in self.ancest.nodes():
             decrease = 0
@@ -2242,26 +2262,52 @@ class Pangraph():
             for e in empty_spots:
                 if x > e:
                     decrease += 1
+
+                    if e == empty_spots[-1]:
+                        self.offset[node] = x - decrease
+                        # print('j')
+                        break
+
                 else:
                     self.offset[node] = x - decrease
+                    # print('k')
                     break
 
-        stop_x = self.offset['stop']
-        self.offset['stop'] = stop_x - len(empty_spots) 
+        for edge_i, edge_j, data in self.ancest.edges(data=True):
+            if edge_i != 'start' and edge_j != 'stop':            
+                if data['bended']:
+
+                    # bended = []
+
+                    for i, (x, y) in enumerate(data['bended']):
+                        decrease = 0
+                        for e in empty_spots:
+                            if x > e-1:
+                                decrease += 1
+                            else:
+                                # if (x - decrease, y) not in bended:
+                                #     bended.append((x - decrease, y))
+                                data['bended'][i] = (x - decrease, y)
+                                break
+
+                    # data['bended'] = list(set(data['bended']))
+
+                else:
+                    if self.offset[edge_j] - self.offset[edge_i] != 1:
+                        
+                        y = self.position[edge_i][1]
+                        x = self.offset[edge_i] + 1
+                        
+                        while x < self.offset[edge_j]:
+                            data['bended'].append((x, y))
+                            x += 1
+
         self.global_x_offset = self.offset['stop']
+
+        print(self.global_x_offset)
 
         # self.ancest.remove_edge('start', 'stop')
         # self.ancest.remove_nodes_from(['start', 'stop'])
-
-        nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
-
-        for edge in self.edges:            
-            self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
-            self.ancest[edge[0]][edge[-1]]['bended'] = [(self.offset[p], self.position[p][1]) for p in edge[1:-1]]
-            self.ancest.remove_nodes_from(edge[1:-1])
-
-        nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
-
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single("Done")
