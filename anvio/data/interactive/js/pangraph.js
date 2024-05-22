@@ -600,7 +600,7 @@ async function generate_svg(body, data) {
     }
   }
 
-  var layers = data['infos']['layers_names']
+  var layers = Object.keys(data['infos']['layers_data'])
   for (var layer_name of layers) {
     if ($('#flex' + layer_name).prop('checked') == true){
 
@@ -884,7 +884,7 @@ async function generate_svg(body, data) {
           if ($('#flex' + layer_name).prop('checked') == true){
 
             var layer_scale = data['infos']['layers_data'][layer_name]['scale']
-            var value = data['infos']['layers_data'][layer_name][k]
+            var value = node['layer'][layer_name]
             var max = data['infos']['layers_data'][layer_name]['max']
 
             if (layer_scale == 'local'){
@@ -1068,11 +1068,10 @@ function main () {
     dataType: "json",
     success: function(data){
 
-    var layers = data['infos']['layers_names']
+    var layers = Object.keys(data['infos']['layers_data'])
   
     for (var layer_name of layers) {
-    
-      // var layer_name = data['infos']['layers_names'][layer]
+      
       var layer_scale = data['infos']['layers_data'][layer_name]['scale']
 
       if (layer_scale == 'global') {
@@ -1242,7 +1241,7 @@ function main () {
       )
     }
 
-    var layers = data['infos']['layers_names']
+    var layers = Object.keys(data['infos']['layers_data'])
 
     $('#expressiondrop').empty()
     $('#expressiondrop').append($('<option value="Choose item">Choose item</option>'))
@@ -1777,7 +1776,7 @@ function main () {
       layers_filter['genomes'] = {'min': mingenomes, 'max': maxgenomes}
       layers_filter['position'] = {'min': minposition, 'max': maxposition}
 
-      var layers = data['infos']['layers_names']
+      var layers = Object.keys(data['infos']['layers_data'])
       for (var layer_name of layers) {
 
         // console.log("#min" + layer_name + "text")
