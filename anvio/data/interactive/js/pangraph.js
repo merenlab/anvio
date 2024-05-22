@@ -89,7 +89,7 @@ function get_gene_cluster_consensus_functions(gene_cluster_data) {
 
 function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
-    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
+    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
 
@@ -522,7 +522,7 @@ async function generate_svg(body, data) {
   var edges = data['elements']['edges']
   var nodes = data['elements']['nodes']
 
-  var global_x = data["infos"]["meta"]["global_x"] -1;
+  var global_x = data["infos"]["meta"]["global_x_offset"] -1;
   var global_y = data["infos"]["meta"]["global_y"] +1;
 
   var group_color = $('#groups')[0].value;
@@ -712,9 +712,9 @@ async function generate_svg(body, data) {
 
       if (source != 'start' && target != 'stop' && edge['shown'] == 1){
 
-        var i_x = nodes[source]['position']['x']
+        var i_x = nodes[source]['position']['x_offset']
         var i_y = nodes[source]['position']['y']
-        var j_x = nodes[target]['position']['x']
+        var j_x = nodes[target]['position']['x_offset']
         var j_y = nodes[target]['position']['y']
 
         for (let e = 0; e <= genomes.length; e++) {
@@ -836,7 +836,7 @@ async function generate_svg(body, data) {
 
         var node_genomes_length = node_genomes.length
         
-        var k_x = parseInt(node['position']['x'])
+        var k_x = parseInt(node['position']['x_offset'])
         var k_y = parseInt(node['position']['y'])
 
         if (!group_nodes.includes(k)) {
@@ -942,10 +942,10 @@ async function generate_svg(body, data) {
       var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
       var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
       
-      var l_x = parseInt(left_node['position']['x'])
+      var l_x = parseInt(left_node['position']['x_offset'])
       var l_y = parseInt(left_node['position']['y'])
 
-      var m_x = parseInt(right_node['position']['x'])
+      var m_x = parseInt(right_node['position']['x_offset'])
       var m_y = parseInt(right_node['position']['y'])
 
       var [graph_size, graph_start, graph_stop] = outer_layers['graph']
@@ -1028,7 +1028,7 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
 
   if (searchpos == true) {
 
-    if (!positions.includes(parseInt(node['position']['x']))) {
+    if (!positions.includes(parseInt(node['position']['x_offset']))) {
       append = false
     }
   }
@@ -1736,7 +1736,7 @@ function main () {
 
       for (var [id, members] of Object.entries(searched)) {
         for (var mem of members) {
-          var xpos = data['elements']['nodes'][mem]['position']['x']
+          var xpos = data['elements']['nodes'][mem]['position']['x_offset']
           var e = document.getElementById(xpos);
           e.setAttribute("fill", "white")
         }
@@ -1749,7 +1749,7 @@ function main () {
 
       for (var [id, members] of Object.entries(searched)) {
         for (var mem of members) {
-          var xpos = data['elements']['nodes'][mem]['position']['x']
+          var xpos = data['elements']['nodes'][mem]['position']['x_offset']
           var e = document.getElementById(xpos);
           e.setAttribute("fill", "#ff0000")
         }

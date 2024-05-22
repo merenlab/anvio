@@ -1096,12 +1096,14 @@ class Pangraph():
 
         self.global_y = 0
         self.global_x = 1
+        self.global_x_offset = 0
         self.k = 0
         self.genome_gc_occurence = {}
         self.ghost = 0
         self.debug = False
 
         self.position = {}
+        self.offset = {}
         self.x_list = {}
         self.path = {}
         self.edges = []
@@ -2207,20 +2209,59 @@ class Pangraph():
             print('Sanity Error. Code 12.')
             exit()
 
+        for node in self.ancest.nodes():
+            self.ancest.nodes[node]['pos'] = self.position[node]
+
+            self.offset[node] = self.position[node][0]
+
+        fraction_group_size = 1
+
+        for group_name in self.grouping.keys():
+            
+            group = self.grouping[group_name]
+
+            group_size = len(group)
+            group_size_compressed = round(group_size * fraction_group_size)
+            node_distance_factor = group_size_compressed / (group_size - 1)
+
+            start_x = self.ancest.nodes[group[0]]['pos'][0]
+
+            for i, node in enumerate(group):
+                self.offset[node] = start_x + i * node_distance_factor
+
+        x_positions = set(self.offset.values())
+        empty_spots = []
+
+        for x in range(self.global_x+1):
+            if x not in x_positions:
+                empty_spots.append(x)
+
+        for node in self.ancest.nodes():
+            decrease = 0
+            x = self.offset[node]
+            for e in empty_spots:
+                if x > e:
+                    decrease += 1
+                else:
+                    self.offset[node] = x - decrease
+                    break
+
+        stop_x = self.offset['stop']
+        self.offset['stop'] = stop_x - len(empty_spots) 
+        self.global_x_offset = self.offset['stop']
+
+        # self.ancest.remove_edge('start', 'stop')
+        # self.ancest.remove_nodes_from(['start', 'stop'])
+
         nx.set_edge_attributes(self.ancest, {(i, j): d for i, j, d in self.edmonds_graph.edges(data=True)})
 
         for edge in self.edges:            
             self.ancest.add_edge(edge[0], edge[-1], **self.edmonds_graph[edge[0]][edge[-1]])
-            self.ancest[edge[0]][edge[-1]]['bended'] = [self.position[p] for p in edge[1:-1]]
+            self.ancest[edge[0]][edge[-1]]['bended'] = [(self.offset[p], self.position[p][1]) for p in edge[1:-1]]
             self.ancest.remove_nodes_from(edge[1:-1])
 
         nx.set_node_attributes(self.ancest, {k: d for k, d in self.edmonds_graph.nodes(data=True)})
 
-        for node in self.ancest.nodes():
-            self.ancest.nodes[node]['pos'] = self.position[node]
-
-        # self.ancest.remove_edge('start', 'stop')
-        # self.ancest.remove_nodes_from(['start', 'stop'])
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
         self.run.info_single("Done")
@@ -2433,7 +2474,8 @@ class Pangraph():
                 'title': self.project_name,
                 'version': anvio.__pangraph__version__,
                 'global_x': self.global_x,
-                'global_y': self.global_y
+                'global_y': self.global_y,
+                'global_x_offset': self.global_x_offset
             },
             'genomes': self.genome_coloring,
             'functional_annotation_sources_available': self.functional_annotation_sources_available,
@@ -2473,7 +2515,8 @@ class Pangraph():
                 "layer": j["layer"],
                 "position": {
                     'x': j['pos'][0],
-                    'y': j['pos'][1]
+                    'y': j['pos'][1],
+                    'x_offset': self.offset[i]
                 },
                 "genome": j["genome"]
             }
