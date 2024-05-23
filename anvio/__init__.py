@@ -2085,6 +2085,12 @@ D = {
              'type': str,
              'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
                 ),
+    'external-data': (
+            ['--external-data'],
+            {'metavar': 'YAML',
+             'type': str,
+             'help': ""}
+                ),
     'pan-graph-json': (
             ['--pan-graph-json'],
             {'metavar': 'JSON',

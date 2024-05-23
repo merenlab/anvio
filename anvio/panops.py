@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import entropy
 from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
 from scipy.spatial.distance import cdist, squareform
+import random
 
 from itertools import chain
 
@@ -1071,6 +1072,7 @@ class Pangraph():
         self.output_yaml = A('output_yaml')
         self.output_summary = A('output_summary')
         self.output_graphics = A('output_graphics')
+        self.data_tables = A('external_data')
         
         # learn what gene annotation sources are present across all genomes if we
         # are running things in normal mode
@@ -1165,6 +1167,9 @@ class Pangraph():
             self.run_synteny_layout_algorithm()
 
             self.generate_data_table()
+
+            if self.data_tables:
+                self.add_external_layer_values()
 
             if self.output_summary:
                 self.get_hypervariable_regions()
@@ -1484,6 +1489,9 @@ class Pangraph():
 
         self.run.info_single(f"{pp(self.k+1)} iteration(s) to expand {pp(len(self.paralog_dict.keys()))} GCs to {pp(len(self.genome_gc_occurence.keys()))} GCs without paralogs")
         syn_calls = 0
+
+        # df = pd.DataFrame(columns=['genome', 'contig', 'genecall', 'value'])
+
         for genome in self.gene_synteny_data_dict.keys():
 
             for contig in self.gene_synteny_data_dict[genome].keys():
@@ -1498,6 +1506,9 @@ class Pangraph():
                     entry = [item[0] for item in genome_gc_order[start:stop]]
                     gene_call = genome_gc_order[i][1]
                     name = genome_gc_order[i][0]
+
+                    # new_row = {'genome': genome, 'contig': contig, 'genecall': gene_call, 'value': random.uniform(0, 1)}
+                    # df = df.append(new_row, ignore_index=True)
 
                     if len(entry) == 1 + (2 * self.k):
                         gc_k = tuple(entry)
@@ -1525,6 +1536,8 @@ class Pangraph():
 
                         else:
                             pass
+
+        # df.to_csv('/home/ahenoch/Desktop/values.csv', index=False)
 
         num_calls = 0
         for _, value in self.genome_gc_occurence.items():            
@@ -2360,7 +2373,7 @@ class Pangraph():
                         num_dir_l += 1
 
                 max_paralogs = max(max_paralog_list) if max(max_paralog_list) > max_paralogs else max_paralogs
-                
+
                 node['layer'] = {
                     'Paralogs': max(max_paralog_list) - 1,
                     'Direction': 1 - max(num_dir_r, num_dir_l)/num,
@@ -2371,7 +2384,7 @@ class Pangraph():
                 }
 
         # self.layers = ['Paralogs', 'Direction', 'Entropy', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
-        
+
         self.data_table_dict['Functional_Homogeneity'] = {
             'type': 'heatmap',
             'scale': 'local',
@@ -2406,6 +2419,42 @@ class Pangraph():
             'type': 'heatmap',
             'scale': 'global',
             'max': max_entropy if max_entropy != 0 else 1,
+            'min': 0
+        }
+
+
+    def add_external_layer_values(self):
+        
+        layer_name = os.path.splitext(os.path.basename(self.data_tables))[0]
+        layer_max = 0
+
+        df = pd.read_csv(self.data_tables)
+
+        df.set_index(['genome', 'contig', 'genecall'], inplace=True)
+
+        for node, data in self.ancest.nodes(data=True):
+            
+            if node != 'start' and node != 'stop':
+
+                value_list = []
+
+                for genome in data['genome'].keys():
+
+                    contig = data['genome'][genome]['contig']
+                    genecall = data['genome'][genome]['gene_call']
+
+                    value = df.loc[[(genome, contig, genecall)]]['value'].item()
+
+                    layer_max = layer_max if layer_max > value else value
+
+                    value_list.append(value)
+                
+                data['layer'][layer_name] = sum(value_list) / len(value_list)
+
+        self.data_table_dict[layer_name] = {
+            'type': 'heatmap',
+            'scale': 'local',
+            'max': layer_max,
             'min': 0
         }
 

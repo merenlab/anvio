@@ -38,6 +38,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
     groupA.add_argument(*anvio.A('testing-yaml'), **anvio.K('testing-yaml'))
+    groupA.add_argument(*anvio.A('external-data'), **anvio.K('external-data'))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
