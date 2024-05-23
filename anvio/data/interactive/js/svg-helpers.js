@@ -246,31 +246,28 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
-    //Unfinished
-// function drawScaleBar(settings, options, top, left){
-//     this.has_tree = (clusteringData.constructor !== Array);
-//     this.node = options.node;
-//     createBin('viewport', 'scale_bar');
+async function drawScaleBar(settings, top, left) {
+    this.has_tree = (clusteringData.constructor !== Array);
+    createBin('viewport', 'scale_bar');
 
-//     () => {
-//         $.ajax({
-//             type: 'POST',
-//             cache: false,
-//             url: '/data/get_max_branch_length',
-//             data: {
-//                 'newick': clusteringData,
-//             },
-//             success: function(data) {
-//                 collapsedNodes = [];
-//                 var max_branch_length = data['newick'];
-//             }
-//         });
-//     }
+    try {
+        const data = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_max_branch_length',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            })
+        });
 
-    const scaleBarLength = 30;
-    top = top + 170;
-    if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram') && this.has_tree)
-        {
+        var max_branch_length = data['max_branch_length'];
+        console.log("Max Branch Length:", max_branch_length);
+
+        const scaleBarLength = 30;
+        top = top + 170;
+
+        if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram') && this.has_tree) {
             drawRectangle('scale_bar', left - 10, top - 20, 80, 300, 'white', 1, 'black');
             drawText('scale_bar', {
                 'x': left,
@@ -305,12 +302,15 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
             endLine.setAttribute('y2', top + 35);
             svg.appendChild(endLine);
 
+            var scaleValue = (max_branch_length / 10).toFixed(2);
             drawText('scale_bar', {
                 'x': left + ((scaleBarLength * 5) / 2) - 10,
                 'y': top + 45
-            }, "0.50", '12px');
-
+            }, scaleValue, '12px');
         }
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
