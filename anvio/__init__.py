@@ -288,7 +288,8 @@ D = {
                      "analyses is 4, historically. Although tetra-nucleotide frequencies seem to offer the "
                      "the sweet spot of sensitivity, information density, and manageable number of dimensions "
                      "for clustering approaches, you are welcome to experiment (but maybe you should leave "
-                     "it as is for your first set of analyses)."}
+                     "it as is for your first set of analyses). Note that the maximum k-mer size is 5 (unless you "
+                     "can increase the column limit in `sqlite3` to 32k, in which case the max is 7)."}
                 ),
     'prodigal-translation-table': (
             ['--prodigal-translation-table'],

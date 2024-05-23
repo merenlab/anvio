@@ -5762,8 +5762,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 extra_cols.append(c)
         if extra_cols:
             e_str = ", ".join(extra_cols)
-            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
-                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+            self.run.warning(f"Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             f"going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
 
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
