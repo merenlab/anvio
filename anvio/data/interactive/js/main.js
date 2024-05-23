@@ -2053,7 +2053,7 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg(dontDownload) {
+async function exportSvg(dontDownload) {
     if (!drawer)
         return;
 
@@ -2099,11 +2099,9 @@ function exportSvg(dontDownload) {
 
     var detached = $('#tree path.clone').detach();
     var detachedSamples = $('#samples_tree path.clone').detach();
+    await drawScaleBar(settings, top, left);
     drawTitle(last_settings);
     drawLegend();
-
-    //Unfinished
-    //drawScaleBar(settings, options, top, left);
 
     var svg = document.getElementById('svg');
     var viewBox = svg.getBBox();
