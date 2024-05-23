@@ -1512,13 +1512,18 @@ class BottleApplication(Bottle):
 
 
     def get_max_branch_length(self):
-        newick = request.forms.get('newick')
-        tree = Tree(newick, format=1)
+        try:
+            newick = request.json.get('newick')
+            tree = Tree(newick, format=1)
 
-        max_branch_length = 0
+            max_branch_length = 0
 
-        for node in tree.traverse():
-            if node.dist > max_branch_length:
-                max_branch_length = node.dist
+            for node in tree.traverse():
+                if node.dist > max_branch_length:
+                    max_branch_length = node.dist
 
-        return max_branch_length
+            response.content_type = 'application/json'
+            return {'max_branch_length': max_branch_length}
+        except Exception as e:
+            response.status = 500
+            return {'error': str(e)}
