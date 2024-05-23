@@ -46,6 +46,8 @@ if __name__ == '__main__':
                                 "to the pan-db.")
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupB.add_argument(*anvio.A('output-yaml'), **anvio.K('output-yaml'))
+    groupB.add_argument(*anvio.A('output-summary'), **anvio.K('output-summary'))
+    groupB.add_argument(*anvio.A('output-graphics'), **anvio.K('output-graphics'))
     groupB.add_argument('--skip-storing-in-pan-db', default=False, action="store_true", help="Do not store the resulting graph into "
                                 "the pan-db.")
 
@@ -61,6 +63,7 @@ if __name__ == '__main__':
     groupC.add_argument('--gene-cluster-grouping-threshold', default = 2, type=int, help = "This parameters influences how gene clusters that share "
                                 "perfect synteny (across all genomes that contribute genes) are represented in the final display. With the default value "
                                 "of %(default)d, the final graph will represent as many gene clusters as possible in groups.")
+    groupC.add_argument('--gene-cluster-grouping-compression', default = 0.0, type=float, help = "Description.")
 
     args = parser.get_args(parser)
 

@@ -1059,9 +1059,9 @@ class Pangraph():
         self.genomes_storage_db = A('genomes_storage')
         self.testing_yaml = A('testing_yaml')
 
-        self.max_edge_length_filter = -1
-        self.gene_cluster_grouping_threshold = 2
-        self.groupcompress = 0.0
+        self.max_edge_length_filter = A('max_edge_length_filter')
+        self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
+        self.groupcompress = A('gene_cluster_grouping_compression')
 
         self.testing = True if self.testing_yaml else False
 
@@ -1069,6 +1069,8 @@ class Pangraph():
         self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
         self.json_output_file_path = A('output_file')
         self.output_yaml = A('output_yaml')
+        self.output_summary = A('output_summary')
+        self.output_graphics = A('output_graphics')
         
         # learn what gene annotation sources are present across all genomes if we
         # are running things in normal mode
@@ -1164,7 +1166,8 @@ class Pangraph():
 
             self.generate_data_table()
 
-            self.get_hypervariable_regions()
+            if self.output_summary:
+                self.get_hypervariable_regions()
 
             # store network in the database
             self.store_network()
@@ -1354,12 +1357,13 @@ class Pangraph():
 
             result = list(zip(label, clusters))
 
-            fig = plt.figure(figsize=(25, 10))
-            ax = plt.axes()
-            dn = dendrogram(Z, ax=ax, labels=label, orientation='right')
-            ax.axvline(linestyle='--', x=t)
-            plt.tight_layout()
-            fig.savefig('/home/ahenoch/Desktop/' + gcp + '.pdf')
+            if self.output_graphics:
+                fig = plt.figure(figsize=(25, 10))
+                ax = plt.axes()
+                dn = dendrogram(Z, ax=ax, labels=label, orientation='right')
+                ax.axvline(linestyle='--', x=t)
+                plt.tight_layout()
+                fig.savefig(self.output_graphics + gcp + '.pdf')
 
             return (result)
 
@@ -2304,7 +2308,7 @@ class Pangraph():
 
         self.global_x_offset = self.offset['stop']
 
-        print(self.global_x_offset)
+        # print(self.global_x_offset)
 
         # self.ancest.remove_edge('start', 'stop')
         # self.ancest.remove_nodes_from(['start', 'stop'])
@@ -2486,7 +2490,7 @@ class Pangraph():
             hypervariable_region_index += 1
 
         hypervariable_region_stack_df = pd.concat(hypervariable_region_stack_list,ignore_index=True)
-        hypervariable_region_stack_df.to_csv('/home/ahenoch/Desktop/test.csv', index=False)
+        hypervariable_region_stack_df.to_csv(self.output_summary, index=False)
 
     # TODO rework that section for better debugging and add more features as an example fuse start and top
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove

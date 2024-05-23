@@ -2103,6 +2103,18 @@ D = {
              'type': str,
              'help': "File path to store results."}
                 ),
+    'output-summary': (
+            ['--output-summary'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to store results."}
+                ),
+    'output-graphics': (
+            ['--output-graphics'],
+            {'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "File path to store results."}
+                ),
     'log-file': (
             ['--log-file'],
             {'metavar': 'FILE_PATH',
