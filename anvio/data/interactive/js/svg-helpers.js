@@ -246,9 +246,26 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
-function drawScaleBar(settings, top, left){
-    this.has_tree = (clusteringData.constructor !== Array);
-    createBin('viewport', 'scale_bar');
+    //Unfinished
+// function drawScaleBar(settings, options, top, left){
+//     this.has_tree = (clusteringData.constructor !== Array);
+//     this.node = options.node;
+//     createBin('viewport', 'scale_bar');
+
+//     () => {
+//         $.ajax({
+//             type: 'POST',
+//             cache: false,
+//             url: '/data/get_max_branch_length',
+//             data: {
+//                 'newick': clusteringData,
+//             },
+//             success: function(data) {
+//                 collapsedNodes = [];
+//                 var max_branch_length = data['newick'];
+//             }
+//         });
+//     }
 
     const scaleBarLength = 30;
     top = top + 170;

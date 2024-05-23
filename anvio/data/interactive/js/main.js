@@ -2101,7 +2101,9 @@ function exportSvg(dontDownload) {
     var detachedSamples = $('#samples_tree path.clone').detach();
     drawTitle(last_settings);
     drawLegend();
-    drawScaleBar(settings, top, left);
+
+    //Unfinished
+    //drawScaleBar(settings, options, top, left);
 
     var svg = document.getElementById('svg');
     var viewBox = svg.getBBox();

@@ -193,6 +193,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
+        self.route('/data/get_max_branch_length',              callback=self.get_max_branch_length, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1508,3 +1509,16 @@ class BottleApplication(Bottle):
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+
+
+    def get_max_branch_length(self):
+        newick = request.forms.get('newick')
+        tree = Tree(newick, format=1)
+
+        max_branch_length = 0
+
+        for node in tree.traverse():
+            if node.dist > max_branch_length:
+                max_branch_length = node.dist
+
+        return max_branch_length
