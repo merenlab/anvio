@@ -1151,6 +1151,7 @@ function main () {
 
       $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
       $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
+      $("#groupcompress")[0].value = data['infos']['groupcompress']
 
       for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 
@@ -1383,11 +1384,11 @@ function main () {
 
     $('#flexgroupcompress').change(function() {
       if ($(this).prop('checked') == true){
-        $('#groupcompress')[0].value = 0;
+        $('#groupcompress')[0].value = 0.0;
         // $('#customRange4')[0].value = 0;
         // $('#customRange4').prop('disabled', false);
       } else {
-        $('#groupcompress')[0].value = -1;
+        $('#groupcompress')[0].value = 1.0;
         // $('#customRange4')[0].value = 0;
         // $('#customRange4').prop('disabled', true);
       }

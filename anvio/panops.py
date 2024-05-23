@@ -1059,8 +1059,8 @@ class Pangraph():
         self.genomes_storage_db = A('genomes_storage')
         self.testing_yaml = A('testing_yaml')
 
-        self.max_edge_length_filter = A('max_edge_length_filter')
-        self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
+        self.max_edge_length_filter = -1
+        self.gene_cluster_grouping_threshold = 2
         self.groupcompress = 0.0
 
         self.testing = True if self.testing_yaml else False
@@ -2528,6 +2528,7 @@ class Pangraph():
             'num_genomes': len(self.genome_coloring),
             'max_edge_length_filter': self.max_edge_length_filter,
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
+            'groupcompress': self.groupcompress,
             'original': {
                 'nodes': len(self.pangenome_graph.nodes()),
                 'edges': len(self.pangenome_graph.edges()),

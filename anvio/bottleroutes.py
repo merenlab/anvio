@@ -1504,7 +1504,7 @@ class BottleApplication(Bottle):
         print(payload)
         max_edge_length_filter = int(payload['maxlength'])
         gene_cluster_grouping_threshold = int(payload['condtr'])
-        fraction_group_size = float(payload['groupcompress'])
+        groupcompress = float(payload['groupcompress'])
 
         ancest = nx.DiGraph()
         x_list = {}
@@ -1766,7 +1766,7 @@ class BottleApplication(Bottle):
             group = grouping[group_name]
 
             group_size = len(group)
-            group_size_compressed = round(group_size * fraction_group_size) 
+            group_size_compressed = round(group_size * groupcompress) 
             compressed_factor = group_size_compressed if group_size_compressed == 0 else group_size_compressed - 1
 
             node_distance_factor = compressed_factor / (group_size - 1)
