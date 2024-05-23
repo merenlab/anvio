@@ -1115,6 +1115,7 @@ function main () {
 
       data['condtr'] = $('#condtr')[0].value
       data['maxlength'] = $('#maxlength')[0].value
+      data['groupcompress'] = $('#groupcompress')[0].value
 
       $("#genomecolors :input[type='checkbox']").each((index, element) => {
 

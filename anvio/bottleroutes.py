@@ -1500,10 +1500,11 @@ class BottleApplication(Bottle):
 
     def get_pangraph_settings(self):
         
-        # try:
         payload = request.json
+        print(payload)
         max_edge_length_filter = int(payload['maxlength'])
         gene_cluster_grouping_threshold = int(payload['condtr'])
+        fraction_group_size = float(payload['groupcompress'])
 
         ancest = nx.DiGraph()
         x_list = {}
@@ -1511,9 +1512,6 @@ class BottleApplication(Bottle):
         edges = []
 
         data = json.load(open(self.interactive.pan_graph_json_path))
-
-        # with open("test.json", "r") as pangraph_json:
-        #     data = json.load(pangraph_json)
 
         global_x = int(data["infos"]["meta"]["global_x"])
         global_y = 0
@@ -1606,6 +1604,9 @@ class BottleApplication(Bottle):
         groups = {}
         groups_rev = {}
         grouping = {}
+        offset = {}
+        global_x_offset = 0
+        x_positions_list = []
 
         for node_v, node_w in dfs_list:
             if node_v != 'start' and ancest.in_degree(node_v) == 1 and ancest.out_degree(node_v) == 1 and ancest.in_degree(node_w) == 1 and ancest.out_degree(node_w) == 1:
@@ -1755,7 +1756,83 @@ class BottleApplication(Bottle):
         for node in ancest.nodes():
             ancest.nodes[node]['pos'] = position[node]
 
+
+
+
+            offset[node] = position[node][0]
+
+        for group_name in grouping.keys():
+            
+            group = grouping[group_name]
+
+            group_size = len(group)
+            group_size_compressed = round(group_size * fraction_group_size) 
+            compressed_factor = group_size_compressed if group_size_compressed == 0 else group_size_compressed - 1
+
+            node_distance_factor = compressed_factor / (group_size - 1)
+
+            start_x = ancest.nodes[group[0]]['pos'][0]
+
+            for i, node in enumerate(group):
+                offset[node] = start_x + i * node_distance_factor
+                
+            compressed_length = int(offset[group[-1]] - offset[group[0]])
+
+            x_positions_list += [i for i in range(start_x, start_x + compressed_length + 1)]
+
+        x_positions_list += list(offset.values())
+        x_positions = set(x_positions_list)
+        empty_spots = []
+
+        for x in range(global_x+1):
+            if x not in x_positions:
+                empty_spots.append(x)
+
+        for node in ancest.nodes():
+            decrease = 0
+            x = offset[node]
+            for e in empty_spots:
+                if x > e:
+                    decrease += 1
+
+                    if e == empty_spots[-1]:
+                        offset[node] = x - decrease
+                        break
+
+                else:
+                    offset[node] = x - decrease
+                    break
+
+        for edge_i, edge_j, edge_data in ancest.edges(data=True):
+            if edge_i != 'start' and edge_j != 'stop':            
+                if edge_data['bended']:
+
+                    for i, (x, y) in enumerate(edge_data['bended']):
+                        decrease = 0
+                        for e in empty_spots:
+                            if x > e-1:
+                                decrease += 1
+                            else:
+                                edge_data['bended'][i] = (x - decrease, y)
+                                break
+
+                else:
+                    if offset[edge_j] - offset[edge_i] != 1:
+                        
+                        y = position[edge_i][1]
+                        x = offset[edge_i] + 1
+                        
+                        while x < offset[edge_j]:
+                            edge_data['bended'].append((x, y))
+                            x += 1
+
+        global_x_offset = offset['stop']
+
+
+
+
         data["infos"]['meta']['global_y'] = global_y
+        data["infos"]['meta']['global_x_offset'] = global_x_offset
         data["infos"]['max_edge_length_filter'] = max_edge_length_filter
         data["infos"]['gene_cluster_grouping_threshold'] = gene_cluster_grouping_threshold
         data["infos"]['final']['edges'] = len(ancest.edges())
@@ -1768,6 +1845,7 @@ class BottleApplication(Bottle):
         for i, j in ancest.nodes(data=True):
             # if i != 'start' and i != 'stop':
             data["elements"]["nodes"][str(i)]["position"]['y'] = j['pos'][1]
+            data["elements"]["nodes"][str(i)]["position"]['x_offset'] = offset[i]
 
         for edge in data["elements"]["edges"]:
             source = data["elements"]["edges"][edge]["source"]

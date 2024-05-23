@@ -1061,6 +1061,7 @@ class Pangraph():
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
+        self.groupcompress = 0.0
 
         self.testing = True if self.testing_yaml else False
 
@@ -2223,7 +2224,6 @@ class Pangraph():
 
             self.offset[node] = self.position[node][0]
 
-        fraction_group_size = 1.0
         x_positions_list = []
 
         for group_name in self.grouping.keys():
@@ -2231,7 +2231,7 @@ class Pangraph():
             group = self.grouping[group_name]
 
             group_size = len(group)
-            group_size_compressed = round(group_size * fraction_group_size) 
+            group_size_compressed = round(group_size * self.groupcompress) 
             compressed_factor = group_size_compressed if group_size_compressed == 0 else group_size_compressed - 1
 
             node_distance_factor = compressed_factor / (group_size - 1)
