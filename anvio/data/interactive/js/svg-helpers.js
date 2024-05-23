@@ -247,7 +247,6 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 }
 
 async function drawScaleBar(settings, top, left) {
-    this.has_tree = (clusteringData.constructor !== Array);
     createBin('viewport', 'scale_bar');
 
     try {
@@ -267,7 +266,7 @@ async function drawScaleBar(settings, top, left) {
         const scaleBarLength = 30;
         top = top + 170;
 
-        if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram') && this.has_tree) {
+        if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
             drawRectangle('scale_bar', left - 10, top - 20, 80, 300, 'white', 1, 'black');
             drawText('scale_bar', {
                 'x': left,

@@ -2059,6 +2059,7 @@ async function exportSvg(dontDownload) {
 
     // draw bin and layer legend to output svg
     var settings = serializeSettings();
+    this.has_tree = (clusteringData.constructor !== Array);
 
     var bins_to_draw = new Array();
     $('#tbody_bins tr').each(
@@ -2088,6 +2089,9 @@ async function exportSvg(dontDownload) {
     if (bins_to_draw.length > 0) {
         drawBinLegend(bins_to_draw, top, left);
         top = top + 100 + (bins_to_draw.length + 2.5) * 20
+        if(this.has_tree){
+            await drawScaleBar(settings, top, left);
+        }
     }
 
     // important,
@@ -2099,7 +2103,6 @@ async function exportSvg(dontDownload) {
 
     var detached = $('#tree path.clone').detach();
     var detachedSamples = $('#samples_tree path.clone').detach();
-    await drawScaleBar(settings, top, left);
     drawTitle(last_settings);
     drawLegend();
 
