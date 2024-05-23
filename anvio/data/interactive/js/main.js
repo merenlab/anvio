@@ -214,6 +214,10 @@ $(document).ready(function() {
                 return text === "Hide" ? "Show" : "Hide";
             });
         });
+
+        $('#bin_settings').on('click', function() {
+            $.bootstrapSortable();
+        });
 });
 
 function initData() {

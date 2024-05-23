@@ -733,7 +733,7 @@
                     </div>
 
                     <!-- BINS Tab -->
-                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings" onclick="{$.bootstrapSortable();}" >
+                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal mt-3">
                             <div class="panel-body">
 
@@ -749,11 +749,11 @@
                                         <tr>
                                             <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>
                                             <th class="text-center"></th>
-                                            <th data-defaultsort="desc" >Name</th>
-                                            <th data-defaultsort="desc" id="splits_title">Splits</th>
-                                            <th data-defaultsort="desc" id="len_title">Len</th>
-                                            <th data-defaultsort="desc" id="completion_title" title="Completion">Comp.</th>
-                                            <th data-defaultsort="desc" id="redundancy_title" title="Redundancy">Red.</th>
+                                            <th>Name</th>
+                                            <th id="splits_title">Splits</th>
+                                            <th id="len_title">Len</th>
+                                            <th id="completion_title" title="Completion">Comp.</th>
+                                            <th id="redundancy_title" title="Redundancy">Red.</th>
                                             <th data-defaultsort='disabled'><span class="del-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();"></span></th>
                                         </tr>
                                     </thead>
