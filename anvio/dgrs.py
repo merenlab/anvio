@@ -872,6 +872,20 @@ class DGR_Finder:
         return
 
     def get_gene_info(self):
+        """
+        This function
+
+        Parameters
+        ==========
+        mismatch_hits : dict
+            A dictionary of all of the BLASTn hits that are less than 100%
+
+        Returns
+        =======
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+
+        """
         # initiate a dictionary for the gene where we find VR
         self.vr_gene_info = {}
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
@@ -954,15 +968,22 @@ class DGR_Finder:
                                     f"rev_compd:{rev_compd}",
                                     f"length:{gene_call['length']}"])
                         gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
+                        # Add gene functions if available
+                        gene_call['functions'] = []  # Initialize functions list
+                        if 'functions' in gene_call:
+                            gene_call['functions'] = gene_call['functions']
+
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
         #MAKE into WRITE DGR_genes_found write function
         #define output path
-        output_path_for_genes_found = os.path.join(self.output_directory, "DGR_genes_found.csv")
+        output_directory_path = self.output_directory
+        output_path_for_genes_found = os.path.join(output_directory_path, "DGR_genes_found.csv")
 
         # Define the header for the CSV file
-        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header']
+        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header','Gene_Functions']
 
         # Open the CSV file in write mode
         with open(output_path_for_genes_found, mode='w', newline='') as file:
@@ -973,6 +994,13 @@ class DGR_Finder:
                 for vr_id, gene_info in vr_data.items():
                     if not gene_info:
                         continue
+
+                    # Add gene functions if available
+                    if 'functions' in gene_info:
+                        gene_functions = '|'.join(gene_info['functions'])  # Convert list of functions to string
+                    else:
+                        gene_functions = ''  # If no functions available, set to empty string
+
                     writer.writerow([
                         dgr_id,
                         vr_id,
@@ -987,7 +1015,8 @@ class DGR_Finder:
                         gene_info['gene_callers_id'],
                         gene_info['DNA_sequence'],
                         gene_info['AA_sequence'],
-                        gene_info['length']
+                        gene_info['length'],
+                        gene_functions
                     ])
         return
 
