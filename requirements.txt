@@ -8,7 +8,7 @@ django
 requests
 mistune
 six
-matplotlib
+matplotlib==3.5.1
 statsmodels
 colored
 illumina-utils
