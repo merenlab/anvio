@@ -89,7 +89,7 @@ function get_gene_cluster_consensus_functions(gene_cluster_data) {
 
 function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
-    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x"] - 1);
+    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
 
@@ -1848,7 +1848,7 @@ function main () {
           layers_positions[layer_name] = []
           searchpos = true
           if (layer_name == 'position') {
-            var global_x = data["infos"]["meta"]["global_x"] -1;
+            var global_x = data["infos"]["meta"]["global_x_offset"] -1;
             var layerobjects = new Array(global_x - 1).fill().map((d, i) => i + 1);
             // console.log(layerobjects)
           } else {

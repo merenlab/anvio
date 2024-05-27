@@ -2256,7 +2256,7 @@ class Pangraph():
             start_x = self.ancest.nodes[group[0]]['pos'][0]
 
             for i, node in enumerate(group):
-                self.offset[node] = start_x + i * node_distance_factor
+                self.offset[node] = round(start_x + i * node_distance_factor)
                 # print(self.offset[node], self.position[node][0])
             
             compressed_length = int(self.offset[group[-1]] - self.offset[group[0]])

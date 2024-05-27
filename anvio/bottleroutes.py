@@ -1774,7 +1774,7 @@ class BottleApplication(Bottle):
             start_x = ancest.nodes[group[0]]['pos'][0]
 
             for i, node in enumerate(group):
-                offset[node] = start_x + i * node_distance_factor
+                offset[node] = round(start_x + i * node_distance_factor)
                 
             compressed_length = int(offset[group[-1]] - offset[group[0]])
 
