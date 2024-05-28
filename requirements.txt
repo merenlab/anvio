@@ -22,4 +22,4 @@ pandas==1.4.4
 snakemake
 multiprocess
 plotext
-networkx
+networkx==3.1
