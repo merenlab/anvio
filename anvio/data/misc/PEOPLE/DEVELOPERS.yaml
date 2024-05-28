@@ -362,21 +362,21 @@
 
 - github: AstrobioMike
   name: Mike Lee
-  bio: "Bioinformatician who explores microbial ecology and evolution in a wide range of environments."
+  bio: "Bioinformatician exploring microbial ecology and evolution in a wide range of environments."
   avatar: AstrobioMike.jpg
   email: michael.lee0517@gmail.com
-  web: https://astrobiomike.github.io
+  web: https://astrobiomike.github.io/research
   twitter: AstrobioMike
   linkedin: AstrobioMike
   affiliations:
-    - title: NASA Space Biology Fellow
+    - title: Principle Investigator, Bioinformatics
+      inst: National Biodefense Analysis and Countermeasures Center
+      current: true
+    - title: NASA GeneLab Bioinformatician
       inst: NASA Ames Research Center
       inst_link: https://www.nasa.gov/ames
-      current: true
-    - title: JCVI Research Fellow
-      inst: J. Craig Venter Institute
-      inst_link: https://www.jcvi.org/
-
+      current: false
+ 
 - github: nick-youngblut
   name: Nick Youngblut
   bio: "Microbiologist studying methanogens and host-microbiome coevolution"
@@ -473,4 +473,17 @@
     - title: PhD Candidate
       inst: Helmholtz Munich
       inst_link: https://www.helmholtz-munich.de/en
+      current: true
+      
+- github: metehaansever
+  name: Metehan Sever
+  twitter: metehaansever
+  avatar: no-avatar.jpg
+  email: metehaansever@gmail.com
+  linkedin: metehaansever
+  orcid: 0000-0003-1043-4956
+  affiliations:
+    - title: Scientific Programmer
+      inst: HIFMB
+      inst_link: https://hifmb.de/
       current: true

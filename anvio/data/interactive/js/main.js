@@ -214,6 +214,10 @@ $(document).ready(function() {
                 return text === "Hide" ? "Show" : "Hide";
             });
         });
+
+        $('#bin_settings').on('click', function() {
+            $.bootstrapSortable();
+        });
 });
 
 function initData() {
@@ -825,7 +829,7 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a cateogry
+                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
@@ -2888,7 +2892,7 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
 
-    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
+    if(state['samples-layer-order'] && state['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else if (!state['samples-layers']){
         state['samples-layers'] = serializedState['samples-layers']

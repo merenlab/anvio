@@ -530,10 +530,10 @@ If you've recently upgraded your anvi'o version (i.e., situation 1 from above) a
 
 If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following: 
 
-{{ codestart }}
-export ANVIO_KEGG_SNAPSHOTS=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml'))"`
-cat $ANVIO_KEGG_SNAPSHOTS`. 
-{{ codestop }}
+```
+export ANVIO_KEGG_SNAPSHOTS=$(python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml'))")
+cat $ANVIO_KEGG_SNAPSHOTS
+```
 
 Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
 
