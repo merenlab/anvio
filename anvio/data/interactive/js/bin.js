@@ -198,7 +198,11 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     let bin_row = this.container.querySelector(`tr[bin-id='${bin_id}']`);
 
-    bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    if (bin_row.nextElementSibling) {
+        bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    } else {
+        console.error('Next sibling element not found for bin_row.');
+    }
     bin_row.remove();
 
     if (!this.container.querySelectorAll('*').length) {
@@ -965,8 +969,13 @@ Bins.prototype.RedrawBins = function() {
             }
         }
 
-        var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
-
+        var element = document.getElementById('bin_color_' + bins_to_draw[i][2]);
+        if (element) {
+            var color = element.getAttribute('color');
+        } else {
+            console.error('Element with ID bin_color_' + bins_to_draw[i][2] + ' not found.');
+        }
+        
         if (tree_type == 'circlephylogram')
         {
             drawPie('bin',
