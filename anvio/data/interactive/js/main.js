@@ -2089,7 +2089,7 @@ async function exportSvg(dontDownload) {
     if (bins_to_draw.length > 0) {
         drawBinLegend(bins_to_draw, top, left);
         top = top + 100 + (bins_to_draw.length + 2.5) * 20
-        if(this.has_tree){
+        if(this.has_tree && mode == 'manual'){
             await drawScaleBar(settings, top, left);
         }
     }
