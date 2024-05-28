@@ -2075,8 +2075,8 @@ async function exportSvg(dontDownload) {
                 _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
                 _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
             } else {
-                _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
-                _bin_info['contig-count'] = $('#contig_count_' + bin_id).val();
+                _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
+                _bin_info['contig-count'] = $(bin).find('.num-items input').val();
             }
 
             bins_to_draw.push(_bin_info);
