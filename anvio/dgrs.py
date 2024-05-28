@@ -95,6 +95,7 @@ class DGR_Finder:
         if self.contigs_db_path:
             self.run.info('HMM(s) Provided', ", ".join(self.hmm))
 
+
     def sanity_check(self):
         """Basic checks for a smooth operation"""
         #filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=False)
@@ -166,6 +167,7 @@ class DGR_Finder:
                     raise ConfigError(f"Anvi'o can't find {self.gene_caller_to_consider_in_context} in your {self.contigs_db_path}. "
                                     f"Here are the sources of your genes: {unique_sources_list}.")
             contigs_db.disconnect()
+
 
     def get_blast_results(self):
         """
@@ -351,8 +353,8 @@ class DGR_Finder:
             blast.evalue = 10 #set Evalue to be same as blastn default
             blast.makedb(dbtype = 'nucl')
             blast.blast(outputfmt = '5', word_size = self.word_size)
-
         return
+
 
     def split_sequence_at_given_pos(self, sequence):
         sections = []
@@ -360,6 +362,7 @@ class DGR_Finder:
             section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
             sections.append(section_sequence)
         return sections
+
 
     def combine_ranges(self, entries):
         """
@@ -384,8 +387,8 @@ class DGR_Finder:
         # do le maths
         combined_start = min(all_start)
         combined_end = max(all_end)
-
         return (combined_start, combined_end)
+
 
     def range_overlapping(self, start1, end1, n_start, n_end):
         """
@@ -400,6 +403,7 @@ class DGR_Finder:
         A boolean indicating whether the ranges overlap.
         """
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1) or (start1 >= n_start and start1 <= n_end and end1 >= n_start and end1 <= n_end)
+
 
     def check_overlap(window1, window2):
         """
@@ -423,6 +427,7 @@ class DGR_Finder:
             and end_position_1 >= start_position_2
         )
 
+
     def get_snvs(self):
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
@@ -442,6 +447,7 @@ class DGR_Finder:
         n.process()
 
         return n.data
+
 
     def split_sequences(self, start=0):
         """
@@ -466,6 +472,7 @@ class DGR_Finder:
                 if i + self.step > len(sequence.seq):
                     print(sequence.seq)
         return section_sequences
+
 
     def filter_blastn_for_none_identical(self):
         """
@@ -576,6 +583,7 @@ class DGR_Finder:
                             }
         return self.mismatch_hits
 
+
     def add_new_DGR(self, DGR_number, TR_is_query, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
                     is_reverse_complement, VR_sequence, subject_genome_start_position, subject_genome_end_position, subject_contig, midline,
                     percentage_of_mismatches):
@@ -646,6 +654,7 @@ class DGR_Finder:
             self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
             self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
 
+
     def update_existing_DGR(self, existing_DGR_key, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
                             query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position, subject_contig):
         """
@@ -701,6 +710,7 @@ class DGR_Finder:
             self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'query'
             self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = subject_genome_start_position
             self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = subject_genome_end_position
+
 
     def filter_for_TR_VR(self):
         #NOTE: need to check this code to clean up and maybe put into one function to remove redundancy - Iva offered to help :)
@@ -868,7 +878,6 @@ class DGR_Finder:
         else:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(self.temp_dir)
-
         return
 
 
@@ -1122,8 +1131,8 @@ class DGR_Finder:
                 DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
                 DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
                 DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
-
         return
+
 
     def create_found_tr_vr_csv(self):
         """
@@ -1168,6 +1177,7 @@ class DGR_Finder:
                     csv_writer.writerow(csv_row)
             return
 
+
     def parameter_output_sheet(self):
         """
         This function creates a csv tabular format of all the parameters the user input in the current run.
@@ -1206,8 +1216,8 @@ class DGR_Finder:
             ]
 
             csv_writer.writerows(parameters)
-
         return
+
 
     def process(self,args):
         """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
@@ -1230,5 +1240,4 @@ class DGR_Finder:
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
-
         return
