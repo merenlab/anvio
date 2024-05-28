@@ -2334,20 +2334,24 @@ class Pangraph():
         # global_entropy = 0
         max_paralogs = 0
         max_entropy = 0
-        base = 2
+        # base = 2
 
-        for x in range(0, self.global_x+1):
+        # for x in range(0, self.global_x+1):
 
-            generation = [node for node, data in self.ancest.nodes(data=True) if data['pos'][0] == x and node != 'start' and node != 'stop']
+        #     generation = [node for node, data in self.ancest.nodes(data=True) if data['pos'][0] == x and node != 'start' and node != 'stop']
 
-            array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
-            sum_occurence = np.sum(array_occurence)
+        #     array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
+        #     sum_occurence = np.sum(array_occurence)
 
-            pk = array_occurence / sum_occurence
-            H = entropy(pk, base=base)
-            max_entropy = H if H > max_entropy else max_entropy
+        #     pk = array_occurence / sum_occurence
+        #     H = entropy(pk, base=base)
+        #     max_entropy = H if H > max_entropy else max_entropy
 
-            for gene_cluster in generation:
+        #     for gene_cluster in generation:
+
+        for gene_cluster in self.ancest.nodes():
+
+            if gene_cluster != 'start' and gene_cluster != 'stop':        
                 node = self.ancest.nodes()[gene_cluster]
                 num = len(node['genome'].keys())
                 max_paralog_list = []
@@ -2360,9 +2364,9 @@ class Pangraph():
 
                 for genome in node['genome'].keys():
                     info = node['genome'][genome]
+                    # print(info)
 
                     max_paralog_list.append(info['max_num_paralogs'])
-
                     func_homogeneity_list.append(info['functional_homogeneity_index'])
                     geo_homogeneity_list.append(info['geometric_homogeneity_index'])
                     comb_homogeneity_list.append(info['combined_homogeneity_index'])
@@ -2377,7 +2381,7 @@ class Pangraph():
                 node['layer'] = {
                     'Paralogs': max(max_paralog_list) - 1,
                     'Direction': 1 - max(num_dir_r, num_dir_l)/num,
-                    'Entropy': H,
+                    # 'Entropy': H,
                     'Functional_Homogeneity': 1 - max(func_homogeneity_list),
                     'Geometric_Homogeneity': 1 - max(geo_homogeneity_list),
                     'Combined_Homogeneity': 1 - max(comb_homogeneity_list)
@@ -2386,42 +2390,41 @@ class Pangraph():
         # self.layers = ['Paralogs', 'Direction', 'Entropy', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
 
         self.data_table_dict['Functional_Homogeneity'] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Geometric_Homogeneity'] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Combined_Homogeneity'] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Paralogs'] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': max_paralogs - 1 if max_paralogs - 1 != 0 else 1,
             'min': 0
         }
         self.data_table_dict['Direction'] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': 0.5,
             'min': 0
         }
-        self.data_table_dict['Entropy'] = {
-            'type': 'heatmap',
-            'scale': 'global',
-            'max': max_entropy if max_entropy != 0 else 1,
-            'min': 0
-        }
-
+        # self.data_table_dict['Entropy'] = {
+        #     # 'type': 'heatmap',
+        #     # 'scale': 'global',
+        #     'max': max_entropy if max_entropy != 0 else 1,
+        #     'min': 0
+        # }
 
     def add_external_layer_values(self):
         
@@ -2429,7 +2432,6 @@ class Pangraph():
         layer_max = 0
 
         df = pd.read_csv(self.data_tables)
-
         df.set_index(['genome', 'contig', 'genecall'], inplace=True)
 
         for node, data in self.ancest.nodes(data=True):
@@ -2452,8 +2454,8 @@ class Pangraph():
                 data['layer'][layer_name] = sum(value_list) / len(value_list)
 
         self.data_table_dict[layer_name] = {
-            'type': 'heatmap',
-            'scale': 'local',
+            # 'type': 'heatmap',
+            # 'scale': 'local',
             'max': layer_max,
             'min': 0
         }

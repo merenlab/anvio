@@ -86,6 +86,43 @@ function get_gene_cluster_consensus_functions(gene_cluster_data) {
   return(d);
 }
 
+function get_layer_data(gene_cluster_id, data, add_align) {
+
+  var layers = Object.keys(data['infos']['layers_data'])
+  var basic_info = {}
+
+  for (var layer_name of layers) {
+    if ($('#flex' + layer_name).prop('checked') == true){
+
+      basic_info[layer_name] = data['elements']['nodes'][gene_cluster_id]['layer'][layer_name]
+
+    }
+  }
+
+  if (add_align == 1) {
+    basic_layer_table = `<p class="modal_header mt-0">Layers</p>`;
+    basic_layer_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_layers_table">`;
+  } else {
+    basic_layer_table = ''
+    basic_layer_table += `<table class="table table-striped table-bordered sortable">`;
+  }
+
+  basic_layer_table += `<tbody>`;
+  basic_layer_table += `<thead class="thead-light"><tr>`;
+  for (const [key, value] of Object.entries(basic_info)) {
+    basic_layer_table += `<th scope="row">` + key + `</th>`;
+  }
+  basic_layer_table += `</tr></thead><tbody>`;
+
+  basic_layer_table += `<tbody><tr>`;
+  for (const [key, value] of Object.entries(basic_info)) {
+    basic_layer_table += `<td>` + value + `</td>`;
+  }
+  basic_layer_table += `</tbody></tr></table>`;
+
+  return basic_layer_table;
+
+}
 
 function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
@@ -226,6 +263,8 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
     // BUILD FUNCTIONS TABLE
     ///////////////////////////////////////////////////////////////////////////////////////////
 
+    basic_layer_table = get_layer_data(gene_cluster_id, data, add_align);
+
     functions_table = get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -252,11 +291,11 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
       // MERGE ALL AND RETURN
       ///////////////////////////////////////////////////////////////////////////////////////////
 
-      return gene_cluster_context_table + basic_info_table + functions_table + gene_cluster_sequence_alignments_table
+      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table + gene_cluster_sequence_alignments_table
 
     } else {
 
-      return gene_cluster_context_table + basic_info_table + functions_table
+      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table
 
     }
 }
@@ -818,10 +857,17 @@ async function generate_svg(body, data) {
   };
 
   var group_nodes = [];
+  var group_dict = {}
   for(var g in groups) {
     var group = data['infos']['groups'][g]
-    group_nodes = group_nodes.concat(group)
+
+    for (var node of group) {
+      group_dict[node] = g
+    }
   };
+  // console.log(group_dict)
+  group_nodes = Object.keys(group_dict)
+  // console.log(data['infos']['groups'])
 
   var global_values = []
   for(var k in nodes) {
@@ -841,8 +887,33 @@ async function generate_svg(body, data) {
 
         if (!group_nodes.includes(k)) {
           var node_class = 'class="node'
+
+          var x_value_start = parseInt(k_x) - 1
+          var x_value_stop = parseInt(k_x)
+
         } else {
           var node_class = 'stroke-opacity="0" fill-opacity="0" class="pseudo'
+          var g = group_dict[k]
+
+          var group = data['infos']['groups'][g]
+          var group_size = group.length
+          var group_compress = $('#groupcompress')[0].value
+          var group_size_compressed = Math.round(group_size * group_compress)
+
+          if (group_size_compressed == 0) {
+            group_size_compressed = 1
+          }
+          
+          var z_x = parseInt(data['elements']['nodes'][group[0]]['position']['x_offset'])
+
+          var fraction = group_size_compressed / (group_size)
+          var group_id = group.findIndex(x => x === k)
+
+          var x_value_start = parseInt(z_x) - (1 - group_id * fraction)
+          var x_value_stop = parseInt(z_x) - (1 - (group_id + 1) * fraction)
+
+          console.log(group, z_x, group_id, fraction)
+
         }
 
         var color = pickcolor (edgecoloring, Object.keys(node['genome']))
@@ -883,35 +954,28 @@ async function generate_svg(body, data) {
 
           if ($('#flex' + layer_name).prop('checked') == true){
 
-            var layer_scale = data['infos']['layers_data'][layer_name]['scale']
+            // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
             var value = node['layer'][layer_name]
             var max = data['infos']['layers_data'][layer_name]['max']
 
-            if (layer_scale == 'local'){
-              var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
-              var k_y_size = sum_middle_layer + k_y * sum_outer_layer
-            } else {
-              var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-              var k_y_size = 0
-            }
+            var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
+            var k_y_size = sum_middle_layer + k_y * sum_outer_layer
 
-            var [a_x, a_y] = transform(parseInt(k_x)-add_start, layer_start + k_y_size, theta)
-            var [b_x, b_y] = transform(parseInt(k_x)+add_stop, layer_start + k_y_size, theta)
-            var [c_x, c_y] = transform(parseInt(k_x)-add_start, layer_stop + k_y_size, theta)
-            var [d_x, d_y] = transform(parseInt(k_x)+add_stop, layer_stop + k_y_size, theta)
+            var [a_x, a_y] = transform(x_value_start, layer_start + k_y_size, theta)
+            var [b_x, b_y] = transform(x_value_stop, layer_start + k_y_size, theta)
+            var [c_x, c_y] = transform(x_value_start, layer_stop + k_y_size, theta)
+            var [d_x, d_y] = transform(x_value_stop, layer_stop + k_y_size, theta)
 
-            if (layer_scale == 'local' || !global_values.includes(k_x) || (layer_scale == 'local' && !global_values.includes(k_x))) {
-              svg_heatmaps.push(
-                $('<path class="' + layer_name + '" xpos="' + k_x + '" name="' + (value / max).toFixed(3) + '" d="' +
-                'M ' + a_x + ' ' + a_y + ' ' +
-                'A ' + (layer_start + k_y_size) + ' ' + (layer_start + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
-                'L' + d_x + ' ' + d_y +  ' ' +
-                'A ' + (layer_stop + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
-                'L' + a_x + ' ' + a_y +
-                // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-                '" fill="' + lighter_color('#00ff00', '#ff0000', value / max) + '" stroke="" stroke-width="0"/>')
-              )
-            }
+            svg_heatmaps.push(
+              $('<path class="' + layer_name + '" xpos="' + k_x + '" name="' + (value / max).toFixed(3) + '" d="' +
+              'M ' + a_x + ' ' + a_y + ' ' +
+              'A ' + (layer_start + k_y_size) + ' ' + (layer_start + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+              'L' + d_x + ' ' + d_y +  ' ' +
+              'A ' + (layer_stop + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+              'L' + a_x + ' ' + a_y +
+              // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
+              '" fill="' + lighter_color('#00ff00', '#ff0000', value / max) + '" stroke="" stroke-width="0"/>')
+            )
           }
         }
       }
@@ -978,16 +1042,11 @@ async function generate_svg(body, data) {
   for (var layer_name of layers) {
 
     if ($('#flex' + layer_name).prop('checked') == true){
-      var layer_scale = data['infos']['layers_data'][layer_name]['scale']
+      // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
       
-      if (layer_scale == 'local'){
-        var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
-        var y_size = sum_middle_layer + layer_width * 0.5
-      } else {
-        var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-        var y_size = layer_width * 0.5
-      }
-
+      var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
+      var y_size = sum_middle_layer + layer_width * 0.5
+      
       var [circle_x, circle_y] = transform(0, (layer_start + y_size), theta)
       svg_heatmaps.push(
         $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
@@ -1623,19 +1682,27 @@ function main () {
       var csv_data = [];
       var basics = $('#node_basics_table')
       var title = basics[0].getAttribute("gc_id")
-
+      var layers = $('#node_layers_table')
       var functions = $('#node_functions_table')
 
       var basics_rows = basics[0].getElementsByTagName('tr');
+      var layers_rows = layers[0].getElementsByTagName('tr');
+      
       var function_rows = functions[0].getElementsByTagName('tr');
 
       for (let i = 0; i < function_rows.length; i++) {
     
           if (i >= basics_rows.length) {
-            var basics_cols = basics_rows[1].querySelectorAll('td,th');
+            var basics_cols = []
+            basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
+            basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
+            
             var function_cols = function_rows[i].querySelectorAll('td,th');
           } else { 
-            var basics_cols = basics_rows[i].querySelectorAll('td,th');
+            var basics_cols = []
+            basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
+            basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
+            
             var function_cols = function_rows[i].querySelectorAll('td,th');
           }
             
@@ -1652,7 +1719,7 @@ function main () {
             csvrow.push(info);
           }
     
-          // console.log(csvrow)
+          console.log(csvrow)
 
           // Combine each column value with comma
           csv_data.push(csvrow.join(","));
@@ -1794,7 +1861,7 @@ function main () {
       var expressionrel = $('#expressionrel')[0].value
       var expressiontext = $('#expressiontext')[0].value
 
-      console.log(expressiondrop, expressionrel, expressiontext)
+      // console.log(expressiondrop, expressionrel, expressiontext)
 
       if (expressiondrop != "Choose item" && expressionrel != "Choose operator" && expressiontext != '') {
         if (expressionrel == '=') {
