@@ -871,19 +871,18 @@ class DGR_Finder:
 
         return
 
+
     def get_gene_info(self):
         """
-        This function
+        This function collects information genes in which the variable regions act in and prints all the information to a CSV file.
 
         Parameters
         ==========
-        mismatch_hits : dict
-            A dictionary of all of the BLASTn hits that are less than 100%
 
-        Returns
+        Creates
         =======
-        DGRs_found_dict : dict
-            A dictionary containing the template and variable regions
+        DGR_genes_found.csv : csv
+            A cav file containing the variable regions and the genes they act in, inclduing basic information.
 
         """
         # initiate a dictionary for the gene where we find VR
@@ -929,17 +928,23 @@ class DGR_Finder:
                 for gene_callers_id, gene_call in gene_calls_in_contig.items():
                     if gene_call['start'] <= vr_start and gene_call['stop'] >= vr_end:
                         gene_call['gene_callers_id'] = gene_callers_id
+
                         # if there are funtion sources, let's recover them for our gene of interest
                         if function_sources_found:
                             where_clause = f'''gene_callers_id="{gene_callers_id}"'''
                             hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+                            if hits:
+                                gene_call['functions'] = [h['function'] for h in hits]
+                                gene_call['sources'] = [h['source'] for h in hits]
+                                gene_call['accessions'] = [h['accession'] for h in hits]
+                            else:
+                                gene_call['functions'] = []
+                                gene_call['sources'] = []
+                                gene_call['accessions'] = []
                         else:
-                            # so none of these genes have any functions? WELL FINE.
-                            hits = None
-
-                        # if there are any functions at all, add that to the dict
-                        if hits:
-                            gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+                            gene_call['functions'] = []
+                            gene_call['sources'] = []
+                            gene_call['accessions'] = []
 
                         # While we are here, let's add more info about the gene
                         # DNA sequence:
@@ -967,12 +972,7 @@ class DGR_Finder:
                                     f"direction:{gene_call['direction']}",
                                     f"rev_compd:{rev_compd}",
                                     f"length:{gene_call['length']}"])
-                        gene_call['header'] = ' '.join([str(gene_callers_id), header])
-
-                        # Add gene functions if available
-                        gene_call['functions'] = []  # Initialize functions list
-                        if 'functions' in gene_call:
-                            gene_call['functions'] = gene_call['functions']
+                        #gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
@@ -983,7 +983,7 @@ class DGR_Finder:
         output_path_for_genes_found = os.path.join(output_directory_path, "DGR_genes_found.csv")
 
         # Define the header for the CSV file
-        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Header','Gene_Functions']
+        csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Gene_Caller_Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Gene_Functions', 'Gene_Function_Source', 'Gene_Function_Accession']
 
         # Open the CSV file in write mode
         with open(output_path_for_genes_found, mode='w', newline='') as file:
@@ -995,11 +995,10 @@ class DGR_Finder:
                     if not gene_info:
                         continue
 
-                    # Add gene functions if available
-                    if 'functions' in gene_info:
-                        gene_functions = '|'.join(gene_info['functions'])  # Convert list of functions to string
-                    else:
-                        gene_functions = ''  # If no functions available, set to empty string
+                    # Convert list of functions to string
+                    gene_functions = ''.join(gene_info['functions'])
+                    gene_annotation_source = ''.join(gene_info['sources'])
+                    gene_annotation_accession = ''.join(gene_info['accessions'])
 
                     writer.writerow([
                         dgr_id,
@@ -1016,12 +1015,12 @@ class DGR_Finder:
                         gene_info['DNA_sequence'],
                         gene_info['AA_sequence'],
                         gene_info['length'],
-                        gene_functions
+                        gene_functions,
+                        gene_annotation_source,
+                        gene_annotation_accession
                     ])
         return
 
-    #need to add what the (gene annotation) functions are write csv (code function) .
-#dgr, vr, gene_call_id, function list.
 
     def get_hmm_info(self):
         """
