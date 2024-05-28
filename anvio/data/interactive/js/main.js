@@ -359,6 +359,9 @@ function initData() {
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
     $('#show-text-option').hide()
+
+    // disabled support_display_symbol initially
+    $('#support_display_symbol').prop('disabled', true);
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -3218,4 +3221,18 @@ function ShadowBoxSelection(type) {
             result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
             result.classList.add('border-warning');
         }
+}
+
+function toggleBranchSupportCheckboxes() {
+    if ($('#support_display_symbol').is(':checked')) {
+        $('#support_display_number').prop('disabled', true);
+    } else {
+        $('#support_display_number').prop('disabled', false);
+    }
+
+    if ($('#support_display_number').is(':checked')) {
+        $('#support_display_symbol').prop('disabled', true);
+    } else {
+        $('#support_display_symbol').prop('disabled', false);
+    }
 }
