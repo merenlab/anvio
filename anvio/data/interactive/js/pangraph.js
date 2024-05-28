@@ -124,17 +124,23 @@ function get_layer_data(gene_cluster_id, data, add_align) {
 
 }
 
-function get_gene_cluster_basics_table(gene_cluster_id, context_id, data, add_align) {
+function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
     var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
 
+    if (gene_cluster_context == null){
+      var context = gene_cluster_id
+    } else {
+      var context = gene_cluster_context
+    }
+
     basic_info = {'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
-      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context_id + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
+      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
     } else {
       basic_info_table = ''
       basic_info_table += `<table class="table table-striped table-bordered sortable">`;
@@ -233,7 +239,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
 
 
 //ANCHOR - Get tables for GC basic info and functions
-async function get_gene_cluster_display_tables(gene_cluster_id, id, gene_cluster_context, data, add_align) {
+async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align) {
     // The purpose of this function is to build HTML formatted tables to give access to
     // the details of a gene cluster. The parameters here are,
     //
@@ -257,7 +263,7 @@ async function get_gene_cluster_display_tables(gene_cluster_id, id, gene_cluster
     // BUILD BASIC INFORMATION TABLE
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, id, data, add_align);
+    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // BUILD FUNCTIONS TABLE
@@ -439,7 +445,7 @@ async function nodeinfo(e, data) {
 
   // console.log(gene_cluster_id, gene_cluster_context)
 
-  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, id, gene_cluster_context, data, add_align=1)
+  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=1)
 
   // console.log(all_info)
 
@@ -1613,7 +1619,7 @@ function main () {
       }
     })
 
-    //ANCHOR - Change bin 
+    //ANCHOR - Change bin
     $(document).on("change", ".colorchange", function() {
 
       var binid = this.name;
