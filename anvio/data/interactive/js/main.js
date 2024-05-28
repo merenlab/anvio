@@ -362,7 +362,10 @@ function initData() {
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
-    $('#show_font_size').hide()
+    $('#show-text-option').hide()
+
+    // disabled support_display_symbol initially
+    $('#support_display_symbol').prop('disabled', true);
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1606,10 +1609,12 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked')
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
+    state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
+    state['support-threshold'] = $('#support_threshold').val()
 
     // sync views object and layers table
     syncViews();
@@ -2055,12 +2060,13 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg(dontDownload) {
+async function exportSvg(dontDownload) {
     if (!drawer)
         return;
 
     // draw bin and layer legend to output svg
     var settings = serializeSettings();
+    this.has_tree = (clusteringData.constructor !== Array);
 
     var bins_to_draw = new Array();
     $('#tbody_bins tr').each(
@@ -2076,8 +2082,8 @@ function exportSvg(dontDownload) {
                 _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
                 _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
             } else {
-                _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
-                _bin_info['contig-count'] = $('#contig_count_' + bin_id).val();
+                _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
+                _bin_info['contig-count'] = $(bin).find('.num-items input').val();
             }
 
             bins_to_draw.push(_bin_info);
@@ -2090,6 +2096,9 @@ function exportSvg(dontDownload) {
     if (bins_to_draw.length > 0) {
         drawBinLegend(bins_to_draw, top, left);
         top = top + 100 + (bins_to_draw.length + 2.5) * 20
+        if(this.has_tree && mode == 'manual'){
+            await drawScaleBar(settings, top, left);
+        }
     }
 
     // important,
@@ -2121,6 +2130,7 @@ function exportSvg(dontDownload) {
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
+    $('#scale_bar').remove();
 }
 
 
@@ -2842,10 +2852,13 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
     }
+    if(state.hasOwnProperty('support-min-symbol-size')){
+        $('#support_min_symbol_size').val(state['support-min-symbol-size'])
+    }
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
         if($('#support_display_number').is(':checked')){
-            $('#show_font_size').show()
+            $('#show-text-option').show()
         }
     }
     if (state.hasOwnProperty('support-font-size')){
@@ -2853,6 +2866,9 @@ function processState(state_name, state) {
     }
     if(state.hasOwnProperty('support-text-rotation')){
         $('#support_text_rotation').val(state['support-text-rotation'])
+    }
+    if(state.hasOwnProperty('support-threshold')){
+        $('#support_threshold').val(state['support-threshold'])
     }
 
     // reload layers
@@ -3209,4 +3225,18 @@ function ShadowBoxSelection(type) {
             result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
             result.classList.add('border-warning');
         }
+}
+
+function toggleBranchSupportCheckboxes() {
+    if ($('#support_display_symbol').is(':checked')) {
+        $('#support_display_number').prop('disabled', true);
+    } else {
+        $('#support_display_number').prop('disabled', false);
+    }
+
+    if ($('#support_display_number').is(':checked')) {
+        $('#support_display_symbol').prop('disabled', true);
+    } else {
+        $('#support_display_symbol').prop('disabled', false);
+    }
 }

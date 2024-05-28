@@ -67,7 +67,7 @@
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")'></script>
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")' defer></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
@@ -104,7 +104,6 @@
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
-
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -600,7 +599,7 @@
                                             <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin d-flex">
+                                    <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
                                         <label class="col-3 settings-label d-flex" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
                                         <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
@@ -612,6 +611,14 @@
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_symbol_options'>
+                                        <div class="form-group form-margin d-flex">
+                                            <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Symbol Size Range:</label>
+                                            <div class="col-6 form-inline input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_min_symbol_size" style="width: 60px;" value='1' step='1' max='24' min='1'>
+                                                <span class="ml-1">to</span>
+                                                <input class="form-control input-xs col-3" type="number" id="support_symbol_size"style="width: 60px;" value='12' step='1' max='24' min='1'>
+                                            </div>
+                                        </div>
                                         <div class="form-group form-margin" id="support_symbol" style="display: flex;">
                                             <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
                                             <div class="col-4 input-align d-flex">
@@ -639,34 +646,36 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="form-group form-margin" style="display: flex;">
-                                            <label class="col-2 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
-                                            <div class="col-6 form-inline d-flex input-align">
-                                                <input class="form-control input-xs col-3" type="number" id="support_symbol_size" value='12' max='20' min='1'>
-                                            </div>
-                                        </div>
                                     </div>
-                                    <div class="form-group form-margin d-flex">
+                                    <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
                                         <label class="col-3 settings-label d-flex" for="support_display_number" data-help="support-value-checkbox">Text:</label>
                                         <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
                                                 id="support_display_number"
                                                 style="float: left;"
                                                 name="show-number"
-                                                onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                onchange="if (this.checked) { $('#show-text-option').show();} else { $('#show-text-option').hide(); } "
                                                 >
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
-                                        <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
-                                        <div class="col-6 align-items-center input-align d-flex">
-                                            <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                    <div id="show-text-option" class="" style="display: block;">
+                                        <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
+                                            <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                            <div class="col-6 align-items-center input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
-                                        <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
-                                        <div class="col-6 input-align d-flex">
-                                            <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                        <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
+                                            <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Threshold:</label>
+                                            <div class="col-6 align-items-center input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
+                                            <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                            <div class="col-6 input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

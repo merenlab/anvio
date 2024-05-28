@@ -246,7 +246,82 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
+async function drawScaleBar(settings, top, left) {
+    createBin('viewport', 'scale_bar');
+
+    try {
+        const data = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_max_branch_length',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            })
+        });
+
+        var max_branch_length = data['max_branch_length'];
+        console.log("Max Branch Length:", max_branch_length);
+
+        const scaleBarLength = 30;
+        top = top + 170;
+
+        if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+            drawRectangle('scale_bar', left - 10, top - 20, 80, 300, 'white', 1, 'black');
+            drawText('scale_bar', {
+                'x': left,
+                'y': top
+            }, "Scale Bar", '16px');
+
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('stroke-width', 1);
+            line.setAttribute('stroke', 'black');
+            line.setAttribute('x1', left);
+            line.setAttribute('y1', top + 30);
+            line.setAttribute('x2', left + scaleBarLength * 5);
+            line.setAttribute('y2', top + 30);
+            var svg = document.getElementById('scale_bar');
+            svg.appendChild(line);
+
+            var startLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            startLine.setAttribute('stroke-width', 1);
+            startLine.setAttribute('stroke', 'black');
+            startLine.setAttribute('x1', left);
+            startLine.setAttribute('y1', top + 25);
+            startLine.setAttribute('x2', left);
+            startLine.setAttribute('y2', top + 35);
+            svg.appendChild(startLine);
+
+            var endLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            endLine.setAttribute('stroke-width', 1);
+            endLine.setAttribute('stroke', 'black');
+            endLine.setAttribute('x1', left + scaleBarLength * 5);
+            endLine.setAttribute('y1', top + 25);
+            endLine.setAttribute('x2', left + scaleBarLength * 5);
+            endLine.setAttribute('y2', top + 35);
+            svg.appendChild(endLine);
+
+            var scaleValue = (max_branch_length / 10).toFixed(2);
+            drawText('scale_bar', {
+                'x': left + ((scaleBarLength * 5) / 2) - 10,
+                'y': top + 45
+            }, scaleValue, '12px');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
+    /**
+     * Render text on the SVG if it's within the specified range and the user has selected to display numbers.
+     * For circle phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly.
+     * For phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly. 
+     * Text rotation is applied based on the user's selection.
+     * @param {string} svg_id - The ID of the SVG element.
+     * @param {object} p - The position object containing xy coordinates.
+    */
+    
     function checkInRange(){
         /**
          * Check if the branch support values fall within the given number range.
@@ -264,17 +339,41 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
-            if(supportValueData.textRotation == '0'){
-                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+            let color = 'black';
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
+                    color = 'green';
+                }
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = 'green';
+                }
             }
-        } else {
-            if(supportValueData.textRotation == '0'){
-                drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+            
+            let rotation = supportValueData.textRotation === '0' ? 0 : parseInt(supportValueData.textRotation);
+            if (rotation === 0) {
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto', color, '', 'baseline');
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'left', supportValueData.fontSize, 'Roboto' ,'black', '' , 'baseline')
+                drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'right', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
             }
+        } else { //Phylogram
+            let rotation = (typeof p.branch_support === 'string' && p.branch_support.includes('/')) ? -90 : parseInt(supportValueData.textRotation);
+            let color = 'black';
+            
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
+                    color = 'green';
+                }
+            } else {
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = 'green';
+                }
+            }
+            
+            drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'left', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
+            
         }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
@@ -289,6 +388,7 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         let first_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         let second_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         let maxRadius = supportValueData.maxRadius;
+        let minRadius = supportValueData.minRadius;
         let rangeLow = parseFloat(supportValueData.numberRange[0]);
         let rangeHigh = parseFloat(supportValueData.numberRange[1]);
 
@@ -312,8 +412,14 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
                 supportValueData.invertSymbol ? radius = maxRadius * 0.4 : radius = maxRadius;
             } else if (percentile < 0.67 && percentile > 0.33) {
                 radius = maxRadius * 0.7;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             } else {
                 supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 0.4;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             }
             circle.setAttribute('r', radius);
             circle.setAttribute('fill', supportValueData.symbolColor);
