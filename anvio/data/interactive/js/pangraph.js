@@ -101,7 +101,7 @@ function get_layer_data(gene_cluster_id, data, add_align) {
 
   if (add_align == 1) {
     basic_layer_table = `<p class="modal_header mt-0">Layers</p>`;
-    basic_layer_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_layers_table">`;
+    basic_layer_table += `<table class="table table-striped table-bordered sortable" id="node_layers_table">`;
   } else {
     basic_layer_table = ''
     basic_layer_table += `<table class="table table-striped table-bordered sortable">`;
@@ -124,7 +124,7 @@ function get_layer_data(gene_cluster_id, data, add_align) {
 
 }
 
-function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
+function get_gene_cluster_basics_table(gene_cluster_id, context_id, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
     var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
@@ -134,7 +134,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, data, add_align) {
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
-      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
+      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context_id + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
     } else {
       basic_info_table = ''
       basic_info_table += `<table class="table table-striped table-bordered sortable">`;
@@ -233,7 +233,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
 
 
 //ANCHOR - Get tables for GC basic info and functions
-async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align) {
+async function get_gene_cluster_display_tables(gene_cluster_id, id, gene_cluster_context, data, add_align) {
     // The purpose of this function is to build HTML formatted tables to give access to
     // the details of a gene cluster. The parameters here are,
     //
@@ -257,7 +257,7 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
     // BUILD BASIC INFORMATION TABLE
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, data, add_align);
+    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, id, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // BUILD FUNCTIONS TABLE
@@ -439,7 +439,7 @@ async function nodeinfo(e, data) {
 
   // console.log(gene_cluster_id, gene_cluster_context)
 
-  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=1)
+  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, id, gene_cluster_context, data, add_align=1)
 
   // console.log(all_info)
 
@@ -912,7 +912,7 @@ async function generate_svg(body, data) {
           var x_value_start = parseInt(z_x) - (1 - group_id * fraction)
           var x_value_stop = parseInt(z_x) - (1 - (group_id + 1) * fraction)
 
-          console.log(group, z_x, group_id, fraction)
+          // console.log(group, z_x, group_id, fraction)
 
         }
 
@@ -1575,6 +1575,18 @@ function main () {
         bins['bin' + binnum] = [];
     });
     
+    $('#AddBin').on('click', function() {
+
+      var selection = document.querySelector('input[name="binradio"]:checked');
+      var binid = selection.value;
+
+      var basics = $('#node_basics_table')
+      var node = basics[0].getAttribute("gc_context")
+      var name = document.getElementById(node);
+
+      bins = marknode(name, data, binid, bins);
+
+    });
 
     //ANCHOR - Remove bin
     $('#binremove').on('click', function() {
@@ -1601,7 +1613,7 @@ function main () {
       }
     })
 
-    //ANCHOR - Change bin
+    //ANCHOR - Change bin 
     $(document).on("change", ".colorchange", function() {
 
       var binid = this.name;
@@ -1719,7 +1731,7 @@ function main () {
             csvrow.push(info);
           }
     
-          console.log(csvrow)
+          // console.log(csvrow)
 
           // Combine each column value with comma
           csv_data.push(csvrow.join(","));
@@ -1893,7 +1905,7 @@ function main () {
         }
       } 
 
-      console.log(expressioncomparison)
+      // console.log(expressioncomparison)
 
       //Function Search
       var searchfunction = {}
