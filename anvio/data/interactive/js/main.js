@@ -1730,7 +1730,9 @@ function drawTree() {
     document.getElementById('svg').innerHTML = "";
 
     // Drawing time toasted to the user
-    toastr.success("<span id='draw_delta_time'></span>");
+    if (!document.getElementById('draw_delta_time')) {
+        toastr.success("<span id='draw_delta_time'></span>");
+    }
 
     waitingDialog.show('Drawing ...',
         {
