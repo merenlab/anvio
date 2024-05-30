@@ -116,9 +116,9 @@ class DGR_Finder:
             raise ConfigError("Just so you know in order to report a DGR you need to have Reverse Transcriptases "
                             "annotated or else you are not finding DGRs. If you would like to do this please run "
                             "your 'contigs.db' with `anvi-run-hmms -I Reverse_Transcriptase` (type: 6 clades of DGR "
-                            "Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). "
-                            "then re-run `anvi-report-dgrs` with the `--hmm-usage` flag. This is one option, but you can use other HMM "
-                            "profiles if you like.")
+                            "Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse "
+                            "transcriptases). Then re-run `anvi-report-dgrs` with the `--hmm-usage` flag. This is "
+                            "one option, but you can use other HMM profiles if you like.")
 
         if self.fasta_file_path:
             # check fasta input
