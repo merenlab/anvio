@@ -64,6 +64,7 @@ class DGR_Finder:
         self.discovery_mode = A('discovery_mode')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
         self.parameter_outputs = A('parameter-output')
+        self.just_do_it = A('just_do_it')
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
