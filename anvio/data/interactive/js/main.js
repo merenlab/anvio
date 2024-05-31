@@ -366,6 +366,12 @@ function initData() {
 
     // disabled support_display_symbol initially
     $('#support_display_symbol').prop('disabled', true);
+
+    // Scale bar on the sidebar
+    var settings = serializeSettings();
+    if(mode == 'manual'){
+        drawInlineScaleBar(settings);
+    }
 }
 
 function switchUserInterfaceMode(project, title) {
