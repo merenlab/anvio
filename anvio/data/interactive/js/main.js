@@ -332,6 +332,11 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            // Scale bar on the sidebar
+            if(mode == 'manual'){
+                scaleBarDrawer();
+            }
+
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
 
             // redoing intiial bin causes some weird behaviors
@@ -366,12 +371,12 @@ function initData() {
 
     // disabled support_display_symbol initially
     $('#support_display_symbol').prop('disabled', true);
+}
 
-    // Scale bar on the sidebar
+async function scaleBarDrawer(){
     var settings = serializeSettings();
-    if(mode == 'manual'){
-        drawInlineScaleBar(settings);
-    }
+
+    await drawInlineScaleBar(settings);
 }
 
 function switchUserInterfaceMode(project, title) {

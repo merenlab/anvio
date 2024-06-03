@@ -312,11 +312,18 @@ async function drawScaleBar(settings, top, left) {
     }
 }
 
-function drawInlineScaleBar(settings) {
-    createBin('viewport', 'scale_inline_bar');
+async function drawInlineScaleBar(settings) {
+    
+    if (document.getElementById('item-collapse-main')) {
+        createBin('item-collapse-main', 'scale_inline_bar');
+        console.log('createBin called successfully.');
+    } else {
+        console.error('item-collapse-main element not found');
+        return;
+    }
 
     try {
-        const data = $.ajax({
+        const data = await $.ajax({
             type: 'POST',
             cache: false,
             url: '/data/get_max_branch_length',
@@ -356,14 +363,13 @@ function drawInlineScaleBar(settings) {
             startLine.setAttribute('x2', 0);
             startLine.setAttribute('y2', 35);
             svg.appendChild(startLine);
-            console.log(startLine + 'start');
 
             var endLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             endLine.setAttribute('stroke-width', 1);
             endLine.setAttribute('stroke', 'black');
-            endLine.setAttribute('x1', 150);
+            endLine.setAttribute('x1', 200);
             endLine.setAttribute('y1', 25);
-            endLine.setAttribute('x2',150);
+            endLine.setAttribute('x2',200);
             endLine.setAttribute('y2', 35);
             svg.appendChild(endLine);
 
@@ -371,14 +377,12 @@ function drawInlineScaleBar(settings) {
             drawText('scale_inline_bar', {
                 'x': ((scaleBarLength * 5) / 2) - 10,
                 'y': 45
-            }, 1, '12px');
-
-            console.log(scaleValue + 'scalevalue');
+            }, scaleValue, '12px');
 
             var svgString = new XMLSerializer().serializeToString(svg);
 
             var svgWrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svgWrapper.setAttribute('width', '100');
+            svgWrapper.setAttribute('width', '500');
             svgWrapper.setAttribute('height', '100');
             svgWrapper.innerHTML = svgString;
             
