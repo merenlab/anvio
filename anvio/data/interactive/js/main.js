@@ -333,9 +333,7 @@ function initData() {
             $('.loading-screen').hide();
 
             // Scale bar on the sidebar
-            if(mode == 'manual'){
-                scaleBarDrawer();
-            }
+            drawInlineScaleBar();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
 
@@ -373,10 +371,45 @@ function initData() {
     $('#support_display_symbol').prop('disabled', true);
 }
 
-async function scaleBarDrawer(){
+function drawInlineScaleBar() {
     var settings = serializeSettings();
 
-    await drawInlineScaleBar(settings);
+    try {
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_max_branch_length',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            }),
+            success: function(data) {
+                var max_branch_length = data['max_branch_length'];
+                console.log("Max Branch Length:", max_branch_length);
+
+                if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+
+                    var scale_bar = document.getElementById('scale-bar-scope');
+                    if (!scale_bar) {
+                        console.error('Scale bar element with id scale-bar-scope not found');
+                        return;
+                    }
+                    var scaleValue = (max_branch_length / 10).toFixed(2);
+
+                    // Create a text node with the scale value
+                    var textNode = document.createTextNode(scaleValue);
+
+                    // Append the text node to the scale bar element
+                    scale_bar.appendChild(textNode);
+                }
+            },
+            error: function(error) {
+                console.error('Error:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function switchUserInterfaceMode(project, title) {
