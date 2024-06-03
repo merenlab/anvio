@@ -1041,6 +1041,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     min-width: 16px;
 }
 
+.scale-bar{
+    max-width: 160px;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--primary-text);
+}
+
 @keyframes glowing {
     0% { background-position: 0 0; }
     50% { background-position: 400% 0; }
