@@ -378,14 +378,14 @@ function drawInlineScaleBar() {
         $.ajax({
             type: 'POST',
             cache: false,
-            url: '/data/get_max_branch_length',
+            url: '/data/get_scale_bar',
             contentType: 'application/json',
             data: JSON.stringify({
                 'newick': clusteringData,
             }),
             success: function(data) {
-                var max_branch_length = data['max_branch_length'];
-                console.log("Max Branch Length:", max_branch_length);
+                var scale_bar_value = data['scale_bar_value'];
+                console.log("Max Branch Length:", scale_bar_value);
 
                 if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
 
@@ -394,7 +394,7 @@ function drawInlineScaleBar() {
                         console.error('Scale bar element with id scale-bar-scope not found');
                         return;
                     }
-                    var scaleValue = (max_branch_length / 10).toFixed(2);
+                    var scaleValue = (scale_bar_value).toFixed(2);
 
                     // Create a text node with the scale value
                     var textNode = document.createTextNode(scaleValue);
