@@ -126,7 +126,8 @@ function get_layer_data(gene_cluster_id, data, add_align) {
 
 function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
-    var position_in_graph = data['elements']['nodes'][gene_cluster_id]['position']['x_offset'] + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
+    var x_pos = data['elements']['nodes'][gene_cluster_id]['position']['x_offset']
+    var position_in_graph = x_pos + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
     var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
 
@@ -140,7 +141,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, da
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
-      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
+      basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_pos="` + x_pos + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
     } else {
       basic_info_table = ''
       basic_info_table += `<table class="table table-striped table-bordered sortable">`;
@@ -283,11 +284,16 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
 
       // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
       for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
+        
+        // if ($('#flex' + genome).prop('checked') == true){
+        
         var genecall = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call']
         var contig = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['contig']
         var direction = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['direction']
         var name = data['elements']['nodes'][gene_cluster_id]['name']
         alignment[genome] = [genecall, contig, direction, name]
+
+        // }
       }
       // }
 
@@ -1635,6 +1641,75 @@ function main () {
 
     });
 
+    $('#binanalyse').on('click', async function() {
+      var set = {}
+      var groups = data['infos']['groups']
+      var groups_keys = Object.keys(groups)
+      var bin_keys = Object.keys(bins)
+
+      var selection = 'COG20_FUNCTION'
+      set['selection'] = selection
+      // console.log(bins, bin_keys)
+
+      for (var binid of bin_keys) {
+        set[binid] = []
+        for (var id of bins[binid]) {
+          if (groups_keys.includes(id)) {
+            for (var item of groups[id]) {
+              set[binid].push(data['elements']['nodes'][item]['name'])  
+            }
+          } else {
+            set[binid].push(data['elements']['nodes'][id]['name'])
+          }
+        }
+      }
+
+      $.ajax({
+        url: "/pangraph/analyse",
+        type: "POST",
+        data: JSON.stringify(set),
+        contentType: "application/json",
+        dataType: "json",
+        success: function(result){
+          
+          $('#BinAnalyseBody').empty();
+          var bin_analyses_table = ''
+
+          bin_analyses_table += '<table class="table'
+          bin_analyses_table += '<tbody><thead class="thead-light"><tr>'
+          
+          bin_analyses_table += '<th scope="row">' + 'Function' + '</th>'
+          for (bin_key of bin_keys) {
+            bin_analyses_table += '<th scope="row">' + bin_key + '</th>'
+          }
+          
+          bin_analyses_table += '</tr></thead><tbody>'
+          bin_analyses_table += '<tbody>'
+
+          for (func of Object.keys(result)) {
+            bin_analyses_table += '<tr><td>' + func + '</td>'
+            for (bin_key of Object.keys(result[func])) {
+              var value = result[func][bin_key]
+              if (value == 1) {
+                bin_analyses_table += '<td class=td-analysis-cell-1></td>'
+              } else {
+                bin_analyses_table += '<td class=td-analysis-cell-0></td>'
+              }
+            }
+            bin_analyses_table += '</tr>'
+          }
+
+          bin_analyses_table += '</tbody></table>'
+
+          $('#BinAnalyseBody')[0].innerHTML = bin_analyses_table
+
+          $('#BinAnalyse').modal('show');
+
+        }
+      })
+      // console.log(set)
+    })
+
     //ANCHOR - Info bin
     $('#bininfo').on('click', async function() {
 
@@ -1755,7 +1830,9 @@ function main () {
       // Variable to store the final csv data
       var csv_data = '';
       var alignment = $('#node_sequence_alignments_table')
+      var basics = $('#node_basics_table')
       var title = alignment[0].getAttribute("gc_id")
+      var xpos = basics[0].getAttribute("gc_pos")
       
       var alignment_rows = alignment[0].getElementsByTagName('tr');
 
@@ -1763,7 +1840,7 @@ function main () {
     
           var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
     
-          csv_data += ">Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + "|Direction:" + alignment_cols[3].innerHTML + '\n';
+          csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + "|Position:" + xpos + "|Direction:" + alignment_cols[3].innerHTML + '\n';
           var genome = ''
           
           var alignment_nucs = alignment_cols[4].getElementsByTagName('span');

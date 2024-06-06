@@ -196,40 +196,49 @@
     justify-content: center;
  }
 
- #td-contig-cell{
-    position: sticky; 
-    background-color: #e4e4e4;
-    z-index: 1;
+#td-contig-cell{
+  position: sticky; 
+  background-color: #e4e4e4;
+  z-index: 1;
  }
 
- #td-direction-cell{
-    position: sticky; 
-    background-color: #e4e4e4;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+#td-direction-cell{
+  position: sticky; 
+  background-color: #e4e4e4;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
  }
 
-  .scroll-wrapper {
-    overflow-x: auto;
-    max-height: 200px;
-  }
+.td-analysis-cell-0{
+  background-color: red;
+}
 
-  .scrollable-content {
-    overflow-x: auto;
-    white-space: nowrap;
-    background-color: #e4e4e4;
-  }
+.td-analysis-cell-1{
+  background-color: green; 
+}
 
-  #th-sequence{
-    position: sticky;
-    left: 25%;
-    z-index: 7;
-  }
 
-  .gc-table-header{
-    position: sticky;
-    top: 0;
-    z-index: 6;
-  }
+.scroll-wrapper {
+  overflow-x: auto;
+  max-height: 200px;
+}
+
+.scrollable-content {
+  overflow-x: auto;
+  white-space: nowrap;
+  background-color: #e4e4e4;
+}
+
+#th-sequence{
+  position: sticky;
+  left: 25%;
+  z-index: 7;
+}
+
+.gc-table-header{
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}

@@ -197,6 +197,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
         self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
         self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
+        self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1497,6 +1498,43 @@ class BottleApplication(Bottle):
         # return self.interactive.pan_graph_json()
 
         return self.interactive.get_pangraph_json()
+    
+
+    def get_pangraph_bin_summary(self):
+
+        # return self.interactive.pan_graph_json()
+        payload = request.json
+        selection = payload['selection']
+        result = {}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        bin_functions = {}
+        all_functions = []
+
+        matrix = {}
+
+        for bin in list(payload.keys())[1:]:
+            
+            bin_functions[bin] = []
+            gene_cluster_list = payload[bin]
+            for gene_cluster_name in gene_cluster_list:
+                function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
+                
+                bin_functions[bin].append(function)
+                all_functions.append(function)
+                
+        for function in all_functions:
+            print(function)
+            matrix[function] = {}
+            for bin in bin_functions.keys():
+                if function in bin_functions[bin]:
+                    matrix[function][bin] = 1
+                else:
+                    matrix[function][bin] = 0
+
+        return matrix
 
     def get_pangraph_settings(self):
         
@@ -1756,9 +1794,6 @@ class BottleApplication(Bottle):
         for node in ancest.nodes():
             ancest.nodes[node]['pos'] = position[node]
 
-
-
-
             offset[node] = position[node][0]
 
         for group_name in grouping.keys():
@@ -1828,9 +1863,6 @@ class BottleApplication(Bottle):
 
         global_x_offset = offset['stop']
 
-
-
-
         data["infos"]['meta']['global_y'] = global_y
         data["infos"]['meta']['global_x_offset'] = global_x_offset
         data["infos"]['max_edge_length_filter'] = max_edge_length_filter
@@ -1876,6 +1908,6 @@ class BottleApplication(Bottle):
 
             result[genome] = [genecall, contig, direction, sequence]
 
-        print(result)
+        # print(result)
 
         return(result)

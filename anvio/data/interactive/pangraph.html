@@ -391,17 +391,21 @@
                       </button>
                     </div>
                     <div class="col-12 pt-2 d-flex align-items-center justify-content-center">
-                      <button type="button" class="col-4 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload" disabled>
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload" disabled>
                         <i class="bi bi-arrow-up-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Load bin collection</span>
+                        <span class="font-weight-normal">Load bins</span>
                       </button>
-                      <button type="button" class="col-4 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave" disabled>
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave" disabled>
                         <i class="bi bi-arrow-down-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Store bin collection</span>
+                        <span class="font-weight-normal">Store bins</span>
                       </button>
-                      <button type="button" class="col-4 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="bininfo">
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="bininfo">
                         <i class="bi bi-info-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Info bin collection</span>
+                        <span class="font-weight-normal">Bin info</span>
+                      </button>
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="binanalyse">
+                        <i class="bi bi-info-square fa-lg bin-icon-size" aria-hidden="true"></i>
+                        <span class="font-weight-normal">Analyze bins</span>
                       </button>
                     </div>
                   </div>
@@ -585,6 +589,21 @@
             </button>
           </div> -->
           <div class="modal-body overflow-auto" id="BinModalBody">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="BinAnalyse" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <!-- <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" id="BinModalTitle">Bin Information</h5>
+            <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div> -->
+          <div class="modal-body overflow-auto" id="BinAnalyseBody">
           </div>
         </div>
       </div>

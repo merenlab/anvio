@@ -1746,7 +1746,7 @@ class Pangraph():
         pangenome_graph_nodes = set(self.pangenome_graph.nodes())
 
         edmonds_graph_removed_edges = pangenome_graph_edges - edmonds_graph_edges
-        edmonds_graph_end = max([(self.mean_edmonds_graph_path_weight('start', node), node) for node in edmonds_graph_nodes if len(list(self.pangenome_graph.successors(node))) == 0])[1]
+        edmonds_graph_end = max([(self.mean_edmonds_graph_path_weight('start', node), node) for node in edmonds_graph_nodes if len(list(self.edmonds_graph.successors(node))) == 0])[1]
 
         for graph in [self.pangenome_graph, self.edmonds_graph]:
 
