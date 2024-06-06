@@ -784,6 +784,8 @@ Drawer.prototype.draw_internal_node = function(p) {
         maxRadius : this.settings['support-symbol-size'],
         symbolColor : this.settings['support-symbol-color'],
         secondSymbolColor : this.settings['second-support-symbol-color'],
+        fontColor : this.settings['support-font-color'],
+        secondFontColor : this.settings['second-support-font-color'],
         fontSize : this.settings['support-font-size'],
         textRotation : this.settings['support-text-rotation'],
         thresholdValue: this.settings['support-threshold']

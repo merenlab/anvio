@@ -1609,6 +1609,8 @@ function serializeSettings(use_layer_names) {
     state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
+    state['support-font-color'] = $('#support_font_color').attr('color')
+    state['second-support-font-color'] = $('#second_support_font_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
     state['support-threshold'] = $('#support_threshold').val()
@@ -2845,6 +2847,14 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('second-support-symbol-color')){
         $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
         $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
+    }
+    if (state.hasOwnProperty('support-symbol-color')){
+        $('#support_font_color').attr('color', state['support-font-color'])
+        $('#support_font_color').css('background-color', state['support-font-color'])
+    }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_font_color').attr('color', state['second-support-font-color'])
+        $('#second_support_font_color').css('background-color', state['second-support-font-color'])
     }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])

@@ -339,15 +339,15 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
         if($('#tree_type').val() == 'circlephylogram'){
-            let color = 'black';
+            let color = supportValueData.secondFontColor !== null ? supportValueData.secondFontColor : 'black';
             if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
                 const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
                 if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
-                    color = 'green';
+                    color = supportValueData.fontColor;
                 }
             } else {
                 if (p.branch_support > supportValueData.thresholdValue) {
-                    color = 'green';
+                    color = supportValueData.fontColor;
                 }
             }
             
@@ -359,16 +359,16 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             }
         } else { //Phylogram
             let rotation = (typeof p.branch_support === 'string' && p.branch_support.includes('/')) ? -90 : parseInt(supportValueData.textRotation);
-            let color = 'black';
+            let color = supportValueData.secondFontColor !== null ? supportValueData.secondFontColor : 'black';
             
             if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
                 const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
                 if (branch_support_value0 > supportValueData.thresholdValue && branch_support_value1 > supportValueData.thresholdValue) {
-                    color = 'green';
+                    color = supportValueData.fontColor;
                 }
             } else {
                 if (p.branch_support > supportValueData.thresholdValue) {
-                    color = 'green';
+                    color = supportValueData.fontColor;
                 }
             }
             
