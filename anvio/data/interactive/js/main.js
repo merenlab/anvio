@@ -363,9 +363,6 @@ function initData() {
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
     $('#show-text-option').hide()
-
-    // disabled support_display_symbol initially
-    $('#support_display_symbol').prop('disabled', true);
 }
 
 function switchUserInterfaceMode(project, title) {
