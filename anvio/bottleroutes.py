@@ -1518,10 +1518,7 @@ class BottleApplication(Bottle):
 
             total_branch_length = tree.get_farthest_leaf()[1]
 
-            nucleotide_substitutions_per_site = 0.05
-            scale_bar_value = total_branch_length * nucleotide_substitutions_per_site
-
-            return json.dumps({'scale_bar_value': scale_bar_value})
+            return json.dumps({'scale_bar_value': total_branch_length})
         except Exception as e:
             response = jsonify({'error': str(e)})
             response.status_code = 500
