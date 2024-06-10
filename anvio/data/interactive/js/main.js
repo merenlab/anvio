@@ -80,6 +80,7 @@ var bbox;
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
 var min_branch_support_value_seen = null;
+var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
@@ -1615,6 +1616,13 @@ function serializeSettings(use_layer_names) {
     state['support-text-rotation'] = $('#support_text_rotation').val()
     state['support-threshold'] = $('#support_threshold').val()
 
+    state['support-show-operator'] = $('#support_show_operator').val()
+    state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
+    state['support-bootstrap0-range-high'] = $('#support_bootstrap0_range_high').val()
+    state['support-bootstrap1-range-low'] = $('#support_bootstrap1_range_low').val()
+    state['support-bootstrap1-range-high'] = $('#support_bootstrap1_range_high').val()
+
+
     // sync views object and layers table
     syncViews();
 
@@ -2877,6 +2885,21 @@ function processState(state_name, state) {
     if(state.hasOwnProperty('support-threshold')){
         $('#support_threshold').val(state['support-threshold'])
     }
+    if(state.hasOwnProperty('support-show-operator')){
+        $('#support_show_operator').val(state['support-show-operator'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-low')){
+        $('#support_bootstrap0_range_low').val(state['support-bootstrap0-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-high')){
+        $('#support_bootstrap0_range_high').val(state['support-bootstrap0-range-high'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-low')){
+        $('#support_bootstrap1_range_low').val(state['support-bootstrap1-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-high')){
+        $('#support_bootstrap1_range_high').val(state['support-bootstrap1-range-high'])
+    }
 
     // reload layers
     var current_view = $('#views_container').val();
@@ -3186,6 +3209,12 @@ function checkMaxSupportValueSeen() {
         // set the min/max values since we clearly know them by now.
         $('#support_range_low').val(min_branch_support_value_seen);
         $('#support_range_high').val(max_branch_support_value_seen);
+
+        // multiple thresholds option
+        if(!multiple_support_value_seen){
+            $('#show_multiple_range').css('display', 'none');
+            $('#show_threshold').css('display', 'flex');
+        }
     }
 }
 
