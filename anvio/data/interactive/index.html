@@ -599,10 +599,69 @@
                                             <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
+                                    <div class="form-group form-margin align-items-center" id='show_threshold' style="display: none;">
                                         <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Threshold:</label>
                                         <div class="col-6 align-items-center input-align d-flex">
                                             <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin align-items-center" id='show_multiple_range' style="display: flex;">
+                                        <label class="col-2 settings-label d-flex" for="show-multiple-range" data-help="support-value-input">Multiple thresholds:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#define-range-modal">
+                                                Define Ranges
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Define Range Modal -->
+                                    <div class="modal fade" id="define-range-modal" tabindex="-1" role="dialog" aria-labelledby="define-range-modal-label" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                            <h5 class="modal-title" id="define-range-modal-label">Define multiple threshold ranges</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info" role="alert">
+                                                    Define custom display thresholds for different metadata sources.
+                                                    These ranges will be applied using the selected operator for Symbol and Text display types.
+                                                </div>
+                                                <hr>
+                                                <div class="form-group form-margin align-items-center" id='show_operator' style="display: flex;">
+                                                    <label class="col-2 settings-label d-flex" for="support-show-operator" data-help="support-show-operator">Operator:</label>
+                                                    <div class="col-6 align-items-center input-align d-flex">
+                                                        <select class="custom-select col-12" id="support_show_operator">
+                                                            <option value="AND">AND</option>
+                                                            <option value="OR">OR</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap0:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_low" style="width: 60px;" value='50' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap1:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_low" style="width: 60px;" value='50' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="button" class="btn btn-success" onclick="drawTree();">Update threshold</button>
+                                            </div>
+                                        </div>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
