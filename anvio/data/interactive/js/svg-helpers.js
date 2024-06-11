@@ -401,6 +401,11 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         let minRadius = supportValueData.minRadius;
         let rangeLow = parseFloat(supportValueData.numberRange[0]);
         let rangeHigh = parseFloat(supportValueData.numberRange[1]);
+        var operator = supportValueData.thresholdOperator;
+        var operator_symbol = '&&';
+        if (operator === 'OR'){
+            operator_symbol = '||';
+        }
 
         /**
          * Calculate the percentile of a support value within the range.
@@ -455,9 +460,15 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
             let branch_support_values = p.branch_support.split('/').map(parseFloat);
-            first_circle = makeCircle(branch_support_values[0], 0);
-            second_circle = makeCircle(branch_support_values[1], 1);
-            second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+            var condition0 = supportValueData.thresholdRange0[0] <= branch_support_values[0] && branch_support_values[0] <= supportValueData.thresholdRange0[1];
+            var condition1 = supportValueData.thresholdRange1[0] <= branch_support_values[1] && branch_support_values[1] <= supportValueData.thresholdRange1[1];
+
+            console.log(condition0, condition1);
+            if((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))){                
+                first_circle = makeCircle(branch_support_values[0], 0);
+                second_circle = makeCircle(branch_support_values[1], 1);
+                second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+            }
 
             if($('#tree_type').val() == 'circlephylogram'){
                 let length_original = Math.sqrt(p.xy.x**2 + p.xy.y**2);
@@ -472,7 +483,9 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             }
 
         } else {
-            first_circle = makeCircle(p.branch_support, 0);
+            if(p.branch_support >= supportValueData.thresholdValue){
+                first_circle = makeCircle(p.branch_support, 0);
+            }
         }
 
         return first_circle;
