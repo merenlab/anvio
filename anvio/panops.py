@@ -1055,50 +1055,59 @@ class Pangraph():
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # Important Anvi'o artifacts that are necessary for successfull execution.
         self.pan_db = A('pan_db')
         self.external_genomes_txt = A('external_genomes')
         self.genomes_storage_db = A('genomes_storage')
-        self.testing_yaml = A('testing_yaml')
 
+        # Additional optinal input variables.
+        self.testing_yaml = A('testing_yaml')
+        self.gene_additional_data = A('gene_additional_data')
+        self.gc_additional_data = A('gc_additional_data')
+
+        # Additional variables for presetting the UI values.
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('gene_cluster_grouping_compression')
 
-        self.testing = True if self.testing_yaml else False
+        # Additional variables for special cases e.g. a user wants to tune the tool
+        # in a very specific direction.
+        self.starting_gene = A('starting_gene')
+        self.priority_genome = A('priority_genome')
 
-        # data storage related variables
-        self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented
-        self.json_output_file_path = A('output_file')
-        self.output_yaml = A('output_yaml')
-        self.output_summary = A('output_summary')
-        self.output_graphics = A('output_graphics')
-        self.data_tables = A('external_data')
+        # The different data storage related variables e.g. input and output files
+        self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented.
+        self.json_output_file_path = A('output_pan_graph_json')
+        self.output_yaml = A('output_testing_yaml')
+        self.output_summary = A('output_graph_summary')
+        self.output_graphics = A('output_dir_graphics')
         
-        # learn what gene annotation sources are present across all genomes if we
-        # are running things in normal mode
-        if not self.testing:
+        # Learn what gene annotation sources are present across all genomes if we
+        # are running things in normal mode.
+        if not self.testing_yaml:
             self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
         else:
             self.functional_annotation_sources_available = []
 
+        # Dictionary containing the layer information that will be saved in the 
+        # json file to be used in the front end.
         self.data_table_dict = {}
-        self.priority_genome = ''
 
-        # this is the dictionary that wil keep all data that is going to be loaded
-        # from anvi'o artifacts
+        # This is the dictionary that wil keep all data that is going to be loaded
+        # from anvi'o artifacts.
         self.gene_synteny_data_dict = {}
         self.genome_coloring = {}
         self.genomes = []
 
+        # These are the main graph data structures for the different steps of the tools execution.
         self.initial_graph = nx.DiGraph()
         self.pangenome_graph = nx.DiGraph()
         self.edmonds_graph = nx.DiGraph()
         self.ancest = nx.DiGraph()
 
-        # self.fusion_events = 0
+        # Additional self variables that are used during the tools execution.
         self.grouping = {}
         self.project_name = ''
-
         self.global_y = 0
         self.global_x = 1
         self.global_x_offset = 0
@@ -1106,13 +1115,11 @@ class Pangraph():
         self.genome_gc_occurence = {}
         self.ghost = 0
         self.debug = False
-
         self.position = {}
         self.offset = {}
         self.x_list = {}
         self.path = {}
         self.edges = []
-
         self.layers = []
 
 
@@ -1139,7 +1146,7 @@ class Pangraph():
     def process(self):
         """Primary driver function for the class"""
 
-        if self.testing == True:
+        if self.testing_yaml:
             self.testing_with_yaml()
         else:
             # sanity check EVERYTHING
@@ -1178,7 +1185,6 @@ class Pangraph():
             self.store_network()
 
     def testing_with_yaml(self):
-        # print(self.testing_yaml)
         yaml_genomes = utils.get_yaml_as_dict(self.testing_yaml)
         self.project_name = 'YAML TEST'
 
@@ -2331,23 +2337,7 @@ class Pangraph():
 
     def generate_data_table(self):
 
-        # global_entropy = 0
         max_paralogs = 0
-        max_entropy = 0
-        # base = 2
-
-        # for x in range(0, self.global_x+1):
-
-        #     generation = [node for node, data in self.ancest.nodes(data=True) if data['pos'][0] == x and node != 'start' and node != 'stop']
-
-        #     array_occurence = np.array([len(self.ancest.nodes[node]['genome'].keys()) for node in generation])
-        #     sum_occurence = np.sum(array_occurence)
-
-        #     pk = array_occurence / sum_occurence
-        #     H = entropy(pk, base=base)
-        #     max_entropy = H if H > max_entropy else max_entropy
-
-        #     for gene_cluster in generation:
 
         for gene_cluster in self.ancest.nodes():
 
@@ -2364,8 +2354,7 @@ class Pangraph():
 
                 for genome in node['genome'].keys():
                     info = node['genome'][genome]
-                    # print(info)
-
+                    
                     max_paralog_list.append(info['max_num_paralogs'])
                     func_homogeneity_list.append(info['functional_homogeneity_index'])
                     geo_homogeneity_list.append(info['geometric_homogeneity_index'])
@@ -2381,50 +2370,31 @@ class Pangraph():
                 node['layer'] = {
                     'Paralogs': max(max_paralog_list) - 1,
                     'Direction': 1 - max(num_dir_r, num_dir_l)/num,
-                    # 'Entropy': H,
                     'Functional_Homogeneity': 1 - max(func_homogeneity_list),
                     'Geometric_Homogeneity': 1 - max(geo_homogeneity_list),
                     'Combined_Homogeneity': 1 - max(comb_homogeneity_list)
                 }
 
-        # self.layers = ['Paralogs', 'Direction', 'Entropy', 'Functional_Homogeneity', 'Geometric_Homogeneity', 'Combined_Homogeneity']
-
         self.data_table_dict['Functional_Homogeneity'] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Geometric_Homogeneity'] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Combined_Homogeneity'] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': 1,
             'min': 0
         }
         self.data_table_dict['Paralogs'] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': max_paralogs - 1 if max_paralogs - 1 != 0 else 1,
             'min': 0
         }
         self.data_table_dict['Direction'] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': 0.5,
             'min': 0
         }
-        # self.data_table_dict['Entropy'] = {
-        #     # 'type': 'heatmap',
-        #     # 'scale': 'global',
-        #     'max': max_entropy if max_entropy != 0 else 1,
-        #     'min': 0
-        # }
 
     def add_external_layer_values(self):
         
@@ -2454,8 +2424,6 @@ class Pangraph():
                 data['layer'][layer_name] = sum(value_list) / len(value_list)
 
         self.data_table_dict[layer_name] = {
-            # 'type': 'heatmap',
-            # 'scale': 'local',
             'max': layer_max,
             'min': 0
         }
