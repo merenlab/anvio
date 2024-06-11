@@ -573,7 +573,7 @@
                                         </div>
                                 </div>
 
-                            <div class="manual-mode">    
+                            <div class="manual-mode full-mode">
                             <span class="settings-secondary-header" >Branch Support</span>
                                 <div class="form-group form-margin d-flex mt-3">
                                     <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
@@ -591,6 +591,9 @@
                                     tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
                                 </div>
                                 <div id="support_value_params">
+                                    <div class="alert alert-info full-mode" role="alert">
+                                        If you are seeing a proper Dendrogram tree on your display and lacking support values, You need to change your Order in Main Menu, <b> ITEMS > ORDER > Tree</b>.
+                                    </div>
                                     <div class="form-group form-margin d-flex">
                                         <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-6 form-inline input-align d-flex">
@@ -605,7 +608,7 @@
                                             <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin align-items-center" id='show_multiple_range' style="display: flex;">
+                                    <div class="form-group form-margin align-items-center ml-1" id='show_multiple_range' style="display: flex;">
                                         <label class="col-2 settings-label d-flex" for="show-multiple-range" data-help="support-value-input">Multiple thresholds:</label>
                                         <div class="col-6 align-items-center input-align d-flex">
                                             <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#define-range-modal">
