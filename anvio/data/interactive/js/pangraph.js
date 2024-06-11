@@ -127,8 +127,10 @@ function get_layer_data(gene_cluster_id, data, add_align) {
 function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align) {
     // first, learn a few basics about the gene cluster to be displayed
     var x_pos = data['elements']['nodes'][gene_cluster_id]['position']['x_offset']
-    var position_in_graph = x_pos + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
-    var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
+    // var position_in_graph = x_pos + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
+    var position_in_graph = x_pos;
+    // var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
+    var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length;
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
 
     if (gene_cluster_context == null){
@@ -137,7 +139,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, da
       var context = gene_cluster_context
     }
 
-    basic_info = {'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
+    basic_info = {'ID': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
     // build the basic information table
     if (add_align == 1) {
       basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
