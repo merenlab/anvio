@@ -1055,57 +1055,62 @@ class Pangraph():
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        # Important Anvi'o artifacts that are necessary for successfull execution.
+        # important Anvi'o artifacts that are necessary for successfull execution
         self.pan_db = A('pan_db')
         self.external_genomes_txt = A('external_genomes')
         self.genomes_storage_db = A('genomes_storage')
 
-        # Additional optinal input variables.
+        # additional optinal input variables
         self.testing_yaml = A('testing_yaml')
+        self.pan_graph_json = A('pan_graph_json')
         self.gene_additional_data = A('gene_additional_data')
         self.gc_additional_data = A('gc_additional_data')
 
-        # Additional variables for presetting the UI values.
+        # additional variables for presetting the UI values
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('gene_cluster_grouping_compression')
 
-        # Additional variables for special cases e.g. a user wants to tune the tool
-        # in a very specific direction.
+        # additional variables for special cases e.g. a user wants to tune the tool
+        # in a very specific direction
         self.starting_gene = A('starting_gene')
         self.priority_genome = A('priority_genome')
 
-        # The different data storage related variables e.g. input and output files
-        self.skip_storing_in_pan_db = True # FIXME: DB storage is not yet implemented.
+        # the different data storage related variables e.g. input and output files
+        # FIXME: DB storage is not yet implemented -> will be GRAPH.db at one point
+        self.skip_storing_in_pan_db = True
         self.json_output_file_path = A('output_pan_graph_json')
         self.output_yaml = A('output_testing_yaml')
         self.output_summary = A('output_graph_summary')
         self.output_graphics = A('output_dir_graphics')
+
+        self.output_raw_gc_additional_data = A('output_raw_gc_additional_data')
+        self.output_raw_gene_additional_data = A('output_raw_gene_additional_data')
         
-        # Learn what gene annotation sources are present across all genomes if we
-        # are running things in normal mode.
-        if not self.testing_yaml:
+        # learn what gene annotation sources are present across all genomes if we
+        # are running things in normal mode
+        if not self.testing_yaml and not self.pan_graph_json:
             self.functional_annotation_sources_available = DBInfo(self.genomes_storage_db, expecting='genomestorage').get_functional_annotation_sources()
         else:
             self.functional_annotation_sources_available = []
 
-        # Dictionary containing the layer information that will be saved in the 
-        # json file to be used in the front end.
+        # dictionary containing the layer information that will be saved in the 
+        # json file to be used in the front end
         self.data_table_dict = {}
 
-        # This is the dictionary that wil keep all data that is going to be loaded
-        # from anvi'o artifacts.
+        # this is the dictionary that wil keep all data that is going to be loaded
+        # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
         self.genome_coloring = {}
         self.genomes = []
 
-        # These are the main graph data structures for the different steps of the tools execution.
+        # these are the main graph data structures for the different steps of the tools execution
         self.initial_graph = nx.DiGraph()
         self.pangenome_graph = nx.DiGraph()
         self.edmonds_graph = nx.DiGraph()
         self.ancest = nx.DiGraph()
 
-        # Additional self variables that are used during the tools execution.
+        # additional self variables that are used during the tools execution
         self.grouping = {}
         self.project_name = ''
         self.global_y = 0
@@ -1121,10 +1126,11 @@ class Pangraph():
         self.path = {}
         self.edges = []
         self.layers = []
+        self.removed = set()
 
 
     def sanity_check(self):
-        if self.skip_storing_in_pan_db and not self.json_output_file_path:
+        if not self.output_yaml and self.skip_storing_in_pan_db and not self.json_output_file_path:
             raise ConfigError("You are initializing the Pangraph class with `--skip-storing-in-pan-db` without an `--output-file` "
                               "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
                               "way to store results.")
@@ -1146,45 +1152,56 @@ class Pangraph():
     def process(self):
         """Primary driver function for the class"""
 
-        if self.testing_yaml:
-            self.testing_with_yaml()
-        else:
-            # sanity check EVERYTHING
-            self.sanity_check()
+        if self.pan_graph_json:
 
-            # populate self.gene_synteny_data_dict
-            self.get_gene_synteny_data_dict()
-
-        if self.output_yaml:
-            self.export_gene_synteny_to_yaml(self.output_yaml)
-
-        else:
-            # contextualize paralogs
-            # TODO Incorporate gene direction
-            self.run_contextualize_paralogs_algorithm()
-
-            # build graph
-            self.build_graph()
-
-            # reconnect open leaves in the graph to generate
-            # a flow network from left to right
-            self.run_tree_to_flow_network_algorithm()
-            
-            # run Alex's layout algorithm
+            print(self.pan_graph_json)
+            self.load_graph_from_json_file()
             self.run_synteny_layout_algorithm()
 
-            self.generate_data_table()
+        else:
 
-            if self.data_tables:
-                self.add_external_layer_values()
+            if self.testing_yaml:
+                # skip sanity check EVERYTHING in case of testing mode
+                self.prepare_yaml()
+            else:
+                # sanity check EVERYTHING
+                self.sanity_check()
 
-            if self.output_summary:
-                self.get_hypervariable_regions()
+                # populate self.gene_synteny_data_dict
+                self.get_gene_synteny_data_dict()
 
-            # store network in the database
-            self.store_network()
+            if self.output_yaml:
+                self.export_gene_synteny_to_yaml(self.output_yaml)
 
-    def testing_with_yaml(self):
+            else:
+                # contextualize paralogs
+                # TODO Incorporate gene direction
+                self.run_contextualize_paralogs_algorithm()
+
+                # build graph
+                self.build_graph()
+
+                # reconnect open leaves in the graph to generate
+                # a flow network from left to right
+                self.run_tree_to_flow_network_algorithm()
+                
+                self.prepare_synteny_graph()
+
+                # run Alex's layout algorithm
+                self.run_synteny_layout_algorithm()
+
+                self.generate_data_table()
+
+                if self.data_tables:
+                    self.add_external_layer_values()
+
+                if self.output_summary:
+                    self.get_hypervariable_regions()
+
+                # store network in the database
+                self.store_network()
+
+    def prepare_yaml(self):
         yaml_genomes = utils.get_yaml_as_dict(self.testing_yaml)
         self.project_name = 'YAML TEST'
 
@@ -1936,8 +1953,90 @@ class Pangraph():
 
         self.run.info_single("Done")
 
+    def load_graph_from_json_file(self):
+
+        data = json.load(open(self.pan_graph_json))
+
+        self.global_x = int(data["infos"]["meta"]["global_x"])
+        self.global_y = 0
+        self.ancest = nx.DiGraph()
+        self.x_list = {}
+        self.position = {}
+        self.edges = []
+
+        for x in range(0, self.global_x+1):
+            self.x_list[x] = []
+
+        for node in data["elements"]["nodes"]:
+            x = data["elements"]["nodes"][node]["position"]["x"]
+            self.x_list[x].append(node)
+            self.position[node] = (x, -1)
+
+        for edge in data["elements"]["edges"]:
+            source = data["elements"]["edges"][edge]["source"]
+            target = data["elements"]["edges"][edge]["target"]
+
+            self.ancest.add_edge(source, target, weight=-1, bended=[])
+
+        layout_graph_nodes = list(self.ancest.nodes())
+        layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
+
+        n_removed = 0
+        ghost = 0
+        for x in range(self.global_x-1, 0, -1):
+            for node in self.x_list[x]:
+
+                node_x_position = self.position[node][0]
+
+                change = []
+                for successor in layout_graph_successors[node]:
+                    if successor != 'stop':
+                        successor_x_position = self.position[successor][0]
+                        
+                        if successor_x_position <= node_x_position:
+                            print('Sanity Error. Code 1.')
+                        else:
+                            change.append((successor_x_position, successor))
+
+                if change:
+                    if min(change)[0] > 1:
+                        new_x_position = min([(x, n) for (x, n) in change if x > 1])[0] - 1
+                        self.position[node] = (new_x_position, -1)
+
+                    for (pos, extend_successor) in change:
+                        x_difference = pos - new_x_position
+
+                        if x_difference <= self.max_edge_length_filter or self.max_edge_length_filter == -1:
+
+                            path_list = [node]
+
+                            for i in range(1, x_difference):
+                                path_list += ['Ghost_' + str(ghost)]
+                                self.position['Ghost_' + str(ghost)] = (new_x_position + i, -1)
+                                ghost += 1
+
+                            path_list += [extend_successor]
+
+                            self.ancest.remove_edge(node, extend_successor)
+
+                            self.edges.append(path_list)
+
+                            if len(path_list) == 2:
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-1)
+                            else:
+                                self.ancest.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-0.5)
+
+                        else:
+                            n_removed += 1
+                            self.removed.add((node, extend_successor))
+
+        for i, j in self.ancest.edges():
+
+            if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop' and (i, j) not in removed:
+                print('Sanity Error.')
+
     # TODO Fusion of same position paralog GCs
-    def run_synteny_layout_algorithm(self):
+    def prepare_synteny_graph(self):
 
         self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
 
@@ -1945,40 +2044,6 @@ class Pangraph():
             self.x_list[x] = generation
             for node in generation:
                 self.position[node] = (x, -1)
-
-        # for x, generation in enumerate(nx.topological_generations(self.edmonds_graph)):
-        #     nodes = {}
-        #     self.x_list[x] = []
-        #     for node in generation:
-        #         node_list = node.split(',')
-
-        #         if node_list[int(len(node_list)/2)] in nodes.keys():
-
-        #             found = False
-        #             for contractor in nodes[node_list[int(len(node_list)/2)]]:
-
-        #                 intersection = set(self.edmonds_graph.nodes()[contractor]['genome'].keys()).intersection(set(self.edmonds_graph.nodes()[node]['genome'].keys()))
-        #                 if not intersection:
-
-        #                     self.edmonds_graph.nodes()[contractor]['weight'] += self.edmonds_graph.nodes()[node]['weight']
-        #                     self.edmonds_graph.nodes()[contractor]['genome'].update(self.edmonds_graph.nodes()[node]['genome'])
-
-        #                     nx.contracted_nodes(self.edmonds_graph, contractor, node, copy=False)
-        #                     nx.contracted_nodes(self.pangenome_graph, contractor, node, copy=False)
-
-        #                     self.fusion_events += 1
-        #                     found = True
-        #                     break
-
-        #             if found == False:
-        #                 nodes[node_list[int(len(node_list)/2)]] += [node]
-        #                 self.x_list[x].append(node)
-        #                 self.position[node] = (x, -1)
-
-        #         else:
-        #             nodes[node_list[int(len(node_list)/2)]] = [node]
-        #             self.x_list[x].append(node)
-        #             self.position[node] = (x, -1)
             
         self.global_x = x
 
@@ -1988,7 +2053,6 @@ class Pangraph():
         layout_graph_nodes = list(self.ancest.nodes())
         layout_graph_successors = {layout_graph_node: list(self.ancest.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
-        removed = set()
         n_removed = 0
         ghost = 0
         for x in range(self.global_x-1, 0, -1):
@@ -2037,7 +2101,7 @@ class Pangraph():
                         else:
                             n_removed += 1
                             # small change here, adding to set instead of removing directly from edmonds and ancest
-                            removed.add((node, extend_successor))
+                            self.removed.add((node, extend_successor))
 
         for i, j in self.ancest.edges():
 
@@ -2053,6 +2117,9 @@ class Pangraph():
             self.run.info_single(f"Setting algorithm to 'max edge length < {pp(self.max_edge_length_filter)}'")
 
         self.run.info_single(f"Removed {pp(n_removed)} edge(s) due to length cutoff")
+
+
+    def run_synteny_layout_algorithm(self):
 
         longest_path = nx.bellman_ford_path(G=self.ancest, source='start', target='stop', weight='weight')
         # print(longest_path)
@@ -2073,7 +2140,6 @@ class Pangraph():
         groups_rev = {}
 
         # TODO Currently no seperation between unequal genome context
-
         if self.gene_cluster_grouping_threshold == -1:
             self.run.info_single("Setting algorithm to 'no grouping'")
         else:
@@ -2094,11 +2160,6 @@ class Pangraph():
                     groups[group_name] += [node_w]
                     groups_rev[node_w] = group_name
 
-        # print(len(sum(groups.values(), [])))
-        # for key in groups.keys():
-        #     if 'GC_00000628,GC_00000044,GC_00002584' in groups[key]:
-        #         print(groups[key])
-
         for label, condense_nodes in groups.items():
 
             condense_nodes = [node for node in condense_nodes if not node.startswith('Ghost_')]
@@ -2111,8 +2172,8 @@ class Pangraph():
         for st in starts:
             self.ancest.remove_edge('start', st)
 
-        self.ancest.remove_edges_from(removed)
-        self.edmonds_graph.remove_edges_from(removed)
+        self.ancest.remove_edges_from(self.removed)
+        self.edmonds_graph.remove_edges_from(self.removed)
 
         branches = {}
         sortable = []

@@ -2104,6 +2104,18 @@ D = {
              'type': str,
              'help': "File path to store the temporary pan-graph-json file."}
                 ),
+     'output-raw-gc-additional-data': (
+            ['--output-raw-gc-additional-data'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to create and store a raw gc additional data table for testing or join purposes."}
+                ),
+     'output-raw-gene-additional-data': (
+            ['--output-raw-gene-additional-data'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to create and store a raw gc additional data table for testing or join purposes."}
+                ),
      'output-testing-yaml': (
             ['--output-testing-yaml'],
             {'metavar': 'FILE_PATH',
