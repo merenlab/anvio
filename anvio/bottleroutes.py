@@ -193,7 +193,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
-        self.route('/data/get_max_branch_length',              callback=self.get_max_branch_length, method='POST')
+        self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1511,19 +1511,15 @@ class BottleApplication(Bottle):
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
 
 
-    def get_max_branch_length(self):
+    def get_scale_bar(self):
         try:
             newick = request.json.get('newick')
             tree = Tree(newick, format=1)
 
-            max_branch_length = 0
+            total_branch_length = tree.get_farthest_leaf()[1]
 
-            for node in tree.traverse():
-                if node.dist > max_branch_length:
-                    max_branch_length = node.dist
-
-            response.content_type = 'application/json'
-            return {'max_branch_length': max_branch_length}
+            return json.dumps({'scale_bar_value': total_branch_length})
         except Exception as e:
-            response.status = 500
-            return {'error': str(e)}
+            response = jsonify({'error': str(e)})
+            response.status_code = 500
+            return response

@@ -253,15 +253,14 @@ async function drawScaleBar(settings, top, left) {
         const data = await $.ajax({
             type: 'POST',
             cache: false,
-            url: '/data/get_max_branch_length',
+            url: '/data/get_scale_bar',
             contentType: 'application/json',
             data: JSON.stringify({
                 'newick': clusteringData,
             })
         });
 
-        var max_branch_length = data['max_branch_length'];
-        console.log("Max Branch Length:", max_branch_length);
+        var scale_bar = data['scale_bar_value'];
 
         const scaleBarLength = 30;
         top = top + 170;
@@ -301,7 +300,7 @@ async function drawScaleBar(settings, top, left) {
             endLine.setAttribute('y2', top + 35);
             svg.appendChild(endLine);
 
-            var scaleValue = (max_branch_length / 10).toFixed(2);
+            var scaleValue = (scale_bar).toFixed(2);
             drawText('scale_bar', {
                 'x': left + ((scaleBarLength * 5) / 2) - 10,
                 'y': top + 45
