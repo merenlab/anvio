@@ -3215,6 +3215,7 @@ function checkMaxSupportValueSeen() {
             $('#show_multiple_range').css('display', 'none');
             $('#show_threshold').css('display', 'flex');
             $('#second_support_symbol_color').css('display', 'none');
+            $('#second_support_font_color').css('display', 'none');
         }
     }
 }
