@@ -27,7 +27,9 @@ def main():
     progress = terminal.Progress()
 
     bam = bamops.BAMFileObject(args.bam_file, 'rb')
+    min_dist_to_end = args.min_dist_to_end
     run.info('BAM file', args.bam_file)
+    run.info('Length of contig\'s end to ignore', args.min_dist_to_end)
 
     progress.new("Computing coverage beep boop")
 
@@ -91,15 +93,16 @@ def main():
     clippling_ouput = args.output_prefix + '-clipping.txt'
     run.info('Output file', clippling_ouput)
     with open(clippling_ouput, 'w') as file:
-        file.write("contig\tlength\tpos\tcov\tclipping\tclipping_ratio\n")
+        file.write("contig\tlength\tpos\trelative_pos\tcov\tclipping\tclipping_ratio\n")
         for contig, data in cov_dict.items():
             contig_length = cov_dict[contig]['length']
             for pos in data['clipping']:
                 cov = cov_dict[contig]['cov'][pos]
                 clipping = cov_dict[contig]['clipping'][pos]
                 clipping_ratio = clipping/cov
-                if clipping_ratio > 0.8:
-                    file.write(f"{contig}\t{contig_length}\t{pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
+                relative_pos = pos/contig_length
+                if clipping_ratio > 0.8 and (pos < min_dist_to_end or contig_length-pos < min_dist_to_end):
+                    file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
 
     zero_ouput = args.output_prefix + "-zero_cov.txt"
     run.info('Output file', zero_ouput)
@@ -161,6 +164,20 @@ if __name__ == '__main__':
         required=True,
         help = ("Output prefix for the two tab-delimited files. Will overwrite existing files.")
     )
+
+    group1 = parser.add_argument_group(
+        'MIN-DIST-TO-END',
+        ("Ignore sequence on both ends of contigs")
+    )
+    group1.add_argument(
+        '-m',
+        '--min-dist-to-end',
+        default=100,
+        type=int,
+        help = ("Sequence length on each side of a contigs that will be ignored in the oututs. "
+                "This is to prevent aftifactual results that typically occurs at the ends of contigs.")
+    )
+
     args = parser.get_args(parser)
 
     try:
