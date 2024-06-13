@@ -150,7 +150,7 @@ function drawBinLegend(bins_to_draw, top, left) {
     drawText('bin_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
 
     if (mode == 'pan') {
-        drawText('bin_legend', {'x': left + 170, 'y': top}, 'PCs', '10px');
+        drawText('bin_legend', {'x': left + 170, 'y': top}, 'GCs', '10px');
         drawText('bin_legend', {'x': left + 230, 'y': top}, 'Gene Calls', '10px');
     } else {
         drawText('bin_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
@@ -165,7 +165,7 @@ function drawBinLegend(bins_to_draw, top, left) {
         drawText('bin_legend', {'x': left + 30, 'y': top }, bin['name'], '12px');
 
         if (mode == 'pan') {
-            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['pcs'], '12px');
+            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['gene_clusters'], '12px');
             drawText('bin_legend', {'x': left + 230, 'y': top}, bin['gene-calls'], '12px');
         } else {
             drawText('bin_legend', {'x': left + 170, 'y': top}, bin['contig-count'], '12px');

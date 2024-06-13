@@ -2086,8 +2086,13 @@ async function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
-                _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
+                var geneClustersElement = $(bin).find('.num-gene-clusters');        
+                if (geneClustersElement.length > 0) {
+                    _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
+                } else {
+                    console.log("geneClustersElement not found");
+                }
+                _bin_info['gene-calls'] = $(bin).find('.num-gene-calls input').val();
             } else {
                 _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
                 _bin_info['contig-count'] = $(bin).find('.num-items input').val();
