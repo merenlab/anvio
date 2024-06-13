@@ -462,7 +462,6 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             var condition0 = supportValueData.thresholdRange0[0] <= branch_support_values[0] && branch_support_values[0] <= supportValueData.thresholdRange0[1];
             var condition1 = supportValueData.thresholdRange1[0] <= branch_support_values[1] && branch_support_values[1] <= supportValueData.thresholdRange1[1];
 
-            console.log(condition0, condition1);
             if((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))){                
                 first_circle = makeCircle(branch_support_values[0], 0);
                 second_circle = makeCircle(branch_support_values[1], 1);
