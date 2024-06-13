@@ -209,8 +209,13 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
         top = top + 20;
 
         // color
-        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined')
-            drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
+        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined'){
+            if(layer_settings.type == 'intensity'){
+                drawRectangle('layer_legend', left - 5, top - 8, 16, 30, layer_settings['color'], 1, 'black', false, false, false, layer_settings['color-start']);
+            }else{
+                drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
+            }
+        }
 
         // name
         drawText('layer_legend', {'x': left + 30, 'y': top}, short_name, '12px');
@@ -747,9 +752,42 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opa
     return rect;
 }
 
-function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave) {
+function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave, secondary_fill) {
+    var svg = document.getElementById(svg_id);
+
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('fill', fill);
+
+    if (secondary_fill) {
+        var gradientId = 'gradient' + Math.random().toString(36).substr(2, 9);
+
+        var gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        gradient.setAttribute('id', gradientId);
+
+        // Create the start and end colors for the gradient
+        var stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop1.setAttribute('offset', '0%');
+        stop1.setAttribute('stop-color', fill);
+
+        var stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop2.setAttribute('offset', '100%');
+        stop2.setAttribute('stop-color', secondary_fill);
+
+        gradient.appendChild(stop1);
+        gradient.appendChild(stop2);
+
+        // Append the gradient to a defs element in the SVG
+        var defs = svg.querySelector('defs');
+        if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            svg.appendChild(defs);
+        }
+        defs.appendChild(gradient);
+
+        // Use the gradient as the fill for the rectangle
+        rect.setAttribute('fill', 'url(#' + gradientId + ')');
+    } else {
+        rect.setAttribute('fill', fill);
+    }
     rect.setAttribute('stroke-width', stroke_width);
     rect.setAttribute('stroke', stroke_color);
 
@@ -762,7 +800,6 @@ function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_c
     $(rect).mouseenter(f_mouseenter);
     $(rect).mouseleave(f_mouseleave);
 
-    var svg = document.getElementById(svg_id);
     svg.appendChild(rect);
 
     return rect;
