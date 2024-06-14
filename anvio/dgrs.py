@@ -69,8 +69,8 @@ class DGR_Finder:
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
-        self.sanity_check()
-
+        if self.num_threads:
+            self.run.info('Threads Used', self.num_threads)
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
