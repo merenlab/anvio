@@ -495,7 +495,24 @@ class TablesForGeneCalls(Table):
 
         gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, args=self.args, debug=self.debug)
 
-        gene_calls_dict, amino_acid_sequences = gene_caller.process()
+        try:
+            gene_calls_dict, amino_acid_sequences = gene_caller.process()
+        except Exception as e:
+            if 'prodigal' in e.e:
+                self.run.warning("There was a problem with your gene calling, and the error seems to be related to 'prodigal'. Please "
+                                 "find additional details below. It is difficult to determine what caused this error, but if you would "
+                                 "like to be certain, you can literally copy the command shown below into a single line, and run on "
+                                 "the same machine manually (or re-run the same command you run to get this error with the `--debug` flag "
+                                 "to keep all the original log files from profigal). If this error is due to a 'segmentation fault', "
+                                 "please consider including `--prodigal-single-mode` flag `anvi-gen-contigs-database` command. More "
+                                 "information `--prodigal-single-mode` is available in the help menu of `anvi-gen-contigs-database`.",
+                                 header="💀 PRODIGAL FAILED 💀")
+
+            # remove the unfinished contigs-db file
+            os.remove(self.db_path)
+
+            # show the user the actual error from down below
+            raise ConfigError(f"{e}")
 
         if not self.debug and remove_fasta_after_processing:
             os.remove(self.contigs_fasta)
