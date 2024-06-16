@@ -357,7 +357,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         required_args = ['input_file_path', 'collated_output_file_paths', 'number_of_splits', 'log_file_path',
-                         'installed_version', 'parser']
+                         'installed_version', 'parser', 'prodigal_single_mode']
 
         # Check that the required arguments are present.
         for arg in required_args:
@@ -370,6 +370,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                          log_file_path=A('log_file_path'),
                          logger=A('logger'))
 
+        self.prodigal_single_mode = A('prodigal_single_mode')
         self.installed_version = A('installed_version')
         self.parser = A('parser')
 
@@ -379,6 +380,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
             translation_table = str(translation_table)
 
         self.translation_table = translation_table
+
 
     # Implement the abstract methods
     #
@@ -400,6 +402,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
 
         return State(input_file_splits=self.input_file_splits)
+
 
     def _make_commands(self):
         """Make commands and store them in `self.commands`.
