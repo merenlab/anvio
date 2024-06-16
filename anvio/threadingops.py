@@ -448,8 +448,14 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                         "you are reading this message, then please contact an anvi'o developer."
                         % str(self.translation_table))
             else:
-                # Use 'meta' mode if no translation tables are given.
-                command.extend(['-p', 'meta'])
+                if self.prodigal_single_mode:
+                    # the user explicitly requested to not use the `-p meta` flag to run
+                    # prodigal (the default procedure is single, so prodigal will fall back
+                    # to 'single' mode in this case)
+                    pass
+                else:
+                    # Use 'meta' mode if no translation tables are given.
+                    command.extend(['-p', 'meta'])
 
             self.commands.append(command)
 
