@@ -484,7 +484,7 @@ class TablesForGeneCalls(Table):
 
         if not self.contigs_fasta:
             self.contigs_fasta = filesnpaths.get_temp_file_path()
-            utils.export_sequences_from_contigs_db(self.contigs_db_path,
+            utils.export_sequences_from_contigs_db(self.db_path,
                                                    output_file_path=self.contigs_fasta,
                                                    run=self.run)
             remove_fasta_after_processing = True
