@@ -4,6 +4,7 @@
 import sys
 
 import anvio
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables.trnahits import TablesForTransferRNAs
@@ -28,8 +29,19 @@ progress = terminal.Progress()
 
 @time_program
 def main(args):
-    tables_for_trna_hits = TablesForTransferRNAs(args)
-    tables_for_trna_hits.populate_search_tables(args.contigs_db)
+    # right before we start, we want to make sure there is no other program actually
+    # running on the same database, and we will not start until it is over:
+    lock = utils.DatabaseLockForBabies(args.contigs_db, 'HMMs')
+    lock.wait()
+
+    try:
+        tables_for_trna_hits = TablesForTransferRNAs(args)
+        tables_for_trna_hits.populate_search_tables(args.contigs_db)
+    except Exception as e:
+        lock.release()
+        raise ConfigError(e.e)
+
+    lock.release()
 
 
 if __name__ == '__main__':
