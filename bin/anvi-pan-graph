@@ -70,7 +70,6 @@ if __name__ == '__main__':
                                 "perfect synteny (across all genomes that contribute genes) are represented in the final display. With the default value "
                                 "of %(default)d, the final graph will represent as many gene clusters as possible in groups.")
     groupC.add_argument('--gene-cluster-grouping-compression', default = 0.0, type=float, help = "Description.")
-    groupC.add_argument('--starting-gene', default = '', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default = '', type=str, help = "Description.")
 
     args = parser.get_args(parser)
