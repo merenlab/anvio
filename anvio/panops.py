@@ -1079,6 +1079,7 @@ class Pangraph():
         # FIXME: DB storage is not yet implemented -> will be GRAPH.db at one point
         self.skip_storing_in_pan_db = True
         self.json_output_file_path = A('output_pan_graph_json')
+
         self.output_yaml = A('output_testing_yaml')
         self.output_summary = A('output_graph_summary')
         self.output_graphics = A('output_dir_graphics')
