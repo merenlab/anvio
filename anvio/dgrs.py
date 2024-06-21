@@ -63,7 +63,7 @@ class DGR_Finder:
         self.hmm = A('hmm_usage')
         self.discovery_mode = A('discovery_mode')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
-        self.parameter_outputs = A('parameter-output')
+        self.parameter_outputs = A('parameter_output')
         self.just_do_it = A('just_do_it')
         self.metagenomics_contigs_mode = A('metagenomics_contigs_mode')
         self.collections_given = A('collection_name')
@@ -139,6 +139,12 @@ class DGR_Finder:
 
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
+
+        #if  self.metagenomics_contigs_mode:
+            #if self.collections_provided not in self.collections_provided_in_profile:
+                #raise ConfigError(f"You requested this collection was searched through: {self.collections_provided} in these collections {self.collections_provided_in_profile} "
+                                        #f"that are in your {self.profile_db_path}. The collections you give 'anvi-report-dgrs' need to be in your "
+                                        #"profile.db.")
 
         if self.contigs_db_path and self.hmm:
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
@@ -743,7 +749,6 @@ class DGR_Finder:
 
         #possible DGR dictionary
         self.DGRs_found_dict = {}
-
         for sequence_component, hit_data in self.mismatch_hits.items():
             query_mismatch_counts = hit_data['query_mismatch_counts']
             subject_mismatch_counts = hit_data['subject_mismatch_counts']
@@ -886,11 +891,11 @@ class DGR_Finder:
 
         Parameters
         ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
 
         Creates
         =======
-        DGR_genes_found.csv : csv
-            A cav file containing the variable regions and the genes they act in, inclduing basic information.
 
         """
         # initiate a dictionary for the gene where we find VR
@@ -1277,7 +1282,7 @@ class DGR_Finder:
 
         """
         if not self.DGRs_found_dict:
-            raise ConfigError("No DGRS were found so no output file will be written")
+            raise ConfigError("No DGRS were found so no output file will be written :(")
 
         output_directory_path = self.output_directory
         output_path_dgrs = os.path.join(output_directory_path, "DGRs_found.csv")
@@ -1305,6 +1310,16 @@ class DGR_Finder:
                     csv_writer.writerow(csv_row)
             return
 
+
+    def process_dgr_data_for_HTML_summary(self):
+        """Take everything that is known, turn them into data that can be used from Django templates.
+
+        A lot of ugly/firhgtening things happening here to prepare coordinates for SVG objects to be displayed
+        or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
+        IT DON'T LOOK AT IT. IT MIGHT MAKE YOU CRY
+        """
+
+        return
 
     def parameter_output_sheet(self):
         """
