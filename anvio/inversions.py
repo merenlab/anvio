@@ -773,7 +773,7 @@ class Inversions:
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity,
-                                # if no function source, it says 'the contigs.db' because it fits with the message 
+                                # if no function source, it says 'the contigs.db' because it fits with the message
                                 # displayed in the final index.html. See the inversion template, line 215
                                 # if it works, it works
                                 'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
@@ -1296,8 +1296,8 @@ class Inversions:
 
 
     def parse_motif_output(self, meme_output_path, meme_log):
-        """ After searching for conserved motifs in the inverted repeats, we want to report 
-        the motif's group for each inversions. Then we can see in the report (txt summary and 
+        """ After searching for conserved motifs in the inverted repeats, we want to report
+        the motif's group for each inversions. Then we can see in the report (txt summary and
         html output) which inversions are linked together by site-specific invertase
         """
 
@@ -1305,7 +1305,7 @@ class Inversions:
         tree = ET.parse(os.path.join(meme_output_path, "meme.xml"))
         root = tree.getroot()
 
-        # for each inversion, we created 4 sequences. And MEME gave them a different id. 
+        # for each inversion, we created 4 sequences. And MEME gave them a different id.
         # it looks like this
         # INV_0001_first_IR: sequence_0
         # INV_0001_first_IR_rc: sequence_1
@@ -1347,7 +1347,7 @@ class Inversions:
                                  f"{meme_output_path}. If you want to fix this issue, you should look at the log output of MEME: {meme_log}",
                                  level=0, nl_after=1)
 
-        # anvi'o provides 4 sequences per inversions site. we want to keep only 
+        # anvi'o provides 4 sequences per inversions site. we want to keep only
         # motifs that occur on all 4 sequences.
         for sites in root.findall('scanned_sites_summary/scanned_sites'):
             for inversion_id, inversion_dict in self.motifs.items():
