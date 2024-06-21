@@ -75,10 +75,12 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False})) #ADD THAT HAS TO BE MERGED_DB, unless have
     groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
+
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
     groupB.add_argument("--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
     groupB.add_argument("--word-size", help="BLASTn word size parameter", type=str, default=8)
-    groupC = parser.add_argument_group('MISCELLANEOUS', "Other options for the fine tuning of this program")
+
+    groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this progra's location of variable regions'")
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
@@ -87,13 +89,13 @@ if __name__ == '__main__':
     groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occuring in the first and second codon position of ORF to identify DGRs. "
                         "This constraint allows for a fast search and more reliable results. If you feel daring, you can use this flag and let anvi'o use "
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
-    groupC.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
-    groupC.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
     groupD.add_argument("-m","--percentage-mismatch", help="The percentage of mismatching bases in the template region that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
     groupD.add_argument("-n","--number-of-mismatches", help="Number of one 'type' of base in the template region that is mismatching to the variable region sequence", type=int, default=7)
-    groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases)", type=int, default=3)
+    groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases)", type=int, default=2)
+
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
     groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window ", type=int, default=5)
     groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window", type=int, default=5)
@@ -104,8 +106,15 @@ if __name__ == '__main__':
                         "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
                         f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
                         "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=str, default = None)
+
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupF.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
+    groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+
+    groupG = parser.add_argument_group('METAGENOMICS MODE', "Options for which metagenomics mode to use.")
+    groupG.add_argument("--metagenomics-contigs-mode", help="The flag to use that searches through specified splits that are in the collection that is specificed with the '-C / --collection' flag.", action = "store_true")
+    groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the collection that you want to search for DGRs in"}))
 
     args = parser.get_args(parser)
 
