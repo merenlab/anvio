@@ -65,6 +65,8 @@ class DGR_Finder:
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
         self.parameter_outputs = A('parameter-output')
         self.just_do_it = A('just_do_it')
+        self.metagenomics_contigs_mode = A('metagenomics_contigs_mode')
+        self.collections_given = A('collection_name')
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
@@ -78,6 +80,9 @@ class DGR_Finder:
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
+        self.run.info('Metagenomics Contigs Mode', self.metagenomics_contigs_mode)
+        if self.metagenomics_contigs_mode:
+            self.run.info('Collection(s) Provided', (self.collections_given))
         self.run.info('Output Directory', self.output_directory)
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
         if self.fasta_file_path:
@@ -410,7 +415,6 @@ class DGR_Finder:
 
     def check_overlap(window1, window2):
         """
-        WRITE ME PLEASE!!!
         This function checks if the sections of sequences overlap based on the start and end positions.
         Parameters
         ==========
@@ -1136,6 +1140,135 @@ class DGR_Finder:
                 DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
         return
 
+    # Function to add bin info if positions fall within bin ranges
+    #TODO: have warning for DGR over two splits that are only in part of a collection. But ok if across 2 splits but both in same bin
+    def add_bin_info(self, start_pos, end_pos, dgr_name, vr_name, bin_ranges_dict):
+        tr_or_vr = 'vr' if vr_name else 'tr'
+        bin_info = None
+        for bin_name, ranges in bin_ranges_dict.items():
+            for (bin_start, bin_end) in ranges:
+                if start_pos >= bin_start and end_pos <= bin_end:
+                    bin_info = bin_name
+                    break
+            if bin_info:
+                break
+        
+        return bin_info
+
+
+    def collections_mode(self):
+            """
+            This function is if the user only wants to search for DGRs that are in the same collection. This is known as the metgenomis mode.
+            It filters through the dgrs found dictionary so that only the DGRs within the same collection are outputted.
+
+            Parameters
+            ==========
+            DGRs_found_dict : dict
+                A dictionary containing the template and variable regions
+
+            Creates
+            =======
+            DGRs_found_dict : dict
+                A dictionary containing the template and variable regions
+
+            """
+            print('I have made it into the function')
+
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            contig_db = dbops.ContigsDatabase(self.contigs_db_path)
+
+            #check that the collections provided are in the collections available in the profile.
+            where_clause = f'''collection_name == "{self.collections_given}"'''
+            self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
+                error_if_no_data=True)
+            print("Split Collections dictionary:", self.split_collections_dict)
+
+            splits_list = []
+            for key, value in self.split_collections_dict.items():
+                splits_list.append(value['split'])
+            print(splits_list)
+
+            #Construct the where_clause for the new SQL query
+            splits_str = ', '.join(f'"{split}"' for split in splits_list)
+            where_clause_splits = f'''split IN ({splits_str})'''
+
+            # Retrieve rows from the splits basic info database using the new where_clause, to get the splits in the given collection
+            self.splits_in_collections_dict = contig_db.db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_splits,
+                error_if_no_data=True)
+            # Output the filtered rows
+            print("Split in Collections dictionary:",self.splits_in_collections_dict)
+
+            # Add bin_name to the final dictionary
+            for split, info in self.splits_in_collections_dict.items():
+                for key, value in self.split_collections_dict.items():
+                    if value['split'] == split:
+                        info['bin_name'] = value['bin_name']
+                        #need to also add in if start or end of split is inside the bin range
+                        break
+
+            print('\n')
+            print("splits in collections dictionary with bin info: self.", self.splits_in_collections_dict)
+            from collections import defaultdict
+            #create a dictionary of ranges of all the start and stop positions in a bin.
+            bin_ranges_dict = defaultdict(list)
+
+            for key, value in self.splits_in_collections_dict.items():
+                bin_name = value['bin_name']
+                start = value['start']
+                end = value['end']
+                bin_ranges_dict[bin_name].append((start, end))
+
+            # Sort the ranges within each bin_name (if needed)
+            for bin_name in bin_ranges_dict:
+                bin_ranges_dict[bin_name].sort()
+
+            print("printing bin ranges dict", bin_ranges_dict)
+            print('\n')
+
+            for dgr_id, dgr_data in self.DGRs_found_dict.items():
+                # Add bin info to TR
+                tr_start, tr_end = dgr_data['TR_start_position'], dgr_data['TR_end_position']
+                dgr_data['TR_bin'] = self.add_bin_info(tr_start, tr_end, dgr_id, None, bin_ranges_dict)
+
+                for vr_id, vr_data in dgr_data['VRs'].items():
+                    # Add bin info to VR
+                    vr_start, vr_end = vr_data['VR_start_position'], vr_data['VR_end_position']
+                    vr_data['VR_bin'] = self.add_bin_info(vr_start, vr_end, dgr_id, vr_id, bin_ranges_dict)
+
+            print('\n')
+            print('DGR found dict with bin info')
+            print(self.DGRs_found_dict)
+
+            #Initialize a new dictionary to store filtered DGRs
+            filtered_dgrs = {}
+
+            # Iterate over DGRs_found_dict and filter TR and VR pairs in the same bin
+            for dgr_name, dgr_data in self.DGRs_found_dict.items():
+                tr_bin_info = dgr_data.get('TR_bin')
+                print(f"Processing {dgr_name}: tr_bin_info = {tr_bin_info}")
+
+                if tr_bin_info is None:
+                    continue  # Skip if TR does not have bin info
+
+                filtered_vrs = {}
+                for vr_name, vr_data in dgr_data.get('VRs', {}).items():
+                    vr_bin_info = vr_data.get('VR_bin')
+                    print(f"  Checking VR {vr_name} of {dgr_name}: vr_bin_info = {vr_bin_info}")
+                    if vr_bin_info == tr_bin_info:
+                        filtered_vrs[vr_name] = vr_data
+                        print(f"    Including VR {vr_name} in {dgr_name} because vr_bin {vr_bin_info} == tr_bin {tr_bin_info}")
+
+                # Add to filtered_dgrs only if there are matching VRs
+                if filtered_vrs:
+                    filtered_dgrs[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
+
+                print(filtered_dgrs)
+
+            profile_db.disconnect()
+            contig_db.disconnect()
+
+            return
+
 
     def create_found_tr_vr_csv(self):
         """
@@ -1215,6 +1348,7 @@ class DGR_Finder:
                 ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
                 ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
                 ("Discovery mode", self.discovery_mode if self.discovery_mode else "FALSE"),
+                ("Metagenomics Contigs Mode", self.metagenomics_contigs_mode if self.metagenomics_contigs_mode else "FALSE"),
                 ("Output Directoy", self.output_directory if self.output_directory else "default")
             ]
 
@@ -1228,6 +1362,9 @@ class DGR_Finder:
         self.get_blast_results()
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
+        if self.metagenomics_contigs_mode:
+            self.run.info_single("Running metagenomics mode")
+            self.collections_mode()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.")
             self.run.info_single('\n')
