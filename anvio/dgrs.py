@@ -1154,7 +1154,7 @@ class DGR_Finder:
                     break
             if bin_info:
                 break
-        
+
         return bin_info
 
 
@@ -1174,7 +1174,6 @@ class DGR_Finder:
                 A dictionary containing the template and variable regions
 
             """
-            print('I have made it into the function')
 
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
             contig_db = dbops.ContigsDatabase(self.contigs_db_path)
@@ -1183,12 +1182,10 @@ class DGR_Finder:
             where_clause = f'''collection_name == "{self.collections_given}"'''
             self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
                 error_if_no_data=True)
-            print("Split Collections dictionary:", self.split_collections_dict)
 
             splits_list = []
             for key, value in self.split_collections_dict.items():
                 splits_list.append(value['split'])
-            print(splits_list)
 
             #Construct the where_clause for the new SQL query
             splits_str = ', '.join(f'"{split}"' for split in splits_list)
@@ -1197,8 +1194,6 @@ class DGR_Finder:
             # Retrieve rows from the splits basic info database using the new where_clause, to get the splits in the given collection
             self.splits_in_collections_dict = contig_db.db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_splits,
                 error_if_no_data=True)
-            # Output the filtered rows
-            print("Split in Collections dictionary:",self.splits_in_collections_dict)
 
             # Add bin_name to the final dictionary
             for split, info in self.splits_in_collections_dict.items():
@@ -1208,8 +1203,6 @@ class DGR_Finder:
                         #need to also add in if start or end of split is inside the bin range
                         break
 
-            print('\n')
-            print("splits in collections dictionary with bin info: self.", self.splits_in_collections_dict)
             from collections import defaultdict
             #create a dictionary of ranges of all the start and stop positions in a bin.
             bin_ranges_dict = defaultdict(list)
@@ -1224,9 +1217,6 @@ class DGR_Finder:
             for bin_name in bin_ranges_dict:
                 bin_ranges_dict[bin_name].sort()
 
-            print("printing bin ranges dict", bin_ranges_dict)
-            print('\n')
-
             for dgr_id, dgr_data in self.DGRs_found_dict.items():
                 # Add bin info to TR
                 tr_start, tr_end = dgr_data['TR_start_position'], dgr_data['TR_end_position']
@@ -1237,12 +1227,8 @@ class DGR_Finder:
                     vr_start, vr_end = vr_data['VR_start_position'], vr_data['VR_end_position']
                     vr_data['VR_bin'] = self.add_bin_info(vr_start, vr_end, dgr_id, vr_id, bin_ranges_dict)
 
-            print('\n')
-            print('DGR found dict with bin info')
-            print(self.DGRs_found_dict)
-
             #Initialize a new dictionary to store filtered DGRs
-            filtered_dgrs = {}
+            self.dgrs_in_collections = {}
 
             # Iterate over DGRs_found_dict and filter TR and VR pairs in the same bin
             for dgr_name, dgr_data in self.DGRs_found_dict.items():
@@ -1262,9 +1248,9 @@ class DGR_Finder:
 
                 # Add to filtered_dgrs only if there are matching VRs
                 if filtered_vrs:
-                    filtered_dgrs[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
+                    self.dgrs_in_collections[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
 
-                print(filtered_dgrs)
+                print(self.dgrs_in_collections)
 
             profile_db.disconnect()
             contig_db.disconnect()
