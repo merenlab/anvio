@@ -1689,4 +1689,6 @@ class DGR_Finder:
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
+            self.recover_genomic_context_surrounding_dgrs()
+            self.report_genomic_context_surrounding_dgrs()
         return
