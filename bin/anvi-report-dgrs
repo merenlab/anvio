@@ -116,6 +116,19 @@ if __name__ == '__main__':
     groupG.add_argument("--metagenomics-contigs-mode", help="The flag to use that searches through specified splits that are in the collection that is specificed with the '-C / --collection' flag.", action = "store_true")
     groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the collection that you want to search for DGRs in"}))
 
+    groupH = parser.add_argument_group('REPORTING GENOMIC CONTEXT AROUND DGRS',
+                    "Once the DGRs are computed, anvi'o can go back to contigs where they are "
+                    "found, and for each DGR site report the surrounding genes and their functions as flat "
+                    "text files in the output directory so you can actually take quick look at them.")
+    groupH.add_argument('--skip-recovering-genomic-context', default=False, action="store_true", help="Of course "
+                    "you can skip this step because why should anyone have nice things.")
+    groupH.add_argument('--num-genes-to-consider-in-context', default=3, type=int, help="With this parameter you "
+                    "can adjust the number of genes anvi'o should consider to characterize the genomic context "
+                    "surrounding dgrs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs "
+                    "VR and 3 genes downstream of each VR. If there are not "
+                    "enough genes in the contig given the position of either of the VRs, anvio' will "
+                    "report whatever it can.", metavar="INT")
+
     args = parser.get_args(parser)
 
 
