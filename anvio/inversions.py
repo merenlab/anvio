@@ -988,7 +988,7 @@ class Inversions:
         if not len(function_sources_found):
             self.run.warning("There are no functions for genes in your contigs database :/ Your reports on the "
                              "genomic context that surrounds consensus inversions will not have any functions "
-                             "for gnes. PITY.")
+                             "for genes. PITY.")
 
 
         self.progress.new('Recovering genomic context surrounding inversions', progress_total_items=len(self.consensus_inversions))
@@ -1021,7 +1021,7 @@ class Inversions:
                 inversions_with_no_gene_calls_around.add(inversion_id)
                 continue
 
-            # here we will find out what is hte closes genes to the beginning of the first palindrome
+            # here we will find out what are the closest genes to the beginning of the first palindrome
             # inversion and end of the second palindrome
             min_distance_to_first_start, min_distance_to_second_end = float('inf'), float('inf')
             closest_gene_call_to_first_start, closest_gene_call_to_second_end = None, None
