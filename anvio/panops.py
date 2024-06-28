@@ -1655,44 +1655,67 @@ class Pangraph():
 
         self.run.warning(None, header="Building maximum branching graph M of G", lc="green")
 
-        add_start = []
-        for node in self.pangenome_graph.nodes():
-            if len(list(self.pangenome_graph.predecessors(node))) == 0:
-                add_start.append(node)
-
-        self.pangenome_graph.add_node(
-            'start',
-            name='start',
-            pos=(0, 0),
-            weight=len(self.genomes),
-            layer={},
-            genome={genome: {'draw': 'on'} for genome in self.genomes}
-        )
-
-        for u in add_start:
-
-            weight = self.pangenome_graph.nodes[u]['weight']
-            genomes = self.pangenome_graph.nodes[u]['genome'].keys()
-
-            self.pangenome_graph.add_edge(
-                *('start', u),
-                genome={genome: {'draw': 'on'} for genome in genomes},
-                weight=weight,
-                bended=[],
-                direction='R'
-            )
-
         selfloops = list(nx.selfloop_edges(self.pangenome_graph))
         self.run.info_single(f"Found and removed {pp(len(selfloops))} selfloop edge(s)")
         self.pangenome_graph.remove_edges_from(selfloops)
 
-        self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
+        edmonds = nx.algorithms.tree.branchings.Edmonds(self.pangenome_graph)
+        self.edmonds_graph = edmonds.find_optimum(
+            attr="weight",
+            default=1,
+            kind="max",
+            style="arborescence",
+            preserve_attrs=False,
+            partition=None,
+        )
+
+        # self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
+        
+        if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
+            self.run.info_single('No maximum aborescence. Entering failback mode.')
+            self.edmonds_graph = nx.DiGraph(self.edmonds_graph.subgraph(max(nx.weakly_connected_components(self.edmonds_graph), key=len)))
+            if nx.algorithms.tree.recognition.is_arborescence(temp):
+                self.run.info_single('Found aborescence. Proceed.')
+            else:
+                self.run.info_single('Failure. Exit.')
+                exit()
+
+        else:
+            self.run.info_single('Found aborescence. Proceed.')
+
         nx.set_edge_attributes(self.edmonds_graph, {(i, j): d for i, j, d in self.pangenome_graph.edges(data=True) if (i, j) in self.edmonds_graph.edges()})
         nx.set_node_attributes(self.edmonds_graph, {k: d for k, d in self.pangenome_graph.nodes(data=True) if k in self.edmonds_graph.nodes()})
 
+        add_start = []
+        for node in self.edmonds_graph.nodes():
+            if len(list(self.edmonds_graph.predecessors(node))) == 0:
+                add_start.append(node)
+
+        for graph in [self.pangenome_graph, self.edmonds_graph]:
+            graph.add_node(
+                'start',
+                name='start',
+                pos=(0, 0),
+                weight=len(self.genomes),
+                layer={},
+                genome={genome: {'draw': 'on'} for genome in self.genomes}
+            )
+
+            for u in add_start:
+
+                weight = graph.nodes[u]['weight']
+                genomes = graph.nodes[u]['genome'].keys()
+
+                graph.add_edge(
+                    *('start', u),
+                    genome={genome: {'draw': 'on'} for genome in genomes},
+                    weight=weight,
+                    bended=[],
+                    direction='R'
+                )
+        
         self.run.info_single(f"Removing {pp(len(self.pangenome_graph.edges()) - len(self.edmonds_graph.edges()))} edges from G to create M")
         self.run.info_single("Done")
-
 
     def find_next_branching_point(self, current):
         if current != 'start':
