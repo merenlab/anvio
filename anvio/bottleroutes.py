@@ -1518,8 +1518,8 @@ class BottleApplication(Bottle):
 
             total_branch_length = tree.get_farthest_leaf()[1]
 
-            return json.dumps({'scale_bar_value': total_branch_length})
         except Exception as e:
-            response = jsonify({'error': str(e)})
-            response.status_code = 500
-            return response
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+            
+        return json.dumps({'scale_bar_value': total_branch_length})
