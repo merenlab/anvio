@@ -24,6 +24,7 @@ import anvio.tables as t
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
 from anvio.variabilityops import NucleotidesEngine
+from anvio.summaryhtml import SummaryHTMLOutput
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -1634,10 +1635,157 @@ class DGR_Finder:
     def process_dgr_data_for_HTML_summary(self):
         """Take everything that is known, turn them into data that can be used from Django templates.
 
-        A lot of ugly/firhgtening things happening here to prepare coordinates for SVG objects to be displayed
+        A lot of ugly/frightening things happening here to prepare coordinates for SVG objects to be displayed
         or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
         IT DON'T LOOK AT IT. IT MIGHT MAKE YOU CRY
         """
+
+        # in which we will store all the static HTML output related stuff
+        self.summary = {}
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        self.summary['meta'] = {'summary_type': 'dgrs',
+                                'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
+                                #'num_samples': len(self.profile_db_paths) if self.metagenomics_contigs_mode else len(self.collections_given),
+                                'output_directory': self.output_directory,
+                                'genomic_context_recovered': not self.skip_recovering_genomic_context,
+                                #'inversion_activity_computed': not self.skip_compute_inversion_activity,
+                                # if no function source, it says 'the contigs.db' because it fits with the message
+                                # displayed in the final index.html. See the inversion template, line 215
+                                # if it works, it works
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
+        contigs_db.disconnect()
+
+        self.summary['files'] = {'Putative DGRs': 'Putative DGRs.txt'}
+        self.summary['dgrs'] = {}
+
+        for dgr_key, dgr_data in self.DGRs_found_dict.items():
+            # Assuming dgr_key itself is the dgr_id or a dictionary containing it
+            dgr_id = dgr_key
+
+            self.summary['dgrs'][dgr_id] = {'dgr_data': copy.deepcopy(dgr_data)}
+
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+
+                # Ensure the dictionary structure for the VR exists
+                if 'VRs' not in self.summary['dgrs'][dgr_id]['dgr_data']:
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = {}
+
+                self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id] = {}
+
+                if self.skip_recovering_genomic_context:
+                    pass
+                else:
+                    # we will get a deepcopy of the gene context associated with the inversion
+                    tr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[dgr_id])
+                    vr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[dgr_id])
+
+                    # then we will learn about these so we can transform the coordinates of anything we wish
+                    # to display in the output
+                    genomic_context_start_tr = tr_genes[0]['start'] - 100
+                    genomic_context_end_tr = tr_genes[-1]['stop'] + 100
+                    genomic_context_start_vr = vr_genes[0]['start'] - 100
+                    genomic_context_end_vr = vr_genes[-1]['stop'] + 100
+
+                    # this is our magic number, which is matching to the actual width of the genomic context
+                    # display in the static HTML output. we will have to transfrom start-stop coordinates
+                    # of each gene to this value.
+                    new_context_length = 1000
+
+                    # how big the gene arros should be (in an ideal world -- see below the real world, Neo)
+                    default_gene_arrow_width = 20
+
+                    # before we start working on the genes, we will figure out the location of the inverted site
+                    # in the genomc context. here we quckly identify the transformed start and the end position
+                    # and store it in the inversion data dict
+                    tr_start = (int(dgr_data['TR_start_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                    tr_end  = (int(dgr_data['TR_end_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                    self.summary['dgrs'][dgr_id]['dgr_data']['TX'] = tr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['TW'] = tr_end - tr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['TT'] = tr_start + (tr_end - tr_start) / 2
+
+                    vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                    vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
+
+                    # here we will add transformed gene coordinates to the genes dict
+                    for gene in tr_genes:
+                        gene['start_tr_g'] = (gene['start'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                        gene['stop_tr_g'] = (gene['stop'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+
+                        if (gene['stop_tr_g'] - gene['start_tr_g']) < default_gene_arrow_width:
+                            # if we are here, it means the transformed length of the gene is already
+                            # shorter than the space we assign for the arrow to display gene calls.
+                            # this means we will only will be able to show an arrow, but even in that
+                            # case the `gene_arrow_width` may be too long to display (i.e., if the
+                            # transformed gene lenth is 10 and arrow is 15, we are already showing
+                            # too much). The solution is to make the gene nothing more but the arrow
+                            # but make the arrow width equal to the gene width
+                            gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
+                            gene['stop_tr_g'] = gene['start_tr_g']
+                            gene['RW'] = 0
+                        else:
+                            gene_arrow_width = default_gene_arrow_width
+                            gene['RW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
+
+                        if 'functions' in gene.keys():
+                            gene['has_functions'] = True
+                            gene['COLOR'] = '#008000'
+                        else:
+                            gene['has_functions'] = False
+                            gene['COLOR'] = '#c3c3c3'
+
+                        gene['RX'] = gene['start_tr_g']
+                        gene['CX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
+                        gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
+                        gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
+                        gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+
+                        for gene in vr_genes:
+                            gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                            gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_tr - genomic_context_start_vr) * new_context_length
+
+                            if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
+                                # if we are here, it means the transformed length of the gene is already
+                                # shorter than the space we assign for the arrow to display gene calls.
+                                # this means we will only will be able to show an arrow, but even in that
+                                # case the `gene_arrow_width` may be too long to display (i.e., if the
+                                # transformed gene lenth is 10 and arrow is 15, we are already showing
+                                # too much). The solution is to make the gene nothing more but the arrow
+                                # but make the arrow width equal to the gene width
+                                gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
+                                gene['stop_vr_g'] = gene['start_vr_g']
+                                gene['RW'] = 0
+                            else:
+                                gene_arrow_width = default_gene_arrow_width
+                                gene['RW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
+
+                            if 'functions' in gene.keys():
+                                gene['has_functions'] = True
+                                gene['COLOR'] = '#008000'
+                            else:
+                                gene['has_functions'] = False
+                                gene['COLOR'] = '#c3c3c3'
+
+                            gene['RX'] = gene['start_vr_g']
+                            gene['CX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
+                            gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
+                            gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
+                            gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+
+                            # and finally we will store this hot mess in our dictionary
+                            self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
+                            self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
+
+                            # also we need the path to the output files
+                            self.summary['files'][dgr_id] = {'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
+                                                                'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt')}
+                            self.summary['files'][dgr_id] = {'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
+                                                                        'functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')}
+
 
         return
 
