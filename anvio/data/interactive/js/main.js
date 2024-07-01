@@ -1659,6 +1659,7 @@ function serializeSettings(use_layer_names) {
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
     state['support-threshold'] = $('#support_threshold').val()
+    state['support-symbol-data'] = $('#support_symbol_data').val()
 
     state['support-show-operator'] = $('#support_show_operator').val()
     state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
@@ -2936,6 +2937,9 @@ function processState(state_name, state) {
     if(state.hasOwnProperty('support-threshold')){
         $('#support_threshold').val(state['support-threshold'])
     }
+    if(state.hasOwnProperty('support-symbol-data')){
+        $('#support_symbol_data').val(state['support-symbol-data'])
+    }
     if(state.hasOwnProperty('support-show-operator')){
         $('#support_show_operator').val(state['support-show-operator'])
     }
@@ -3267,6 +3271,19 @@ function checkMaxSupportValueSeen() {
             $('#show_threshold').css('display', 'flex');
             $('#second_support_symbol_color').css('display', 'none');
             $('#second_support_font_color').css('display', 'none');
+            $('#support_symbol_data').append($('<option>', {
+                value: 2,
+                text: 'bootstrap'
+            }));
+        }else{
+            $('#support_symbol_data').append($('<option>', {
+                value: 0,
+                text: 'bootstrap 0'
+            }));
+            $('#support_symbol_data').append($('<option>', {
+                value: 1,
+                text: 'bootstrap 1'
+            }));
         }
     }
 }
