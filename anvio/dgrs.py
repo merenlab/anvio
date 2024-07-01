@@ -1039,109 +1039,6 @@ class DGR_Finder:
                     ])
         return
 
-
-    def get_hmm_info(self):
-        """
-        This function creates a dictionary of the HMMs provided that are the closest to the template
-        regions, this is done by finding the middle of the template region and the middle of the HMM gene
-        and comparing those pairs to each other to find the shortest distance.
-        Parameters
-        ==========
-        DGRs_found_dict : dict
-            A dictionary containing the template and variable regions
-
-        Returns
-        =======
-        : csv
-            A csv tabular file containing the template and variable regions
-
-        """
-
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-        self.hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
-
-        found_HMMS_dict = {}
-        # go to hmm_hits, for every unique gene_caller_ids pick lowest e-value. now have gene callers ID
-        for index, entry in self.hmm_hits_dict.items():
-            if entry['source'] in self.hmm:
-                gene_callers_id = str(entry['gene_callers_id'])
-                gene_name = entry['gene_name']
-                e_value = entry['e_value']
-                HMM_source = entry['source']
-                if not gene_callers_id in found_HMMS_dict.keys():
-                    found_HMMS_dict[gene_callers_id] = {'gene_name':gene_name,
-                                                            'e_value':e_value,
-                                                            'HMM_source':HMM_source}
-                elif e_value < found_HMMS_dict[gene_callers_id]['e_value']:
-                    found_HMMS_dict[gene_callers_id]['gene_name'] = gene_name
-                    found_HMMS_dict[gene_callers_id]['e_value'] = e_value
-                    found_HMMS_dict[gene_callers_id]['HMM_source'] = HMM_source
-
-        # Check if the gene_caller_id exists in genes_in_contigs
-        for gene_callers_id, hmm_dict in found_HMMS_dict.items():
-            # Retrieve the 'start' and 'stop' values
-            int_gene_callers_id = int(gene_callers_id)
-            start_value = genes_in_contigs[int_gene_callers_id]['start']
-            stop_value = genes_in_contigs[int_gene_callers_id]['stop']
-            contig = genes_in_contigs[int_gene_callers_id]['contig']
-            gene_annotation_source = genes_in_contigs[int_gene_callers_id]['source']
-            direction = genes_in_contigs[int_gene_callers_id]['direction']
-
-            # add new info about each hmm
-            hmm_dict['HMM_start'] = start_value
-            hmm_dict['HMM_stop'] = stop_value
-            hmm_dict['HMM_Midpoint'] = int((start_value + stop_value)/2)
-            hmm_dict['contig'] = contig
-            hmm_dict['HMM_direction'] = direction
-            hmm_dict['Gene_annotation_source'] = gene_annotation_source
-
-            found_HMMS_dict[gene_callers_id] = hmm_dict
-
-        #look at general concensus TR in the level up so all the TRs have the same HMM if in the same DGR.
-        for DGR_id, DGR_info in self.DGRs_found_dict.items():
-            TR_start_position = DGR_info['TR_start_position']
-            TR_end_position = DGR_info['TR_end_position']
-            TR_middle_position = (TR_start_position + TR_end_position) / 2
-
-            # Initialize closest_distances dictionary inside the loop
-            closest_distances = {}  # Initialize an empty dictionary to store closest distances
-            HMM_found = False
-
-            for gene_callers_id, hmm_dict in found_HMMS_dict.items():
-                if DGR_info['TR_contig'] == hmm_dict['contig']:
-                    HMM_found = True
-                    HMM_midpoint = hmm_dict['HMM_Midpoint']
-                    distance = abs(TR_middle_position - HMM_midpoint)
-
-                    if not closest_distances:
-                        closest_distances = {'gene_callers_id': gene_callers_id, 'distance': distance}
-                    elif distance < closest_distances['distance']:
-                        closest_distances['gene_callers_id'] = gene_callers_id
-                        closest_distances['distance'] = distance
-            if not HMM_found:
-                HMM_gene_callers_id = ''
-                DGR_info['HMM_gene_callers_id'] = ''
-                DGR_info['distance_to_HMM'] = ''
-                DGR_info['HMM_start'] = ''
-                DGR_info['HMM_stop'] = ''
-                DGR_info['HMM_direction'] = ''
-                DGR_info['HMM_source'] = ''
-                DGR_info['HMM_gene_name'] = ''
-                DGR_info['HMM_gene_source'] = ''
-            else:
-                HMM_gene_callers_id = closest_distances['gene_callers_id']
-                DGR_info['HMM_gene_callers_id'] = HMM_gene_callers_id
-                DGR_info['distance_to_HMM'] = closest_distances['distance']
-                DGR_info['HMM_start'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_start']
-                DGR_info['HMM_stop'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_stop']
-                DGR_info['HMM_direction'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_direction']
-                DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
-                DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
-                DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
-        return
-
     # Function to add bin info if positions fall within bin ranges
     #TODO: have warning for DGR over two splits that are only in part of a collection. But ok if across 2 splits but both in same bin
     def add_bin_info(self, start_pos, end_pos, dgr_name, vr_name, bin_ranges_dict):
@@ -1250,15 +1147,128 @@ class DGR_Finder:
                 if filtered_vrs:
                     self.dgrs_in_collections[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
 
-                print(self.dgrs_in_collections)
+                self.get_hmm_info(self.dgrs_in_collections)
+
+                self.create_found_tr_vr_csv(self.dgrs_in_collections)
+
+                self.recover_genomic_context_surrounding_dgrs(self.dgrs_in_collections)
+
+                self.report_genomic_context_surrounding_dgrs(self.dgrs_in_collections)
+
 
             profile_db.disconnect()
             contig_db.disconnect()
 
             return
 
+    def get_hmm_info(self, dgrs_dict):
+        """
+        This function creates a dictionary of the HMMs provided that are the closest to the template
+        regions, this is done by finding the middle of the template region and the middle of the HMM gene
+        and comparing those pairs to each other to find the shortest distance.
+        Parameters
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
 
-    def create_found_tr_vr_csv(self):
+        Returns
+        =======
+        : csv
+            A csv tabular file containing the template and variable regions
+
+        """
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+
+        self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        self.hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
+
+        found_HMMS_dict = {}
+        # go to hmm_hits, for every unique gene_caller_ids pick lowest e-value. now have gene callers ID
+        for index, entry in self.hmm_hits_dict.items():
+            if entry['source'] in self.hmm:
+                gene_callers_id = str(entry['gene_callers_id'])
+                gene_name = entry['gene_name']
+                e_value = entry['e_value']
+                HMM_source = entry['source']
+                if not gene_callers_id in found_HMMS_dict.keys():
+                    found_HMMS_dict[gene_callers_id] = {'gene_name':gene_name,
+                                                            'e_value':e_value,
+                                                            'HMM_source':HMM_source}
+                elif e_value < found_HMMS_dict[gene_callers_id]['e_value']:
+                    found_HMMS_dict[gene_callers_id]['gene_name'] = gene_name
+                    found_HMMS_dict[gene_callers_id]['e_value'] = e_value
+                    found_HMMS_dict[gene_callers_id]['HMM_source'] = HMM_source
+
+        # Check if the gene_caller_id exists in genes_in_contigs
+        for gene_callers_id, hmm_dict in found_HMMS_dict.items():
+            # Retrieve the 'start' and 'stop' values
+            int_gene_callers_id = int(gene_callers_id)
+            start_value = genes_in_contigs[int_gene_callers_id]['start']
+            stop_value = genes_in_contigs[int_gene_callers_id]['stop']
+            contig = genes_in_contigs[int_gene_callers_id]['contig']
+            gene_annotation_source = genes_in_contigs[int_gene_callers_id]['source']
+            direction = genes_in_contigs[int_gene_callers_id]['direction']
+
+            # add new info about each hmm
+            hmm_dict['HMM_start'] = start_value
+            hmm_dict['HMM_stop'] = stop_value
+            hmm_dict['HMM_Midpoint'] = int((start_value + stop_value)/2)
+            hmm_dict['contig'] = contig
+            hmm_dict['HMM_direction'] = direction
+            hmm_dict['Gene_annotation_source'] = gene_annotation_source
+
+            found_HMMS_dict[gene_callers_id] = hmm_dict
+
+        #look at general concensus TR in the level up so all the TRs have the same HMM if in the same DGR.
+        for DGR_id, DGR_info in dgrs_dict.items():
+            TR_start_position = DGR_info['TR_start_position']
+            TR_end_position = DGR_info['TR_end_position']
+            TR_middle_position = (TR_start_position + TR_end_position) / 2
+
+            # Initialize closest_distances dictionary inside the loop
+            closest_distances = {}  # Initialize an empty dictionary to store closest distances
+            HMM_found = False
+
+            for gene_callers_id, hmm_dict in found_HMMS_dict.items():
+                if DGR_info['TR_contig'] == hmm_dict['contig']:
+                    HMM_found = True
+                    HMM_midpoint = hmm_dict['HMM_Midpoint']
+                    distance = abs(TR_middle_position - HMM_midpoint)
+
+                    if not closest_distances:
+                        closest_distances = {'gene_callers_id': gene_callers_id, 'distance': distance}
+                    elif distance < closest_distances['distance']:
+                        closest_distances['gene_callers_id'] = gene_callers_id
+                        closest_distances['distance'] = distance
+
+            if not HMM_found:
+                HMM_gene_callers_id = ''
+                DGR_info['HMM_gene_callers_id'] = ''
+                DGR_info['distance_to_HMM'] = ''
+                DGR_info['HMM_start'] = ''
+                DGR_info['HMM_stop'] = ''
+                DGR_info['HMM_direction'] = ''
+                DGR_info['HMM_source'] = ''
+                DGR_info['HMM_gene_name'] = ''
+                DGR_info['HMM_gene_source'] = ''
+            else:
+                HMM_gene_callers_id = closest_distances['gene_callers_id']
+                DGR_info['HMM_gene_callers_id'] = HMM_gene_callers_id
+                DGR_info['distance_to_HMM'] = closest_distances['distance']
+                DGR_info['HMM_start'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_start']
+                DGR_info['HMM_stop'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_stop']
+                DGR_info['HMM_direction'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_direction']
+                DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
+                DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
+                DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
+
+
+        return
+
+
+
+    def create_found_tr_vr_csv(self, dgrs_dict):
         """
         This function creates a csv tabular format of the template and variable regions that are found from this tool.
         Parameters
@@ -1272,38 +1282,45 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
-        if not self.DGRs_found_dict:
+        if not self.DGRs_found_dict and not self.dgrs_in_collections:
             raise ConfigError("No DGRS were found so no output file will be written :(")
 
         output_directory_path = self.output_directory
-        output_path_dgrs = os.path.join(output_directory_path, "DGRs_found.csv")
+
+        if dgrs_dict == self.DGRs_found_dict:
+            output_path_dgrs = os.path.join(output_directory_path, "DGRs_found.csv")
+            headers = ["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "Mismatch %",
+                    "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "HMM_source",
+                    "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
+        elif dgrs_dict == self.dgrs_in_collections:
+            # Create new directory for DGRs_found_in_collections
+            self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
+            if not os.path.exists(self.collections_dir):
+                os.makedirs(self.collections_dir)
+            output_path_dgrs = os.path.join(self.collections_dir, "DGRs_found_with_collections_mode.csv")
+            headers = ["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
+                    "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
+                    "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
+        else:
+            raise ValueError("Bloomin heck. Unknown dictionary passed to create_found_tr_vr_csv. You might be trying to hack anvi'o please look into the code base more thoroughly")
+
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(headers)
 
-            # Write header
-            csv_writer.writerow(["DGR", "VR", "VR_contig", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "Mismatch %",
-                                "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position","HMM_source",
-                                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop",  "HMM_gene_callers_id"])
-
-            for dgr, tr in self.DGRs_found_dict.items():
+            for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    # Access the closest_HMM dictionary within each VR
-                    closest_hmm_dict = tr.get('closest_HMM', {})
-
-                    # Write VR data to CSV
                     csv_row = [dgr, vr, vr_data['VR_contig'], vr_data['VR_sequence'], vr_data['midline'],
-                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data['percentage_of_mismatches'],
+                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data.get('VR_bin', ''), vr_data['percentage_of_mismatches'],
                             tr['TR_contig'], vr_data['TR_sequence'], tr['base'], tr['TR_reverse_complement'],
-                            vr_data['TR_start_position'], vr_data['TR_end_position'], tr['HMM_source'], tr["distance_to_HMM"],
+                            vr_data['TR_start_position'], vr_data['TR_end_position'], tr.get('TR_bin', ''), tr['HMM_source'], tr["distance_to_HMM"],
                             tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"], tr["HMM_stop"], tr["HMM_gene_callers_id"]]
-
-                    # Write the CSV row
                     csv_writer.writerow(csv_row)
             return
 
 
 
-    def recover_genomic_context_surrounding_dgrs(self):
+    def recover_genomic_context_surrounding_dgrs(self, dgrs_dict):
         """Learn about what surrounds the variable region sites of each found DGR"""
 
         # in which we will store the genomic context that surrounds dgrs for downstream fun
@@ -1344,7 +1361,7 @@ class DGR_Finder:
         vrs_with_no_gene_calls_around = set([])
 
 
-        for dgr_key, dgr_data in self.DGRs_found_dict.items():
+        for dgr_key, dgr_data in dgrs_dict.items():
             dgr_id = dgr_key
             self.progress.update(f"{dgr_id}", increment=True)
 
@@ -1426,9 +1443,6 @@ class DGR_Finder:
                 VR_contig = vr_data.get('VR_contig')
                 VR_start = vr_data.get('VR_start_position')
                 VR_end = vr_data.get('VR_end_position')
-                print('VR_contg:', VR_contig)
-                print('VR_start:', VR_start)
-                print('VR_end:', VR_end)
 
                 # Initialize VR context
                 vr_context_genes = []
@@ -1499,7 +1513,7 @@ class DGR_Finder:
         self.progress.end()
         print('Completed recovering genomic context surrounding the DGRs')
 
-        self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(self.DGRs_found_dict))}",
+        self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
                     f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
                     f"And recovered for {PL('VR', len(self.genomic_context_surrounding_dgrs[vr_id]))}",
                     nl_before=1,
@@ -1512,14 +1526,14 @@ class DGR_Finder:
             print('No gene calls around the following VRs:', vrs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(vrs_with_no_gene_calls_around)}.")
 
         if not len(self.genomic_context_surrounding_dgrs):
-            self.run.warning(f"Even though the tool went through all {PL('DGR', len(self.DGRs_found_dict))} "
+            self.run.warning(f"Even though the tool went through all {PL('DGR', len(dgrs_dict))} "
                             f"it was unable to recover any genomic context for any of them. So your final reports will "
                             f"not include any insights into the surrounding genomic context of DGRs (but otherwise "
                             f"you will be fine).")
 
 
 
-    def report_genomic_context_surrounding_dgrs(self):
+    def report_genomic_context_surrounding_dgrs(self, dgrs_dict):
         """
         Reports two long-format output files for genes and functions around inversion
         STOLEN (modified) FROM INVERSIONS CODE (line 1925)
@@ -1538,12 +1552,16 @@ class DGR_Finder:
         functions_output_headers = ["gene_callers_id", "source", 'accession', 'function']
 
         # Process each DGR and its VRs
-        for dgr_key, dgr_data in self.DGRs_found_dict.items():
+        for dgr_key, dgr_data in dgrs_dict.items():
             # Assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key  # If dgr_key is the dgr_id itself
 
             # Create output directory for DGR
-            dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
+            if dgrs_dict == self.DGRs_found_dict:
+                dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
+            elif dgrs_dict == self.dgrs_in_collections:
+                dgr_directory = os.path.join(self.collections_dir, "PER_DGR", dgr_id)
+
             filesnpaths.gen_output_directory(dgr_directory, delete_if_exists=False)
 
             # TR output paths
@@ -1687,8 +1705,9 @@ class DGR_Finder:
             self.run.info_single('\n')
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
-            self.get_hmm_info()
-            self.create_found_tr_vr_csv()
-            self.recover_genomic_context_surrounding_dgrs()
-            self.report_genomic_context_surrounding_dgrs()
+            self.get_hmm_info(self.DGRs_found_dict)
+            self.create_found_tr_vr_csv(self.DGRs_found_dict) #TODO: check if this works if the dictionary is empty or do you need a different method?
+            self.recover_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
+            self.report_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
+            self.process_dgr_data_for_HTML_summary()
         return
