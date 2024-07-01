@@ -582,7 +582,7 @@
                                         </div>
                                 </div>
 
-                            <div class="manual-mode">    
+                            <div class="manual-mode full-mode">
                             <span class="settings-secondary-header" >Branch Support</span>
                                 <div class="form-group form-margin d-flex mt-3">
                                     <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
@@ -600,12 +600,80 @@
                                     tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
                                 </div>
                                 <div id="support_value_params">
+                                    <div class="alert alert-info full-mode" role="alert">
+                                        If you are seeing a proper Dendrogram tree on your display and lacking support values, You need to change your Order in Main Menu, <b> ITEMS > ORDER > Tree</b>.
+                                    </div>
                                     <div class="form-group form-margin d-flex">
                                         <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-6 form-inline input-align d-flex">
                                             <input class="form-control input-xs col-3" type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
                                             <span class="ml-1">to</span>
                                             <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin align-items-center" id='show_threshold' style="display: none;">
+                                        <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Threshold:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin align-items-center ml-1" id='show_multiple_range' style="display: flex;">
+                                        <label class="col-2 settings-label d-flex" for="show-multiple-range" data-help="support-value-input">Multiple thresholds:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#define-range-modal">
+                                                Define Ranges
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Define Range Modal -->
+                                    <div class="modal fade" id="define-range-modal" tabindex="-1" role="dialog" aria-labelledby="define-range-modal-label" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                            <h5 class="modal-title" id="define-range-modal-label">Define multiple threshold ranges</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info" role="alert">
+                                                    Define custom display thresholds for different metadata sources.
+                                                    These ranges will be applied using the selected operator for Symbol and Text display types.
+                                                </div>
+                                                <hr>
+                                                <div class="form-group form-margin align-items-center" id='show_operator' style="display: flex;">
+                                                    <label class="col-2 settings-label d-flex" for="support-show-operator" data-help="support-show-operator">Operator:</label>
+                                                    <div class="col-6 align-items-center input-align d-flex">
+                                                        <select class="custom-select col-12" id="support_show_operator">
+                                                            <option value="AND">AND</option>
+                                                            <option value="OR">OR</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap0:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap1:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="button" class="btn btn-success" onclick="drawTree();">Update threshold</button>
+                                            </div>
+                                        </div>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
@@ -634,22 +702,17 @@
                                                 <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
                                             </div>
                                         </div>
-                                        <div class="form-group form-margin" id="support_symbol" style="display: flex;">
-                                            <label class="col-3 settings-label d-flex" for="multiple_support_symbol" data-help="support-value-checkbox">Multiple Support:</label>
-                                            <div class="col-4 input-align d-flex">
-                                                <input type="checkbox" id="multiple_support_symbol" style="float: left;" name="multiple-support-symbol" onclick="if (this.checked) { $('#second_support_symbol_color').show();} else { $('#second_support_symbol_color').hide(); }">
-                                            </div>
-                                        </div>
                                         <div class="form-group form-margin">
                                             <div class="form-group form-margin" style="display: flex;">
                                                 <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
                                                 <div class="col-1 input-align d-flex">
                                                     <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; min-width: 16px;"></div>
                                                 </div>
-                                                <div class="input-align d-flex">
+                                                <div class="input-align">
                                                     <div id="second_support_symbol_color"
                                                         class="colorpicker"
                                                         color="#2bab00"
+                                                        style="display: flex;"
                                                         >
                                                     </div>
                                                 </div>
@@ -667,17 +730,27 @@
                                                 >
                                         </div>
                                     </div>
-                                    <div id="show-text-option" class="" style="display: block;">
+                                    <div id="show-text-option" class="form-group form-margin">
                                         <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
                                             <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
                                             <div class="col-6 align-items-center input-align d-flex">
                                                 <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
                                             </div>
                                         </div>
-                                        <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
-                                            <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Threshold:</label>
-                                            <div class="col-6 align-items-center input-align d-flex">
-                                                <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
+                                        <div class="form-group form-margin">
+                                            <div class="form-group form-margin" style="display: flex;">
+                                                <label class="col-3 settings-label d-flex" for="support_font_size" data-help="support-value-checkbox">Font Color:</label>
+                                                <div class="col-1 input-align d-flex">
+                                                    <div id="support_font_color" class="colorpicker" color="#2bab00" style="background-color:#2bab00; min-width: 16px;"></div>
+                                                </div>
+                                                <div class="input-align d-flex">
+                                                    <div id="second_support_font_color"
+                                                        class="colorpicker"
+                                                        color="#AA0000"
+                                                        style="display: flex;"
+                                                        >
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>

@@ -144,7 +144,7 @@ function get_gene_functions_table_html(gene){
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -217,7 +217,7 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';

@@ -80,6 +80,7 @@ var bbox;
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
 var min_branch_support_value_seen = null;
+var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
@@ -366,9 +367,6 @@ function initData() {
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
     $('#show-text-option').hide()
-
-    // disabled support_display_symbol initially
-    $('#support_display_symbol').prop('disabled', true);
 }
 
 function drawInlineScaleBar() {
@@ -1656,9 +1654,18 @@ function serializeSettings(use_layer_names) {
     state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
+    state['support-font-color'] = $('#support_font_color').attr('color')
+    state['second-support-font-color'] = $('#second_support_font_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
     state['support-threshold'] = $('#support_threshold').val()
+
+    state['support-show-operator'] = $('#support_show_operator').val()
+    state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
+    state['support-bootstrap0-range-high'] = $('#support_bootstrap0_range_high').val()
+    state['support-bootstrap1-range-low'] = $('#support_bootstrap1_range_low').val()
+    state['support-bootstrap1-range-high'] = $('#support_bootstrap1_range_high').val()
+
 
     // sync views object and layers table
     syncViews();
@@ -2125,8 +2132,13 @@ async function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
-                _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
+                var geneClustersElement = $(bin).find('.num-gene-clusters');        
+                if (geneClustersElement.length > 0) {
+                    _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
+                } else {
+                    console.log("geneClustersElement not found");
+                }
+                _bin_info['gene-calls'] = $(bin).find('.num-gene-calls input').val();
             } else {
                 _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
                 _bin_info['contig-count'] = $(bin).find('.num-items input').val();
@@ -2895,6 +2907,14 @@ function processState(state_name, state) {
         $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
         $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
     }
+    if (state.hasOwnProperty('support-symbol-color')){
+        $('#support_font_color').attr('color', state['support-font-color'])
+        $('#support_font_color').css('background-color', state['support-font-color'])
+    }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_font_color').attr('color', state['second-support-font-color'])
+        $('#second_support_font_color').css('background-color', state['second-support-font-color'])
+    }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
     }
@@ -2915,6 +2935,21 @@ function processState(state_name, state) {
     }
     if(state.hasOwnProperty('support-threshold')){
         $('#support_threshold').val(state['support-threshold'])
+    }
+    if(state.hasOwnProperty('support-show-operator')){
+        $('#support_show_operator').val(state['support-show-operator'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-low')){
+        $('#support_bootstrap0_range_low').val(state['support-bootstrap0-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-high')){
+        $('#support_bootstrap0_range_high').val(state['support-bootstrap0-range-high'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-low')){
+        $('#support_bootstrap1_range_low').val(state['support-bootstrap1-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-high')){
+        $('#support_bootstrap1_range_high').val(state['support-bootstrap1-range-high'])
     }
 
     // reload layers
@@ -3225,6 +3260,14 @@ function checkMaxSupportValueSeen() {
         // set the min/max values since we clearly know them by now.
         $('#support_range_low').val(min_branch_support_value_seen);
         $('#support_range_high').val(max_branch_support_value_seen);
+
+        // multiple thresholds option
+        if(!multiple_support_value_seen){
+            $('#show_multiple_range').css('display', 'none');
+            $('#show_threshold').css('display', 'flex');
+            $('#second_support_symbol_color').css('display', 'none');
+            $('#second_support_font_color').css('display', 'none');
+        }
     }
 }
 
