@@ -202,6 +202,8 @@ $(document).ready(function() {
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
     }
 
+    scaleBarDrawer();
+
     initData();
         // Sidebar Hide/Show button 
         $(".sidebar-toggle").click(function() {
@@ -367,6 +369,58 @@ function initData() {
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
     $('#show-text-option').hide()
+}
+
+function scaleBarDrawer(){
+    const panelCenter = document.getElementById('panel-center');
+    const scaleValue = document.getElementById('scale-value');
+    const scaleBar = document.getElementById('scale-bar');
+    
+    let scale = 1;
+    let step = 0;
+    const stepsPerUpdate = 10;
+    const minScaleBarWidth = 40;
+    const maxScaleBarWidth = 100;
+
+    const updateScaleBar = () => {
+        const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
+        scaleValue.textContent = scale.toFixed(decimalPlaces);
+
+        if (Number.isInteger(Math.log10(scale))) {
+            // If scale is a power of 10, set the width to minScaleBarWidth
+            scaleBar.style.width = `${minScaleBarWidth}px`;
+        } else {
+            // Calculate the scale bar width based on the scale
+            const scaleBarWidth = minScaleBarWidth + ((maxScaleBarWidth - minScaleBarWidth) * Math.log10(scale));
+            scaleBar.style.width = `${scaleBarWidth}px`;
+        }
+    };
+
+    const onWheel = (event) => {
+        event.preventDefault();
+
+        if (event.deltaY < 0) {
+            // Zoom in
+            step--;
+        } else {
+            // Zoom out
+            step++;
+        }
+
+        if (Math.abs(step) >= stepsPerUpdate) {
+            if (step < 0) {
+                scale /= 10;
+            } else {
+                scale *= 10;
+            }
+            step = 0; // Reset step after updating the scale
+        }
+
+        updateScaleBar();
+    };
+
+    panelCenter.addEventListener('wheel', onWheel);
+    updateScaleBar();
 }
 
 function drawInlineScaleBar() {
