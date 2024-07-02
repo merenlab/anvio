@@ -791,7 +791,8 @@ Drawer.prototype.draw_internal_node = function(p) {
         thresholdValue: this.settings['support-threshold'],
         thresholdOperator: this.settings['support-show-operator'],
         thresholdRange0 : [this.settings['support-bootstrap0-range-low'], this.settings['support-bootstrap0-range-high']],
-        thresholdRange1: [this.settings['support-bootstrap1-range-low'], this.settings['support-bootstrap1-range-high']]
+        thresholdRange1: [this.settings['support-bootstrap1-range-low'], this.settings['support-bootstrap1-range-high']],
+        symbolDataSource: this.settings['support-symbol-data']
     }
 
     if (this.settings['tree-type'] == 'circlephylogram')

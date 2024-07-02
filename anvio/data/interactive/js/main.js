@@ -202,6 +202,8 @@ $(document).ready(function() {
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
     }
 
+    scaleBarDrawer();
+
     initData();
         // Sidebar Hide/Show button 
         $(".sidebar-toggle").click(function() {
@@ -333,6 +335,9 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            // Scale bar on the sidebar
+            drawInlineScaleBar();
+
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
 
             // redoing intiial bin causes some weird behaviors
@@ -364,6 +369,99 @@ function initData() {
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
     $('#show-text-option').hide()
+}
+
+function scaleBarDrawer(){
+    const panelCenter = document.getElementById('panel-center');
+    const scaleValue = document.getElementById('scale-value');
+    const scaleBar = document.getElementById('scale-bar');
+    
+    let scale = 1;
+    let step = 0;
+    const stepsPerUpdate = 10;
+    const minScaleBarWidth = 40;
+    const maxScaleBarWidth = 100;
+
+    const updateScaleBar = () => {
+        const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
+        scaleValue.textContent = scale.toFixed(decimalPlaces);
+
+        if (Number.isInteger(Math.log10(scale))) {
+            // If scale is a power of 10, set the width to minScaleBarWidth
+            scaleBar.style.width = `${minScaleBarWidth}px`;
+        } else {
+            // Calculate the scale bar width based on the scale
+            const scaleBarWidth = minScaleBarWidth + ((maxScaleBarWidth - minScaleBarWidth) * Math.log10(scale));
+            scaleBar.style.width = `${scaleBarWidth}px`;
+        }
+    };
+
+    const onWheel = (event) => {
+        event.preventDefault();
+
+        if (event.deltaY < 0) {
+            // Zoom in
+            step--;
+        } else {
+            // Zoom out
+            step++;
+        }
+
+        if (Math.abs(step) >= stepsPerUpdate) {
+            if (step < 0) {
+                scale /= 10;
+            } else {
+                scale *= 10;
+            }
+            step = 0; // Reset step after updating the scale
+        }
+
+        updateScaleBar();
+    };
+
+    panelCenter.addEventListener('wheel', onWheel);
+    updateScaleBar();
+}
+
+function drawInlineScaleBar() {
+    var settings = serializeSettings();
+
+    try {
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_scale_bar',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            }),
+            success: function(data) {
+                var scale_bar_value = data['scale_bar_value'];
+                console.log("Max Branch Length:", scale_bar_value);
+
+                if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+
+                    var scale_bar = document.getElementById('scale-bar-scope');
+                    if (!scale_bar) {
+                        console.error('Scale bar element with id scale-bar-scope not found');
+                        return;
+                    }
+                    var scaleValue = (scale_bar_value).toFixed(2);
+
+                    // Create a text node with the scale value
+                    var textNode = document.createTextNode(scaleValue);
+
+                    // Append the text node to the scale bar element
+                    scale_bar.appendChild(textNode);
+                }
+            },
+            error: function(error) {
+                console.error('Error:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -1615,6 +1713,7 @@ function serializeSettings(use_layer_names) {
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
     state['support-threshold'] = $('#support_threshold').val()
+    state['support-symbol-data'] = $('#support_symbol_data').val()
 
     state['support-show-operator'] = $('#support_show_operator').val()
     state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
@@ -1737,7 +1836,9 @@ function drawTree() {
     document.getElementById('svg').innerHTML = "";
 
     // Drawing time toasted to the user
-    toastr.success("<span id='draw_delta_time'></span>");
+    if (!document.getElementById('draw_delta_time')) {
+        toastr.success("<span id='draw_delta_time'></span>");
+    }
 
     waitingDialog.show('Drawing ...',
         {
@@ -2890,6 +2991,9 @@ function processState(state_name, state) {
     if(state.hasOwnProperty('support-threshold')){
         $('#support_threshold').val(state['support-threshold'])
     }
+    if(state.hasOwnProperty('support-symbol-data')){
+        $('#support_symbol_data').val(state['support-symbol-data'])
+    }
     if(state.hasOwnProperty('support-show-operator')){
         $('#support_show_operator').val(state['support-show-operator'])
     }
@@ -3221,6 +3325,19 @@ function checkMaxSupportValueSeen() {
             $('#show_threshold').css('display', 'flex');
             $('#second_support_symbol_color').css('display', 'none');
             $('#second_support_font_color').css('display', 'none');
+            $('#support_symbol_data').append($('<option>', {
+                value: 2,
+                text: 'bootstrap'
+            }));
+        }else{
+            $('#support_symbol_data').append($('<option>', {
+                value: 0,
+                text: 'bootstrap 0'
+            }));
+            $('#support_symbol_data').append($('<option>', {
+                value: 1,
+                text: 'bootstrap 1'
+            }));
         }
     }
 }
