@@ -1754,7 +1754,8 @@ class DGR_Finder:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'dgrs',
-                                'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
+                                #'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
+                                'num_dgrs': len(self.DGRs_found_dict),
                                 #'num_samples': len(self.profile_db_paths) if self.metagenomics_contigs_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
@@ -1765,7 +1766,10 @@ class DGR_Finder:
                                 'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
 
-        self.summary['files'] = {'Putative DGRs': 'Putative DGRs.txt'}
+        print("Configured Summary Type:", self.summary['meta']['summary_type'])
+
+
+        self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
 
         for dgr_key, dgr_data in self.DGRs_found_dict.items():
@@ -1835,10 +1839,10 @@ class DGR_Finder:
                             # but make the arrow width equal to the gene width
                             gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
                             gene['stop_tr_g'] = gene['start_tr_g']
-                            gene['RW'] = 0
+                            gene['TRW'] = 0
                         else:
                             gene_arrow_width = default_gene_arrow_width
-                            gene['RW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
+                            gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
 
                         if 'functions' in gene.keys():
                             gene['has_functions'] = True
@@ -1847,11 +1851,11 @@ class DGR_Finder:
                             gene['has_functions'] = False
                             gene['COLOR'] = '#c3c3c3'
 
-                        gene['RX'] = gene['start_tr_g']
-                        gene['CX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
-                        gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
-                        gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
-                        gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                        gene['TRX'] = gene['start_tr_g']
+                        gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
+                        gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
+                        gene['TGTRANS'] = gene['TRX'] + gene['TRX'] + gene['TRW'] + gene_arrow_width
+                        gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
                         for gene in vr_genes:
                             gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
@@ -1867,10 +1871,10 @@ class DGR_Finder:
                                 # but make the arrow width equal to the gene width
                                 gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
                                 gene['stop_vr_g'] = gene['start_vr_g']
-                                gene['RW'] = 0
+                                gene['VRW'] = 0
                             else:
                                 gene_arrow_width = default_gene_arrow_width
-                                gene['RW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
+                                gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
                             if 'functions' in gene.keys():
                                 gene['has_functions'] = True
@@ -1879,11 +1883,11 @@ class DGR_Finder:
                                 gene['has_functions'] = False
                                 gene['COLOR'] = '#c3c3c3'
 
-                            gene['RX'] = gene['start_vr_g']
-                            gene['CX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
-                            gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
-                            gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
-                            gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                            gene['VRX'] = gene['start_vr_g']
+                            gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
+                            gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
+                            gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
+                            gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
                             # and finally we will store this hot mess in our dictionary
                             self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
@@ -1895,6 +1899,13 @@ class DGR_Finder:
                             self.summary['files'][dgr_id] = {'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
                                                                         'functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')}
 
+        # Ensure the destination directory does not exist before generating the summary HTML
+        destination_dir = 'summary_html_output'
+        if os.path.exists(destination_dir):
+            shutil.rmtree(destination_dir)
+
+        summary_html_output = SummaryHTMLOutput(self.summary)
+        summary_html_output.generate('summary_html_output')
 
         return
 
@@ -1966,5 +1977,5 @@ class DGR_Finder:
             self.create_found_tr_vr_csv(self.DGRs_found_dict) #TODO: check if this works if the dictionary is empty or do you need a different method?
             self.recover_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
             self.report_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
-            self.process_dgr_data_for_HTML_summary()
+            #self.process_dgr_data_for_HTML_summary()
         return
