@@ -104,6 +104,10 @@
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
+        <div id="scale-bar-container" style="display: none;">
+            <span>Tree scale: <span id="scale-value">1</span></span>
+            <div id="scale-bar" style="width: 10px;"></div>
+        </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -197,36 +201,63 @@
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                             </span> 
                             <div class="collapse multi-collapse show" id="item-collapse-main">
-                                <div class="ml-2">
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="tree_type" class="form-control">
-                                                    <option value="phylogram">Phylogram</option>
-                                                    <option value="circlephylogram" selected>Circle Phylogram</option>
-                                                </select>
-                                            </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
-                                                <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                                    <br />
-                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                                    <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                    <div class="ml-2" id="items-data-section">
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="tree_type" class="form-control">
+                                                        <option value="phylogram">Phylogram</option>
+                                                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                                                    </select>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                                    <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                        The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                        <br />
+                                                        <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                        <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="views_container" data-help="view">Data</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                                </div>
+                                        </div>        
+                                        <div class="form-group form-margin manual-mode">
+                                            <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
+                                            <div class="menu-padding">
+                                                <div class="alert alert-secondary col-10 settings-label" role="alert">
+                                                    <div class="d-flex col-sm-10 col-lg-11">
+                                                        <span title="The scale bar is located at the bottom of the page." id="interactive-scale-text" class="d-flex">Interactive Scale</span>
+                                                        <div class="custom-control custom-switch d-flex col-8 ml-3" id="tree-scale-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="interactive-scale-checkbox" onclick="if (this.checked) { $('#scale-bar-container').show();} else { $('#scale-bar-container').hide(); }">
+                                                            <label class="custom-control-label" for="interactive-scale-checkbox"></label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex pt-4">
+                                                        <div class="d-flex">
+                                                            <div class="col-sm-11 col-lg-10 d-flex mr-5" id="calculated-scale-bar">
+                                                                Calculated Scale Bar
+                                                            </div>
+                                                            <div class="">
+                                                                <div class="d-flex scale-bar" id="scale-bar-scope"></div>
+                                                                <img class="d-block" src="./images/scale-bar-image.svg" alt="scale bar">
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="views_container" data-help="view">Data</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="views_container" class="form-control" onchange="onViewChange();"></select>
-                                            </div>
+                                        <div>
                                     </div>
                                 </div>
-                                <div class="ml-2">
+                            </div>
+                            <div class="ml-2">
                                     <span class="settings-secondary-header">Display</span>
     
                                     <div id="table_layers_container" class="mt-3">
@@ -679,6 +710,13 @@
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_symbol_options'>
+                                        <div class="form-group form-margin" style="display: flex;">
+                                            <label class="col-2 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Bootstrap Source:</label>
+                                            <div class="col-4 align-items-center input-align d-flex">
+                                                <select class="custom-select input-group-sm col-12" id="support_symbol_data">
+                                                </select>
+                                            </div>
+                                        </div>
                                         <div class="form-group form-margin d-flex">
                                             <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Symbol Size Range:</label>
                                             <div class="col-6 form-inline input-align d-flex">

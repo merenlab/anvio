@@ -266,6 +266,7 @@ async function drawScaleBar(settings, top, left) {
         });
 
         var scale_bar = data['scale_bar_value'];
+        console.log("Max Branch Length:", scale_bar);
 
         const scaleBarLength = 30;
         top = top + 170;
@@ -467,18 +468,22 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             var condition0 = supportValueData.thresholdRange0[0] <= branch_support_values[0] && branch_support_values[0] <= supportValueData.thresholdRange0[1];
             var condition1 = supportValueData.thresholdRange1[0] <= branch_support_values[1] && branch_support_values[1] <= supportValueData.thresholdRange1[1];
 
-            if((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))){                
-                first_circle = makeCircle(branch_support_values[0], 0);
-                second_circle = makeCircle(branch_support_values[1], 1);
-                second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+            if((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))){
+                if(supportValueData.symbolDataSource == 2){ // Single Bootstrap value exist
+                    first_circle = makeCircle(branch_support_values[0], 0);
+                }else{ // Multiple BSV
+                    if(supportValueData.symbolDataSource == 0){
+                        first_circle = makeCircle(branch_support_values[0], 0);
+                    }else{
+                        second_circle = makeCircle(branch_support_values[1], 1);
+                        second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+                    }
+                }
             }
 
             if($('#tree_type').val() == 'circlephylogram'){
-                let length_original = Math.sqrt(p.xy.x**2 + p.xy.y**2);
-                let length_scaled = length_original + 2 * maxRadius;
-                let scaling_factor = length_scaled/length_original;
-                second_circle.setAttribute('cx', p.xy.x * scaling_factor);
-                second_circle.setAttribute('cy', p.xy.y * scaling_factor);
+                second_circle.setAttribute('cx', p.xy.x);
+                second_circle.setAttribute('cy', p.xy.y);
             } else{
                 let firstCircleCx = parseFloat(first_circle.getAttribute('cx'));
                 let updatedCx = firstCircleCx + maxRadius * 2;

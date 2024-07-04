@@ -1811,13 +1811,13 @@ function Chart(options){
     $(document).ready(function() {
       scrollToTargetWithDelay();
     });
-    
+
     // Function to scroll to the target element specified in the URL hash with a delay
     function scrollToTargetWithDelay() {
       // Delay for 500ms to ensure the DOM is fully loaded
       setTimeout(scrollToTarget, 500);
     }
-    
+
     // Function to scroll to the target element specified in the URL hash
     function scrollToTarget() {
       var targetId = window.location.hash.substring(1);
@@ -1831,13 +1831,13 @@ function Chart(options){
             if (mutation.type === 'childList') {
               var newTargetElement = document.getElementById(targetId);
               if (newTargetElement) {
-                $('html, body').animate({ scrollTop: $(newTargetElement).offset().top }, 'slow');
+                $('html, body').animate({ scrollTop: $(newTargetElement).offset().top }, 500);
                 observer.disconnect(); // Stop observing once the target element is found
               }
             }
           });
         });
-    
+
         // Start observing the body for changes
         observer.observe(document.body, { childList: true, subtree: true });
       }
