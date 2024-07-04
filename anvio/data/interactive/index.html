@@ -104,7 +104,7 @@
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
-        <div id="scale-bar-container">
+        <div id="scale-bar-container" style="display: none;">
             <span>Tree scale: <span id="scale-value">1</span></span>
             <div id="scale-bar" style="width: 10px;"></div>
         </div>
@@ -236,7 +236,7 @@
                                                     <div class="d-flex col-sm-10 col-lg-11">
                                                         <span title="The scale bar is located at the bottom of the page." id="interactive-scale-text" class="d-flex">Interactive Scale</span>
                                                         <div class="custom-control custom-switch d-flex col-8 ml-3" id="tree-scale-switch">
-                                                            <input type="checkbox" class="custom-control-input" id="interactive-scale-checkbox">
+                                                            <input type="checkbox" class="custom-control-input" id="interactive-scale-checkbox" onclick="if (this.checked) { $('#scale-bar-container').show();} else { $('#scale-bar-container').hide(); }">
                                                             <label class="custom-control-label" for="interactive-scale-checkbox"></label>
                                                         </div>
                                                     </div>

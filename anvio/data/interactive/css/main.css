@@ -1109,6 +1109,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     min-width: 107px;
 }
 
+.custom-control-input:checked ~ .custom-control-label::before {
+    border-color: var(--success-600);
+    background-color: var(--success-600);
+}
+
 @keyframes glowing {
     0% { background-position: 0 0; }
     50% { background-position: 400% 0; }
