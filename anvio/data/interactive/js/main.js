@@ -371,11 +371,11 @@ function initData() {
     $('#show-text-option').hide()
 }
 
-function scaleBarDrawer(){
+function scaleBarDrawer() {
     const panelCenter = document.getElementById('panel-center');
     const scaleValue = document.getElementById('scale-value');
     const scaleBar = document.getElementById('scale-bar');
-    
+
     let scale = 1;
     let step = 0;
     const stepsPerUpdate = 10;
@@ -386,13 +386,11 @@ function scaleBarDrawer(){
         const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
         scaleValue.textContent = scale.toFixed(decimalPlaces);
 
-        if (Number.isInteger(Math.log10(scale))) {
-            // If scale is a power of 10, set the width to minScaleBarWidth
-            scaleBar.style.width = `${minScaleBarWidth}px`;
-        } else {
-            // Calculate the scale bar width based on the scale
-            const scaleBarWidth = minScaleBarWidth + ((maxScaleBarWidth - minScaleBarWidth) * Math.log10(scale));
-            scaleBar.style.width = `${scaleBarWidth}px`;
+        if (scale != 0) {            
+            // Calculate the scale bar width based on the step
+            const stepRatio = Math.abs(step % stepsPerUpdate) / stepsPerUpdate;
+            const scaleBarWidth = minScaleBarWidth + stepRatio * (maxScaleBarWidth - minScaleBarWidth);
+            scaleBar.style.width = `${scaleBarWidth}px`;           
         }
     };
 

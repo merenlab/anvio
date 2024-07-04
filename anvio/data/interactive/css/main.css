@@ -1067,32 +1067,41 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     border-radius: 5px;
     opacity: 75%;
 }
+
 #scale-bar {
     height: 2px;
     background: #000;
     margin-left: 5px;
     position: relative;
 }
+
 #scale-bar::before,
-#scale-bar::after,
-#scale-bar div::after {
+#scale-bar::after {
     content: '';
     position: absolute;
     width: 1px;
     height: 10px;
     background: #000;
 }
+
 #scale-bar::before {
     left: 0;
     top: -4px;
 }
+
 #scale-bar::after {
     right: 0;
     top: -4px;
 }
-#scale-bar div::after {
+
+#scale-bar .middle-line {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 5px;
+    background: #000;
+    top: 0px;
     left: 50%;
-    top: -4px;
     transform: translateX(-50%);
 }
 
