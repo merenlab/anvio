@@ -201,41 +201,59 @@
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                             </span> 
                             <div class="collapse multi-collapse show" id="item-collapse-main">
-                                <div class="ml-2" id="items-data-section">
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="tree_type" class="form-control">
-                                                    <option value="phylogram">Phylogram</option>
-                                                    <option value="circlephylogram" selected>Circle Phylogram</option>
-                                                </select>
-                                            </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
-                                                <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                                    <br />
-                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                                    <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                    <div class="ml-2" id="items-data-section">
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="tree_type" class="form-control">
+                                                        <option value="phylogram">Phylogram</option>
+                                                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                                                    </select>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                                    <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                        The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                        <br />
+                                                        <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                        <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="views_container" data-help="view">Data</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                                </div>
+                                        </div>        
+                                        <div class="form-group form-margin manual-mode">
+                                            <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
+                                            <div class="menu-padding">
+                                                <div class="alert alert-secondary col-10 settings-label" role="alert">
+                                                    <div class="d-flex col-sm-10 col-lg-11">
+                                                        <span title="The scale bar is located at the bottom of the page." id="interactive-scale-text" class="d-flex">Interactive Scale</span>
+                                                        <div class="custom-control custom-switch d-flex col-8 ml-3" id="tree-scale-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="interactive-scale-checkbox">
+                                                            <label class="custom-control-label" for="interactive-scale-checkbox"></label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex pt-4">
+                                                        <div class="d-flex">
+                                                            <div class="col-sm-11 col-lg-10 d-flex mr-5" id="calculated-scale-bar">
+                                                                Calculated Scale Bar
+                                                            </div>
+                                                            <div class="">
+                                                                <div class="d-flex scale-bar" id="scale-bar-scope"></div>
+                                                                <img class="d-block" src="./images/scale-bar-image.svg" alt="scale bar">
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="views_container" data-help="view">Data</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="views_container" class="form-control" onchange="onViewChange();"></select>
-                                            </div>
-                                    </div>        
-                                    <div class="form-group form-margin manual-mode">
-                                        <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
-                                        <div class="col-10 menu-padding d-block">
-                                            <div class="d-flex scale-bar" id="scale-bar-scope"></div>
-                                            <img class="d-block" src="./images/scale-bar-image.svg" alt="scale bar">
-                                        </div>
-                                    <div>
+                                        <div>
                                     </div>
                                 </div>
                             </div>
