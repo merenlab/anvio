@@ -1326,6 +1326,7 @@ class DGR_Finder:
 
         # in which we will store the genomic context that surrounds dgrs for downstream fun
         self.genomic_context_surrounding_dgrs = {}
+        self.genomic_context_surrounding_rts = {}
 
         # we know when we are not wanted
         if self.skip_recovering_genomic_context:
@@ -1358,8 +1359,10 @@ class DGR_Finder:
         # with gene calls and functions
         gene_calls_per_TR_contig = {}
         gene_calls_per_VR_contig = {}
+        gene_calls_per_RT_contig = {}
         trs_with_no_gene_calls_around = set([])
         vrs_with_no_gene_calls_around = set([])
+        rts_with_no_gene_calls_around = set([])
 
 
         for dgr_key, dgr_data in dgrs_dict.items():
@@ -1370,8 +1373,14 @@ class DGR_Finder:
             TR_start = dgr_data.get('TR_start_position')
             TR_end = dgr_data.get('TR_end_position')
 
+            RT_start = dgr_data.get('HMM_start')
+            RT_end = dgr_data.get('HMM_stop')
+
             # Initialize TR context
             tr_context_genes = []
+
+            # Initialize RT context
+            rt_context_genes = []
 
             if TR_contig_name not in gene_calls_per_TR_contig:
                 where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
@@ -1435,6 +1444,71 @@ class DGR_Finder:
                 tr_context_genes.append(gene_call)
 
             self.genomic_context_surrounding_dgrs[dgr_id] = copy.deepcopy(tr_context_genes)
+
+
+            if TR_contig_name not in gene_calls_per_RT_contig:
+                where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
+                gene_calls_per_RT_contig[TR_contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
+
+            gene_calls_in_RT_contig = gene_calls_per_RT_contig[TR_contig_name]
+
+            if not len(gene_calls_in_RT_contig):
+                rts_with_no_gene_calls_around.add(dgr_id)
+                print(f'No gene calls found around RT {dgr_id}')
+                continue
+
+            # Process RT gene calls
+            min_distance_to_RT_start, min_distance_to_RT_end = float('inf'), float('inf')
+            closest_gene_call_to_RT_start, closest_gene_call_to_RT_end = None, None
+            for gene_callers_id, gene_call in gene_calls_in_RT_contig.items():
+                if abs(gene_call['start'] - RT_start) < min_distance_to_RT_start:
+                    closest_gene_call_to_RT_start = gene_callers_id
+                    min_distance_to_RT_start = abs(gene_call['start'] - RT_start)
+
+                if abs(gene_call['start'] - RT_end) < min_distance_to_RT_end:
+                    closest_gene_call_to_RT_end = gene_callers_id
+                    min_distance_to_RT_end = abs(gene_call['start'] - RT_end)
+
+            RT_range = range(closest_gene_call_to_RT_start - self.num_genes_to_consider_in_context,
+                            closest_gene_call_to_RT_end + self.num_genes_to_consider_in_context)
+            rt_gene_caller_ids_of_interest = [c for c in RT_range if c in gene_calls_in_RT_contig]
+
+            for gene_callers_id in rt_gene_caller_ids_of_interest:
+                gene_call = gene_calls_in_RT_contig[gene_callers_id]
+                gene_call['gene_callers_id'] = gene_callers_id
+
+                if function_sources_found:
+                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([f"{str(g)}" for g in rt_gene_caller_ids_of_interest]))
+                    hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+                    gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+
+                dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                rev_compd = None
+                if gene_call['direction'] == 'f':
+                    gene_call['DNA_sequence'] = dna_sequence
+                    rev_compd = False
+                else:
+                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                    rev_compd = True
+
+                where_clause = f'''gene_callers_id == {gene_callers_id}'''
+                aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
+                gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                header = '|'.join([f"contig:{gene_call['contig']}",
+                                f"start:{gene_call['start']}",
+                                f"stop:{gene_call['stop']}",
+                                f"direction:{gene_call['direction']}",
+                                f"rev_compd:{rev_compd}",
+                                f"length:{gene_call['length']}"])
+                gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
+                rt_context_genes.append(gene_call)
+
+            self.genomic_context_surrounding_rts[dgr_id] = copy.deepcopy(rt_context_genes)
+
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1517,6 +1591,7 @@ class DGR_Finder:
         self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
                     f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
                     f"And recovered for {PL('VR', len(self.genomic_context_surrounding_dgrs[vr_id]))}",
+                    f"And recovered for {PL('RT',len(self.genomic_context_surrounding_rts[dgr_id]))}",
                     nl_before=1,
                     lc="yellow")
 
@@ -1526,11 +1601,14 @@ class DGR_Finder:
         if len(vrs_with_no_gene_calls_around):
             print('No gene calls around the following VRs:', vrs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(vrs_with_no_gene_calls_around)}.")
 
+        if len(rts_with_no_gene_calls_around):
+            print('No gene calls around the following RTs:', rts_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(rts_with_no_gene_calls_around)}.")
+
         if not len(self.genomic_context_surrounding_dgrs):
             self.run.warning(f"Even though the tool went through all {PL('DGR', len(dgrs_dict))} "
                             f"it was unable to recover any genomic context for any of them. So your final reports will "
-                            f"not include any insights into the surrounding genomic context of DGRs (but otherwise "
-                            f"you will be fine).")
+                            f"not include any insights into the surrounding genomic context of all your DGRs ( a little bit sad "
+                            f"but otherwise you will be fine).")
 
 
 
@@ -1595,6 +1673,37 @@ class DGR_Finder:
 
                 self.run.info('Reporting file on gene context for TR', tr_genes_output_path)
                 self.run.info('Reporting file on functional context for TR', tr_functions_output_path, nl_after=1)
+
+            # RT output paths
+            rt_genes_output_path = os.path.join(dgr_directory, 'RT_SURROUNDING-GENES.txt')
+            rt_functions_output_path = os.path.join(dgr_directory, 'RT_SURROUNDING-FUNCTIONS.txt')
+
+            with open(rt_genes_output_path, 'w') as rt_genes_output, open(rt_functions_output_path, 'w') as rt_functions_output:
+                rt_genes_output.write("dgr_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
+                rt_functions_output.write("dgr_id\t%s\n" % '\t'.join(functions_output_headers))
+
+                # Create fake gene call entries for RTs:
+                d = dict([(h, '') for h in genes_output_headers])
+
+                # Fill in non-empty data for the TR in the DGR and insert it:
+                d['contig'] = dgr_data.get('TR_contig')  # Use dgr_data to access TR info
+                d['start'] = dgr_data.get('HMM_start')
+                d['stop'] = dgr_data.get('HMM_stop')
+                rt_genes_output.write(f"{dgr_id}_RT\tREVERSE_TRANSCRIPTASE\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
+
+                #Check if there are surrounding genes for the TR and write them
+                if dgr_id in self.genomic_context_surrounding_rts:
+                    for gene_call in self.genomic_context_surrounding_rts[dgr_id]:
+                        rt_genes_output.write(f"{dgr_id}_RT\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
+
+                        if 'functions' in gene_call:
+                            for hit in gene_call['functions']:
+                                rt_functions_output.write(f"{dgr_id}_RT\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                        else:
+                            rt_functions_output.write(f"{dgr_id}_RT\t{gene_call['gene_callers_id']}\t\t\t\n")
+
+                self.run.info('Reporting file on gene context for RT', rt_genes_output_path)
+                self.run.info('Reporting file on functional context for RT', rt_functions_output_path, nl_after=1)
 
 
             # Fill in non-empty data for each VR in the DGR and insert it:
