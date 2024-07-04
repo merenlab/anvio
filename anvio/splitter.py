@@ -635,6 +635,9 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         # dealing with 'view' data tables
         for table_name in constants.essential_data_fields_for_anvio_profiles:
+            # ignore `variability_splits`` and `variability_contigs` view tables if SNVs have not been profiled
+            if table_name == 'variability' and self.summary.p_meta['SNVs_profiled'] == 0:
+                continue
             for target in ['splits', 'contigs']:
                 new_table_name = '_'.join([table_name, target])
                 new_table_structure = t.view_table_structure
