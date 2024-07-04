@@ -1674,7 +1674,7 @@ class Pangraph():
         if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
             self.run.info_single('No maximum aborescence. Entering failback mode.')
             self.edmonds_graph = nx.DiGraph(self.edmonds_graph.subgraph(max(nx.weakly_connected_components(self.edmonds_graph), key=len)))
-            if nx.algorithms.tree.recognition.is_arborescence(temp):
+            if nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
                 self.run.info_single('Found aborescence. Proceed.')
             else:
                 self.run.info_single('Failure. Exit.')
