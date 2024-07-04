@@ -76,7 +76,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index', 'inversions']:
+        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index', 'inversions', 'dgrs']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -127,6 +127,8 @@ class SummaryHTMLOutput:
             rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
         elif self.summary_type == 'inversions':
             rendered = render_to_string('inversions.tmpl', self.summary_dict)
+        elif self.summary_type == 'dgrs':
+            rendered = render_to_string('dgrs.tmpl', self.summary_dict)
         else:
             raise ConfigError("You cray...")
 
