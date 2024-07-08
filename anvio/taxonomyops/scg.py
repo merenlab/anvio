@@ -1138,6 +1138,27 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
         global ctx
 
+        # if the user has specified a GTDB release or taxonomy data directory,
+        # we're getting a new context.
+        if self.SCGs_taxonomy_data_dir:
+            # since this is the first time we're dealing with this path, we will have to do a few
+            # things to make sure it will work smootly. the first step is to make sure it exists,
+            # and the user has write access to it
+            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir, delete_if_exists=False)
+
+            # then, we will have to copy all relevant files from the anvi'o source directory to
+            # the new setup database
+            import shutil, glob
+            shutil.copy(ctx.accession_to_taxonomy_file_path, self.SCGs_taxonomy_data_dir)
+            shutil.copy(ctx.database_version_file_path, self.SCGs_taxonomy_data_dir)
+
+            sdb_dir = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
+            filesnpaths.gen_output_directory(sdb_dir, delete_if_exists=False)
+            [shutil.copy(f, sdb_dir) for f in glob.glob(os.path.join(ctx.search_databases_dir_path, '*.gz'))]
+
+            # now all files are in place, we will re-initialize the context with the right user defined path
+            ctx = SCGTaxonomyContext(scgs_taxonomy_data_dir=self.SCGs_taxonomy_data_dir)
+
         self.ctx = ctx
 
         SanityCheck.__init__(self)
