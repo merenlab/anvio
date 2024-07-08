@@ -6,7 +6,6 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 """
 
 import os
-import glob
 import copy
 import shutil
 import pandas as pd
@@ -166,10 +165,13 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.ctx.SCGs if not os.path.exists(self.ctx.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
-                    raise ConfigError("We have a problem, Houston. Even though anvi'o found the directory for taxonomy headquarters, "
-                                      "your setup seems to be missing %d of %d databases required for everything to work "
-                                      "properly :/ The good news? This problem will very likely go away if you run the program "
-                                      "`anvi-setup-scg-taxonomy` and you will be golden." % (len(missing_SCG_databases), len(self.ctx.SCGs)))
+                    raise ConfigError(f"We have a problem, Houston. Even though anvi'o found the directory for taxonomy headquarters, "
+                                      f"your setup seems to be missing {len(missing_SCG_databases)} of {len(self.ctx.SCGs)} databases required "
+                                      f"for everything to work :/ The good news? This problem will very likely go away if you run the program "
+                                      f"`anvi-setup-scg-taxonomy` and you will be golden (please note: if you ran `anvi-setup-scg-taxonomy` "
+                                      f"previously and setup your SCG taxonomy data to a spectific location via the `--scgs-taxonomy-data-dir` "
+                                      f"flag, you can include the same flag to your current command to make everything go smoothly instead of "
+                                      f"running the setup again).")
 
             ###########################################################
             # SCGTaxonomyEstimatorSingle
@@ -275,7 +277,7 @@ class SanityCheck(object):
                     raise ConfigError("Taxonomy estimation classes have been initiated with files for multiple (meta)genomes, but "
                                       "your arguments include also a single contigs or profile database path. You make anvi'o nervous. "
                                       "Please run this program either with a (meta)genomes file or individual contigs/profile databases.")
-                
+
                 if self.args.external_genomes and self.args.metagenomes:
                     raise ConfigError("More than one input file type (external genomes AND metagenomes) has been given to the "
                                       "taxonomy estimation classes. Please run this program with only one input type at a time.")
@@ -908,7 +910,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
-    
+
     def store_scg_taxonomy_super_dict_multi_output_file(self, scg_taxonomy_super_dict_multi):
         """Generates an output just like TaxonomyEstimatorSingle.store_items_taxonomy_super_dict(), but for multiple inputs."""
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
@@ -1126,7 +1128,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         self.args = args
         self.run = run
         self.progress = progress
-
         # update your self args
         SCGTaxonomyArgs.__init__(self, self.args)
 
