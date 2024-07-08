@@ -2305,7 +2305,6 @@ class Pangraph():
         for edge_i, edge_j, data in self.ancest.edges(data=True):
             if edge_i != 'start' and edge_j != 'stop':            
                 if data['bended']:
-
                     for i, (x, y) in enumerate(data['bended']):
                         decrease = 0
                         for e in empty_spots:
@@ -2314,6 +2313,8 @@ class Pangraph():
                             else:
                                 data['bended'][i] = (x - decrease, y)
                                 break
+                        else:
+                            data['bended'][i] = (x - decrease, y)
 
                 else:
                     if self.offset[edge_j] - self.offset[edge_i] != 1:
