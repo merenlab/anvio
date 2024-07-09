@@ -1103,7 +1103,6 @@ class Pangraph():
         # this is the dictionary that wil keep all data that is going to be loaded
         # from anvi'o artifacts
         self.gene_synteny_data_dict = {}
-        self.genome_coloring = {}
         self.genomes = []
 
         # these are the main graph data structures for the different steps of the tools execution
@@ -1216,10 +1215,10 @@ class Pangraph():
         for genome in yaml_genomes.keys():
             self.gene_synteny_data_dict[genome] = {}
 
-            if genome not in self.genome_coloring.keys():
-                self.genome_coloring[genome] = "on"
+            if genome in self.skip_genomes:
+                continue
 
-            if self.genome_coloring[genome] != "off":
+            else:
                 self.genomes.append(genome)
 
             for i, gcs in enumerate(yaml_genomes[genome]):
@@ -1240,8 +1239,7 @@ class Pangraph():
                         'gene_cluster_id': '',
                         'direction': direction,
                         'rev_compd': 'False',
-                        'max_num_paralogs': 0,
-                        'draw': 'on'
+                        'max_num_paralogs': 0
                     }
 
 
@@ -1297,10 +1295,10 @@ class Pangraph():
 
         for genome, contigs_db_path in external_genomes.iterrows():
 
-            if genome not in self.genome_coloring.keys():
-                self.genome_coloring[genome] = "on"
+            if genome in self.skip_genomes:
+                continue
 
-            if self.genome_coloring[genome] != "off":
+            else:
                 self.genomes.append(genome)
 
                 args = argparse.Namespace(contigs_db=contigs_db_path.item())
@@ -1309,7 +1307,6 @@ class Pangraph():
                 caller_id_cluster = gene_cluster_dict[genome]
                 caller_id_cluster_df = pd.DataFrame.from_dict(caller_id_cluster, orient="index", columns=["gene_cluster_name"]).rename_axis("gene_caller_id").reset_index()
                 caller_id_cluster_df["gene_cluster_id"] = ""
-                caller_id_cluster_df["draw"] = self.genome_coloring[genome]
 
                 contigs_db.init_functions()
                 gene_function_calls_df = pd.DataFrame.from_dict(contigs_db.gene_function_calls_dict, orient="index").rename_axis("gene_caller_id").reset_index()
@@ -1586,11 +1583,11 @@ class Pangraph():
     def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info):
 
         if self.priority_genome in info.keys():
-            weight_add = 10
+            weight_add = 100
         else:
             weight_add = 0
 
-        draw = {genome: {y: info[genome][y] for y in info[genome].keys() if y == 'draw'} for genome in info.keys()}
+        draw = {genome: {'gene_call': -1} for genome in info.keys()}
 
         if not self.initial_graph.has_edge(*(gene_cluster_i, gene_cluster_j)):
             self.initial_graph.add_edge(
@@ -1698,7 +1695,7 @@ class Pangraph():
                 pos=(0, 0),
                 weight=len(self.genomes),
                 layer={},
-                genome={genome: {'draw': 'on'} for genome in self.genomes}
+                genome={genome: {'gene_call': -1} for genome in self.genomes}
             )
 
             for u in add_start:
@@ -1708,7 +1705,7 @@ class Pangraph():
 
                 graph.add_edge(
                     *('start', u),
-                    genome={genome: {'draw': 'on'} for genome in genomes},
+                    genome={genome: {'gene_call': -1} for genome in genomes},
                     weight=weight,
                     bended=[],
                     direction='R'
@@ -1796,11 +1793,11 @@ class Pangraph():
                 pos=(0, 0),
                 weight=len(self.genomes),
                 layer={},
-                genome={genome: {'draw': 'on'} for genome in self.genomes}
+                genome={genome: {'gene_call': -1} for genome in self.genomes}
             )
             graph.add_edge(
                 *(edmonds_graph_end, 'stop'),
-                genome={genome: {'draw': 'on'} for genome in self.genomes},
+                genome={genome: {'gene_call': -1} for genome in self.genomes},
                 weight=len(self.genomes),
                 bended=[],
                 direction='R'
@@ -1874,7 +1871,7 @@ class Pangraph():
                     if connected == False:
                         if len(list(self.pangenome_graph.successors(current_node))) == 0:
                             pangenome_graph_edge_data = {
-                                'genome':{genome: {'draw': 'on'} for genome in self.genomes},
+                                'genome':{genome: {'gene_call': -1} for genome in self.genomes},
                                 'weight':len(self.genomes),
                                 'bended': [],
                                 'direction': 'R'
@@ -1943,7 +1940,7 @@ class Pangraph():
         for stop in remaining_stops:
 
             pangenome_graph_edge_data = {
-                'genome':{genome: {'draw': 'on'} for genome in self.genomes},
+                'genome':{genome: {'gene_call': -1} for genome in self.genomes},
                 'weight':len(self.genomes),
                 'bended': [],
                 'direction': 'R'
@@ -2652,9 +2649,9 @@ class Pangraph():
                 'global_y': self.global_y,
                 'global_x_offset': self.global_x_offset
             },
-            'genomes': self.genome_coloring,
+            'genomes': self.genomes,
             'functional_annotation_sources_available': self.functional_annotation_sources_available,
-            'num_genomes': len(self.genome_coloring),
+            'num_genomes': len(self.genomes),
             'max_edge_length_filter': self.max_edge_length_filter,
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
             'groupcompress': self.groupcompress,
@@ -2679,6 +2676,7 @@ class Pangraph():
         }
 
         for i, j in self.ancest.nodes(data=True):
+
             self.jsondata["elements"]["nodes"][str(i)] = {
                 "name": j["name"],
                 "weight": j["weight"],
@@ -2688,10 +2686,13 @@ class Pangraph():
                     'y': j['pos'][1],
                     'x_offset': self.offset[i]
                 },
-                "genome": j["genome"]
+                "genome": {key: {'gene_call': j["genome"][key]['gene_call']} for key in j["genome"].keys()}
             }
 
+            print(self.jsondata["elements"]["nodes"][str(i)])
+
         for l, (k, o, m) in enumerate(self.ancest.edges(data=True)):
+
             self.jsondata["elements"]["edges"]['E_' + str(l).zfill(8)] = {
                 "source": k,
                 "target": o,
@@ -2701,6 +2702,8 @@ class Pangraph():
                 "direction": m["direction"],
                 "bended": [{'x': x, 'y': y} for x, y in m["bended"]] if len(m["bended"]) != 0 else ""
             }
+
+            print(self.jsondata["elements"]["edges"]['E_' + str(l).zfill(8)])
 
         self.run.info_single("Done.")
 
