@@ -1075,7 +1075,7 @@ class Pangraph():
         # in a very specific direction
         # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
-        self.skip_genomes = []
+        self.skip_genomes = A('skip_genome')
 
         # the different data storage related variables e.g. input and output files
         # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
@@ -1296,7 +1296,7 @@ class Pangraph():
         for genome, contigs_db_path in external_genomes.iterrows():
 
             if genome in self.skip_genomes:
-                continue
+                self.run.info_single(f"Skipped genome {genome}.")
 
             else:
                 self.genomes.append(genome)
@@ -1323,7 +1323,10 @@ class Pangraph():
 
                 self.gene_synteny_data_dict[genome] = joined_contigs_df.fillna("None").groupby(level=0).apply(lambda df: df.xs(df.name).to_dict("index")).to_dict()
 
-            self.run.info_single(f"{contigs_db_path.item().split('/')[-1]}")
+                self.run.info_single(f"Loaded genome {genome}.")
+
+        if not self.genomes:
+            raise ConfigError(f"Please keep at least one genome in the dataset. With the current setting you skip over all.")
 
         self.run.info_single("Done")
 

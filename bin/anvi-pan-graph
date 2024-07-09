@@ -71,6 +71,7 @@ if __name__ == '__main__':
                                 "of %(default)d, the final graph will represent as many gene clusters as possible in groups.")
     groupC.add_argument('--gene-cluster-grouping-compression', default = 0.0, type=float, help = "Description.")
     groupC.add_argument('--priority-genome', default = '', type=str, help = "Description.")
+    groupC.add_argument('--skip-genome', default = [], type=str, action='append', help = "Description.")
 
     args = parser.get_args(parser)
 
