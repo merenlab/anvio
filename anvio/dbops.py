@@ -4316,6 +4316,7 @@ class ContigsDatabase:
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         skip_predict_frame= A('skip_predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
+        prodigal_single_mode = A('prodigal_single_mode')
 
         if external_gene_calls_file_path:
             filesnpaths.is_proper_external_gene_calls_file(external_gene_calls_file_path)
@@ -4516,6 +4517,8 @@ class ContigsDatabase:
         if external_gene_calls_file_path:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
             self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
+        else:
+            self.run.info('Is prodigal run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))

@@ -95,60 +95,56 @@ function get_gene_functions_table_html(gene){
 
     //Blast search button created here
     functions_table_html += `<div class="col-xs-1 dp-button"> \
-    <div class="dropdown"> \
-      <button id="dLabel" role="button" data-toggle="dropdown" class="btn btn-outline-secondary btn-sm" data-target="#" href="#"> \
-                BLAST SEARCH <span class="caret"></span> \
-            </button> \
-      <ul class="dropdown-menu multi-level fa-ul blast-dropdown-btn p-3" role="menu" aria-labelledby="dropdownMenu"> \
-        <li class="dropdown-submenu text-secondary"> \
-          <a tabindex="-1" href="#">Nucleotide <span></span> Nucleotide</a> \
-          <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
-    functions_table_html += '</ul></li>';
+    <div class="dropdown show"> \
+      <button id="dropdownMenuBlast" role="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> \
+        BLAST SEARCH \
+      </button> \
+      <div class="dropdown-menu multi-level fa-ul blast-dropdown-btn p-3" role="menu" aria-labelledby="dropdownMenuBlast"> \
+        <a id="dropdownNN" role="button" class="dropdown-item" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> \
+          Nucleotide <span></span> Nucleotide \
+        </a> \
+        <div class="dropdown-menu" aria-labelledby="dropdownNN"> `;
+    functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">nr/nt</a> ';
+    functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_select\', \'gene\');">refseq_select</a> ';
+    functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_rna\', \'gene\');">refseq_rna</a>'; 
+    functions_table_html += '</div>';
 
     if(gene.call_type == 1){
 
-      functions_table_html += '<li class="dropdown-submenu text-secondary"> <a tabindex="-1" href="#">Trans. Nucleotide <span></span> Protein</a><ul class="dropdown-menu text-secondary ml-3 mb-3">';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
-      functions_table_html += '</ul> </li>';
+      functions_table_html += '<a id="dropdownTNP" role="button" class="dropdown-item" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Trans. Nucleotide <span></span> Protein</a>';
+      functions_table_html += '<div class="dropdown-menu" aria-labelledby="dropdownTNP">';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a>'; 
+      functions_table_html += '</div>';
 
-      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
-      <a tabindex="-1" href="#"> Protein <span></span> Protein </a> \
-        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+      functions_table_html += '<a id="dropdownPP" role="button" class="dropdown-item" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Protein <span></span> Protein</a>';
+      functions_table_html += '<div class="dropdown-menu" aria-labelledby="dropdownPP">';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastp\', \'nr\', \'gene\');">nr</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_select\', \'gene\');">refseq_select</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_protein\', \'gene\');">refseq_protein</a>'; 
+      functions_table_html += '</div>';
 
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastp\', \'nr\', \'gene\');">nr</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
-    
-      functions_table_html += `</ul> \
-      </li> \
-      <li class="dropdown-submenu text-secondary"> \
-      <a tabindex="-1" href="#"> Protein <span></span> Trans. Nucleotide </a> \
-        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+      functions_table_html += '<a id="dropdownPTN" role="button" class="dropdown-item" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Protein <span></span> Trans. Nucleotide</a>';
+      functions_table_html += '<div class="dropdown-menu" aria-labelledby="dropdownPTN">';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastn\', \'nr\', \'gene\');">nr/nt</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_select\', \'gene\');">refseq_select</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_rna\', \'gene\');">refseq_rna</a>'; 
+      functions_table_html += '</div>';
 
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
-      functions_table_html += '</ul> </li>';
-      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
-      <a tabindex="-1" href="#"> Trans. Nucleotide <span></span> Trans. Nucleotide </a> \
-      <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
-      
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
-      functions_table_html += '</ul></li></ul> ';
+      functions_table_html += '<a id="dropdownTNTN" role="button" class="dropdown-item" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Trans. Nucleotide <span></span> Trans. Nucleotide</a>';
+      functions_table_html += '<div class="dropdown-menu" aria-labelledby="dropdownTNTN">';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a> ';
+      functions_table_html += '<a class="dropdown-item" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a>'; 
+      functions_table_html += '</div></div> ';
     }
     functions_table_html += '</div></div></div>';
 
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -221,7 +217,7 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';

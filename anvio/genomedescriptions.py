@@ -1244,6 +1244,10 @@ class AggregateFunctions:
         g.load_genomes_descriptions(skip_sanity_check=True)
         g.init_functions()
 
+        self.run.warning("Just FYI, for any gene call with multiple functional annotations from the same source "
+                         "in a given genome, anvi'o only kept the annotation with the BEST e-value. Keep this in mind "
+                         "when interpreting the output of this program.")
+
         self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
         self.layer_names_from_external_genomes = copy.deepcopy(g.external_genome_names)
 

@@ -27,13 +27,13 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.errors import ConfigError
 from anvio.panops import Pangenome
-from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.errors import ConfigError
+from anvio.tables.views import TablesForViews
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.tables.views import TablesForViews
+from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -635,6 +635,9 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         # dealing with 'view' data tables
         for table_name in constants.essential_data_fields_for_anvio_profiles:
+            # ignore `variability_splits`` and `variability_contigs` view tables if SNVs have not been profiled
+            if table_name == 'variability' and self.summary.p_meta['SNVs_profiled'] == 0:
+                continue
             for target in ['splits', 'contigs']:
                 new_table_name = '_'.join([table_name, target])
                 new_table_structure = t.view_table_structure
@@ -1264,6 +1267,40 @@ class LocusSplitter:
         locus_db = db.DB(locus_output_db_path, None, ignore_version=True, skip_rowid_prepend=True)
         locus_db._exec("DELETE FROM %s" % t.gene_amino_acid_sequences_table_name)
         locus_db.insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+
+        ############################################################################################
+        # DO HMM-hits
+        ###########################################################################################
+        # hmm_hits table
+        #---------------
+        hmm_hits_table_dict = R('hmm_hits')
+
+        for entry_id in hmm_hits_table_dict:
+            hmm_hits_table_dict[entry_id]['gene_callers_id'] = G(hmm_hits_table_dict[entry_id]['gene_callers_id'])
+
+        entries = [[k] + list(v.values()) for k, v in hmm_hits_table_dict.items()]
+        locus_db.insert_many(t.hmm_hits_table_name, entries=entries)
+
+        # hmm_hits_info table
+        #--------------------
+        sources = set([h['source'] for h in hmm_hits_table_dict.values()])
+        hmm_hits_info_table_name_dict = db.DB(self.input_contigs_db_path, None, ignore_version=True).get_table_as_dict(t.hmm_hits_info_table_name)
+
+        entries = [[i] + list(hmm_hits_info_table_name_dict[i].values()) for i in list(sources) if i in hmm_hits_info_table_name_dict]
+        locus_db.insert_many(t.hmm_hits_info_table_name, entries=entries)
+
+        # hmm-hits-in-splits table
+        #-------------------------
+        genes_in_splits_table_name_locus_df = locus_db.get_table_as_dataframe(t.genes_in_splits_table_name)
+        genes_in_splits_table_name_locus_dict = genes_in_splits_table_name_locus_df.set_index('gene_callers_id').to_dict(orient='index')
+
+        entries = []
+        for k, v in hmm_hits_table_dict.items():
+            if v['gene_callers_id'] in genes_in_splits_table_name_locus_dict.keys():
+                entry = [k, genes_in_splits_table_name_locus_dict[v['gene_callers_id']]['split'], genes_in_splits_table_name_locus_dict[v['gene_callers_id']]['percentage_in_split'], v['source']]
+                entries.append(entry)
+
+        locus_db.insert_many(t.hmm_hits_splits_table_name, entries)
         locus_db.disconnect()
 
         ############################################################################################

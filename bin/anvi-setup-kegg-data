@@ -129,6 +129,7 @@ def main(args, unknown_args):
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
         if mode == "modeling" or mode == "all":
+            setup_directory = None
             # we ignore the dir parameter for all mode
             if mode == "all":
                 setup_directory = args.kegg_data_dir

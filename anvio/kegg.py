@@ -2788,13 +2788,15 @@ class RunKOfams(KeggContext):
                             # get set of hits that fit specified heuristic parameters
                             if ko_score_type == 'domain':
                                 hit_bitscore = super_hits_dict[hit_label][hit_key]['domain_bit_score']
+                                hit_eval = super_hits_dict[hit_label][hit_key]['domain_e_value']
                             elif ko_score_type == 'full':
                                 hit_bitscore = super_hits_dict[hit_label][hit_key]['bit_score']
-                            if super_hits_dict[hit_label][hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
+                                hit_eval = super_hits_dict[hit_label][hit_key]['e_value']
+                            if hit_eval <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
                                 decent_hit_kos.add(knum)
                                 # keep track of hit with lowest e-value we've seen so far
-                                if super_hits_dict[hit_label][hit_key]['e_value'] <= best_e_value:
-                                    best_e_value = super_hits_dict[hit_label][hit_key]['e_value']
+                                if hit_eval <= best_e_value:
+                                    best_e_value = hit_eval
                                     best_hit_key = hit_key
                                     best_hit_label = hit_label
 
@@ -5762,8 +5764,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 extra_cols.append(c)
         if extra_cols:
             e_str = ", ".join(extra_cols)
-            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
-                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+            self.run.warning(f"Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             f"going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
 
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
@@ -8213,6 +8215,29 @@ class ModulesDatabase(KeggContext):
             # there could be several rows for the same KO in different modules, but each definition should be
             # the same or similar, so we arbitrarily return the first one
             return dict_from_mod_table[0]['data_definition']
+
+    
+    def get_ko_reactions_from_modules_table(self, ko_num):
+        """This function returns the KEGG reaction ID for the given KO from its data definition entry in the modules table.
+
+        Reactions are indicated within brackets of the data definition entry, like these: [RN:R05339] or [RN:R01538 R03033]. 
+        This function parses all reactions out of the entry and returns a list in which each reaction ID number is prefixed by 
+        the standard KEGG reaction indicator 'RN:', as in ["RN:R01538", "RN:R03033"].
+        
+        Note that the modules table will only contain information for KOs that belong to modules, so this function 
+        returns None for those KOs that are not in modules.
+        """
+
+        definition_line = self.get_ko_definition_from_modules_table(ko_num)
+        if not definition_line: # this KO was not in the modules db
+            return None
+        
+        def_fields = definition_line.split('[') # the last split should start with RN: and end with ]
+        for f in def_fields:
+            if f.startswith("RN:"):
+                react_ids = f[3:-1].split(' ') # extract the ID numbers (without the initial RN: part or the final ])
+                return ["RN:" + id for id in react_ids]
+
 
 
     def get_kos_in_module(self, mnum):

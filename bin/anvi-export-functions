@@ -55,6 +55,19 @@ def main(args):
 
     filesnpaths.is_output_file_writable(args.output_file)
 
+    if args.genes_of_interest:
+        requested_genes = [x.strip() for x in open(args.genes_of_interest).readlines()]
+        run.info('Gene calls requested', f"{', '.join(requested_genes)}")
+
+        for g in requested_genes:
+            if not g.isnumeric():
+                raise ConfigError(f"Anvi'o found a gene caller ID that was not a number. Specifically, this one: {g}. "
+                                  f"This is a no-no, so please make sure all your gene caller IDs are integers.")
+        
+        progress.new("Filtering the functions dict for requested gene calls")
+        functions_dict = utils.get_filtered_dict(functions_dict, 'gene_callers_id', set([int(x) for x in requested_genes]))
+        progress.end()
+
     run.info('Annotation sources', '%s.' % (', '.join(annotation_sources)))
 
     if args.annotation_sources:
@@ -100,6 +113,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
     parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    parser.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
 
     args = parser.get_args(parser)
 
