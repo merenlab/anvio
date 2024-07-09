@@ -1073,10 +1073,12 @@ class Pangraph():
 
         # additional variables for special cases e.g. a user wants to tune the tool
         # in a very specific direction
+        # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
+        self.skip_genomes = []
 
         # the different data storage related variables e.g. input and output files
-        # FIXME: DB storage is not yet implemented -> will be GRAPH.db at one point
+        # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
         self.skip_storing_in_pan_db = True
         self.json_output_file_path = A('output_pan_graph_json')
 
@@ -1086,7 +1088,7 @@ class Pangraph():
 
         self.output_raw_gc_additional_data = A('output_raw_gc_additional_data')
         self.output_raw_gene_additional_data = A('output_raw_gene_additional_data')
-        
+
         # learn what gene annotation sources are present across all genomes if we
         # are running things in normal mode
         if not self.testing_yaml and not self.pan_graph_json:
@@ -1094,7 +1096,7 @@ class Pangraph():
         else:
             self.functional_annotation_sources_available = []
 
-        # dictionary containing the layer information that will be saved in the 
+        # dictionary containing the layer information that will be saved in the
         # json file to be used in the front end
         self.data_table_dict = {}
 
@@ -1129,42 +1131,29 @@ class Pangraph():
         self.layers = []
         self.removed = set()
 
-
     def sanity_check(self):
+
+        """Sanity check for incompatible settings, like skip storing and no output path"""
+
         if self.skip_storing_in_pan_db and not self.json_output_file_path:
             raise ConfigError("You are initializing the Pangraph class with `--skip-storing-in-pan-db` without an `--output-file` "
-                              "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
-                              "way to store results.")
-
-        if self.json_output_file_path:
-            filesnpaths.is_output_file_writable(self.json_output_file_path)
-
-        if self.external_genomes_txt:
-            filesnpaths.is_file_tab_delimited(self.external_genomes_txt)
-
-            if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt):
-                raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
-                                  "in an external genomes file :/")
-    
-        # make sure the pan-db and genomes-storage-db are compatible
-        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db, self.genomes_storage_db)
+                            "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
+                            "way to store results.")
 
 
     def process(self):
         """Primary driver function for the class"""
 
-        # the pathway over the pan_graph_json serves the purpose of updating the 
-        # json file 
+        self.sanity_check()
+
+        # the pathway over the pan_graph_json serves the purpose of updating the
+        # json file
         if self.pan_graph_json:
             self.load_graph_from_json_file()
 
         if not self.pan_graph_json and self.testing_yaml:
             # skip sanity check EVERYTHING in case of testing mode
             self.prepare_yaml()
-
-        if not self.output_yaml and not self.pan_graph_json and not self.testing_yaml:
-            # sanity check EVERYTHING
-            self.sanity_check()
 
         if not self.pan_graph_json and not self.testing_yaml:
             # populate self.gene_synteny_data_dict
@@ -1184,7 +1173,7 @@ class Pangraph():
             # reconnect open leaves in the graph to generate
             # a flow network from left to right
             self.run_tree_to_flow_network_algorithm()
-            
+
             self.prepare_synteny_graph()
 
         if not self.output_yaml:
@@ -1236,7 +1225,7 @@ class Pangraph():
             for i, gcs in enumerate(yaml_genomes[genome]):
 
                 contig = genome + '_' + str(i).zfill(5)
-                
+
                 self.gene_synteny_data_dict[genome][contig] = {}
 
                 for j, gc in enumerate(gcs.split(' ')):
@@ -1247,15 +1236,15 @@ class Pangraph():
                         direction = 'f'
 
                     self.gene_synteny_data_dict[genome][contig][j] = {
-                        'gene_cluster_name': gc, 
+                        'gene_cluster_name': gc,
                         'gene_cluster_id': '',
                         'direction': direction,
                         'rev_compd': 'False',
                         'max_num_paralogs': 0,
                         'draw': 'on'
                     }
- 
- 
+
+
     def export_gene_synteny_to_yaml(self):
 
         self.run.warning(None, header="Export the gene synteny to yaml file", lc="green")
@@ -1264,9 +1253,9 @@ class Pangraph():
             gene_synteny_yaml_dict[genome] = []
             for contig in self.gene_synteny_data_dict[genome].keys():
                 contig_data = self.gene_synteny_data_dict[genome][contig]
-                
+
                 contig_string = []
-                
+
                 for gene_call in contig_data.keys():
                     if contig_data[gene_call]['direction'] == 'f':
                         contig_string += [contig_data[gene_call]['gene_cluster_name']]
@@ -1274,17 +1263,23 @@ class Pangraph():
                         contig_string += [contig_data[gene_call]['gene_cluster_name'] + '!']
 
                 gene_synteny_yaml_dict[genome] += [' '.join(contig_string)]
-        
+
         utils.save_dict_as_yaml(gene_synteny_yaml_dict, self.output_yaml)
 
         self.run.info_single("Done")
 
 
     def get_gene_synteny_data_dict(self):
-        """A function to roduce a comprehensive data structure from anvi'o artifacts for
+        """A function to reduce a comprehensive data structure from anvi'o artifacts for
            downstream analyses.
         """
         self.run.warning(None, header="Loading data from database", lc="green")
+
+        filesnpaths.is_file_tab_delimited(self.external_genomes_txt)
+
+        if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes_txt):
+            raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
+                              "in an external genomes file :/")
 
         pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
@@ -1325,7 +1320,7 @@ class Pangraph():
                 additional_info_df.rename(columns={entry: entry + "_known" for entry in self.functional_annotation_sources_available}, inplace=True)
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster_name", how="left")
-                
+
                 joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
                 joined_contigs_df.set_index(["contig", "gene_caller_id"], inplace=True)
 
@@ -1454,7 +1449,7 @@ class Pangraph():
                         start = (i - self.k) if (i - self.k) >= 0 else 0
                         stop = (i + self.k + 1) if (i + self.k + 1) <= len(genome_gc_order) else len(genome_gc_order)
                         entry = genome_gc_order[start:stop]
-                        
+
                         if len(entry) == 1 + (2 * self.k):
                             gc_k = tuple(entry)
                         elif start == 0 and stop == len(genome_gc_order):
@@ -1464,28 +1459,27 @@ class Pangraph():
                         elif stop == len(genome_gc_order):
                             gc_k = tuple(entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                         else:
-                            print("Sanity Error. Code 1.")
-                            exit()
+                            raise ConfigError(f"The search frame of entry {entry} is malformed. It is not tuple of size {1 + (2 * self.k)}"
+                                              f"neiter is the frame overlapping with the beginning and the end of a very short contig"
+                                              f"nor with either of those. This is weird and should not happen, please check your input data"
+                                              f"and make sure there is nothing very weird going on there. Sorry :/")
 
                         if len(gc_k) != 1 + (2 * self.k):
-                            print("Sanity Error. Code 2.")
-                            exit()
+                            raise ConfigError(f"Wow, for some unforseeable reason the length of the search frame is not matching the"
+                                              f"current iterration. I thought this is impossible and I'm very curious on how you accomplished"
+                                              f"that. Jokes aside errors can happen and I probably forgot some specific exception. Sorry...")
 
                         gc = gc_k[int(len(gc_k) / 2)]
                         if gc not in solved:
-                            
+
                             if gc_k not in self.genome_gc_occurence.keys():
                                 self.genome_gc_occurence[gc_k] = {genome: 1}
 
-                            elif gc_k in self.genome_gc_occurence.keys():
+                            else:
                                 if genome not in self.genome_gc_occurence[gc_k].keys():
                                     self.genome_gc_occurence[gc_k][genome] = 1
                                 else:
                                     self.genome_gc_occurence[gc_k][genome] += 1
-
-                            else:
-                                print('Sanity Error. Code 3.')
-                                exit()
 
             for gc, genome_gc_frequency in self.genome_gc_occurence.items():
                 if max(genome_gc_frequency.values()) > 1:
@@ -1511,7 +1505,7 @@ class Pangraph():
         for gcp in gcs:
             label = [gc for gc in self.genome_gc_occurence.keys() if gc[int(len(gc)/2)] == gcp]
             context = self.context_split(label, gcp)
-            
+
             for name, cluster in context:
                 g_cleaned[name] = gcp + '_' + str(cluster)
 
@@ -1542,8 +1536,10 @@ class Pangraph():
                     elif stop == len(genome_gc_order):
                         gc_k = tuple(entry + [right_place] * ((i + self.k + 1) - len(genome_gc_order)))
                     else:
-                        print("Sanity Error. Code 4.")
-                        exit()
+                        raise ConfigError(f"The search frame of entry {entry} is malformed. It is not tuple of size {1 + (2 * self.k)}"
+                                          f"neiter is the frame overlapping with the beginning and the end of a very short contig"
+                                          f"nor with either of those. This is weird and should not happen, please check your input data"
+                                          f"and make sure there is nothing very weird going on there. Sorry :/")
 
                     for j in range(0, self.k+1):
 
@@ -1559,12 +1555,13 @@ class Pangraph():
                             pass
 
         num_calls = 0
-        for _, value in self.genome_gc_occurence.items():            
-            num_calls += sum(value.values()) 
+        for _, value in self.genome_gc_occurence.items():
+            num_calls += sum(value.values())
 
         if num_calls != syn_calls:
-            print("Sanity Error. Code 5.")
-            exit()
+            raise ConfigError(f"It looks like {abs(num_calls - syn_calls)} calls were not  captured by the algorithm. Proceeding from"
+                              f"here is a very bad idea. We will try to do better next time. For now please check your data to make"
+                              f"sure you did not try some very crazy stuff.")
 
         self.run.info_single("Done")
 
@@ -1609,9 +1606,7 @@ class Pangraph():
             self.initial_graph[gene_cluster_i][gene_cluster_j]['genome'].update(draw)
 
 
-    # TODO Should reverse genes also be connected in reverse?
     def build_graph(self):
-        """FIXME"""
 
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
@@ -1670,7 +1665,7 @@ class Pangraph():
         )
 
         # self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
-        
+
         if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
             self.run.info_single('No maximum aborescence. Entering failback mode.')
             edmonds_sub_graph = max(nx.weakly_connected_components(self.edmonds_graph), key=len)
@@ -1681,8 +1676,9 @@ class Pangraph():
                 self.run.info_single(f'{len(self.edmonds_graph.nodes())-len(edmonds_sub_graph)} nodes removed to capture synteny.')
                 self.run.info_single('Proceed.')
             else:
-                self.run.info_single('Failure. Exit.')
-                exit()
+                raise ConfigError(f"I'm very sorry to inform you that your data is not solvable by the current version of"
+                                  f"anvi'o pangraph. The failback mode tried to solve your dataset by sacrificing some"
+                                  f"of the included information, but at this scale it will not lead to a acceptable result :(")
 
         else:
             self.run.info_single('Found aborescence. Proceed.')
@@ -1717,7 +1713,7 @@ class Pangraph():
                     bended=[],
                     direction='R'
                 )
-        
+
         self.run.info_single(f"Removing {pp(len(self.pangenome_graph.edges()) - len(self.edmonds_graph.edges()))} edges from G to create M")
         self.run.info_single("Done")
 
@@ -1735,7 +1731,7 @@ class Pangraph():
         path = nx.shortest_path(G=self.edmonds_graph, source=source, target=target, weight='weight')
         path_weight = nx.path_weight(G=self.edmonds_graph, path=path, weight='weight')
         return(path_weight)
-    
+
 
     def get_edge(self, node_i, node_j, reverse = False):
 
@@ -1743,7 +1739,7 @@ class Pangraph():
             pangenome_graph_edge_data = self.pangenome_graph.get_edge_data(node_i, node_j)
             return(node_i, node_j, pangenome_graph_edge_data)
         else:
-            pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_i, node_j).items()}                           
+            pangenome_graph_edge_data = {y:z if y != 'direction' else 'L' for y,z in self.pangenome_graph.get_edge_data(node_i, node_j).items()}
             return(node_j, node_i, pangenome_graph_edge_data)
 
 
@@ -1762,12 +1758,12 @@ class Pangraph():
             else:
                 leaves.update(set([current_branch_successor]))
                 break
-            
-        return(leaves)  
+
+        return(leaves)
 
 
     def edge_check(self, node_i, node_j, data):
-        
+
         new_data = copy.deepcopy(data)
 
         if self.edmonds_graph.has_edge(node_i, node_j):
@@ -1775,7 +1771,7 @@ class Pangraph():
             new_data['genome'].update(old_data['genome'])
             new_data['weight'] += old_data['weight']
             new_data['direction'] = 'B'
-        
+
         return(new_data)
 
 
@@ -1825,13 +1821,13 @@ class Pangraph():
         while len(resolved_nodes) != len(pangenome_graph_nodes) + 1 or x < 1:
             if len(resolved_nodes) == len(pangenome_graph_nodes) + 1:
                 x += 1
-            
+
             i += 1
-            
+
             visited_nodes = set(['stop'])
             current_node = 'stop'
             while len(visited_nodes) != len(pangenome_graph_nodes) + 1:
-            
+
                 self.progress.update(f"{str(len(resolved_nodes)).rjust(len(str(len(pangenome_graph_nodes) + 1)), ' ')} / {len(pangenome_graph_nodes) + 1}")
 
                 if pred:
@@ -1839,11 +1835,11 @@ class Pangraph():
                     pred = ''
                 else:
                     current_branch_root = edmonds_graph_predecessors[current_node]
-                
+
                 current_forward_connected = []
                 current_backward_connected = []
                 successor_branch_leaves = set()
-            
+
                 for current_branch_successor in edmonds_graph_successors[current_branch_root]:
                     if current_branch_successor not in visited_nodes and current_branch_successor != current_node:
                         successor_branch_leaves.update(self.get_leaves(current_branch_successor, edmonds_graph_successors))
@@ -1852,29 +1848,29 @@ class Pangraph():
                     current_node = current_branch_root
                 else:
                     current_node = max([(edmonds_graph_distances[successor_branch_leaf], successor_branch_leaf) for successor_branch_leaf in successor_branch_leaves])[1]
-            
+
                 if current_node in resolved_nodes:
                     connected = True
                 else:
                     connected = False
-                
+
                 if connected != True or x == 1:
                     for current_node_successor in pangenome_graph_successors[current_node]:
-                        
+
                         if current_node_successor in resolved_nodes:
 
                             if current_node_successor in nx.ancestors(self.edmonds_graph, current_node) or (current_node_successor not in visited_nodes and current_node_successor not in resolved_nodes):
                                 if (current_node, current_node_successor) in edmonds_graph_removed_edges:
                                     current_backward_connected.append(current_node_successor)
-                                    
+
                             else:
                                 if (current_node, current_node_successor) in edmonds_graph_removed_edges:
                                     current_forward_connected.append(current_node_successor)
                                     connected = True
-                
+
                                 else:
                                     connected = True
-                
+
                     if connected == False:
                         if len(list(self.pangenome_graph.successors(current_node))) == 0:
                             pangenome_graph_edge_data = {
@@ -1883,31 +1879,31 @@ class Pangraph():
                                 'bended': [],
                                 'direction': 'R'
                             }
-                        
+
                             new_data = self.edge_check(current_node, 'stop', pangenome_graph_edge_data)
                             self.edmonds_graph.add_edge(current_node, 'stop', **new_data)
                             connected = True
-                
+
                     if connected == True:
                         for current_forward in current_forward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_forward, reverse = False)
-                            
+
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_forward))
-                            
+
                         for current_backward in current_backward_connected:
                             node_i, node_j, data = self.get_edge(current_node, current_backward, reverse = True)
 
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
                             edmonds_graph_removed_edges.remove((current_node, current_backward))
-                            
+
                         resolved_nodes.add(current_node)
-                
+
                     else:
                         if current_backward_connected:
-                
+
                             number = max([(self.pangenome_graph.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
 
                             node_i, node_j, data = self.get_edge(current_node, current_backward_connected[number], reverse = True)
@@ -1915,32 +1911,34 @@ class Pangraph():
 
                             new_data = self.edge_check(node_i, node_j, data)
                             self.edmonds_graph.add_edge(node_i, node_j, **new_data)
-                            
+
                             edmonds_graph_removed_edges.remove((current_node, current_backward_connected[number]))
                             edmonds_graph_removed_edges.add((edmonds_graph_predecessors[current_node], current_node))
-                
+
                             edmonds_graph_successors[edmonds_graph_predecessors[current_node]].remove(current_node)
                             edmonds_graph_successors[current_backward_connected[number]] += [current_node]
 
                             pred = edmonds_graph_predecessors[current_node]
 
                             edmonds_graph_predecessors.pop(current_node, None)
-                            edmonds_graph_predecessors[current_node] = current_backward_connected[number] 
-                
+                            edmonds_graph_predecessors[current_node] = current_backward_connected[number]
+
                             edmonds_graph_distances[current_node] = self.mean_edmonds_graph_path_weight('start', current_node)
-                
+
                             resolved_nodes.add(current_node)
-                            
+
                 visited_nodes.add(current_node)
-            
+
                 if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-                    print('Sanity Error. Code 6.')
-                    exit()
+                    raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                                      f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                                      f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                                      f"checks in the next version. Sorry :/")
 
         self.progress.end()
 
         remaining_stops = [node for node in self.edmonds_graph.nodes() if self.edmonds_graph.out_degree(node) == 0 and node != 'stop']
-        self.run.info_single(f"{pp(i)} iterations to solve the graph") 
+        self.run.info_single(f"{pp(i)} iterations to solve the graph")
 
         for stop in remaining_stops:
 
@@ -1957,8 +1955,10 @@ class Pangraph():
             edmonds_graph_successors[stop] += ['stop']
 
         if not nx.is_directed_acyclic_graph(self.edmonds_graph):
-            print('Sanity Error. Code 7.')
-            exit()
+            raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                              f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                              f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                              f"checks in the next version. Sorry :/")
 
         self.run.info_single("Done")
 
@@ -1967,11 +1967,13 @@ class Pangraph():
 
         self.run.warning(None, header="Import graph F from json file", lc="green")
 
+        filesnpaths.is_file_json_formatted(self.pan_graph_json)
+
         self.jsondata = json.load(open(self.pan_graph_json))
 
         self.global_x = int(self.jsondata["infos"]["meta"]["global_x"])
         self.priority_genome = self.jsondata["infos"]["priority_genome"]
-        
+
         self.global_y = 0
         self.ancest = nx.DiGraph()
         self.x_list = {}
@@ -2008,15 +2010,15 @@ class Pangraph():
             self.x_list[x] = generation
             for node in generation:
                 self.position[node] = (x, -1)
-            
+
         self.global_x = x
 
         self.ancest = nx.DiGraph(self.edmonds_graph)
         nx.set_edge_attributes(self.ancest, values=-1, name='weight')
-        
+
 
     def run_synteny_layout_algorithm(self):
-       
+
         self.run.warning(None, header="Calculating coordinates on the nodes from F", lc="green")
 
         layout_graph_nodes = list(self.ancest.nodes())
@@ -2032,10 +2034,10 @@ class Pangraph():
                 for successor in layout_graph_successors[node]:
                     if successor != 'stop':
                         successor_x_position = self.position[successor][0]
-                        
+
                         if successor_x_position <= node_x_position:
-                            print('Sanity Error. Code 8.')
-                            exit()
+                            raise ConfigError(f"The node {node} is succeded by the node {successor} which is in front of the node {node}"
+                                              f"that does not make a lot of sense and should not happen. We are sorry for the inconvenience :/")
                         else:
                             change.append((successor_x_position, successor))
 
@@ -2073,8 +2075,9 @@ class Pangraph():
         for i, j in self.ancest.edges():
 
             if self.position[j][0] - self.position[i][0] != 1 and i != 'start' and j != 'stop' and (i,j) not in self.removed:
-                print('Sanity Error. Code 9.')
-                exit()
+                raise ConfigError(f"Hmmm. This situation would create a very weird looking connection."
+                                  f"The ede {(i, j)} is longer than it should be. I don't know what created"
+                                  f"this but we will work on a solution on the next release. Sorry :(")
 
         if self.max_edge_length_filter == -1:
             self.run.info_single("Setting algorithm to 'keep all edges'")
@@ -2090,7 +2093,7 @@ class Pangraph():
         for st in starts:
             self.ancest.add_edge('start', st, weight=-1)
         dfs_list = list(nx.dfs_edges(self.ancest, source='start'))
-        
+
         group = 0
         groups = {}
         groups_rev = {}
@@ -2129,15 +2132,17 @@ class Pangraph():
             self.ancest.remove_edge('start', st)
 
         self.ancest.remove_edges_from(self.removed)
-        
+
         branches = {}
         sortable = []
         for g in groups.keys():
             branch = groups[g]
 
             if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
-                print('Sanity Error. Code 10.')
-                break
+                raise ConfigError(f"A group is neither disjoint from the main path nor subset of the main path"
+                                  f"we should not continue from here as this is not something that should happen.")
+                # print('Sanity Error. Code 10.')
+                # break
 
             elif set(branch).isdisjoint(m):
 
@@ -2165,8 +2170,10 @@ class Pangraph():
         for n in left_nodes:
 
             if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
-                print('Sanity Error. Code 11.')
-                break
+                raise ConfigError(f"A group is neither disjoint from the main path nor subset of the main path"
+                                  f"we should not continue from here as this is not something that should happen.")
+                # print('Sanity Error. Code 11.')
+                # break
 
             elif set([n]).isdisjoint(m):
                 start = self.position[n][0]
@@ -2214,7 +2221,7 @@ class Pangraph():
                     remove = False
                     sortable.remove((i,j,k))
                     y_new = max(sum([[self.position[ypred][1] for ypred in branch_pred], [self.position[ysucc][1] for ysucc in branch_succ]], []))
-                        
+
                     stack = [branch] + stack
                     while True:
                         repeat = False
@@ -2242,12 +2249,12 @@ class Pangraph():
 
         if len(set(self.position.values())) != len(self.position.values()):
             print(len(self.position.values()) - len(set(self.position.values())))
-            print('Sanity Error. Code 12.')
-            exit()
+            raise ConfigError(f"No no no no. Something went very wrong here. Some nodes overlap in the UI."
+                              f"We don't want this, we definitely don't want this...")
 
-        for edge_i, edge_j in self.edges.keys():  
+        for edge_i, edge_j in self.edges.keys():
             path_list, infos = self.edges[(edge_i, edge_j)]
-            
+
             self.ancest.add_edge(edge_i, edge_j, **infos)
             self.ancest[edge_i][edge_j]['weight'] = sum([1 if value != self.priority_genome else 10 for value in self.ancest[edge_i][edge_j]['genome'].keys()])
             self.ancest[edge_i][edge_j]['bended'] = [self.position[p] for p in path_list[1:-1]]
@@ -2261,11 +2268,11 @@ class Pangraph():
         x_positions_list = []
 
         for group_name in self.grouping.keys():
-            
+
             group = self.grouping[group_name]
 
             group_size = len(group)
-            group_size_compressed = round(group_size * self.groupcompress) 
+            group_size_compressed = round(group_size * self.groupcompress)
             compressed_factor = group_size_compressed if group_size_compressed == 0 else group_size_compressed - 1
 
             node_distance_factor = compressed_factor / (group_size - 1)
@@ -2274,7 +2281,7 @@ class Pangraph():
 
             for i, node in enumerate(group):
                 self.offset[node] = round(start_x + i * node_distance_factor)
-            
+
             compressed_length = int(self.offset[group[-1]] - self.offset[group[0]])
 
             x_positions_list += [i for i in range(start_x, start_x + compressed_length + 1)]
@@ -2303,7 +2310,7 @@ class Pangraph():
                     break
 
         for edge_i, edge_j, data in self.ancest.edges(data=True):
-            if edge_i != 'start' and edge_j != 'stop':            
+            if edge_i != 'start' and edge_j != 'stop':
                 if data['bended']:
                     for i, (x, y) in enumerate(data['bended']):
                         decrease = 0
@@ -2318,10 +2325,10 @@ class Pangraph():
 
                 else:
                     if self.offset[edge_j] - self.offset[edge_i] != 1:
-                        
+
                         y = self.position[edge_i][1]
                         x = self.offset[edge_i] + 1
-                        
+
                         while x < self.offset[edge_j]:
                             data['bended'].append((x, y))
                             x += 1
@@ -2340,7 +2347,7 @@ class Pangraph():
 
         for gene_cluster in self.ancest.nodes():
 
-            if gene_cluster != 'start' and gene_cluster != 'stop':        
+            if gene_cluster != 'start' and gene_cluster != 'stop':
                 node = self.ancest.nodes()[gene_cluster]
                 num = len(node['genome'].keys())
                 max_paralog_list = []
@@ -2353,7 +2360,7 @@ class Pangraph():
 
                 for genome in node['genome'].keys():
                     info = node['genome'][genome]
-                    
+
                     max_paralog_list.append(info['max_num_paralogs'])
                     func_homogeneity_list.append(info['functional_homogeneity_index'])
                     geo_homogeneity_list.append(info['geometric_homogeneity_index'])
@@ -2405,7 +2412,7 @@ class Pangraph():
         gene_layer_dict = {}
 
         i = 0
-        for node, data in self.ancest.nodes(data=True):            
+        for node, data in self.ancest.nodes(data=True):
             if node != 'start' and node != 'stop':
                 for genome in data['genome'].keys():
                     contig = data['genome'][genome]['contig']
@@ -2422,14 +2429,14 @@ class Pangraph():
 
 
     def get_additional_gc_layer_table(self):
-        
+
         self.run.warning(None, header="Export empty dataframe for gc annotations", lc="green")
 
         gc_layer_dict = {}
         included = set()
 
         i = 0
-        for node, data in self.ancest.nodes(data=True):            
+        for node, data in self.ancest.nodes(data=True):
             if node != 'start' and node != 'stop':
                 name = data['name']
                 if name not in included:
@@ -2445,7 +2452,7 @@ class Pangraph():
 
 
     def add_additional_gene_layer_values(self):
-        
+
         self.run.warning(None, header="Appending layer values from external gene data", lc="green")
 
         df = pd.read_csv(self.gene_additional_data)
@@ -2454,7 +2461,7 @@ class Pangraph():
         layer_max = {layer_name: 0 for layer_name in layer_names}
 
         for node, data in self.ancest.nodes(data=True):
-            
+
             if node != 'start' and node != 'stop':
 
                 for layer_name in layer_names:
@@ -2467,7 +2474,7 @@ class Pangraph():
 
                         value = df.loc[(genome, contig, genecall)][layer_name].item()
                         value_list.append(value)
-                
+
                     value_sum = sum(value_list) / len(value_list)
 
                     data['layer'][layer_name] = value_sum
@@ -2488,21 +2495,16 @@ class Pangraph():
         self.run.warning(None, header="Appending layer values from external gc data", lc="green")
 
         df = pd.read_csv(self.gc_additional_data)
-
-        print(df)
         df.set_index(['genecluster'], inplace=True)
         layer_names = list(df.columns)
         layer_max = {layer_name: 0 for layer_name in layer_names}
 
         for node, data in self.ancest.nodes(data=True):
-            
             if node != 'start' and node != 'stop':
-
                 name = data['name']
                 for layer_name in layer_names:
-                    
-                    value = df.loc[name][layer_name].item()
 
+                    value = df.loc[name][layer_name].item()
                     data['layer'][layer_name] = value
                     layer_max[layer_name] = layer_max[layer_name] if layer_max[layer_name] > value else value
 
@@ -2535,11 +2537,11 @@ class Pangraph():
 
                 for gene_call in gene_calls_of_contig:
                     gene_cluster_id = self.gene_synteny_data_dict[genome][contig][gene_call]['gene_cluster_id']
-                    
+
                     core_fraction = len(self.ancest.nodes[gene_cluster_id]['genome'].keys()) / len(self.genomes)
 
                     if core_fraction >= core_threshold or gene_call == gene_calls_of_contig[-1]:
-                        
+
                         if inside_region == False:
                             left_flanking_core = gene_cluster_id
 
@@ -2573,7 +2575,7 @@ class Pangraph():
         hypervariable_region_df = pd.DataFrame.from_dict(hypervariable_region_dict_list)
 
         groups = hypervariable_region_df.groupby(['left_flanking_core', 'right_flanking_core'])
-        
+
         hypervariable_region_index = 0
 
         hypervariable_region_stack_list = []
@@ -2581,16 +2583,16 @@ class Pangraph():
         for group_name, df_group in groups:
 
             df_group['name'] = 'HVR' + str(hypervariable_region_index)
-            
+
             graph_length = self.global_x - 1
             graph_num_genomes = len(self.genomes)
 
             hvr_num_diff_gc = int(df_group['gene_cluster'].nunique())
             hvr_length = int(df_group['length'].max())
             hvr_num_genomes = int(df_group['genome'].nunique())
-            
-            df_group['score'] = (hvr_num_genomes / graph_num_genomes) * (hvr_num_diff_gc / hvr_length) 
-            
+
+            df_group['score'] = (hvr_num_genomes / graph_num_genomes) * (hvr_num_diff_gc / hvr_length)
+
             hypervariable_region_stack_list.append(df_group)
             hypervariable_region_index += 1
 
@@ -2672,7 +2674,7 @@ class Pangraph():
         }
 
         self.jsondata['elements'] = {
-            'nodes': {}, 
+            'nodes': {},
             'edges': {}
         }
 
@@ -2709,6 +2711,9 @@ class Pangraph():
         self.run.warning(None, header="Exporting network to JSON", lc="green")
 
         if self.json_output_file_path:
+
+            filesnpaths.is_output_file_writable(self.json_output_file_path)
+
             with open(self.json_output_file_path, 'w') as output:
                 output.write(json.dumps(self.jsondata, indent=2))
             self.run.info("JSON output file", os.path.abspath(self.json_output_file_path))
