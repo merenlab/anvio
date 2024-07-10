@@ -145,7 +145,7 @@ class PrimerSearch:
         sample_dict : dict
             A dictionary that holds `hits` for each primer.
         primers_dict : dict
-            A dictionary that holds `matching_seqeunces` for each primer
+            A dictionary that holds `matching_sequences` for each primer
         """
 
         if sample_name not in self.samples_dict:
@@ -302,7 +302,7 @@ class PrimerSearch:
             It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream
             sequences after primer match, excluding the primer sequence. Primer matches are the primer-matching part of the
             match sequences (useful if one is working with degenerate primers and wishes to see the diversity of matching
-            seqeunces). Trimmed sequences are trimmed to the shortest length (and include primer match). Gapped sequences
+            sequences). Trimmed sequences are trimmed to the shortest length (and include primer match). Gapped sequences
             are not trimmed, but shorter ones are padded with gaps.
 
         Returns
@@ -523,7 +523,7 @@ class Palindromes:
                               "class, not both :/")
 
         if self.min_mismatch_distance_to_first_base < 1:
-            raise ConfigError("The minimum mismatch thistance to the first base from either of the palindrome "
+            raise ConfigError("The minimum mismatch distance to the first base from either of the palindrome "
                               "must be greater than 0.")
 
         if self.output_file_path:
@@ -677,8 +677,8 @@ class Palindromes:
                              f"in a sequence that is {pp(len(sequence))} nts long. If your palindrome search takes a VERY long time "
                              f"you may want to go for longer palindromes by setting a different `--min-palindrome-length` parameter "
                              f"and by increasing the BLAST word size using `--blast-word-size` parameter (please read the help menu first). "
-                             f"This part of the code does not know if you have many more seqeunces to search, but anvi'o will not "
-                             f"continue displaying this warning for additional seqeunces to minimize redundant informatio in your "
+                             f"This part of the code does not know if you have many more sequences to search, but anvi'o will not "
+                             f"continue displaying this warning for additional sequences to minimize redundant information in your "
                              f"log files (because despite the popular belief anvi'o can actually sometimes be like nice and all).",
                              header="ONE-TIME PERFORMANCE WARNING")
             self.user_is_warned_for_potential_performance_issues = True
@@ -725,7 +725,7 @@ class Palindromes:
                     #
                     # where you indeed have a proper palindrome here. the start and end of both sequences of this
                     # palindrome will be the same: TCGA (3:7) :: TCGA (3:7). In this case, we can't simply calculate
-                    # 'distance' by substracting the start of the second sequence from the end of the first, OR we
+                    # 'distance' by subtracting the start of the second sequence from the end of the first, OR we
                     # can't simply remove it from our consideration because p.second_start - p.first_end is a negative
                     # value.
                     #
@@ -950,7 +950,7 @@ class Palindromes:
         # `-` are not allowed by any means, so they are ignored.
         #
         # A single pass of this algorithm over a `s` to
-        # identify sections of it with allowed number of mismathces
+        # identify sections of it with allowed number of mismatches
         # will not give an opportunity to identify longest possible
         # stretches of palindromic sequences. however, a moving
         # start position WILL consider all combinations of substrings,
@@ -965,7 +965,7 @@ class Palindromes:
         # every matching stretch that contains an acceptable number of
         # mismatches. For instance, for a max mismatch requirement of two,
         # the iterations over `s` will identify start-end positions that
-        # will yeild the following substrings:
+        # will yield the following substrings:
         #
         # >>>  s: ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo
         #
