@@ -106,7 +106,7 @@ if __name__ == '__main__':
                     "and the upstream/downstream genomic context to search for short reads in raw sequencing data"
                     "to find the ratio of inversion activity per sample. This variable is to control how much of "
                     "the palindrome for a given inversion should be used to build a primer to search for short "
-                    "reads. The longer it is, the more specific the primers will be to survey short reads. But if "
+                    "reads. The longer it is, the more specific the primers will be to survey short reads. But "
                     "if it is too long, then there will not be enough reads to 'keep' depending on the minimum "
                     "short read length of the sequencing. The default value will probably good for the vast "
                     "majority of cases.", metavar="INT")
