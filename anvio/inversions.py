@@ -466,7 +466,7 @@ class Inversions:
                     continue
 
                 # here we have, for a given `contig_name`, `start` and `stop` positions of a stretch in it,
-                # and one or more ture inversions. the next step will require us to count them in the original
+                # and one or more true inversions. the next step will require us to count them in the original
                 # FASTQ files to see their ratio across samples, but for that we need primers to get oligos
                 ################################################################################
                 self.progress.update(f"{contig_name}[{start}:{stop}]: oligo determination")
@@ -799,15 +799,15 @@ class Inversions:
                 genomic_context_end = genes[-1]['stop'] + 100
 
                 # this is our magic number, which is matching to the actual width of the genomic context
-                # display in the static HTML output. we will have to transfrom start-stop coordinates
+                # display in the static HTML output. we will have to transform start-stop coordinates
                 # of each gene to this value.
                 new_context_length = 1000
 
-                # how big the gene arros should be (in an ideal world -- see below the real world, Neo)
+                # how big the gene arrows should be (in an ideal world -- see below the real world, Neo)
                 default_gene_arrow_width = 20
 
                 # before we start working on the genes, we will figure out the location of the inverted site
-                # in the genomc context. here we quckly identify the transformed start and the end position
+                # in the genomic context. here we quickly identify the transformed start and the end position
                 # and store it in the inversion data dict
                 inv_start = (entry['first_end'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
                 inv_end  = (entry['second_start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
@@ -830,7 +830,7 @@ class Inversions:
                         # shorter than the space we assign for the arrow to display gene calls.
                         # this means we will only will be able to show an arrow, but even in that
                         # case the `gene_arrow_width` may be too long to display (i.e., if the
-                        # transformed gene lenth is 10 and arrow is 15, we are already showing
+                        # transformed gene length is 10 and arrow is 15, we are already showing
                         # too much). The solution is to make the gene nothing more but the arrow
                         # but make the arrow width equal to the gene width
                         gene_arrow_width = gene['stop_t'] - gene['start_t']
@@ -1118,7 +1118,7 @@ class Inversions:
 
         By identifying redundant inversions and reporting only one
         of them, this function reports a final list of inversions
-        identifications of which are informed by invdividual samples
+        identifications of which are informed by individual samples
         and their coverages in them, but will continue their lives
         as strong and independent inversions.
         """
@@ -1390,7 +1390,7 @@ class Inversions:
                 - oligo_primer: frequencies reported whether for the first or second palindrome
                 - oligo: the actual oligonucleotides of `self.oligo_length` bases
                 - frequency: the frequency of oligo in sample
-                - relative_abundance: witin-sample relative abundance of the frequency
+                - relative_abundance: within-sample relative abundance of the frequency
         """
 
         while True:
@@ -1555,7 +1555,7 @@ class Inversions:
 
 
         # these if blocks for progress is an ugly hack, but they are serving a very useful purpose.
-        # if the user is working with a single thread, we would like them to see th eactual PrimerSearch
+        # if the user is working with a single thread, we would like them to see the actual PrimerSearch
         # activity that comes from `compute_inversion_activity_for_sample`. But when that function is run
         # in multiple threads, we don't want any progress report from that guy, and report an overall
         # progress from this main function. So if there is a single thread, we pass our own progress
@@ -1583,7 +1583,7 @@ class Inversions:
                     else:
                         self.progress.update("All done!")
             except KeyboardInterrupt:
-                self.run.info_single("Recieved SIGINT, terminating all processes... Don't believe anything you see "
+                self.run.info_single("Received SIGINT, terminating all processes... Don't believe anything you see "
                                      "below this and sanitize all the output files with fire.", nl_before=1, nl_after=1)
                 break
 
@@ -1633,7 +1633,7 @@ class Inversions:
             plt.axes_color("cloud")
             plt.ticks_color("iron")
         except Exception as e:
-            self.run.warning(f"Something bad happen when anvi'o atempted to plot the coverage data :/ "
+            self.run.warning(f"Something bad happen when anvi'o attempted to plot the coverage data :/ "
                              f"Your program will continue running, but here is the error message from "
                              f"the library: \"{e}\".", nl_after=0)
             return
@@ -1680,7 +1680,7 @@ class Inversions:
         self.run.info("[Finding palindromes] Min palindrome length", self.min_palindrome_length)
         self.run.info("[Finding palindromes] Max num mismatches", self.max_num_mismatches)
         self.run.info("[Finding palindromes] Min mismatch distance to first base", self.min_mismatch_distance_to_first_base)
-        self.run.info("[Finding palindromes] Min distance betwen each sequence", self.min_distance_palindrome, nl_after=1)
+        self.run.info("[Finding palindromes] Min distance between each sequence", self.min_distance_palindrome, nl_after=1)
 
         self.run.info("[Confirming inversions] Check all palindromes in a stretch?",  "True" if self.check_all_palindromes else "False")
         self.run.info("[Confirming inversions] Process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
@@ -1753,7 +1753,7 @@ class Inversions:
         # here we know every single inversion. The same inversion site might be
         # found as true inversion in multiple samples when bams and profiles file
         # includes more than one sample. To avoid redundancy, we wish to report
-        # a concensus file that describes only unique inversions.
+        # a consensus file that describes only unique inversions.
         self.compute_consensus_inversions()
 
         # here we will try to generate some insights into the genomic context that
