@@ -200,6 +200,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
         self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
         self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
+        self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1533,14 +1534,11 @@ class BottleApplication(Bottle):
 
     def get_pangraph_json_data(self):
 
-        # return self.interactive.pan_graph_json()
-
         return self.interactive.get_pangraph_json()
     
 
     def get_pangraph_bin_summary(self):
 
-        # return self.interactive.pan_graph_json()
         payload = request.json
         selection = payload['selection']
         result = {}
@@ -1550,8 +1548,6 @@ class BottleApplication(Bottle):
 
         bin_functions = {}
         all_functions = []
-
-        matrix = {}
 
         for bin in list(payload.keys())[1:]:
             
@@ -1564,15 +1560,14 @@ class BottleApplication(Bottle):
                 all_functions.append(function)
                 
         for function in all_functions:
-            print(function)
-            matrix[function] = {}
+            result[function] = {}
             for bin in bin_functions.keys():
                 if function in bin_functions[bin]:
-                    matrix[function][bin] = 1
+                    result[function][bin] = 1
                 else:
-                    matrix[function][bin] = 0
+                    result[function][bin] = 0
 
-        return matrix
+        return json.dumps(result)
 
     def get_pangraph_settings(self):
 
@@ -1596,7 +1591,7 @@ class BottleApplication(Bottle):
         Pangraph.update_json_dict()
         Pangraph.store_network()
 
-        return({'status': 1})
+        return({'status': 0})
 
     def get_pangraph_gc_alignment(self):
 
@@ -1610,6 +1605,18 @@ class BottleApplication(Bottle):
 
             result[genome] = [genecall, contig, direction, sequence]
 
-        # print(result)
-
         return(result)
+    
+    def get_pangraph_gc_function(self):
+
+        payload = request.json
+        result = {}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        gene_cluster_name = payload['genecluster']
+
+        for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
+            result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
+        return json.dumps(result)

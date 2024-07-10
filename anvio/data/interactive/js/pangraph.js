@@ -50,40 +50,20 @@ function modeString(array) {
 }
 
 //ANCHOR - Fetch GC consensus functions
-function get_gene_cluster_consensus_functions(gene_cluster_data) {
-  var d = new Object();
-  if (functional_annotation_sources_available.length > 0) {
-    for (var source of functional_annotation_sources_available) {
+function get_gene_cluster_consensus_functions(gene_cluster_name) {
 
-      var id = []
-      var func = []
+  var func = new Object();
+  func['genecluster'] = gene_cluster_name
 
-      if (gene_cluster_data != '') {
-        for (var element of Object.keys(gene_cluster_data)) {
-          var entry = gene_cluster_data[element][source]
+  var d = $.ajax({
+    url: "/pangraph/function",
+    type: "POST",
+    data: JSON.stringify(func),
+    contentType: "application/json",
+    dataType: "json"
+  })
 
-          if (entry === 'None' || entry === undefined) {
-            entry = ['-', '-', '-']
-          }
-
-          id.push(entry[0].split('!!!')[0]);
-          func.push(entry[1].split('!!!')[0]);
-        }
-
-        var [id_maxEl, id_maxCount] = modeString(id);
-        var [func_maxEl, func_maxCount] = modeString(func);
-      } else {
-
-        var id_maxEl = ''
-        var id_maxCount = ''
-        var func_maxEl = ''
-        var func_maxCount = ''
-      }
-      d[source] = [id_maxEl, id_maxCount, func_maxEl, func_maxCount]
-    }
-  }
-
-  return(d);
+  return d
 }
 
 function get_layer_data(gene_cluster_id, data, add_align) {
@@ -166,7 +146,7 @@ function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, da
 }
 
 
-function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
+async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
     
     if (add_align == 1) {
       functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
@@ -179,25 +159,27 @@ function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
     functions_table += `<th scope="col">Source</th>`;
     functions_table += `<th scope="col">Accession</th>`;
     functions_table += `<th scope="col">Function</th>`;
-    functions_table += `<th scope="col">Agreement</th>`;
     functions_table += `</tr></thead><tbody>\n\n`;
 
-    var gene_cluster_data = data['elements']['nodes'][gene_cluster_id]['genome']
-    var d = get_gene_cluster_consensus_functions(gene_cluster_data);
+    var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
+    var d = await get_gene_cluster_consensus_functions(gene_cluster_name);
+
+    console.log(d)
 
     function_sources = Object.keys(d).sort();
-    // console.log(function_sources);
-    for (index in function_sources) {
-        source = function_sources[index];
+    console.log(function_sources);
+    for (source of function_sources) {
         value = d[source];
-
-        var [id_maxEl, id_maxCount, func_maxEl, func_maxCount] = value
+        console.log(source)
+        var accession = value['accession']
+        accession === undefined | accession === null ? accession = '' : accession = accession
+        var func = value['function']
+        func === undefined | func === null ? func = '' : func = func
 
         functions_table += `<tr>`;
         functions_table += `<td>` + source + `</td>`;
-        functions_table += `<td>` + id_maxEl + `</td>`;
-        functions_table += `<td>` + func_maxEl + `</td>`;
-        functions_table += `<td>` + func_maxCount + `%</td>`;
+        functions_table += `<td>` + accession + `</td>`;
+        functions_table += `<td>` + func + `</td>`;
         functions_table += `</tr>`;
     }
     functions_table += `</tbody></tr></table>\n\n`;
@@ -274,7 +256,7 @@ async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_con
 
     basic_layer_table = get_layer_data(gene_cluster_id, data, add_align);
 
-    functions_table = get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
+    functions_table = await get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
@@ -547,7 +529,6 @@ function pickcolor (edgecoloring, genomes) {
   return sortedArray[0][1]
 }
 
-//ANCHOR - All in one SVG creation function
 //ANCHOR - All in one SVG creation function
 async function generate_svg(body, data) {
 
@@ -1095,7 +1076,7 @@ async function generate_svg(body, data) {
 }
 
 //ANCHOR - Check node
-function checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) {
+async function checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) {
 
   var append = true
 
@@ -1109,7 +1090,7 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
   var keys = Object.keys(searchfunction)
   if (keys.length > 0) {
     var t = false
-    var d = get_gene_cluster_consensus_functions(node['genome'])
+    var d = await get_gene_cluster_consensus_functions(node['name'])
     for (var source of keys) {
       for (var s of searchfunction[source]){
 

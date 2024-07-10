@@ -1698,7 +1698,7 @@ class Pangraph():
                 pos=(0, 0),
                 weight=len(self.genomes),
                 layer={},
-                genome={genome: {'gene_call': -1} for genome in self.genomes}
+                genome={genome: {'gene_call': -1, 'contig': '', 'direction': ''} for genome in self.genomes}
             )
 
             for u in add_start:
@@ -1796,7 +1796,7 @@ class Pangraph():
                 pos=(0, 0),
                 weight=len(self.genomes),
                 layer={},
-                genome={genome: {'gene_call': -1} for genome in self.genomes}
+                genome={genome: {'gene_call': -1, 'contig': '', 'direction': ''} for genome in self.genomes}
             )
             graph.add_edge(
                 *(edmonds_graph_end, 'stop'),
@@ -2652,7 +2652,7 @@ class Pangraph():
                 'global_y': self.global_y,
                 'global_x_offset': self.global_x_offset
             },
-            'genomes': self.genomes,
+            'genomes': {genome: 'on' for genome in self.genomes},
             'functional_annotation_sources_available': self.functional_annotation_sources_available,
             'num_genomes': len(self.genomes),
             'max_edge_length_filter': self.max_edge_length_filter,
@@ -2689,10 +2689,8 @@ class Pangraph():
                     'y': j['pos'][1],
                     'x_offset': self.offset[i]
                 },
-                "genome": {key: {'gene_call': j["genome"][key]['gene_call']} for key in j["genome"].keys()}
+                "genome": {key: {item: j["genome"][key][item] for item in ['gene_call', 'contig', 'direction']} for key in j["genome"].keys()}
             }
-
-            print(self.jsondata["elements"]["nodes"][str(i)])
 
         for l, (k, o, m) in enumerate(self.ancest.edges(data=True)):
 
@@ -2705,8 +2703,6 @@ class Pangraph():
                 "direction": m["direction"],
                 "bended": [{'x': x, 'y': y} for x, y in m["bended"]] if len(m["bended"]) != 0 else ""
             }
-
-            print(self.jsondata["elements"]["edges"]['E_' + str(l).zfill(8)])
 
         self.run.info_single("Done.")
 
