@@ -3,10 +3,12 @@
 
 import os
 import sys
+import time
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -91,14 +93,30 @@ def main(args):
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
-                                     hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
-                                     get_domain_table_output=args.domain_hits_table, add_to_functions_table=args.add_to_functions_table)
-    search_tables.populate_search_tables(sources)
+    # right before we start, we want to make sure there is no other program actually
+    # running on the same database, and we will not start until it is over:
+    lock = utils.DatabaseLockForBabies(args.contigs_db, 'HMMs')
+    lock.wait()
 
-    if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
-        tables_for_trna_hits = TablesForTransferRNAs(args)
-        tables_for_trna_hits.populate_search_tables(args.contigs_db)
+    # this try/except block is critical, because we don't want to find any lingering
+    # lock files around when a process is dead due to an exception.
+    try:
+        search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
+                                         hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
+                                         get_domain_table_output=args.domain_hits_table, add_to_functions_table=args.add_to_functions_table)
+        search_tables.populate_search_tables(sources)
+
+        if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
+            tables_for_trna_hits = TablesForTransferRNAs(args)
+            tables_for_trna_hits.populate_search_tables(args.contigs_db)
+    except Exception as e:
+        # there was a snafu? get rid of your release first before passing the error to
+        # the user:
+        lock.release()
+        raise ConfigError(e.e)
+
+    # all good
+    lock.release()
 
 
 if __name__ == '__main__':
