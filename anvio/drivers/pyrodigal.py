@@ -1,7 +1,6 @@
 # coding: utf-8
 """Interface for gene calling that uses `pyrodigal`."""
 
-import pyrodigal
 import multiprocessing.pool
 
 import anvio
@@ -12,6 +11,11 @@ import anvio.constants as constants
 
 from anvio.errors import ConfigError
 
+try:
+    import pyrodigal
+except ImportError:
+    raise ConfigError("Your anvi'o environment is missing the `pyrodigal` package. But it is easy to "
+                      "solve. Please run `pip install pyrodigal` first.")
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
