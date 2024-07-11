@@ -465,7 +465,7 @@ class TablesForGeneCalls(Table):
         return gene_call
 
 
-    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='pyrodigal'):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
         # get gene calls and amino acid sequences
@@ -478,7 +478,7 @@ class TablesForGeneCalls(Table):
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences)
 
 
-    def run_gene_caller(self, gene_caller='prodigal'):
+    def run_gene_caller(self, gene_caller):
         """Runs gene caller, and returns gene_calls_dict, and amino acid sequences."""
         remove_fasta_after_processing = False
 
@@ -498,15 +498,9 @@ class TablesForGeneCalls(Table):
         try:
             gene_calls_dict, amino_acid_sequences = gene_caller.process()
         except Exception as e:
-            if 'prodigal' in e.e:
-                self.run.warning("There was a problem with your gene calling, and the error seems to be related to 'prodigal'. Please "
-                                 "find additional details below. It is difficult to determine what caused this error, but if you would "
-                                 "like to be certain, you can literally copy the command shown below into a single line, and run on "
-                                 "the same machine manually (or re-run the same command you run to get this error with the `--debug` flag "
-                                 "to keep all the original log files from profigal). If this error is due to a 'segmentation fault', "
-                                 "please consider including `--prodigal-single-mode` flag `anvi-gen-contigs-database` command. More "
-                                 "information `--prodigal-single-mode` is available in the help menu of `anvi-gen-contigs-database`.",
-                                 header="💀 PRODIGAL FAILED 💀")
+            self.run.warning("There was a problem with your gene calling. Anvi'o will now remove the residual contigs-db file. Please "
+                             "find the actual error message below. If you need more details, re-run your command with `--debug` parameter.",
+                             header="💀 PRODIGAL FAILED 💀")
 
             # remove the unfinished contigs-db file
             os.remove(self.db_path)
