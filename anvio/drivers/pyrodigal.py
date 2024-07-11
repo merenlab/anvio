@@ -25,9 +25,11 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+
 def predict(datum):
     contig_name, sequence, predictor = datum
     return (contig_name, predictor.find_genes(sequence))
+
 
 class Pyrodigal:
     def __init__(self, args=None, progress=progress, run=run):
@@ -37,8 +39,8 @@ class Pyrodigal:
 
         # user params
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
-        self.pyrodigal_translation_table = A('pyrodigal_translation_table')
-        self.pyrodigal_single_mode = A('pyrodigal_single_mode')
+        self.pyrodigal_translation_table = A('prodigal_translation_table')
+        self.pyrodigal_single_mode = A('prodigal_single_mode')
         self.num_threads = A('num_threads')
 
         self.gene_caller_name = 'pyrodigal'
@@ -82,7 +84,7 @@ class Pyrodigal:
 
         gene_callers_id = 0
         with multiprocessing.pool.Pool(self.num_threads) as pool:
-            for contig_name, predicted_genes in pool.imap(predict, data):
+            for contig_name, predicted_genes in pool.map(predict, data):
                 for gene in predicted_genes:
                     gene_calls_dict[gene_callers_id] = {'contig': contig_name,
                                                         'start': gene.begin - 1,
