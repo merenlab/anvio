@@ -13,6 +13,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 from anvio.drivers.prodigal import Prodigal
+from anvio.drivers.pyrodigal import Pyrodigal
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -29,7 +30,7 @@ progress = terminal.Progress()
 
 
 class GeneCaller:
-    def __init__(self, fasta_file_path, gene_caller='prodigal', args=None, progress=progress, run=run, debug=False):
+    def __init__(self, fasta_file_path, gene_caller='pyrodigal', args=None, progress=progress, run=run, debug=False):
         filesnpaths.is_file_exists(fasta_file_path)
         filesnpaths.is_file_fasta_formatted(fasta_file_path)
 
@@ -42,13 +43,14 @@ class GeneCaller:
         self.debug = debug
         self.tmp_dirs = []
 
-        self.gene_callers = {'prodigal': Prodigal}
+        self.gene_callers = {'pyrodigal': Pyrodigal,
+                             'prodigal': Prodigal}
 
         self.gene_caller = gene_caller
 
         if self.gene_caller not in self.gene_callers:
-            raise ConfigError("The gene caller you requested ('%s') is not available at this point. "
-                               "here is a list of what we have: %s." % (', '.join(self.gene_callers)))
+            raise ConfigError(f"Anvi'o does not know the gene caller you requested: {self.gene_caller} :( Here is a list of "
+                              f"the gene callers she knows about: {', '.join(self.gene_callers)}")
 
 
     def process(self):
