@@ -43,8 +43,8 @@ class Pyrodigal:
 
         # user params
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
-        self.pyrodigal_translation_table = A('prodigal_translation_table')
-        self.pyrodigal_single_mode = A('prodigal_single_mode')
+        self.prodigal_translation_table = A('prodigal_translation_table')
+        self.prodigal_single_mode = A('prodigal_single_mode')
         self.num_threads = A('num_threads')
 
         self.gene_caller_name = 'pyrodigal'
@@ -56,31 +56,64 @@ class Pyrodigal:
         Returns a gene calls dict, and amino acid sequences dict.
         """
 
-        # we set the predictor here. this is the right place to set all variables regarding
-        # how to run the gene caller (i.e., meta/single, translation table, etc)
-        self.predictor = pyrodigal.GeneFinder(meta=True)
+        if self.prodigal_translation_table:
+            raise ConfigError("Unfortunately the `--prodigal-translation-table` parameter is not yet implemented :/ "
+                              "This is mostly because anvi'o developers did not have enough expertise to test its use "
+                              "and validity. If you are willing to help us implement this feature, please contact us "
+                              "through Discord (it will be a simple change, but will require someone's supervision).")
 
-        self.run.warning("Anvi'o will use 'pyrodigal' by XXX (doi:XXX), which uses the approach originally implemented by "
-                         "Hyatt et al (doi:10.1186/1471-2105-11-119), to identify open reading frames in your data. When "
-                         "you publish your findings, please do not forget to properly credit both work.", lc='green', header="CITATION")
+        # preparations to set the predictor starting with a check of single vs meta mode
+        if self.prodigal_single_mode:
+            # if we are in 'single' mode, that means we will have to first explicitly train
+            # the gene finder with one of the sequences in the FASTA file. assuming the user
+            # knows what they're doing, all seqeunces in the input file will be coming from
+            # the same organism. so, since we have to offer a single sequence, we are going
+            # to select the longest sequence in the FASTA file
+            longest_sequence = ''
+            longest_sequence_length = 0
+            fasta = f.SequenceSource(fasta_file_path)
+            while next(fasta):
+                if len(fasta.seq) > longest_sequence_length:
+                    longest_sequence_length = len(fasta.seq)
+                    longest_sequence = copy.deepcopy(fasta.seq)
+            fasta.close()
 
-        # let's learn the number of sequences we will work with early on and report
-        num_sequences_in_fasta_file = utils.get_num_sequences_in_fasta(fasta_file_path)
+            if len(longest_sequence) < 20000:
+                raise ConfigError(f"We have a problem. You are calling prodigal with `--prodigal-single-mode` flag, most "
+                                  f"likely becasue you are working with a single genome rather than a metagenome. Which "
+                                  f"is great. But this mode requires a training step, which cannot be done with a sequence "
+                                  f"that is shorter than at least 20,000 nucleotides long. However, the longest sequence in "
+                                  f"your FASTA file is only {pp(longest_sequence_length)}. Which means, you will have to drop "
+                                  f"the `--prodigal-single-mode` for this to work :/")
 
-        # some nice logs.
-        self.run.warning('', header=f'Finding ORFs using pyrodigal {pyrodigal.__version__}', lc='green')
-        self.run.info('Number of sequences', pp(num_sequences_in_fasta_file))
-        self.run.info('Procedure', 'single' if self.pyrodigal_single_mode else 'meta')
+            self.predictor = pyrodigal.GeneFinder()
+            self.predictor.train(longest_sequence)
+        else:
+            self.predictor = pyrodigal.GeneFinder(meta=True)
 
-        self.progress.new('Processing')
-        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
-
-        # read all sequences into the memory :/ not the best practice, but it is
-        # very convenient for the threading
+        # since the predictor is now set, next we will read all sequences into the memory :/
         data = []
         fasta = f.SequenceSource(fasta_file_path)
         while next(fasta):
             data.append((fasta.id, fasta.seq, self.predictor),)
+        fasta.close()
+
+        self.run.warning("Anvi'o will use 'pyrodigal' by Martin Larralde (doi:10.21105/joss.04296), which builds upon the "
+                         "approach originally implemented by Hyatt et al (doi:10.1186/1471-2105-11-119), to identify open "
+                         "reading frames in your data. If you publish your findings, please do not forget to properly credit "
+                         "both work.", lc='green', header="CITATION")
+
+
+        # let's learn the number of sequences we will work with early on and report
+        num_sequences_in_fasta_file = len(data)
+
+        # some nice logs.
+        self.run.warning('', header=f'Finding ORFs using pyrodigal {pyrodigal.__version__}', lc='green')
+        self.run.info('Number of sequences', pp(num_sequences_in_fasta_file))
+        self.run.info('Procedure', 'Single Genome (with `--prodigal-single-mode`)' if self.prodigal_single_mode else 'Metagenome (without `--prodigal-single-mode`)')
+
+        self.progress.new('Processing')
+        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
 
         # key variables to fill in
         gene_calls_dict = {}
