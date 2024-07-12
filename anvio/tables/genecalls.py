@@ -500,7 +500,7 @@ class TablesForGeneCalls(Table):
         except Exception as e:
             self.run.warning("There was a problem with your gene calling. Anvi'o will now remove the residual contigs-db file. Please "
                              "find the actual error message below. If you need more details, re-run your command with `--debug` parameter.",
-                             header="💀 PRODIGAL FAILED 💀")
+                             header="💀 GENE CALLING STEP FAILED 💀")
 
             # remove the unfinished contigs-db file
             os.remove(self.db_path)
