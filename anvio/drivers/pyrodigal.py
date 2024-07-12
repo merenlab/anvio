@@ -8,6 +8,7 @@ import anvio.fastalib as f
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -45,16 +46,28 @@ class Pyrodigal:
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
         self.prodigal_translation_table = A('prodigal_translation_table')
         self.prodigal_single_mode = A('prodigal_single_mode')
+        self.full_gene_calling_report = A('full_gene_calling_report')
         self.num_threads = A('num_threads')
 
         self.gene_caller_name = 'pyrodigal'
         self.gene_caller_version = pyrodigal.__version__
+
+        # default header for full report. if you change anything here, please also change
+        # the corresponding section in `anvio/docs/programs/anvi-gen-contigs-database.md`
+        self.header_for_full_report = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'partial_begin',
+                                       'partial_end', 'confidence', 'gc_cont', 'rbs_motif', 'rbs_spacer', 'score', 'cscore',
+                                       'rscore', 'sscore', 'start_type', 'translation_table', 'tscore', 'uscore', 'sequence',
+                                       'translated_sequence']
+
 
     def process(self, fasta_file_path, output_dir):
         """Take the fasta file, run pyrodigal on it, and make sense of the output
 
         Returns a gene calls dict, and amino acid sequences dict.
         """
+
+        if self.full_gene_calling_report:
+            filesnpaths.is_output_file_writable(self.full_gene_calling_report)
 
         if self.prodigal_translation_table:
             raise ConfigError("Unfortunately the `--prodigal-translation-table` parameter is not yet implemented :/ "
@@ -103,7 +116,6 @@ class Pyrodigal:
                          "reading frames in your data. If you publish your findings, please do not forget to properly credit "
                          "both work.", lc='green', header="CITATION")
 
-
         # let's learn the number of sequences we will work with early on and report
         num_sequences_in_fasta_file = len(data)
 
@@ -111,6 +123,7 @@ class Pyrodigal:
         self.run.warning('', header=f'Finding ORFs using pyrodigal {pyrodigal.__version__}', lc='green')
         self.run.info('Number of sequences', pp(num_sequences_in_fasta_file))
         self.run.info('Procedure', 'Single Genome (with `--prodigal-single-mode`)' if self.prodigal_single_mode else 'Metagenome (without `--prodigal-single-mode`)')
+        self.run.info('Full gene calling reporting requested?', 'Yes' if self.full_gene_calling_report else 'No')
 
         self.progress.new('Processing')
         self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
@@ -134,12 +147,26 @@ class Pyrodigal:
 
                     amino_acid_sequences_dict[gene_callers_id] = gene.translate().replace('*', '')
 
+                    # if the user wants a full report, we will update the gene calls dict with additional
+                    # data from the object
+                    if self.full_gene_calling_report:
+                        addtl_data = [('confidence', gene.confidence()), ('gc_cont', gene.gc_cont), ('partial_begin', gene.partial_begin), ('partial_end', gene.partial_end),
+                                      ('rbs_motif', gene.rbs_motif), ('rbs_spacer', gene.rbs_spacer), ('score', gene.score), ('cscore', gene.cscore), ('rscore', gene.rscore), ('sscore', gene.sscore),
+                                      ('start_type', gene.start_type),  ('translation_table', gene.translation_table), ('tscore', gene.tscore), ('uscore', gene.uscore), ('sequence', gene.sequence()),
+                                      ('translated_sequence', amino_acid_sequences_dict[gene_callers_id])]
+
+                        for k, v in addtl_data:
+                            gene_calls_dict[gene_callers_id][k] = v
+
+                    # uppity
                     gene_callers_id += 1
 
         self.progress.end()
-        self.run.info('Result',
-                      'Pyrodigal (%s) has identified %d genes.' % (pyrodigal.__version__,
-                                                                  len(gene_calls_dict)),
-                      nl_after=1)
+
+        self.run.info('Result', f'Pyrodigal (v{pyrodigal.__version__}) has identified {pp(len(gene_calls_dict))} genes.', nl_after=1)
+
+        if self.full_gene_calling_report:
+            utils.store_dict_as_TAB_delimited_file(gene_calls_dict, self.full_gene_calling_report, headers=self.header_for_full_report)
+            self.run.info('Full gene calling report', self.full_gene_calling_report, nl_after=1)
 
         return gene_calls_dict, amino_acid_sequences_dict
