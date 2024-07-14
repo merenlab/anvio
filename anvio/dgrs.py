@@ -261,9 +261,9 @@ class DGR_Finder:
 
             contigs_db.disconnect()
 
-            #open merged profile-db and get the variable nucleotide table as a dictionary then acess the split names as a list to use in get_snvs
+            #open merged profile-db and get the variable nucleotide table as a dictionary then access the split names as a list to use in get_snvs
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            #Sort pandas dataframe of SNVs by contig name and then by position of SNV within contig
+            #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
             self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
             self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
@@ -471,7 +471,7 @@ class DGR_Finder:
     def get_snvs(self):
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
-        This function is not currently in use but here for Merens sake.
+        This function is not currently in use but here for Merens' sake.
         Returns
         =======
         n.data : panada df
@@ -640,14 +640,14 @@ class DGR_Finder:
             TR_is_query, is_reverse_complement : boolean
             TR_sequence, query_contig, base, VR_sequence, subject_contig : string
             query_genome_start_position, query_genome_end_position, subject_genome_start_position, subject_genome_end_position : integer (bp position)
-            midline : charaacter with defined spacing
+            midline : character with defined spacing
             percentage_of_mismatches : float
                 Keys of a dictionary containing all of the BLASTn hits that are less than 100%
 
         Creates
         =======
         DGRs_found_dict : dict
-            A dictionary containing the template and variable regions and the corrosponding info for those regions
+            A dictionary containing the template and variable regions and the corresponding info for those regions
 
         """
 
@@ -710,14 +710,14 @@ class DGR_Finder:
             TR_is_query, is_reverse_complement : boolean
             TR_sequence, query_contig, base, VR_sequence, subject_contig : string
             query_genome_start_position, query_genome_end_position, subject_genome_start_position, subject_genome_end_position : integer (bp position)
-            midline : charaacter with defined spacing
+            midline : character with defined spacing
             percentage_of_mismatches : float
                 Keys of a dictionary containing all of the BLASTn hits that are less than 100%
 
         Creates
         =======
         DGRs_found_dict : dict
-            A dictionary containing the template and variable regions and the corrosponding info for those regions
+            A dictionary containing the template and variable regions and the corresponding info for those regions
 
         """
         # VR info
@@ -758,7 +758,7 @@ class DGR_Finder:
         """
         This function takes the none identical hits of the BLASTn and filters for template and variable regions.
 
-        This works by filtering for sequences that have an overrepresentation of one base that is mismatching and a certain number
+        This works by filtering for sequences that have an over representation of one base that is mismatching and a certain number
         one type of base mismatching within the sequence, defined by the number of mismatches argument.
 
         Parameters
@@ -827,7 +827,7 @@ class DGR_Finder:
                         if not non_zero_bases >= self.min_mismatching_base_types_vr:
                             continue
 
-                        #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
+                        #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
@@ -858,7 +858,7 @@ class DGR_Finder:
                             percentage_of_mismatches = (count / mismatch_length_bp)
                             if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
                                 is_TR = True
-                                # if the letter is T, then we assume that it is an A base and we reverse completment EVERYTHING
+                                # if the letter is T, then we assume that it is an A base and we reverse complement EVERYTHING
                                 if letter == 'T':
                                     TR_sequence = str(subject_sequence.reverse_complement())
                                     VR_sequence = str(query_sequence.reverse_complement())
@@ -877,7 +877,7 @@ class DGR_Finder:
                                     non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
                                 if not non_zero_bases >= self.min_mismatching_base_types_vr:
                                     continue
-                                #need to check if the new TR youre looping through exsists in the DGR_found_dict, see if position overlap
+                                #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                                 if not self.DGRs_found_dict:
                                     # add first DGR
                                     num_DGR += 1
@@ -892,7 +892,7 @@ class DGR_Finder:
                                                                                                                         self.DGRs_found_dict[dgr]['TR_start_position'],
                                                                                                                         self.DGRs_found_dict[dgr]['TR_end_position']):
                                             was_added = True
-                                            #TODO can rename concensus_TR
+                                            #TODO can rename consensus_TR
                                             self.update_existing_DGR(dgr, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
                                                     query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
                                                     subject_contig)
@@ -969,7 +969,7 @@ class DGR_Finder:
                     if gene_call['start'] <= vr_start and gene_call['stop'] >= vr_end:
                         gene_call['gene_callers_id'] = gene_callers_id
 
-                        # if there are funtion sources, let's recover them for our gene of interest
+                        # if there are function sources, let's recover them for our gene of interest
                         if function_sources_found:
                             where_clause = f'''gene_callers_id="{gene_callers_id}"'''
                             hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
@@ -1079,7 +1079,7 @@ class DGR_Finder:
 
     def collections_mode(self):
             """
-            This function is if the user only wants to search for DGRs that are in the same collection. This is known as the metgenomis mode.
+            This function is if the user only wants to search for DGRs that are in the same collection. This is known as the metagenomics mode.
             It filters through the dgrs found dictionary so that only the DGRs within the same collection are outputted.
 
             Parameters
@@ -1242,7 +1242,7 @@ class DGR_Finder:
 
             found_HMMS_dict[gene_callers_id] = hmm_dict
 
-        #look at general concensus TR in the level up so all the TRs have the same HMM if in the same DGR.
+        #look at general consensus TR in the level up so all the TRs have the same HMM if in the same DGR.
         for DGR_id, DGR_info in dgrs_dict.items():
             TR_start_position = DGR_info['TR_start_position']
             TR_end_position = DGR_info['TR_end_position']
@@ -1324,7 +1324,7 @@ class DGR_Finder:
                     "TR_contig", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
                     "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
         else:
-            raise ValueError("Bloomin heck. Unknown dictionary passed to create_found_tr_vr_csv. You might be trying to hack anvi'o please look into the code base more thoroughly")
+            raise ValueError("Bloomin' heck. Unknown dictionary passed to create_found_tr_vr_csv. You might be trying to hack anvi'o please look into the code base more thoroughly")
 
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
