@@ -1770,6 +1770,283 @@ class DGR_Finder:
                     self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
 
 
+    def compute_dgr_variability_profiling(self, dgrs_dict):
+        """
+        Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
+        Parameters
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+        Reads_1 : fasta file
+            A fasta file containing the forward reads used to create the merged PROFILE.db
+        Reads_2 : fasta file
+            A fasta file containing the reverse reads used to create the merged PROFILE.db
+        Samples.txt : txt file
+            Contains sample information and the path to both of the read files
+
+        Returns
+        =======
+
+
+        """
+
+        if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
+            return
+        print(f'self.samples_txt_dict:', self.samples_txt_dict)
+
+        if not len(self.DGRs_found_dict):
+            self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
+                                "compute in-sample variability :/", mc="red")
+
+        self.sample_names = list(self.samples_txt_dict.keys())
+        num_samples = len(self.sample_names)
+
+        print(self.sample_names)
+
+        # let the user know what is going on
+        msg = (f"Now anvi'o will compute in-sample activity of {PL('DGR VR', len(self.DGRs_found_dict))} "
+            f"across {PL('sample', num_samples)}. Brace yourself and please note that this can "
+            f"take a very long time since for each sample, anvi'o will go through each short read to search for ever variable region "
+            f"sequence/s per DGR. You can always skip this step and search for individual primers "
+            f"listed in the output file using the program `anvi-search-primers` with the parameter "
+            f"`--min-remainder-length` set to the length of the consensus template region of the DGRs' VR you are interested in "
+            "and the flag `--only-report-remainders` to explore the variable region activity of that one variable region "
+            f"manually. Maybe this makes no sense? See the documentation for `anvi-report-dgrs` (and hope for "
+            f"the best)")
+        self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
+
+        if num_samples > self.num_threads:
+            self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Therefore, not all samples will be processed "
+                                f"in parallel. Just an FYI. {msg}.", level=0, nl_after=1)
+        elif self.num_threads > num_samples:
+            self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Since only samples are run in "
+                                f"parallel, the additional {PL('thread', self.num_threads - num_samples)} you have there are not really "
+                                f"useful for anything. Just an FYI. {msg}.", level=0, nl_after=1)
+            self.num_threads = num_samples
+        else:
+            self.run.info_single(f"{msg}.", level=0, nl_after=1)
+
+        # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
+        # `PrimerSearch`. for this we first need to generate a list of primers. for each
+        # DGRs VR, which at this point are described in a dict like this,
+        # {'DGR_001': {'TR_sequence': 'GCGGCTCCTGGAACAACTATCCTAGGAGGTGTCGCTCTGCGAACCGCAACAACTATAACTCGGACGAGGCGGACAACAACAATATTGGTTTTCGTCTTGTGAGT',
+        #                'base': 'A',
+        #               'TR_reverse_complement': True,
+        #               'VRs': {'VR_003':
+        #                          {'VR_sequence': 'GCGGCTCCTGGTACGACTTTCCTTGGTGGTGTCGCTCTGCGTTCCGCGGCTACTATTTCTCGGTCGAGGCGGTCAACGACTTTGTTGGTTTTCGTCTTGTGAGT',
+        #                           'TR_sequence': 'GCGGCTCCTGGAACAACTATCCTAGGAGGTGTCGCTCTGCGAACCGCAACAACTATAACTCGGACGAGGCGGACAACAACAATATTGGTTTTCGTCTTGTGAGT',
+        #                           'midline': '||||||||||| || ||| |||| || ||||||||||||||  ||||  | |||||  ||||| |||||||| |||| ||  | ||||||||||||||||||||',
+        #                           'percentage_of_mismatches': 1.0,
+        #                           'VR_start_position': 2631629,
+        #                           'VR_end_position': 2631732,
+        #                           'VR_contig': 'T_erythraeum_IMS101_000000000001',
+        #                           'VR_sequence_found': 'query',
+        #                           'TR_start_position': 2632660,
+        #                           'TR_end_position': 2632763,
+        #                           'VR_bin':'DGR2_meren'},
+        #                       'VR_004':
+        #                           {'VR_sequence': 'GCGGCTCCTGGCTCAACTATCCTTGGTGGTGTCGCTCTGCGTACCGCTACGACTTTAGCTCGGACGGGGCGGTCATCATCAATTTTGGTTTTCGTCTTGTGAGT',
+        #                            'TR_sequence': 'GCGGCTCCTGGAACAACTATCCTAGGAGGTGTCGCTCTGCGAACCGCAACAACTATAACTCGGACGAGGCGGACAACAACAATATTGGTTTTCGTCTTGTGAGT',
+        #                            'midline': '|||||||||||  |||||||||| || |||||||||||||| ||||| || ||| || |||||||| ||||| || || |||| ||||||||||||||||||||',
+        #                             'percentage_of_mismatches': 1.0,
+        #                             'VR_start_position': 2634431,
+        #                             'VR_end_position': 2634534,
+        #                             'VR_contig': 'T_erythraeum_IMS101_000000000001',
+        #                             'VR_sequence_found': 'query',
+        #                             'TR_start_position': 2632660,
+        #                             'TR_end_position': 2632763,
+        #                             'VR_bin': 'DGR2_meren'}},
+        #               'TR_start_position': 2632660,
+        #               'TR_end_position': 2632763,
+        #               'TR_contig': 'T_erythraeum_IMS101_000000000001',
+        #               'TR_sequence_found': 'subject',
+        #               'TR_bin': 'DGR2_meren',
+        #               'HMM_gene_callers_id': '1688',
+        #               'distance_to_HMM': 434.5,
+        #               'HMM_start': 2632879,
+        #               'HMM_stop': 2633413,
+        #               'HMM_direction': 'r',
+        #               'HMM_source': 'Reverse_Transcriptase',
+        #               'HMM_gene_name': 'Clean_DGR_clade_3',
+        #               'HMM_gene_source': 'prodigal'}}
+        #
+        # need primers for each VR
+        # either we have the same number of primers as VRs
+        # OR we have one primer per VR. I think this might be more suitable for ease of code and what we want the output to look like
+
+        # FIRST we need to get the primers sequences!
+        ##########################################
+        # UPDATE DGRs dict with Primer Sequences #
+        ##########################################
+
+        #self.variable_region_primer_base_length the length of the primer sequence
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+
+        # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
+        self.primer_remainder_lengths = {}
+
+        for dgr_id, dgr_data in dgrs_dict.items():
+            primer_remainder_length = len(dgr_data['TR_sequence'])
+            self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
+            dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
+
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+
+                #CHECK if VR sequence is not at the start of a contig!
+                if vr_data['VR_start_position'] >= self.variable_region_primer_base_length:
+                    vr_primer_region_start = vr_data['VR_start_position'] - self.variable_region_primer_base_length
+                    vr_primer_region_end = vr_data['VR_start_position']
+                else:
+                    vr_primer_region = "NA"
+                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}. Is going to fall off the start of the Contig it is one: {vr_data['VR_contig']}.")
+
+                contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
+                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
+                #add every primer sequence to the dgrs_dict
+                vr_data['vr_primer_region'] = vr_primer_region
+
+        ###########################################
+        # UPDATED DGRs dict with Primer Sequences #
+        ###########################################
+
+        primers_dict = {}
+        for dgr_id, dgr_data in dgrs_dict.items():
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'primer_sequence': vr_data['vr_primer_region'],
+                                                            'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
+        print(f'original primers dictionary:' , primers_dict)
+
+
+
+        #function to find variability in primers and form consensus primer for each primer in each sample!
+        if not self.skip_primer_variability:
+            sample_primers_dict = {}
+            for sample_name in self.sample_names:
+                # Filter SNVs for the specific sample
+                sample_snvs = self.snv_panda[self.snv_panda['sample_id'] == sample_name]
+
+                # Iterate through dgrs_dict to get the VR_start and VR_contig
+                for dgr_id, dgr_data in dgrs_dict.items():
+                    for vr_key, vr_data in dgr_data['VRs'].items():
+                        vr_start = vr_data.get('VR_start_position')
+                        vr_contig = vr_data.get('VR_contig')
+
+                        # Further filter SNVs within the primer region
+                        primer_snvs = sample_snvs[
+                            (sample_snvs['contig_name'] == vr_contig) &
+                            (sample_snvs['pos_in_contig'] >= vr_start - self.variable_region_primer_base_length) &
+                            (sample_snvs['pos_in_contig'] < vr_start)
+                        ]
+
+                        # Get the original primer sequence
+                        original_primer_key = f'{dgr_id}_{vr_key}_Primer'
+                        original_primer_sequence = primers_dict[original_primer_key]['primer_sequence']
+                        new_primer_sequence = list(original_primer_sequence)
+
+                        # Vectorized operation to find consensus SNVs and update the primer sequence
+                        consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(self.get_consensus_base, axis=1)
+                        positions_in_primer = vr_start - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
+
+                        for position, consensus_base in zip(positions_in_primer, consensus_snvs):
+                            if consensus_base and 0 <= position < len(new_primer_sequence):
+                                new_primer_sequence[position] = consensus_base
+
+
+                        ## Add the new primer sequence to the sample-specific primers dictionary
+                        dgr_vr_key = f'{dgr_id}_{vr_key}'
+                        if dgr_vr_key not in sample_primers_dict:
+                            sample_primers_dict[dgr_vr_key] = {}
+                        sample_primers_dict[dgr_vr_key][sample_name] = {
+                            'primer_sequence': ''.join(new_primer_sequence),
+                            'primer_remainder_TR_length': primers_dict[original_primer_key]['primer_remainder_TR_length']
+                        }
+
+                print(f'Sample {sample_name} updated primers dictionary:', sample_primers_dict)
+        else:
+            pass
+
+
+
+
+                #print(dgrs_dict)
+
+        ##################
+        # MULTITHREADING #
+        ##################
+
+        # setup the input/output queues
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        self.dgr_activity = []
+
+        # put all the sample names in our input queue
+        for sample_name in self.sample_names:
+            input_queue.put(sample_name)
+
+        # Add sentinel values to stop the workers
+        for _ in range(self.num_threads):
+            input_queue.put(None)
+
+        #print('samples_dict profile_db_bam_file_pairs', self.profile_db_bam_file_pairs)
+        print('\n')
+        print('primers_dict', primers_dict)
+
+        # engage the proletariat, our hard-working wage-earner class
+        workers = []
+        for i in range(self.num_threads):
+            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_sample,
+                                            args=(input_queue,
+                                                output_queue,
+                                                self.samples_txt_dict,
+                                                primers_dict,
+                                                self.output_directory),
+
+                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
+            workers.append(worker)
+            worker.start()
+
+        if self.num_threads > 1:
+            self.progress.new('DGR variability profile', progress_total_items=num_samples)
+            self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
+
+        num_samples_processed = 0
+        while num_samples_processed < num_samples:
+            try:
+                dgr_variability_profiling_for_one_sample = output_queue.get()
+                if dgr_variability_profiling_for_one_sample:
+                    self.dgr_activity.extend(dgr_variability_profiling_for_one_sample)
+
+                num_samples_processed += 1
+                self.progress.increment(increment_to=num_samples_processed)
+                if self.num_threads > 1:
+                    if num_samples_processed < num_samples:
+                        self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
+                    else:
+                        self.progress.update("All done!")
+            except KeyboardInterrupt:
+                self.run.info_single("Received, terminating all processes... Don't believe anything you see "
+                                    "below this and destroy all the output files with fire.", nl_before=1, nl_after=1)
+                break
+
+        if self.num_threads > 1:
+            self.progress.end()
+
+        # always double-tap?
+        for worker in workers:
+            worker.terminate()
+
+        print(f'FINAL PRIMERS DICT AFTER PROCESSING', primers_dict)
+
+        ######################
+        # END MULTITHREADING #
+        ######################
+
 
 
     def process_dgr_data_for_HTML_summary(self):
@@ -2008,5 +2285,6 @@ class DGR_Finder:
             self.create_found_tr_vr_csv(self.DGRs_found_dict) #TODO: check if this works if the dictionary is empty or do you need a different method?
             self.recover_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
             self.report_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
+            self.compute_dgr_variability_profiling(self.DGRs_found_dict) # add if statement to this for the metagenomics mode DGRs
             #self.process_dgr_data_for_HTML_summary()
         return
