@@ -1637,6 +1637,15 @@ class DGR_Finder:
         """
         Reports two long-format output files for genes and functions around inversion
         STOLEN (modified) FROM INVERSIONS CODE (line 1925)
+        Parameters
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+
+        Returns
+        =======
+
+
         """
 
         if self.skip_recovering_genomic_context:
