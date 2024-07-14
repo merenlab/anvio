@@ -72,6 +72,10 @@ class DGR_Finder:
         self.collections_given = A('collection_name')
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
+        self.samples_txt = A('samples_txt')
+        self.variable_region_primer_base_length = A('variable_region_primer_base_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
+        self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
+        self.skip_primer_variability = A('skip_primer_variability')
 
 
         # performance
@@ -106,6 +110,14 @@ class DGR_Finder:
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
         if self.contigs_db_path:
             self.run.info('HMM(s) Provided', ", ".join(self.hmm))
+        if not self.skip_recovering_genomic_context:
+            self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
+        #computing variability profiling for every VR in every DGR by searching through raw reads?
+        if not self.skip_compute_DGR_variability_profiling:
+            self.run.info('Samples.txt', self.samples_txt)
+            #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
+            self.run.info('Variable Region Primer Base Length', self.variable_region_primer_base_length)
+
 
 
     def sanity_check(self):
