@@ -9,6 +9,7 @@ import os
 import shutil
 import argparse
 import copy
+import json
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -20,11 +21,14 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
+import multiprocess as multiprocessing
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
 from anvio.variabilityops import NucleotidesEngine
 from anvio.summaryhtml import SummaryHTMLOutput
+from anvio.sequencefeatures import PrimerSearch
+from anvio.constants import nucleotides
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
