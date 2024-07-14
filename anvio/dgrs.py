@@ -1692,8 +1692,8 @@ class DGR_Finder:
                         else:
                             tr_functions_output.write(f"{dgr_id}_TR\t{gene_call['gene_callers_id']}\t\t\t\n")
 
-                self.run.info('Reporting file on gene context for TR', tr_genes_output_path)
-                self.run.info('Reporting file on functional context for TR', tr_functions_output_path, nl_after=1)
+                self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
+                self.run.info(f"Reporting file on functional context for {dgr_id} TR", tr_functions_output_path, nl_after=1)
 
             # RT output paths
             rt_genes_output_path = os.path.join(dgr_directory, 'RT_SURROUNDING-GENES.txt')
@@ -1723,8 +1723,8 @@ class DGR_Finder:
                         else:
                             rt_functions_output.write(f"{dgr_id}_RT\t{gene_call['gene_callers_id']}\t\t\t\n")
 
-                self.run.info('Reporting file on gene context for RT', rt_genes_output_path)
-                self.run.info('Reporting file on functional context for RT', rt_functions_output_path, nl_after=1)
+                self.run.info(f"Reporting file on gene context for {dgr_id} RT", rt_genes_output_path)
+                self.run.info(f"Reporting file on functional context for {dgr_id} RT", rt_functions_output_path, nl_after=1)
 
 
             # Fill in non-empty data for each VR in the DGR and insert it:
@@ -1744,7 +1744,7 @@ class DGR_Finder:
                     d['contig'] = vr_data.get('VR_contig')
                     d['start'] = vr_data.get('VR_start_position')
                     d['stop'] = vr_data.get('VR_end_position')
-                    vr_genes_output.write(f"{dgr_id} VR_{vr_id}\tVARIABLE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
+                    vr_genes_output.write(f"{dgr_id} {vr_id}\tVARIABLE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
                     # Check if there are surrounding genes for the VR and write them
                     if vr_id in self.genomic_context_surrounding_dgrs:
@@ -1757,8 +1757,9 @@ class DGR_Finder:
                             else:
                                 vr_functions_output.write(f"{dgr_id} VR_{vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
 
-                    self.run.info(f'Reporting file on gene context for {dgr_id} VR_{vr_id}', vr_genes_output_path)
-                    self.run.info(f'Reporting file on functional context for {dgr_id} VR_{vr_id}', vr_functions_output_path, nl_after=1)
+                    self.run.info(f'Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
+                    self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
+
 
 
 
