@@ -301,7 +301,6 @@ D = {
                      "documentation to determine what is the right translation table for you if you think you need "
                      "it.)"}
                 ),
-
     'skip-gene-calling': (
             ['--skip-gene-calling'],
             {'default': False,
@@ -322,6 +321,14 @@ D = {
                      "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
                      "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
                      "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
+                ),
+    'full-gene-calling-report': (
+            ['--full-gene-calling-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "When anvi'o is done with gene calling using pyrodigal, it only stores some data about individual gene "
+                     "calls. Using this parameter you can pass an output file to report most comprehensive data on gene calls "
+                     "as a TAB-delimited text file with gene caller ids matching to those that are stored in the contigs-db."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
