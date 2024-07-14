@@ -1774,6 +1774,58 @@ class DGR_Finder:
                     self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
 
 
+
+    @staticmethod
+    def compute_dgr_variability_profiling_per_sample(self, input_queue, output_queue, samples_dict, primers_dict, run=run_quiet, progress=progress_quiet):
+        """
+        Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
+
+        Parameters
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+        Reads_1 : fasta file
+            A fasta file containing the forward reads used to create the merged PROFILE.db
+        Reads_2 : fasta file
+            A fasta file containing the reverse reads used to create the merged PROFILE.db
+        Samples.txt : txt file
+            Contains sample information and the path to both of the read files
+
+        Returns
+        =======
+
+
+        """
+        while True:
+            self.sample_names = input_queue.get(True)
+            if self.sample_names is None:
+                break
+
+            samples_dict_for_sample = {self.sample_names: samples_dict[self.sample_names]}
+
+            # setup the args object
+            args = argparse.Namespace(samples_dict= self.samples_txt_dict,
+                                    primers_dict= primers_dict,
+                                    #min_remainder_length= self.primer_remainder_lengths,
+                                    #min_frequency=min_frequency,
+                                    output_directory_path=self.output_directory,
+                                    only_keep_remainder= True)
+
+            s = PrimerSearch(args, run=run, progress=progress)
+            sample_dict, primer_hits = s.process_sample(self.sample_names)
+
+            output_queue.put((sample_dict, primer_hits))
+
+
+    # Function to get the consensus base
+    def get_consensus_base(row):
+        for nucleotide in nucleotides:
+            if row[nucleotide] > 0.5:  # Assuming a threshold for consensus, adjust as necessary
+                return nucleotide
+        return None
+
+
+
     def compute_dgr_variability_profiling(self, dgrs_dict):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
