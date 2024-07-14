@@ -129,6 +129,29 @@ if __name__ == '__main__':
                     "enough genes in the contig given the position of either of the VRs, anvio' will "
                     "report whatever it can.", metavar="INT")
 
+    groupI = parser.add_argument_group('COMPUTING VARIABLE REGION VARIABILITY PROFILING', "What is the "
+                    "proportion of variable regions represented across samples? A multi million question "
+                    "that anvi'o WILL answer for you IF  you are using short-reads and you have `r1` and `r2` columns in a `samples-txt` "
+                    "file that points to raw FASTQ reads you have used to generate your merged PROFILE.db. "
+                    "Truly mind boggling stuff.")
+    groupI.add_argument(*anvio.A('samples-txt'), **anvio.K('samples-txt'))
+    groupI.add_argument('--variable-region-primer-base-length', default=12, type=int, help="Calculating variable region ratios "
+                    "requires anvi'o to 'design' an in silico primer, based on the variable region "
+                    "and the upstream/downstream genomic context to search for short reads in raw sequencing data"
+                    "to find the ratio of DGR activity per sample. This variable controls the length of a sequence "
+                    "used to build this primer to search for short reads. The longer it is, the more specific "
+                    "the primers will be to survey short reads. But if it is too long, "
+                    "then there will not be enough reads to 'keep' depending on the minimum "
+                    "short read length of the sequencing. The default value will probably good for the vast "
+                    "majority of cases.", metavar="INT")
+    groupI.add_argument('--skip-compute-DGR-variability-profiling', default=False, action="store_true", help="This flag "
+                    "will skip computing DGR variability profiling, which is an extremely costly step. It may be a good idea "
+                    "to first run the workflow without computing activity, take a look at the output files to make sure "
+                    "everything looks alright, and then run the workflow without this flag.")
+    groupI.add_argument('--skip-primer-variability', default=False, action="store_true", help="This flag "
+                    "will skip computing primers for your DGR's VRs that contain SNVs in particular samples, which is an "
+                    "extremely costly step. This is useful when your samples have a consensus SNV which is not contained in the reference you are using")
+
     args = parser.get_args(parser)
 
 
