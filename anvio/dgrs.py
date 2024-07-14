@@ -1394,8 +1394,8 @@ class DGR_Finder:
             TR_start = dgr_data.get('TR_start_position')
             TR_end = dgr_data.get('TR_end_position')
 
-            RT_start = dgr_data.get('HMM_start')
-            RT_end = dgr_data.get('HMM_stop')
+            RT_start = int(dgr_data.get('HMM_start'))
+            RT_end = int(dgr_data.get('HMM_stop'))
 
             # Initialize TR context
             tr_context_genes = []
