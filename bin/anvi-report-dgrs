@@ -80,13 +80,13 @@ if __name__ == '__main__':
     groupB.add_argument("--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
     groupB.add_argument("--word-size", help="BLASTn word size parameter", type=str, default=8)
 
-    groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this progra's location of variable regions'")
+    groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this program's location of variable regions'")
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program"
-                                                                            "that you want to find the genes that your Variable Regions occured in."}))
-    groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occuring in the first and second codon position of ORF to identify DGRs. "
+                                                                            "that you want to find the genes that your Variable Regions occurred in."}))
+    groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occurring in the first and second codon position of ORF to identify DGRs. "
                         "This constraint allows for a fast search and more reliable results. If you feel daring, you can use this flag and let anvi'o use "
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
     groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
     groupG = parser.add_argument_group('METAGENOMICS MODE', "Options for which metagenomics mode to use.")
-    groupG.add_argument("--metagenomics-contigs-mode", help="The flag to use that searches through specified splits that are in the collection that is specificed with the '-C / --collection' flag.", action = "store_true")
+    groupG.add_argument("--metagenomics-contigs-mode", help="The flag to use that searches through specified splits that are in the collection that is specified with the '-C / --collection' flag.", action = "store_true")
     groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the collection that you want to search for DGRs in"}))
 
     groupH = parser.add_argument_group('REPORTING GENOMIC CONTEXT AROUND DGRS',
@@ -124,7 +124,7 @@ if __name__ == '__main__':
                     "you can skip this step because why should anyone have nice things.")
     groupH.add_argument('--num-genes-to-consider-in-context', default=3, type=int, help="With this parameter you "
                     "can adjust the number of genes anvi'o should consider to characterize the genomic context "
-                    "surrounding dgrs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs "
+                    "surrounding DGRs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs "
                     "VR and 3 genes downstream of each VR. If there are not "
                     "enough genes in the contig given the position of either of the VRs, anvio' will "
                     "report whatever it can.", metavar="INT")
