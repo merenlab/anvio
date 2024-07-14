@@ -1824,16 +1824,16 @@ class DGR_Finder:
                     genomic_context_end_vr = vr_genes[-1]['stop'] + 100
 
                     # this is our magic number, which is matching to the actual width of the genomic context
-                    # display in the static HTML output. we will have to transfrom start-stop coordinates
+                    # display in the static HTML output. we will have to transform start-stop coordinates
                     # of each gene to this value.
                     new_context_length = 1000
 
-                    # how big the gene arros should be (in an ideal world -- see below the real world, Neo)
+                    # how big the gene arrows should be (in an ideal world -- see below the real world, Neo)
                     default_gene_arrow_width = 20
 
                     # before we start working on the genes, we will figure out the location of the inverted site
-                    # in the genomc context. here we quckly identify the transformed start and the end position
-                    # and store it in the inversion data dict
+                    # in the genomic context. here we quickly identify the transformed start and the end position
+                    # and store it in the dgr data dict
                     tr_start = (int(dgr_data['TR_start_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
                     tr_end  = (int(dgr_data['TR_end_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
                     self.summary['dgrs'][dgr_id]['dgr_data']['TX'] = tr_start
@@ -1856,7 +1856,7 @@ class DGR_Finder:
                             # shorter than the space we assign for the arrow to display gene calls.
                             # this means we will only will be able to show an arrow, but even in that
                             # case the `gene_arrow_width` may be too long to display (i.e., if the
-                            # transformed gene lenth is 10 and arrow is 15, we are already showing
+                            # transformed gene length is 10 and arrow is 15, we are already showing
                             # too much). The solution is to make the gene nothing more but the arrow
                             # but make the arrow width equal to the gene width
                             gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
@@ -1888,7 +1888,7 @@ class DGR_Finder:
                                 # shorter than the space we assign for the arrow to display gene calls.
                                 # this means we will only will be able to show an arrow, but even in that
                                 # case the `gene_arrow_width` may be too long to display (i.e., if the
-                                # transformed gene lenth is 10 and arrow is 15, we are already showing
+                                # transformed gene length is 10 and arrow is 15, we are already showing
                                 # too much). The solution is to make the gene nothing more but the arrow
                                 # but make the arrow width equal to the gene width
                                 gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
@@ -1953,7 +1953,7 @@ class DGR_Finder:
                 ("Word Size of BLAST", self.word_size if self.word_size else "8"),
                 ("Number of Threads for BLAST", self.num_threads if self.num_threads else None),
                 ("Skip 'Ns'", self.skip_Ns if self.skip_Ns else "FALSE"),
-                ("Skip '-'", self.skip_dashes if self.skip_dashes else "FLASE"),
+                ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
                 ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "3"),
@@ -1966,7 +1966,7 @@ class DGR_Finder:
                 ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
                 ("Discovery mode", self.discovery_mode if self.discovery_mode else "FALSE"),
                 ("Metagenomics Contigs Mode", self.metagenomics_contigs_mode if self.metagenomics_contigs_mode else "FALSE"),
-                ("Output Directoy", self.output_directory if self.output_directory else "default")
+                ("Output Directory", self.output_directory if self.output_directory else "default")
             ]
 
             csv_writer.writerows(parameters)
