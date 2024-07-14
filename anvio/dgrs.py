@@ -201,6 +201,15 @@ class DGR_Finder:
             contigs_db.disconnect()
 
 
+        if not self.skip_compute_DGR_variability_profiling:
+            self.samples_txt_dict = utils.get_samples_txt_file_as_dict(self.samples_txt)
+            self.raw_r1_r2_reads_are_present = False
+            self.raw_r1_r2_reads_are_present = all('r1' in v and 'r2' in v and isinstance(v['r1'], str) and isinstance(v['r2'], str) and v['r1'] and v['r2'] for v in self.samples_txt_dict.values())
+
+            if not self.raw_r1_r2_reads_are_present and not self.skip_compute_DGR_variability_profiling:
+                    raise ConfigError("You asked anvi'o to calculate DGR profiling variability across samples, but your samples-txt "
+                                    "does not include raw R1/R2 reads :(")
+
     def get_blast_results(self):
         """
         This function runs the BLASTn search, depending on the input file type, running this against the .
