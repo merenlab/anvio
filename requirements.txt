@@ -23,3 +23,4 @@ snakemake
 multiprocess
 plotext
 networkx
+pulp==2.7.0
