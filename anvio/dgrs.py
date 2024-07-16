@@ -1785,7 +1785,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_sample(self, input_queue, output_queue, samples_dict, primers_dict, run=run_quiet, progress=progress_quiet):
+    def compute_dgr_variability_profiling_per_sample(input_queue, output_queue, samples_dict, primers_dict, run=run_quiet, progress=progress_quiet):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -1805,35 +1805,31 @@ class DGR_Finder:
 
 
         """
+        print(f'hello I am in the per sample func') #this works then nothing.
+
         while True:
-            self.sample_names = input_queue.get(True)
-            if self.sample_names is None:
+            sample_name = input_queue.get(True)
+            print(f"(I am in compute per sample func) Processing sample: {sample_name}")
+            if sample_name is None:
+                print('Sample is none, loop will be broken.')
                 break
 
-            samples_dict_for_sample = {self.sample_names: samples_dict[self.sample_names]}
+            samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
 
             # setup the args object
-            args = argparse.Namespace(samples_dict= self.samples_txt_dict,
+            args = argparse.Namespace(samples_dict= samples_dict_for_sample,
                                     primers_dict= primers_dict,
                                     #min_remainder_length= self.primer_remainder_lengths,
                                     #min_frequency=min_frequency,
-                                    output_directory_path=self.output_directory,
+                                    #output_directory_path=self.output_directory,
                                     only_keep_remainder= True)
 
             s = PrimerSearch(args, run=run, progress=progress)
-            sample_dict, primer_hits = s.process_sample(self.sample_names)
+            sample_dict, primer_hits = s.process_sample(sample_name)
 
             output_queue.put((sample_dict, primer_hits))
 
-
-    # Function to get the consensus base
-    def get_consensus_base(row):
-        for nucleotide in nucleotides:
-            if row[nucleotide] > 0.5:  # Assuming a threshold for consensus, adjust as necessary
-                return nucleotide
-        return None
-
-
+        #NOTE: maybe add in a maximum remainder length that is the length of the longest VR?
 
     def compute_dgr_variability_profiling(self, dgrs_dict):
         """
@@ -1863,10 +1859,11 @@ class DGR_Finder:
             self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
                                 "compute in-sample variability :/", mc="red")
 
-        self.sample_names = list(self.samples_txt_dict.keys())
-        num_samples = len(self.sample_names)
+        sample_names = list(self.samples_txt_dict.keys())
+        num_samples = len(sample_names)
 
-        print(self.sample_names)
+        print('sample names below')
+        print(sample_names)
 
         # let the user know what is going on
         msg = (f"Now anvi'o will compute in-sample activity of {PL('DGR VR', len(self.DGRs_found_dict))} "
@@ -1950,12 +1947,12 @@ class DGR_Finder:
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
 
         # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
-        self.primer_remainder_lengths = {}
+        #self.primer_remainder_lengths = {}
 
         for dgr_id, dgr_data in dgrs_dict.items():
             primer_remainder_length = len(dgr_data['TR_sequence'])
-            self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
-            dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
+            #self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
+            #dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1981,8 +1978,8 @@ class DGR_Finder:
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
-                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'primer_sequence': vr_data['vr_primer_region'],
-                                                            'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
+                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'primer_sequence': vr_data['vr_primer_region'],}
+                                                            #'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
         print(f'original primers dictionary:' , primers_dict)
 
 
@@ -1990,7 +1987,7 @@ class DGR_Finder:
         #function to find variability in primers and form consensus primer for each primer in each sample!
         if not self.skip_primer_variability:
             sample_primers_dict = {}
-            for sample_name in self.sample_names:
+            for sample_name in sample_names:
                 # Filter SNVs for the specific sample
                 sample_snvs = self.snv_panda[self.snv_panda['sample_id'] == sample_name]
 
@@ -2027,7 +2024,7 @@ class DGR_Finder:
                             sample_primers_dict[dgr_vr_key] = {}
                         sample_primers_dict[dgr_vr_key][sample_name] = {
                             'primer_sequence': ''.join(new_primer_sequence),
-                            'primer_remainder_TR_length': primers_dict[original_primer_key]['primer_remainder_TR_length']
+                            #'primer_remainder_TR_length': primers_dict[original_primer_key]['primer_remainder_TR_length']
                         }
 
                 print(f'Sample {sample_name} updated primers dictionary:', sample_primers_dict)
@@ -2051,12 +2048,12 @@ class DGR_Finder:
         self.dgr_activity = []
 
         # put all the sample names in our input queue
-        for sample_name in self.sample_names:
+        for sample_name in sample_names:
             input_queue.put(sample_name)
 
         # Add sentinel values to stop the workers
-        for _ in range(self.num_threads):
-            input_queue.put(None)
+        #for _ in range(self.num_threads):
+            #input_queue.put(None)
 
         #print('samples_dict profile_db_bam_file_pairs', self.profile_db_bam_file_pairs)
         print('\n')
@@ -2065,19 +2062,19 @@ class DGR_Finder:
         # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
+            print(f"starting worker {i}")
             worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_sample,
                                             args=(input_queue,
                                                 output_queue,
                                                 self.samples_txt_dict,
-                                                primers_dict,
-                                                self.output_directory),
+                                                primers_dict),
 
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
             worker.start()
 
+        self.progress.new('DGR variability profile', progress_total_items=num_samples)
         if self.num_threads > 1:
-            self.progress.new('DGR variability profile', progress_total_items=num_samples)
             self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
 
         num_samples_processed = 0
