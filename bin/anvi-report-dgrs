@@ -7,6 +7,13 @@ import anvio
 import anvio.dgrs as dgrs
 import anvio.terminal as terminal
 
+# debugging + profiling
+import io
+import cProfile, pstats
+profiler = cProfile.Profile()
+
+
+
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
 
@@ -32,14 +39,24 @@ def main(args):
 
     if args.hmm_usage:
         args.hmm_usage = [p.strip() for p in args.hmm_usage.split(',') if p.strip()]
-
+    # Start profiling
+    profiler.enable()
     D = dgrs.DGR_Finder(args)
+    profiler.disable()
+    
+    # Create a StringIO buffer to hold the stats
+    stream = io.StringIO()
+    
+    # Create a Stats object from the profiler data and write it to the stream
+    stats = pstats.Stats(profiler, stream=stream).sort_stats('cumtime')
+    stats.strip_dirs()
+    stats.print_stats()
+    
+    # Save the profiling data to a text file
+    with open('/Users/klambert/Documents/PhD/Data/DGR_Test_data/FMT_Dataset/cProfile_stats_output_B_frag_no_samples_txt.txt', 'w') as f:
+        f.write(stream.getvalue())
+    
     D.process(args)
-    #blast_output = D.get_blast_results()
-    #mismatch_hits = D.filter_blastn_for_none_identical(blast_output)
-    #DGRs_found_dict = D.filter_for_TR_VR(mismatch_hits)
-    #DGRs_found_dict = D.get_hmm_info(DGRs_found_dict)
-    #csv_file_path = D.create_found_tr_vr_csv(DGRs_found_dict)
 
 #call function here for filtering hits of blast from root
 def float_range(mini,maxi):
