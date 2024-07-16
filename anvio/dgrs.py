@@ -204,6 +204,9 @@ class DGR_Finder:
                                     f"Here are the sources of your genes: {unique_sources_list}.")
             contigs_db.disconnect()
 
+        html_files_exist = any(file.endswith('.html') for file in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, file)))
+        if html_files_exist:
+            raise ConfigError("Files with .html suffix exist in the directory. Please delete before carrying on. (later this will delete them for you)")
 
         if not self.skip_compute_DGR_variability_profiling:
             self.samples_txt_dict = utils.get_samples_txt_file_as_dict(self.samples_txt)
@@ -811,7 +814,7 @@ class DGR_Finder:
                     percentage_of_mismatches = (count / mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
                         is_TR = True
-                        # if the letter is T, then we assume that it is an A base and we reverse completment EVERYTHING
+                        # if the letter is T, then we assume that it is an A base and we reverse complement EVERYTHING
                         if letter == 'T':
                             TR_sequence = str(query_sequence.reverse_complement())
                             VR_sequence = str(subject_sequence.reverse_complement())
