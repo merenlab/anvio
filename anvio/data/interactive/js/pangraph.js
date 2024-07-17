@@ -971,6 +971,13 @@ async function generate_svg(body, data) {
             // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
             var value = node['layer'][layer_name]
             var max = data['infos']['layers_data'][layer_name]['max']
+            var min = data['infos']['layers_data'][layer_name]['min']
+            var fraction = Math.abs(-min - (-value)) / (Math.abs(max) + Math.abs(min))
+            var fraction_color = lighter_color('#00ff00', '#ff0000', 1 - fraction)
+
+            if (layer_name == 'Delta') {
+              console.log(value, max, min, fraction, fraction_color)
+            }
 
             var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
             var k_y_size = sum_middle_layer + k_y * sum_outer_layer
@@ -988,7 +995,7 @@ async function generate_svg(body, data) {
               'A ' + (layer_stop + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
               'L' + a_x + ' ' + a_y +
               // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-              '" fill="' + lighter_color('#00ff00', '#ff0000', value / max) + '" stroke="" stroke-width="0"/>')
+              '" fill="' + fraction_color + '" stroke="" stroke-width="0"/>')
             )
           }
         }

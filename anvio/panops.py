@@ -2412,12 +2412,12 @@ class Pangraph():
                     genecall = data['genome'][genome]['gene_call']
 
                     # gene_layer_dict[i] = {'genome': genome, 'contig': contig, 'genecall': genecall, 'value': 0}
-                    gene_layer_dict[i] = {'genome': genome, 'genecall': genecall, 'value': 0}
+                    gene_layer_dict[i] = {'genome': genome, 'gene_caller_id': genecall}
                     i += 1
 
         gene_layer_df = pd.DataFrame.from_dict(gene_layer_dict, orient='index')
 
-        gene_layer_df.to_csv(self.output_raw_gene_additional_data, index=False)
+        gene_layer_df.to_csv(self.output_raw_gene_additional_data, index=False, sep='\t')
 
         self.run.info_single("Done")
 
@@ -2434,13 +2434,13 @@ class Pangraph():
             if node != 'start' and node != 'stop':
                 name = data['name']
                 if name not in included:
-                    gc_layer_dict[i] = {'genecluster': name, 'value': 0}
+                    gc_layer_dict[i] = {'genecluster': name}
                     included.add(name)
                     i += 1
 
         gc_layer_df = pd.DataFrame.from_dict(gc_layer_dict, orient='index')
 
-        gc_layer_df.to_csv(self.output_raw_gc_additional_data, index=False)
+        gc_layer_df.to_csv(self.output_raw_gc_additional_data, index=False, sep='\t')
 
         self.run.info_single("Done")
 
@@ -2449,10 +2449,11 @@ class Pangraph():
         
         self.run.warning(None, header="Appending layer values from external gene data", lc="green")
 
-        df = pd.read_csv(self.gene_additional_data)
-        df.set_index(['genome', 'contig', 'genecall'], inplace=True)
+        df = pd.read_csv(self.gene_additional_data, delimiter='\t', header=0, index_col=False)
+        df.set_index(['genome', 'gene_caller_id'], inplace=True)
         layer_names = list(df.columns)
         layer_max = {layer_name: 0 for layer_name in layer_names}
+        layer_min = {layer_name: 0 for layer_name in layer_names}
 
         for node, data in self.ancest.nodes(data=True):
             
@@ -2474,12 +2475,13 @@ class Pangraph():
 
                     data['layer'][layer_name] = value_sum
                     layer_max[layer_name] = layer_max[layer_name] if layer_max[layer_name] > value_sum else value_sum
+                    layer_min[layer_name] = layer_min[layer_name] if layer_min[layer_name] < value_sum else value_sum
 
         for layer_name in layer_names:
 
             self.data_table_dict[layer_name] = {
                 'max': layer_max[layer_name],
-                'min': 0
+                'min': layer_min[layer_name]
             }
 
         self.run.info_single("Done")
