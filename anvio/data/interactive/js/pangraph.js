@@ -1827,6 +1827,43 @@ function main () {
       downloadBlob(blob, title + ".csv");
     });
 
+    $('#SequencesDownload').on('click', function() {
+
+      // Variable to store the final csv data
+      var csv_data = '';
+      var alignment = $('#node_sequence_alignments_table')
+      var basics = $('#node_basics_table')
+      var title = alignment[0].getAttribute("gc_id")
+      var xpos = basics[0].getAttribute("gc_pos")
+      
+      var alignment_rows = alignment[0].getElementsByTagName('tr');
+
+      for (let i = 1; i < alignment_rows.length; i++) {
+    
+          var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
+    
+          csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + "|Position:" + xpos + "|Direction:" + alignment_cols[3].innerHTML + '\n';
+          var genome = ''
+          
+          var alignment_nucs = alignment_cols[4].getElementsByTagName('span');
+          // console.log(alignment_nucs)
+
+          for (let k = 0; k < alignment_nucs.length; k++) {
+
+            genome += alignment_nucs[k].innerHTML
+          }
+
+          genome = genome.replace("-", "").toUpperCase();
+
+          csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
+      }
+      // Combine each row data with new line character
+      
+      var blob = new Blob([csv_data]);
+      // var title = data['infos']['meta']['title']
+      downloadBlob(blob, title + ".fa");
+    });
+
     $('#AlignmentDownload').on('click', function() {
 
       // Variable to store the final csv data

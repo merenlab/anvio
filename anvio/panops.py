@@ -2408,10 +2408,11 @@ class Pangraph():
         for node, data in self.ancest.nodes(data=True):            
             if node != 'start' and node != 'stop':
                 for genome in data['genome'].keys():
-                    contig = data['genome'][genome]['contig']
+                    # contig = data['genome'][genome]['contig']
                     genecall = data['genome'][genome]['gene_call']
 
-                    gene_layer_dict[i] = {'genome': genome, 'contig': contig, 'genecall': genecall, 'value': 0}
+                    # gene_layer_dict[i] = {'genome': genome, 'contig': contig, 'genecall': genecall, 'value': 0}
+                    gene_layer_dict[i] = {'genome': genome, 'genecall': genecall, 'value': 0}
                     i += 1
 
         gene_layer_df = pd.DataFrame.from_dict(gene_layer_dict, orient='index')
@@ -2462,10 +2463,11 @@ class Pangraph():
 
                     for genome in data['genome'].keys():
 
-                        contig = data['genome'][genome]['contig']
+                        # contig = data['genome'][genome]['contig']
                         genecall = data['genome'][genome]['gene_call']
 
-                        value = df.loc[(genome, contig, genecall)][layer_name].item()
+                        # value = df.loc[(genome, contig, genecall)][layer_name].item()
+                        value = df.loc[(genome, genecall)][layer_name].item()
                         value_list.append(value)
                 
                     value_sum = sum(value_list) / len(value_list)
