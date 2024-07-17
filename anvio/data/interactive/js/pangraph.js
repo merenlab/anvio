@@ -1113,6 +1113,10 @@ function checknode(searchpos, positions, node, searchfunction, expressiondrop, e
     for (var source of keys) {
       for (var s of searchfunction[source]){
 
+        if ((d[source][0].toLowerCase().includes(s.trim().toLowerCase()))) {
+          t = true
+        }
+
         if ((d[source][2].toLowerCase().includes(s.trim().toLowerCase()))) {
           t = true
         }
