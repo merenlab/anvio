@@ -1667,17 +1667,20 @@ class Pangraph():
         # self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
 
         if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
-            self.run.info_single('No maximum aborescence. Entering failback mode.')
+            self.run.info_single('No maximum aborescence. Entering fallback mode.')
             edmonds_sub_graph = max(nx.weakly_connected_components(self.edmonds_graph), key=len)
             self.edmonds_graph = nx.DiGraph(self.edmonds_graph.subgraph(edmonds_sub_graph))
             self.pangenome_graph = nx.DiGraph(self.pangenome_graph.subgraph(edmonds_sub_graph))
             if nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
                 self.run.info_single('Found aborescence.')
+
+                #TODO calculate number of missing edges
                 self.run.info_single(f'{len(self.edmonds_graph.nodes())-len(edmonds_sub_graph)} nodes removed to capture synteny.')
+                self.run.info_single('Be warned the quality of the pangraph might have suffered.')
                 self.run.info_single('Proceed.')
             else:
                 raise ConfigError(f"I'm very sorry to inform you that your data is not solvable by the current version of"
-                                  f"anvi'o pangraph. The failback mode tried to solve your dataset by sacrificing some"
+                                  f"anvi'o pangraph. The fallback mode tried to solve your dataset by sacrificing some"
                                   f"of the included information, but at this scale it will not lead to a acceptable result :(")
 
         else:
