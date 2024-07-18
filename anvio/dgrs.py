@@ -1788,7 +1788,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_sample(input_queue, output_queue, samples_dict, primers_dict, run=run_quiet, progress=progress_quiet):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -1824,11 +1824,17 @@ class DGR_Finder:
                                     primers_dict= primers_dict,
                                     #min_remainder_length= self.primer_remainder_lengths,
                                     #min_frequency=min_frequency,
-                                    #output_directory_path=self.output_directory,
-                                    only_keep_remainder= True)
+                                    output_dir=output_directory_path,
+                                    only_keep_remainders= True,
+                                    )
 
             s = PrimerSearch(args, run=run, progress=progress)
             sample_dict, primer_hits = s.process_sample(sample_name)
+
+            if output_directory_path:
+                print("I am in the output directory if statement")
+                #s.store_sequences(sample_name, samples_dict, primers_dict)
+                s.process()
 
             output_queue.put((sample_dict, primer_hits))
 
@@ -2035,10 +2041,6 @@ class DGR_Finder:
             pass
 
 
-
-
-                #print(dgrs_dict)
-
         ##################
         # MULTITHREADING #
         ##################
@@ -2054,23 +2056,21 @@ class DGR_Finder:
         for sample_name in sample_names:
             input_queue.put(sample_name)
 
-        # Add sentinel values to stop the workers
-        #for _ in range(self.num_threads):
-            #input_queue.put(None)
-
-        #print('samples_dict profile_db_bam_file_pairs', self.profile_db_bam_file_pairs)
         print('\n')
         print('primers_dict', primers_dict)
 
-        # engage the proletariat, our hard-working wage-earner class
+        #create directory for Primer matches
+        primer_output = os.path.join(self.output_directory, "PRIMER_MATCHES")
+        # engage the proletariat, our hard-working class
         workers = []
         for i in range(self.num_threads):
             print(f"starting worker {i}")
-            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_sample,
+            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
                                                 self.samples_txt_dict,
-                                                primers_dict),
+                                                primers_dict,
+                                                primer_output),
 
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
