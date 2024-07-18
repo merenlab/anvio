@@ -973,7 +973,7 @@ async function generate_svg(body, data) {
             var max = data['infos']['layers_data'][layer_name]['max']
             var min = data['infos']['layers_data'][layer_name]['min']
             var fraction = Math.abs(-min - (-value)) / (Math.abs(max) + Math.abs(min))
-            var fraction_color = lighter_color('#00ff00', '#ff0000', 1 - fraction)
+            var fraction_color = lighter_color('#00ff00', '#ff0000', fraction)
 
             if (layer_name == 'Delta') {
               console.log(value, max, min, fraction, fraction_color)
