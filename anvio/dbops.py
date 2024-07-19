@@ -760,6 +760,41 @@ class ContigsSuperclass(object):
         return split_names, full_report
 
 
+    def nt_position_to_gene_caller_id(self, contig_name, position_in_contig):
+        """Returns the gene caller id for a given nucleotide position.
+
+        Parameters
+        ==========
+        contig_name : str
+        position_in_contig : int
+
+        Returns
+        =======
+        gene_callers_id : int
+            The gene call that covers the `position_in_contig` in a given contig.
+            If the `position_in_contig` does not occur in any gene context in
+            `contig_name`, this function will return `-1`
+        """
+
+        if not isinstance(position_in_contig, int):
+            raise ConfigError("get_gene_caller_id_for_position_in_contig :: position_in_contig must be of type 'int'")
+
+        if contig_name not in self.contigs_basic_info:
+            raise ConfigError("Contig name '{contig_name} does not occur in this contigs-db :/'")
+
+        if not self.a_meta['genes_are_called']:
+            raise ConfigError(f"`get_gene_caller_id_for_position_in_contig` is speaking: You wanted to get back the gene call "
+                              f"that occurs at the genome position {position_in_contig}. But it seems genes were not called "
+                              f"for this contigs-db file, therefore that action is not one anvi'o can help you with :/")
+
+        for gene_caller_id in self.genes_in_contigs_dict:
+            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            if gene_call['contig'] == contig_name and position_in_contig >= gene_call['start'] and position_in_contig < gene_call['stop']:
+                return gene_caller_id
+
+        return -1
+
+
     def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
         """Returns the order of codon a given nucleotide belongs to.
 
