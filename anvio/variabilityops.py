@@ -789,9 +789,13 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if retain_counts:
             freq_columns = [x + '_freq' for x in self.items]
-            self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            self.data.loc[:, freq_columns] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
         else:
-            self.data[self.items] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            # Ensure we are working with a copy to avoid modifying the original DataFrame in place
+            self.data = self.data.copy()
+            
+            # Convert counts to frequencies in place
+            self.data.loc[:, self.items] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
 
 
     def convert_frequencies_to_counts(self):
