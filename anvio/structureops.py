@@ -73,7 +73,7 @@ class StructureDatabase(object):
 
             if not len(self.genes_queried):
                 raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
-                                  "not sure how you managed that. please send a report to the "
+                                  "not sure how you managed that. Please send a report to the "
                                   "developers. Thank you.")
 
         if not ignore_hash:
