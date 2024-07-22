@@ -1070,14 +1070,13 @@ class Pangraph():
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('gene_cluster_grouping_compression')
+        self.pass_filter = 3
 
         # additional variables for special cases e.g. a user wants to tune the tool
         # in a very specific direction
         # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
         self.genomes_names = A('genome_names')
-
-        print(self.genomes_names)
 
         # the different data storage related variables e.g. input and output files
         # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
@@ -1641,12 +1640,28 @@ class Pangraph():
                     self.add_node_to_graph(gene_cluster_kmer[0][0], gene_cluster_kmer[0][1], gene_cluster_kmer[0][2])
 
         self.run.info_single(f"Adding {pp(len(self.initial_graph.nodes()))} nodes and {pp(len(self.initial_graph.edges()))} edges to G")
+
+        if self.pass_filter == 0:
+            self.run.info_single("Setting algorithm to 'no pass filter'")
+        else:
+            self.run.info_single(f"Setting algorithm to 'remove edges < {pp(self.pass_filter)}'")
+
+        edges_to_remove = [(i, j) for i,j,k in self.initial_graph.edges(data=True) if k['weight'] < self.pass_filter]
+
+        self.run.info_single(f"Removed {pp(len(edges_to_remove))} edges due to pass filter.")
+
+        self.initial_graph.remove_edges_from(edges_to_remove)
+
         connectivity = nx.is_connected(self.initial_graph.to_undirected())
         self.run.info_single(f"Connectivity is {connectivity}")
 
         if connectivity == False:
-            self.pangenome_graph = nx.DiGraph(self.initial_graph.subgraph(max(nx.weakly_connected_components(self.initial_graph), key=len)))
-            self.run.info_single(f"Keeping Subgraph with {pp(len(self.pangenome_graph.nodes()))} nodes and {pp(len(self.pangenome_graph.edges()))} edges")
+
+            weakly_components = list(nx.weakly_connected_components(self.initial_graph))
+            self.run.info_single(f"Graph contains {pp(len(weakly_components))} independant components.")
+
+            self.pangenome_graph = nx.DiGraph(self.initial_graph.subgraph(max(weakly_components, key=len)))
+            self.run.info_single(f"Keeping longest subgraph with {pp(len(self.pangenome_graph.nodes()))} nodes and {pp(len(self.pangenome_graph.edges()))} edges")
 
             connectivity = nx.is_connected(self.pangenome_graph.to_undirected())
             self.run.info_single(f"Connectivity is {connectivity}")
@@ -1654,7 +1669,6 @@ class Pangraph():
             self.pangenome_graph = nx.DiGraph(self.initial_graph)
 
         self.run.info_single("Done")
-
         self.run.warning(None, header="Building maximum branching graph M of G", lc="green")
 
         selfloops = list(nx.selfloop_edges(self.pangenome_graph))
@@ -1670,8 +1684,6 @@ class Pangraph():
             preserve_attrs=False,
             partition=None,
         )
-
-        # self.edmonds_graph = nx.algorithms.tree.branchings.maximum_spanning_arborescence(self.pangenome_graph, attr="weight")
 
         if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
             self.run.info_single('No maximum aborescence. Entering fallback mode.')
