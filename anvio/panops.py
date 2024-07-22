@@ -1075,7 +1075,9 @@ class Pangraph():
         # in a very specific direction
         # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
-        self.skip_genomes = A('skip_genome')
+        self.genomes_names = A('genome_names')
+
+        print(self.genomes_names)
 
         # the different data storage related variables e.g. input and output files
         # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
@@ -1135,9 +1137,12 @@ class Pangraph():
         """Sanity check for incompatible settings, like skip storing and no output path"""
 
         if self.skip_storing_in_pan_db and not self.json_output_file_path:
-            raise ConfigError("You are initializing the Pangraph class with `--skip-storing-in-pan-db` without an `--output-file` "
+            raise ConfigError("You are initializing the Pangraph class with `--skip-storing-in-pan-db` without an `--output-pan-graph-json` "
                             "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
                             "way to store results.")
+    
+        if not self.genomes_names:
+            raise ConfigError("Please be nice enough to use a genome name that is present in your dataset, you know, to let the code take the wheel.")
 
 
     def process(self):
@@ -1295,10 +1300,8 @@ class Pangraph():
 
         for genome, contigs_db_path in external_genomes.iterrows():
 
-            if genome in self.skip_genomes:
-                self.run.info_single(f"Skipped genome {genome}.")
+            if genome in self.genomes_names:
 
-            else:
                 self.genomes.append(genome)
 
                 args = argparse.Namespace(contigs_db=contigs_db_path.item())
@@ -1324,6 +1327,10 @@ class Pangraph():
                 self.gene_synteny_data_dict[genome] = joined_contigs_df.fillna("None").groupby(level=0).apply(lambda df: df.xs(df.name).to_dict("index")).to_dict()
 
                 self.run.info_single(f"Loaded genome {genome}.")
+
+            else:
+
+                self.run.info_single(f"Skipped genome {genome}.")
 
         if not self.genomes:
             raise ConfigError(f"Please keep at least one genome in the dataset. With the current setting you skip over all.")

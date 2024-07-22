@@ -41,6 +41,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('gene-additional-data'), **anvio.K('gene-additional-data'))
     groupA.add_argument(*anvio.A('gc-additional-data'), **anvio.K('gc-additional-data'))
     groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json'))
+    groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
@@ -71,7 +72,6 @@ if __name__ == '__main__':
                                 "of %(default)d, the final graph will represent as many gene clusters as possible in groups.")
     groupC.add_argument('--gene-cluster-grouping-compression', default = 0.0, type=float, help = "Description.")
     groupC.add_argument('--priority-genome', default = '', type=str, help = "Description.")
-    groupC.add_argument('--skip-genome', default = [], type=str, action='append', help = "Description.")
 
     args = parser.get_args(parser)
 
