@@ -703,7 +703,7 @@ class ContigsSuperclass(object):
         search_terms = [s.strip() for s in search_terms]
 
         if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
-            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
+            raise ConfigError("Please do not use the same search term twice :/ Because, reasons. You know.")
 
         for search_term in search_terms:
             if not len(search_term) >= 3:
@@ -731,7 +731,7 @@ class ContigsSuperclass(object):
 
             response = contigs_db.db._exec(query).fetchall()
 
-            # the resopnse now contains all matching gene calls found in the contigs database. this may cause an issue
+            # the response now contains all matching gene calls found in the contigs database. this may cause an issue
             # (just like the one reported here: https://github.com/merenlab/anvio/issues/1515) if the user is working
             # with only a subset of splits in the contigs database (for instance through `anvi-refine`). here we will
             # remove gene calls for which we don't have a split name associated:
@@ -979,7 +979,7 @@ class ContigsSuperclass(object):
             data[self.nt_positions_info[contig_name] == 2, :3] = numpy.array([0,1,2])
             data[self.nt_positions_info[contig_name] == 1, :3] = numpy.array([0,1,3])
 
-        # Next, we calculte the next 5 columns. As a first pass, we populate the splice of `data`
+        # Next, we calculate the next 5 columns. As a first pass, we populate the splice of `data`
         # corresponding to each gene call and set the "gene_caller_id" and "codon_order_in_gene"
         # columns. This first ignores the fact that gene calls may overlap.
 
@@ -1034,7 +1034,7 @@ class ContigsSuperclass(object):
     def get_gene_amino_acid_sequence(self, gene_caller_ids):
         """A much faster way to get back amino acid sequences for genes.
 
-        Paremeters
+        Parameters
         ==========
         gene_caller_ids : list
             A list of one or more gene caller ids.
