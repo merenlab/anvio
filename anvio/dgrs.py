@@ -702,6 +702,7 @@ class DGR_Finder:
             self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
 
 
+
     def update_existing_DGR(self, existing_DGR_key, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
                             query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position, subject_contig):
         """
@@ -1826,6 +1827,8 @@ class DGR_Finder:
                                     #min_frequency=min_frequency,
                                     output_dir=output_directory_path,
                                     only_keep_remainders= True,
+                                    only_keep_remainder= True,
+                                    only_report_remainders = True
                                     )
 
             s = PrimerSearch(args, run=run, progress=progress)
@@ -1956,12 +1959,12 @@ class DGR_Finder:
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
 
         # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
-        #self.primer_remainder_lengths = {}
+        self.primer_remainder_lengths = {}
 
         for dgr_id, dgr_data in dgrs_dict.items():
             primer_remainder_length = len(dgr_data['TR_sequence'])
-            #self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
-            #dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
+            self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
+            dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1978,6 +1981,31 @@ class DGR_Finder:
                 vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
                 #add every primer sequence to the dgrs_dict
                 vr_data['vr_primer_region'] = vr_primer_region
+
+                #TODO:
+                #use base in codon position from somewhere and find anchor for primer
+                
+                # Extract start position, end position, and sequence
+                start_position = vr_data['VR_start_position']
+                end_position = vr_data['VR_end_position']
+                sequence = vr_data['VR_sequence']
+
+                # Generate positions
+                positions = list(range(start_position, end_position + 1))
+
+                # Combine positions and sequence into a single array of tuples
+                combined_array = list(zip(positions, sequence))
+
+                contig_name = vr_data['VR_contig']
+
+                dbops.get_nt_position_info(contig_name, position)
+
+                ##ARRAY
+                #position:        45 46 47 48 49 50 51 52 53
+                # sequence:       A  G  T  A  A  C  T  G  A
+                #BASE_CODON_POS: 1   2  3  1  2  3  1  2  3
+
+
 
         ###########################################
         # UPDATED DGRs dict with Primer Sequences #
@@ -2061,7 +2089,8 @@ class DGR_Finder:
 
         #create directory for Primer matches
         primer_output = os.path.join(self.output_directory, "PRIMER_MATCHES")
-        # engage the proletariat, our hard-working class
+
+        # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
             print(f"starting worker {i}")

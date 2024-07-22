@@ -725,11 +725,11 @@ class VariabilitySuper(VariabilityFilter, object):
                               "and self.gene_caller_ids will be ignored.")
 
         if self.sample_ids_of_interest and self.sample_ids_of_interest_path:
-            raise ConfigError("VariabilitySuper: you initialized me with self.sampes_of_interest "
+            raise ConfigError("VariabilitySuper: you initialized me with self.samples_of_interest "
                               "because you're a programmer and you know what you're doing.  But you "
-                              "also initialized me with self.sampes_of_interest_path. Because you "
+                              "also initialized me with self.samples_of_interest_path. Because you "
                               "didn't skip sanity_check(), I am complaining. If you skip "
-                              "sanity_check, self.sampes_of_interest_path.")
+                              "sanity_check, self.samples_of_interest_path.")
 
         if self.splits_of_interest and (self.splits_of_interest_path or self.bin_id or self.collection_name):
             raise ConfigError("VariabilitySuper: you initialized me with self.splits_of_interest "
