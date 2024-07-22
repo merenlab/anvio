@@ -40,21 +40,21 @@ def main(args):
     if args.hmm_usage:
         args.hmm_usage = [p.strip() for p in args.hmm_usage.split(',') if p.strip()]
     # Start profiling
-    profiler.enable()
+    #profiler.enable()
     D = dgrs.DGR_Finder(args)
-    profiler.disable()
+    #profiler.disable()
     
     # Create a StringIO buffer to hold the stats
-    stream = io.StringIO()
+    #stream = io.StringIO()
     
     # Create a Stats object from the profiler data and write it to the stream
-    stats = pstats.Stats(profiler, stream=stream).sort_stats('cumtime')
-    stats.strip_dirs()
-    stats.print_stats()
+    #stats = pstats.Stats(profiler, stream=stream).sort_stats('cumtime')
+    #stats.strip_dirs()
+    #stats.print_stats()
     
     # Save the profiling data to a text file
-    with open('/Users/klambert/Documents/PhD/Data/DGR_Test_data/FMT_Dataset/cProfile_stats_output_B_frag_no_samples_txt.txt', 'w') as f:
-        f.write(stream.getvalue())
+    #with open('/Users/klambert/Documents/PhD/Data/DGR_Test_data/FMT_Dataset/cProfile_stats_output_B_frag_no_samples_txt.txt', 'w') as f:
+        #f.write(stream.getvalue())
     
     D.process(args)
 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
                     "file that points to raw FASTQ reads you have used to generate your merged PROFILE.db. "
                     "Truly mind boggling stuff.")
     groupI.add_argument(*anvio.A('samples-txt'), **anvio.K('samples-txt'))
-    groupI.add_argument('--variable-region-primer-base-length', default=12, type=int, help="Calculating variable region ratios "
+    groupI.add_argument('--variable-region-primer-base-length', default=15, type=int, help="Calculating variable region ratios "
                     "requires anvi'o to 'design' an in silico primer, based on the variable region "
                     "and the upstream/downstream genomic context to search for short reads in raw sequencing data"
                     "to find the ratio of DGR activity per sample. This variable controls the length of a sequence "

@@ -702,6 +702,7 @@ class DGR_Finder:
             self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
 
 
+
     def update_existing_DGR(self, existing_DGR_key, VR_sequence, TR_sequence, midline, percentage_of_mismatches, query_genome_start_position,
                             query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position, subject_contig):
         """
@@ -1788,7 +1789,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_sample(input_queue, output_queue, samples_dict, primers_dict, run=run_quiet, progress=progress_quiet):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -1824,11 +1825,18 @@ class DGR_Finder:
                                     primers_dict= primers_dict,
                                     #min_remainder_length= self.primer_remainder_lengths,
                                     #min_frequency=min_frequency,
-                                    #output_directory_path=self.output_directory,
-                                    only_keep_remainder= True)
+                                    output_dir=output_directory_path,
+                                    only_keep_remainder= True,
+                                    only_report_remainders = True
+                                    )
 
             s = PrimerSearch(args, run=run, progress=progress)
             sample_dict, primer_hits = s.process_sample(sample_name)
+
+            if output_directory_path:
+                print("I am in the output directory if statement")
+                #s.store_sequences(sample_name, samples_dict, primers_dict)
+                s.process()
 
             output_queue.put((sample_dict, primer_hits))
 
@@ -1950,12 +1958,12 @@ class DGR_Finder:
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
 
         # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
-        #self.primer_remainder_lengths = {}
+        self.primer_remainder_lengths = {}
 
         for dgr_id, dgr_data in dgrs_dict.items():
             primer_remainder_length = len(dgr_data['TR_sequence'])
-            #self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
-            #dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
+            self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
+            dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1972,6 +1980,31 @@ class DGR_Finder:
                 vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
                 #add every primer sequence to the dgrs_dict
                 vr_data['vr_primer_region'] = vr_primer_region
+
+                #TODO:
+                #use base in codon position from somewhere and find anchor for primer
+                
+                # Extract start position, end position, and sequence
+                start_position = vr_data['VR_start_position']
+                end_position = vr_data['VR_end_position']
+                sequence = vr_data['VR_sequence']
+
+                # Generate positions
+                positions = list(range(start_position, end_position + 1))
+
+                # Combine positions and sequence into a single array of tuples
+                combined_array = list(zip(positions, sequence))
+
+                contig_name = vr_data['VR_contig']
+
+                dbops.get_nt_position_info(contig_name, position)
+
+                ##ARRAY
+                #position:        45 46 47 48 49 50 51 52 53
+                # sequence:       A  G  T  A  A  C  T  G  A
+                #BASE_CODON_POS: 1   2  3  1  2  3  1  2  3
+
+
 
         ###########################################
         # UPDATED DGRs dict with Primer Sequences #
@@ -2062,15 +2095,19 @@ class DGR_Finder:
         print('\n')
         print('primers_dict', primers_dict)
 
+        #create directory for Primer matches
+        primer_output = os.path.join(self.output_directory, "PRIMER_MATCHES")
+
         # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
             print(f"starting worker {i}")
-            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_sample,
+            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
                                                 self.samples_txt_dict,
-                                                primers_dict),
+                                                primers_dict,
+                                                primer_output),
 
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
