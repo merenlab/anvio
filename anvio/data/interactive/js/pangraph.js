@@ -164,13 +164,13 @@ async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) 
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
     var d = await get_gene_cluster_consensus_functions(gene_cluster_name);
 
-    console.log(d)
+    // console.log(d)
 
     function_sources = Object.keys(d).sort();
-    console.log(function_sources);
+    // console.log(function_sources);
     for (source of function_sources) {
         value = d[source];
-        console.log(source)
+        // console.log(source)
         var accession = value['accession']
         accession === undefined | accession === null ? accession = '' : accession = accession
         var func = value['function']
@@ -536,8 +536,6 @@ function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, co
       'L ' + c_x + ' ' + c_y + ' ' +
       'L' + a_x + ' ' + a_y +
       '" fill="' + color + '" stroke="" stroke-width="0"/>')
-
-    console.log(path)
   }
 
   return(path)
@@ -658,25 +656,25 @@ async function generate_svg(body, data) {
     if ($('#flex' + layer_name).prop('checked') == true){
 
       var layer_width = parseInt($('#' + layer_name)[0].value)
-      var layer_scale = data['infos']['layers_data'][layer_name]['scale']
+      // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
 
-      if (layer_scale == 'global') {
-        var layer_middle_start = current_middle_stop + inner_margin
-        var layer_middle_stop = layer_middle_start + layer_width
+      // if (layer_scale == 'global') {
+      //   var layer_middle_start = current_middle_stop + inner_margin
+      //   var layer_middle_stop = layer_middle_start + layer_width
 
-        current_middle_stop = layer_middle_stop
-        sum_middle_layer += layer_width + inner_margin
+      //   current_middle_stop = layer_middle_stop
+      //   sum_middle_layer += layer_width + inner_margin
         
-        middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
-      } else {
-        var layer_outer_start = current_outer_stop + outer_margin
-        var layer_outer_stop = layer_outer_start + layer_width
+      //   middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
+      // } else {
+      var layer_outer_start = current_outer_stop + outer_margin
+      var layer_outer_stop = layer_outer_start + layer_width
 
-        current_outer_stop = layer_outer_stop 
-        sum_outer_layer += layer_width + outer_margin
-        
-        outer_layers[layer_name] = [layer_width, layer_outer_start, layer_outer_stop]
-      }
+      current_outer_stop = layer_outer_stop 
+      sum_outer_layer += layer_width + outer_margin
+      
+      outer_layers[layer_name] = [layer_width, layer_outer_start, layer_outer_stop]
+      // }
     }
   }
 
@@ -696,12 +694,14 @@ async function generate_svg(body, data) {
 
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
     var x_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
+    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
   } else {
     var x_size = global_x * node_distance_x;
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
+    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size*0.5 + ' -' + y_size*5 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
   }
 
-  var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
+  
 
 
   for (var genome of genomes) {
@@ -719,7 +719,7 @@ async function generate_svg(body, data) {
         var j_x = x+add_stop
         var j_y = layer_stop
 
-        console.log(i_x, i_y, j_x, j_y)
+        // console.log(i_x, i_y, j_x, j_y)
 
         svg_heatmaps.push(
           create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'WhiteSmoke')
@@ -1076,59 +1076,81 @@ async function generate_svg(body, data) {
 
   };
 
-  // for(var l in groups) {
+  for(var l in groups) {
 
-  //   var group = data['infos']['groups'][l]
-  //   // console.log(group)
+    var group = data['infos']['groups'][l]
+    
+    var group_length = group.length
+    var left_node_name = group[0]
+    var right_node_name = group[group_length-1]
 
-  //   var group_length = group.length
-  //   var left_node_name = group[0]
-  //   var right_node_name = group[group_length-1]
+    var left_node = data['elements']['nodes'][left_node_name];
+    var right_node = data['elements']['nodes'][right_node_name];
 
-  //   var left_node = data['elements']['nodes'][left_node_name];
-  //   var right_node = data['elements']['nodes'][right_node_name];
+    var group_genomes = Object.keys(left_node['genome']);
+    var intersection = group_genomes.filter(x => enabled.includes(x));
+    if (intersection.length > 0) {
 
-  //   var group_genomes = Object.keys(left_node['genome']);
-  //   var intersection = group_genomes.filter(x => enabled.includes(x));
-  //   if (intersection.length > 0) {
+      var group_genomes_length = group_genomes.length;
 
-  //     var group_genomes_length = group_genomes.length;
-
-  //     var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
-  //     var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
+      var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
+      var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
       
-  //     var l_x = parseInt(left_node['position']['x_offset'])
-  //     var l_y = parseInt(left_node['position']['y'])
+      var l_x = parseInt(left_node['position']['x_offset'])
+      var l_y = parseInt(left_node['position']['y'])
 
-  //     var m_x = parseInt(right_node['position']['x_offset'])
-  //     var m_y = parseInt(right_node['position']['y'])
+      var m_x = parseInt(right_node['position']['x_offset'])
+      var m_y = parseInt(right_node['position']['y'])
 
-  //     var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-  //     var l_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + l_y * sum_outer_layer
-  //     var m_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + m_y * sum_outer_layer
+      var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+      var l_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + l_y * node_distance_y
+      var m_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + m_y * node_distance_y
 
-  //     var [circle_t_x, circle_t_y] = transform(l_x-0.5, l_y_size + node_size, theta);
-  //     var [circle_u_x, circle_u_y] = transform(l_x-0.5, l_y_size - node_size, theta);
-  //     var [circle_v_x, circle_v_y] = transform(m_x-0.5, m_y_size + node_size, theta);
-  //     var [circle_w_x, circle_w_y] = transform(m_x-0.5, m_y_size - node_size, theta);
+      var i_x = l_x-0.5
+      var i_y = l_y_size + node_size
+      var j_x = m_x-0.5
+      var j_y = m_y_size - node_size
 
-  //     if ((m_x - l_x) * theta >= 180) {
-  //       var arc_flag = 1
-  //     } else {
-  //       var arc_flag = 0
-  //     }
+      var color = lighter_color('#ffffff', group_color, group_genomes_length / genome_size)
 
-  //     svg_groups.push(
-  //       $('<path class="group" id="' + l + '" d="' +
-  //       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
-  //       'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
-  //       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
-  //       'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
-  //       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
-  //       '" fill="' + lighter_color('#ffffff', group_color, group_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
-  //     )
-  //   }
-  // };
+      if ((l_x - m_x) * theta >= 180) {
+        var arc_flag = 1
+      } else {
+        var arc_flag = 0
+      }
+    
+      if (linear == 0) {
+        var [a_x, a_y] = transform(i_x, i_y, theta)
+        var [b_x, b_y] = transform(i_x, j_y, theta)
+        var [c_x, c_y] = transform(j_x, i_y, theta)
+        var [d_x, d_y] = transform(j_x, j_y, theta)
+    
+        var path = $('<path class="group" id="' + l + '" d="' +
+        'M ' + a_x + ' ' + a_y + ' ' +
+        'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + c_x + ' ' + c_y + ' ' +
+        'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + d_x + ' ' + d_y + ' ' +
+        'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + b_x + ' ' + b_y + ' ' +
+        'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + a_x + ' ' + a_y +
+        '" fill="' + color + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+    
+      } else {
+        var [a_x, a_y] = [i_x * node_distance_x, -i_y]
+        var [b_x, b_y] = [i_x * node_distance_x, -j_y]
+        var [c_x, c_y] = [j_x * node_distance_x, -i_y]
+        var [d_x, d_y] = [j_x * node_distance_x, -j_y]
+    
+        var path = $('<path class="group" id="' + l + '" d="' +
+        'M ' + a_x + ' ' + a_y + ' ' +
+        'L ' + c_x + ' ' + c_y + ' ' +
+        'A ' + node_size + ' ' + node_size + ' 0 0 1 ' + d_x + ' ' + d_y + ' ' +
+        'L ' + b_x + ' ' + b_y + ' ' +
+        'A ' + node_size + ' ' + node_size + ' 0 0 1 ' + a_x + ' ' + a_y +
+        '" fill="' + color + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+      }
+
+      svg_groups.push(path)
+    }
+  };
 
   for (var layer_name of layers) {
 
