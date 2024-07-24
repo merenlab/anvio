@@ -1070,7 +1070,7 @@ class Pangraph():
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('gene_cluster_grouping_compression')
-        self.pass_filter = 3
+        self.pass_filter = 0
 
         # additional variables for special cases e.g. a user wants to tune the tool
         # in a very specific direction

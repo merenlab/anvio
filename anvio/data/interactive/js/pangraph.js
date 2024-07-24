@@ -508,6 +508,41 @@ function lighter_color(color1, color2, percentage, threshold=0.25) {
   return color3
 }
 
+function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color) {
+
+  if (linear == 0) {
+    var [a_x, a_y] = transform(i_x, i_y, theta)
+    var [b_x, b_y] = transform(j_x, i_y, theta)
+    var [c_x, c_y] = transform(i_x, j_y, theta)
+    var [d_x, d_y] = transform(j_x, j_y, theta)
+
+    var path = $('<path d="' +
+      'M ' + a_x + ' ' + a_y + ' ' +
+      'A ' + (i_y) + ' ' + (i_y) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+      'L' + d_x + ' ' + d_y +  ' ' +
+      'A ' + (j_y) + ' ' + (j_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+      'L' + a_x + ' ' + a_y +
+      '" fill="' + color + '" stroke="" stroke-width="0"/>')
+  } else {
+    var [a_x, a_y] = [i_x * node_distance_x, -i_y]
+    var [b_x, b_y] = [j_x * node_distance_x, -i_y]
+    var [c_x, c_y] = [i_x * node_distance_x, -j_y]
+    var [d_x, d_y] = [j_x * node_distance_x, -j_y]
+  
+    var path = $('<path d="' +
+      'M ' + a_x + ' ' + a_y + ' ' +
+      'L ' + b_x + ' ' + b_y + ' ' +
+      'L ' + d_x + ' ' + d_y +  ' ' +
+      'L ' + c_x + ' ' + c_y + ' ' +
+      'L' + a_x + ' ' + a_y +
+      '" fill="' + color + '" stroke="" stroke-width="0"/>')
+
+    console.log(path)
+  }
+
+  return(path)
+}
+
 //ANCHOR - Transformation function
 function transform(x, y, theta) {
   var circle_x = y * Math.sin(deg2rad(theta * x))
@@ -532,6 +567,8 @@ function pickcolor (edgecoloring, genomes) {
 //ANCHOR - All in one SVG creation function
 async function generate_svg(body, data) {
 
+  // access all the relevant variables from UI
+
   var svg_search = [];
   var svg_heatmaps = [];
   var svg_edges = [];
@@ -543,14 +580,20 @@ async function generate_svg(body, data) {
     edgecoloring[element.id] = [index, element.value]
   })
 
+  if ($('#LayoutRadio1').prop('checked') == true){
+    var linear = 0
+  } else {
+    var linear = 1
+  }
+
   var outer_margin = parseInt($('#outer_margin')[0].value);
   var inner_margin = parseInt($('#inner_margin')[0].value);
   var node_size = parseInt($('#size')[0].value);
   var node_thickness = parseInt($('#circ')[0].value);
   var edge_thickness = parseInt($('#edge')[0].value);
   var line_thickness = parseInt($('#line')[0].value);
-  // var node_distance_x = parseInt($('#distx')[0].value);
-  // var node_distance_y = parseInt($('#disty')[0].value);
+  var node_distance_x = parseInt($('#distx')[0].value);
+  var node_distance_y = parseInt($('#disty')[0].value);
 
   var groups = data['infos']['groups']
   var edges = data['elements']['edges']
@@ -563,8 +606,7 @@ async function generate_svg(body, data) {
   var node_color = $('#nodes')[0].value;
 
   var theta = 270 / (global_x)
-  // var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))  
-  var start_offset = parseInt($('#inner')[0].value)
+  var start_offset = 0
   
   var middle_layers = new Object();
   var outer_layers = new Object();
@@ -579,7 +621,7 @@ async function generate_svg(body, data) {
   outer_layers['graph'] = [graph_size, inner_margin, inner_margin + graph_size]
 
   var sum_middle_layer = start_offset + search_size + arrow_size
-  var sum_outer_layer = graph_size + inner_margin
+  var sum_outer_layer = graph_size
 
   var current_middle_stop = sum_middle_layer
   var current_outer_stop = sum_outer_layer
@@ -588,6 +630,8 @@ async function generate_svg(body, data) {
   var enabled = []
 
   var genome_size = genomes.length;
+
+// layer size calculations
 
   for (var genome of genomes) {
 
@@ -606,31 +650,6 @@ async function generate_svg(body, data) {
       sum_middle_layer += layer_width + inner_margin
       
       middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
-    }
-
-    if (Object.keys(middle_layers).includes(layer_name)){
-      for (var i_x = 1; i_x < global_x+1; i_x++) {
-        var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-
-        var add_start = 1
-        var add_stop = 0
-
-        var [a_x, a_y] = transform(i_x-add_start, layer_start, theta)
-        var [b_x, b_y] = transform(i_x+add_stop, layer_start, theta)
-        var [c_x, c_y] = transform(i_x-add_start, layer_stop, theta)
-        var [d_x, d_y] = transform(i_x+add_stop, layer_stop, theta)
-
-        svg_heatmaps.push(
-          $('<path d="' +
-          'M ' + a_x + ' ' + a_y + ' ' +
-          'A ' + (layer_start) + ' ' + (layer_start) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
-          'L' + d_x + ' ' + d_y +  ' ' +
-          'A ' + (layer_stop) + ' ' + (layer_stop) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
-          'L' + a_x + ' ' + a_y +
-          // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-          '" fill="WhiteSmoke" stroke="" stroke-width="0"/>')
-        )
-      }
     }
   }
 
@@ -661,8 +680,65 @@ async function generate_svg(body, data) {
     }
   }
 
-  var size = (sum_middle_layer + global_y * sum_outer_layer);
-  var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + size + ' -' + size + ' ' + size*2 + ' ' + size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
+  if (linear == 0){
+    var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))
+    var circle_dist = sum_middle_layer + graph_size * 0.5
+
+    if (circle_dist < radius) {
+      start_offset = radius - circle_dist
+    }
+
+    sum_middle_layer += start_offset
+    for (var layer in middle_layers) {
+      var [layer_width, layer_start, layer_stop] = middle_layers[layer]
+      middle_layers[layer] = [layer_width, layer_start + start_offset, layer_stop + start_offset]
+    }
+
+    var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
+    var x_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
+  } else {
+    var x_size = global_x * node_distance_x;
+    var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
+  }
+
+  var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
+
+
+  for (var genome of genomes) {
+    var layer_name = genome + 'layer'
+    if (Object.keys(middle_layers).includes(layer_name)){
+
+      var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
+      for (var x = 1; x < global_x+1; x++) {
+
+        var add_start = 1
+        var add_stop = 0
+
+        var i_x = x-add_start
+        var i_y = layer_start
+        var j_x = x+add_stop
+        var j_y = layer_stop
+
+        console.log(i_x, i_y, j_x, j_y)
+
+        svg_heatmaps.push(
+          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'WhiteSmoke')
+        )
+      }
+    }
+  }
+
+  var [search_size, search_start, search_stop] = middle_layers['search']
+
+  if (linear == 0){
+    var [circle_h_x, circle_h_y] = transform(0, search_start + search_size * 0.5, theta)
+  } else {
+    var [circle_h_x, circle_h_y] = [0, -(search_start + search_size * 0.5)]
+  }
+    
+  svg_core.append(
+    $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Search Hits</text>')
+  )
 
   if ($('#flexarrow').prop('checked') == true){
     
@@ -677,37 +753,62 @@ async function generate_svg(body, data) {
       steps = 1
     }
 
-    var [circle_c_x, circle_c_y] = transform(global_x - pointer_length, arrow_start + arrow_thickness, theta)
-    var [circle_a_x, circle_a_y] = transform(0, arrow_start + arrow_thickness, theta)
-    var [circle_b_x, circle_b_y] = transform(0, arrow_stop - arrow_thickness, theta)
-    var [circle_d_x, circle_d_y] = transform(global_x - pointer_length, arrow_stop - arrow_thickness, theta)
-    var [circle_f_x, circle_f_y] = transform(global_x - pointer_length, arrow_stop, theta)
-    var [circle_g_x, circle_g_y] = transform(global_x, arrow_start + arrow_thickness * 2, theta)
-    var [circle_e_x, circle_e_y] = transform(global_x - pointer_length, arrow_start, theta)
+    if (linear == 0){
+      var [circle_c_x, circle_c_y] = transform(global_x - pointer_length, arrow_start + arrow_thickness, theta)
+      var [circle_a_x, circle_a_y] = transform(0, arrow_start + arrow_thickness, theta)
+      var [circle_b_x, circle_b_y] = transform(0, arrow_stop - arrow_thickness, theta)
+      var [circle_d_x, circle_d_y] = transform(global_x - pointer_length, arrow_stop - arrow_thickness, theta)
+      var [circle_f_x, circle_f_y] = transform(global_x - pointer_length, arrow_stop, theta)
+      var [circle_g_x, circle_g_y] = transform(global_x, arrow_start + arrow_thickness * 2, theta)
+      var [circle_e_x, circle_e_y] = transform(global_x - pointer_length, arrow_start, theta)
 
-    if ((global_x) * theta >= 180) {
-      var arc_flag = 1
+      if ((global_x) * theta >= 180) {
+        var arc_flag = 1
+      } else {
+        var arc_flag = 0
+      }
+
+      svg_core.append(
+        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+        ' A ' + (arrow_start + arrow_thickness) + ' ' + (arrow_start + arrow_thickness) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
+        ' L ' + circle_b_x + ' ' + circle_b_y +
+        ' A ' + (arrow_stop - arrow_thickness) + ' ' + (arrow_stop - arrow_thickness) + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
+        ' L ' + circle_f_x + ' ' + circle_f_y +
+        ' L ' + circle_g_x + ' ' + circle_g_y +
+        ' L ' + circle_e_x + ' ' + circle_e_y + 
+        ' Z" stroke-width="0" fill="slateGrey"></path>')
+      )
+
+      var [circle_h_x, circle_h_y] = transform(0, arrow_start + arrow_thickness * 2, theta)
+
     } else {
-      var arc_flag = 0
+      var [circle_c_x, circle_c_y] = [(global_x - pointer_length) * node_distance_x, -(arrow_start + arrow_thickness)]
+      var [circle_a_x, circle_a_y] = [0, -(arrow_start + arrow_thickness)]
+      var [circle_b_x, circle_b_y] = [0, -(arrow_stop - arrow_thickness)]
+      var [circle_d_x, circle_d_y] = [(global_x - pointer_length) * node_distance_x , -(arrow_stop - arrow_thickness)]
+      var [circle_f_x, circle_f_y] = [(global_x - pointer_length) * node_distance_x, -arrow_stop]
+      var [circle_g_x, circle_g_y] = [global_x * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+      var [circle_e_x, circle_e_y] = [(global_x - pointer_length) * node_distance_x, -arrow_start]
+
+      svg_core.append(
+        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+        ' L ' + circle_a_x + ' ' + circle_a_y +
+        ' L ' + circle_b_x + ' ' + circle_b_y +
+        ' L ' + circle_d_x + ' ' + circle_d_y +
+        ' L ' + circle_f_x + ' ' + circle_f_y +
+        ' L ' + circle_g_x + ' ' + circle_g_y +
+        ' L ' + circle_e_x + ' ' + circle_e_y + 
+        ' Z" stroke-width="0" fill="slateGrey"></path>')
+      )
+
+      var [circle_h_x, circle_h_y] = [0, -(arrow_start + arrow_thickness * 2)]
     }
-
-    svg_core.append(
-      $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
-      ' A ' + (arrow_start + arrow_thickness) + ' ' + (arrow_start + arrow_thickness) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
-      ' L ' + circle_b_x + ' ' + circle_b_y +
-      ' A ' + (arrow_stop - arrow_thickness) + ' ' + (arrow_stop - arrow_thickness) + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-      ' L ' + circle_f_x + ' ' + circle_f_y +
-      ' L ' + circle_g_x + ' ' + circle_g_y +
-      ' L ' + circle_e_x + ' ' + circle_e_y + 
-      ' Z" stroke-width="0" fill="slateGrey"></path>')
-    )
-
-    var [circle_h_x, circle_h_y] = transform(0, arrow_start + arrow_thickness * 2, theta)
+      
     svg_core.append(
       $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
-    var l = 1
+    var l = 0
     while (l < global_x) {
 
       if (l+steps <= global_x){
@@ -715,141 +816,153 @@ async function generate_svg(body, data) {
       } else {
         var k = steps - ((l+steps) - global_x);
       }
-      var [circle_l_x, circle_l_y] = transform(l-0.5, arrow_start + arrow_thickness * 2, theta)
-      var rotate = theta * (l-0.5)
-      if (rotate >= 90 && rotate <= 180) {
-        rotate += 180;
-      } else if (rotate >= 180 && rotate <= 270) {
-        rotate -= 180;
+
+      if (linear == 0){
+
+        var [circle_l_x, circle_l_y] = transform(l-0.5, arrow_start + arrow_thickness * 2, theta)
+        var rotate = theta * (l-0.5)
+        if (rotate >= 90 && rotate <= 180) {
+          rotate += 180;
+        } else if (rotate >= 180 && rotate <= 270) {
+          rotate -= 180;
+        }
+        svg_core.append(
+          $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+        )
+
+      } else {
+        var [circle_l_x, circle_l_y] = [(l-0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+        svg_core.append(
+          $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+        )
+        
       }
-      svg_core.append(
-        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
-      )
+
       l += k
     };
   }
 
-  for(var i in edges) {
+  // for(var i in edges) {
 
-    var edge = data['elements']['edges'][i];
-    var edge_genomes = Object.keys(edge['genome'])
+  //   var edge = data['elements']['edges'][i];
+  //   var edge_genomes = Object.keys(edge['genome'])
 
-    var intersection = edge_genomes.filter(x => enabled.includes(x));
-    if (intersection.length > 0) {
-      var edge_genomes_length = edge_genomes.length;
+  //   var intersection = edge_genomes.filter(x => enabled.includes(x));
+  //   if (intersection.length > 0) {
+  //     var edge_genomes_length = edge_genomes.length;
 
-      var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
-      var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
+  //     var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
+  //     var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
 
-      var source = edge['source']
-      var target = edge['target']
+  //     var source = edge['source']
+  //     var target = edge['target']
 
-      if (source != 'start' && target != 'stop' && edge['shown'] == 1){
+  //     if (source != 'start' && target != 'stop' && edge['shown'] == 1){
 
-        var i_x = nodes[source]['position']['x_offset']
-        var i_y = nodes[source]['position']['y']
-        var j_x = nodes[target]['position']['x_offset']
-        var j_y = nodes[target]['position']['y']
+  //       var i_x = nodes[source]['position']['x_offset']
+  //       var i_y = nodes[source]['position']['y']
+  //       var j_x = nodes[target]['position']['x_offset']
+  //       var j_y = nodes[target]['position']['y']
 
-        for (let e = 0; e <= genomes.length; e++) {
+  //       for (let e = 0; e <= genomes.length; e++) {
 
-          if (e == genomes.length || (genomes[e] + 'layer' in middle_layers && edge_genomes.includes(genomes[e])) ) {
+  //         if (e == genomes.length || (genomes[e] + 'layer' in middle_layers && edge_genomes.includes(genomes[e])) ) {
 
-            if (e == genomes.length) {
+  //           if (e == genomes.length) {
 
-              if (edge['direction'] == 'L') {
-                var stroke = ' stroke-dasharray="5,5" '
-              } else if (edge['direction'] == 'B') {
-                var stroke = ' stroke-dasharray="15,5" '
-              } else {
-                var stroke = ''
-              }
+  //             if (edge['direction'] == 'L') {
+  //               var stroke = ' stroke-dasharray="5,5" '
+  //             } else if (edge['direction'] == 'B') {
+  //               var stroke = ' stroke-dasharray="15,5" '
+  //             } else {
+  //               var stroke = ''
+  //             }
 
-              var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-              var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * sum_outer_layer
-              var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * sum_outer_layer
-              var draw = pick
-              var thickness = edge_thickness
-            } else {
-              var [layer_width, layer_start, layer_stop] = middle_layers[genomes[e] + 'layer']
+  //             var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+  //             var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * sum_outer_layer
+  //             var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * sum_outer_layer
+  //             var draw = pick
+  //             var thickness = edge_thickness
+  //           } else {
+  //             var [layer_width, layer_start, layer_stop] = middle_layers[genomes[e] + 'layer']
 
-              if (layer_width < line_thickness) {
-                var draw = ''
-              } else {
-                layer_width -= line_thickness
-                layer_start += line_thickness * 0.5
-                layer_stop -= line_thickness * 0.5
+  //             if (layer_width < line_thickness) {
+  //               var draw = ''
+  //             } else {
+  //               layer_width -= line_thickness
+  //               layer_start += line_thickness * 0.5
+  //               layer_stop -= line_thickness * 0.5
 
-                var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
-                var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
-                var draw = edgecoloring[genomes[e]][1]
-                var thickness = line_thickness
-                var stroke = ''
-              }
-            }
+  //               var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
+  //               var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
+  //               var draw = edgecoloring[genomes[e]][1]
+  //               var thickness = line_thickness
+  //               var stroke = ''
+  //             }
+  //           }
 
-            var [circle_i_x, circle_i_y] = transform(i_x-0.5, i_y_size, theta);
-            var [circle_j_x, circle_j_y] = transform(j_x-0.5, j_y_size, theta);
+  //           var [circle_i_x, circle_i_y] = transform(i_x-0.5, i_y_size, theta);
+  //           var [circle_j_x, circle_j_y] = transform(j_x-0.5, j_y_size, theta);
 
-            if (draw !== "") {
+  //           if (draw !== "") {
 
-              if (edge['bended'] == ""){
+  //             if (edge['bended'] == ""){
 
-                if (i_y == j_y) {
-                  svg_edges.push(
-                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                  )  
-                } else {
-                  svg_edges.push(
-                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                  )
-                }
+  //               if (i_y == j_y) {
+  //                 svg_edges.push(
+  //                   $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+  //                 )  
+  //               } else {
+  //                 svg_edges.push(
+  //                   $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+  //                 )
+  //               }
 
-              } else {
+  //             } else {
 
-                var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
-                var o_y = i_y
+  //               var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+  //               var o_y = i_y
 
-                for(var n in edge['bended']) {
+  //               for(var n in edge['bended']) {
 
-                  var n_x = edge['bended'][n]['x']
-                  var n_y = edge['bended'][n]['y']
+  //                 var n_x = edge['bended'][n]['x']
+  //                 var n_y = edge['bended'][n]['y']
 
-                  if (e == genomes.length) {
-                    var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * sum_outer_layer
-                    var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * sum_outer_layer
-                  } else {
-                    var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
-                    var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
-                  }
+  //                 if (e == genomes.length) {
+  //                   var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * sum_outer_layer
+  //                   var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * sum_outer_layer
+  //                 } else {
+  //                   var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
+  //                   var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
+  //                 }
 
-                  var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
+  //                 var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
 
-                  if (o_y == n_y) {
-                    bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
-                  } else {
-                    bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
-                  }
+  //                 if (o_y == n_y) {
+  //                   bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+  //                 } else {
+  //                   bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+  //                 }
           
-                  var o_y = n_y
-                }
+  //                 var o_y = n_y
+  //               }
 
-                if (o_y == j_y) {
-                  bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                } else {
-                  bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                }
+  //               if (o_y == j_y) {
+  //                 bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+  //               } else {
+  //                 bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+  //               }
 
-                svg_edges.push(
-                  $(bended_edge)
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-  };
+  //               svg_edges.push(
+  //                 $(bended_edge)
+  //               )
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // };
 
   var group_nodes = [];
   var group_dict = {}
@@ -860,9 +973,7 @@ async function generate_svg(body, data) {
       group_dict[node] = g
     }
   };
-  // console.log(group_dict)
   group_nodes = Object.keys(group_dict)
-  // console.log(data['infos']['groups'])
 
   var global_values = []
   for(var k in nodes) {
@@ -907,17 +1018,19 @@ async function generate_svg(body, data) {
           var x_value_start = parseInt(z_x) - (1 - group_id * fraction)
           var x_value_stop = parseInt(z_x) - (1 - (group_id + 1) * fraction)
 
-          // console.log(group, z_x, group_id, fraction)
-
         }
 
         var color = pickcolor (edgecoloring, Object.keys(node['genome']))
         var draw = lighter_color('#ffffff', color, node_genomes_length / genome_size);
         
         var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-        var k_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + k_y * sum_outer_layer
+        var k_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + k_y * node_distance_y
         
-        var [circle_k_x, circle_k_y] = transform(k_x-0.5, k_y_size, theta);
+        if (linear == 0) {
+          var [circle_k_x, circle_k_y] = transform(k_x-0.5, k_y_size, theta);
+        } else {
+          var [circle_k_x, circle_k_y] = [(k_x-0.5) * node_distance_x, -k_y_size];
+        }
 
         svg_nodes.push(
           $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_k_x + '" cy="' + circle_k_y + '" r="' + node_size + '" fill="' + lighter_color('#ffffff', node_color, node_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
@@ -928,49 +1041,32 @@ async function generate_svg(body, data) {
 
         var [search_size, search_start, search_stop] = middle_layers['search']
         
-        var [e_x, e_y] = transform(parseInt(k_x)-add_start, search_start, theta)
-        var [f_x, f_y] = transform(parseInt(k_x)+add_stop, search_start, theta)
-        var [g_x, g_y] = transform(parseInt(k_x)-add_start, search_stop, theta)
-        var [h_x, h_y] = transform(parseInt(k_x)+add_stop, search_stop, theta)
+        var i_x = parseInt(k_x)-add_start
+        var i_y = search_start
+        var j_x = parseInt(k_x)+add_stop
+        var j_y = search_stop
 
         if (!global_values.includes(k_x)) {
-          svg_search.push(
-            $('<path class="marker" id="' + k_x + '" d="' +
-            'M ' + e_x + ' ' + e_y + ' ' +
-            'A ' + search_start  + ' ' + search_start + ' 0 0 0 ' + f_x + ' ' + f_y + ' ' +
-            'L' + h_x + ' ' + h_y +  ' ' +
-            'A ' + search_stop  + ' ' + search_stop + ' 0 0 1 ' + g_x + ' ' + g_y + ' ' +
-            'L' + e_x + ' ' + e_y +
-            '" fill="white" stroke="" stroke-width="0"/>')
-          )
+          svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'WhiteSmoke'))
         }
 
         for (var layer_name of layers) {
 
           if ($('#flex' + layer_name).prop('checked') == true){
 
-            // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
             var value = node['layer'][layer_name]
             var max = data['infos']['layers_data'][layer_name]['max']
 
             var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
-            var k_y_size = sum_middle_layer + k_y * sum_outer_layer
+            var k_y_size = sum_middle_layer + k_y * node_distance_y
 
-            var [a_x, a_y] = transform(x_value_start, layer_start + k_y_size, theta)
-            var [b_x, b_y] = transform(x_value_stop, layer_start + k_y_size, theta)
-            var [c_x, c_y] = transform(x_value_start, layer_stop + k_y_size, theta)
-            var [d_x, d_y] = transform(x_value_stop, layer_stop + k_y_size, theta)
+            var i_x = x_value_start
+            var i_y = layer_start + k_y_size
+            var j_x = x_value_stop
+            var j_y = layer_stop + k_y_size
+            var color = lighter_color('#00ff00', '#ff0000', value / max)
 
-            svg_heatmaps.push(
-              $('<path class="' + layer_name + '" xpos="' + k_x + '" name="' + (value / max).toFixed(3) + '" d="' +
-              'M ' + a_x + ' ' + a_y + ' ' +
-              'A ' + (layer_start + k_y_size) + ' ' + (layer_start + k_y_size) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
-              'L' + d_x + ' ' + d_y +  ' ' +
-              'A ' + (layer_stop + k_y_size) + ' ' + (layer_stop + k_y_size) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
-              'L' + a_x + ' ' + a_y +
-              // '" fill="' + lighter_color('#00ff00', '#ff0000', mean_entropy[key] / max) + '" stroke="" stroke-width="2"/>')
-              '" fill="' + lighter_color('#00ff00', '#ff0000', value / max) + '" stroke="" stroke-width="0"/>')
-            )
+            svg_heatmaps.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color))
           }
         }
       }
@@ -980,69 +1076,72 @@ async function generate_svg(body, data) {
 
   };
 
-  for(var l in groups) {
+  // for(var l in groups) {
 
-    var group = data['infos']['groups'][l]
-    // console.log(group)
+  //   var group = data['infos']['groups'][l]
+  //   // console.log(group)
 
-    var group_length = group.length
-    var left_node_name = group[0]
-    var right_node_name = group[group_length-1]
+  //   var group_length = group.length
+  //   var left_node_name = group[0]
+  //   var right_node_name = group[group_length-1]
 
-    var left_node = data['elements']['nodes'][left_node_name];
-    var right_node = data['elements']['nodes'][right_node_name];
+  //   var left_node = data['elements']['nodes'][left_node_name];
+  //   var right_node = data['elements']['nodes'][right_node_name];
 
-    var group_genomes = Object.keys(left_node['genome']);
-    var intersection = group_genomes.filter(x => enabled.includes(x));
-    if (intersection.length > 0) {
+  //   var group_genomes = Object.keys(left_node['genome']);
+  //   var intersection = group_genomes.filter(x => enabled.includes(x));
+  //   if (intersection.length > 0) {
 
-      var group_genomes_length = group_genomes.length;
+  //     var group_genomes_length = group_genomes.length;
 
-      var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
-      var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
+  //     var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
+  //     var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
       
-      var l_x = parseInt(left_node['position']['x_offset'])
-      var l_y = parseInt(left_node['position']['y'])
+  //     var l_x = parseInt(left_node['position']['x_offset'])
+  //     var l_y = parseInt(left_node['position']['y'])
 
-      var m_x = parseInt(right_node['position']['x_offset'])
-      var m_y = parseInt(right_node['position']['y'])
+  //     var m_x = parseInt(right_node['position']['x_offset'])
+  //     var m_y = parseInt(right_node['position']['y'])
 
-      var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-      var l_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + l_y * sum_outer_layer
-      var m_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + m_y * sum_outer_layer
+  //     var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+  //     var l_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + l_y * sum_outer_layer
+  //     var m_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + m_y * sum_outer_layer
 
-      var [circle_t_x, circle_t_y] = transform(l_x-0.5, l_y_size + node_size, theta);
-      var [circle_u_x, circle_u_y] = transform(l_x-0.5, l_y_size - node_size, theta);
-      var [circle_v_x, circle_v_y] = transform(m_x-0.5, m_y_size + node_size, theta);
-      var [circle_w_x, circle_w_y] = transform(m_x-0.5, m_y_size - node_size, theta);
+  //     var [circle_t_x, circle_t_y] = transform(l_x-0.5, l_y_size + node_size, theta);
+  //     var [circle_u_x, circle_u_y] = transform(l_x-0.5, l_y_size - node_size, theta);
+  //     var [circle_v_x, circle_v_y] = transform(m_x-0.5, m_y_size + node_size, theta);
+  //     var [circle_w_x, circle_w_y] = transform(m_x-0.5, m_y_size - node_size, theta);
 
-      if ((m_x - l_x) * theta >= 180) {
-        var arc_flag = 1
-      } else {
-        var arc_flag = 0
-      }
+  //     if ((m_x - l_x) * theta >= 180) {
+  //       var arc_flag = 1
+  //     } else {
+  //       var arc_flag = 0
+  //     }
 
-      svg_groups.push(
-        $('<path class="group" id="' + l + '" d="' +
-        'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
-        'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
-        'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
-        'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
-        'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
-        '" fill="' + lighter_color('#ffffff', group_color, group_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
-      )
-    }
-  };
+  //     svg_groups.push(
+  //       $('<path class="group" id="' + l + '" d="' +
+  //       'M ' + circle_t_x + ' ' + circle_t_y + ' ' +
+  //       'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + circle_v_x + ' ' + circle_v_y + ' ' +
+  //       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_w_x + ' ' + circle_w_y + ' ' +
+  //       'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + circle_u_x + ' ' + circle_u_y + ' ' +
+  //       'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + circle_t_x + ' ' + circle_t_y +
+  //       '" fill="' + lighter_color('#ffffff', group_color, group_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+  //     )
+  //   }
+  // };
 
   for (var layer_name of layers) {
 
     if ($('#flex' + layer_name).prop('checked') == true){
-      // var layer_scale = data['infos']['layers_data'][layer_name]['scale']
-      
       var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
       var y_size = sum_middle_layer + layer_width * 0.5
       
-      var [circle_x, circle_y] = transform(0, (layer_start + y_size), theta)
+      if (linear == 0){
+        var [circle_x, circle_y] = transform(0, (layer_start + y_size), theta)
+      } else {
+        var [circle_x, circle_y] = [0, -(layer_start + y_size)]
+      }
+
       svg_heatmaps.push(
         $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
       )
@@ -1057,7 +1156,12 @@ async function generate_svg(body, data) {
       
         var y_size = layer_start + layer_width * 0.5
 
-        var [circle_x, circle_y] = transform(0, y_size, theta)
+        if (linear == 0){
+          var [circle_x, circle_y] = transform(0, y_size, theta)
+        } else {
+          var [circle_x, circle_y] = [0, -y_size]
+        }
+
         svg_edges.push(
           $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
         )
