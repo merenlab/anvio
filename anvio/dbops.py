@@ -4525,7 +4525,8 @@ class ContigsDatabase:
                         skip_predict_frame=skip_predict_frame,
                     )
                 except ConfigError as e:
-                    os.remove(self.db_path)
+                    if os.path.exists(self.db_path):
+                        os.remove(self.db_path)
                     raise ConfigError(e.clear_text())
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
