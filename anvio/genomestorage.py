@@ -89,12 +89,12 @@ class GenomeStorage(object):
             raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
                                yet there is nothing to initialize since genome storage path variable\
                                (args.genomes_storage) is None. If you are an end user, please make sure\
-                               you provide the genomes storage paramater to whatever program you were\
+                               you provide the genomes storage parameter to whatever program you were\
                                running. If you are a developer, you probably already figured what is\
                                wrong. If you are a cat, you need to send us an e-mail immediately.")
 
         if self.storage_path.endswith('.h5'):
-            raise ConfigError("We recenlty switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
+            raise ConfigError("We recently switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
                               you can upgrade your genome storage by running 'anvi-migrate %s'." % self.storage_path)
 
         filesnpaths.is_file_exists(self.storage_path)
@@ -120,10 +120,10 @@ class GenomeStorage(object):
 
         # if user requested function annotation sources, make sure they're in the db
         if self.function_annotation_sources:
-            missing_soures = [s for s in self.function_annotation_sources if s not in function_annotation_sources_in_db]
+            missing_sources = [s for s in self.function_annotation_sources if s not in function_annotation_sources_in_db]
 
-            if len(missing_soures):
-                raise ConfigError(f"The following function annotation sources are not in genomes storage: {', '.join(missing_soures)}")
+            if len(missing_sources):
+                raise ConfigError(f"The following function annotation sources are not in genomes storage: {', '.join(missing_sources)}")
             else:
                 self.run.info("User requested annotation sources", ', '.join(self.function_annotation_sources))
 
