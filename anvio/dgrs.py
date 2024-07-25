@@ -2139,11 +2139,18 @@ class DGR_Finder:
         else:
             pass
 
-        #update primers dict with the primer sequence
+        #update the primers dictionary with the total primer sequence including any edits the initial primer accounting for SNVs
+        for dgr_id, dgr_data in dgrs_dict.items():
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+                primer_key = f'{dgr_id}_{vr_id}_Primer'
+                # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
+                primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['vr_anchor_primer']
+                #primers_dict[primer_key]['initial_primer_sequence'] +
         print('\n')
-        print('primers_dict', primers_dict)
-        primers_dict['total_primer'] = vr_data['vr_primer_region'] + vr_data['vr_anchor_primer']
+        print(f'Updated primers dictionary:', primers_dict)
 
+        ##################
         # MULTITHREADING #
         ##################
 
