@@ -617,14 +617,14 @@ class Palindromes:
                 friendly_sequence_name = f"The sequence '{sequence_name}'"
             self.run.warning(f"{friendly_sequence_name} is only {sequence_length} nts long, and so it is too "
                              f"short to find any palindromes in it that are at least {self.min_palindrome_length} nts with "
-                             f"{self.min_distance} nucleoties in between :/ Anvi'o will most likely skip it.")
+                             f"{self.min_distance} nucleotides in between :/ Anvi'o will most likely skip it.")
 
         # determine which palindrome search algorithm to use.
         if self.palindrome_search_algorithm:
             # which means the search algorithm is set by the user:
             method = self.palindrome_search_algorithms[self.palindrome_search_algorithm]
         else:
-            # which means we are going to dynamically determine which algorith to use
+            # which means we are going to dynamically determine which algorithm to use
             # as a function of the sequence length
             method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
