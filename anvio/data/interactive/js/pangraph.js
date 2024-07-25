@@ -842,127 +842,145 @@ async function generate_svg(body, data) {
     };
   }
 
-  // for(var i in edges) {
+  for(var i in edges) {
 
-  //   var edge = data['elements']['edges'][i];
-  //   var edge_genomes = Object.keys(edge['genome'])
+    var edge = data['elements']['edges'][i];
+    var edge_genomes = Object.keys(edge['genome'])
 
-  //   var intersection = edge_genomes.filter(x => enabled.includes(x));
-  //   if (intersection.length > 0) {
-  //     var edge_genomes_length = edge_genomes.length;
+    var intersection = edge_genomes.filter(x => enabled.includes(x));
+    if (intersection.length > 0) {
+      var edge_genomes_length = edge_genomes.length;
 
-  //     var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
-  //     var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
+      var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
+      var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
 
-  //     var source = edge['source']
-  //     var target = edge['target']
+      var source = edge['source']
+      var target = edge['target']
 
-  //     if (source != 'start' && target != 'stop' && edge['shown'] == 1){
+      if (source != 'start' && target != 'stop' && edge['shown'] == 1){
 
-  //       var i_x = nodes[source]['position']['x_offset']
-  //       var i_y = nodes[source]['position']['y']
-  //       var j_x = nodes[target]['position']['x_offset']
-  //       var j_y = nodes[target]['position']['y']
+        var i_x = nodes[source]['position']['x_offset']
+        var i_y = nodes[source]['position']['y']
+        var j_x = nodes[target]['position']['x_offset']
+        var j_y = nodes[target]['position']['y']
 
-  //       for (let e = 0; e <= genomes.length; e++) {
+        for (let e = 0; e <= genomes.length; e++) {
 
-  //         if (e == genomes.length || (genomes[e] + 'layer' in middle_layers && edge_genomes.includes(genomes[e])) ) {
+          if (e == genomes.length || (genomes[e] + 'layer' in middle_layers && edge_genomes.includes(genomes[e])) ) {
 
-  //           if (e == genomes.length) {
+            if (e == genomes.length) {
 
-  //             if (edge['direction'] == 'L') {
-  //               var stroke = ' stroke-dasharray="5,5" '
-  //             } else if (edge['direction'] == 'B') {
-  //               var stroke = ' stroke-dasharray="15,5" '
-  //             } else {
-  //               var stroke = ''
-  //             }
+              if (edge['direction'] == 'L') {
+                var stroke = ' stroke-dasharray="5,5" '
+              } else if (edge['direction'] == 'B') {
+                var stroke = ' stroke-dasharray="15,5" '
+              } else {
+                var stroke = ''
+              }
 
-  //             var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-  //             var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * sum_outer_layer
-  //             var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * sum_outer_layer
-  //             var draw = pick
-  //             var thickness = edge_thickness
-  //           } else {
-  //             var [layer_width, layer_start, layer_stop] = middle_layers[genomes[e] + 'layer']
+              var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+              var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
+              var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * node_distance_y
+              var draw = pick
+              var thickness = edge_thickness
+            } else {
+              var [layer_width, layer_start, layer_stop] = middle_layers[genomes[e] + 'layer']
 
-  //             if (layer_width < line_thickness) {
-  //               var draw = ''
-  //             } else {
-  //               layer_width -= line_thickness
-  //               layer_start += line_thickness * 0.5
-  //               layer_stop -= line_thickness * 0.5
+              if (layer_width < line_thickness) {
+                var draw = ''
+              } else {
+                layer_width -= line_thickness
+                layer_start += line_thickness * 0.5
+                layer_stop -= line_thickness * 0.5
 
-  //               var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
-  //               var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
-  //               var draw = edgecoloring[genomes[e]][1]
-  //               var thickness = line_thickness
-  //               var stroke = ''
-  //             }
-  //           }
+                var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
+                var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
+                var draw = edgecoloring[genomes[e]][1]
+                var thickness = line_thickness
+                var stroke = ''
+              }
+            }
 
-  //           var [circle_i_x, circle_i_y] = transform(i_x-0.5, i_y_size, theta);
-  //           var [circle_j_x, circle_j_y] = transform(j_x-0.5, j_y_size, theta);
+            if (linear == 0){
+              var [circle_i_x, circle_i_y] = transform(i_x-0.5, i_y_size, theta);
+              var [circle_j_x, circle_j_y] = transform(j_x-0.5, j_y_size, theta);
+            } else {
+              var [circle_i_x, circle_i_y] = [(i_x-0.5) * node_distance_x, -i_y_size];
+              var [circle_j_x, circle_j_y] = [(j_x-0.5) * node_distance_x, -j_y_size];
+            }
 
-  //           if (draw !== "") {
+            if (draw !== "") {
 
-  //             if (edge['bended'] == ""){
+              if (edge['bended'] == ""){
 
-  //               if (i_y == j_y) {
-  //                 svg_edges.push(
-  //                   $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-  //                 )  
-  //               } else {
-  //                 svg_edges.push(
-  //                   $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-  //                 )
-  //               }
+                if (i_y == j_y) {
+                  svg_edges.push(
+                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                  )  
+                } else {
+                  svg_edges.push(
+                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                  )
+                }
 
-  //             } else {
 
-  //               var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
-  //               var o_y = i_y
+              } else {
 
-  //               for(var n in edge['bended']) {
+                var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+                var o_y = i_y
 
-  //                 var n_x = edge['bended'][n]['x']
-  //                 var n_y = edge['bended'][n]['y']
+                for(var n in edge['bended']) {
 
-  //                 if (e == genomes.length) {
-  //                   var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * sum_outer_layer
-  //                   var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * sum_outer_layer
-  //                 } else {
-  //                   var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
-  //                   var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
-  //                 }
+                  var n_x = edge['bended'][n]['x']
+                  var n_y = edge['bended'][n]['y']
 
-  //                 var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
+                  if (e == genomes.length) {
+                    var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
+                    var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
+                  } else {
+                    var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
+                    var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
+                  }
+                  
+                  if (linear == 0){
+                    var [circle_n_x, circle_n_y] = transform(n_x-0.5, n_y_size, theta);
+                  } else {
+                    var [circle_n_x, circle_n_y] = [(n_x-0.5) * node_distance_x, -n_y_size];
+                  }
 
-  //                 if (o_y == n_y) {
-  //                   bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
-  //                 } else {
-  //                   bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
-  //                 }
+                  if (o_y == n_y) {
+                    if (linear == 0){
+                      bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+                    } else {
+                      bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                    }
+                  } else {
+                    bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                  }
           
-  //                 var o_y = n_y
-  //               }
+                  var o_y = n_y
+                }
 
-  //               if (o_y == j_y) {
-  //                 bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-  //               } else {
-  //                 bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-  //               }
+                if (o_y == j_y) {
+                  if (linear == 0){
+                    bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                  } else {
+                    bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                  }
+                } else {
+                  bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                }
 
-  //               svg_edges.push(
-  //                 $(bended_edge)
-  //               )
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // };
+                svg_edges.push(
+                  $(bended_edge)
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+  };
 
   var group_nodes = [];
   var group_dict = {}
