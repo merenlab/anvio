@@ -283,7 +283,7 @@ if __name__ == '__main__':
                               will not be included in the output file). The default is %(default)d,\
                               so nothing will be removed if you do not declare a minimum size.")
     groupD.add_argument('--exact-length', type=int, default=None, metavar='INT',
-                        help="Exact lenght of the sequences you wish to keep from a FASTA fille. Why \
+                        help="Exact length of the sequences you wish to keep from a FASTA fille. Why \
                               would anyone need that? Anvi'o does not know. But there you have it. This \
                               parameter is indeed incompatible with a lot of others, such as `--min-len`.")
     groupD.add_argument('--max-percentage-gaps', type=float, default=100, metavar='PERCENTAGE',
@@ -308,7 +308,7 @@ if __name__ == '__main__':
     groupD.add_argument('--seq-type', default=None, metavar="SEQ TYPE", choices={'AA', 'NT'},
                         help=("Supply either 'NT' or 'AA' (if you want). If 'NT', any characters besides {A,C,T,G} will "
                               "by replaced with 'N'. If 'AA', any characters that are not 1-letter amino acid "
-                              "characters will be replaced with 'X'. If you don't supply anything, no charaters will be "
+                              "characters will be replaced with 'X'. If you don't supply anything, no characters will be "
                               "modified."))
     groupD.add_argument('--ignore-empty-sequences', default=False, action="store_true",
                         help=("If your FASTA file contains entries with no sequences, you will either have to ask anvi'o "
