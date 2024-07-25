@@ -145,7 +145,7 @@ def main(args, unknown):
 
     collection_name = args.collection_name.strip()
     if not len(collection_name):
-        raise ConfigError('Nice try. Collection name cannot be emtpy')
+        raise ConfigError('Nice try. Collection name cannot be empty')
     try:
         utils.check_sample_id(collection_name)
     except:
@@ -223,7 +223,7 @@ def main(args, unknown):
         c.delete(collection_name)
 
         raise ConfigError("Binning algorithm '%s' did not return any clusters :( There will not be any collection "
-                          "in your profie database for these results. Please take a look at the help menu and sanity "
+                          "in your profile database for these results. Please take a look at the help menu and sanity "
                           "check your parameters for this binning algorithm." % (driver))
 
     store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, cluster_type)
