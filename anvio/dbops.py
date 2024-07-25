@@ -1512,7 +1512,7 @@ class PanSuperclass(object):
         if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
             if self.just_do_it:
                 self.run.warning("Since you are using the flag `--just-do-it`, anvi'o will attempt to first access to the DNA sequences of gene calls "
-                                 "found in gene clusters of interst, and align them from scratch instead of using the previously computed amino acid "
+                                 "found in gene clusters of interest, and align them from scratch instead of using the previously computed amino acid "
                                  "sequence alignment summary data (related info: https://github.com/merenlab/anvio/issues/772). Anvi'o apologizes in "
                                  "advance if this explodes downstream.", header="MINI WARNING AS YOU ARE GETTING SEQUENCES FOR GENE CLUSTERS", lc="yellow")
             else:
