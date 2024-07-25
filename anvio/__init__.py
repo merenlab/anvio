@@ -31,7 +31,7 @@ try:
                              "users of the platform as they help us find and address bugs before they can make their way into a stable \n"
                              "release. Thus, we are extra sorry for this inconvenience :/ But it seems there was a big change in the \n"
                              "main branch, and the required version of Python is no longer compatible with your current conda \n"
-                             "environment :/ This means, you need to get rid of your current anvio-dev conda enviroment, and setup a \n"
+                             "environment :/ This means, you need to get rid of your current anvio-dev conda environment, and setup a \n"
                              "new one following the most up-to-date installation instructions for anvio-dev here:\n\n"
                              "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
                              "Thank you for your patience and understanding.\n\n")
@@ -2856,8 +2856,8 @@ D = {
             ['--report-as-text'],
             {'default': False,
              'action': 'store_true',
-             'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats "
-                     "to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
+             'help': "If you give this flag, anvi'o will not open new browser to show Contigs database statistics and write all stats "
+                     "to TAB separated file and you should also give --output-file with this flag otherwise anvi'o will complain."}
                 ),
     'dump-dir': (
             ['--dump-dir'],
