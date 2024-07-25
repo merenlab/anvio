@@ -233,7 +233,7 @@ class SamplesInformation:
 
         if not self.samples_information_default_layer_order:
             # we still don't have a default order. we will try to recover from that here
-            # by looking into what we have in the samples order informaiton
+            # by looking into what we have in the samples order information
             if not len(self.samples_order_dict):
                 raise SamplesError("Something is missing. Anvi'o is having hard time coming up with a default samples "
                                    "order for the samples database.")
