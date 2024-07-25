@@ -889,7 +889,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if num_facc_keys > 2500 and num_facc_keys < 10000:
             self.run.warning(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
                              f"{facc.K()}s for {facc.function_annotation_source}. It looks like you have quite a lot of "
-                             f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o wiil "
+                             f"them, and this may cause some delays during the calculation of your dendrogram. Anvi'o will "
                              f"do her best, but if things crash downstream, this will likely be the reason.")
         if num_facc_keys > 10000:
             raise ConfigError(f"Among all of your {num_genomes} genomes, anvi'o found as many as {num_facc_keys} unique "
