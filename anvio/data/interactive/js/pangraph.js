@@ -609,7 +609,7 @@ async function generate_svg(body, data) {
   var middle_layers = new Object();
   var outer_layers = new Object();
 
-  var search_size = 200
+  var search_size = parseInt($('#search_hit')[0].value);
   middle_layers['search'] = [search_size, start_offset, search_size + start_offset]
 
   var arrow_size = parseInt($('#arrow')[0].value)
@@ -871,9 +871,9 @@ async function generate_svg(body, data) {
             if (e == genomes.length) {
 
               if (edge['direction'] == 'L') {
-                var stroke = ' stroke-dasharray="5,5" '
+                var stroke = ' stroke-dasharray="' + line_thickness * 10 + ',' + line_thickness * 10 + '" '
               } else if (edge['direction'] == 'B') {
-                var stroke = ' stroke-dasharray="15,5" '
+                var stroke = ' stroke-dasharray="' + line_thickness * 40 + ',' + line_thickness * 10 + '" '
               } else {
                 var stroke = ''
               }
