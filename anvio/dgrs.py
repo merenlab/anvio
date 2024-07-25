@@ -1185,10 +1185,10 @@ class DGR_Finder:
                 filtered_vrs = {}
                 for vr_name, vr_data in dgr_data.get('VRs', {}).items():
                     vr_bin_info = vr_data.get('VR_bin')
-                    print(f"  Checking VR {vr_name} of {dgr_name}: vr_bin_info = {vr_bin_info}")
+                    print(f"Checking VR {vr_name} of {dgr_name}: vr_bin_info = {vr_bin_info}")
                     if vr_bin_info == tr_bin_info:
                         filtered_vrs[vr_name] = vr_data
-                        print(f"    Including VR {vr_name} in {dgr_name} because vr_bin {vr_bin_info} == tr_bin {tr_bin_info}")
+                        print(f"Including VR {vr_name} in {dgr_name} because vr_bin {vr_bin_info} == tr_bin {tr_bin_info}")
 
                 # Add to filtered_dgrs only if there are matching VRs
                 if filtered_vrs:
@@ -1996,17 +1996,14 @@ class DGR_Finder:
                 #add every primer sequence to the dgrs_dict
                 vr_data['vr_primer_region'] = vr_primer_region
 
-                #TODO:
-                #use base in codon position from somewhere and find anchor for primer
-                # Combine positions and sequence into a single array of tuples
-                #combined_array = list(zip(positions, sequence))
                 # Extract start position, end position, and sequence
                 VR_sequence = str(vr_data['VR_sequence'])
                 TR_sequence = str(vr_data['TR_sequence'])
                 TR_reverse_complement = dgr_data['TR_reverse_complement']
 
-                print(f"oriignal dgr dict: {dgrs_dict}")
+                print(f"original dgr dict: {dgrs_dict}")
                 print('\n')
+
                 #check the TR and VR sequence are the same length and then treat them the same. If not need the TR in the VR data
                 if len(TR_sequence) == len(VR_sequence):
                     vr_primer = []
@@ -2031,52 +2028,6 @@ class DGR_Finder:
                 elif len(TR_sequence) != len(VR_sequence):
                     print(f"{vr_id} does not have the same length as the TR :( so you can't create an anchor primer sequence")
 
-                #     # Initialize an array to store the results
-                #     base_pos_data = []
-
-                #     # Generate positions
-                #     positions = list(range(VR_start_position, VR_end_position + 1))
-
-                #     # Iterate over the positions and get the base_pos_in_codon value
-                #     for idx, pos_in_contig in enumerate(positions):
-                #         _, _, base_pos = dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_nt_position_info(contig_name, pos_in_contig)
-                #         # Create a dictionary with position, nucleotide, and base codon position
-                #         base_pos_data.append({
-                #             'position': pos_in_contig,
-                #             'nucleotide': sequence[idx],
-                #             'base_codon_pos': base_pos
-                #         })
-
-                #     # Print the base_pos array
-                #     for entry in base_pos_data:
-                #         print(f"Position: {entry['position']}, Nucleotide: {entry['nucleotide']}, Base Codon Position: {entry['base_codon_pos']}")
-
-                #     ##ARRAY
-                #     #position:        45 46 47 48 49 50 51 52 53
-                #     # sequence:       A  G  T  A  A  C  T  G  A
-                #     #BASE_CODON_POS: 1   2  3  1  2  3  1  2  3
-
-                #     ###
-                #     #TODO:
-                #     #Need to base the primer off the TR sequence not the VR sequence and then match to the VR positions
-                #     # Filter the base_pos_data data based on the conditions
-
-                #     # Filter the base_pos_data based on the conditions
-                #     filtered_nucleotides = [
-                #         entry['nucleotide'] for entry in base_pos_data
-                #         if entry['base_codon_pos'] in {1, 3} and entry['nucleotide'] != 'A'
-                #     ]
-
-                #     # Create a string from the filtered nucleotides
-                #     filtered_string = "".join(filtered_nucleotides)
-
-                #     # Print the filtered string
-                #     print(filtered_string)
-
-                # else:
-                #     raise ConfigError("Oh naur, Cleo! The length of your VR sequence does not match the positions of the same VR.")
-
-
         ###########################################
         # UPDATED DGRs dict with Primer Sequences #
         ###########################################
@@ -2086,7 +2037,7 @@ class DGR_Finder:
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
                 primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_primer_region'],
-                                                                  'vr_anchor_primer': vr_data['vr_anchor_primer']}
+                                                                'vr_anchor_primer': vr_data['vr_anchor_primer']}
                                                             #'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
         print('\n')
         print(f'original primers dictionary:' , primers_dict)
