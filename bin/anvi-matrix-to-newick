@@ -39,7 +39,7 @@ def main(args):
     num_missing_data = len([item for sublist in vectors for item in sublist if item == None])
     if num_missing_data:
         run.warning(f"Oy. Your file contains {PL('missing data item', num_missing_data)}. Anvi'o will do its "
-                    f"best to accomodate for it, but you should take a careful look at your output tree (that, "
+                    f"best to accommodate for it, but you should take a careful look at your output tree (that, "
                     f"of course, if everything works after this message). Please note that anvi'o will not "
                     f"normalize your data prior to clustering and will assume that it is already normalized.")
 
