@@ -111,7 +111,7 @@ class MultipleRuns:
                               "criterion. So there is nothing really to merge here. Yes?")
 
         if improper:
-            self.run.warning("Please read carefuly. You sent %d profile databases to anvi'o merger to be merged. However, not "
+            self.run.warning("Please read carefully. You sent %d profile databases to anvi'o merger to be merged. However, not "
                              "all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge "
                              "only the remaining %d. At the end of this warning you will find a list of paths to those databases "
                              "anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong. "
