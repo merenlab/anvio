@@ -245,7 +245,7 @@ class ClusteringConfiguration:
                         raise ConfigError(f"Ehem. Anvi'o could not recover the actual path of the database (!{database}) referenced in the config file, "
                                           f"because the database paths variable sent from the client does not have an entry for it :( There are two "
                                           f"options. One is to get a `db_paths` dictionary sent to this class that contains a key for {database} with "
-                                          f"the full path to the dataase as a value. Or the table '{table}' can be exported to a TAB-delimited matrix "
+                                          f"the full path to the database as a value. Or the table '{table}' can be exported to a TAB-delimited matrix "
                                           f"and declared in the config file. If you are experimenting and got stuck here, we like you. Please send an "
                                           f"e-mail to the developers.")
 
