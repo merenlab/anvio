@@ -210,7 +210,7 @@ class Completeness:
         domain_probabilities, actual_domains, control_domains = self.SCG_domain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
 
         if anvio.DEBUG:
-            self.run.warning(None, header="DOMAIN ESTIMTES FOR '%s'" % bin_name, lc='green')
+            self.run.warning(None, header="DOMAIN ESTIMATES FOR '%s'" % bin_name, lc='green')
             for domain in control_domains:
                 self.run.info_single("Probability %s %.2f" % (domain.upper(), domain_probabilities[domain]), mc='cyan')
             for domain in actual_domains:
