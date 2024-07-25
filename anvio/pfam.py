@@ -152,10 +152,10 @@ class PfamSetup(object):
 
     def confirm_downloaded_files(self):
         chksums_file = os.path.join(self.pfam_data_dir, 'md5_checksums')
-        if os.path.exists(chksums_file): 
+        if os.path.exists(chksums_file):
             self.run.info("found local file", 'md5_checksums')
             with open(chksums_file,'r') as fh:
-                checksums_file = fh.read() 
+                checksums_file = fh.read()
         else:
             try:
                 checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
