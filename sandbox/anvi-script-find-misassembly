@@ -101,7 +101,7 @@ def main():
                 clipping = cov_dict[contig]['clipping'][pos]
                 clipping_ratio = clipping/cov
                 relative_pos = pos/contig_length
-                if clipping_ratio > 0.8 and (pos > min_dist_to_end or contig_length-pos > min_dist_to_end):
+                if clipping_ratio > 0.8 and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
                     file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
 
     zero_ouput = args.output_prefix + "-zero_cov.txt"
