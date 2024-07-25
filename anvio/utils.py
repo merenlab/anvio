@@ -1625,7 +1625,7 @@ def check_fasta_id_formatting(fasta_path):
         if len(characters_anvio_doesnt_like):
             raise ConfigError(
                 "At least one of the deflines in your FASTA file "
-                "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                "does not comply with the 'simple deflines' requirement of anvi'o. "
                 "You can either use the script, `anvi-script-reformat-fasta`, "
                 "to take care of this issue, or read this section in the tutorial "
                 "to understand the reason behind this requirement "
@@ -1645,7 +1645,7 @@ def check_fasta_id_formatting(fasta_path):
                 "Anvi'o does not like those numeric names, "
                 "and hereby asks you to make sure every tRNA-seq name "
                 "contains at least one alphanumeric character :/ "
-                "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                "Meanwhile we, the anvi'o developers, are both surprised by and thankful for "
                 "your endless patience with such eccentric requests. "
                 "You the real MVP." % fasta.id)
 
