@@ -952,7 +952,7 @@ class ANI(GenomeSimilarity):
                 g1, g2 = genome_hits_to_zero[num_anvio_will_remove_via_full_percent_identity]
 
                 if num_saved_by_significant_length_param:
-                    additional_msg = "By the way, anvi'o saved %d weak hits becasue they were longer than the length of %d nts you\
+                    additional_msg = "By the way, anvi'o saved %d weak hits because they were longer than the length of %d nts you\
                                       specified using the --significant-alignment-length parameter. " % \
                                             (num_saved_by_significant_length_param, self.significant_alignment_length)
                 else:
