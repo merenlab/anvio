@@ -808,7 +808,7 @@ async function generate_svg(body, data) {
       $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
-    var l = 0
+    var l = 1
     while (l < global_x) {
 
       if (l+steps <= global_x){
@@ -871,9 +871,9 @@ async function generate_svg(body, data) {
             if (e == genomes.length) {
 
               if (edge['direction'] == 'L') {
-                var stroke = ' stroke-dasharray="' + line_thickness * 10 + ',' + line_thickness * 10 + '" '
+                var stroke = ' stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" '
               } else if (edge['direction'] == 'B') {
-                var stroke = ' stroke-dasharray="' + line_thickness * 40 + ',' + line_thickness * 10 + '" '
+                var stroke = ' stroke-dasharray="' + line_thickness * 20 + ',' + line_thickness * 5 + '" '
               } else {
                 var stroke = ''
               }

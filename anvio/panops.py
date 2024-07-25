@@ -1182,7 +1182,7 @@ class Pangraph():
         if not self.output_yaml:
             self.run_synteny_layout_algorithm()
 
-        if not self.pan_graph_json and not self.output_yaml:
+        if not self.pan_graph_json and not self.output_yaml and not self.testing_yaml:
             # run Alex's layout algorithm
             self.generate_data_table()
 
@@ -1219,11 +1219,11 @@ class Pangraph():
         for genome in yaml_genomes.keys():
             self.gene_synteny_data_dict[genome] = {}
 
-            if genome in self.skip_genomes:
-                continue
-
-            else:
+            if genome in self.genomes_names:
                 self.genomes.append(genome)
+                self.run.info_single(f"Loaded genome {genome}.")
+            else:
+                self.run.info_single(f"Skipped genome {genome}.")
 
             for i, gcs in enumerate(yaml_genomes[genome]):
 
@@ -1342,24 +1342,31 @@ class Pangraph():
         f_val = 0
         div = len(a)
 
-        if set(self.genome_gc_occurence[tuple(a)].keys()).isdisjoint(set(self.genome_gc_occurence[tuple(b)].keys())):
-            for n, m in zip(a, b):
-                if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
-                    if n[1] != m[1]:
-                        r_val += 1
-                elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                    r_val += 1
-                elif n == m:
-                    r_val += 1
+        if not a[int(len(a) / 2)] == b[int(len(b) / 2)]: 
+            raise ConfigError(f"This is very weird and should not have happend, we are very sorry :(.")
 
-            for n, m in zip(a, b[::-1]):
-                if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
-                    if n[1] != m[1]:
+        if set(self.genome_gc_occurence[tuple(a)].keys()).isdisjoint(set(self.genome_gc_occurence[tuple(b)].keys())):
+            for i, (n, m) in enumerate(zip(a, b)):
+
+                if not i == int(len(a) / 2):
+                    if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
+                        if n[1] != m[1]:
+                            r_val += 1
+                    elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
+                        r_val += 1
+                    elif n == m:
+                        r_val += 1
+
+            for i, (n, m) in enumerate(zip(a, b[::-1])):
+
+                if not i == int(len(a) / 2):
+                    if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
+                        if n[1] != m[1]:
+                            f_val += 1
+                    elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
                         f_val += 1
-                elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                    f_val += 1
-                elif n == m:
-                    f_val += 1
+                    elif n == m:
+                        f_val += 1
 
             if r_val >= f_val:
                 return (1 - r_val / div)
@@ -1382,15 +1389,26 @@ class Pangraph():
         else:
             X = cdist(np.asarray(label), np.asarray(label), metric=self.context_distance)
             condensed_X = squareform(X)
+
+            print(label)
+            print(X)
+
             Z = linkage(condensed_X, 'ward')
 
             for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
                 clusters = fcluster(Z, t, criterion='distance')
+
+                print(clusters)
+
                 valid = True
                 for c in set(clusters.tolist()):
                     pos = np.where(clusters == c)[0]
 
+                    print(pos)
+
                     for i, j in it.combinations(pos, 2):
+
+                        print(X[i][j])
                         if X[i][j] == 1.:
                             valid = False
 
