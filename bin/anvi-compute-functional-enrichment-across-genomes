@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('SOURCES OF GENOMES', "To estimate enriched functions across your geonomes, you can provide any combination "
+    groupA = parser.add_argument_group('SOURCES OF GENOMES', "To estimate enriched functions across your genomes, you can provide any combination "
                                         "of the following: an external genomes file, an internal genomes file, and/or a genomes storage file. "
                                         "Anvi'o will aggregate all functions in genomes found in any of these sources, and will do its magic.")
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
