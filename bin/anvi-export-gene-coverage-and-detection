@@ -59,7 +59,7 @@ def main(args):
                         f"Very good job.", lc="green")
 
         # now we have a list of split names of interest, but since not every split occurs in the
-        # profile database, we need to make sure those that don't occur in the profile databae are
+        # profile database, we need to make sure those that don't occur in the profile database are
         # removed before the profile db is initialized.
         split_names_in_profile_db = utils.get_all_item_names_from_the_database(args.profile_db)
         splits_only_in_contigs_db = splits_of_interest.difference(split_names_in_profile_db)
@@ -67,7 +67,7 @@ def main(args):
         if splits_only_in_contigs_db:
             run.warning(f"Hear this: {p('split name', len(splits_only_in_contigs_db))} that matched to the gene calls you were interested in "
                         f"occurred only in the contigs db but not in the profile database. Which means, during the profiling, those contigs "
-                        f"were not considered (most likely becasue they were shorter than the minimum contig length cutoff). Anvi'o will "
+                        f"were not considered (most likely because they were shorter than the minimum contig length cutoff). Anvi'o will "
                         f"remove them from the list of splits of interest and you will see what happens downstream.")
 
             # remove split names that are only in the contigs database from the
