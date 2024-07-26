@@ -833,8 +833,8 @@ class DGR_Finder:
                             midline = ''.join(reversed(original_midline))
                             base = 'A'
                             is_reverse_complement = True
-                            query_frame * -1
-                            subject_frame * -1
+                            query_frame = query_frame * -1
+                            subject_frame = subject_frame * -1
                         else:
                             TR_sequence = str(query_sequence)
                             VR_sequence = str(subject_sequence)
@@ -887,8 +887,8 @@ class DGR_Finder:
                                     midline = ''.join(reversed(original_midline))
                                     base = 'A'
                                     is_reverse_complement = True
-                                    query_frame * -1
-                                    subject_frame * -1
+                                    query_frame = query_frame * -1
+                                    subject_frame = subject_frame * -1
                                     #TODO: reverse the strand orientation of the TR and VR.
                                 else:
                                     TR_sequence = str(subject_sequence)
@@ -1345,11 +1345,7 @@ class DGR_Finder:
             if not os.path.exists(self.collections_dir):
                 os.makedirs(self.collections_dir)
             output_path_dgrs = os.path.join(self.collections_dir, "DGRs_found_with_collections_mode.csv")
-            headers = ["DGR", "VR", "VR_contig","VR_strand_direction", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
-                    "TR_contig", "TR_strand_direction", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
-                    "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
-        else:
-            raise ValueError("Bloomin' heck. Unknown dictionary passed to create_found_tr_vr_csv. You might be trying to hack anvi'o please look into the code base more thoroughly")
+            headers = ["DGR", "VR", "VR_contig","VR_strand_direction", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "VR_bin",  "VR_frame","VR_reverse_comp_for_primer", "Mismatch %", "TR_contig", "TR_strand_direction", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "TR_reverse_comp_for_primer", "HMM_source", "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
 
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
@@ -1358,9 +1354,9 @@ class DGR_Finder:
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
                     csv_row = [dgr, vr, vr_data['VR_contig'],vr_data['VR_frame'], vr_data['VR_sequence'], vr_data['midline'],
-                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'), vr_data['percentage_of_mismatches'],
+                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'), vr_data.get('VR_reverse_comp_for_primer', 'FALSE'), vr_data['percentage_of_mismatches'],
                             tr['TR_contig'],vr_data['TR_frame'], vr_data['TR_sequence'], tr['base'], vr_data['TR_reverse_complement'],
-                            vr_data['TR_start_position'], vr_data['TR_end_position'], tr.get('TR_bin', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
+                            vr_data['TR_start_position'], vr_data['TR_end_position'], tr.get('TR_bin', 'N/A'), vr_data.get('TR_reverse_comp_for_primer', 'FALSE'), tr['HMM_source'], tr["distance_to_HMM"],
                             tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"], tr["HMM_stop"], tr["HMM_gene_callers_id"]]
                     csv_writer.writerow(csv_row)
             return
@@ -1856,6 +1852,136 @@ class DGR_Finder:
 
         #NOTE: maybe add in a maximum remainder length that is the length of the longest VR?
 
+    def generate_primers_for_vrs(self, dgrs_dict):
+        """
+        A function to generate primers for each and every VR. These are composed of not only an initial primer sequence before the VR
+        but also of anchor points in the VR. These anchor points are the bases in the TR that are not A bases and only at the places the TR and VR match.
+
+                    TR:GCTAACTGACATAATT
+        Anchor_primer :GCT..C.G.C.T..TT
+                    VR:GCTCACGGACTTCATT
+        """
+
+        #create primers dictionary
+        primers_dict = {}
+
+        #get contigs.db and contig sequences
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+
+        # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
+        #self.primer_remainder_lengths = {}
+
+        for dgr_id, dgr_data in dgrs_dict.items():
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+
+                #save original frames
+                VR_FRAME = vr_data['VR_frame']
+                TR_FRAME = vr_data['TR_frame']
+                vr_data['original_VR_frame'] = VR_FRAME
+                vr_data['original_TR_frame'] = TR_FRAME
+                print(f"dgrs dit: {dgrs_dict}")
+
+
+                #CHECK if VR sequence is not at the start of a contig so you can get the initial primer sequence
+                if vr_data['VR_start_position'] >= self.variable_region_primer_base_length:
+                    vr_primer_region_start = vr_data['VR_start_position'] - self.variable_region_primer_base_length
+                    vr_primer_region_end = (vr_data['VR_start_position'] -1)
+                else:
+                    #this will take the start of the contig to create a shorter initial primer length
+                    vr_primer_region_start = vr_data['VR_start_position']
+                    vr_primer_region_end = (vr_data['VR_start_position'] -1)
+                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}. Is going to fall off the start of the Contig it is one: {vr_data['VR_contig']}.")
+
+                contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
+                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
+                #add every primer sequence to the dgrs_dict
+                vr_data['vr_primer_region'] = vr_primer_region
+
+                print(f"original dgr dict: {dgrs_dict}")
+                print('\n')
+                VR_sequence = vr_data['VR_sequence']
+                TR_sequence = vr_data['TR_sequence']
+
+                #FIRST CHECK THAT YOU HAVEN'T FOUND THE REVERSE COMPLEMENT OF THE STRAND ANYWAYS
+                #flip them so that they are the original way that blast found them!
+                #this will be gross but you need to keep the original keys so therefore create objects to flip
+                if vr_data['TR_reverse_complement'] == True and vr_data['VR_frame'] == -1 and vr_data['TR_frame'] == -1:
+                    VR_frame = vr_data['VR_frame'] * -1
+                    VR_sequence = utils.rev_comp(vr_data['VR_sequence'])
+                    TR_frame = vr_data['TR_frame'] * -1
+                    TR_sequence = utils.rev_comp(vr_data['TR_sequence'])
+
+
+                print(f"AFTER TR REV COMP CHECK:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
+
+                print(f"AFTER TR REV COMP CHECK:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+
+                #make every frame positive so that the initial primer is always on the left and then both the vr and tr are being compared on the same strand.
+                #Always make the VR strand +1 so that you can compare the primer to the fasta file by definition
+                if vr_data['VR_frame'] == -1:
+                    print(f"I am reverse complementing {dgr_id} {vr_id} AND THE TR because both are -1")
+                    vr_data['rev_comp_VR_seq'] = utils.rev_comp(vr_data['VR_sequence'])
+                    VR_frame = VR_frame * -1
+                    vr_data['VR_reverse_comp_for_primer'] = True
+                    VR_sequence = str(vr_data['rev_comp_VR_seq'])
+                    vr_data['rev_comp_TR_seq'] = utils.rev_comp(vr_data['TR_sequence'])
+                    TR_frame = TR_frame * -1
+                    vr_data['TR_reverse_comp_for_primer'] = True
+                    TR_sequence = str(vr_data['rev_comp_TR_seq'])
+                    print(f"AFTER VR + TR = -1:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
+                    print(f"AFTER VR + TR = -1:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+
+
+                print(f"FINAL:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
+                print(f"FINAL:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+
+                #print(f"Updated dgr dict after frame handling: {dgrs_dict}\n")
+
+                #check the TR and VR sequence are the same length
+                if len(TR_sequence) == len(VR_sequence):
+                    vr_primer = []
+
+                    # Create the vr_primer sequence
+                    for tr_base, vr_base in zip(TR_sequence, VR_sequence):
+                        if vr_base == '-':
+                            continue  # Skip adding anything to vr_primer
+                        if tr_base == 'A':
+                            vr_primer.append('.')
+                        elif tr_base != vr_base:
+                            vr_primer.append('.')
+                        else:
+                            vr_primer.append(tr_base)
+
+                    # Convert list to string
+                    vr_anchor_primer = ''.join(vr_primer)
+
+                    #add every primer sequence to the dgrs_dict
+                    vr_data['vr_anchor_primer'] = vr_anchor_primer
+
+                    print(dgrs_dict)
+
+                elif len(TR_sequence) != len(VR_sequence):
+                    print(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an anchor primer sequence")
+
+        ###########################################
+        # UPDATED DGRs dict with Primer Sequences #
+        ###########################################
+
+        for dgr_id, dgr_data in dgrs_dict.items():
+            for vr_key, vr_data in dgr_data['VRs'].items():
+                vr_id = vr_key
+                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_primer_region'],
+                                                                'vr_anchor_primer': vr_data['vr_anchor_primer']}
+                                                            #'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
+        print('\n')
+        print(f'original primers dictionary:' , primers_dict)
+
+        return primers_dict
+
+
+
     def compute_dgr_variability_profiling(self, dgrs_dict):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
@@ -1872,7 +1998,6 @@ class DGR_Finder:
 
         Returns
         =======
-
 
         """
 
@@ -1962,86 +2087,7 @@ class DGR_Finder:
         # OR we have one primer per VR. I think this might be more suitable for ease of code and what we want the output to look like
 
         # FIRST we need to get the primers sequences!
-        ##########################################
-        # UPDATE DGRs dict with Primer Sequences #
-        ##########################################
-
-        #self.variable_region_primer_base_length the length of the primer sequence
-
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        self.a_meta = contigs_db.meta
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-
-        # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
-        self.primer_remainder_lengths = {}
-
-        for dgr_id, dgr_data in dgrs_dict.items():
-            primer_remainder_length = len(dgr_data['TR_sequence'])
-            self.primer_remainder_lengths[dgr_id] = primer_remainder_length  # Store in dict.
-            dgr_data['primer_remainder_length'] = primer_remainder_length  # Add to dgrs_dict.
-
-            for vr_key, vr_data in dgr_data['VRs'].items():
-                vr_id = vr_key
-
-                #CHECK if VR sequence is not at the start of a contig!
-                if vr_data['VR_start_position'] >= self.variable_region_primer_base_length:
-                    vr_primer_region_start = vr_data['VR_start_position'] - self.variable_region_primer_base_length
-                    vr_primer_region_end = vr_data['VR_start_position']
-                else:
-                    vr_primer_region = "NA"
-                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}. Is going to fall off the start of the Contig it is one: {vr_data['VR_contig']}.")
-
-                contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
-                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
-                #add every primer sequence to the dgrs_dict
-                vr_data['vr_primer_region'] = vr_primer_region
-
-                # Extract start position, end position, and sequence
-                VR_sequence = str(vr_data['VR_sequence'])
-                TR_sequence = str(vr_data['TR_sequence'])
-                TR_reverse_complement = dgr_data['TR_reverse_complement']
-
-                print(f"original dgr dict: {dgrs_dict}")
-                print('\n')
-
-                #check the TR and VR sequence are the same length and then treat them the same. If not need the TR in the VR data
-                if len(TR_sequence) == len(VR_sequence):
-                    vr_primer = []
-
-                    # Create the vr_primer sequence
-                    for tr_base, vr_base in zip(TR_sequence, VR_sequence):
-                        if tr_base == 'A':
-                            vr_primer.append('.')
-                        elif tr_base != vr_base:
-                            vr_primer.append('.')
-                        else:
-                            vr_primer.append(tr_base)
-
-                    # Convert list to string
-                    vr_anchor_primer = ''.join(vr_primer)
-
-                    #add every primer sequence to the dgrs_dict
-                    vr_data['vr_anchor_primer'] = vr_anchor_primer
-                    print(f"vr data: {vr_data}")
-                    print(dgrs_dict)
-
-                elif len(TR_sequence) != len(VR_sequence):
-                    print(f"{vr_id} does not have the same length as the TR :( so you can't create an anchor primer sequence")
-
-        ###########################################
-        # UPDATED DGRs dict with Primer Sequences #
-        ###########################################
-
-        primers_dict = {}
-        for dgr_id, dgr_data in dgrs_dict.items():
-            for vr_key, vr_data in dgr_data['VRs'].items():
-                vr_id = vr_key
-                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_primer_region'],
-                                                                'vr_anchor_primer': vr_data['vr_anchor_primer']}
-                                                            #'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
-        print('\n')
-        print(f'original primers dictionary:' , primers_dict)
-
+        primers_dict = self.generate_primers_for_vrs(dgrs_dict)
 
         #function to find variability in primers and form consensus primer for each primer in each sample!
         if not self.skip_primer_variability:
@@ -2087,8 +2133,6 @@ class DGR_Finder:
                         }
 
                 print(f'Sample {sample_name} updated primers dictionary:', sample_primers_dict)
-        else:
-            pass
 
         #update the primers dictionary with the total primer sequence including any edits the initial primer accounting for SNVs
         for dgr_id, dgr_data in dgrs_dict.items():
@@ -2096,8 +2140,8 @@ class DGR_Finder:
                 vr_id = vr_key
                 primer_key = f'{dgr_id}_{vr_id}_Primer'
                 # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
-                primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['vr_anchor_primer']
-                #primers_dict[primer_key]['initial_primer_sequence'] +
+                primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer']
+
         print('\n')
         print(f'Updated primers dictionary:', primers_dict)
 
