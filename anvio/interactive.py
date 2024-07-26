@@ -3002,10 +3002,16 @@ class PangraphInteractive(PanSuperclass):
         if not self.pan_graph_json_path:
             raise ConfigError("Unfortunately you can only use this program with the `--pan-graph-json` parameter.")
 
-        PanSuperclass.__init__(self, self.args)
+        if A('pan_db_path'):
+            PanSuperclass.__init__(self, self.args)
+        else:
+            self.run.warning("Since you did not provide anvi'o with a pan-db file, this program will initiate "
+                             "the pangenome graph interface with the JSON file you have provided",
+                             header="NO PAN DB, BUT ALL GOOD 👍", lc="yellow")
 
         self.pan_graph_json = self.get_pangraph_json()
         self.pan_graph_summary = self.get_pangraph_summary()
+
 
     def get_pangraph_json(self):
         """A function to 'get' pangraph JSON data from wherever appropriate.
@@ -3041,11 +3047,13 @@ class PangraphInteractive(PanSuperclass):
         # all good with the version stuff:
         return json_data
 
+
     def get_pangraph_summary(self):
         if self.pan_graph_summary_path:
             summary_data = json.load(open(self.pan_graph_summary_path))
 
             return summary_data
+
 
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):
