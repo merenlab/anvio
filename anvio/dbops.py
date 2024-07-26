@@ -760,6 +760,41 @@ class ContigsSuperclass(object):
         return split_names, full_report
 
 
+    def nt_position_to_gene_caller_id(self, contig_name, position_in_contig):
+        """Returns the gene caller id for a given nucleotide position.
+
+        Parameters
+        ==========
+        contig_name : str
+        position_in_contig : int
+
+        Returns
+        =======
+        gene_callers_id : int
+            The gene call that covers the `position_in_contig` in a given contig.
+            If the `position_in_contig` does not occur in any gene context in
+            `contig_name`, this function will return `-1`
+        """
+
+        if not isinstance(position_in_contig, int):
+            raise ConfigError("get_gene_caller_id_for_position_in_contig :: position_in_contig must be of type 'int'")
+
+        if contig_name not in self.contigs_basic_info:
+            raise ConfigError("Contig name '{contig_name} does not occur in this contigs-db :/'")
+
+        if not self.a_meta['genes_are_called']:
+            raise ConfigError(f"`get_gene_caller_id_for_position_in_contig` is speaking: You wanted to get back the gene call "
+                              f"that occurs at the genome position {position_in_contig}. But it seems genes were not called "
+                              f"for this contigs-db file, therefore that action is not one anvi'o can help you with :/")
+
+        for gene_caller_id in self.genes_in_contigs_dict:
+            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            if gene_call['contig'] == contig_name and position_in_contig >= gene_call['start'] and position_in_contig < gene_call['stop']:
+                return gene_caller_id
+
+        return -1
+
+
     def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
         """Returns the order of codon a given nucleotide belongs to.
 
@@ -4316,6 +4351,7 @@ class ContigsDatabase:
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         skip_predict_frame= A('skip_predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
+        prodigal_single_mode = A('prodigal_single_mode')
 
         if external_gene_calls_file_path:
             filesnpaths.is_proper_external_gene_calls_file(external_gene_calls_file_path)
@@ -4489,7 +4525,8 @@ class ContigsDatabase:
                         skip_predict_frame=skip_predict_frame,
                     )
                 except ConfigError as e:
-                    os.remove(self.db_path)
+                    if os.path.exists(self.db_path):
+                        os.remove(self.db_path)
                     raise ConfigError(e.clear_text())
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
@@ -4516,6 +4553,8 @@ class ContigsDatabase:
         if external_gene_calls_file_path:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
             self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
+        else:
+            self.run.info('Is prodigal run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))

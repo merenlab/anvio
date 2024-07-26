@@ -831,7 +831,9 @@ class ReactionNetwork:
             reaction_counts.append(len(modelseed_reaction_ids))
         stats_group['Mean reactions per KEGG reaction'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per KEGG reaction'] = round(np.std(reaction_counts), 1)
-        stats_group['Max reactions per KEGG reaction'] = max(reaction_counts)
+        stats_group['Max reactions per KEGG reaction'] = (
+            max(reaction_counts) if reaction_counts else 0
+        )
 
         stats_group['EC numbers contributing to network'] = len(self.ec_number_modelseed_aliases)
         reaction_counts = []
@@ -839,7 +841,9 @@ class ReactionNetwork:
             reaction_counts.append(len(modelseed_reaction_ids))
         stats_group['Mean reactions per EC number'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per EC number'] = round(np.std(reaction_counts), 1)
-        stats_group['Max reactions per EC number'] = max(reaction_counts)
+        stats_group['Max reactions per EC number'] = (
+            max(reaction_counts) if reaction_counts else 0
+        )
 
         self.progress.end()
 
@@ -4588,6 +4592,7 @@ class KODatabase:
 
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
         """
+        run.info_single("Info from Reaction Network Download") # delineates output specific to this data from `anvi-setup-kegg-data`
         if dir:
             if os.path.isdir(dir):
                 ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')

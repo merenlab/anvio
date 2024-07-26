@@ -128,3 +128,12 @@ footer {
 .card-title{
     margin-bottom: 0px;
 }
+
+#summary-card{
+    overflow: auto;
+    font-size: x-small;
+}
+
+#scg-hit-sum{
+    overflow: auto;
+}

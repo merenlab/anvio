@@ -775,8 +775,12 @@ class GenbankToAnvio:
 
         # The main loop to go through all records forreals.
         for genbank_record in self.get_genbank_file_object():
-            num_genbank_records_processed += 1
-            output_fasta[genbank_record.name] = str(genbank_record.seq)
+            if genbank_record.name in output_fasta:
+                raise ConfigError("Anvi'o is not able to convert this GenBank file because it contains sequences with identical "
+                                   "locus names :/. An example is locus '%s'." % genbank_record.name)
+            else:
+                num_genbank_records_processed += 1
+                output_fasta[genbank_record.name] = str(genbank_record.seq)
 
             genes = [gene for gene in genbank_record.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 

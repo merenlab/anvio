@@ -31,7 +31,7 @@ progress = terminal.Progress()
 
 @terminal.time_program
 def main(args):
-    if args.metagenomes:
+    if args.metagenomes or args.external_genomes:
         t = scgtaxonomyops.SCGTaxonomyEstimatorMulti(args)
     else:
         t = scgtaxonomyops.SCGTaxonomyEstimatorSingle(args)
@@ -57,9 +57,10 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
 
-    groupC = parser.add_argument_group('INPUT #3', "You can also work with a metagenomes file, assuming that you have multiple metagenomes\
-                                                    with or without associated mapping results, and anvi'o would generate a singe output\
-                                                    file for all.")
+    groupC = parser.add_argument_group('INPUT #3', "You can also work with a external genomes or metagenomes file, assuming that you\
+                                                    have multiple (meta)genomes with or without associated mapping results, and anvi'o would\
+                                                    generate a single output file for all.")
+    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupC.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
 
     groupD = parser.add_argument_group('OUTPUT AND FORMATTING', "Anvi'o will do its best to offer you some fancy output tables for your viewing \

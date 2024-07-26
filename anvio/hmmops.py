@@ -251,7 +251,21 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_gene_hit_counts_per_hmm_source(self, sources=None):
+    def get_gene_hit_counts_per_hmm_source(self, sources=None, dont_include_models_with_multiple_domain_hits=False):
+        """This function returns a 2-level dictionary mapping genes to their number of HMM hits.
+        
+        The outer dictionary is keyed by HMM source and the inner dictionary is keyed by gene name.
+
+        PARAMETERS
+        ==========
+        sources : list of str
+            A list of HMM sources to count hits for. If not provided, will use all possible sources in the HMM hits table
+        dont_include_models_with_multiple_domain_hits : Boolean
+            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is 
+            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple 
+            single-copy core gene domains to avoid double-counting. See https://github.com/merenlab/anvio/issues/2231 for details
+        """
+
         if not sources:
             sources = [source for source in self.hmm_hits_info]
         else:
@@ -265,19 +279,70 @@ class SequencesForHMMHits:
                                   "in its databases, but some of the sources you requested do not seem to be found anywhere :/ "
                                   "Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
+        hmm_hits = list(self.hmm_hits.values())
+        models_to_remove = {}
+        if dont_include_models_with_multiple_domain_hits:
+            observed_gcids_to_sources = {}
+            # first get list of HMM hits, HMM model names and sources for each gene callers id
+            for index, entry in enumerate(hmm_hits):
+                source = entry['source']
+                gcid = entry['gene_callers_id']
+                model = entry['gene_name']
+                if source in sources:
+                    if gcid in observed_gcids_to_sources:
+                        observed_gcids_to_sources[gcid]['hit_indices'].append(index)
+                        if source not in observed_gcids_to_sources[gcid]['hmm_models']:
+                            observed_gcids_to_sources[gcid]['hmm_models'][source] = set([])
+                        observed_gcids_to_sources[gcid]['hmm_models'][source].add(model)
+                    else:
+                        observed_gcids_to_sources[gcid] = {'hit_indices': [index],
+                                                           'hmm_models': {source: set([model])}}
+
+            # then we identify the models with multi-domain hits
+            for g, info in observed_gcids_to_sources.items():
+                s_list = info['hmm_models'].keys()
+                if len(s_list) > 1:
+                    for s, m_set in info['hmm_models'].items():
+                        if s in models_to_remove:
+                            models_to_remove[s].update(m_set)
+                        else:
+                            models_to_remove[s] = m_set
+            
+            # inform the user what is going on
+            num_models_affected = 0
+            num_model_strs = []
+            for s, m_set in models_to_remove.items():
+                num = len(m_set)
+                num_models_affected += num
+                num_model_strs.append(f"{num} from {s}")
+            if num_models_affected > 0:
+                self.run.warning(f"Hello there from the SequencesForHMMHits.get_gene_hit_counts_per_hmm_source() function. "
+                             f"Just so you know, someone asked for SCG HMMs that belong to multiple sources *not* to be "
+                             f"counted, and this will result in {num_models_affected} models "
+                             f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
+                             f"run this program with the `--debug` flag if you want to see a list of the models that we "
+                             f"will ignore from each HMM source.")
+        
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
 
+            if anvio.DEBUG and source in models_to_remove:
+                self.run.info_single(f"Models to be ignored for source {source}: {', '.join(models_to_remove[source])}")
+
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
-                gene_hit_counts[source][gene_name.strip()] = 0
-
-        for entry in list(self.hmm_hits.values()):
+                name = gene_name.strip()
+                # avoid counting the problematic models
+                if (not dont_include_models_with_multiple_domain_hits) or (source not in models_to_remove) or (name not in models_to_remove[source]):
+                    gene_hit_counts[source][name] = 0
+        
+        for entry in hmm_hits:
             source    = entry['source']
-            gene_name = entry['gene_name']
+            gene_name = entry['gene_name'].strip()
 
-            if source in sources:
-                gene_hit_counts[source][gene_name.strip()] += 1
+            if source in sources and (not dont_include_models_with_multiple_domain_hits or (source not in models_to_remove) or \
+                                                    gene_name not in models_to_remove[source]):
+                gene_hit_counts[source][gene_name] += 1
 
         return gene_hit_counts
 
@@ -288,7 +353,7 @@ class SequencesForHMMHits:
         if not len(SCG_sources):
             return {}
 
-        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources)
+        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources, dont_include_models_with_multiple_domain_hits=True)
 
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:

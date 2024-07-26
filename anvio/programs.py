@@ -344,6 +344,10 @@ class Program:
                 else:
                     info = info.replace('\n', ' ')
 
+            # Lower case the github usernames
+            if info_type == "authors":
+                info = [a.lower() for a in info]
+
             self.meta_info[info_type]['value'] = info
 
 
@@ -502,9 +506,9 @@ class AnvioWorkflows:
                                       f"in anvio/docs/__init__.py")
 
         # sanity check of author names
-        author_names_apper_in_workflows = set([])
-        [author_names_apper_in_workflows.update(w['authors']) for w in self.workflows.values()]
-        author_names_missing_in_authors_file = [a for a in author_names_apper_in_workflows if a not in self.authors]
+        author_names_appear_in_workflows = set([])
+        [author_names_appear_in_workflows.update(w['authors']) for w in self.workflows.values()]
+        author_names_missing_in_authors_file = [a for a in author_names_appear_in_workflows if a not in self.authors]
         if len(author_names_missing_in_authors_file):
             self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
             self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')

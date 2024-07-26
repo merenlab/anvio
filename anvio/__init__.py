@@ -288,7 +288,8 @@ D = {
                      "analyses is 4, historically. Although tetra-nucleotide frequencies seem to offer the "
                      "the sweet spot of sensitivity, information density, and manageable number of dimensions "
                      "for clustering approaches, you are welcome to experiment (but maybe you should leave "
-                     "it as is for your first set of analyses)."}
+                     "it as is for your first set of analyses). Note that the maximum k-mer size is 5 (unless you "
+                     "can increase the column limit in `sqlite3` to 32k, in which case the max is 7)."}
                 ),
     'prodigal-translation-table': (
             ['--prodigal-translation-table'],
@@ -308,6 +309,19 @@ D = {
              'help': "By default, generating an anvi'o contigs database includes the identification of open reading "
                      "frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that "
                      "process. If you prefer, you can later import your own gene calling results into the database."}
+                ),
+    'prodigal-single-mode': (
+            ['--prodigal-single-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
+                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs prodigal will yield a segmentation fault error due to one or more genes in your "
+                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
+                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
+                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
+                     "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -726,7 +740,10 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
+                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
+                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
@@ -1082,6 +1099,19 @@ D = {
                      "need anything downloaded, you just want this program to process that "
                      "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
+             ),
+    'include-stray-KOs': (
+            ['--include-stray-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "'Stray KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
+                     "If you want to include these protein families in your annotations and downstream analyses, then "
+                     "you can use this flag. Anvi'o does something very basic to estimate a bit score threshold for "
+                     "annotating these KOs, which is (1) to download the KEGG GENES sequences associated with each family, "
+                     "(2) to build a new HMM from these GENES (since KEGG GENES updates with new sequences faster than KOfam "
+                     "updates its models), (3) to run HMMER of each new model against the KO's associated sequences, and (4) "
+                     "to take the minimum bit score of those hits as the bit score threshold for the KO. Downstream, we use "
+                     "the anvi'o-generated models to annotate these KO families with their estimated bit score thresholds."}
              ),
     'kegg-snapshot': (
             ['--kegg-snapshot'],
@@ -2702,10 +2732,19 @@ D = {
              'action': 'store_true',
              'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
                      "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
-                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
-                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
-                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
-                     "can use it with all input types."}
+                     "from bad hits (anvi-run-kegg-kofams does not annotate these KOs unless you use the "
+                     "--include-stray-KOs flag). But if you got your annotations outside of anvi'o and you want to "
+                     "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
+                     "in the case of enzymes-txt input, though you can use it with all input types."}
+                ),
+    'ignore-unknown-KOs': (
+            ['--ignore-unknown-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If we find an annotation that we don't recognize, usually this program throws an error. If you'd "
+                     "rather that we gracefully ignored such annotations, use this flag. But since errors about unrecognized "
+                     "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
+                     "behavior on until you have seen these errors and are absolutely sure that you do not care."}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
