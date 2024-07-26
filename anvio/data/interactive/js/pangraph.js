@@ -604,7 +604,8 @@ async function generate_svg(body, data) {
   var node_color = $('#nodes')[0].value;
 
   var theta = 270 / (global_x)
-  var start_offset = 0
+  var start_offset = parseInt($('#inner')[0].value);
+  // var start_offset = 0
   
   var middle_layers = new Object();
   var outer_layers = new Object();
@@ -681,15 +682,16 @@ async function generate_svg(body, data) {
   if (linear == 0){
     var radius = 0.5 * (node_distance_x / Math.sin(deg2rad(theta * (1/2))))
     var circle_dist = sum_middle_layer + graph_size * 0.5
+    var extra_offset = 0
 
     if (circle_dist < radius) {
-      start_offset = radius - circle_dist
+      extra_offset = radius - circle_dist
     }
 
-    sum_middle_layer += start_offset
+    sum_middle_layer += extra_offset
     for (var layer in middle_layers) {
       var [layer_width, layer_start, layer_stop] = middle_layers[layer]
-      middle_layers[layer] = [layer_width, layer_start + start_offset, layer_stop + start_offset]
+      middle_layers[layer] = [layer_width, layer_start + extra_offset, layer_stop + extra_offset]
     }
 
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
@@ -700,9 +702,6 @@ async function generate_svg(body, data) {
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
     var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size*0.5 + ' -' + y_size*5 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
   }
-
-  
-
 
   for (var genome of genomes) {
     var layer_name = genome + 'layer'

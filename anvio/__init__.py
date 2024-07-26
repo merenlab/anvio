@@ -2118,6 +2118,12 @@ D = {
              'type': str,
              'help': "File path to store the temporary pan-graph-json file."}
                 ),
+     'output-graphml': (
+            ['--output-graphml'],
+            {'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "File path to store the final graph file."}
+                ),
      'output-raw-gc-additional-data': (
             ['--output-raw-gc-additional-data'],
             {'metavar': 'FILE_PATH',

@@ -48,6 +48,7 @@ if __name__ == '__main__':
                                 "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
+    groupB.add_argument(*anvio.A('output-graphml'), **anvio.K('output-graphml'))
     groupB.add_argument(*anvio.A('output-pan-graph-json'), **anvio.K('output-pan-graph-json'))
     groupB.add_argument(*anvio.A('output-testing-yaml'), **anvio.K('output-testing-yaml'))
     groupB.add_argument(*anvio.A('output-graph-summary'), **anvio.K('output-graph-summary'))

@@ -1083,6 +1083,7 @@ class Pangraph():
         self.skip_storing_in_pan_db = True
         self.json_output_file_path = A('output_pan_graph_json')
 
+        self.output_graphml = A('output_graphml')
         self.output_yaml = A('output_testing_yaml')
         self.output_summary = A('output_graph_summary')
         self.output_graphics = A('output_dir_graphics')
@@ -1390,25 +1391,17 @@ class Pangraph():
             X = cdist(np.asarray(label), np.asarray(label), metric=self.context_distance)
             condensed_X = squareform(X)
 
-            print(label)
-            print(X)
-
             Z = linkage(condensed_X, 'ward')
 
             for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
                 clusters = fcluster(Z, t, criterion='distance')
 
-                print(clusters)
-
                 valid = True
                 for c in set(clusters.tolist()):
                     pos = np.where(clusters == c)[0]
 
-                    print(pos)
-
                     for i, j in it.combinations(pos, 2):
 
-                        print(X[i][j])
                         if X[i][j] == 1.:
                             valid = False
 
@@ -2751,6 +2744,15 @@ class Pangraph():
         """Function to store final graph structure in a pan-db and/or JSON flat text output file"""
 
         self.run.warning(None, header="Exporting network to JSON", lc="green")
+
+        if self.output_graphml:
+
+            graphml = nx.DiGraph()
+            graphml.add_nodes_from([n for n, d in self.ancest.nodes(data=True)])
+            graphml.add_edges_from([(i, j) for i, j, d in self.ancest.edges(data=True)])
+
+            nx.write_graphml_lxml(graphml, self.output_graphml)
+            self.run.info("GraphML output file", os.path.abspath(self.output_graphml))
 
         if self.json_output_file_path:
 
