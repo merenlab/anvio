@@ -2998,7 +2998,7 @@ class ContigsInteractive():
                               "member. Not like the way you tried it with no input paths whatsoever :/")
 
         for contig_db_path in self.args.input:
-            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
+            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path, run=terminal.Run(verbose=False)).get_summary_dict_for_assembly()
 
         self.tables = {}
         self.generate_tables()
