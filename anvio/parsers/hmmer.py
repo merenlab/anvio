@@ -610,7 +610,7 @@ class HMMERTableOutput(Parser):
                 ('e_value', float),         # e-value (full sequence)
                 ('bit_score', float),       # score (full sequence)
                 ('bias', str),              # bias (full sequence)
-                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_e_value', float),       # e-value (best 1 domain)
                 ('dom_bit_score', float),   # score (best 1 domain)
                 ('dom_bias', str),          # bias (best 1 domain)
                 ('dom_exp', str),           # exp (domain number estimation)
@@ -636,7 +636,7 @@ class HMMERTableOutput(Parser):
                 ('e_value', float),         # e-value (full sequence)
                 ('bit_score', float),       # score (full sequence)
                 ('bias', str),              # bias (full sequence)
-                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_e_value', float),       # e-value (best 1 domain)
                 ('dom_bit_score', float),   # score (best 1 domain)
                 ('dom_bias', str),          # bias (best 1 domain)
                 ('dom_exp', str),           # exp (domain number estimation)
@@ -861,7 +861,8 @@ class HMMERTableOutput(Parser):
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value'],
                                  'bit_score': hit['bit_score'],
-                                 'domain_bit_score': hit['dom_bit_score']}
+                                 'domain_bit_score': hit['dom_bit_score'],
+                                 'domain_e_value': hit['dom_e_value'] if 'dom_e_value' in hit else None}
                     else:
                         num_hits_removed += 1
 
@@ -888,7 +889,8 @@ class HMMERTableOutput(Parser):
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value'],
                                  'bit_score': hit['bit_score'],
-                                 'domain_bit_score': hit['dom_bit_score']}
+                                 'domain_bit_score': hit['dom_bit_score'],
+                                 'domain_e_value': hit['dom_e_value'] if 'dom_e_value' in hit else None}
 
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,

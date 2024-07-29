@@ -69,6 +69,8 @@ class AnvioAuthors:
                                   f"keys: {', '.join(self.essential_author_info_keys)}. The entry shown "
                                   f"above misses some of them: {', '.join(missing_keys)}.")
 
+            # Usernames should be case insensitive
+            entry['github'] = entry['github'].lower()
             if entry['github'] in self.authors:
                 raise ConfigError(f"The GitHub username '{entry['github']}' is used for multiple authors in "
                                   f"the YAML file :/")

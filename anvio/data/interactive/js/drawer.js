@@ -772,6 +772,7 @@ Drawer.prototype.draw_leaf = function(p) {
 
 Drawer.prototype.draw_internal_node = function(p) {
     let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
+    const branch_support_values = [];
 
     let supportValueData = {
         numberRange : [ this.settings['support-range-low'], this.settings['support-range-high'] ],
@@ -779,10 +780,19 @@ Drawer.prototype.draw_internal_node = function(p) {
         showSymbol : this.settings['support-display-symbol'],
         showNumber : this.settings['support-display-number'],
         invertSymbol : this.settings['support-symbol-invert'],
+        minRadius: this.settings['support-min-symbol-size'],
         maxRadius : this.settings['support-symbol-size'],
         symbolColor : this.settings['support-symbol-color'],
+        secondSymbolColor : this.settings['second-support-symbol-color'],
+        fontColor : this.settings['support-font-color'],
+        secondFontColor : this.settings['second-support-font-color'],
         fontSize : this.settings['support-font-size'],
-        textRotation : this.settings['support-text-rotation']
+        textRotation : this.settings['support-text-rotation'],
+        thresholdValue: this.settings['support-threshold'],
+        thresholdOperator: this.settings['support-show-operator'],
+        thresholdRange0 : [this.settings['support-bootstrap0-range-low'], this.settings['support-bootstrap0-range-high']],
+        thresholdRange1: [this.settings['support-bootstrap1-range-low'], this.settings['support-bootstrap1-range-high']],
+        symbolDataSource: this.settings['support-symbol-data']
     }
 
     if (this.settings['tree-type'] == 'circlephylogram')
@@ -809,11 +819,6 @@ Drawer.prototype.draw_internal_node = function(p) {
 
             drawLine(this.tree_svg_id, p, p0, p1);
 
-            // support value business happens here:
-            min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-            max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-            p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-            p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
             this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);
@@ -821,11 +826,44 @@ Drawer.prototype.draw_internal_node = function(p) {
             line.classList.add('clone');
 
         }
+
         p0 = p.child.backarc;
         p1 = p.child.GetRightMostSibling().backarc;
 
         var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
 
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            multiple_support_value_seen = true;
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            
+            branch_support_values.push(branch_support_value0, branch_support_value1);
+
+            if (branch_support_values.length > 0) {
+                const min_support = Math.min(...branch_support_values);
+                const max_support = Math.max(...branch_support_values);
+            
+                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                    min_branch_support_value_seen = min_support;
+                } else {
+                    this.min_support = null;
+                }
+            
+                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                    max_branch_support_value_seen = max_support;
+                } else {
+                    this.max_support = null;
+                }
+            } 
+
+        } else {
+                // If there are no string branch support value like '100/100':
+                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        }
+
+        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
         drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
 
         let arc = drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
@@ -865,10 +903,36 @@ Drawer.prototype.draw_internal_node = function(p) {
         drawLine(this.tree_svg_id, p, p0, p1, true);
 
         // support value business happens here:
-        min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-        max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-        p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-        p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            multiple_support_value_seen = true;
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            
+            branch_support_values.push(branch_support_value0, branch_support_value1);
+
+            if (branch_support_values.length > 0) {
+                const min_support = Math.min(...branch_support_values);
+                const max_support = Math.max(...branch_support_values);
+            
+                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                    min_branch_support_value_seen = min_support;
+                } else {
+                    this.min_support = null;
+                }
+            
+                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                    max_branch_support_value_seen = max_support;
+                } else {
+                    this.max_support = null;
+                }
+            } 
+
+        } else {
+                // If there are no string branch support value like '100/100':
+                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+        }
         this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
@@ -997,9 +1061,7 @@ Drawer.prototype.draw_categorical_layers = function() {
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
-                if(this.layerdata_dict[q.label][layer.index]){
-                    layer_items.push(this.layerdata_dict[q.label][layer.index]);
-                }
+                layer_items.push(this.layerdata_dict[q.label][layer.index]);
             }
             else
             {

@@ -5,6 +5,7 @@
 
 import os
 import sys
+from collections import Counter
 
 import anvio
 import anvio.utils as utils
@@ -103,6 +104,18 @@ def main(args):
             raise ConfigError(msg)
         else:
             run.info("Contigs databases", f"{len(contigs_dbs)} found.", mc="green")
+
+        # check uniqueness of project names in contigs-db files to avoid masking files
+        # see https://github.com/merenlab/anvio/issues/2239 for details
+        contigs_db_project_names = [contigs_db.project_name for contigs_db in contigs_dbs]
+        if len(set(contigs_db_project_names)) != len(contigs_db_project_names):
+            f = Counter(contigs_db_project_names).most_common(1)
+            raise ConfigError(f"Some of the contigs-db files seem to have identical project names :/ For instance, "
+                              f"the project name '{f[0][0]}' occurs {f[0][1]} times among the set of {len(contigs_dbs)} "
+                              f"contigs-db files this tool is currently processing. For each contigs-db, a 'project name' "
+                              f"is assigned automatically based on its file name at the time of creation. A much better "
+                              f"practice is to use the `--project-name` flag with `anvi-gen-contigs-database` to "
+                              f"be explcit and set set a unique project name variable for each contigs-db.")
 
         ext_genomes_dict = {}
         for contigs_db in contigs_dbs:
