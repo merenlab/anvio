@@ -40,6 +40,9 @@ def main(args):
 
     genome_name = args.bin_id
 
+    if not genome_name:
+        raise ConfigError("You forgot to provide a '--bin' parameter for the bin you wish to focus on :/")
+
     progress.update('Computing gene presence data ...')
     gene_presence_in_the_environment_dict = {}
 

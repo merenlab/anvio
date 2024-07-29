@@ -193,6 +193,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
+        self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1508,3 +1509,17 @@ class BottleApplication(Bottle):
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+
+
+    def get_scale_bar(self):
+        try:
+            newick = request.json.get('newick')
+            tree = Tree(newick, format=1)
+
+            total_branch_length = tree.get_farthest_leaf()[1]
+
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+            
+        return json.dumps({'scale_bar_value': total_branch_length})

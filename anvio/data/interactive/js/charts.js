@@ -1697,8 +1697,16 @@ function createCharts(state){
     $('#context-container').css("width", (width + 150) + "px");
 
     /* Context down below */
-    var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
-
+    try {
+      var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
+    } catch (e) {
+      if (e instanceof TypeError) {
+        toastr.error("The height of all your read recruitment items are zero - anvio cant draw a split with this! Please add some height to one of your read recruitment item!", "",
+        { 'timeOut': '0', 'extendedTimeOut': '0' });
+      } else {
+        throw e;
+      }
+    }
     var contextAxis = d3.svg.axis()
                 .scale(contextXScale)
                 .tickSize(contextHeight);
@@ -1797,6 +1805,44 @@ function Chart(options){
     var localName = this.name;
     var num_data_points = this.variability_a.length;
 
+    var left_redirect = '<a class="split-page-icon" onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['snvs_enabled']}) + "#" + this.name.toLowerCase() + '"> << </a>';
+    var right_redirect = '<a class="split-page-icon" onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['snvs_enabled']}) + "#" + this.name.toLowerCase() +'"> >> </a>';
+
+    $(document).ready(function() {
+      scrollToTargetWithDelay();
+    });
+
+    // Function to scroll to the target element specified in the URL hash with a delay
+    function scrollToTargetWithDelay() {
+      // Delay for 500ms to ensure the DOM is fully loaded
+      setTimeout(scrollToTarget, 500);
+    }
+
+    // Function to scroll to the target element specified in the URL hash
+    function scrollToTarget() {
+      var targetId = window.location.hash.substring(1);
+      var targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        $('html, body').animate({ scrollTop: $(targetElement).offset().top }, 'slow');
+      } else {
+        // Use MutationObserver to observe changes in the DOM
+        var observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+              var newTargetElement = document.getElementById(targetId);
+              if (newTargetElement) {
+                $('html, body').animate({ scrollTop: $(newTargetElement).offset().top }, 500);
+                observer.disconnect(); // Stop observing once the target element is found
+              }
+            }
+          });
+        });
+
+        // Start observing the body for changes
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+    }
+
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
                             .domain([0, this.coverage.length]);
@@ -1886,6 +1932,8 @@ function Chart(options){
 
     this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
+                              .attr('id', this.name.toLowerCase())
+                              .attr("xmlns", "http://www.w3.org/2000/svg")
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.gcContainer   = this.svg.append("g")
@@ -2137,8 +2185,7 @@ function Chart(options){
     this.sampleTextContainer.append("text")
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
-                   .text(this.name);
-
+                   .html(left_redirect + this.name + right_redirect);
 }
 
 Chart.prototype.showOnly = function(b){

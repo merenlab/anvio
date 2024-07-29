@@ -780,11 +780,19 @@ Drawer.prototype.draw_internal_node = function(p) {
         showSymbol : this.settings['support-display-symbol'],
         showNumber : this.settings['support-display-number'],
         invertSymbol : this.settings['support-symbol-invert'],
+        minRadius: this.settings['support-min-symbol-size'],
         maxRadius : this.settings['support-symbol-size'],
         symbolColor : this.settings['support-symbol-color'],
         secondSymbolColor : this.settings['second-support-symbol-color'],
+        fontColor : this.settings['support-font-color'],
+        secondFontColor : this.settings['second-support-font-color'],
         fontSize : this.settings['support-font-size'],
-        textRotation : this.settings['support-text-rotation']
+        textRotation : this.settings['support-text-rotation'],
+        thresholdValue: this.settings['support-threshold'],
+        thresholdOperator: this.settings['support-show-operator'],
+        thresholdRange0 : [this.settings['support-bootstrap0-range-low'], this.settings['support-bootstrap0-range-high']],
+        thresholdRange1: [this.settings['support-bootstrap1-range-low'], this.settings['support-bootstrap1-range-high']],
+        symbolDataSource: this.settings['support-symbol-data']
     }
 
     if (this.settings['tree-type'] == 'circlephylogram')
@@ -825,6 +833,7 @@ Drawer.prototype.draw_internal_node = function(p) {
         var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
 
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            multiple_support_value_seen = true;
             const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
             
             branch_support_values.push(branch_support_value0, branch_support_value1);
@@ -895,6 +904,7 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         // support value business happens here:
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            multiple_support_value_seen = true;
             const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
             
             branch_support_values.push(branch_support_value0, branch_support_value1);

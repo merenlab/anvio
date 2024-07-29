@@ -54,6 +54,9 @@ if __name__ == '__main__':
                         at least '0.5' of the genome to be detected in at least one metagenome. This parameter allows you to change\
                         that. 0 would mean no detection test required, 1 would mean the entire genome must be detected.")
 
+    groupD = parser.add_argument_group("PRO STUFF", "Things you may not have to change unless you are doing something extra cool and edgy.")
+    groupD.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+
 
     args = parser.get_args(parser)
 

@@ -2788,13 +2788,15 @@ class RunKOfams(KeggContext):
                             # get set of hits that fit specified heuristic parameters
                             if ko_score_type == 'domain':
                                 hit_bitscore = super_hits_dict[hit_label][hit_key]['domain_bit_score']
+                                hit_eval = super_hits_dict[hit_label][hit_key]['domain_e_value']
                             elif ko_score_type == 'full':
                                 hit_bitscore = super_hits_dict[hit_label][hit_key]['bit_score']
-                            if super_hits_dict[hit_label][hit_key]['e_value'] <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
+                                hit_eval = super_hits_dict[hit_label][hit_key]['e_value']
+                            if hit_eval <= self.bitscore_heuristic_e_value and hit_bitscore > (self.bitscore_heuristic_bitscore_fraction * ko_threshold):
                                 decent_hit_kos.add(knum)
                                 # keep track of hit with lowest e-value we've seen so far
-                                if super_hits_dict[hit_label][hit_key]['e_value'] <= best_e_value:
-                                    best_e_value = super_hits_dict[hit_label][hit_key]['e_value']
+                                if hit_eval <= best_e_value:
+                                    best_e_value = hit_eval
                                     best_hit_key = hit_key
                                     best_hit_label = hit_label
 
@@ -5762,8 +5764,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 extra_cols.append(c)
         if extra_cols:
             e_str = ", ".join(extra_cols)
-            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
-                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+            self.run.warning(f"Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             f"going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
 
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())

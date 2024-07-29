@@ -32,7 +32,7 @@ anvi-gen-contigs-database -f Patient_6557_E_faecalis_cultivar.fa \
                           -o E_faecalis_P6557.db
 {{ codestop }}
 
-and a metagenomes:
+and a metagenome:
 
 {{ codestart }}
 anvi-gen-contigs-database -f scaffolds.fa \
@@ -60,3 +60,39 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
                           --external-gene-calls %(external-gene-calls)s \
                           --ignore-internal-stop-codons
 {{ codestop }}
+
+### Changing k-mer size
+
+You can change the k-mer size by modifying the `--kmer-size` parameter:
+
+{{ codestart }}
+anvi-gen-contigs-database -f %(contigs-fasta)s \
+                          -o %(contigs-db)s \
+                          --kmer-size 3
+{{ codestop }}
+
+A word of caution: you can increase the k-mer size up to a maximum of k=5 for standard installations of anvi'o. This is because the contigs database stores the k-mer frequencies in a big table with one column per k-mer, and SQLite has an upper limit on the number of columns per table. [The default limit is 2,000 columns](https://www.sqlite.org/limits.html), which translates into an upper limit of k=5 (with 4^5 = 1,096 possible k-mers). Trying to increase `k` beyond this point will result in the following error: `sqlite3.OperationalError: too many columns on kmer_contigs`.
+
+If you want to increase `k` even further, you can re-compile the `sqlite3` library to increase the column limit (the constant `SQLITE_MAX_COLUMN`). Note that you can only increase this limit up to a maximum of 32,000 columns, which makes k=7 (with 4^7 = 16,384 possible k-mers) the new upper limit for k-mer size.
+
+<div class="extra-info" markdown="1">
+
+<span class="extra-info-header">Increasing the k-mer size limit to k=7</span>
+
+[Sebastian Treitli](https://anvio.org/people/treitlis/) shared his workflow for re-compiling `sqlite3` with larger column limits on Discord ([here is the link to the relevant message](https://discord.com/channels/1002537821212512296/1239881490637127701/1240313108799553659)). Here are the initial steps, which are based on [this StackExchange thread](https://dba.stackexchange.com/questions/221508/how-to-increase-column-limit-of-a-table-in-sqlite):
+
+1. Go to download page [https://sqlite.org/download.html](https://sqlite.org/download.html)
+2. Download the pre-release snapshot archive
+3. Extract it with `tar -xvzf "sqlite-snapshot-202405081757.tar.gz"`
+4. Change to that directory: `cd sqlite-snapshot-202405081757`
+5. Run `./configure`
+6. Edit the `Makefile`. Find inside the Makefile the line that starts with DEFS = and append to this line `-DSQLITE_MAX_COLUMN=32767`. Save the file
+7. Run `make` to compile
+
+After this, the newly-compiled library has to be moved into your anvi'o environment, at the same location where the original library was installed. This step will differ for everyone depending on their anvi'o installation, but we assume that if you are at this point, you probably know what you are doing :)
+
+8. Copy the compiled library to the conda `lib` directory, which would look something like this (paths are not exact and depend on your system/anvi'o installation): `cp /path/to/compiled/sqlite/.libs/libsqlite3.so.0.8.6 /home/user/miniconda3/envs/anvio-7.1/lib/libsqlite3.so.0.8.6`
+9. Copy the compiled executable to the conda `bin` directory, which would look something like this (paths are not exact and depend on your system/anvi’o installation): `cp /path/to/compiled/sqlite/sqlite3 /home/user/miniconda3/envs/anvio-7.1/bin/sqlite3`
+10. Done :) Go forth and use (slightly) higher k-mer sizes!
+
+</div>

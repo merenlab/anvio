@@ -58,7 +58,7 @@ def main(args):
     gene_names_in_source = [g.strip() for g in s.hmm_hits_info[hmm_source]['genes'].split(',')]
 
     d = {}
-    progress.new('Processing congits databases')
+    progress.new('Processing contigs databases')
     for genome_name in s.genomes:
         d[genome_name] = {}
         for gene_name in gene_names_in_source:
