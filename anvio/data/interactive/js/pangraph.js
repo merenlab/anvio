@@ -721,23 +721,23 @@ async function generate_svg(body, data) {
         // console.log(i_x, i_y, j_x, j_y)
 
         svg_heatmaps.push(
-          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'WhiteSmoke')
+          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none')
         )
       }
     }
   }
 
-  var [search_size, search_start, search_stop] = middle_layers['search']
+  // var [search_size, search_start, search_stop] = middle_layers['search']
 
-  if (linear == 0){
-    var [circle_h_x, circle_h_y] = transform(0, search_start + search_size * 0.5, theta)
-  } else {
-    var [circle_h_x, circle_h_y] = [0, -(search_start + search_size * 0.5)]
-  }
+  // if (linear == 0){
+  //   var [circle_h_x, circle_h_y] = transform(0, search_start + search_size * 0.5, theta)
+  // } else {
+  //   var [circle_h_x, circle_h_y] = [0, -(search_start + search_size * 0.5)]
+  // }
     
-  svg_core.append(
-    $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Search Hits</text>')
-  )
+  // svg_core.append(
+  //   $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Search Hits</text>')
+  // )
 
   if ($('#flexarrow').prop('checked') == true){
     
@@ -1064,7 +1064,7 @@ async function generate_svg(body, data) {
         var j_y = search_stop
 
         if (!global_values.includes(k_x)) {
-          svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'WhiteSmoke'))
+          svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none'))
         }
 
         for (var layer_name of layers) {
@@ -1342,13 +1342,11 @@ function main () {
       });
     })
 
-    // console.log(data)
+    $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
+    $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
+    $("#groupcompress")[0].value = data['infos']['groupcompress']
 
     if (!$('#genomecolors').children().length) {
-
-      $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
-      $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
-      $("#groupcompress")[0].value = data['infos']['groupcompress']
 
       for (var [genome, value] of Object.entries(data['infos']['genomes'])) {
 

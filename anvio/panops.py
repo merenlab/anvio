@@ -2281,7 +2281,7 @@ class Pangraph():
                 stack.remove(current)
 
         if len(set(self.position.values())) != len(self.position.values()):
-            print(len(self.position.values()) - len(set(self.position.values())))
+            # print(len(self.position.values()) - len(set(self.position.values())))
             raise ConfigError(f"No no no no. Something went very wrong here. Some nodes overlap in the UI."
                               f"We don't want this, we definitely don't want this...")
 
@@ -2642,6 +2642,7 @@ class Pangraph():
         self.jsondata["infos"]['meta']['global_x_offset'] = self.global_x_offset
         self.jsondata["infos"]['max_edge_length_filter'] = self.max_edge_length_filter
         self.jsondata["infos"]['gene_cluster_grouping_threshold'] = self.gene_cluster_grouping_threshold
+        self.jsondata["infos"]['groupcompress'] = self.groupcompress
         self.jsondata["infos"]['layout_graph']['edges'] = len(self.ancest.edges())
         self.jsondata["infos"]['data'] = list(self.ancest.graph.items())
         self.jsondata["infos"]['directed'] = self.ancest.is_directed()
