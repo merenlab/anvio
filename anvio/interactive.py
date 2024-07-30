@@ -2990,6 +2990,9 @@ class PangraphInteractive(PanSuperclass):
         self.progress = progress
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+
+        print(self.args.__dict__)
+
         self.pan_graph_json_path = A('pan_graph_json')
         self.pan_graph_summary_path = A('pan_graph_summary')
 
@@ -3002,7 +3005,7 @@ class PangraphInteractive(PanSuperclass):
         if not self.pan_graph_json_path:
             raise ConfigError("Unfortunately you can only use this program with the `--pan-graph-json` parameter.")
 
-        if A('pan_db_path'):
+        if A('pan_db'):
             PanSuperclass.__init__(self, self.args)
         else:
             self.run.warning("Since you did not provide anvi'o with a pan-db file, this program will initiate "
