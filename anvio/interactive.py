@@ -2990,9 +2990,6 @@ class PangraphInteractive(PanSuperclass):
         self.progress = progress
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-
-        print(self.args.__dict__)
-
         self.pan_graph_json_path = A('pan_graph_json')
         self.pan_graph_summary_path = A('pan_graph_summary')
 
