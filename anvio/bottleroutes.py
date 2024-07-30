@@ -201,6 +201,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
         self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
         self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
+        self.route('/pangraph/filter',                         callback=self.get_pangraph_passed_gene_clusters, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1619,4 +1620,41 @@ class BottleApplication(Bottle):
 
         for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
             result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
+        return json.dumps(result)
+    
+    def get_pangraph_passed_gene_clusters(self):
+
+        payload = request.json
+        result = {'gene_clusters': []}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        functions_dict = self.interactive.gene_clusters_functions_summary_dict
+
+        for gene_cluster in functions_dict.keys():
+            for selection in payload.keys():
+                if selection in functions_dict[gene_cluster].keys():
+                    for search in payload[selection]:
+                        value = functions_dict[gene_cluster][selection]
+
+                        accession = value['accession']
+                        func = value['function']
+
+                        if not accession or not func:
+                            accession = ''
+                            func = ''
+
+                        if search == '':
+
+                            print(search, accession, func)
+                            if search == accession or search == func:
+                                if gene_cluster not in result['gene_clusters']:
+                                    result['gene_clusters'] += [gene_cluster]
+
+                        else:
+                            if search.lower() in accession.lower() or search.lower() in func.lower():
+                                if gene_cluster not in result['gene_clusters']:
+                                    result['gene_clusters'] += [gene_cluster]
+
         return json.dumps(result)

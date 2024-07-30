@@ -49,6 +49,19 @@ function modeString(array) {
   return [maxEl, Math.round(maxCount/i * 100)];
 }
 
+function get_passed_gene_clusters(searchfunction) {
+  
+  var d = $.ajax({
+    url: "/pangraph/filter",
+    type: "POST",
+    data: JSON.stringify(searchfunction),
+    contentType: "application/json",
+    dataType: "json"
+  })
+
+  return d
+}
+
 //ANCHOR - Fetch GC consensus functions
 function get_gene_cluster_consensus_functions(gene_cluster_name) {
 
@@ -164,7 +177,7 @@ async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) 
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
     var d = await get_gene_cluster_consensus_functions(gene_cluster_name);
 
-    // console.log(d)
+    console.log(d)
 
     function_sources = Object.keys(d).sort();
     // console.log(function_sources);
@@ -508,7 +521,13 @@ function lighter_color(color1, color2, percentage, threshold=0.25) {
   return color3
 }
 
-function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color) {
+function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, id='') {
+
+  if (id != '') {
+    var extra = '" id="' + id
+  } else {
+    var extra = ''
+  }
 
   if (linear == 0) {
     var [a_x, a_y] = transform(i_x, i_y, theta)
@@ -522,7 +541,7 @@ function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, co
       'L' + d_x + ' ' + d_y +  ' ' +
       'A ' + (j_y) + ' ' + (j_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
       'L' + a_x + ' ' + a_y +
-      '" fill="' + color + '" stroke="" stroke-width="0"/>')
+      '" fill="' + color + extra + '" stroke="" stroke-width="0"/>')
   } else {
     var [a_x, a_y] = [i_x * node_distance_x, -i_y]
     var [b_x, b_y] = [j_x * node_distance_x, -i_y]
@@ -535,7 +554,7 @@ function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, co
       'L ' + d_x + ' ' + d_y +  ' ' +
       'L ' + c_x + ' ' + c_y + ' ' +
       'L' + a_x + ' ' + a_y +
-      '" fill="' + color + '" stroke="" stroke-width="0"/>')
+      '" fill="' + color + extra + '" stroke="" stroke-width="0"/>')
   }
 
   return(path)
@@ -1064,7 +1083,7 @@ async function generate_svg(body, data) {
         var j_y = search_stop
 
         if (!global_values.includes(k_x)) {
-          svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none'))
+          svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none', k_x))
         }
 
         for (var layer_name of layers) {
@@ -1219,39 +1238,17 @@ async function generate_svg(body, data) {
 }
 
 //ANCHOR - Check node
-async function checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) {
+async function checknode(searchfunction) {
 
-  var append = true
-
-  if (searchpos == true) {
-
-    if (!positions.includes(parseInt(node['position']['x_offset']))) {
-      append = false
-    }
-  }
-
-  var keys = Object.keys(searchfunction)
+  var keys = Object.keys(searchfunction)  
   if (keys.length > 0) {
-    var t = false
-    var d = await get_gene_cluster_consensus_functions(node['name'])
-    for (var source of keys) {
-      for (var s of searchfunction[source]){
-
-        if ((d[source][2].toLowerCase().includes(s.trim().toLowerCase()))) {
-          t = true
-        }
-      }
-    }
-    if (t == false){
-      append = false
-    }
+    var d = await get_passed_gene_clusters(searchfunction)
+    var result = d['gene_clusters']
+  } else {
+    var result = []
   }
-    
-  // if (append == true){
-  //   console.log(node)
-  // }
 
-  return append
+  return result
 }
 
 function main () {
@@ -2050,7 +2047,7 @@ function main () {
     const searchRemoveBin = document.getElementById('searchremove');
     
     var searched = {}
-    $('#search').on('click', function() {
+    $('#search').on('click', async function() {
 
       var searchpos = false
 
@@ -2122,6 +2119,8 @@ function main () {
           searchfunction[source] = searchterms
         }
       }
+
+      console.log(searchfunction)
 
       var layers_positions = {}
       for (var layer_name of Object.keys(layers_filter)) {
@@ -2205,13 +2204,27 @@ function main () {
       } else {
         // console.log(expressioncomparison, searchfunction, searchpos)
 
+        var passed_gcs = await checknode(searchfunction)
+        
         var nodes = document.querySelectorAll(".node")
         for (var node of nodes) {
 
           var id = node.getAttribute("id")
           var node = data['elements']['nodes'][id]
+          
+          if (passed_gcs.includes(node['name'])) {
+            var append = true
+          } else {
+            var append = false
+          }
 
-          if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
+          if (searchpos == true) {
+            if (!positions.includes(parseInt(node['position']['x_offset']))) {
+              append = false
+            }
+          }
+
+          if (append == true) {
             if (expressiondrop == "Name") {
               if (eval('"' + node["name"] + '"' + expressioncomparison)) {
                 if (!(id in searched)) {
@@ -2233,9 +2246,21 @@ function main () {
           for (var id of members) {
 
             node = data['elements']['nodes'][id]
+            var append = true
 
-            if (checknode(searchpos, positions, node, searchfunction, expressiondrop, expressioncomparison) == true) {
-              
+            if (passed_gcs.includes(node['name'])) {
+              var append = true
+            } else {
+              var append = false
+            }              
+
+            if (searchpos == true) {
+              if (!positions.includes(parseInt(node['position']['x_offset']))) {
+                append = false
+              }
+            }
+  
+            if (append == true) {
               if (expressiondrop == "Name") {
                 if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
 
