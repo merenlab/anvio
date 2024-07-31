@@ -90,14 +90,14 @@ ANVIO_WORKFLOWS = {
     "sra-download": {
         "authors": ['mschecht'],
         "artifacts_accepted": [],
-        "artifacts_produced": ['paired-end-fastq'],
+        "artifacts_produced": ['paired-end-fastq', 'samples-txt'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
             ('Downloads SRA accessions', ['prefetch']),
             ('Extracts FASTQ files from SRA accessions', ['fasterq-dump']),
             ('Compresses FASTQ files in parallel', ['pigz']),
             ],
-        "one_sentence_summary": "Download, extract, and gzip paired-end FASTQ files automatically from the NCBI short-read archive (SRA)",
+        "one_sentence_summary": "Download, MD5 Checksum, extract, and gzip paired-end FASTQ files automatically from the NCBI short-read archive (SRA)",
         "one_paragraph_summary": ("The sra-download workflow automatizes the process of downloading paired-end FASTQ files "
             "for a given list of SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
             "then gzips them using [pigz](https://zlib.net/pigz/).")
