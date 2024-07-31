@@ -39,7 +39,7 @@ class NGram(object):
     Parameters
     ==========
     args : argparse.Namespace
-        For examples, arguments accepted by anvi-analyze-syntenty
+        For examples, arguments accepted by anvi-analyze-synteny
 
     skip_sanity_check : bool, false
         If True, sanity_check will not be called.
@@ -379,37 +379,37 @@ class NGram(object):
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             annotation = "::".join(map(str, list(ngram_attribute[2])))
-            if self.pan_db and self.annotation_source:
-                df = pd.DataFrame(columns=['ngram','count', 'annotation', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'annotation': annotation,
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
-            elif self.pan_db and not self.annotation_source:
-                ngram = "::".join(map(str, list(ngram_attribute[0])))
-                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
-            else:
-                ngram = "::".join(map(str, list(ngram_attribute[0])))
-                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
-                df = df.append({'ngram': ngram,
-                                'count': ngram_attribute[1],
-                                'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[4],
-                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
 
+            if self.pan_db and self.annotation_source:
+                data = {'ngram': ngram,
+                        'count': ngram_attribute[1],
+                        'annotation': annotation,
+                        'contig_db_name': ngram_attribute[3],
+                        'N': ngram_attribute[4],
+                        'number_of_loci': self.num_contigs_in_external_genomes_with_genes}
+                columns = ['ngram', 'count', 'annotation', 'contig_db_name', 'N', 'number_of_loci']
+            elif self.pan_db and not self.annotation_source:
+                data = {'ngram': ngram,
+                        'count': ngram_attribute[1],
+                        'contig_db_name': ngram_attribute[3],
+                        'N': ngram_attribute[4],
+                        'number_of_loci': self.num_contigs_in_external_genomes_with_genes}
+                columns = ['ngram', 'count', 'contig_db_name', 'N', 'number_of_loci']
+            else:
+                data = {'ngram': ngram,
+                        'count': ngram_attribute[1],
+                        'contig_db_name': ngram_attribute[3],
+                        'N': ngram_attribute[4],
+                        'number_of_loci': self.num_contigs_in_external_genomes_with_genes}
+                columns = ['ngram', 'count', 'contig_db_name', 'N', 'number_of_loci']
+
+            df = pd.DataFrame([data], columns=columns)
             ngram_count_df_list.append(df)
 
-        ngram_count_df_final = pd.concat(ngram_count_df_list)
+        ngram_count_df_final = pd.concat(ngram_count_df_list, ignore_index=True)
 
         if not self.is_in_unknowns_mode:
-            ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram'].str.contains("unknown-function" or "no-gene-cluster-annotation")]
+            ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram'].str.contains("unknown-function|no-gene-cluster-annotation")]
 
         return ngram_count_df_final
 
