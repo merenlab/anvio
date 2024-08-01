@@ -1296,6 +1296,13 @@ D = {
                      "analyses, where you may want to only focus on genes that are prevalent across the set of genomes "
                      "you wish to analyze."}
                 ),
+    'gene-clusters-txt': (
+            ['--gene-clusters-txt'],
+            {'metavar': 'FILE PATH',
+             'help': "A three-column TAB-delimited file that associates genes across genomes with one another as 'gene clusters' "
+                     "for DIY pangenomics 😬 See https://anvio.org/help/main/artifacts/gene-clusters-txt/ for details "
+                     "of the file format."}
+                ),
     'max-num-gene-clusters-missing-from-genome': (
             ['--max-num-gene-clusters-missing-from-genome'],
             {'default': 0,
