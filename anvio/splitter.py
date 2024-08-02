@@ -734,9 +734,6 @@ class LocusSplitter:
         self.include_fasta_output = True
         self.is_in_flank_mode = bool(A('flank_mode'))
 
-        if self.annotation_sources:
-            self.annotation_sources = [source.strip() for source in self.annotation_sources.split(self.delimiter)]
-
         if A('list_hmm_sources'):
             dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
             sys.exit()
@@ -773,11 +770,12 @@ class LocusSplitter:
                                   "needs exactly 2." % num_genes)
 
         if self.search_term:
-            self.search_term = [term.strip() for term in self.search_term.split(self.delimiter)]
+            self.search_term = list(set([term.strip() for term in self.search_term.split(self.delimiter)]))
 
-        utils.is_contigs_db(self.input_contigs_db_path)
+        if self.annotation_sources:
+            self.annotation_sources = list(set([source.strip() for source in self.annotation_sources.split(self.delimiter)]))
 
-        if len(self.hmm_sources):
+        if self.hmm_sources:
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(self.delimiter)])
 
         # If user is in default mode, they MUST provide --num-genes
