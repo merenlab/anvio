@@ -14,7 +14,7 @@ from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
 
 
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"

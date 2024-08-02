@@ -22,7 +22,7 @@ from anvio.genomedescriptions import MetagenomeDescriptions
 
 import anvio.constants as constants
 
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['mschecht']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__

@@ -32,7 +32,7 @@ from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['Alon Shaiber']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__

@@ -15,7 +15,7 @@ from anvio.tables.miscdata import TableForItemAdditionalData
 
 __citation__ = "'mOTUlizer' by Buck et al (https://doi.org/10.1101/2021.06.25.449606)"
 
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__

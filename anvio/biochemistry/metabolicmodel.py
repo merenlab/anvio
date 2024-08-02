@@ -25,7 +25,7 @@ from anvio import TABULATE, QUIET, __version__ as VERSION
 from anvio.utils import is_contigs_db, is_genome_storage, is_pan_db
 
 
-__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
