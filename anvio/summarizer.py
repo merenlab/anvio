@@ -53,8 +53,7 @@ from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
