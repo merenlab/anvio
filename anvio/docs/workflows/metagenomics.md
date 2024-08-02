@@ -17,7 +17,10 @@ The workflow includes the following steps (though many are optional and can be s
 6. Merging resulting single anvi'o profiles using %(anvi-merge)s.
 
 
-The metagenomic workflow is quite talented and can be run in multiple 'modes'. The following sections will detail different use cases.
+The metagenomics workflow is quite talented and can be run in multiple 'modes'. The following sections will detail different use cases.
+
+{:.warning}
+This documentation page is currently based off of [this old tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#metagenomics-workflow). We hope to update it at some point, but this is what we have for now. You will notice that several sections below reference example files and data. If you want to run those examples yourself, you should [click here](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#mock-data) and follow the instructions to download the mock dataset used in that tutorial.
 
 
 ### Default mode
