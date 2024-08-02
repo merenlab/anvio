@@ -39,7 +39,6 @@ from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 from anvio.dbinfo import DBInfo
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__

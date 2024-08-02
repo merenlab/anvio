@@ -19,7 +19,6 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers import diamond
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError, FilesNPathsError
 
-__author__ = "Evan Kiefl"
 __copyright__ = "Copyright 2016, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"

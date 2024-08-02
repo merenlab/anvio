@@ -154,7 +154,6 @@ from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"

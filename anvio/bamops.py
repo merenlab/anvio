@@ -29,7 +29,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"

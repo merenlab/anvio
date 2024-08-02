@@ -20,7 +20,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
-__author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"

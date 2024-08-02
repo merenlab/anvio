@@ -23,7 +23,6 @@ from anvio.parsers import parser_modules
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"

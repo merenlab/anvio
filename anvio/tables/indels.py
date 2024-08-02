@@ -10,7 +10,6 @@ import anvio.terminal as terminal
 from anvio.tables.tableops import Table
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"

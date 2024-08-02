@@ -18,7 +18,6 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
-__author__ = "Matthew S. Schechter"
 __copyright__ = "Copyright 2017, The anvio Project"
 __credits__ = ['mschecht']
 __license__ = "GPL 3.0"

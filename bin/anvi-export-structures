@@ -12,7 +12,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.structureops import StructureDatabase
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
