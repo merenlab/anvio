@@ -722,6 +722,8 @@ class LocusSplitter:
         self.input_contigs_db_path = A('contigs_db')
         self.num_genes = A('num_genes')
         self.search_term = A('search_term')
+        self.case_sensitive = A('case_sensitive')
+        self.exact_match = A('exact_match')
         self.gene_caller_ids = A('gene_caller_ids')
         self.delimiter = A('delimiter')
         self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
@@ -850,7 +852,7 @@ class LocusSplitter:
                                                                       if not self.annotation_sources
                                                                       else self.annotation_sources)))
 
-                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
+                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True, case_sensitive=self.case_sensitive, exact_match=self.exact_match)
                 # gene id's of genes with the searched function
                 genes_that_hit = [i[0] for i in search_report]
                 gene_caller_ids_of_interest.extend(genes_that_hit)
