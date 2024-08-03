@@ -1496,6 +1496,21 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
+    'case-sensitive': (
+            ['--case-sensitive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will perform a search that is case sensitive."}
+                ),
+    'exact-match': (
+            ['--exact-match'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will search for a given string in anywhere within function description or "
+                     "accession IDs. If you declare this flag, then anvi'o will look for 'exact' matches of the search "
+                     "string in its entirety in a given field. This can be very useful if you are CERTAIN about the "
+                     "function or accession id you are interested in, and you want to get nothing but that exact match."}
+                ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
