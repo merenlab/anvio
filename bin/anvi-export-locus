@@ -65,33 +65,36 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     # Essential input
-    groupA = parser.add_argument_group('Essential INPUT')
+    groupA = parser.add_argument_group('INPUT DATABASE')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
     # Query options for anchor gene
-    groupB =  parser.add_argument_group('Query options for locating locus', "search according to either hmm or functional annotations")
-    groupB.add_argument('-s', '--search-term', help='search term.') # there is a 'search-terms' argument in __init__py, come up with new name?
-    groupB.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
-    groupB.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
-    # Output options
-    groupC = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
-                                       or one FASTA per match (see --separate-fasta)")
-    groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
-    # Additional
-    groupD = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
-    groupD.add_argument(*anvio.A('flank-mode'), **anvio.K('flank-mode'))
-    groupD.add_argument(*anvio.A('num-genes'), **anvio.K('num-genes'))
-    # FIXME --separate-fasta is not an argument accepted by LocusSplitter, yet was put in this file for some
-    # reason. Maybe you know.
-    # groupD.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
-    groupD.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
+    groupB =  parser.add_argument_group('ANCHOR GENE IDENTIFICATION OPTION #1', "Search based on gene function annotations or HMMs")
+    groupB.add_argument('-s', '--search-term', help='Search term to be found in function annotation sources.')
+    groupB.add_argument(*anvio.A('case-sensitive'), **anvio.K('case-sensitive'))
+    groupB.add_argument(*anvio.A('exact-match'), **anvio.K('exact-match'))
+    groupB.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    groupB.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    groupB.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
                             In other words, --search-term will be queried against HMM source annotations, NOT functional annotations. \
                             If you choose this option, you must also say which HMM source to use.')
-    groupD.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
-    groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    groupD.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
-    groupD.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
-    groupD.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
+
+    groupC =  parser.add_argument_group('ANCHOR GENE IDENTIFICATION OPTION #2', "Search based on gene caller id(s)")
+    groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+
+    # Output options
+    groupD = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
+                                       or one FASTA per match (see --separate-fasta)")
+    groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
+
+    # Additional
+    groupE = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    groupE.add_argument(*anvio.A('flank-mode'), **anvio.K('flank-mode'))
+    groupE.add_argument(*anvio.A('num-genes'), **anvio.K('num-genes'))
+    groupE.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
+    groupE.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    groupE.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
 
     args = parser.get_args(parser)
 
