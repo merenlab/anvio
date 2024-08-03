@@ -799,7 +799,7 @@ class LocusSplitter:
             if self.delimiter in self.num_genes:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
-                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
+                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[1]))
 
         utils.check_sample_id(self.output_file_prefix)
 
