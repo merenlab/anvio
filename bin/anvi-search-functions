@@ -39,6 +39,8 @@ class SearchResultReporter(object):
         self.basic_report_path = A('output_file') or 'search_results.txt'
         self.full_report_path = A('full_report')
         self.include_sequences = A('include_sequences')
+        self.case_sensitive = A('case_sensitive')
+        self.exact_match = A('exact_match')
         self.verbose = A('verbose')
         self.args = args
         self.search_mode = None
@@ -54,7 +56,6 @@ class SearchResultReporter(object):
 
         # straighten things out
         self.search_terms = [s.strip() for s in A('search_terms').split(A('delimiter'))]
-        self.annotation_sources = [a.strip() for a in A('annotation_sources').split(A('delimiter'))] if A('annotation_sources') else None
 
         self.db = self.get_database()
 
@@ -93,7 +94,7 @@ class SearchResultReporter(object):
 
 
     def get_search_results(self):
-        self.matching_item_names_dict, self.verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose = self.verbose)
+        self.matching_item_names_dict, self.verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose=self.verbose, case_sensitive=self.case_sensitive, exact_match=self.exact_match)
 
         self.all_item_names = set([])
 
@@ -112,7 +113,7 @@ class SearchResultReporter(object):
                     results_dict[item_name][search_term + '_hits'] = search_term
 
         utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
-        run.info('Items additional data compatible output', self.basic_report_path)
+        run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
 
 
     def write_full_report(self):
@@ -169,6 +170,8 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
     groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
+    groupB.add_argument(*anvio.A('case-sensitive'), **anvio.K('case-sensitive'))
+    groupB.add_argument(*anvio.A('exact-match'), **anvio.K('exact-match'))
     groupB.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
     groupB.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
     groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
