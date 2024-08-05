@@ -42,6 +42,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('gc-additional-data'), **anvio.K('gc-additional-data'))
     groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json'))
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
+    groupA.add_argument(*anvio.A('genomes-reverse'), **anvio.K('genomes-reverse'))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "

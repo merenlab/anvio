@@ -104,6 +104,23 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     return newick
 
 
+def get_newick(node, parent_dist, leaf_names, newick=''):
+    """
+    Modified from the solution at https://stackoverflow.com/questions/28222179/save-dendrogram-to-newick-format
+    """
+    if node.is_leaf():
+        return "%s:%.2f%s" % (leaf_names[node.id], parent_dist - node.dist, newick)
+    else:
+        if len(newick) > 0:
+            newick = "):%.2f%s" % (parent_dist - node.dist, newick)
+        else:
+            newick = ");"
+        newick = get_newick(node.get_left(), node.dist, leaf_names, newick=newick)
+        newick = get_newick(node.get_right(), node.dist, leaf_names, newick=",%s" % (newick))
+        newick = "(%s" % (newick)
+        return newick
+
+
 def get_vectors_for_vectors_with_missing_data(vectors):
     """Get a distance matrix for vectors with missing data.
 

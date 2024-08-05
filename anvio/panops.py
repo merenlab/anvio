@@ -17,7 +17,7 @@ import numpy as np
 import itertools as it
 import matplotlib.pyplot as plt
 # from scipy.stats import entropy
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
 from scipy.spatial.distance import cdist, squareform
 import random
 
@@ -1076,7 +1076,8 @@ class Pangraph():
         # in a very specific direction
         # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
-        self.genomes_names = A('genome_names')
+        self.genomes_names = A('genome_names').split(',')
+        self.genomes_reverse = A('genome_reverse').split(',')
 
         # the different data storage related variables e.g. input and output files
         # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
@@ -1321,7 +1322,11 @@ class Pangraph():
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster_name", how="left")
 
-                joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
+                if genome in self.genomes_reverse:
+                    joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
+                else:
+                    joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=False, inplace=True)
+
                 joined_contigs_df.set_index(["contig", "gene_caller_id"], inplace=True)
 
                 self.gene_synteny_data_dict[genome] = joined_contigs_df.fillna("None").groupby(level=0).apply(lambda df: df.xs(df.name).to_dict("index")).to_dict()
@@ -2369,6 +2374,7 @@ class Pangraph():
         self.global_x_offset = self.offset['stop']
 
         self.run.info_single(f"Final graph {pp(len(self.ancest.nodes()))} nodes and {pp(len(self.ancest.edges()))} edges")
+        
         self.run.info_single("Done")
 
 
@@ -2678,6 +2684,35 @@ class Pangraph():
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
 
+        X = np.empty([len(self.genomes_names), len(self.genomes_names)])
+        for genome_i, genome_j in it.combinations(self.genomes_names, 2):
+            node_similarity = 0
+            edge_similarity = 0
+            for node, data in self.ancest.nodes(data=True):
+                if genome_i in data['genome'].keys() and genome_j in data['genome'].keys():
+                    node_similarity += 1
+            for edge_i, edge_j, data in self.ancest.edges(data=True):
+                if genome_i in data['genome'].keys() and genome_j in data['genome'].keys():
+                    edge_similarity += 1
+
+            i = self.genomes_names.index(genome_i)
+            j = self.genomes_names.index(genome_j)
+
+            X[i][j] = node_similarity + edge_similarity
+            X[j][i] = node_similarity + edge_similarity
+
+            # X[i][j] = edge_similarity
+            # X[j][i] = edge_similarity
+
+            # self.run.info_single(f"Node similarity {genome_i} and {genome_j} is {node_similarity}, edge similarity is {edge_similarity}.")
+
+        norm_X = X / (len(self.ancest.nodes()) + len(self.ancest.edges()))
+        # norm_X = X / len(self.ancest.edges())
+        condensed_X = squareform(norm_X)
+        Z = linkage(condensed_X, 'ward')
+        tree = to_tree(Z, False)
+        newick = clustering.get_newick(tree, tree.dist, self.genomes_names)
+
         self.jsondata["infos"] = {
             'meta': {
                 'title': self.project_name,
@@ -2693,6 +2728,7 @@ class Pangraph():
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
             'groupcompress': self.groupcompress,
             'priority_genome': self.priority_genome,
+            'newick': newick,
             'layout_graph': {
                 'nodes': len(self.ancest.nodes()),
                 'edges': len(self.ancest.edges())
