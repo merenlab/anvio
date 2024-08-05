@@ -1667,6 +1667,8 @@ class PanSuperclass(object):
 
         homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
 
+        AAI_calculator = self.compute_AAI_for_gene_cluster
+
         self.progress.new('Computing gene cluster homogeneity indices', progress_total_items=len(gene_cluster_names))
         self.progress.update('Initializing %d threads...' % num_threads)
 
@@ -1680,7 +1682,7 @@ class PanSuperclass(object):
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
-                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, self.run))
+                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, AAI_calculator, self.run))
             workers.append(worker)
             worker.start()
 
@@ -1692,7 +1694,10 @@ class PanSuperclass(object):
                 if homogeneity_dict:
                     results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
                                                                       'geometric_homogeneity_index': homogeneity_dict['geometric'],
-                                                                      'combined_homogeneity_index': homogeneity_dict['combined']}
+                                                                      'combined_homogeneity_index': homogeneity_dict['combined'],
+                                                                      'AAI_min': homogeneity_dict['AAI_min'],
+                                                                      'AAI_max': homogeneity_dict['AAI_max'],
+                                                                      'AAI_avg': homogeneity_dict['AAI_avg']}
 
                 received_gene_clusters += 1
                 self.progress.increment(increment_to=received_gene_clusters)
@@ -1710,7 +1715,7 @@ class PanSuperclass(object):
 
 
     @staticmethod
-    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, run):
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, AAI_calculator, run):
         r = terminal.Run()
         r.verbose = False
 
@@ -1725,10 +1730,12 @@ class PanSuperclass(object):
 
             try:
                 funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
-
                 indices_dict['functional'] = funct_index[gene_cluster_name]
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
+
+                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'] = AAI_calculator(gene_cluster)
+
             except:
                 if gene_cluster_name not in str(gene_clusters_failed_to_align):
                     progress.reset()
@@ -1743,6 +1750,9 @@ class PanSuperclass(object):
                 indices_dict['functional'] = -1
                 indices_dict['geometric'] = -1
                 indices_dict['combined'] = -1
+                indices_dict['AAI_min'] = -1
+                indices_dict['AAI_max'] = -1
+                indices_dict['AAI_avg'] = -1
 
             output_queue.put(indices_dict)
 
