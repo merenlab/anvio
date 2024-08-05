@@ -1612,6 +1612,45 @@ class PanSuperclass(object):
         return sequences
 
 
+    def compute_AAI_for_gene_cluster(self, gene_cluster):
+        """Simple AAI calculator for sequences in a gene cluster"""
+
+        def calculate_sequence_identity(s1, s2):
+            matches = sum(r1 == r2 for r1, r2 in zip(s1, s2))
+            identity = matches / len(s1)
+            return identity
+    
+        # turn the sequences dict into a more useful format for this
+        # step
+        d = {}
+        for gene_cluster_name in gene_cluster:
+            for genome_name in gene_cluster[gene_cluster_name]:
+                for gene_call in gene_cluster[gene_cluster_name][genome_name]:
+                    d[f"{genome_name}_{gene_call}"] = gene_cluster[gene_cluster_name][genome_name][gene_call]
+    
+        # if there is only one sequence, then there is nothing to do here.
+        if len(d) == 1:
+            return (0.0, 0.0, 0.0)
+    
+        # get all pairs of sequences
+        pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
+    
+        # FIXME: we need a smart strategy here to deal with gaps, but meren is old and it is 11pm.
+
+        # calculate pairwise identities
+        identities = []
+        for s1, s2 in pairs_of_sequences:
+            identity = calculate_sequence_identity(d[s1], d[s2])
+            identities.append(identity)
+    
+        # calculate AAI values
+        AAI_min = min(identities)
+        AAI_max = max(identities)
+        AAI_avg = numpy.mean(identities)
+
+        return (AAI_min, AAI_max, AAI_avg)
+
+
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
         if gene_cluster_names is None:
             self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene "
