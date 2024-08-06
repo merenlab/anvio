@@ -611,6 +611,7 @@ async function generate_svg(body, data) {
   var line_thickness = parseInt($('#line')[0].value);
   var node_distance_x = parseInt($('#distx')[0].value);
   var node_distance_y = parseInt($('#disty')[0].value);
+  var tree_length = parseInt($('#tree')[0].value);
 
   var groups = data['infos']['groups']
   var edges = data['elements']['edges']
@@ -639,7 +640,7 @@ async function generate_svg(body, data) {
   outer_layers['graph'] = [graph_size, inner_margin, inner_margin + graph_size]
 
   var sum_middle_layer = start_offset + search_size + arrow_size
-  var sum_outer_layer = graph_size
+  var sum_outer_layer = graph_size + inner_margin
 
   var current_middle_stop = sum_middle_layer
   var current_outer_stop = sum_outer_layer
@@ -826,8 +827,8 @@ async function generate_svg(body, data) {
       $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
-    var l = 1
-    while (l < global_x) {
+    var l = steps
+    while (l < global_x-steps) {
 
       if (l+steps <= global_x){
         var k = steps;
@@ -1226,6 +1227,8 @@ async function generate_svg(body, data) {
       }
     }
   }
+
+  // tree_length
 
   for (var item of svg_search) svg_core.append(item);
   for (var item of svg_heatmaps) svg_core.append(item);

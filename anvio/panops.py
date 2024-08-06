@@ -1076,8 +1076,16 @@ class Pangraph():
         # in a very specific direction
         # TODO: skip genomes might be a very useful function
         self.priority_genome = A('priority_genome')
-        self.genomes_names = A('genome_names').split(',')
-        self.genomes_reverse = A('genome_reverse').split(',')
+        
+        if A('genome_names'):
+            self.genomes_names = A('genome_names').split(',')
+        else:
+            self.genomes_names = []
+
+        if A('genome_reverse'):
+            self.genomes_reverse = A('genome_reverse').split(',')
+        else:
+            self.genomes_reverse = []
 
         # the different data storage related variables e.g. input and output files
         # TODO: DB storage is not yet implemented -> will be GRAPH.db at one point
@@ -2678,40 +2686,51 @@ class Pangraph():
     # together or remove both so the graph becomes a REAL circle. Aside from that there is a bug in the remove
     # edges section for (k,o) in circular edges and for (k,o) in pangenome edges. Change and test while reworking.
     def get_json_dict_for_graph(self):
-        self.run.warning(None, header="Creating JSON dictionary for export", lc="green")
+        self.run.warning(None, header="Calculating syntenous distances", lc="green")
 
         # NOTE: Any change in `self.jsondata` will require the pangraph JSON in anvio.tables.__init__
         #       to incrase by one (so that the new code that works with the new structure requires
         #       previously generated JSON to be recomputed).
 
-        X = np.empty([len(self.genomes_names), len(self.genomes_names)])
+        nodes_all = len(self.ancest.nodes())
+        edges_all = len(self.ancest.edges())
+
+        X = np.zeros([len(self.genomes_names), len(self.genomes_names)])
         for genome_i, genome_j in it.combinations(self.genomes_names, 2):
-            node_similarity = 0
-            edge_similarity = 0
-            for node, data in self.ancest.nodes(data=True):
+            nodes_similar = 0
+            edges_similar = 0
+            nodes_unsimilar = 0
+            edges_unsimilar = 0
+            for _, data in self.ancest.nodes(data=True):
                 if genome_i in data['genome'].keys() and genome_j in data['genome'].keys():
-                    node_similarity += 1
-            for edge_i, edge_j, data in self.ancest.edges(data=True):
+                    nodes_similar += 1
+                elif genome_i in data['genome'].keys() or genome_j in data['genome'].keys():
+                    nodes_unsimilar += 1
+            for _, _, data in self.ancest.edges(data=True):
                 if genome_i in data['genome'].keys() and genome_j in data['genome'].keys():
-                    edge_similarity += 1
+                    edges_similar += 1
+                elif genome_i in data['genome'].keys() or genome_j in data['genome'].keys():
+                    edges_unsimilar += 1
 
             i = self.genomes_names.index(genome_i)
             j = self.genomes_names.index(genome_j)
 
-            X[i][j] = node_similarity + edge_similarity
-            X[j][i] = node_similarity + edge_similarity
+            elements_similar = nodes_similar + edges_similar
+            elements_unsimilar = nodes_unsimilar + edges_unsimilar
+            elements_all = nodes_all + edges_all
 
-            # X[i][j] = edge_similarity
-            # X[j][i] = edge_similarity
+            X[i][j] = elements_unsimilar / (elements_similar + elements_unsimilar)
+            X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
 
-            # self.run.info_single(f"Node similarity {genome_i} and {genome_j} is {node_similarity}, edge similarity is {edge_similarity}.")
+            self.run.info_single(f"{genome_i} and {genome_j}: {round(X[i][j], 3)}")
 
-        norm_X = X / (len(self.ancest.nodes()) + len(self.ancest.edges()))
-        # norm_X = X / len(self.ancest.edges())
-        condensed_X = squareform(norm_X)
+        condensed_X = squareform(X)
         Z = linkage(condensed_X, 'ward')
         tree = to_tree(Z, False)
         newick = clustering.get_newick(tree, tree.dist, self.genomes_names)
+
+        self.run.info_single("Done.")
+        self.run.warning(None, header="Creating JSON dictionary for export", lc="green")
 
         self.jsondata["infos"] = {
             'meta': {
