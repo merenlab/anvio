@@ -2141,6 +2141,12 @@ class DGR_Finder:
                 # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
                 primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer']
 
+                #if the primer sequence is too long than cut it to an appropriate length for the length of short reads
+                if len(primers_dict[primer_key]['primer_sequence']) > 71:
+                    self.chosen_primer_length = 65
+                    print(f"The primer for {dgr_id} {vr_id} is above the desired length for getting enough diversity. The primer is being cut to {self.chosen_primer_length}. Nothing is wrong anvi'o just wants to make you aware.")
+                    primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.chosen_primer_length]
+
         print('\n')
         print(f'Updated primers dictionary:', primers_dict)
 
