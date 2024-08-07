@@ -1374,7 +1374,7 @@ class DGR_Finder:
 
         # we know when we are not wanted
         if self.skip_recovering_genomic_context:
-            print('Skipping genomic context recovery due to self.skip_recovering_genomic_context being True')
+            self.run.info_single('Skipping genomic context recovery due to self.skip_recovering_genomic_context being True')
             return
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
