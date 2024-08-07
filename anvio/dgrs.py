@@ -1944,8 +1944,8 @@ class DGR_Finder:
 
                     # Create the vr_primer sequence
                     for tr_base, vr_base in zip(TR_sequence, VR_sequence):
-                        if vr_base == '-':
-                            continue  # Skip adding anything to vr_primer
+                        #if vr_base == '-':
+                            #continue  # Skip adding anything to vr_primer
                         if tr_base == 'A':
                             vr_primer.append('.')
                         elif tr_base != vr_base:
