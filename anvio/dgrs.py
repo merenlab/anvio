@@ -1973,7 +1973,6 @@ class DGR_Finder:
                 vr_id = vr_key
                 primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_primer_region'],
                                                                 'vr_anchor_primer': vr_data['vr_anchor_primer']}
-                                                            #'primer_remainder_TR_length': dgr_data['primer_remainder_length']}
         print('\n')
         print(f'original primers dictionary:' , primers_dict)
 
