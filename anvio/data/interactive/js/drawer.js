@@ -1230,7 +1230,7 @@ Drawer.prototype.calculate_layer_boundaries = function() {
             this.calculate_font_size_for_text_layer(layer);
         }
 
-        var margin = (this.settings['custom-layer-margin']) ? parseFloat(layer.get_visual_attribute('margin')) : parseFloat(this.settings['layer-margin']);
+        var margin = parseFloat(this.settings['layer-margin']) ? parseFloat(layer.get_visual_attribute('margin')) : parseFloat(this.settings['layer-margin']);
         var height = parseFloat(layer.get_visual_attribute('height'));
 
         var ending_of_previous_layer = this.layer_boundaries[layer.order - 1][1];
