@@ -1880,6 +1880,8 @@ class DGR_Finder:
                 vr_data['original_TR_frame'] = TR_FRAME
                 print(f"dgrs dit: {dgrs_dict}")
 
+                VR_frame = vr_data['VR_frame']
+                TR_frame = vr_data['TR_frame']
 
                 #CHECK if VR sequence is not at the start of a contig so you can get the initial primer sequence
                 if vr_data['VR_start_position'] >= self.variable_region_primer_base_length:
