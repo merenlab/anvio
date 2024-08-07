@@ -2450,7 +2450,7 @@ class DGR_Finder:
 
         else:
             self.run.info_single("Computing the Genes the Variable Regions occur in and creating a 'DGR_genes_found.csv'.")
-            self.run.info_single('\n')
+            print('\n')
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info(self.DGRs_found_dict)
