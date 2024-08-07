@@ -2160,13 +2160,13 @@ class DGR_Finder:
         output_queue = manager.Queue()
 
         self.dgr_activity = []
+        #create directory for Primer matches
+        primer_folder= os.path.join(self.output_directory, "PRIMER_MATCHES")
+
 
         # put all the sample names in our input queue
         for sample_name in sample_names:
             input_queue.put(sample_name)
-
-        #create directory for Primer matches
-        primer_output = os.path.join(self.output_directory, "PRIMER_MATCHES")
 
         # engage the proletariat, our hard-working wage-earner class
         workers = []
@@ -2177,7 +2177,7 @@ class DGR_Finder:
                                                 output_queue,
                                                 self.samples_txt_dict,
                                                 primers_dict,
-                                                primer_output),
+                                                primer_folder),
 
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
