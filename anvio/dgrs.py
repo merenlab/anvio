@@ -1839,20 +1839,15 @@ class DGR_Finder:
                                     #min_remainder_length= self.primer_remainder_lengths,
                                     #min_frequency=min_frequency,
                                     output_dir=output_directory_path,
-                                    only_report_primer_matches = True
+                                    only_report_primer_matches = True,
+                                    okay_if_output_dir_exists = True
                                     )
 
             s = PrimerSearch(args, run=run, progress=progress)
-            sample_dict, primer_hits = s.process_sample(sample_name)
+            sample_dict, primer_hits = s.process(return_dicts = True)
 
-            if output_directory_path:
-                print("I am in the output directory if statement")
-                #s.store_sequences(sample_name, samples_dict, primers_dict)
-                s.process()
+            output_queue.put(sample_name)
 
-            output_queue.put((sample_dict, primer_hits))
-
-        #NOTE: maybe add in a maximum remainder length that is the length of the longest VR?
 
     def generate_primers_for_vrs(self, dgrs_dict):
         """
