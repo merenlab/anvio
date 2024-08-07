@@ -1672,7 +1672,7 @@ class DGR_Finder:
         """
 
         if self.skip_recovering_genomic_context:
-            print('Skipping reporting genomic context due to self.skip_recovering_genomic_context being True')
+            self.run.info_single('Skipping reporting genomic context due to self.skip_recovering_genomic_context being True')
             return
 
         if not len(self.genomic_context_surrounding_dgrs):
