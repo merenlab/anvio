@@ -2190,10 +2190,10 @@ class DGR_Finder:
         num_samples_processed = 0
         while num_samples_processed < num_samples:
             try:
-                dgr_variability_profiling_for_one_sample = output_queue.get()
-                if dgr_variability_profiling_for_one_sample:
-                    self.dgr_activity.extend(dgr_variability_profiling_for_one_sample)
-
+                sample_finished_processing = output_queue.get()
+                if anvio.DEBUG:
+                    self.progress.reset()
+                    self.run.info_single(f"Sample {sample_finished_processing} has finished processing.")
                 num_samples_processed += 1
                 self.progress.increment(increment_to=num_samples_processed)
                 if self.num_threads > 1:
@@ -2202,7 +2202,7 @@ class DGR_Finder:
                     else:
                         self.progress.update("All done!")
             except KeyboardInterrupt:
-                self.run.info_single("Received, terminating all processes... Don't believe anything you see "
+                self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
                                     "below this and destroy all the output files with fire.", nl_before=1, nl_after=1)
                 break
 
