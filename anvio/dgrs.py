@@ -1202,6 +1202,8 @@ class DGR_Finder:
 
                 self.report_genomic_context_surrounding_dgrs(self.dgrs_in_collections)
 
+                self.compute_dgr_variability_profiling(self.dgrs_in_collections)
+
 
             profile_db.disconnect()
             contig_db.disconnect()
