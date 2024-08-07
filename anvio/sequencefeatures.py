@@ -74,7 +74,7 @@ class PrimerSearch:
         else:
             self.samples_dict = A('samples_dict')
             if not isinstance(self.samples_dict, dict):
-                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+                raise ConfigError("The `samples_dict` parameter must be a literal dictionary.")
 
         if self.primers_file_path:
             self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
