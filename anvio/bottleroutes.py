@@ -50,6 +50,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.serverAPI import AnviServerAPI
 from anvio.errors import RefineError, ConfigError
 from anvio.tables.miscdata import TableForLayerOrders
+from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.collections import TablesForCollections
 
 
@@ -187,6 +188,7 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',    callback=self.get_additional_gc_data, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
@@ -1421,6 +1423,19 @@ class BottleApplication(Bottle):
         except:
             return json.dumps({'status': 1})
 
+
+    def get_additional_gc_data(self, gc_id, gc_key):
+        additional_data = TableForItemAdditionalData(self.args).get()
+
+        gene_cluster_data = additional_data[1][gc_id][gc_key]
+
+        try:
+            return json.dumps({'gene_cluster_data': gene_cluster_data,
+                               'status': 0})
+
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
 
     def reroot_tree(self):
         # Get the Newick tree string from the form data
