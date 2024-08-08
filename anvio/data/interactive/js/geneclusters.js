@@ -113,7 +113,6 @@ function loadGCAdditionalData(gc_id, gc_key){
                 var newTh = $('<th>').text(data.gene_cluster_data);
                 $('#gc-acc-table-header').after(newThHeader);
                 $('#gc-acc-table-data').after(newTh);
-                console.log(data)
             }
         }
     })
