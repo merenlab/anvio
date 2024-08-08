@@ -100,12 +100,6 @@ function loadAll() {
             }
         }
     });
-
-    // gc_key = "AAI_avg"
-    // gc_id = "Cluster_00000927"
-
-    // loadGCAdditionalData(gc_id, gc_key);
-
 }
 function loadGCAdditionalData(gc_id, gc_key){
 
@@ -114,8 +108,11 @@ function loadGCAdditionalData(gc_id, gc_key){
         cache: false,
         url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key,
         success: function(data){
-            if (data['status'] == 1){
-                // Put in table element
+            if (data['status'] == 0){
+                var newThHeader = $('<th>').text(gc_key);
+                var newTh = $('<th>').text(data.gene_cluster_data);
+                $('#gc-acc-table-header').after(newThHeader);
+                $('#gc-acc-table-data').after(newTh);
                 console.log(data)
             }
         }
@@ -142,9 +139,18 @@ function createDisplay(){
     var acid_sequences = [];
     var order = {};
     var count = 0;
+    var layer_id_list = new Set(["combined_homogeneity_index", "functional_homogeneity_index", "geometric_homogeneity_index", 
+                                 "num_genes_in_gene_cluster", "num_genomes_gene_cluster_has_hits", "max_num_paralogs","AAI_avg",
+                                 "AAI_max", "AAI_min"]);
+
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
         var layer = state['layer-order'][layer_id];
+
+        if (layer_id_list.has(layer)) {
+            console.log(gene_cluster_data.gene_cluster_name, layer);
+            loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer);
+        }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
             continue;

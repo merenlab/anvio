@@ -49,13 +49,26 @@
                           <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
                           <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
                           <input type="button" value="Color Settings" style="margin-left: 30px;" onclick="$('#display-conservation-controls').toggle(); " />
+                          <input type="button" value="GC Accessory" style="margin-left: 30px;" onclick="$('#gc-acc-table').toggle(); " />
                 </div>
 
-		<div id="display-conservation-controls" style="display: none">
-		</div>
+                <div id="display-conservation-controls" style="display: none"></div>
+                <div class="" id="gc-acc-table" style="display: none;">
+                    <table class="table table-responsive" style="table-layout: fixed;">
+                        <thead>
+                          <tr>
+                            <th scope="col" id="gc-acc-table-header">#</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <th scope="row" id="gc-acc-table-data">Value</th>
+                          </tr>
+                        </tbody>
+                      </table>
+                </div>
                 <div id="display-container">
-                    <svg id="svg">
-                    </svg>
+                    <svg id="svg"></svg>
                 </div>
             </section>
         </div>
