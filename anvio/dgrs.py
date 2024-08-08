@@ -2126,6 +2126,11 @@ class DGR_Finder:
         #function to find variability in primers and form consensus primer for each primer in each sample!
         if not self.skip_primer_variability:
             sample_primers_dict = {}
+            sample_names = list(self.samples_txt_dict.keys())
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            snvs_table = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+            profile_db.disconnect()
+
             for sample_name in sample_names:
                 # Filter SNVs for the specific sample
                 sample_snvs = self.snv_panda[self.snv_panda['sample_id'] == sample_name]
@@ -2134,19 +2139,43 @@ class DGR_Finder:
                 for dgr_id, dgr_data in dgrs_dict.items():
                     for vr_key, vr_data in dgr_data['VRs'].items():
                         vr_start = vr_data.get('VR_start_position')
+                        vr_end = vr_data.get('VR_end_position')
                         vr_contig = vr_data.get('VR_contig')
 
-                        # Further filter SNVs within the primer region
-                        primer_snvs = sample_snvs[
-                            (sample_snvs['contig_name'] == vr_contig) &
-                            (sample_snvs['pos_in_contig'] >= vr_start - self.variable_region_primer_base_length) &
-                            (sample_snvs['pos_in_contig'] < vr_start)
-                        ]
+                        #sanity check for mismatch between samples given and samples in snv table
+                        sample_names_given = set(sample_names)
+                        print(f"sample names given from samples.txt: {sample_names_given}")
+                        sample_names_in_snv_table = set(snvs_table['sample_id'])
+                        print(f"sample names in snv table {sample_names_in_snv_table}")
+                        samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
+                        print(f"samples_missing_in_snv_table {samples_missing_in_snv_table}")
+                        if anvio.DEBUG:
+                            self.run.info("Samples given", ", ".join(list(sample_names_given)))
+                            self.run.info("Samples in profile.db's nucleotide variability table", ", ".join(list(sample_names_in_snv_table)))
+                            self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
+                        if sample_names_given == samples_missing_in_snv_table:
+                            raise ConfigError(f"Anvi'o is not angry just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), yet you have none of these samples in your profile.db. "
+                                                "This is fatal, anvio will now quit. Either you recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
+                                                "or you give 'anvi-report-dgrs' samples that were used to create your profile.db.")
+
+                        for sample_name in sample_names:
+                            if sample_name not in snvs_table['sample_id']:
+                                self.run.warning(f"This is unacceptable, not all samples are in the SNV table, missing {sample_name}. BUT we will keep going anyways, just for you.")
+                                continue
+                            # Filter SNVs for the specific sample
+                            sample_snvs = snvs_table[snvs_table['sample_id'] == sample_name]
+
+                            # Further filter SNVs within the primer region
+                            primer_snvs = sample_snvs[
+                                (sample_snvs['contig_name'] == vr_contig) &
+                                (sample_snvs['pos_in_contig'] >= vr_start) &
+                                (sample_snvs['pos_in_contig'] < vr_end)
+                            ]
 
                         # Get the original primer sequence
                         original_primer_key = f'{dgr_id}_{vr_key}_Primer'
-                        original_primer_sequence = primers_dict[original_primer_key]['initial_primer_sequence']
-                        new_primer_sequence = list(original_primer_sequence)
+                        original_initial_primer_sequence = primers_dict[original_primer_key]['initial_primer_sequence']
+                        new_primer_sequence = list(original_initial_primer_sequence)
 
                         # Vectorized operation to find consensus SNVs and update the primer sequence
                         consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(self.get_consensus_base, axis=1)
