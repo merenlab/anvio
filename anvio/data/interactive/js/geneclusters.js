@@ -101,6 +101,25 @@ function loadAll() {
         }
     });
 
+    // gc_key = "AAI_avg"
+    // gc_id = "Cluster_00000927"
+
+    // loadGCAdditionalData(gc_id, gc_key);
+
+}
+function loadGCAdditionalData(gc_id, gc_key){
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key,
+        success: function(data){
+            if (data['status'] == 1){
+                // Put in table element
+                console.log(data)
+            }
+        }
+    })
 }
 
 function createDisplay(){
