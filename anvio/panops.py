@@ -2729,6 +2729,13 @@ class Pangraph():
         tree = to_tree(Z, False)
         newick = clustering.get_newick(tree, tree.dist, self.genomes_names)
 
+        if self.output_graphics:
+            fig = plt.figure(figsize=(25, 10))
+            ax = plt.axes()
+            dn = dendrogram(Z, ax=ax, labels=self.genomes_names, orientation='right')
+            plt.tight_layout()
+            fig.savefig(self.output_graphics + 'phylogenie' + '.pdf')
+
         self.run.info_single("Done.")
         self.run.warning(None, header="Creating JSON dictionary for export", lc="green")
 
