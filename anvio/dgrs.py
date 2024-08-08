@@ -1902,6 +1902,9 @@ class DGR_Finder:
                 print('\n')
                 VR_sequence = vr_data['VR_sequence']
                 TR_sequence = vr_data['TR_sequence']
+                vr_start = vr_data.get('VR_start_position')
+                vr_end = vr_data.get('VR_end_position')
+                vr_contig = vr_data.get('VR_contig')
 
                 #FIRST CHECK THAT YOU HAVEN'T FOUND THE REVERSE COMPLEMENT OF THE STRAND ANYWAYS
                 #flip them so that they are the original way that blast found them!
@@ -1940,12 +1943,36 @@ class DGR_Finder:
 
                 #check the TR and VR sequence are the same length
                 if len(TR_sequence) == len(VR_sequence):
-                    vr_primer = []
+                    profile_db = dbops.ProfileDatabase(self.profile_db_path)
+                    snvs_table = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+                    profile_db.disconnect()
 
+                    # Extract the contig name from split_name
+                    snvs_table['contig_name'] = snvs_table['split_name'].str.split('_split_', expand=True)[0]
+
+
+                    print("snvs table")
+                    print(snvs_table)
+
+                    vr_positions = set(range(vr_start, vr_end))
+
+                    # Filter snvs_table to include only rows with the matching VR_contig
+                    filtered_snvs_table = snvs_table[(snvs_table['contig_name'] == vr_contig) & (snvs_table['pos_in_contig'].isin(vr_positions))]
+
+                    # Convert the positions to a set for faster lookups
+                    primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
+
+
+                    # Optional: Print to verify
+                    print(f"VR_contig: {vr_contig}")
+                    print(f"Filtered positions for VR_contig: {primer_snv_positions}")
+                    print(f"vr positions lists: {vr_positions}")
+
+
+                    vr_primer = []
                     # Create the vr_primer sequence
+                    # First loop: Create the initial vr_primer sequence
                     for tr_base, vr_base in zip(TR_sequence, VR_sequence):
-                        #if vr_base == '-':
-                            #continue  # Skip adding anything to vr_primer
                         if tr_base == 'A':
                             vr_primer.append('.')
                         elif tr_base != vr_base:
@@ -1953,10 +1980,19 @@ class DGR_Finder:
                         else:
                             vr_primer.append(tr_base)
 
-                    # Convert list to string
+                    #Second loop: Apply SNV-based modifications
+                    for i in range(len(vr_primer)):
+                        # Calculate the current position in the VR sequence
+                        current_position = vr_start + i
+
+                        # Check if the position should be replaced with '.'
+                        if current_position in primer_snv_positions:
+                            vr_primer[i] = '.'
+
+                    # Convert list back to string
                     vr_anchor_primer = ''.join(vr_primer)
 
-                    #add every primer sequence to the dgrs_dict
+                    # Add the vr_anchor_primer sequence to the dgrs_dict
                     vr_data['vr_anchor_primer'] = vr_anchor_primer
 
                     print(dgrs_dict)
