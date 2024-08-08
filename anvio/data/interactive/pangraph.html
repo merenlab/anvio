@@ -36,6 +36,8 @@
     <script type="text/javascript" src='js/pangraph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
+    <script type="text/javascript" src="js/tree.js"></script>
+    <script type="text/javascript" src="js/utils.js"></script>
 
   </head>
 
@@ -157,6 +159,16 @@
                           <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=nodes name=nodes value="#bcbcbc" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Color layers 
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=layer_color name=layer_color value="#f5f5f5" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
                     </div>
 
                     <span class="settings-secondary-header mb-3 mt-3">Layers</span>
@@ -177,7 +189,62 @@
                       </div>
                     </div>
                     
-                    <span class="settings-secondary-header mb-3 mt-3">Settings</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Phylogenie</span>
+                    
+                    <div class="row align-items-center">
+
+
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="TreeOptions" id="TreeRadio1" value="option1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Don't show tree
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="TreeOptions" id="TreeRadio2" value="option2" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Show tree
+                        </div>
+                      </div>
+
+
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Tree length
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree" name="tree" value=500 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Tree offset
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=100 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2 d-flex align-items-center">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Tree line thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=3 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                    </div>
+
+                    <span class="settings-secondary-header mb-3 mt-3">Nodes & Edges</span>
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1">
@@ -198,6 +265,67 @@
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=30 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node radius
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Node line thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Edge thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                    </div>
+                      
+                    <span class="settings-secondary-header mb-3 mt-3">Others</span>
+
+                    <div class="row align-items-center mb-3">
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio1" value="option1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Circular graph layout
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1 py-1">      
+                        <div class="col-2 d-flex align-items-center">
+                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio2" value="option2" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
+                        </div>
+                        <div class="col-10 d-flex align-items-center">
+                          Linear graph layout
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Line graph thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="line" name="line" value=1 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -250,75 +378,8 @@
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="inner" name="inner" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Tree length
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree" name="tree" value=500 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Node radius
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Node line thickness
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Edge thickness
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Line graph thickness
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="line" name="line" value=1 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1 py-1">      
-                        <div class="col-2 d-flex align-items-center">
-                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio1" value="option1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
-                        </div>
-                        <div class="col-10 d-flex align-items-center">
-                          Circular graph layout
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1 py-1">      
-                        <div class="col-2 d-flex align-items-center">
-                          <input class="" type="radio" name="LayoutOptions" id="LayoutRadio2" value="option2" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-                        </div>
-                      <div class="col-10 d-flex align-items-center">
-                        Linear graph layout
-                      </div>
                     </div>
-                    </div>
-      
+
                     <span class="settings-secondary-header mb-3 mt-3">Graph</span>
                     <div class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
@@ -360,8 +421,8 @@
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="groupcompress" name="groupcompress" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
-
                     </div>
+
                     <span class="settings-secondary-header mb-3 mt-3">Genomes</span>
                     
                     <div id="genomecolors" class="row grid align-items-center sortable">

@@ -177,7 +177,7 @@ async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) 
     var gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
     var d = await get_gene_cluster_consensus_functions(gene_cluster_name);
 
-    console.log(d)
+    // console.log(d)
 
     function_sources = Object.keys(d).sort();
     // console.log(function_sources);
@@ -581,6 +581,159 @@ function pickcolor (edgecoloring, genomes) {
   return sortedArray[0][1]
 }
 
+function draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness) {
+
+  var output = ''
+  var saving_positions = {}
+  var saving_ids = {}
+  
+  var i = 0
+  
+  for (var [item, start, end] of order){
+  
+    var start_fraction = (max_size * (start / max_dist) - max_size) - offset
+    var end_fraction = (max_size * (end / max_dist) - max_size) - offset
+    
+    if (item != 'branching') {
+      var y_value = item_dist[item]
+      output += '<path d="M ' + start_fraction + ' ' + y_value + ' L ' + end_fraction + ' ' + y_value + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+
+      if (Object.values(saving_ids).includes(start_fraction)){
+        var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
+        // console.log(saving_id)
+        saving_positions[saving_id].push(y_value)
+      } else {
+        saving_ids[i] = start_fraction
+        saving_positions[i] = [y_value]
+        i = i + 1
+      }
+      if (end_fraction != max_size){
+        output += '<path d="M ' + end_fraction + ' ' + y_value + ' L ' + (0 - offset) + ' ' + y_value + '" stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>'
+      }
+    } else {
+
+      var saving_id_main = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(end_fraction)]
+      sorted_positions = saving_positions[saving_id_main].sort()
+      // console.log(sorted_positions)
+      
+      // for (var j in sorted_positions) {
+      for (var j = 0; j < sorted_positions.length -1; j++) {
+        
+        var y_value_i = sorted_positions[j]
+        var y_value_j = sorted_positions[j+1]
+      
+        output += '<path d="M ' + end_fraction + ' ' + y_value_i + ' L ' + end_fraction + ' ' + y_value_j + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+
+      }
+
+      y_value = Math.min(...sorted_positions) + (Math.max(...sorted_positions) - Math.min(...sorted_positions)) / 2
+      output += '<path d="M ' + start_fraction + ' ' + y_value + ' L ' + end_fraction + ' ' + y_value + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+
+      if (Object.values(saving_ids).includes(start_fraction)) {
+        var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
+        saving_positions[saving_id].push(y_value)
+      } else {
+        saving_ids[i] = start_fraction
+        saving_positions[i] = [y_value]
+        i = i + 1
+      }
+
+      delete saving_ids[saving_id_main]
+      delete saving_positions[saving_id_main]
+
+    }
+  }
+  return(output)
+
+}
+
+function newick_to_order(string, prior = 0) {
+  var result = []
+  var newick = string.replace(' ', '')
+
+  if (newick[0] == '('){
+    var bracket_open = 0
+    var bracket_closed = 0
+
+    // for (var i in newick) {
+    for (var i = 0; i < newick.length; i++) {
+
+      var sub_letter = newick[i]
+      if (sub_letter == '(') {
+        bracket_open += 1 
+      } else if (sub_letter == ')') {
+        bracket_closed += 1
+      }
+          
+      if (bracket_open == bracket_closed) {
+        
+        var sub_newick = newick.slice(1, i)
+        var rest = newick.slice(i)
+        
+        if (rest.includes(',')) {
+            var parts = rest.split(',')
+            if (parts[0].includes(':')) {
+                var value = parts[0].split(':')[1]
+            } else {
+                var value = 0 
+            }
+
+            result.push(...[['branching', prior, prior + parseFloat(value)]])
+
+            // console.log(sub_newick)
+            result.push(...newick_to_order(sub_newick, prior + parseFloat(value)))
+            
+            var next_iter = parts.slice(1).join(',')
+            // console.log(next_iter)
+            result.push(...newick_to_order(next_iter, prior))
+        } else {
+            if (rest.includes(':')) {
+                var value = rest.split(':').slice(1)
+            } else {
+                var value = 0 
+            }
+            result.push(...[['branching', prior, prior + parseFloat(value)]])
+            // console.log(sub_newick)
+            result.push(...newick_to_order(sub_newick, prior + parseFloat(value)))
+        }
+        break;
+
+      }
+
+    }
+
+  } else {
+
+    if (newick.includes(',')) {
+      var parts = newick.split(',')
+      if (parts[0].includes(':')){
+        var value = parts[0].split(':')[1]
+        var branch = parts[0].split(':')[0]
+      } else {
+        var value = 0 
+        var branch = parts[0]
+      }
+
+      var next_iter = parts.slice(1).join(',')
+      result.push(...[[branch, prior, prior + parseFloat(value)]])
+      // console.log(next_iter)
+      result.push(...newick_to_order(next_iter, prior))
+
+    } else{ 
+      if (newick.includes(':')) {
+        var value = newick.split(':')[1]
+        var branch = newick.split(':')[0]
+      } else {
+        var value = 0 
+        var branch =  newick
+      }
+      result.push(...[[branch, prior, prior + parseFloat(value)]])
+    }
+  }
+
+  return(result)
+}
+
 //ANCHOR - All in one SVG creation function
 async function generate_svg(body, data) {
 
@@ -612,6 +765,8 @@ async function generate_svg(body, data) {
   var node_distance_x = parseInt($('#distx')[0].value);
   var node_distance_y = parseInt($('#disty')[0].value);
   var tree_length = parseInt($('#tree')[0].value);
+  var offset = parseInt($('#tree_offset')[0].value);
+  var tree_thickness = parseInt($('#tree_thickness')[0].value);
 
   var groups = data['infos']['groups']
   var edges = data['elements']['edges']
@@ -622,6 +777,7 @@ async function generate_svg(body, data) {
 
   var group_color = $('#groups')[0].value;
   var node_color = $('#nodes')[0].value;
+  var layer_color = $('#layer_color')[0].value;
 
   var theta = 270 / (global_x)
   var start_offset = parseInt($('#inner')[0].value);
@@ -650,9 +806,23 @@ async function generate_svg(body, data) {
 
   var genome_size = genomes.length;
 
+  var order = newick_to_order(data['infos']['newick']).reverse()
+
+  max_dist = 0
+  item_order = []
+  for (var item of order) {
+    var [name, start, end] = item
+    if (name != 'branching') {
+      item_order.push(name)
+    }
+    if (end > max_dist) {
+      max_dist = end
+    }
+  }
+
 // layer size calculations
 
-  for (var genome of genomes) {
+  for (var genome of item_order) {
 
     if ($('#flex' + genome).prop('checked') == true){
       enabled.push(genome)
@@ -741,7 +911,7 @@ async function generate_svg(body, data) {
         // console.log(i_x, i_y, j_x, j_y)
 
         svg_heatmaps.push(
-          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none')
+          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, layer_color)
         )
       }
     }
@@ -828,7 +998,7 @@ async function generate_svg(body, data) {
     )
 
     var l = steps
-    while (l < global_x-steps) {
+    while (l < global_x) {
 
       if (l+steps <= global_x){
         var k = steps;
@@ -1207,7 +1377,8 @@ async function generate_svg(body, data) {
     }
   }
 
-  for (var genome_name of genomes) {
+  item_dist = {}
+  for (var genome_name of item_order) {
     if ($('#flex' + genome_name + 'layer').prop('checked') == true){
       var [layer_width, layer_start, layer_stop] = middle_layers[genome_name + 'layer']
       
@@ -1221,6 +1392,8 @@ async function generate_svg(body, data) {
           var [circle_x, circle_y] = [0, -y_size]
         }
 
+        item_dist[genome_name] = circle_y
+
         svg_edges.push(
           $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
         )
@@ -1229,6 +1402,14 @@ async function generate_svg(body, data) {
   }
 
   // tree_length
+  // console.log(Object.keys(item_dist).length, item_order.length)
+  if (Object.keys(item_dist).length == item_order.length) {
+    // console.log(item_dist)
+
+    svg_core.append(draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness))
+    
+    // console.log(svg)
+  }
 
   for (var item of svg_search) svg_core.append(item);
   for (var item of svg_heatmaps) svg_core.append(item);
@@ -1538,6 +1719,8 @@ function main () {
     })
 
     //ANCHOR - Main panel response functions
+
+    
     
     if ($('#condtr')[0].value == -1){
       // $('#customRange2').prop('disabled', true);
@@ -2123,7 +2306,7 @@ function main () {
         }
       }
 
-      console.log(searchfunction)
+      // console.log(searchfunction)
 
       var layers_positions = {}
       for (var layer_name of Object.keys(layers_filter)) {
