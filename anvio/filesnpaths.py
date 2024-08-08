@@ -19,8 +19,7 @@ from anvio.terminal import SuppressAllOutput
 from anvio.errors import FilesNPathsError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -31,6 +30,22 @@ __status__ = "Development"
 
 allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
 is_bad_column_name = lambda col: len([char for char in col if char not in allowed_chars])
+
+
+def is_gene_clusters_txt(file_path):
+    is_file_tab_delimited(file_path)
+
+    header_proper = ['genome_name', 'gene_caller_id', 'gene_cluster_name']
+
+    with open(file_path, 'r') as input_file:
+        header = input_file.readline().strip().split('\t')
+
+    if sorted(header_proper) != sorted(header):
+        raise FilesNPathsError(f"The file '{file_path}' does not seem to contain the column headers anvi'o "
+                               f"expects to find in a proper gene-clusters-txt file :/ Please check the artifact "
+                               f"documentation online.")
+
+    return True
 
 
 def is_proper_newick(newick_data, dont_raise=False, names_with_only_digits_ok=False):

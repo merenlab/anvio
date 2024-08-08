@@ -177,9 +177,6 @@ function createDisplay(){
             var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', 0);
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
-            text.setAttribute('font-size', "24px");
-            text.setAttribute('font-family', 'Roboto','Helvetica', 'Arial');
-            text.setAttribute('font-weight', '300');
             text.setAttribute('style', 'alignment-baseline:central');
             text.setAttribute('class', 'genomeTitle');
             text.appendChild(document.createTextNode(layer));
@@ -192,8 +189,6 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family', 'Roboto','Helvetica','Arial');
-                text.setAttribute('font-weight', '300');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
                 text.setAttribute('class', 'callerTitle');
                 text.setAttribute('gene-callers-id', caller_id);

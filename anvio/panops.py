@@ -40,8 +40,7 @@ from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -72,6 +71,7 @@ class Pangenome(object):
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
+        self.user_defined_gene_clusters = A('gene_clusters_txt')
         self.skip_alignments = A('skip_alignments')
         self.skip_homogeneity = A('skip_homogeneity')
         self.quick_homogeneity = A('quick_homogeneity')
@@ -140,6 +140,7 @@ class Pangenome(object):
                        'min_percent_identity': self.min_percent_identity,
                        'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
                        'mcl_inflation': self.mcl_inflation,
+                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
                        'default_view': 'gene_cluster_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
                        'additional_params_for_seq_search': self.additional_params_for_seq_search,
@@ -212,6 +213,9 @@ class Pangenome(object):
 
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
+
+        if self.user_defined_gene_clusters:
+            filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
 
         if not isinstance(self.minbit, float):
             raise ConfigError("minbit value must be of type float :(")
@@ -652,7 +656,8 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'], skip_check_names=True)
+        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_max', 'AAI_avg']
+        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, keys, skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
@@ -924,24 +929,13 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def process(self):
-        # start by processing the additional params user may have passed for the blast step
-        self.process_additional_params()
-
-        # load genomes from genomes storage
-        self.load_genomes()
-
-        # check sanity
-        self.sanity_check()
-
-        # gen pan_db
-        self.generate_pan_db()
+    def get_gene_clusters_de_novo(self):
+        """Function to compute gene clusters de novo"""
 
         # get all amino acid sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
         self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path,
                                                              exclude_partial_gene_calls=self.exclude_partial_gene_calls)
-
 
         # get unique amino acid sequences:
         self.progress.new('Uniquing the output FASTA file')
@@ -962,6 +956,67 @@ class Pangenome(object):
         # we have the raw gene clusters dict, but we need to re-format it for following steps
         gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
+
+        return gene_clusters_dict
+
+
+    def get_gene_clusters_from_gene_clusters_txt(self):
+        """Function to recover gene clusters from gene-clusters-txt"""
+
+        gene_clusters_dict = {}
+        gene_clusters_txt = utils.get_TAB_delimited_file_as_dictionary(self.user_defined_gene_clusters, indexing_field=-1)
+
+        genomes_in_gene_clusters_txt = set()
+
+        for v in gene_clusters_txt.values():
+            if v['gene_cluster_name'] not in gene_clusters_dict:
+                gene_clusters_dict[v['gene_cluster_name']] = []
+
+            gene_clusters_dict[v['gene_cluster_name']].append({'gene_caller_id': int(v['gene_caller_id']),
+                                                               'gene_cluster_id': v['gene_cluster_name'],
+                                                               'genome_name': v['genome_name'],
+                                                               'alignment_summary': ''})
+
+            genomes_in_gene_clusters_txt.add(v['genome_name'])
+
+        genomes_only_in_gene_clusters_txt = [g for g in genomes_in_gene_clusters_txt if g not in self.genomes]
+        genomes_only_in_genomes_storage = [g for g in self.genomes if g not in genomes_in_gene_clusters_txt]
+
+        if len(genomes_only_in_gene_clusters_txt):
+            raise ConfigError(f"Anvi'o run into an issue while processing your gene-clusters-txt file. It seems {len(genomes_only_in_gene_clusters_txt)} of "
+                              f"{len(genomes_in_gene_clusters_txt)} genomes in your gene-clusters-txt file is not in the genomes-storage-db you have "
+                              f"generated from your external- and/or internal-genomes with the program `anvi-gen-genomes-storage`. Here is the list of "
+                              f"genome names that cause this issue: {', '.join(genomes_only_in_gene_clusters_txt)}")
+
+        if len(genomes_only_in_genomes_storage):
+            self.run.warning("Anvi'o observed something while processing your gene-clusters-txt file. It seems {len(genomes_only_in_genomes_storage)} of "
+                             "{len(self.genomes)} genomes described in your genome-storage-db does not have any gene clusters described in the "
+                             "gene-clusters-txt file. This may not be the end of the world, but it is a weird situation, and may lead to some "
+                             "downstream issues. Anvi'o will continue working on your data, but if your computer sets itself on fire or something "
+                             "please consider that it may be because of this situation.")
+
+        return gene_clusters_dict
+
+
+    def process(self):
+        # start by processing the additional params user may have passed for the blast step
+        self.process_additional_params()
+
+        # load genomes from genomes storage
+        self.load_genomes()
+
+        # check sanity
+        self.sanity_check()
+
+        # gen pan_db
+        self.generate_pan_db()
+
+        # time to get the gene clusters. by default, we compute them de novo. but we also can
+        # get them from the user themselves through gene-clusters-txt
+        if self.user_defined_gene_clusters:
+            gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+        else:
+            gene_clusters_dict = self.get_gene_clusters_de_novo()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)

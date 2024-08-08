@@ -55,8 +55,7 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -694,9 +693,17 @@ class ContigsSuperclass(object):
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
 
 
-    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
+
+        if requested_sources:
+            if isinstance(requested_sources, str):
+                requested_sources = list(set([source.strip() for source in requested_sources.split(delimiter)]))
+            elif isinstance(requested_sources, list):
+                pass
+            else:
+                raise ConfigError("Requested sourecs for annotations must be of type 'list' or 'str'")
 
         self.check_functional_annotation_sources(requested_sources)
 
@@ -709,10 +716,10 @@ class ContigsSuperclass(object):
             if not len(search_term) >= 3:
                 raise ConfigError("A search term cannot be less than three characters")
 
-        self.run.info('Search terms', '%d found' % (len(search_terms)))
+        self.run.info('Search terms', f"{len(search_terms)} found: '{'|'.join(search_terms)}'")
+        self.run.info("Case sensitive search?", "True" if case_sensitive else "False")
+        self.run.info("Exact match?", "True" if exact_match else "False")
         matching_gene_caller_ids = dict([(search_term, {}) for search_term in search_terms])
-        matching_accession_calls = dict([(search_term, {}) for search_term in search_terms])
-        matching_function_calls = dict([(search_term, {}) for search_term in search_terms])
         split_names = dict([(search_term, {}) for search_term in search_terms])
         full_report = []
 
@@ -722,8 +729,18 @@ class ContigsSuperclass(object):
             self.progress.new('Search functions')
             self.progress.update('Searching for term "%s"' % search_term)
 
-            query = '''select gene_callers_id, source, accession, function from gene_functions where (function LIKE "%%''' \
-                            + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+            if case_sensitive:
+                contigs_db.db._exec('PRAGMA case_sensitive_like=ON;')
+            else:
+                contigs_db.db._exec('PRAGMA case_sensitive_like=OFF;')
+
+            if exact_match:
+                query = '''select gene_callers_id, source, accession, function from gene_functions where (function = "''' \
+                                + search_term + '''" OR accession = "''' + search_term + '''")'''
+            else:
+                query = '''select gene_callers_id, source, accession, function from gene_functions where (function LIKE "%%''' \
+                                + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+
             if requested_sources:
                 query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
             else:
@@ -741,16 +758,26 @@ class ContigsSuperclass(object):
             full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
-            matching_accession_calls[search_term] = list(set([m[2] for m in response]))
-            matching_function_calls[search_term] = list(set([m[3] for m in response]))
             split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
 
             self.progress.end()
 
-            if len(matching_gene_caller_ids):
-                self.run.info('Matches', '%d unique gene calls contained the search term "%s"' % (len(matching_gene_caller_ids[search_term]), search_term))
+            if len(full_report):
+                self.run.info('Matches', '%d unique genes contained the search term "%s"' % (len(set([e[0] for e in full_report if e[4] == search_term])), search_term), nl_before=1)
                 if verbose:
-                    self.run.warning('\n'.join(matching_function_calls[search_term][0:25]), header="Matching names for '%s' (up to 25)" % search_term, raw=True, lc='cyan')
+                    observed_functions = set([])
+                    self.run.warning('', header="Sneak peak into matching functions (up to 25)", raw=True, lc='cyan')
+                    matches = [e for e in full_report if e[4] == search_term]
+                    for entry in random.sample(matches, len(matches)):
+                        if entry[3] in observed_functions:
+                            continue
+                        else:
+                            self.run.info_single(f"{'; '.join(entry[3].split('!!!'))} :: {'; '.join(entry[2].split('!!!'))} within '{entry[1]}'", mc='cyan', cut_after=0)
+
+                        observed_functions.add(entry[3]) 
+
+                        if len(observed_functions) == 25:
+                            break
             else:
                 self.run.info('Matches', 'No matches found the search term "%s"' % (search_term), mc='red')
 
@@ -1612,6 +1639,45 @@ class PanSuperclass(object):
         return sequences
 
 
+    def compute_AAI_for_gene_cluster(self, gene_cluster):
+        """Simple AAI calculator for sequences in a gene cluster"""
+
+        def calculate_sequence_identity(s1, s2):
+            matches = sum(r1 == r2 for r1, r2 in zip(s1, s2))
+            identity = matches / len(s1)
+            return identity
+    
+        # turn the sequences dict into a more useful format for this
+        # step
+        d = {}
+        for gene_cluster_name in gene_cluster:
+            for genome_name in gene_cluster[gene_cluster_name]:
+                for gene_call in gene_cluster[gene_cluster_name][genome_name]:
+                    d[f"{genome_name}_{gene_call}"] = gene_cluster[gene_cluster_name][genome_name][gene_call]
+    
+        # if there is only one sequence, then there is nothing to do here.
+        if len(d) == 1:
+            return (0.0, 0.0, 0.0)
+    
+        # get all pairs of sequences
+        pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
+    
+        # FIXME: we need a smart strategy here to deal with gaps, but meren is old and it is 11pm.
+
+        # calculate pairwise identities
+        identities = []
+        for s1, s2 in pairs_of_sequences:
+            identity = calculate_sequence_identity(d[s1], d[s2])
+            identities.append(identity)
+    
+        # calculate AAI values
+        AAI_min = min(identities)
+        AAI_max = max(identities)
+        AAI_avg = numpy.mean(identities)
+
+        return (AAI_min, AAI_max, AAI_avg)
+
+
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
         if gene_cluster_names is None:
             self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene "
@@ -1628,6 +1694,8 @@ class PanSuperclass(object):
 
         homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
 
+        AAI_calculator = self.compute_AAI_for_gene_cluster
+
         self.progress.new('Computing gene cluster homogeneity indices', progress_total_items=len(gene_cluster_names))
         self.progress.update('Initializing %d threads...' % num_threads)
 
@@ -1641,7 +1709,7 @@ class PanSuperclass(object):
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
-                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, self.run))
+                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, AAI_calculator, self.run))
             workers.append(worker)
             worker.start()
 
@@ -1653,7 +1721,10 @@ class PanSuperclass(object):
                 if homogeneity_dict:
                     results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
                                                                       'geometric_homogeneity_index': homogeneity_dict['geometric'],
-                                                                      'combined_homogeneity_index': homogeneity_dict['combined']}
+                                                                      'combined_homogeneity_index': homogeneity_dict['combined'],
+                                                                      'AAI_min': homogeneity_dict['AAI_min'],
+                                                                      'AAI_max': homogeneity_dict['AAI_max'],
+                                                                      'AAI_avg': homogeneity_dict['AAI_avg']}
 
                 received_gene_clusters += 1
                 self.progress.increment(increment_to=received_gene_clusters)
@@ -1671,7 +1742,7 @@ class PanSuperclass(object):
 
 
     @staticmethod
-    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, run):
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, AAI_calculator, run):
         r = terminal.Run()
         r.verbose = False
 
@@ -1686,10 +1757,12 @@ class PanSuperclass(object):
 
             try:
                 funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
-
                 indices_dict['functional'] = funct_index[gene_cluster_name]
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
+
+                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'] = AAI_calculator(gene_cluster)
+
             except:
                 if gene_cluster_name not in str(gene_clusters_failed_to_align):
                     progress.reset()
@@ -1704,6 +1777,9 @@ class PanSuperclass(object):
                 indices_dict['functional'] = -1
                 indices_dict['geometric'] = -1
                 indices_dict['combined'] = -1
+                indices_dict['AAI_min'] = -1
+                indices_dict['AAI_max'] = -1
+                indices_dict['AAI_avg'] = -1
 
             output_queue.put(indices_dict)
 
@@ -2731,9 +2807,15 @@ class PanSuperclass(object):
         return collection, bins_info
 
 
-    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, case_sensitive=False, exact_match=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
+
+        # FIXME: Even though the function header contaisn `case_sensitive` and `exact_match` variables,
+        #        the function below pays no attention to these variables. FURTHERMORE, this is a pretty
+        #        shitty way to handle function search operations -- there are two functions in this file
+        #        with the same name, with lots of redundant code. We need to consolidate them into a single
+        #        class that can deal with pan or contigs db files seamlessly :/
 
         search_terms = [s.strip() for s in search_terms]
 

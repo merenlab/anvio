@@ -187,3 +187,16 @@ td {
   min-width: fit-content;
   min-height: fit-content;
 }
+
+.genomeTitle{
+    font-size: 30px;
+    line-height: 32px;
+    font-weight: 300;
+    fill: #666;
+}
+
+.callerTitle{
+    line-height: 32px;
+    font-weight: 300;
+    fill: #333;
+}
