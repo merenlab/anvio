@@ -703,14 +703,14 @@ class ContigsSuperclass(object):
             elif isinstance(requested_sources, list):
                 pass
             else:
-                raise ConfigError("Requested sourecs for annotations must be of type 'list' or 'str'")
+                raise ConfigError("Requested sources for annotations must be of type 'list' or 'str'")
 
         self.check_functional_annotation_sources(requested_sources)
 
         search_terms = [s.strip() for s in search_terms]
 
         if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
-            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
+            raise ConfigError("Please do not use the same search term twice :/ Because, reasons. You know.")
 
         for search_term in search_terms:
             if not len(search_term) >= 3:
