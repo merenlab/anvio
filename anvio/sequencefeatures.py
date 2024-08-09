@@ -54,6 +54,7 @@ class PrimerSearch:
         self.stop_after = A('stop_after')
         self.only_report_primer_matches = A('only_report_primer_matches')
         self.only_report_remainders = A('only_report_remainders')
+        self.okay_if_output_dir_exists = True if A('okay_if_output_dir_exists') else False
 
         if self.only_report_primer_matches and self.only_report_remainders:
             raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
@@ -87,7 +88,7 @@ class PrimerSearch:
             self.min_remainder_length = 0
 
         if self.output_directory_path:
-            filesnpaths.check_output_directory(self.output_directory_path)
+            filesnpaths.check_output_directory(self.output_directory_path, ok_if_exists = self.okay_if_output_dir_exists)
 
 
         self.reads_are_processed = False
@@ -243,8 +244,12 @@ class PrimerSearch:
         return sample_dict, primers_dict
 
 
-    def process(self):
-        """Processes everything."""
+    def process(self, return_dicts = False):
+        """Processes everything. 
+        Parameters
+        =======
+        return_dicts : boolean
+            If you want this function to return the sample_dict and the primers_dict then set this to true."""
 
 
         for sample_name in self.samples_dict:
@@ -253,11 +258,14 @@ class PrimerSearch:
             if self.output_directory_path:
                 self.store_sequences(sample_name, sample_dict, primers_dict)
 
+            self.reads_are_processed = True
+
+            if return_dicts:
+                return sample_dict, primers_dict
             # call Batman
             del sample_dict
             del primers_dict
 
-        self.reads_are_processed = True
 
 
     def print_summary(self):
