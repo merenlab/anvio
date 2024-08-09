@@ -848,7 +848,7 @@ class LocusSplitter:
             counter = 1
             for term in self.search_term:
                 self.run.info('Search term %d of %d' % (counter,len(self.search_term)), term, mc='green')
-                self.run.info('Function calls being used', ', '.join((contigs_db.gene_function_call_sources
+                self.run.info('Queried annotation sources', ', '.join((contigs_db.gene_function_call_sources
                                                                       if not self.annotation_sources
                                                                       else self.annotation_sources)))
 
