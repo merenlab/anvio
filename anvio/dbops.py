@@ -748,7 +748,7 @@ class ContigsSuperclass(object):
 
             response = contigs_db.db._exec(query).fetchall()
 
-            # the resopnse now contains all matching gene calls found in the contigs database. this may cause an issue
+            # the response now contains all matching gene calls found in the contigs database. this may cause an issue
             # (just like the one reported here: https://github.com/merenlab/anvio/issues/1515) if the user is working
             # with only a subset of splits in the contigs database (for instance through `anvi-refine`). here we will
             # remove gene calls for which we don't have a split name associated:
