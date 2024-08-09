@@ -1441,7 +1441,6 @@ class BottleApplication(Bottle):
             gene_cluster_data = None
             if self.additional_gc_data and len(self.additional_gc_data) > 1:
                 gene_cluster_data = self.additional_gc_data[1].get(gc_id, {}).get(gc_key, None)
-                print(f"Gene Cluster data: {gene_cluster_data}")
             if gene_cluster_data is None:
                 raise ValueError("Gene cluster data is None.")
         except (KeyError, TypeError, ValueError, RuntimeError) as e:
