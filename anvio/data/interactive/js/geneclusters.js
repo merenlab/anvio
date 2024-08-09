@@ -101,32 +101,29 @@ function loadAll() {
         }
     });
 }
-function loadGCAdditionalData(gc_id, gc_key){
-
-    $.ajax({
-        type: 'POST',
-        cache: false,
-        url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key,
-        success: function(data){
-            if (data['status'] == 0){
-                console.log(data);
-                var newThHeader = $('<th>').text(gc_key);                
-                var newThData = $('<th>').text(data.gene_cluster_data);                
-                $('#gc-acc-table-header').parent().append(newThHeader);
-                $('#gc-acc-table-data').parent().append(newThData);
-                $('#gc-acc-table').show();
-            }
-            else{
-                console.log('Error:', data.message);
-            }
-        },
-        error: function(textStatus, errorThrown) {
-            console.error('AJAX Error:', textStatus, errorThrown);
+async function loadGCAdditionalData(gc_id, gc_key) {
+    try {
+        const response = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
+        });
+        if (response['status'] === 0) {
+            console.log(response);
+            var newThHeader = $('<th>').text(gc_key);                
+            var newThData = $('<th>').text(response.gene_cluster_data);                
+            $('#gc-acc-table-header').parent().append(newThHeader);
+            $('#gc-acc-table-data').parent().append(newThData);
+            $('.gc-acc-table').show();
+        } else {
+            console.log('Error:', response.message);
         }
-    })
+    } catch (error) {
+        console.error('AJAX Error:', error);
+    }
 }
 
-function createDisplay(){
+async function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
 
@@ -155,8 +152,7 @@ function createDisplay(){
         var layer = state['layer-order'][layer_id];
 
         if (layer_id_list.has(layer)) {
-            console.log(gene_cluster_data.gene_cluster_name, layer);
-            loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer);
+            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer);
         }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
