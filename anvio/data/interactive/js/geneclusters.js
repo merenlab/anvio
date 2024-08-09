@@ -109,11 +109,19 @@ function loadGCAdditionalData(gc_id, gc_key){
         url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key,
         success: function(data){
             if (data['status'] == 0){
-                var newThHeader = $('<th>').text(gc_key);
-                var newTh = $('<th>').text(data.gene_cluster_data);
-                $('#gc-acc-table-header').after(newThHeader);
-                $('#gc-acc-table-data').after(newTh);
+                console.log(data);
+                var newThHeader = $('<th>').text(gc_key);                
+                var newThData = $('<th>').text(data.gene_cluster_data);                
+                $('#gc-acc-table-header').parent().append(newThHeader);
+                $('#gc-acc-table-data').parent().append(newThData);
+                $('#gc-acc-table').show();
             }
+            else{
+                console.log('Error:', data.message);
+            }
+        },
+        error: function(textStatus, errorThrown) {
+            console.error('AJAX Error:', textStatus, errorThrown);
         }
     })
 }
@@ -140,7 +148,7 @@ function createDisplay(){
     var count = 0;
     var layer_id_list = new Set(["combined_homogeneity_index", "functional_homogeneity_index", "geometric_homogeneity_index", 
                                  "num_genes_in_gene_cluster", "num_genomes_gene_cluster_has_hits", "max_num_paralogs","AAI_avg",
-                                 "AAI_max", "AAI_min"]);
+                                 "AAI_max", "AAI_min", "SCG"]);
 
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
