@@ -78,6 +78,7 @@ if __name__ == '__main__':
     groupB.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
                             In other words, --search-term will be queried against HMM source annotations, NOT functional annotations. \
                             If you choose this option, you must also say which HMM source to use.')
+    groupB.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
 
     groupC =  parser.add_argument_group('ANCHOR GENE IDENTIFICATION OPTION #2', "Search based on gene caller id(s)")
     groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))

@@ -29,5 +29,8 @@ anvi-export-locus -c CONTIGS.db --gene-caller-id 8616 -o test/ -n 7,30 -O metage
 INFO "Running anvi-export-locus in flank-mode"
 anvi-export-locus -c CONTIGS.db --gene-caller-id 68,78 -o test/ -O metagenome_68_78 --flank-mode
 
+INFO "List hmm-sources in the contigs-db"
+anvi-export-locus -c P_marinus_CCMP1375.db --use-hmm --hmm-sources Bacteria_71 --search-term "Exonuc_VII_L" -n 500,500 -o test/ -O P_marinus_CCMP1375 --list-hmm-sources
+
 INFO "Running anvi-export-locus in default-mode using HMM to find a BIG locus in a genome"
 anvi-export-locus -c P_marinus_CCMP1375.db --use-hmm --hmm-sources Bacteria_71 --search-term "Exonuc_VII_L" -n 500,500 -o test/ -O P_marinus_CCMP1375
