@@ -100,10 +100,30 @@ function loadAll() {
             }
         }
     });
-
+}
+async function loadGCAdditionalData(gc_id, gc_key) {
+    try {
+        const response = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
+        });
+        if (response['status'] === 0) {
+            console.log(response);
+            var newThHeader = $('<th>').text(gc_key);                
+            var newThData = $('<th>').text(response.gene_cluster_data);                
+            $('#gc-acc-table-header').parent().append(newThHeader);
+            $('#gc-acc-table-data').parent().append(newThData);
+            $('.gc-acc-table').show();
+        } else {
+            console.log('Error:', response.message);
+        }
+    } catch (error) {
+        console.error('AJAX Error:', error);
+    }
 }
 
-function createDisplay(){
+async function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
 
@@ -123,9 +143,17 @@ function createDisplay(){
     var acid_sequences = [];
     var order = {};
     var count = 0;
+    var layer_id_list = new Set(["combined_homogeneity_index", "functional_homogeneity_index", "geometric_homogeneity_index", 
+                                 "num_genes_in_gene_cluster", "num_genomes_gene_cluster_has_hits", "max_num_paralogs","AAI_avg",
+                                 "AAI_max", "AAI_min", "SCG"]);
+
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
         var layer = state['layer-order'][layer_id];
+
+        if (layer_id_list.has(layer)) {
+            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer);
+        }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
             continue;
@@ -313,4 +341,18 @@ function removeGeneChart() {
   if (node && node.parentNode) {
     node.parentNode.removeChild(node);
   }
+}
+
+function scrollTableLeft() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: -100,
+        behavior: 'smooth'
+    });
+}
+
+function scrollTableRight() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: 100,
+        behavior: 'smooth'
+    });
 }
