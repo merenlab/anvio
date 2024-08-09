@@ -346,3 +346,17 @@ function removeGeneChart() {
     node.parentNode.removeChild(node);
   }
 }
+
+function scrollTableLeft() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: -100,
+        behavior: 'smooth'
+    });
+}
+
+function scrollTableRight() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: 100,
+        behavior: 'smooth'
+    });
+}
