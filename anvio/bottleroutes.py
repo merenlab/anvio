@@ -77,6 +77,8 @@ class BottleApplication(Bottle):
         # WSGI for bottle to use
         self._wsgi_for_bottle = "paste"
 
+        self.additional_data = None
+
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
 
         if self.interactive:
@@ -1424,18 +1426,31 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1})
 
 
-    def get_additional_gc_data(self, gc_id, gc_key):
-        additional_data = TableForItemAdditionalData(self.args).get()
+    def fetch_additional_data(self):
+        """Fetch GC Accessory Data from TableForItemAdditionalData"""
+        if self.additional_data is None:
+            try:
+                self.additional_data = TableForItemAdditionalData(self.args).get()
+            except Exception as e:
+                self.additional_data = None
+                raise RuntimeError(f'Error fetching additional data: {str(e)}')
 
-        gene_cluster_data = additional_data[1][gc_id][gc_key]
+    def get_additional_gc_data(self, gc_id, gc_key):
+        try:
+            self.fetch_additional_data()
+            gene_cluster_data = None
+            if self.additional_data and len(self.additional_data) > 1:
+                gene_cluster_data = self.additional_data[1].get(gc_id, {}).get(gc_key, None)
+                print(f"Gene Cluster data: {gene_cluster_data}")
+            if gene_cluster_data is None:
+                raise ValueError("Gene cluster data is None.")
+        except (KeyError, TypeError, ValueError, RuntimeError) as e:
+            return json.dumps({'status': 1, 'message': f'Error retrieving data: {str(e)}'})
 
         try:
-            return json.dumps({'gene_cluster_data': gene_cluster_data,
-                               'status': 0})
-
+            return json.dumps({'gene_cluster_data': gene_cluster_data, 'status': 0})
         except Exception as e:
-            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
-            return json.dumps({'status': 1, 'message': message})
+            return json.dumps({'status': 1, 'message': f'Error serializing response: {str(e)}'})
 
     def reroot_tree(self):
         # Get the Newick tree string from the form data
