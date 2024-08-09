@@ -77,7 +77,7 @@ class BottleApplication(Bottle):
         # WSGI for bottle to use
         self._wsgi_for_bottle = "paste"
 
-        self.additional_data = None
+        self.additional_gc_data = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
 
@@ -1428,19 +1428,19 @@ class BottleApplication(Bottle):
 
     def fetch_additional_data(self):
         """Fetch GC Accessory Data from TableForItemAdditionalData"""
-        if self.additional_data is None:
+        if self.additional_gc_data is None:
             try:
-                self.additional_data = TableForItemAdditionalData(self.args).get()
+                self.additional_gc_data = TableForItemAdditionalData(self.args).get()
             except Exception as e:
-                self.additional_data = None
+                self.additional_gc_data = None
                 raise RuntimeError(f'Error fetching additional data: {str(e)}')
 
     def get_additional_gc_data(self, gc_id, gc_key):
         try:
             self.fetch_additional_data()
             gene_cluster_data = None
-            if self.additional_data and len(self.additional_data) > 1:
-                gene_cluster_data = self.additional_data[1].get(gc_id, {}).get(gc_key, None)
+            if self.additional_gc_data and len(self.additional_gc_data) > 1:
+                gene_cluster_data = self.additional_gc_data[1].get(gc_id, {}).get(gc_key, None)
                 print(f"Gene Cluster data: {gene_cluster_data}")
             if gene_cluster_data is None:
                 raise ValueError("Gene cluster data is None.")
