@@ -1430,7 +1430,8 @@ class BottleApplication(Bottle):
         """Fetch GC Accessory Data from TableForItemAdditionalData"""
         if self.additional_gc_data is None:
             try:
-                self.additional_gc_data = TableForItemAdditionalData(self.args).get()
+                progress = terminal.Progress()
+                self.additional_gc_data = TableForItemAdditionalData(self.interactive.args, p=progress).get()
             except Exception as e:
                 self.additional_gc_data = None
                 raise RuntimeError(f'Error fetching additional data: {str(e)}')
