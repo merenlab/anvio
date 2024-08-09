@@ -1839,8 +1839,7 @@ class DGR_Finder:
                                     #min_remainder_length= self.primer_remainder_lengths,
                                     #min_frequency=min_frequency,
                                     output_dir=output_directory_path,
-                                    only_report_primer_matches = True,
-                                    okay_if_output_dir_exists = True
+                                    only_report_primer_matches = True
                                     )
 
             s = PrimerSearch(args, run=run, progress=progress)
