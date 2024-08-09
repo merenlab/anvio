@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
         <link rel="stylesheet" type="text/css" href="css/geneclusters.css" />
         <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+        <link rel="stylesheet" href="lib/bootstrap-icons/font/bootstrap-icons.min.css" type="text/css">
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
         <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->	
          <script type="text/javascript" src="js/utils.js"></script>
@@ -49,23 +50,32 @@
                           <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
                           <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
                           <input type="button" value="Color Settings" style="margin-left: 30px;" onclick="$('#display-conservation-controls').toggle(); " />
-                          <input type="button" value="GC Accessory" style="margin-left: 30px;" onclick="$('#gc-acc-table').toggle(); " />
                 </div>
 
                 <div id="display-conservation-controls" style="display: none"></div>
-                <div class="" id="gc-acc-table" style="display: none;">
-                    <table class="table table-responsive" style="table-layout: fixed;">
-                        <thead>
-                          <tr>
-                            <th scope="col" id="gc-acc-table-header">#</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <th scope="row" id="gc-acc-table-data">Value</th>
-                          </tr>
-                        </tbody>
-                      </table>
+                <div class="gc-container">
+                    <div class="d-flex justify-content-center">
+                        <div class="table-wrapper">
+                            <button class="scroll-btn left" onclick="scrollTableLeft();">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button class="scroll-btn right" onclick="scrollTableRight();">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <table class="gc-acc-main table table-responsive col-9">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" id="gc-acc-table-header">#</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" id="gc-acc-table-data">Value</th>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <div id="display-container">
                     <svg id="svg"></svg>
