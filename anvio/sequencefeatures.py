@@ -54,7 +54,6 @@ class PrimerSearch:
         self.stop_after = A('stop_after')
         self.only_report_primer_matches = A('only_report_primer_matches')
         self.only_report_remainders = A('only_report_remainders')
-        self.okay_if_output_dir_exists = True if A('okay_if_output_dir_exists') else False
 
         if self.only_report_primer_matches and self.only_report_remainders:
             raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
@@ -87,8 +86,8 @@ class PrimerSearch:
         if self.only_report_primer_matches:
             self.min_remainder_length = 0
 
-        if self.output_directory_path:
-            filesnpaths.check_output_directory(self.output_directory_path, ok_if_exists = self.okay_if_output_dir_exists)
+        if self.output_directory_path and os.path.exists(self.output_directory_path):
+            filesnpaths.is_output_dir_writable(self.output_directory_path)
 
 
         self.reads_are_processed = False
@@ -245,7 +244,7 @@ class PrimerSearch:
 
 
     def process(self, return_dicts = False):
-        """Processes everything. 
+        """Processes everything.
         Parameters
         =======
         return_dicts : boolean
@@ -378,6 +377,7 @@ class PrimerSearch:
             for primer_name in primers_dict:
                 remainder_sequences = self.get_sequences(primer_name, primers_dict, target='remainders')
                 output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_name))
+                filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
                 with open(output_file_path, 'w') as output:
                     counter = 1
                     for sequence in remainder_sequences:
@@ -395,6 +395,7 @@ class PrimerSearch:
             primer_matching_sequences = self.get_sequences(primer_name, primers_dict, target='primer_match')
 
             output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
             with open(output_file_path, 'w') as output:
                 counter = 1
                 for sequence in primer_matching_sequences:
@@ -411,6 +412,7 @@ class PrimerSearch:
         self.progress.update('...')
         for primer_name in self.primers_dict:
             trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(trimmed_output_file_path, ok_if_exists=False)
             sequences = self.get_sequences(primer_name, primers_dict, target='trimmed')
             with open(trimmed_output_file_path, 'w') as trimmed:
                 counter = 1
@@ -419,6 +421,7 @@ class PrimerSearch:
                     counter += 1
 
             gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(gapped_output_file_path, ok_if_exists=False)
             sequences = self.get_sequences(primer_name, primers_dict, target='gapped')
             with open(gapped_output_file_path, 'w') as gapped:
                 counter = 1
