@@ -1,31 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""anvi-split-locus, first of its name, splitter of loci, and generator of mini contigs databases
+"""anvi-export-locus, first of its name, splitter of loci, and generator of mini contigs databases
 
   You want to play with it? This is how you could quickly test it:
 
-  Downloaded the anvi'o data pack for the infant gut data, which is here:
+  ```
+  anvi-self-test --suite export-locus
 
-    https://ndownloader.figshare.com/files/8252861
+  cd export_locus_test
 
-  Uunpack it and went into it:
-
-    tar -zxvf INFANTGUTTUTORIAL.tar.gz && cd INFANT-GUT-TUTORIAL
-
-  Then I run the program `anvi-export-gene-block` in the anvi'o master this way:
-
-    anvi-export-locus -c CONTIGS.db \
-                      -O OUTPUT \
-                      --use-hmm \
-                      --hmm-sources Campbell_et_al \
-                      --search-term Ribosomal_L27 \
-                      -n 24
-
-  This will give you a new contigs database with a single contig that contains the Ribosomal_L27 gene and
-  the 24 genes that follow it.
-
-  If all you want is the sequence of a gene matching a search pattern then use anvi-get-sequences-for-hmm-hits
-  for HMM searches, and anvi-search-functions for searches in functional annotations.
+  anvi-export-locus -c CONTIGS.db \
+                    -O OUTPUT \
+                    --use-hmm \
+                    --hmm-sources Bacteria_71 \
+                    --search-term "Exonuc_VII_L" \
+                    -n 500,500 \
+                    -O P_marinus_CCMP1375 
+  ```
 """
 
 import sys
@@ -78,6 +69,7 @@ if __name__ == '__main__':
     groupB.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
                             In other words, --search-term will be queried against HMM source annotations, NOT functional annotations. \
                             If you choose this option, you must also say which HMM source to use.')
+    groupB.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
 
     groupC =  parser.add_argument_group('ANCHOR GENE IDENTIFICATION OPTION #2', "Search based on gene caller id(s)")
     groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))

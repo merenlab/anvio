@@ -703,14 +703,14 @@ class ContigsSuperclass(object):
             elif isinstance(requested_sources, list):
                 pass
             else:
-                raise ConfigError("Requested sourecs for annotations must be of type 'list' or 'str'")
+                raise ConfigError("Requested sources for annotations must be of type 'list' or 'str'")
 
         self.check_functional_annotation_sources(requested_sources)
 
         search_terms = [s.strip() for s in search_terms]
 
         if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
-            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
+            raise ConfigError("Please do not use the same search term twice :/ Because, reasons. You know.")
 
         for search_term in search_terms:
             if not len(search_term) >= 3:
@@ -748,7 +748,7 @@ class ContigsSuperclass(object):
 
             response = contigs_db.db._exec(query).fetchall()
 
-            # the resopnse now contains all matching gene calls found in the contigs database. this may cause an issue
+            # the response now contains all matching gene calls found in the contigs database. this may cause an issue
             # (just like the one reported here: https://github.com/merenlab/anvio/issues/1515) if the user is working
             # with only a subset of splits in the contigs database (for instance through `anvi-refine`). here we will
             # remove gene calls for which we don't have a split name associated:
