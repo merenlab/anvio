@@ -201,6 +201,11 @@ class GenomeStorage(object):
         # get functions
         gene_functions_in_genomes_dict, gene_functions_lookup_dict = self.get_gene_functions_in_genomes_dict()
 
+        for key, value in gene_functions_in_genomes_dict.items():
+            if any(isinstance(v, bytes) for v in value.values()) or \
+            (isinstance(value.get('accession'), str) and value['accession'].startswith("b'")):
+                raise TypeError(f"Error: An entry contains a value of type bytes or a string starting with 'b': {value}")
+
         self.progress.new('Loading genes info', progress_total_items=num_genes)
         self.progress.update('...')
 
