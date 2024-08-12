@@ -632,18 +632,22 @@ function draw_newick(order, item_dist, max_dist, offset, max_size, line_thicknes
       }
     } else {
 
-      var saving_id_main = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(end_fraction)]
-      sorted_positions = saving_positions[saving_id_main].sort()
-      // console.log(sorted_positions)
-      
-      // for (var j in sorted_positions) {
-      for (var j = 0; j < sorted_positions.length -1; j++) {
+      if (Object.values(saving_ids).includes(end_fraction)){
+        var saving_id_main = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(end_fraction)]
+        sorted_positions = saving_positions[saving_id_main].sort()
+        // console.log(sorted_positions)
         
-        var y_value_i = sorted_positions[j]
-        var y_value_j = sorted_positions[j+1]
-      
-        output += '<path d="M ' + end_fraction + ' ' + y_value_i + ' L ' + end_fraction + ' ' + y_value_j + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+        // for (var j in sorted_positions) {
+        for (var j = 0; j < sorted_positions.length -1; j++) {
+          
+          var y_value_i = sorted_positions[j]
+          var y_value_j = sorted_positions[j+1]
+        
+          output += '<path d="M ' + end_fraction + ' ' + y_value_i + ' L ' + end_fraction + ' ' + y_value_j + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
 
+        }
+      } else {
+        var saving_id_main = -1
       }
 
       y_value = Math.min(...sorted_positions) + (Math.max(...sorted_positions) - Math.min(...sorted_positions)) / 2
@@ -658,9 +662,10 @@ function draw_newick(order, item_dist, max_dist, offset, max_size, line_thicknes
         i = i + 1
       }
 
-      delete saving_ids[saving_id_main]
-      delete saving_positions[saving_id_main]
-
+      if (saving_id_main != -1) {
+        delete saving_ids[saving_id_main]
+        delete saving_positions[saving_id_main]
+      }
     }
   }
   return(output)
