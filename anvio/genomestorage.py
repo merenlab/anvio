@@ -99,6 +99,37 @@ class GenomeStorage(object):
         filesnpaths.is_file_exists(self.storage_path)
 
 
+    def clean_accession_entries(self, gene_functions_dict):
+        """
+        Cleans the 'accession' values in the given dictionary by removing unwanted characters.
+        
+        This function processes each entry in the input dictionary and checks if the 'accession'
+        field starts with the characters "b'". If so, it removes these characters and any trailing 
+        single quote from the 'accession' value. The cleaned values are returned in a new dictionary.
+        
+        Parameters:
+        gene_functions_dict (dict): A dictionary where each key maps to another dictionary containing
+                                    gene information, including an 'accession' field that may need
+                                    cleaning.
+        
+        Returns:
+        dict: A new dictionary with cleaned 'accession' values.
+        """
+        updated_dict = {}
+        
+        for key, value in gene_functions_dict.items():
+            if 'accession' in value:
+                accession_value = value['accession']
+                if isinstance(accession_value, str) and accession_value.startswith("b'"):
+                    cleaned_accession = accession_value.replace("b'", "").replace("'", "")
+                    updated_dict[key] = {**value, 'accession': cleaned_accession}
+                else:
+                    updated_dict[key] = value
+            else:
+                updated_dict[key] = value
+        
+        return updated_dict
+
     def get_gene_functions_in_genomes_dict(self):
         # ------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------
         # If the user wants functions to be initialized, anvi'o will have to make a very challenging lookup
@@ -131,6 +162,9 @@ class GenomeStorage(object):
             self.progress.update("Loading SOME functions into memory")
             where_clause = """source IN (%s)""" % ",".join('"' + item + '"' for item in self.function_annotation_sources)
             gene_functions_in_genomes_dict = self.db.get_some_rows_from_table_as_dict(t.genome_gene_function_calls_table_name, where_clause)
+            # Clean bytes type COG_CATEGORY entries
+            gene_functions_in_genomes_dict =  self.clean_accession_entries(gene_functions_in_genomes_dict)
+            print(gene_functions_in_genomes_dict)
         else:
             self.progress.update("Loading ALL functions into memory")
             gene_functions_in_genomes_dict = self.db.get_table_as_dict(t.genome_gene_function_calls_table_name)
@@ -200,11 +234,6 @@ class GenomeStorage(object):
 
         # get functions
         gene_functions_in_genomes_dict, gene_functions_lookup_dict = self.get_gene_functions_in_genomes_dict()
-
-        for key, value in gene_functions_in_genomes_dict.items():
-            if any(isinstance(v, bytes) for v in value.values()) or \
-            (isinstance(value.get('accession'), str) and value['accession'].startswith("b'")):
-                raise TypeError(f"Error: An entry contains a value of type bytes or a string starting with 'b': {value}")
 
         self.progress.new('Loading genes info', progress_total_items=num_genes)
         self.progress.update('...')
