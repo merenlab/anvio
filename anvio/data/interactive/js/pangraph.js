@@ -1821,6 +1821,12 @@ function main () {
         var genomes = Object.keys(data["infos"]["genomes"])
         for (var genome of genomes) {
           $('#flex' + genome + 'layer').prop('checked', true);
+          $('#flex' + genome + 'layer').prop('disabled', true);
+        }
+      } else {
+        var genomes = Object.keys(data["infos"]["genomes"])
+        for (var genome of genomes) {
+          $('#flex' + genome + 'layer').prop('disabled', false);
         }
       }
     })
