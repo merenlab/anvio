@@ -162,12 +162,11 @@ class GenomeStorage(object):
             self.progress.update("Loading SOME functions into memory")
             where_clause = """source IN (%s)""" % ",".join('"' + item + '"' for item in self.function_annotation_sources)
             gene_functions_in_genomes_dict = self.db.get_some_rows_from_table_as_dict(t.genome_gene_function_calls_table_name, where_clause)
-            # Clean bytes type COG_CATEGORY entries
-            gene_functions_in_genomes_dict =  self.clean_accession_entries(gene_functions_in_genomes_dict)
-            print(gene_functions_in_genomes_dict)
         else:
             self.progress.update("Loading ALL functions into memory")
             gene_functions_in_genomes_dict = self.db.get_table_as_dict(t.genome_gene_function_calls_table_name)
+            # Clean bytes type COG_CATEGORY entries
+            gene_functions_in_genomes_dict =  self.clean_accession_entries(gene_functions_in_genomes_dict)
 
         self.progress.update("Preparing the lookup dictionary")
         # probably the following would have been much more elegant with pandas, but I am not sure
