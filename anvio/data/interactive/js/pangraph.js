@@ -380,6 +380,12 @@ function marknode(e, data, binid, bins){
     }
   }
 
+  if ($('#flexsaturation').prop('checked') == true){
+    var saturation = 1
+  } else {
+    var saturation = 0
+  }
+
   if (e.getAttribute('class') == 'group') {
 
     var node_color = $('#groups')[0].value;
@@ -390,7 +396,6 @@ function marknode(e, data, binid, bins){
 
     var node = data['elements']['nodes'][node_name];
     var genome = Object.keys(node['genome']).length;
-
 
   } else if (e.getAttribute('class') == 'node') {
 
@@ -404,19 +409,34 @@ function marknode(e, data, binid, bins){
 
   if (current === binid) {
 
-    e.setAttribute("fill", lighter_color('#ffffff', node_color, genome / genome_size))
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', node_color, genome / genome_size))
+    } else {
+      e.setAttribute("fill", node_color)
+    }
+    
     bins[binid] = bins[binid].filter(item => item !== id)
     $('#' + binid + 'value')[0].value = bins[binid].length
 
   } else if (current === '') {
 
-    e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    } else {
+      e.setAttribute("fill", bincolor)
+    }
+
     bins[binid].push(id)
     $('#' + binid + 'value')[0].value = bins[binid].length
 
   } else {
 
-    e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    } else {
+      e.setAttribute("fill", bincolor)
+    }
+
     bins[current] = bins[current].filter(item => item !== id)
     bins[binid].push(id)
     $('#' + binid + 'value')[0].value = bins[binid].length
@@ -750,10 +770,16 @@ async function generate_svg(body, data) {
     edgecoloring[element.id] = [index, element.value]
   })
 
-  if ($('#LayoutRadio1').prop('checked') == true){
-    var linear = 0
-  } else {
+  if ($('#flexlinear').prop('checked') == true){
     var linear = 1
+  } else {
+    var linear = 0
+  }
+
+  if ($('#flexsaturation').prop('checked') == true){
+    var saturation = 1
+  } else {
+    var saturation = 0
   }
 
   var outer_margin = parseInt($('#outer_margin')[0].value);
@@ -1041,7 +1067,12 @@ async function generate_svg(body, data) {
       var edge_genomes_length = edge_genomes.length;
 
       var color = pickcolor (edgecoloring, Object.keys(edge['genome']))
-      var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
+
+      if (saturation == 1){
+        var pick = lighter_color('#ffffff', color, edge_genomes_length / genome_size);
+      } else {
+        var pick = color;
+      }
 
       var source = edge['source']
       var target = edge['target']
@@ -1228,7 +1259,14 @@ async function generate_svg(body, data) {
         }
 
         var color = pickcolor (edgecoloring, Object.keys(node['genome']))
-        var draw = lighter_color('#ffffff', color, node_genomes_length / genome_size);
+
+        if (saturation == 1) {
+          var draw = lighter_color('#ffffff', color, node_genomes_length / genome_size);
+          var draw2 = lighter_color('#ffffff', node_color, node_genomes_length / genome_size)
+        } else {
+          var draw = color;
+          var draw2 = node_color
+        }
         
         var [graph_size, graph_start, graph_stop] = outer_layers['graph']
         var k_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + k_y * node_distance_y
@@ -1240,7 +1278,7 @@ async function generate_svg(body, data) {
         }
 
         svg_nodes.push(
-          $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_k_x + '" cy="' + circle_k_y + '" r="' + node_size + '" fill="' + lighter_color('#ffffff', node_color, node_genomes_length / genome_size) + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+          $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_k_x + '" cy="' + circle_k_y + '" r="' + node_size + '" fill="' + draw2 + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
         )
 
         var add_start = 1
@@ -1301,7 +1339,12 @@ async function generate_svg(body, data) {
       var group_genomes_length = group_genomes.length;
 
       var color = pickcolor (edgecoloring, Object.keys(left_node['genome']))
-      var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
+      
+      if (saturation == 1) {
+        var draw = lighter_color('#ffffff', color, group_genomes_length / genome_size);
+      } else {
+        var draw = color;
+      }
       
       var l_x = parseInt(left_node['position']['x_offset'])
       var l_y = parseInt(left_node['position']['y'])
@@ -1318,7 +1361,11 @@ async function generate_svg(body, data) {
       var j_x = m_x-0.5
       var j_y = m_y_size - node_size
 
-      var color = lighter_color('#ffffff', group_color, group_genomes_length / genome_size)
+      if (saturation == 1) {
+        var color = lighter_color('#ffffff', group_color, group_genomes_length / genome_size)
+      } else {
+        var color = group_color
+      }
 
       if ((l_x - m_x) * theta >= 180) {
         var arc_flag = 1
@@ -1403,12 +1450,9 @@ async function generate_svg(body, data) {
 
   // tree_length
   // console.log(Object.keys(item_dist).length, item_order.length)
-  if (Object.keys(item_dist).length == item_order.length) {
-    // console.log(item_dist)
 
+  if ($('#flextree').prop('checked') == true){
     svg_core.append(draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness))
-    
-    // console.log(svg)
   }
 
   for (var item of svg_search) svg_core.append(item);
@@ -1769,6 +1813,15 @@ function main () {
         $('#groupcompress')[0].value = 1.0;
         // $('#customRange4')[0].value = 0;
         // $('#customRange4').prop('disabled', true);
+      }
+    })
+
+    $('#flextree').change(function() {
+      if ($(this).prop('checked') == true){
+        var genomes = Object.keys(data["infos"]["genomes"])
+        for (var genome of genomes) {
+          $('#flex' + genome + 'layer').prop('checked', true);
+        }
       }
     })
 
@@ -2306,7 +2359,7 @@ function main () {
         }
       }
 
-      // console.log(searchfunction)
+      console.log(searchfunction)
 
       var layers_positions = {}
       for (var layer_name of Object.keys(layers_filter)) {
