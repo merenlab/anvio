@@ -2863,17 +2863,7 @@ class PanSuperclass(object):
                 else:
                     gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
-                try:
-                    cog_category = self.genomes_storage.gene_info[genome_name][gene_caller_id]['functions']['COG_CATEGORY']
-                    
-                    if isinstance(cog_category, bytes) or cog_category.startswith("b'"):
-                        raise TypeError(f"cog_category {cog_category} contains bytes type data.")
-                    
-                    gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
-
-                except KeyError as e:
-                    print(f"KeyError: {e}")
-                    raise KeyError(f"Well, well, well. You have some problems on your `GENOMES.db`! - {str(e)}")
+                gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
                 full_report.extend([(gene_caller_id, genome_name, source, accession, function, search_term,
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])

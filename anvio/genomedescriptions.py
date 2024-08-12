@@ -1278,8 +1278,6 @@ class AggregateFunctions:
 
         gene_functions_in_genomes_dict, _ = g.get_gene_functions_in_genomes_dict()
         for entry in gene_functions_in_genomes_dict.values():
-            if any(isinstance(v, bytes) or (isinstance(v, str) and v.startswith("b'")) for v in entry.values()):
-                raise TypeError(f"Error: An entry contains a value of type bytes: {entry}")
             # an entry in gene_functions_in_genomes_dict looks lke this:
             # 72645: {'genome_name': 'B_lactis_BF052', 'gene_callers_id': 443, 'source': 'COG20_PATHWAY', 'accession': 'COG0207', 'function': 'Thymidylate biosynthesis', 'e_value': 4.2e-149}
             genome_name, accession, function = entry['genome_name'], entry['accession'], entry['function']
