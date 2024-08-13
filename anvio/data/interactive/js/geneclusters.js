@@ -110,7 +110,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
         });
         if (response['status'] === 0) {
             var newThHeader = $('<th>').text(gc_key_short); 
-            var newThData = $('<th>').text((response.gene_cluster_data).toPrecision(3));
+            var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
 
             $('#gc-acc-table-header').parent().append(newThHeader);
             $('#gc-acc-table-data').parent().append(newThData);
