@@ -200,17 +200,8 @@ td {
     font-weight: 300;
     fill: #333;
 }
-.gc-container {
-    position: relative;
-    overflow: hidden;
-}
 
-.table-wrapper {
-    position: relative;
-    overflow: hidden;
-}
-
-.gc-acc-main {
+#gc-acc-main {
     width: 100%;
     overflow-x: hidden;
     white-space: nowrap;
@@ -218,60 +209,15 @@ td {
     margin-left: auto;
 }
 
-.scroll-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.5rem;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50%;
-    padding: 0.5rem;
-    z-index: 1;
-    height: 3rem;
-    width: 3rem;
-    line-height: 1;
-}
-
-.scroll-btn i {
-    font-size: 16px;
-    margin: 0;
-}
-
-.scroll-btn:hover{
-    background: rgba(0, 0, 0, 0.1);
-}
-
-.scroll-btn.left {
-    left: 0px;
-}
-
-.scroll-btn.right {
-    right: 0px;
-}
-
 @media (min-width: 768px) {
     .gc-container {
         padding: 0 2rem;
-    }
-    .scroll-btn {
-        padding: 0.75rem;
     }
 }
 @media (min-width: 992px) {
     .gc-container {
         padding: 0 2.5rem;
     }
-    .scroll-btn {
-        padding: 1rem;
-    }
 }
 @media (min-width: 1200px) {
-    .gc-container {
-        padding: 0 4rem;
-    }
 }
