@@ -53,28 +53,20 @@
                 </div>
 
                 <div id="display-conservation-controls" style="display: none"></div>
-                <div class="gc-container">
-                    <div class="d-flex justify-content-center">
-                        <div class="table-wrapper">
-                            <button class="scroll-btn left" onclick="scrollTableLeft();">
-                                <i class="bi bi-chevron-left"></i>
-                            </button>
-                            <button class="scroll-btn right" onclick="scrollTableRight();">
-                                <i class="bi bi-chevron-right"></i>
-                            </button>
-                            <table class="gc-acc-main table table-responsive col-9">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" id="gc-acc-table-header">#</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <th scope="row" id="gc-acc-table-data">Value</th>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div id="display-gcc-acc" class="d-flex justify-content-center">
+                    <div>
+                        <table id="gc-acc-main" class="table table-responsive col-12">
+                            <thead>
+                                <tr>
+                                    <th scope="col" id="gc-acc-table-header">#</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th scope="row" id="gc-acc-table-data">Value</th>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 <div id="display-container">
