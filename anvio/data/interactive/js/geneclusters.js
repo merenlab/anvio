@@ -101,7 +101,7 @@ function loadAll() {
         }
     });
 }
-async function loadGCAdditionalData(gc_id, gc_key) {
+async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
     try {
         const response = await $.ajax({
             type: 'POST',
@@ -109,12 +109,14 @@ async function loadGCAdditionalData(gc_id, gc_key) {
             url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
         });
         if (response['status'] === 0) {
-            console.log(response);
-            var newThHeader = $('<th>').text(gc_key);                
-            var newThData = $('<th>').text(response.gene_cluster_data);                
+            var newThHeader = $('<th>').text(gc_key_short); 
+            var newThData = $('<th>').text((response.gene_cluster_data).toPrecision(3));
+
             $('#gc-acc-table-header').parent().append(newThHeader);
             $('#gc-acc-table-data').parent().append(newThData);
-            $('.gc-acc-table').show();
+            
+            newThHeader.prop('title', gc_key);
+            $('#gc-acc-table').show();
         } else {
             console.log('Error:', response.message);
         }
@@ -143,16 +145,26 @@ async function createDisplay(){
     var acid_sequences = [];
     var order = {};
     var count = 0;
-    var layer_id_list = new Set(["combined_homogeneity_index", "functional_homogeneity_index", "geometric_homogeneity_index", 
-                                 "num_genes_in_gene_cluster", "num_genomes_gene_cluster_has_hits", "max_num_paralogs","AAI_avg",
-                                 "AAI_max", "AAI_min", "SCG"]);
+    var layer_id_list = {
+        combined_homogeneity_index: "chi",
+        functional_homogeneity_index : "fhi",
+        geometric_homogeneity_index : "ghi", 
+        num_genes_in_gene_cluster : "ngigc",
+        num_genomes_gene_cluster_has_hits : "nggchh", 
+        max_num_paralogs : "mnp", 
+        AAI_avg : "AAI_avg",
+        AAI_max : "AAI_max", 
+        AAI_min : "AAI_min", 
+        SCG : "SCG"
+    };
 
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
         var layer = state['layer-order'][layer_id];
 
-        if (layer_id_list.has(layer)) {
-            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer);
+        if (layer_id_list.hasOwnProperty(layer)) {
+            console.log(layer_id_list[layer]);
+            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer,  layer_id_list[layer]);
         }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
