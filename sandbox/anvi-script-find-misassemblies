@@ -19,10 +19,19 @@ __version__ = anvio.__version__
 __authors__ = ['FlorianTrigodet']
 __provides__ = []
 __requires__ = ["bam-file"]
-__description__ = ("This script report errors in long-read assembly using read-recruitment information. "
-                   "The input file should be the BAM file from the long-reads mapping to its associated assembly")
+__description__ = ("This script report errors in long read assembly using read-recruitment information. "
+                   "The input file should be a BAM file of long reads mapped to an assembly made from "
+                   "these reads.")
 
 def main():
+
+
+    if not args.just_do_it:
+        raise ConfigError("This script ONLY makes sense if you are using a BAM file that was made from "
+                          "mapping long read onto an assembly made with the SAME long reads. "
+                          "If you are positive that you did JUST that, then re-run this program with "
+                          "`--just-do-it` flag.")
+
     run = terminal.Run()
     progress = terminal.Progress()
 
@@ -176,6 +185,10 @@ if __name__ == '__main__':
         type=int,
         help = ("Sequence length on each side of a contigs that will be ignored in the oututs. "
                 "This is to prevent aftifactual results that typically occurs at the ends of contigs.")
+    )
+    parser.add_argument(
+        *anvio.A('just-do-it'),
+        **anvio.K('just-do-it'), 
     )
 
     args = parser.get_args(parser)
