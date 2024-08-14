@@ -23,3 +23,5 @@ snakemake
 multiprocess
 plotext
 networkx
+biopython
+reportlab
