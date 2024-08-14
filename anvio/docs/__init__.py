@@ -843,12 +843,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "genes-stats": {
-        "name": "GENE STATS",
-        "type": "STATS",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "vcf": {
         "name": "VCF",
         "type": "TXT",
