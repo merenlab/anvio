@@ -175,20 +175,28 @@ if __name__ == '__main__':
     )
 
     group1 = parser.add_argument_group(
-        'MIN-DIST-TO-END',
-        ("Ignore sequence on both ends of contigs")
+        'OTHER PARAMETERS',
+        ("Various paramaters that you can change")
     )
     group1.add_argument(
         '-m',
         '--min-dist-to-end',
         default=100,
         type=int,
-        help = ("Sequence length on each side of a contigs that will be ignored in the oututs. "
+        help = ("Sequence length on each side of a contigs that will be ignored in the clipping outut. "
                 "This is to prevent aftifactual results that typically occurs at the ends of contigs.")
     )
-    parser.add_argument(
+    group1.add_argument(
+        '-r',
+        '--clipping-ratio',
+        default=0.8,
+        type=int,
+        help = ("Minimum ratio of 'total-coverage / coverage-of-clipped-reads' that will be reported "
+                "in the output file. Default is 0.8")
+    )
+    group1.add_argument(
         *anvio.A('just-do-it'),
-        **anvio.K('just-do-it'), 
+        **anvio.K('just-do-it'),
     )
 
     args = parser.get_args(parser)
