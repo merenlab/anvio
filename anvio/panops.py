@@ -1070,6 +1070,7 @@ class Pangraph():
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('gene_cluster_grouping_compression')
+        self.ungroup = A('ungrouping_area')
         self.pass_filter = 0
 
         # additional variables for special cases e.g. a user wants to tune the tool
@@ -2152,18 +2153,21 @@ class Pangraph():
 
         for node_v, node_w in dfs_list:
             if node_v != 'start' and self.ancest.in_degree(node_v) == 1 and self.ancest.out_degree(node_v) == 1 and self.ancest.in_degree(node_w) == 1 and self.ancest.out_degree(node_w) == 1:
-
-                if node_v not in groups_rev.keys():
-                    group_name = 'GCG_' + str(group).zfill(8)
-                    groups[group_name] = [node_v, node_w]
-                    groups_rev[node_v] = group_name
-                    groups_rev[node_w] = group_name
-                    group += 1
-
+                
+                if self.ungroup[0] != -1 and self.ungroup[1] != -1 and self.position[node_v][0] > self.ungroup[0] and self.position[node_v][0] < self.ungroup[1] and self.position[node_w][0] > self.ungroup[0] and self.position[node_w][0] < self.ungroup[1]:
+                    continue
                 else:
-                    group_name = groups_rev[node_v]
-                    groups[group_name] += [node_w]
-                    groups_rev[node_w] = group_name
+                    if node_v not in groups_rev.keys():
+                        group_name = 'GCG_' + str(group).zfill(8)
+                        groups[group_name] = [node_v, node_w]
+                        groups_rev[node_v] = group_name
+                        groups_rev[node_w] = group_name
+                        group += 1
+
+                    else:
+                        group_name = groups_rev[node_v]
+                        groups[group_name] += [node_w]
+                        groups_rev[node_w] = group_name
 
         for label, condense_nodes in groups.items():
 
@@ -2657,6 +2661,7 @@ class Pangraph():
         self.jsondata["infos"]['max_edge_length_filter'] = self.max_edge_length_filter
         self.jsondata["infos"]['gene_cluster_grouping_threshold'] = self.gene_cluster_grouping_threshold
         self.jsondata["infos"]['groupcompress'] = self.groupcompress
+        self.jsondata["infos"]['ungroup'] = self.ungroup
         self.jsondata["infos"]['layout_graph']['edges'] = len(self.ancest.edges())
         self.jsondata["infos"]['data'] = list(self.ancest.graph.items())
         self.jsondata["infos"]['directed'] = self.ancest.is_directed()
@@ -2753,6 +2758,7 @@ class Pangraph():
             'max_edge_length_filter': self.max_edge_length_filter,
             'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
             'groupcompress': self.groupcompress,
+            'ungroup': self.ungroup,
             'priority_genome': self.priority_genome,
             'newick': newick,
             'layout_graph': {

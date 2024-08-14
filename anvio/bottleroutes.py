@@ -1573,16 +1573,19 @@ class BottleApplication(Bottle):
     def get_pangraph_settings(self):
 
         payload = request.json
-        max_edge_length_filter = int(payload['maxlength'])
-        gene_cluster_grouping_threshold = int(payload['condtr'])
-        groupcompress = float(payload['groupcompress'])
+        max_edge_length_filter = payload['maxlength']
+        gene_cluster_grouping_threshold = payload['condtr']
+        groupcompress = payload['groupcompress']
+        ungrouping_area = payload['ungroup']
+        print(ungrouping_area)
 
         args = argparse.Namespace(
             pan_graph_json=self.interactive.pan_graph_json_path,
             output_pan_graph_json=self.interactive.pan_graph_json_path,
             max_edge_length_filter=max_edge_length_filter,
             gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            gene_cluster_grouping_compression=groupcompress
+            gene_cluster_grouping_compression=groupcompress,
+            ungrouping_area = ungrouping_area
             )
 
         Pangraph = panops.Pangraph(args)

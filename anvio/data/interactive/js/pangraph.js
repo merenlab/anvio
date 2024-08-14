@@ -1540,9 +1540,10 @@ function main () {
 
       var data = new Object;
 
-      data['condtr'] = $('#condtr')[0].value
-      data['maxlength'] = $('#maxlength')[0].value
-      data['groupcompress'] = $('#groupcompress')[0].value
+      data['condtr'] = parseInt($('#condtr')[0].value)
+      data['maxlength'] = parseInt($('#maxlength')[0].value)
+      data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
+      data['ungroup'] = [parseInt($('#ungroupfrom')[0].value), parseInt($('#ungroupto')[0].value)]
 
       $("#genomecolors :input[type='checkbox']").each((index, element) => {
 
@@ -1575,6 +1576,8 @@ function main () {
     $("#condtr")[0].value = data['infos']['gene_cluster_grouping_threshold']
     $("#maxlength")[0].value = data['infos']['max_edge_length_filter']
     $("#groupcompress")[0].value = data['infos']['groupcompress']
+    $("#ungroupfrom")[0].value = data['infos']['ungroup'][0]
+    $("#ungroupto")[0].value = data['infos']['ungroup'][1]
 
     if (!$('#genomecolors').children().length) {
 
@@ -1788,10 +1791,12 @@ function main () {
     $('#flexcondtr').change(function() {
       if ($(this).prop('checked') == true){
         $('#condtr')[0].value = 2;
+        $('#condtr').prop('disabled', false)
         // $('#customRange2')[0].value = 2;
         // $('#customRange2').prop('disabled', false);
       } else {
         $('#condtr')[0].value = -1;
+        $('#condtr').prop('disabled', true)
         // $('#customRange2')[0].value = 2;
         // $('#customRange2').prop('disabled', true);
       }
@@ -1800,10 +1805,12 @@ function main () {
     $('#flexmaxlength').change(function() {
       if ($(this).prop('checked') == true){
         $('#maxlength')[0].value = 1;
+        $('#maxlength').prop('disabled', false)
         // $('#customRange3')[0].value = 1;
         // $('#customRange3').prop('disabled', false);
       } else {
         $('#maxlength')[0].value = -1;
+        $('#maxlength').prop('disabled', true)
         // $('#customRange3')[0].value = 1;
         // $('#customRange3').prop('disabled', true);
       }
@@ -1812,12 +1819,28 @@ function main () {
     $('#flexgroupcompress').change(function() {
       if ($(this).prop('checked') == true){
         $('#groupcompress')[0].value = 0.0;
+        $('#groupcompress').prop('disabled', false)
         // $('#customRange4')[0].value = 0;
         // $('#customRange4').prop('disabled', false);
       } else {
         $('#groupcompress')[0].value = 1.0;
+        $('#groupcompress').prop('disabled', true)
         // $('#customRange4')[0].value = 0;
         // $('#customRange4').prop('disabled', true);
+      }
+    })
+
+    $('#flexungroup').change(function() {
+      if ($(this).prop('checked') == true){
+        $('#ungroupfrom')[0].value = 0;
+        $('#ungroupfrom').prop('disabled', false)
+        $('#ungroupto')[0].value = 0;
+        $('#ungroupto').prop('disabled', false)
+      } else {
+        $('#ungroupfrom')[0].value = -1;
+        $('#ungroupfrom').prop('disabled', true)
+        $('#ungroupto')[0].value = -1;
+        $('#ungroupto').prop('disabled', true)
       }
     })
 
