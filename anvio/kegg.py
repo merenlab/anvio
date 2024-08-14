@@ -17,7 +17,7 @@ import numpy as np
 import multiprocessing as mp
 
 from scipy import stats
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import anvio
 import anvio.db as db
@@ -293,6 +293,10 @@ KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
 # and to the relevant step metadata clause in write_stat_to_matrix()
 STEP_METADATA_HEADERS = ["step_definition"]
 
+# Global and overview map IDs have certain ranges of numbers.
+GLOBAL_MAP_ID_PATTERN = re.compile(r'\d{1}11\d{2}')
+OVERVIEW_MAP_ID_PATTERN = re.compile(r'\d{1}12\d{2}')
+
 
 class KeggContext(object):
     """The purpose of this base class is to define shared functions and file paths for all KEGG operations."""
@@ -310,12 +314,37 @@ class KeggContext(object):
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
         self.binary_relation_data_dir = os.path.join(self.kegg_data_dir, "binary_relations")
+
+        # The 'KEGG/map_images' directory has a structure of nested directories. 'map_images'
+        # contains 'png' for image files and 'kgml' for XML mapping files. Within both 'png' and
+        # 'kgml' are directories, '1x' and '2x', for lower and higher resolution maps. 'png/1x'
+        # contains 5 directories of image files highlighting different things: 'map', 'ko', 'ec',
+        # 'rn', and 'org'. 'png/2x' contains 1 directory, 'map', as higher resolution images are
+        # only available for manually drawn maps. 'kgml/1x' and 'kgml/2x' each contain 4 directories
+        # of XML files that allow modification of different lower and higher resolution maps: 'ko',
+        # 'ec', 'rn', and 'org'.
         self.map_image_data_dir = os.path.join(self.kegg_data_dir, "map_images")
-        self.map_image_png_dir = os.path.join(self.map_image_data_dir, "png_2x")
-        self.map_image_kgml_dir = os.path.join(self.map_image_data_dir, "kgml")
-        self.map_image_kgml_ko_dir = os.path.join(self.map_image_kgml_dir, "ko")
-        self.map_image_kgml_ec_dir = os.path.join(self.map_image_kgml_dir, "ec")
-        self.map_image_kgml_rn_dir = os.path.join(self.map_image_kgml_dir, "rn")
+        self.png_dir = os.path.join(self.map_image_data_dir, "png")
+        self.kgml_dir = os.path.join(self.map_image_data_dir, "kgml")
+        self.png_1x_dir = os.path.join(self.png_dir, "1x")
+        self.png_2x_dir = os.path.join(self.png_dir, "2x")
+        self.png_1x_map_dir = os.path.join(self.png_1x_dir, "map")
+        self.png_1x_ko_dir = os.path.join(self.png_1x_dir, "ko")
+        self.png_1x_ec_dir = os.path.join(self.png_1x_dir, "ec")
+        self.png_1x_rn_dir = os.path.join(self.png_1x_dir, "rn")
+        self.png_1x_org_dir = os.path.join(self.png_1x_dir, "org")
+        self.png_2x_map_dir = os.path.join(self.png_2x_dir, "map")
+        self.kgml_1x_dir = os.path.join(self.kgml_dir, "1x")
+        self.kgml_2x_dir = os.path.join(self.kgml_dir, "2x")
+        self.kgml_1x_ko_dir = os.path.join(self.kgml_1x_dir, "ko")
+        self.kgml_1x_ec_dir = os.path.join(self.kgml_1x_dir, "ec")
+        self.kgml_1x_rn_dir = os.path.join(self.kgml_1x_dir, "rn")
+        self.kgml_1x_org_dir = os.path.join(self.kgml_1x_dir, "org")
+        self.kgml_2x_ko_dir = os.path.join(self.kgml_2x_dir, "ko")
+        self.kgml_2x_ec_dir = os.path.join(self.kgml_2x_dir, "ec")
+        self.kgml_2x_rn_dir = os.path.join(self.kgml_2x_dir, "rn")
+        self.kgml_2x_org_dir = os.path.join(self.kgml_2x_dir, "org")
+
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -2128,12 +2157,31 @@ class ModulesDownload(KeggSetup):
                 filesnpaths.gen_output_directory(
                     self.map_image_data_dir, delete_if_exists=args.reset
                 )
-                filesnpaths.gen_output_directory(self.map_image_png_dir)
-                filesnpaths.gen_output_directory(self.map_image_kgml_dir)
-                filesnpaths.gen_output_directory(self.map_image_kgml_ko_dir)
-                filesnpaths.gen_output_directory(self.map_image_kgml_ec_dir)
-                filesnpaths.gen_output_directory(self.map_image_kgml_rn_dir)
-
+                # Create subdirectories of the map image directory.
+                for subdir in (
+                    self.map_image_data_dir,
+                    self.png_dir,
+                    self.kgml_dir,
+                    self.png_1x_dir,
+                    self.png_2x_dir,
+                    self.png_1x_map_dir,
+                    self.png_1x_ko_dir,
+                    self.png_1x_ec_dir,
+                    self.png_1x_rn_dir,
+                    self.png_1x_org_dir,
+                    self.png_2x_map_dir,
+                    self.kgml_1x_dir,
+                    self.kgml_2x_dir,
+                    self.kgml_1x_ko_dir,
+                    self.kgml_1x_ec_dir,
+                    self.kgml_1x_rn_dir,
+                    self.kgml_1x_org_dir,
+                    self.kgml_2x_ko_dir,
+                    self.kgml_2x_ec_dir,
+                    self.kgml_2x_rn_dir,
+                    self.kgml_2x_org_dir
+                ):
+                    filesnpaths.gen_output_directory(subdir)
 
     def download_kegg_module_file(self):
         """This function downloads the KEGG module file, which tells us which module files to download."""
@@ -2556,15 +2604,44 @@ class ModulesDownload(KeggSetup):
 
 
     ###### Pathway map image-related functions below ######
-    def download_map_images(self) -> None:
+    def download_map_images(
+        self,
+        add_global_reaction_line_width: Union[float, None] = 6.0,
+        global_compound_circle_diameter: Union[float, None] = 17.0
+    ) -> None:
         """
-        Download high-res pathway map image files and associated KO, EC, and RN KGML files.
-
-        Only maps with at least one of these reference KGML files are downloaded. Write a table
-        indicating whether KO, EC, and RN KGML files are available for each downloaded map.
-
-        Adjust KGML files to rescale objects to match 2x image files.
+        Download reference pathway map image files and associated KGML files.
+        
+        Only download maps with at least one reference KGML file, since the purpose is to be able to
+        modify maps with data, and KGML files are required to customize maps. Write a table
+        indicating which KO, EC, and RN KGML files are available for every map available in KEGG,
+        including those not downloaded due to an absence of KGML files.
+        
+        Different sets of "global" and non-global "standard" and "overview" map images are
+        downloaded. The following global map images are downloaded: 1x and 2x resolution images with
+        filenames starting "map", and 1x images starting "ko", "ec", and "rn". The "ko", "ec", and
+        "rn" global maps color reactions with accessions in each of the KEGG KO, EC, and RN
+        databases, respectively, and the "map" global maps color reactions with accessions in any of
+        these databases. Non-global 1x and 2x resolution map images starting with "map" are
+        downloaded. KGML files, which are tailored to the position of features in 1x maps, are
+        copied to rescale features to match 2x image files.
+        
+        Parameters
+        ==========
+        add_global_reaction_line_width : Union[float, None], 6.0
+            If not None, modify downloaded global map KGML files to add a width attribute to
+            reaction line graphics elements. The default value of 6 (in the 1x resolution maps, 12
+            in the 2x resolution maps) is just wide enough for the lines drawn from the KGML file to
+            cover up the lines in the base map image.
+            
+        global_compound_circle_diameter : Union[float, None], 17.0
+            If not None, modify downloaded global map KGML files to adjust the size of compound
+            circle graphics elements. The argument value is used as the width and height attributes
+            in 1x resolution maps, with twice the value used in 2x resolution maps. The default
+            value of 17 is just wide enough for the circles rendered from the KGML file to cover up
+            the circles in the base map image.
         """
+        # Download a table from KEGG listing all available pathways.
         try:
             utils.download_file(
                 self.kegg_pathway_list_download_path,
@@ -2577,148 +2654,240 @@ class ModulesDownload(KeggSetup):
             raise ConfigError(
                 "Anvi'o failed to download a list of pathways from the KEGG website. Something "
                 "likely changed on the KEGG end. Please contact the developers to see if this is a "
-                "fixable issue or find a workaround."
+                "fixable issue."
             )
         pathway_table = pd.read_csv(
             self.kegg_pathway_list_file, sep='\t', header=None, names=['id', 'name']
         )
-
-        total_map_count = len(pathway_table)
+        
+        # Determine the maximum number of map image files that may be downloaded (image files are
+        # only downloaded if a corresponding KGML file is available). 5 versions of each global map
+        # are downloaded: 1x and 2x "map" files and 1x "ko", "ec", and "rn" files. 2 versions of
+        # each non-global map may be downloaded: 1x and 2x "map" files.
+        global_map_count = sum(
+            1 if re.match(GLOBAL_MAP_ID_PATTERN, pathway_id[-5:]) else 0
+            for pathway_id in pathway_table['id']
+        )
+        nonglobal_map_count = len(pathway_table) - global_map_count
+        total_dl_count = global_map_count * 5 + nonglobal_map_count * 2
         self.run.info_single(
-            f"Up to {total_map_count} maps will be downloaded. \"Up to\" because only those found "
-            f"to have associated reference KGML files are downloaded. {self.num_threads} cores "
-            "(threads) will be used in downloading.",
+            f"Up to {total_dl_count} map images will be downloaded. \"Up to\" because only maps "
+            f"found to have associated reference KGML files are downloaded. {self.num_threads} "
+            "cores (threads) will be used in downloading.",
             nl_before=1
         )
+        
+        # Start the worker threads for downloading map image and KGML files.
         self.progress.new("Downloading KEGG pathway map files")
-        downloaded_map_count = 0
-        self.progress.update(f"{downloaded_map_count} pathway maps downloaded")
+        self.progress.update("0 pathway maps downloaded")
         manager = mp.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
         for pathway_id in pathway_table['id']:
-            input_queue.put((pathway_id, self.kegg_rest_api_get, self.map_image_data_dir))
+            input_queue.put({
+                'pathway_number': pathway_id[3:],
+                'url_stem': self.kegg_rest_api_get,
+                'data_dir': self.map_image_data_dir
+            })
         workers: List[mp.Process] = []
         for _ in range(self.num_threads):
             worker = mp.Process(
-                target=_download_pathway_image_worker, args=(input_queue, output_queue)
+                target=_download_pathway_image_files_worker, args=(input_queue, output_queue)
             )
             workers.append(worker)
             worker.start()
-
+            
+        # Process the output of download threads. The threads should return items equal to the
+        # maximum number of image files that may be downloaded. Wait for threads until this number
+        # of items is reached.
+        successful_dls: List[str] = []
+        failed_dls: List[str] = []
+        # Record the paths of KGML files that need to be rescaled to fit 2x resolution images.
+        kgml_paths: List[str] = []
+        # Record which of types of KGML files ('KO', 'EC', 'RN') are available for each downloaded
+        # pathway map image.
+        kgml_availability: Dict[str, Dict[str, int]] = {}
         processed_count = 0
-        failed_pathway_ids: List[str] = []
-        while processed_count < total_map_count:
-            output: Tuple[str] = output_queue.get()
-            if output[-1] is True:
-                downloaded_map_count += 1
-                self.progress.update(
-                    f"{downloaded_map_count} pathway "
-                    f"{'map' if downloaded_map_count == 1 else 'maps'} downloaded"
-                )
-            elif isinstance(output[-1], str):
-                pathway_id = os.path.splitext(output[-1])[0]
-                failed_pathway_ids.append(pathway_id)
-            processed_count += 1
-
+        while processed_count < total_dl_count:
+            # For each pathway, a dictionary is returned with keys indicating each type of possible
+            # map image and KGML file that can be downloaded, and length-2 list values containing
+            # 1) the possible filepath and 2) an integer value indicating the success or failure
+            # type of the download.
+            output: Dict[str, List[str, int]] = output_queue.get()
+            pathway_id = os.path.splitext(os.path.basename(output['png_1x_map'][0]))[0]
+            image_keys = ['png_1x_map', 'png_2x_map']
+            if re.match(GLOBAL_MAP_ID_PATTERN, pathway_id[-5:]):
+                image_keys += ['png_1x_ko', 'png_1x_ec', 'png_1x_rn']
+            for image_key in image_keys:
+                if output[image_key][1] == 0:
+                    # This occurs when there were connection errors preventing any KGML files from
+                    # being downloaded, so PNG file downloads were not attempted.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 1:
+                    successful_dls.append(output[image_key][0])
+                    self.progress.update(f"{len(successful_dls)} pathway maps downloaded")
+                elif output[image_key][1] == 2:
+                    # This indicates that the PNG file was unavailable for download. It should have
+                    # been available given KEGG's pathway list.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 3:
+                    # This occurs when connection errors prevented the PNG file from being
+                    # downloaded.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 4:
+                    # This indicates that the program did not attempt to download the PNG file
+                    # because there is no KGML file available, e.g., drug maps have no KO, EC, and
+                    # RN KGML files available.
+                    pass
+                # Record KGML files associated with 2x resolution images. These need to be rescaled.
+                if image_key == 'png_2x_map':
+                    for kgml_key in ('kgml_ko', 'kgml_ec', 'kgml_rn'):
+                        if output[kgml_key][1] == 1:
+                            kgml_paths.append(output[kgml_key][0])
+                processed_count += 1
+            # Record data that goes into the table of KGML availability for each pathway.
+            kgml_availability[pathway_id] = pathway_kgml_availability = {}
+            for pathway_org in ('ko', 'ec', 'rn'):
+                if output[f'kgml_{pathway_org}'][1] == 1:
+                    pathway_kgml_availability[pathway_org.upper()] = 1
+                else:
+                    pathway_kgml_availability[pathway_org.upper()] = 0
+                    
+        # Downloading is complete. Kill the worker threads.
         for worker in workers:
             worker.terminate()
         self.progress.end()
-
-        if failed_pathway_ids:
+        
+        # Raise an exception when expected files failed to download. Report the failed files by
+        # pathway ID.
+        if failed_dls:
+            failed_dl_groups: Dict[str, List[str]] = {}
+            for failed_dl in failed_dls:
+                failed_filename = os.path.basename(failed_dl)
+                pathway_number = os.path.splitext(failed_filename)[0][3:]
+                try:
+                    failed_dl_groups[pathway_number].append(failed_filename)
+                except KeyError:
+                    failed_dl_groups[pathway_number] = [failed_filename]
+            failed_message = ''
+            for pathway_number, failed_filenames in failed_dl_groups.items():
+                failed_message += f"map{pathway_number}: {', '.join(failed_filenames)}; "
+            failed_message = failed_message[:-2]
             raise ConfigError(
-                "Unfortunately, files for the following pathway maps failed to download despite "
-                "multiple attempts, and so the database needs to be set up again: "
-                f"{', '.join(failed_pathway_ids)}"
+                "Unfortunately, files (in parentheses) for the following pathway maps failed to "
+                "download despite multiple attempts, and so the database needs to be set up again: "
+                f"{failed_message}"
             )
+        self.run.info("Number of downloaded map images", len(successful_dls))
+        
+        # Add reaction line widths to global map KGML files.
+        if add_global_reaction_line_width is not None:
+            self._add_global_kgml_reaction_line_widths(add_global_reaction_line_width)
 
-        self.run.info_single(f"{downloaded_map_count} maps were downloaded.")
+        # Rescale compound circles in global map KGML files.
+        if global_compound_circle_diameter is not None:
+            self._change_global_kgml_compound_circle_diameters(global_compound_circle_diameter)
 
-        # Rescale graphical coordinates in KGML files to fit 2x map images.
-        # Record the KGML files available for each map in a table.
+        # Create rescaled KGML files to fit 2x resolution map images.
         self.progress.new(
-            "Rescaling map KGML files to 2x resolution", progress_total_items=total_kgml_count
+            "Creating map KGML files rescaled to 2x resolution",
+            progress_total_items=len(kgml_paths)
         )
-        kgml_file_paths = []
-        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_ko_dir, 'ko*.xml'))
-        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_ec_dir, 'ec*.xml'))
-        kgml_file_paths += glob.glob(os.path.join(self.map_image_kgml_rn_dir, 'rn*.xml'))
-        total_kgml_count = len(kgml_file_paths)
-        kgml_availability = {}
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
         rescaled_count = 0
-        for file_path in kgml_file_paths:
-            self.progress.update(f"{rescaled_count} / {total_kgml_count} KGML files rescaled")
-            with open(file_path) as f:
-                kgml_text = f.read()
-            rescaled_kgml_text = self.rescale_kgml_graphics(kgml_text)
-            with open(file_path, 'w') as f:
-                f.write(rescaled_kgml_text)
-
-            kgml_id: str = os.path.splitext(os.path.basename(file_path))[0]
-            pathway_id = f'map{kgml_id[2:]}'
-            try:
-                kgml_availability[pathway_id][kgml_id[:2].upper()] = '1'
-            except KeyError:
-                kgml_availability[pathway_id] = {kgml_id[:2].upper(): 1}
+        for input_path in kgml_paths:
+            self.progress.update(f"{rescaled_count} / {len(kgml_paths)} KGML files rescaled")
+            kgml_id: str = os.path.splitext(os.path.basename(input_path))[0]
+            pathway_org = kgml_id[:-5]
+            pathway_number = kgml_id[-5:]
+            pathway = xml_ops.load(input_path)
+            pathway.scale_graphics(2)
+            if pathway_org == 'ko':
+                kgml_dir = self.kgml_2x_ko_dir
+            elif pathway_org == 'ec':
+                kgml_dir = self.kgml_2x_ec_dir
+            elif pathway_org == 'rn':
+                kgml_dir = self.kgml_2x_rn_dir
+            else:
+                raise AssertionError(
+                    "Only KGML files for pathway IDs starting with 'ko', 'ec', and 'rn' should "
+                    f"have been downloaded. The ID, '{kgml_id}', is not recognized."
+                )
+            output_path = os.path.join(kgml_dir, f'{kgml_id}.xml')
+            xml_ops.write(pathway, output_path)
             rescaled_count += 1
-            self.progress.increment(increment_to=rescaled_count)
         self.progress.end()
-
+        
+        # Write a table of the KGML files available for each map image.
         pd.DataFrame.from_dict(
             kgml_availability, orient='index', columns=['KO', 'EC', 'RN']
         ).sort_index().to_csv(self.kegg_map_image_kgml_file, sep='\t')
-
-
-    def rescale_kgml_graphics(self, kgml_text: str, factor: float = 2.0) -> str:
+        
+    def _add_global_kgml_reaction_line_widths(self, width: float) -> None:
         """
-        Adjust KGML objects to fit corresponding map images of varying resolution.
-
+        Add reaction line widths to newly downloaded KGML files for global maps. Width attributes
+        are not in the files.
+        
         Parameters
         ==========
-        kgml_text : str
-            Text of input KGML.
-
-        factor : float = 2.0
-            Rescaling factor.
-
-        Returns
-        =======
-        str
-            Text of rescaled KGML.
+        width : float
+            Width value to add.
         """
-        # Position and size parameters of KGML objects.
-        params = ['x', 'y', 'width', 'height']
-
-        for param in params:
-            # Example pattern: x="327"
-            pattern = re.compile(f'{param}="(\d+)"')
-            previous_end = None
-
-            for match in re.finditer(pattern, kgml_text):
-                groups = match.groups()
-                assert len(groups) == 1
-                if previous_end:
-                    # Add the text from the previous pattern match through the rescaled match.
-                    new_kgml_text = (
-                        new_kgml_text +
-                        kgml_text[previous_end:match.start(1)] +
-                        str(int(groups[0]) * factor)
-                    )
-                else:
-                    # This is the first pattern match.
-                    new_kgml_text = kgml_text[:match.start(1)] + str(int(groups[0]) * factor)
-                previous_end = match.end(1)
-
-            if previous_end:
-                # Add the text after the end of the final pattern match.
-                new_kgml_text = new_kgml_text + kgml_text[previous_end:]
-            else:
-                # There were no pattern matches.
-                new_kgml_text = kgml_text
-
-            kgml_text = new_kgml_text
-
-        return new_kgml_text
+        assert width > 0
+        
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
+        
+        for entry_type, kgml_dir in zip(
+            ('ortholog', 'enzyme', 'reaction'),
+            (self.kgml_1x_ko_dir, self.kgml_1x_ec_dir, self.kgml_1x_rn_dir)
+        ):
+            for kgml_path in glob.glob(os.path.join(kgml_dir, '*.xml')):
+                if re.match(
+                    GLOBAL_MAP_ID_PATTERN, os.path.splitext(os.path.basename(kgml_path))[0][-5:]
+                ):
+                    pathway = xml_ops.load(kgml_path)
+                    for entry in pathway.get_entries(entry_type=entry_type):
+                        for uuid in entry.children['graphics']:
+                            graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                            graphics.width = width
+                    xml_ops.write(pathway, kgml_path)
+                    
+    def _change_global_kgml_compound_circle_diameters(self, diameter: float) -> None:
+        """
+        Change the diameters of compound circles in KGML files for global maps. The purpose of this
+        is to fully cover circles in base map images with circles rendered from KGML files.
+        
+        Parameters
+        ==========
+        diameter : float
+            New diameter of compound cirles.
+        """
+        assert diameter > 0
+        
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
+        
+        for kgml_dir in (self.kgml_1x_ko_dir, self.kgml_1x_ec_dir, self.kgml_1x_rn_dir):
+            for kgml_path in glob.glob(os.path.join(kgml_dir, '*.xml')):
+                if re.match(
+                    GLOBAL_MAP_ID_PATTERN, os.path.splitext(os.path.basename(kgml_path))[0][-5:]
+                ):
+                    pathway = xml_ops.load(kgml_path)
+                    for entry in pathway.get_entries(entry_type='compound'):
+                        for uuid in entry.children['graphics']:
+                            graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                            width = graphics.width
+                            height = graphics.height
+                            if width is not None:
+                                graphics.width = diameter
+                            if height is not None:
+                                graphics.height = diameter
+                    xml_ops.write(pathway, kgml_path)
 
 
 class RunKOfams(KeggContext):
@@ -9921,33 +10090,91 @@ def _download_worker(
         output_queue.put(output)
 
 
-def _download_pathway_image_worker(
+def download_org_pathway_image_files(
+    pathway_name: str,
+    data_dir: str,
+    kegg_rest_api_get: str = 'http://rest.kegg.jp/get'
+) -> Tuple[str, str]:
+    """
+    Download an organism-specific pathway map and associated KGML file.
+    
+    Parameters
+    ==========
+    pathway_name : str
+        This ID has 2 parts: the first 3 org characters are specific to the organism, such as 'eco'
+        for E. coli, and the last 5 digits identify the pathway, such as '00010'.
+    
+    data_dir : str
+        Path to KEGG data directory set up by anvi'o with the necessary subdirectory structure.
+    
+    kegg_rest_api_get : str, 'http://rest.kegg.jp/get'
+        KEGG API URL for downloading files.
+    
+    Returns
+    =======
+    Tuple[str, str]
+        Pathway PNG image and KGML XML filepaths of downloaded files.
+    """
+    png_url = f'{kegg_rest_api_get}/{pathway_name}/image'
+    kgml_url = f'{kegg_rest_api_get}/{pathway_name}/kgml'
+    
+    png_path = os.path.join(data_dir, 'png', '1x', 'org', f'{pathway_name}.png')
+    kgml_path = os.path.join(data_dir, 'kgml', '1x', 'org', f'{pathway_name}.xml')
+    
+    utils.download_file(png_url, png_path)
+    utils.download_file(kgml_url, kgml_path)
+    
+    return (png_path, kgml_path)
+
+def _download_pathway_image_files_worker(
     input_queue: mp.Queue,
     output_queue: mp.Queue,
     max_num_tries: int = 100,
     wait_secs: float = 10.0
 ) -> None:
     """
-    Multiprocessing worker to download files from a queue.
+    Multiprocessing worker to download pathway maps and associated KGML files given a pathway ID.
 
     Parameters
     ==========
     input_queue : multiprocessing.Queue
-        Queue of length-three iterables of the pathway ID, the URL stem, and the target map image
-        directory for each file to download. The map image directory must contain subdirectories
-        called "png_2x" and "kgml", and the "kgml" directory must contain subdirectories called
-        "ko", "ec", and "rn".
+        Queue of input data stored in dictionaries formatted as follows, with values being strings.
+        {
+            'pathway_number': <last 5-digit part of the pathway ID>,
+            'url_stem': <URL stem for KEGG downloads>,
+            'data_dir': <KEGG map data directory with proper subdirectory structure>
+        }
+        Here is a description of the required subdirectory structure of the data directory. It must
+        contain subdirectories 'png' and 'kgml', within each of which are subdirectories '1x' and
+        '2x'. Within 'png/1x' are 5 directories, 'map', 'ko', 'ec', 'rn', and 'org'. Within 'png/2x'
+        is one directory, 'map'. Within 'kgml/1x' and 'kgml/2x' are 4 directories, 'ko', 'ec', 'rn',
+        and 'org'.
 
     output_queue : multiprocessing.Queue
-        Queue in which the success of each download operation is recorded as a length-four tuple,
-        with the respective items being for the KO KGML, EC KGML, RN KGML, and 2x map image. If the
-        item is represented by a value of True, then the file downloaded successfully. If the KGML
-        item is a value of False, then it is not available for download; if the map image if False,
-        then it was not downloaded because no KGML files were available for download. If the item is
-        a string that is the name of the file that would be downloaded, then the download failed
-        (after exceeding the maximum number of tries).
+        Queue of output data stored in dictionaries formatted as follows, with values being length-2
+        lists of 1) the target download filepath and 2) an integer indicating what happened with the
+        download. A value of 0 indicates that there was no attempt at downloading the file because
+        the program did not need to try, e.g., for non-global maps, 'ko', 'ec', and 'rn' map images
+        are not downloaded; also, if there was a connection error in trying to download a KGML file,
+        then the associated map image files did not need to be downloaded. A value of 1 indicates
+        that the file downloaded successfully. A value of 2 indicates that the file was unavailable
+        for download, e.g., there is no KGML RN file available for the pathway. A value of 3
+        indicates that there was a connection error preventing download. A value of 4 indicates that
+        there was no attempt to download because the program found that other requisite files were
+        unavailable, e.g., a map image is not downloaded if it has no reference KGML files
+        associated with it.
+        {
+            'png_1x_map': [<filepath>, <integer>],
+            'png_2x_map': [<filepath>, <integer>],
+            'png_1x_ko': [<filepath>, <integer>],
+            'png_1x_ec': [<filepath>, <integer>],
+            'png_1x_rn': [<filepath>, <integer>],
+            'kgml_ko': [<filepath>, <integer>],
+            'kgml_ec': [<filepath>, <integer>],
+            'kgml_rn': [<filepath>, <integer>]
+        }
 
-    max_num_tries : int, 100
+    max_num_tries : int, 10
         The maximum number of times to try downloading a file (in case of a connection reset).
 
     wait_secs : float, 10.0
@@ -9958,83 +10185,138 @@ def _download_pathway_image_worker(
     None
     """
     while True:
-        pathway_id, url, map_image_dir = input_queue.get()
-        pathway_id: str
-        url: str
-        map_image_dir: str
-        map_image_png_dir = os.path.join(map_image_dir, "png_2x")
-        map_image_kgml_dir = os.path.join(map_image_dir, "kgml")
-        map_image_kgml_ko_dir = os.path.join(map_image_kgml_dir, "ko")
-        map_image_kgml_ec_dir = os.path.join(map_image_kgml_dir, "ec")
-        map_image_kgml_rn_dir = os.path.join(map_image_kgml_dir, "rn")
-        ko_kgml_url = f'{url}/{pathway_id.replace("map", "ko")}/kgml'
-        ko_kgml_path = os.path.join(
-            map_image_kgml_ko_dir, f'{pathway_id.replace("map", "ko")}.xml'
-        )
-        ec_kgml_url = f'{url}/{pathway_id.replace("map", "ec")}/kgml'
-        ec_kgml_path = os.path.join(
-            map_image_kgml_ec_dir, f'{pathway_id.replace("map", "ec")}.xml'
-        )
-        rn_kgml_url = f'{url}/{pathway_id.replace("map", "rn")}/kgml'
-        rn_kgml_path = os.path.join(
-            map_image_kgml_rn_dir, f'{pathway_id.replace("map", "rn")}.xml'
-        )
-        output = []
+        input = input_queue.get()
+        pathway_number: str = input['pathway_number']
+        url: str = input['url_stem']
+        data_dir: str = input['data_dir']
+        
+        png_1x_map_url = f'{url}/map{pathway_number}/image'
+        png_2x_map_url = f'{url}/map{pathway_number}/image2x'
+        png_1x_ko_url = f'{url}/ko{pathway_number}/image'
+        png_1x_ec_url = f'{url}/ec{pathway_number}/image'
+        png_1x_rn_url = f'{url}/rn{pathway_number}/image'
+        kgml_ko_url = f'{url}/ko{pathway_number}/kgml'
+        kgml_ec_url = f'{url}/ec{pathway_number}/kgml'
+        kgml_rn_url = f'{url}/rn{pathway_number}/kgml'
+        
+        png_1x_map_path = os.path.join(data_dir, 'png', '1x', 'map', f'map{pathway_number}.png')
+        png_2x_map_path = os.path.join(data_dir, 'png', '2x', 'map', f'map{pathway_number}.png')
+        png_1x_ko_path = os.path.join(data_dir, 'png', '1x', 'ko', f'ko{pathway_number}.png')
+        png_1x_ec_path = os.path.join(data_dir, 'png', '1x', 'ec', f'ec{pathway_number}.png')
+        png_1x_rn_path = os.path.join(data_dir, 'png', '1x', 'rn', f'rn{pathway_number}.png')
+        kgml_ko_path = os.path.join(data_dir, 'kgml', '1x', 'ko', f'ko{pathway_number}.xml')
+        kgml_ec_path = os.path.join(data_dir, 'kgml', '1x', 'ec', f'ec{pathway_number}.xml')
+        kgml_rn_path = os.path.join(data_dir, 'kgml', '1x', 'rn', f'rn{pathway_number}.xml')
+        
+        output: Dict[str, List[str, int]] = {
+            'png_1x_map': [png_1x_map_path, 0],
+            'png_2x_map': [png_2x_map_path, 0],
+            'png_1x_ko': [png_1x_ko_path, 0],
+            'png_1x_ec': [png_1x_ec_path, 0],
+            'png_1x_rn': [png_1x_rn_path, 0],
+            'kgml_ko': [kgml_ko_path, 0],
+            'kgml_ec': [kgml_ec_path, 0],
+            'kgml_rn': [kgml_rn_path, 0]
+        }
+        
+        if re.match(GLOBAL_MAP_ID_PATTERN, pathway_number):
+            is_global_map = True
+        else:
+            is_global_map = False
+        
+        # First try to download KGML files for the pathway. Map images are only downloaded if there
+        # is at least 1 KGML file associated with it.
         max_tries_exceeded = False
-        for kgml_url, kgml_path in (
-            (ko_kgml_url, ko_kgml_path),
-            (ec_kgml_url, ec_kgml_path),
-            (rn_kgml_url, rn_kgml_path)
+        for key, kgml_url, kgml_path in (
+            ('kgml_ko', kgml_ko_url, kgml_ko_path),
+            ('kgml_ec', kgml_ec_url, kgml_ec_path),
+            ('kgml_rn', kgml_rn_url, kgml_rn_path)
         ):
             num_tries = 0
             while True:
                 try:
                     utils.download_file(kgml_url, kgml_path)
-                    output.append(True)
+                    output[key][1] = 1
                     break
                 except ConnectionResetError:
                     num_tries += 1
                     if num_tries > max_num_tries:
-                        output.append(os.path.basename(kgml_url))
                         max_tries_exceeded = True
+                        output[key][1] = 3
                         break
                     time.sleep(wait_secs)
                 except ConfigError as e:
                     if 'HTTP Error 404' in str(e):
-                        output.append(False)
+                        output[key][1] = 2
                         break
                     else:
                         num_tries += 1
                         if num_tries > max_num_tries:
-                            output.append(os.path.basename(kgml_url))
                             max_tries_exceeded = True
+                            output[key][1] = 3
                             break
                         time.sleep(wait_secs)
-
+                        
         if max_tries_exceeded:
-            # Connection errors prevented any KO, EC, or RN KGML files from being downloaded; it is
-            # unknown if any of these files are actually available for the pathway map.
-            output.append(f'{pathway_id}.png')
-            output_queue.put(tuple(output))
-        elif set(output) == {False}:
+            # Connection errors prevented at least 1 of the KO, EC, or RN KGML files from being
+            # downloaded, so it remains unknown if these files are actually available for the
+            # pathway map.
+            output_queue.put(output)
+            continue
+        elif output['kgml_ko'][1] == 2 and output['kgml_ec'][1] == 2 and output['kgml_rn'][1] == 2:
             # No KO, EC, and RN KGML files are available for the pathway map. For instance, this is
             # the case for drug maps with KEGG IDs starting with 'map07', such as 'map07011',
             # 'Penicillins'.
-            output.append(False)
-            output_queue.put(tuple(output))
-        else:
-            map_image_url = f'{url}/{pathway_id}/image2x'
-            map_image_path = os.path.join(map_image_png_dir, f'{pathway_id}.png')
+            output['png_1x_map'][1] = 4
+            output['png_2x_map'][1] = 4
+            if is_global_map:
+                output['png_1x_ko'][1] = 4
+                output['png_1x_ec'][1] = 4
+                output['png_1x_rn'][1] = 4
+            output_queue.put(output)
+            continue
+        
+        dl_items = [
+            ('png_1x_map', png_1x_map_url, png_1x_map_path),
+            ('png_2x_map', png_2x_map_url, png_2x_map_path)
+        ]
+        if is_global_map:
+            if output['kgml_ko'][1] == 1:
+                dl_items.append(('png_1x_ko', png_1x_ko_url, png_1x_ko_path))
+            elif output['kgml_ko'][1] == 2:
+                output['png_1x_ko'][1] = 4
+                
+            if output['kgml_ec'][1] == 1:
+                dl_items.append(('png_1x_ec', png_1x_ec_url, png_1x_ec_path))
+            elif output['kgml_ec'][1] == 2:
+                output['png_1x_ec'][1] = 4
+                
+            if output['kgml_rn'][1] == 1:
+                dl_items.append(('png_1x_rn', png_1x_rn_url, png_1x_rn_path))
+            elif output['kgml_rn'][1] == 2:
+                output['png_1x_rn'][1] = 4
+        for key, image_url, image_path in dl_items:
             num_tries = 0
             while True:
                 try:
-                    utils.download_file(map_image_url, map_image_path)
-                    output.append(True)
+                    utils.download_file(image_url, image_path)
+                    output[key][1] = 1
                     break
-                except (ConfigError, ConnectionResetError) as e:
+                except ConnectionResetError:
                     num_tries += 1
                     if num_tries > max_num_tries:
-                        output.append(f'{pathway_id}.png')
+                        output[key][1] = 3
                         break
                     time.sleep(wait_secs)
-        output_queue.put(tuple(output))
+                except ConfigError as e:
+                    if 'HTTP Error 404' in str(e):
+                        output[key][1] = 2
+                        break
+                    else:
+                        num_tries += 1
+                        if num_tries > max_num_tries:
+                            output[key][1] = 3
+                            break
+                        time.sleep(wait_secs)
+        output_queue.put(output)
+    
