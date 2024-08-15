@@ -111,11 +111,24 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
         if (response['status'] === 0) {
             var newThHeader = $('<th>').text(gc_key_short); 
             var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
+            
+            var gc_title_list = {
+                combined_homogeneity_index: "Combined Homogeneity Index",
+                functional_homogeneity_index : "Functional Homogeneity Index",
+                geometric_homogeneity_index : "Geometric Homogeneity Index", 
+                num_genes_in_gene_cluster : "Number of Genes In Gene Cluster",
+                num_genomes_gene_cluster_has_hits : "Number of Genomes in Gene Cluster Has Hits", 
+                max_num_paralogs : "Maximum Number of Paralogs", 
+                AAI_avg : "Amino Acid Identity Average",
+                AAI_max : "Amino Acid Identity Maximum", 
+                AAI_min : "Amino Acid Identity Minimum", 
+                SCG : "Super Core Gene"
+            };
 
             $('#gc-acc-table-header').parent().append(newThHeader);
             $('#gc-acc-table-data').parent().append(newThData);
             
-            newThHeader.prop('title', gc_key);
+            newThHeader.prop('title', gc_title_list[gc_key]);
             $('#gc-acc-table').show();
         } else {
             console.log('Error:', response.message);
