@@ -109,25 +109,25 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
             url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
         });
         if (response['status'] === 0) {
-            var newThHeader = $('<th>').text(gc_key_short); 
+            var newThHeader = $('<th>').text(gc_key_short);
             var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
-            
+
             var gc_title_list = {
                 combined_homogeneity_index: "Combined Homogeneity Index",
                 functional_homogeneity_index : "Functional Homogeneity Index",
-                geometric_homogeneity_index : "Geometric Homogeneity Index", 
-                max_num_paralogs : "Maximum Number of Paralogs", 
+                geometric_homogeneity_index : "Geometric Homogeneity Index",
                 num_genes_in_gene_cluster : "Number of [g]enes in Gene Cluster",
                 num_genomes_gene_cluster_has_hits : "Number of [G]enomes in Gene Cluster",
+                max_num_paralogs : "Maximum Number of Paralogs",
                 AAI_avg : "Amino Acid Identity Average",
-                AAI_max : "Amino Acid Identity Maximum", 
-                AAI_min : "Amino Acid Identity Minimum", 
+                AAI_max : "Amino Acid Identity Maximum",
+                AAI_min : "Amino Acid Identity Minimum",
                 SCG : "Single-copy Core Gene"
             };
 
             $('#gc-acc-table-header').parent().append(newThHeader);
             $('#gc-acc-table-data').parent().append(newThData);
-            
+
             newThHeader.prop('title', gc_title_list[gc_key]);
             $('#gc-acc-table').show();
         } else {
@@ -162,13 +162,13 @@ async function createDisplay(display_table){
     var layer_id_list = {
         combined_homogeneity_index: "CHI",
         functional_homogeneity_index : "FHI",
-        geometric_homogeneity_index : "GHI", 
-        max_num_paralogs : "MNP", 
+        geometric_homogeneity_index : "GHI",
         num_genes_in_gene_cluster : "NgGC",
         num_genomes_gene_cluster_has_hits : "NGGC",
+        max_num_paralogs : "MNP",
         AAI_avg : "AAI_avg",
-        AAI_max : "AAI_max", 
-        AAI_min : "AAI_min", 
+        AAI_max : "AAI_max",
+        AAI_min : "AAI_min",
         SCG : "SCG"
     };
 
