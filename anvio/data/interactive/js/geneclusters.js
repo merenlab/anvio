@@ -122,7 +122,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
                 AAI_avg : "Amino Acid Identity Average",
                 AAI_max : "Amino Acid Identity Maximum", 
                 AAI_min : "Amino Acid Identity Minimum", 
-                SCG : "Super Core Gene"
+                SCG : "Single-copy Core Gene"
             };
 
             $('#gc-acc-table-header').parent().append(newThHeader);
