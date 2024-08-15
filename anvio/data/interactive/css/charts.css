@@ -5,6 +5,11 @@
     display: contents;
 }
 
+
+#display-gcc-acc {
+    background: aqua;
+}
+
 #display-container {
     width: 1200px;
     margin: 0 auto 20px auto;
