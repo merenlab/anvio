@@ -188,15 +188,36 @@ td {
   min-height: fit-content;
 }
 
-.genomeTitle{
+.genomeTitle {
     font-size: 30px;
     line-height: 32px;
     font-weight: 300;
     fill: #666;
 }
 
-.callerTitle{
+.callerTitle {
     line-height: 32px;
     font-weight: 300;
     fill: #333;
+}
+
+#gc-acc-main {
+    width: 100%;
+    overflow-x: hidden;
+    white-space: nowrap;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+@media (min-width: 768px) {
+    .gc-container {
+        padding: 0 2rem;
+    }
+}
+@media (min-width: 992px) {
+    .gc-container {
+        padding: 0 2.5rem;
+    }
+}
+@media (min-width: 1200px) {
 }

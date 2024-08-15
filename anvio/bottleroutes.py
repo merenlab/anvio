@@ -50,6 +50,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.serverAPI import AnviServerAPI
 from anvio.errors import RefineError, ConfigError
 from anvio.tables.miscdata import TableForLayerOrders
+from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.collections import TablesForCollections
 
 
@@ -75,6 +76,8 @@ class BottleApplication(Bottle):
 
         # WSGI for bottle to use
         self._wsgi_for_bottle = "paste"
+
+        self.additional_gc_data = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
 
@@ -187,6 +190,7 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',    callback=self.get_additional_gc_data, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
@@ -1421,6 +1425,32 @@ class BottleApplication(Bottle):
         except:
             return json.dumps({'status': 1})
 
+
+    def fetch_additional_data(self):
+        """Fetch GC Accessory Data from TableForItemAdditionalData"""
+        if self.additional_gc_data is None:
+            try:
+                progress = terminal.Progress()
+                self.additional_gc_data = TableForItemAdditionalData(self.interactive.args, p=progress).get()
+            except Exception as e:
+                self.additional_gc_data = None
+                raise RuntimeError(f'Error fetching additional data: {str(e)}')
+
+    def get_additional_gc_data(self, gc_id, gc_key):
+        try:
+            self.fetch_additional_data()
+            gene_cluster_data = None
+            if self.additional_gc_data and len(self.additional_gc_data) > 1:
+                gene_cluster_data = self.additional_gc_data[1].get(gc_id, {}).get(gc_key, None)
+            if gene_cluster_data is None:
+                raise ValueError("Gene cluster data is None.")
+        except (KeyError, TypeError, ValueError, RuntimeError) as e:
+            return json.dumps({'status': 1, 'message': f'Error retrieving data: {str(e)}'})
+
+        try:
+            return json.dumps({'gene_cluster_data': gene_cluster_data, 'status': 0})
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f'Error serializing response: {str(e)}'})
 
     def reroot_tree(self):
         # Get the Newick tree string from the form data

@@ -95,15 +95,50 @@ function loadAll() {
             else
             {
                 initializeCheckBoxes();
-                createDisplay();
+                createDisplay(true);
                 $('.loading-screen').hide();
             }
         }
     });
+}
+async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
+    try {
+        const response = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
+        });
+        if (response['status'] === 0) {
+            var newThHeader = $('<th>').text(gc_key_short); 
+            var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
+            
+            var gc_title_list = {
+                combined_homogeneity_index: "Combined Homogeneity Index",
+                functional_homogeneity_index : "Functional Homogeneity Index",
+                geometric_homogeneity_index : "Geometric Homogeneity Index", 
+                num_genes_in_gene_cluster : "Number of Genes In Gene Cluster",
+                num_genomes_gene_cluster_has_hits : "Number of Genomes in Gene Cluster Has Hits", 
+                max_num_paralogs : "Maximum Number of Paralogs", 
+                AAI_avg : "Amino Acid Identity Average",
+                AAI_max : "Amino Acid Identity Maximum", 
+                AAI_min : "Amino Acid Identity Minimum", 
+                SCG : "Super Core Gene"
+            };
 
+            $('#gc-acc-table-header').parent().append(newThHeader);
+            $('#gc-acc-table-data').parent().append(newThData);
+            
+            newThHeader.prop('title', gc_title_list[gc_key]);
+            $('#gc-acc-table').show();
+        } else {
+            console.log('Error:', response.message);
+        }
+    } catch (error) {
+        console.error('AJAX Error:', error);
+    }
 }
 
-function createDisplay(){
+async function createDisplay(display_table){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
 
@@ -111,6 +146,7 @@ function createDisplay(){
     var sequence_font_size = (isNumber(sequence_font_size_val) && sequence_font_size_val > 0) ? sequence_font_size_val : 12;
 
     var svg = document.getElementById('svg');
+    var table = document.getElementById('gc-acc-main');
 
     // clear content
     while (svg.firstChild) {
@@ -123,9 +159,26 @@ function createDisplay(){
     var acid_sequences = [];
     var order = {};
     var count = 0;
+    var layer_id_list = {
+        combined_homogeneity_index: "CHI",
+        functional_homogeneity_index : "FHI",
+        geometric_homogeneity_index : "GHI", 
+        num_genes_in_gene_cluster : "NGIGC",
+        num_genomes_gene_cluster_has_hits : "NGGCHH", 
+        max_num_paralogs : "MNP", 
+        AAI_avg : "AAI_avg",
+        AAI_max : "AAI_max", 
+        AAI_min : "AAI_min", 
+        SCG : "SCG"
+    };
+
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
         var layer = state['layer-order'][layer_id];
+
+        if (layer_id_list.hasOwnProperty(layer) && display_table) {
+            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer,  layer_id_list[layer]);
+        }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
             continue;
@@ -313,4 +366,18 @@ function removeGeneChart() {
   if (node && node.parentNode) {
     node.parentNode.removeChild(node);
   }
+}
+
+function scrollTableLeft() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: -100,
+        behavior: 'smooth'
+    });
+}
+
+function scrollTableRight() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: 100,
+        behavior: 'smooth'
+    });
 }
