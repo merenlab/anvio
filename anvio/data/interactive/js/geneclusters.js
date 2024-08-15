@@ -95,7 +95,7 @@ function loadAll() {
             else
             {
                 initializeCheckBoxes();
-                createDisplay();
+                createDisplay(true);
                 $('.loading-screen').hide();
             }
         }
@@ -125,7 +125,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
     }
 }
 
-async function createDisplay(){
+async function createDisplay(display_table){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
 
@@ -133,6 +133,7 @@ async function createDisplay(){
     var sequence_font_size = (isNumber(sequence_font_size_val) && sequence_font_size_val > 0) ? sequence_font_size_val : 12;
 
     var svg = document.getElementById('svg');
+    var table = document.getElementById('gc-acc-main');
 
     // clear content
     while (svg.firstChild) {
@@ -146,12 +147,12 @@ async function createDisplay(){
     var order = {};
     var count = 0;
     var layer_id_list = {
-        combined_homogeneity_index: "chi",
-        functional_homogeneity_index : "fhi",
-        geometric_homogeneity_index : "ghi", 
-        num_genes_in_gene_cluster : "ngigc",
-        num_genomes_gene_cluster_has_hits : "nggchh", 
-        max_num_paralogs : "mnp", 
+        combined_homogeneity_index: "CHI",
+        functional_homogeneity_index : "FHI",
+        geometric_homogeneity_index : "GHI", 
+        num_genes_in_gene_cluster : "NGIGC",
+        num_genomes_gene_cluster_has_hits : "NGGCHH", 
+        max_num_paralogs : "MNP", 
         AAI_avg : "AAI_avg",
         AAI_max : "AAI_max", 
         AAI_min : "AAI_min", 
@@ -162,8 +163,7 @@ async function createDisplay(){
     {
         var layer = state['layer-order'][layer_id];
 
-        if (layer_id_list.hasOwnProperty(layer)) {
-            console.log(layer_id_list[layer]);
+        if (layer_id_list.hasOwnProperty(layer) && display_table) {
             await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer,  layer_id_list[layer]);
         }
 
