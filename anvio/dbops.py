@@ -4246,7 +4246,7 @@ class ContigsDatabase:
 
         # set a project name for the contigs database without any funny
         # characters to make sure it can be used programmatically later.
-        self.meta['project_name_str'] = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_') \
+        self.meta['project_name_str'] = self.meta['project_name'].strip().translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_').strip('_') \
                                 if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
 
         if 'creation_date' not in self.meta:
