@@ -76,6 +76,19 @@ def main(args):
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
+    if args.list_defline_variables:
+        defline_data_dict = hmmops.SequencesForHMMHits(None).defline_data_dict
+        defline_format = hmmops.SequencesForHMMHits(None).defline_format
+
+        run.warning(f"Here are the variables you can use to provide a user-defined defline template: ")
+        for key in defline_data_dict.keys():
+            run.info_single("{%s}" % key)
+        run.info_single("Remember, by default, anvi'o will use the following template to format the deflines of "
+                        "FASTA files it produces whenever possible.", level=0, nl_before=1, nl_after=1, mc='red')
+
+        run.info_single("%s" % defline_format, level=0, nl_after=1, cut_after=0)
+        sys.exit()
+ 
     if args.list_hmm_sources or args.list_available_gene_names:
         if args.contigs_db:
             if args.list_hmm_sources:
@@ -153,7 +166,8 @@ def main(args):
             contigs_db_name = os.path.basename(args.contigs_db[:-3])
             splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
 
-        s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+        defline_format = args.defline_format if args.defline_format else None
+        s = hmmops.SequencesForHMMHits(args.contigs_db, sources=hmm_sources, defline_format=defline_format)
 
     CHK = lambda: exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
 
@@ -311,6 +325,8 @@ if __name__ == '__main__':
                                         a nice name..")
     groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupE.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
+    groupE.add_argument(*anvio.A('list-defline-variables'), **anvio.K('list-defline-variables'))
+    groupE.add_argument(*anvio.A('defline-format'), **anvio.K('defline-format', {'default': None}))
 
     groupF = parser.add_argument_group('THE ALPHABET', "The sequences are reported in DNA alphabet, but you can also get them\
                                         translated just like all the other cool kids.")
