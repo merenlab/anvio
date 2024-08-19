@@ -6,8 +6,7 @@ from anvio.constants import codons, nucleotides, essential_genome_info, TRNA_FEA
 
 import itertools
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -17,7 +16,7 @@ __email__ = "a.murat.eren@gmail.com"
 contigs_db_version = "23"
 profile_db_version = "40"
 genes_db_version = "6"
-pan_db_version = "17"
+pan_db_version = "18"
 auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"

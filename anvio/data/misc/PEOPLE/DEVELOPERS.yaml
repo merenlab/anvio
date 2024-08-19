@@ -89,9 +89,9 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
-    - title: Seeking Employment
-      inst: LinkedIn
-      inst_link: https://www.linkedin.com/in/ekiefl/
+    - title: Protein Bioinformatician
+      inst: Arcadia Science
+      inst_link: https://www.arcadiascience.com/
       current: true
     - title: Bioinformatician
       inst: AbCellera

@@ -1579,14 +1579,7 @@ function buildLayersTable(order, settings)
             }
         });
 
-        if($('#custom_layer_margin').is(':checked'))
-        {
-            $('.column-margin').show();
-        }
-        else
-        {
-            $('.column-margin').hide();
-        }
+        $('.column-margin').show();
 
         $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
@@ -1642,11 +1635,10 @@ function serializeSettings(use_layer_names) {
     state['tree-radius'] = $('#tree-radius').val();
     state['tree-height'] = $('#tree_height').val();
     state['tree-width'] = $('#tree_width').val();
-    state['layer-margin'] = $('#layer-margin').val();
+    state['layer-margin'] = $('#layer-margin').val() ? $('#layer-margin').val() : 15;
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['outer-ring-margin'] = $('#outer-ring-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
-    state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked');
     state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
@@ -2826,10 +2818,6 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('optimize-speed')){
         $('#optimize_speed').prop('checked', state['optimize-speed']);
-    }
-
-    if (state.hasOwnProperty('custom-layer-margin')){
-        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
     }
 
     if (state.hasOwnProperty('grid-color')) {

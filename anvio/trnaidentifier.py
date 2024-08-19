@@ -17,8 +17,7 @@ from anvio.filesnpaths import is_file_exists, is_output_file_writable
 from anvio.constants import WC_BASE_PAIRS, WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"

@@ -15,8 +15,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -194,7 +193,7 @@ def reformat_FASTA(args):
             total_num_contigs_removed += 1
             continue
 
-        if args.simplify_names:
+        if args.simplify_names or prefix:
             if prefix:
                 defline = '%s_%012d' % (prefix, fasta.pos)
             else:
@@ -203,7 +202,7 @@ def reformat_FASTA(args):
             output.write_id(defline)
             output.write_seq(fasta.seq, split = False)
 
-            if report_file:
+            if report_file and args.simplify_names:
                 report_file.write('%s\t%s\n' % (defline, fasta.id))
         else:
             output.store(fasta, split = False)

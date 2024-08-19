@@ -12,8 +12,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError, HDF5Error
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -53,6 +52,9 @@ if __name__ == '__main__':
                         depth of coverage) to investigate the detection of genes in the environment. By default, this script requires\
                         at least '0.5' of the genome to be detected in at least one metagenome. This parameter allows you to change\
                         that. 0 would mean no detection test required, 1 would mean the entire genome must be detected.")
+
+    groupD = parser.add_argument_group("PRO STUFF", "Things you may not have to change unless you are doing something extra cool and edgy.")
+    groupD.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
 
 
     args = parser.get_args(parser)
