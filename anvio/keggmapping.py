@@ -292,10 +292,6 @@ class Mapper:
             used in lieu of the default. See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
             
-            required to override dynamic coloring via a colormap with static
-            coloring using the argument, color_hexcode, so that reactions represented by KOs in
-            contigs databases are assigned a single color.
-            
         colormap_scheme : Literal['by_count', 'by_database'], None
             There are two ways of dynamically coloring reactions by inclusion in contigs databases:
             by count or by specific database or combination of database. Given the default argument
