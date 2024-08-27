@@ -605,30 +605,31 @@ class Pathway(Element):
                 ortholog_color = bgcolors[0]
             for substrate_uuid in reaction.children['substrate']:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
-                split_substrate_name = substrate.name.split(':')
-                assert len(split_substrate_name) == 2
-                for compound_entry in self.kegg_id_element_lookup[split_substrate_name[1]]:
-                    compound_entry: Entry
-                    compound_uuid = compound_entry.uuid
-                    try:
-                        compound_uuid_color_priorities[compound_uuid].append(
-                            (ortholog_color, priority)
-                        )
-                    except KeyError:
-                        compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
+                split_substrate_names = [split_name.split(':') for split_name in substrate.name.split()]
+                for split_name in split_substrate_names:
+                    for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+                        compound_entry: Entry
+                        compound_uuid = compound_entry.uuid
+                        try:
+                            compound_uuid_color_priorities[compound_uuid].append(
+                                (ortholog_color, priority)
+                            )
+                        except KeyError:
+                            compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
+                            
             for product_uuid in reaction.children['product']:
                 product: Product = self.uuid_element_lookup[product_uuid]
-                split_product_name = product.name.split(':')
-                assert len(split_product_name) == 2
-                for compound_entry in self.kegg_id_element_lookup[split_product_name[1]]:
-                    compound_entry: Entry
-                    compound_uuid = compound_entry.uuid
-                    try:
-                        compound_uuid_color_priorities[compound_uuid].append(
-                            (ortholog_color, priority)
-                        )
-                    except KeyError:
-                        compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
+                split_product_names = [split_name.split(':') for split_name in product.name.split()]
+                for split_name in split_product_names:
+                    for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+                        compound_entry: Entry
+                        compound_uuid = compound_entry.uuid
+                        try:
+                            compound_uuid_color_priorities[compound_uuid].append(
+                                (ortholog_color, priority)
+                            )
+                        except KeyError:
+                            compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
                             
         # Make compound entries searchable by ID, which should be a unique pathway element ID.
         id_compound_entry: Dict[str, Entry] = {}
