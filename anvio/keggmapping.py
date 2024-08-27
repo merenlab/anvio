@@ -123,7 +123,7 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         color_hexcode: str = '#2ca02c',
         draw_maps_lacking_kos: bool = False
-    ) -> None:
+    ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting KOs present in the contigs database.
         
@@ -141,14 +141,23 @@ class Mapper:
             draws all available pathway maps in the KEGG data directory.
             
         color_hexcode : str, '#2ca02c'
-            This is the color, by default green, used on the maps for KOs present in the contigs
-            database. In global and overview maps, KOs are represented as reaction arrows, whereas
-            in standard maps, KOs are represented as boxes, the background color of which is
-            changed.
+            This is the color, by default green, for reactions containing contigs database
+            KOs. Alternatively to a color hex code, the string, 'original', can be provided to use
+            the original color scheme of the reference map. In global maps, KOs are represented in
+            reaction lines, and in overview maps, KOs are represented in reaction arrows. The
+            foreground color of the lines and arrows is set. In standard maps, KOs are represented
+            in boxes, the background color of which is set.
             
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the KOs in the contigs database.
             If True, draw maps regardless, meaning that nothing may be colored.
+            
+        Returns
+        =======
+        Dict[str, bool]
+            Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            False.
         """
         # Retrieve the IDs of all KO annotations in the contigs database.
         cdb = ContigsDatabase(contigs_db)
@@ -159,7 +168,7 @@ class Mapper:
             where_clause='source = "KOfam"'
         )
         
-        self._map_kos_single_color(
+        return self._map_kos_fixed_colors(
             ko_ids,
             output_dir,
             pathway_numbers=pathway_numbers,
@@ -175,7 +184,7 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         color_hexcode: str = '#2ca02c',
         draw_maps_lacking_kos: bool = False
-    ) -> None:
+    ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting KOs present in the genome.
         
@@ -196,13 +205,23 @@ class Mapper:
             draws all available pathway maps in the KEGG data directory.
             
         color_hexcode : str, '#2ca02c'
-            This is the color, by default green, used on the maps for KOs present in the genome. In
-            global and overview maps, KOs are represented as reaction arrows, whereas in standard
-            maps, KOs are represented as boxes, the background color of which is changed.
+            This is the color, by default green, for reactions containing KOs in the genome.
+            Alternatively to a color hex code, the string, 'original', can be provided to use the
+            original color scheme of the reference map. In global maps, KOs are represented in
+            reaction lines, and in overview maps, KOs are represented in reaction arrows. The
+            foreground color of the lines and arrows is set. In standard maps, KOs are represented
+            in boxes, the background color of which is set.
             
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the KOs in the genome. If True,
             draw maps regardless, meaning that nothing may be colored.
+            
+        Returns
+        =======
+        Dict[str, bool]
+            Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            False.
         """
         # Retrieve the IDs of all KO annotations for the genome.
         gsdb = GenomeStorage(
@@ -218,7 +237,7 @@ class Mapper:
             where_clause=f'genome_name = "{genome_name}" AND source = "KOfam"'
         )
         
-        self._map_kos_single_color(
+        return self._map_kos_fixed_colors(
             ko_ids,
             output_dir,
             pathway_numbers=pathway_numbers,
@@ -235,10 +254,11 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_scheme: Literal['by_count', 'by_database'] = None,
+        reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         colorbar: bool = True,
         draw_maps_lacking_kos: bool = False
-    ) -> None:
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
         Draw pathway maps, highlighting KOs across contigs databases (representing, for example,
         genomes or metagenomes).
@@ -276,16 +296,16 @@ class Mapper:
         colormap : Union[bool, str, matplotlib.colors.Colormap], True
             Reactions are dynamically colored to reflect the contigs databases involving the
             reaction, unless the argument value is False. False overrides dynamic coloring via a
-            colormap with static coloring using the argument, color_hexcode, so that reactions
-            represented by KOs in contigs databases are assigned a single color.
+            colormap using the argument provided to 'color_hexcode', so that reactions represented
+            by KOs in contigs databases are assigned predetermined colors.
             
             The default argument value of True automatically assigns a colormap given the colormap
-            scheme (see the colormap_scheme argument). The scheme, 'by_count', uses the sequential
+            scheme (see the 'colormap_scheme' argument). The scheme, 'by_count', uses the sequential
             colormap, 'RdPu', by default; it spans light red (fewer databases) to purple (more
             databases). This emphasizes reactions that are shared rather than unshared between
-            databases. In contrast, a colormap spanning dark to light, such as 'magma' or 'PuRd', is
-            better for highlighting unshared reactions. The scheme, 'by_database', uses the
-            qualitative colormap, 'Dark2', by default; it contains distinct colors appropriate for
+            databases. In contrast, a colormap spanning dark to light, such as 'magma', is better
+            for highlighting unshared reactions. The scheme, 'by_database', uses the qualitative
+            colormap, 'Dark2', by default; it contains distinct colors appropriate for
             distinguishing the different databases and combinations of databases.
             
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
@@ -301,11 +321,18 @@ class Mapper:
             means reaction color is determined by membership in a database or combination of
             databases, so each possibility should have a distinct color from a qualitative colormap.
             
+        reverse_overlay : bool, False
+            By default, with False, reactions in more contigs databases are drawn on top of those in
+            fewer databases. With True, the opposite applies; especially in global maps with a
+            non-default colormap spanning dark to light, this accentuates unshared rather than
+            shared parts of a pathway.
+            
         color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing contigs database KOs. The
-            colormap argument must be False for this argument to be used, overriding dynamic
-            coloring based on database membership with static coloring based on presence/absence in
-            any database.
+            This is the color, by default green, for reactions containing contigs database KOs.
+            Alternatively to a color hex code, the string, 'original', can be provided to use the
+            original color scheme of the reference map. The 'colormap' argument must be False for
+            this argument to be used, overriding dynamic coloring based on database membership with
+            static coloring based on presence/absence in any database.
             
         colorbar : bool, True
             If True and coloring by database membership, save a colorbar legend to the file,
@@ -314,6 +341,20 @@ class Mapper:
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
+            
+        Returns
+        =======
+        Dict[Literal['unified', 'individual', 'grid'], Dict]
+            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
+            maps show data from all contigs databases. 'individual' maps show data from individual
+            contigs databases. 'grid' images show both unified and individual maps. 'unified' and
+            'grid' values are Dict[str, bool], where keys are pathway numbers, and values are True
+            if the map was drawn, False if the map was not drawn because it did not contain any of
+            the select KOs and 'draw_maps_lacking_kos' was False. 'individual' values are Dict[str,
+            Dict[str, bool]], where keys in the outer dictionary are contigs database project names,
+            keys in the inner dictionary are pathway numbers, and values in the inner dictionary are
+            True if the map was drawn, False if the map was not drawn because it did not contain any
+            of the select KOs and 'draw_maps_lacking_kos' was False.
         """
         # Set the colormap scheme.
         if colormap is False:
@@ -360,7 +401,7 @@ class Mapper:
             project_name = self_table['project_name']
             assert project_name not in project_names
             project_names[project_name] = contigs_db
-        
+            
         # Find which contigs databases contain each KO.
         ko_dbs: Dict[str, List[str]] = {}
         for project_name, contigs_db in project_names.items():
@@ -381,16 +422,30 @@ class Mapper:
         
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
         
+        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
+            'unified': {},
+            'individual': {},
+            'grid': {}
+        }
+        
         if scheme == 'static':
             # Draw unified maps of all contigs databases with a static reaction color.
             for pathway_number in pathway_numbers:
-                self._draw_map_kos_single_color(
-                    pathway_number,
-                    ko_dbs,
-                    color_hexcode,
-                    output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
-                )
+                if color_hexcode == 'original':
+                    drawn['unified'] = self._draw_map_kos_original_color(
+                        pathway_number,
+                        ko_dbs,
+                        output_dir,
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
+                else:
+                    drawn['unified'] = self._draw_map_kos_single_color(
+                        pathway_number,
+                        ko_dbs,
+                        color_hexcode,
+                        output_dir,
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
         else:
             # Draw unified maps with dynamic coloring by number of contigs databases.
             color_priority: Dict[str, float] = {}
@@ -399,7 +454,12 @@ class Mapper:
                 # databases, with 1 database assigned the lowest color value and the maximum number
                 # of databases assigned the highest color value.
                 for sample_point in np.linspace(0, 1, len(contigs_dbs)):
-                    color_priority[mcolors.rgb2hex(mpl_colormap(sample_point))] = sample_point
+                    if reverse_overlay:
+                        color_priority[
+                            mcolors.rgb2hex(mpl_colormap(sample_point))
+                        ] = 1 - sample_point
+                    else:
+                        color_priority[mcolors.rgb2hex(mpl_colormap(sample_point))] = sample_point
                 db_combos = None
             elif scheme == 'by_database':
                 # Sample the colormap for colors representing the different contigs databases and
@@ -408,8 +468,15 @@ class Mapper:
                 for db_count in range(1, len(contigs_dbs) + 1):
                     db_combos += list(combinations(project_names, db_count))
                 assert len(db_combos) <= mpl_colormap.N
-                for sample_point in np.linspace(0, 1, len(db_combos)):
-                    color_priority[mcolors.rgb2hex(mpl_colormap(sample_point))] = sample_point
+                for sample_point in range(len(db_combos)):
+                    if reverse_overlay:
+                        color_priority[
+                            mcolors.rgb2hex(mpl_colormap(sample_point))
+                        ] = 1 - sample_point / mpl_colormap.N
+                    else:
+                        color_priority[
+                            mcolors.rgb2hex(mpl_colormap(sample_point))
+                        ] = (sample_point + 1) / mpl_colormap.N
                     
             if colorbar:
                 # Draw a colorbar in a separate file.
@@ -431,7 +498,7 @@ class Mapper:
                 )
                 
             for pathway_number in pathway_numbers:
-                self._draw_map_kos_membership(
+                drawn['unified'] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_dbs,
                     color_priority,
@@ -444,7 +511,7 @@ class Mapper:
         if draw_contigs_db_files is False and draw_grid is False:
             return
         
-        # Determine the individual database maps and map grids to draw.
+        # Determine the individual database maps to draw.
         if draw_contigs_db_files == True:
             draw_files_project_names = list(project_names)
         elif draw_contigs_db_files == False:
@@ -453,7 +520,13 @@ class Mapper:
             for project_name in draw_contigs_db_files:
                 assert project_name in project_names
             draw_files_project_names = draw_contigs_db_files
-            
+        seen = set()
+        draw_files_project_names = [
+            project_name for project_name in list(draw_files_project_names)
+            if not (project_name in seen or seen.add(project_name))
+        ]
+        
+        # Determine the map grids to draw.
         if draw_grid == True:
             draw_grid_project_names = list(project_names)
         elif draw_grid == False:
@@ -462,12 +535,21 @@ class Mapper:
             for project_name in draw_grid:
                 assert project_name in project_names
             draw_grid_project_names = draw_grid
-            
-        draw_project_names = set(list(draw_files_project_names) + list(draw_grid_project_names))
+        seen = set()
+        draw_grid_project_names = [
+            project_name for project_name in list(draw_grid_project_names)
+            if not (project_name in seen or seen.add(project_name))
+        ]
         
-        # Draw all of the individual database maps needed for all purposes.
+        seen = set()
+        draw_project_names = [
+            project_name for project_name in draw_files_project_names + draw_grid_project_names
+            if not (project_name in seen or seen.add(project_name))
+        ]
+        
+        # Draw individual database maps needed as final outputs or for grids.
         for project_name in draw_project_names:
-            self.map_contigs_database_kos(
+            drawn['individual'][project_name] = self.map_contigs_database_kos(
                 project_names[project_name],
                 os.path.join(output_dir, project_name),
                 pathway_numbers=pathway_numbers,
@@ -478,26 +560,73 @@ class Mapper:
         if draw_grid == False:
             return
         
+        # Draw empty maps needed to fill in grids.
+        paths_to_remove: List[str] = []
+        if not draw_maps_lacking_kos:
+            # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
+            # indicating which maps were drawn per contigs database.
+            drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
+            for project_name, drawn_project_name in drawn['individual'].items():
+                for pathway_number, drawn_map in drawn_project_name.items():
+                    try:
+                        drawn_pathway_number[pathway_number][project_name] = drawn_map
+                    except KeyError:
+                        drawn_pathway_number[pathway_number] = {project_name: drawn_map}
+                        
+            # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            for pathway_number, drawn_project_name in drawn_pathway_number.items():
+                if set(drawn_project_name.values()) != set([True, False]):
+                    continue
+                for project_name, drawn_map in drawn_project_name.items():
+                    if drawn_map:
+                        continue
+                    self.map_contigs_database_kos(
+                        project_names[project_name],
+                        os.path.join(output_dir, project_name),
+                        pathway_numbers=[pathway_number],
+                        color_hexcode=color_hexcode,
+                        draw_maps_lacking_kos=True
+                    )
+                    paths_to_remove.append(
+                        os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf')
+                    )
+                    
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
-            in_paths = [os.path.join(output_dir, f'kos_{pathway_number}.pdf')]
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if not os.path.exists(unified_map_path):
+                continue
+            in_paths = [unified_map_path]
             labels = ['all']
+            
             pdf_doc = fitz.open(in_paths[0])
             page = pdf_doc.load_page(0)
             input_aspect_ratio = page.rect.width / page.rect.height
             landscape = True if input_aspect_ratio > 1 else False
+            
             for project_name in draw_grid_project_names:
+                individual_map_path = os.path.join(
+                    output_dir, project_name, f'kos_{pathway_number}.pdf'
+                )
+                if not os.path.exists(individual_map_path):
+                    break
                 in_paths.append(os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf'))
                 labels.append(project_name)
-            out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
-            self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
-            
-        # Remove individual database maps that were only needed for grid maps.
-        for project_name in draw_project_names.difference(set(draw_files_project_names)):
+            else:
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                drawn['grid'][pathway_number] = True
+
+        # Remove individual database maps that were only needed for map grids.
+        for path in paths_to_remove:
+            os.remove(path)
+        for project_name in set(draw_project_names).difference(set(draw_files_project_names)):
             shutil.rmtree(os.path.join(output_dir, project_name))
             
+        return drawn
+    
     def map_pan_database_kos(
         self,
         pan_db: str,
@@ -507,12 +636,13 @@ class Mapper:
         draw_genome_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[str, mcolors.Colormap, None] = 'RdPu',
+        reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         colorbar: bool = True,
         draw_maps_lacking_kos: bool = False,
         consensus_threshold: float = None,
         discard_ties: bool = None
-    ) -> None:
+    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
         Draw pathway maps, highlighting consensus KOs from the pan database.
         
@@ -550,22 +680,37 @@ class Mapper:
             grid. Alternatively, the names of a subset of genomes can be provided.
             
         colormap : Union[str, matplotlib.colors.Colormap, None], 'RdPu'
-            Color reactions by number of genomes involving the reaction. A reaction on a map can
-            correspond to one or more KOs. A consensus KO can come from one or more gene clusters.
-            Genomes in the count have gene(s) in the cluster.
+            Reactions are dynamically colored to reflect the number of genomes involving the
+            reaction, unless the argument value is None. None overrides dynamic coloring via a
+            colormap using the argument provided to 'color_hexcode', so that reactions in the
+            pangenome are assigned predetermined colors.
             
-            The argument can either be the name of a built-in matplotlib colormap or a Colormap
-            object itself. The default sequential colormap, 'RdPu', spans light red (fewer genomes)
-            to purple (more genomes), which emphasizes shared rather than unshared reactions. A
-            colormap spanning dark (fewer genomes) to light (more genomes), such as 'magma', is
-            better for highlighting unshared reactions. Override this argument with the
-            color_hexcode argument by providing a value of None, resulting in reactions represented
-            by a consensus KO being assigned a single color.
+            Here is how a reaction is assigned a genome count. A reaction element in a map can
+            contain one or more KOs. Find corresponding consensus KOs from the anvi'o pangenomic
+            database. Each consensus KO is assigned to one or more gene clusters. Counted genomes
+            have one or more genes in gene clusters with these consensus KOs.
+            
+            This argument can take either be the name of a built-in matplotlib colormap or a
+            Colormap object itself. The default sequential colormap, 'RdPu', spans light red (fewer
+            genomes) to purple (more genomes), which emphasizes shared rather than unshared
+            reactions. A colormap spanning dark (fewer genomes) to light (more genomes), such as
+            'magma', is better for highlighting unshared reactions.
+            
+            See the following webpage for named colormaps:
+            https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
+            
+        reverse_overlay : bool, False
+            By default, with False, reactions in more genomes are drawn on top of those in fewer
+            genomes. With True, the opposite applies; especially in global maps with a non-default
+            colormap spanning dark to light, this accentuates unshared rather than shared parts of a
+            pathway.
             
         color_hexcode : str, '#2ca02c'
             This is the color, by default green, for reactions containing consensus KOs from the pan
-            database. The colormap argument must be None for this argument to be used, overriding
-            coloring based on quantitative data with coloring based on presence/absence.
+            database. Alternatively to a color hex code, the string, 'original', can be provided to
+            use the original color scheme of the reference map. The 'colormap' argument must be
+            False for this argument to be used, overriding dynamic coloring based on quantitative
+            data with static coloring based on presence/absence in the pangenome.
             
         colorbar : bool, True
             If True and coloring by number of genomes, save a colorbar legend to the file,
@@ -591,6 +736,20 @@ class Mapper:
             frequent among genes in a cluster, then a consensus KO is not assigned to the cluster
             itself, whereas a value of False would cause one of the most frequent KOs to be
             arbitrarily chosen.
+            
+        Returns
+        =======
+        Dict[Literal['unified', 'individual', 'grid'], Dict]
+            Keys in the outer dictionary are different types of files that can be drawn. 'unified'
+            maps show data from all genomes. 'individual' maps show data from individual genomes.
+            'grid' images show both unified and individual maps. 'unified' and 'grid' values are
+            Dict[str, bool], where keys are pathway numbers, and values are True if the map was
+            drawn, False if the map was not drawn because it did not contain any of the select KOs
+            and 'draw_maps_lacking_kos' was False. 'individual' values are Dict[str, Dict[str,
+            bool]], where keys in the outer dictionary are genome names, keys in the inner
+            dictionary are pathway numbers, and values in the inner dictionary are True if the map
+            was drawn, False if the map was not drawn because it did not contain any of the select
+            KOs and 'draw_maps_lacking_kos' was False.
         """
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
@@ -605,7 +764,7 @@ class Mapper:
             if consensus_threshold is not None:
                 consensus_threshold = float(consensus_threshold)
                 assert 0 <= consensus_threshold <= 1
-        
+                
         if discard_ties is None:
             discard_ties = self_table['reaction_network_discard_ties']
             if discard_ties is None:
@@ -642,16 +801,30 @@ class Mapper:
         
         genome_names = self_table['external_genome_names'].split(',')
         
+        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
+            'unified': {},
+            'individual': {},
+            'grid': {}
+        }
+        
         if colormap is None:
             # Draw pangenomic maps with a static reaction color.
             for pathway_number in pathway_numbers:
-                self._draw_map_kos_single_color(
-                    pathway_number,
-                    set(consensus_ko_ids),
-                    color_hexcode,
-                    output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
-                )
+                if color_hexcode == 'original':
+                    drawn['unified'] = self._draw_map_kos_original_color(
+                        pathway_number,
+                        set(consensus_ko_ids),
+                        output_dir,
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
+                else:
+                    drawn['unified'] = self._draw_map_kos_single_color(
+                        pathway_number,
+                        set(consensus_ko_ids),
+                        color_hexcode,
+                        output_dir,
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
         else:
             # Draw pangenomic maps with dynamic coloring by number of genomes.
             if isinstance(colormap, str):
@@ -678,7 +851,10 @@ class Mapper:
             # highest color value.
             color_priority: Dict[str, float] = {}
             for sample_point in np.linspace(0, 1, len(genome_names)):
-                color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
+                if reverse_overlay:
+                    color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
+                else:
+                    color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
                 
             if colorbar:
                 self._draw_colorbar(
@@ -688,7 +864,7 @@ class Mapper:
                     label='genomes'
                 )
             for pathway_number in pathway_numbers:
-                self._draw_map_kos_membership(
+                drawn['unified'] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_genomes,
                     color_priority,
@@ -700,6 +876,7 @@ class Mapper:
         if draw_genome_files is False and draw_grid is False:
             return
         
+        # Determine the individual genome maps to draw.
         if draw_genome_files == True:
             draw_files_genome_names = genome_names
         elif draw_genome_files == False:
@@ -708,7 +885,13 @@ class Mapper:
             for genome_name in draw_genome_files:
                 assert genome_name in genome_names
             draw_files_genome_names = draw_genome_files
-            
+        seen = set()
+        draw_files_genome_names = [
+            genome_name for genome_name in list(draw_files_genome_names)
+            if not (genome_name in seen or seen.add(genome_name))
+        ]
+        
+        # Determine the map grids to draw.
         if draw_grid == True:
             draw_grid_genome_names = genome_names
         elif draw_grid == False:
@@ -717,11 +900,21 @@ class Mapper:
             for genome_name in draw_grid:
                 assert genome_name in genome_names
             draw_grid_genome_names = draw_grid
-            
-        draw_genome_names = set(list(draw_files_genome_names) + list(draw_grid_genome_names))
+        seen = set()
+        draw_grid_genome_names = [
+            genome_name for genome_name in list(draw_grid_genome_names)
+            if not (genome_name in seen or seen.add(genome_name))
+        ]
         
+        seen = set()
+        draw_genome_names = [
+            genome_name for genome_name in draw_files_genome_names + draw_grid_genome_names
+            if not (genome_name in seen or seen.add(genome_name))
+        ]
+        
+        # Draw individual genome maps needed as final outputs or for grids.
         for genome_name in draw_genome_names:
-            self.map_genomes_storage_genome_kos(
+            drawn['individual'][genome_name] = self.map_genomes_storage_genome_kos(
                 genomes_storage_db,
                 genome_name,
                 os.path.join(output_dir, genome_name),
@@ -732,35 +925,85 @@ class Mapper:
             
         if draw_grid == False:
             return
-            
+        
+        # Draw empty maps needed to fill in grids.
+        paths_to_remove: List[str] = []
+        if not draw_maps_lacking_kos:
+            # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
+            # indicating which maps were drawn per genome.
+            drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
+            for genome_name, drawn_genome_name in drawn['individual'].items():
+                for pathway_number, drawn_map in drawn_genome_name.items():
+                    try:
+                        drawn_pathway_number[pathway_number][genome_name] = drawn_map
+                    except KeyError:
+                        drawn_pathway_number[pathway_number] = {genome_name: drawn_map}
+                        
+            # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            for pathway_number, drawn_genome_name in drawn_pathway_number.items():
+                if set(drawn_genome_name.values()) != set([True, False]):
+                    continue
+                for genome_name, drawn_map in drawn_genome_name.items():
+                    if drawn_map:
+                        continue
+                    self.map_contigs_database_kos(
+                        genome_names[genome_name],
+                        os.path.join(output_dir, genome_name),
+                        pathway_numbers=[pathway_number],
+                        color_hexcode=color_hexcode,
+                        draw_maps_lacking_kos=True
+                    )
+                    paths_to_remove.append(
+                        os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf')
+                    )
+                    
+        # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
-            in_paths = [os.path.join(output_dir, f'kos_{pathway_number}.pdf')]
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if not os.path.exists(unified_map_path):
+                continue
+            in_paths = [unified_map_path]
             labels = ['pangenome']
+            
             pdf_doc = fitz.open(in_paths[0])
             page = pdf_doc.load_page(0)
             input_aspect_ratio = page.rect.width / page.rect.height
             landscape = True if input_aspect_ratio > 1 else False
+            
             for genome_name in draw_grid_genome_names:
+                individual_map_path = os.path.join(
+                    output_dir, genome_name, f'kos_{pathway_number}.pdf'
+                )
+                if not os.path.exists(individual_map_path):
+                    break
                 in_paths.append(os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf'))
                 labels.append(genome_name)
-            out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
-            self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
-            
+            else:
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                drawn['grid'][pathway_number] = True
+                
+        # Remove individual genome maps that were only needed for map grids.
+        for path in paths_to_remove:
+            os.remove(path)
         for genome_name in draw_genome_names.difference(set(draw_files_genome_names)):
             shutil.rmtree(os.path.join(output_dir, genome_name))
             
-    def _map_kos_single_color(
+        return drawn
+    
+    def _map_kos_fixed_colors(
         self,
         ko_ids: Iterable[str],
         output_dir: str,
         pathway_numbers: List[str] = None,
         color_hexcode: str = '#2ca02c',
         draw_maps_lacking_kos: bool = False
-    ) -> None:
+    ) -> Dict[str, bool]:
         """
-        Draw pathway maps, highlighting KOs in a single color.
+        Draw pathway maps, highlighting reactions containing select KOs in either a single color
+        provided by a hex code or the colors originally used in the reference map.
         
         Parameters
         ==========
@@ -776,13 +1019,23 @@ class Mapper:
             draws all available pathway maps in the KEGG data directory.
             
         color_hexcode : str, '#2ca02c'
-            This is the color, by default green, used on the maps for KOs among provided ko_ids. In
-            global and overview maps, KOs are represented as reaction arrows, whereas in standard
-            maps, KOs are represented as boxes, the background color of which is changed.
+            This is the color, by default green, for reactions containing provided KOs.
+            Alternatively to a color hex code, the string, 'original', can be provided to use the
+            original color scheme of the reference map. In global maps, KOs are represented in
+            reaction lines, and in overview maps, KOs are represented in reaction arrows. The
+            foreground color of the lines and arrows is set. In standard maps, KOs are represented
+            in boxes, the background color of which is set.
             
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
+            
+        Returns
+        =======
+        Dict[str, bool]
+            Keys are pathway numbers. Values are True if the map was drawn, False if the map was not
+            drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was
+            False.
         """
         # Find the numeric IDs of the maps to draw.
         pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
@@ -790,14 +1043,25 @@ class Mapper:
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
         
         # Draw maps.
+        drawn: Dict[str, bool] = {}
         for pathway_number in pathway_numbers:
-            self._draw_map_kos_single_color(
-                pathway_number,
-                ko_ids,
-                color_hexcode,
-                output_dir,
-                draw_map_lacking_kos=draw_maps_lacking_kos)
-            
+            if color_hexcode == 'original':
+                drawn[pathway_number] = self._draw_map_kos_original_color(
+                    pathway_number,
+                    ko_ids,
+                    output_dir,
+                    draw_map_lacking_kos=draw_maps_lacking_kos
+                )
+            else:
+                drawn[pathway_number] = self._draw_map_kos_single_color(
+                    pathway_number,
+                    ko_ids,
+                    color_hexcode,
+                    output_dir,
+                    draw_map_lacking_kos=draw_maps_lacking_kos
+                )
+        return drawn
+    
     def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
         """
         Find the numeric IDs of maps to draw given the file prefix, checking that the map can be
@@ -867,9 +1131,9 @@ class Mapper:
         color_hexcode: str,
         output_dir: str,
         draw_map_lacking_kos: bool = False
-    ) -> None:
+    ) -> bool:
         """
-        Draw a pathway map, highlighting select KOs in a single color.
+        Draw a pathway map, highlighting reactions containing select KOs in a single color.
         
         Parameters
         ==========
@@ -880,9 +1144,10 @@ class Mapper:
             Select KOs, any of which in the map are colored.
             
         color_hexcode : str
-            This is the color used on the maps for KOs present in the anvi'o database. In global and
-            overview maps, KOs are represented as reaction arrows, whereas in standard maps, KOs are
-            represented as boxes, the background color of which is changed.
+            This is the color, by default green, for reactions containing provided KOs. In global
+            maps, KOs are represented in reaction lines, and in overview maps, KOs are represented
+            in reaction arrows. The foreground color of the lines and arrows is set. In standard
+            maps, KOs are represented in boxes, the background color of which is set.
             
         output_dir : str
             Path to an existing output directory in which map PDF files are drawn.
@@ -890,32 +1155,49 @@ class Mapper:
         draw_map_lacking_kos : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
             draw the map regardless, meaning that nothing may be highlighted.
+            
+        Returns
+        =======
+        bool
+            True if the map was drawn, False if the map was not drawn because it did not contain any
+            of the select KOs and 'draw_map_lacking_kos' was False.
         """
         pathway = self._get_pathway(pathway_number)
         
-        entries = pathway.get_entries(kegg_ids=ko_ids)
-        if not entries and not draw_map_lacking_kos:
-            return
+        select_entries = pathway.get_entries(kegg_ids=ko_ids)
+        if not select_entries and not draw_map_lacking_kos:
+            return False
         
-        # Change the colors of the KO graphics. Widen colored lines in overview maps.
-        for entry in entries:
-            for uuid in entry.children['graphics']:
-                graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                if pathway.is_global_map:
-                    graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
-                elif pathway.is_overview_map:
-                    graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
-                    # The width of lines in the base map is 1.0.
-                    graphics.width = 5.0
-                else:
-                    graphics.fgcolor = '#000000'
-                    graphics.bgcolor = color_hexcode
+        # Set the color of Graphics elements for reactions containing select KOs. For other Graphics
+        # elements, change the 'fgcolor' attribute to a nonsense value to ensure that the elements
+        # with the prioritized color can be distinguished from other elements. Also, in overview
+        # maps, widen lines from the base map default of 1.0.
+        all_entries = pathway.get_entries(entry_type='ortholog')
+        select_uuids = [entry.uuid for entry in select_entries]
+        color_priority: Dict[str, Dict[Tuple[str, str], float]] = {'ortholog': {}}
+        ortholog_color_priority = color_priority['ortholog']
+        for entry in all_entries:
+            if entry.uuid in select_uuids:
+                for uuid in entry.children['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    if pathway.is_global_map:
+                        graphics.fgcolor = color_hexcode
+                        graphics.bgcolor = '#FFFFFF'
+                    elif pathway.is_overview_map:
+                        graphics.fgcolor = color_hexcode
+                        graphics.bgcolor = '#FFFFFF'
+                        graphics.width = 5.0
+                    else:
+                        graphics.fgcolor = '#000000'
+                        graphics.bgcolor = color_hexcode
+            else:
+                for uuid in entry.children['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    graphics.fgcolor = '0'
                     
-        # Set the color priority so that the colored KOs are prioritized for display on top. Recolor
-        # "unprioritized" KO graphics to a background color. In global and overview maps, recolor
-        # circles to reflect the colors of adjoining prioritized lines and arrows.
+        # Set the color priority so that the colored reactions are prioritized for display on top.
+        # Recolor "unprioritized" reactions to a background color. In global and overview maps,
+        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
         if pathway.is_global_map:
             color_priority = {'ortholog': {(color_hexcode, '#FFFFFF'): 1.0}}
             recolor_unprioritized_entries = 'g'
@@ -941,6 +1223,109 @@ class Mapper:
         else:
             filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
+        return True
+        
+    def _draw_map_kos_original_color(
+        self,
+        pathway_number: str,
+        ko_ids: Iterable[str],
+        output_dir: str,
+        draw_map_lacking_kos: bool = False
+    ) -> bool:
+        """
+        Draw a pathway map, highlighting reactions containing select KOs in the color or colors
+        originally used in the reference map.
+        
+        Parameters
+        ==========
+        pathway_number : str, None
+            Numeric ID of the map to draw.
+            
+        ko_ids : Iterable[str]
+            Select KOs, any of which in the map are colored.
+            
+        output_dir : str
+            Path to an existing output directory in which map PDF files are drawn.
+            
+        draw_map_lacking_kos : bool, False
+            If False, by default, only draw the map if it contains any of the select KOs. If True,
+            draw the map regardless, meaning that nothing may be highlighted.
+            
+        Returns
+        =======
+        bool
+            True if the map was drawn, False if the map was not drawn because it did not contain any
+            of the select KOs and 'draw_map_lacking_kos' was False.
+        """
+        pathway = self._get_pathway(pathway_number)
+        
+        select_entries = pathway.get_entries(kegg_ids=ko_ids)
+        if not select_entries and not draw_map_lacking_kos:
+            return False
+        
+        # Set "secondary" colors of Graphics elements for reactions containing select KOs: white
+        # background color of lines or black foreground text of boxes. For other Graphics elements,
+        # change the 'fgcolor' attribute to a nonsense value to ensure that the elements with
+        # prioritized colors can be distinguished from other elements. Also, in overview maps, widen
+        # lines from the base map default of 1.0.
+        all_entries = pathway.get_entries(entry_type='ortholog')
+        select_uuids = [entry.uuid for entry in select_entries]
+        prioritized_colors: List[Tuple[str, str]] = []
+        for entry in all_entries:
+            if entry.uuid in select_uuids:
+                for uuid in entry.children['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    if pathway.is_global_map:
+                        graphics.bgcolor = '#FFFFFF'
+                    elif pathway.is_overview_map:
+                        graphics.bgcolor = '#FFFFFF'
+                        graphics.width = 5.0
+                    else:
+                        graphics.fgcolor = '#000000'
+                    prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
+            else:
+                for uuid in entry.children['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    graphics.fgcolor = '0'
+                    
+        # By default, global maps but not overview and standard maps have reactions with more than
+        # one color. Give higher priority to reaction entries that are encountered later (occur
+        # further down in the KGML file), and would thus be rendered above earlier reactions.
+        seen = set()
+        prioritized_colors = [
+            colors for colors in prioritized_colors if not (colors in seen or seen.add(colors))
+        ]
+        priorities = np.linspace(0, 1, len(prioritized_colors) + 1)[1: ]
+        ortholog_color_priority = {
+            colors: priority for colors, priority in zip(prioritized_colors, priorities)
+        }
+        color_priority = {'ortholog': ortholog_color_priority}
+        
+        # Recolor "unprioritized" reactions to a background color. In global and overview maps,
+        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
+        if pathway.is_global_map:
+            recolor_unprioritized_entries = 'g'
+            color_associated_compounds = 'high'
+        elif pathway.is_overview_map:
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = 'high'
+        else:
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = None
+        pathway.set_color_priority(
+            color_priority,
+            recolor_unprioritized_entries=recolor_unprioritized_entries,
+            color_associated_compounds=color_associated_compounds
+        )
+        
+        # Draw the map.
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if os.path.exists(out_path) and self.overwrite_output:
+            os.remove(out_path)
+        else:
+            filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
+        self.drawer.draw_map(pathway, out_path)
+        return True
         
     def _draw_map_kos_membership(
         self,
@@ -951,7 +1336,7 @@ class Mapper:
         colormap: mcolors.Colormap,
         source_combos: List[Tuple[str]] = None,
         draw_map_lacking_kos: bool = False
-    ) -> None:
+    ) -> bool:
         """
         Draw a pathway map, coloring reactions by their membership in sources.
         
@@ -1001,6 +1386,12 @@ class Mapper:
         draw_map_lacking_kos : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
             draw the map regardless, meaning that nothing may be highlighted.
+            
+        Returns
+        =======
+        bool
+            True if the map was drawn, False if the map was not drawn because it did not contain any
+            of the select KOs and 'draw_map_lacking_kos' was False.
         """
         pathway = self._get_pathway(pathway_number)
         
@@ -1011,7 +1402,7 @@ class Mapper:
                 
         entries = pathway.get_entries(kegg_ids=ko_membership)
         if not entries and not draw_map_lacking_kos:
-            return
+            return False
         
         # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs.
         color_hexcodes = list(color_priority)
@@ -1083,6 +1474,7 @@ class Mapper:
         else:
             filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
+        return True
         
     def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
         """
