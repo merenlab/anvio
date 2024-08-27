@@ -57,10 +57,10 @@ class Element:
     tag: str
     # Element attributes are required or not, according to the KGML schema.
     attribute_required: Dict[str, bool]
-
+    
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
-
+        
 class Pathway(Element):
     """
     A pathway element is the parent of all other elements in a KGML file.
@@ -69,50 +69,50 @@ class Pathway(Element):
     ==========
     subelement_tags : Tuple[str]
         Possible child element tags.
-    
+        
     name : str, None
         KEGG ID of the pathway map.
-    
+        
     org : str, None,
         ko/ec/rn/[org prefix] in ID.
-    
+        
     number : str, None
         Map number in ID.
-    
+        
     title : str, None
         Map title.
         
     image : str, None
         URL of map image file.
-    
+        
     link : str, None
         URL of map information.
-    
+        
     xml_declaration : str, None
         XML declaration line from file metadata. This is the first line of a reference KGML file.
-    
+        
     xml_doctype : str, None
         Doctype line from file metadata. This is the second line of a reference KGML file.
-    
+        
     xml_comment : str, None
         Comment line from file metadata. This is the third line of a reference KGML file.
-    
+        
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
-    
+        
     uuid_element_lookup : Dict[str, Element], {}
         Keys are unique IDs of elements, values are element objects.
-    
+        
     kegg_id_element_lookup : Dict[str, List[Element]] = {}
         Keys are KEGG IDs, values are lists of element objects with the ID in the name attribute.
         An ID is not necessarily unique to an element, and an element can have multiple KEGG IDs.
-    
+        
     is_global_map : bool, None
         True if the pathway map is a global map, as indicated by the map number.
         
     is_overview_map : bool, None
         True if the pathway map is an overview map, as indicated by the map number.
-    
+        
     color_priority : Dict[str, Dict[Tuple[str, str], float]]
         This defines the order of entries by the foreground and background colors of their graphics.
         Set this attribute with the method, set_color_priority.
@@ -146,7 +146,7 @@ class Pathway(Element):
         'relation',
         'reaction'
     )
-
+    
     def __init__(self) -> None:
         self.name: str = None
         self.org: str = None
@@ -171,19 +171,19 @@ class Pathway(Element):
         self.color_priority: Dict[str, Dict[Tuple[str, str], float]] = {}
         
         super().__init__()
-
+        
     @property
     def is_global_map(self):
         if self.number is None:
             return None
         return True if re.match(kegg.GLOBAL_MAP_ID_PATTERN, self.number) else False
-
+    
     @property
     def is_overview_map(self):
         if self.number is None:
             return None
         return True if re.match(kegg.OVERVIEW_MAP_ID_PATTERN, self.number) else False
-
+    
     def set_color_priority(
         self,
         new_color_priority: Dict[str, Dict[Tuple[str, str], float]],
@@ -222,7 +222,7 @@ class Pathway(Element):
             The order of Entry types (outer dict entries) does not not change, so if, for example,
             'ortholog' appears before 'compound' in the dict keys, then ortholog entries will occur
             before compound entries in the KGML file, and compounds can be drawn over orthologs.
-        
+            
         recolor_unprioritized_entries : Union[str, Dict[str, Tuple[str, str]]], False
             Recolor unprioritized entries, either automatically with a string argument, or with a
             custom dictionary argument for fine-tuning foreground and background colors by Entry
@@ -249,7 +249,7 @@ class Pathway(Element):
                 'ortholog': ('#A9A9A9', '#E0E0E0'),
                 'compound': ('#000000', '#FFFFFF')
             }
-        
+            
         color_associated_compounds : Literal['high', 'low', 'average'], None
             Automatically set the background color of compound entries based on the color priority
             of ortholog entries involving the compounds. By default, compounds are circles, and
@@ -267,7 +267,7 @@ class Pathway(Element):
             Entry elements in the children attribute are reordered accordingly. Compound entries
             that are already in the color_priority attribute are exempt from recoloring and given
             higher priority than automatically recolored compound entries.
-        
+            
         colormap : matplotlib.colors.Colormap, None
             If 'average' is used as the color_associated_compounds argument, a colormap must be
             provided to map averaged priority values on the interval [0, 1] to a background color
@@ -277,7 +277,7 @@ class Pathway(Element):
         for new_type_color_priority in new_color_priority.values():
             for priority in new_type_color_priority.values():
                 assert priority >= 0
-
+                
         # Make the color_priority dict, reordering colors from lowest to highest priority.
         color_priority = {}
         for entry_type, new_type_color_priority in new_color_priority.items():
@@ -319,7 +319,7 @@ class Pathway(Element):
                 self.recolor_unprioritized_entries(
                     unprioritized_entry_uuids, recolor_unprioritized_entries
                 )
-        
+                
         if color_associated_compounds is None:
             return
         self.color_associated_compounds(color_associated_compounds, colormap=colormap)
@@ -341,7 +341,7 @@ class Pathway(Element):
                 self.recolor_unprioritized_entries(
                     unprioritized_entry_uuids, recolor_unprioritized_entries
                 )
-    
+                
     def recolor_unprioritized_ortholog_entries(
         self,
         unprioritized_entry_uuids: List[str],
@@ -399,7 +399,7 @@ class Pathway(Element):
             self.recolor_unprioritized_entries(
                 unprioritized_entry_uuids, {'compound': ('#000000', color_hex_code)}
             )
-    
+            
     def recolor_unprioritized_entries(
         self,
         unprioritized_entry_uuids: List[str],
@@ -446,7 +446,7 @@ class Pathway(Element):
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 graphics.fgcolor = fgcolor_hex_code
                 graphics.bgcolor = bgcolor_hex_code
-
+                
     def order_entries_by_color_priority(self) -> List[str]:
         """
         Reorder Entry (e.g., 'ortholog' and 'compound') UUIDs by color priority in the children
@@ -474,7 +474,7 @@ class Pathway(Element):
             else:
                 reordered_entry_uuids.append(entry_uuid)
                 unprioritized_entry_uuids.append(entry_uuid)
-        
+                
         # Sort "qualifying" entries. Loop through each Entry type in the color priority dict.
         for entry_type, type_color_priority in self.color_priority.items():
             # Retrieve each Entry object of the type. Its fg and bg colors determine its priority.
@@ -500,7 +500,7 @@ class Pathway(Element):
                 except KeyError:
                     # The Entry does not have colors in the priority dictionary.
                     priority = -1.0
-                
+                    
                 try:
                     type_priority_entry_uuids[priority].append(entry_uuid)
                 except KeyError:
@@ -510,16 +510,16 @@ class Pathway(Element):
             # dict mapping priority values to UUIDs of entries of all types.
             for priority, entry_uuids in sorted(type_priority_entry_uuids.items()):
                 reordered_entry_uuids += entry_uuids
-            
+                
             try:
                 unprioritized_entry_uuids += type_priority_entry_uuids[-1.0]
             except KeyError:
                 pass
             
         self.children['entry'] = reordered_entry_uuids
-
+        
         return unprioritized_entry_uuids
-
+    
     def color_associated_compounds(
         self,
         transfer: Literal['high', 'low', 'average'],
@@ -603,6 +603,7 @@ class Pathway(Element):
                 ortholog_color = fgcolors[0]
             else:
                 ortholog_color = bgcolors[0]
+                
             for substrate_uuid in reaction.children['substrate']:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
                 split_substrate_names = [split_name.split(':') for split_name in substrate.name.split()]
