@@ -31,6 +31,7 @@ from typing import Dict, Iterable, List, Literal, Tuple, Union
 import anvio.kegg as kegg
 import anvio.terminal as terminal
 
+from anvio.errors import ConfigError
 from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
 
@@ -423,6 +424,18 @@ class Pathway(Element):
                 'compound': ('#000000', '#FFFFFF')
             }
         """
+        # Prevent unprioritized entries from being assigned prioritized colors.
+        for entry_type, colors in type_colors.items():
+            try:
+                type_color_priority = self.color_priority[entry_type]
+            except KeyError:
+                continue
+            if colors in type_color_priority:
+                raise ConfigError(
+                    "Unprioritized entries cannot be assigned the same combination of foreground "
+                    "and background colors as prioritized entries of the same type."
+                )
+        
         for entry_uuid in unprioritized_entry_uuids:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             try:
