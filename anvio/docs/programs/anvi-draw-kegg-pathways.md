@@ -98,13 +98,13 @@ Pangenomes were constructed from 12 strains of two related species. The followin
 
 ![Three maps showing KOs from a pangenome](../../images/anvi-draw-kegg-pathways/kos_pan.png)
 
-As with the comparison of contigs databases, it can be useful to reverse the colormap and create map grids to compare the KO conttent of genomes in the pangenome.
+As with the comparison of contigs databases, it can be useful to reverse the colormap and create map grids to compare the KO content of genomes in the pangenome.
 
 {{ codestart }}
 anvi-draw-kegg-pathways -p %(pan-db)s -g %(genomes-storage-db)s -o output_dir --draw-grid --ko --colormap plasma 0.1 0.9 --reverse-overlay
 {{ codestop }}
 
-The following map grid reveals differences between the strains, and particularly the two species, in carbohydrate metabolism, with *faecalis* enriched in enzymes for xylose metabolism (towards the bottom of the map), and *faecium* enriched in enzymes for uronate metabolism (towards the top of the map).
+The following map grid reveals certain differences between the strains, and particularly the two species, in carbohydrate metabolism, with *faecalis* enriched in enzymes for xylose metabolism (towards the bottom of the map), and *faecium* enriched in enzymes for uronate metabolism (towards the top of the map).
 
 ![Pangenomic map grid](../../images/anvi-draw-kegg-pathways/kos_pan_grid.png)
 
