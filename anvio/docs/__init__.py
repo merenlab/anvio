@@ -843,12 +843,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "genes-stats": {
-        "name": "GENE STATS",
-        "type": "STATS",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "vcf": {
         "name": "VCF",
         "type": "TXT",
@@ -920,6 +914,18 @@ ANVIO_ARTIFACTS ={
         "type" : "DISPLAY",
         "provided_by_anvio" : True,
         "provided_by_user" : False
+    },
+    "gene-clusters": {
+        "name": "GENE CLUSTERS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "gene-clusters-txt": {
+        "name": "GENE CLUSTERS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "enzymes-txt": {
         "name": "ENZYMES TXT",

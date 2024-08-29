@@ -45,8 +45,7 @@ from anvio.tables.miscdata import (
 from anvio.tables.collections import TablesForCollections
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -2998,7 +2997,7 @@ class ContigsInteractive():
                               "member. Not like the way you tried it with no input paths whatsoever :/")
 
         for contig_db_path in self.args.input:
-            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
+            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path, run=terminal.Run(verbose=False)).get_summary_dict_for_assembly()
 
         self.tables = {}
         self.generate_tables()

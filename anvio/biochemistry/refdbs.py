@@ -25,8 +25,7 @@ from anvio.terminal import Progress, Run
 from anvio.filesnpaths import check_output_directory
 from anvio import __file__ as ANVIO_PATH, __version__ as VERSION
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION

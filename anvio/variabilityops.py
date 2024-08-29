@@ -32,8 +32,7 @@ from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['Alon Shaiber']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -789,9 +788,13 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if retain_counts:
             freq_columns = [x + '_freq' for x in self.items]
-            self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            self.data.loc[:, freq_columns] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
         else:
-            self.data[self.items] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            # Ensure we are working with a copy to avoid modifying the original DataFrame in place
+            self.data = self.data.copy()
+            
+            # Convert counts to frequencies in place
+            self.data.loc[:, self.items] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
 
 
     def convert_frequencies_to_counts(self):
