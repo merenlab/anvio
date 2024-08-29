@@ -1760,8 +1760,6 @@ class Drawer:
             kwargs['fontsize'] = 9
             
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
-        # with open('/Users/sam/Software/anvio/anvio/data/misc/KEGG/map_images/kgml/1x/ko/ko01100.xml') as f:
-        #     bio_pathway = KGML_parser.read(f)
         
         if map_filepath is None:
             if pathway.org == 'ko':
