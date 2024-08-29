@@ -1028,7 +1028,7 @@ class Mapper:
         # Remove individual genome maps that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
-        for genome_name in draw_genome_names.difference(set(draw_files_genome_names)):
+        for genome_name in set(draw_genome_names).difference(set(draw_files_genome_names)):
             shutil.rmtree(os.path.join(output_dir, genome_name))
             
         return drawn
