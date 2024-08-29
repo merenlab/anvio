@@ -10,7 +10,7 @@ ${python_script} --check-default-kegg-database
 
 INFO "Setting up the reaction network analysis directory"
 mkdir -p ${output_dir}/
-# These databases should contain KO annotations.
+# These databases should already contain KO annotations.
 cp ${files}/mock_data_for_pangenomics/*.db ${output_dir}/
 cp ${files}/mock_data_for_pangenomics/external-genomes.txt ${output_dir}/
 cp ${files}/example_description.md ${output_dir}/

@@ -7,14 +7,13 @@ from argparse import Namespace
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
 
-from anvio import A, K
 from anvio.errors import ConfigError
-from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
+from anvio import A, K, __version__ as VERSION
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
@@ -28,13 +27,7 @@ run = terminal.Run()
 
 
 def main() -> None:
-    """
-    Functionality required to run reaction network component testing.
-
-    Returns
-    =======
-    None
-    """
+    """Functionality required to run reaction network component testing."""
     args = get_args()
 
     if args.check_default_kegg_database:
@@ -64,10 +57,6 @@ def check_default_kegg_database() -> None:
     """
     Check if the KEGG database has been set up by anvi'o in the default location, raising an error
     if this is not the case.
-
-    Returns
-    =======
-    None
     """
     try:
         rn.KEGGData()
@@ -81,10 +70,6 @@ def check_default_modelseed_database() -> None:
     """
     Check if the ModelSEED Biochemistry database has been set up by anvi'o in the default location,
     print "True" to the terminal if this is the case, and "False" otherwise.
-
-    Returns
-    =======
-    None
     """
     try:
         rn.ModelSEEDDatabase()
@@ -106,7 +91,7 @@ def get_args() -> Namespace:
 
     groupA = parser.add_argument_group(
         "CHECKS",
-        "Check that a reference database has been installed by anvi'o in a default location by "
+        "Check that reference databases have been installed by anvi'o in default locations by "
         "using one (and only one) of the following flags."
     )
     groupA.add_argument(
@@ -131,8 +116,8 @@ def get_args() -> Namespace:
     groupB.add_argument(
         "--test-dir", type=str, metavar='PATH', help=
         "The directory storing test files. With the default value of None, temporary directories "
-        "are created and deleted as needed by the program. In contrast, none of the test files in "
-        "a directory provided by this argument are deleted."
+        "are created and deleted as needed by the program. In contrast, if a directory path is "
+        "provided, none of the test files in the directory are deleted."
     )
     groupB.add_argument(
         "--copy-db", default=False, action='store_true', help=
