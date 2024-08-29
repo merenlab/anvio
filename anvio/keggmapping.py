@@ -253,6 +253,7 @@ class Mapper:
         draw_contigs_db_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
+        colormap_limits: Tuple[float, float] = None,
         colormap_scheme: Literal['by_count', 'by_database'] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
@@ -301,16 +302,24 @@ class Mapper:
             
             The default argument value of True automatically assigns a colormap given the colormap
             scheme (see the 'colormap_scheme' argument). The scheme, 'by_count', uses the sequential
-            colormap, 'RdPu', by default; it spans light red (fewer databases) to purple (more
-            databases). This emphasizes reactions that are shared rather than unshared between
-            databases. In contrast, a colormap spanning dark to light, such as 'magma', is better
-            for highlighting unshared reactions. The scheme, 'by_database', uses the qualitative
-            colormap, 'Dark2', by default; it contains distinct colors appropriate for
-            distinguishing the different databases and combinations of databases.
+            colormap, 'plasma_r', by default; it spans yellow (fewer databases) to blue-violet (more
+            databases). This accentuates reactions that are shared rather than unshared across
+            databases. In contrast, a colormap spanning dark to light, such as 'plasma', is better
+            for drawing attention to unshared reactions. The scheme, 'by_database', uses the
+            qualitative colormap, 'tab10', by default; it contains distinct colors appropriate for
+            distinguishing the different databases containing reactions.
             
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
+            
+        colormap_limits : Tuple[float, float], None
+            Limit the fraction of the colormap used in dynamically selecting colors. The first value
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
+            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. By
+            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
+            are set to (0.1, 0.9). For the scheme, 'by_database', the default limits are set to
+            (0.0, 1.0).
             
         colormap_scheme : Literal['by_count', 'by_database'], None
             There are two ways of dynamically coloring reactions by inclusion in contigs databases:
@@ -375,19 +384,33 @@ class Mapper:
         # Set the colormap.
         if colormap is True:
             if scheme == 'by_count':
-                mpl_colormap = mpl.colormaps.get_cmap('RdPu')
+                cmap = mpl.colormaps.get_cmap('plasma_r')
+                if colormap_limits is None:
+                    colormap_limits = (0.1, 0.9)
             elif scheme == 'by_database':
-                mpl_colormap = mpl.colormaps.get_cmap('Dark2')
+                cmap = mpl.colormaps.get_cmap('tab10')
+                if colormap_limits is None:
+                    colormap_limits = (0.0, 1.0)
             else:
                 raise AssertionError
         elif colormap is False:
-            mpl_colormap = None
+            cmap = None
         elif isinstance(colormap, str):
-            mpl_colormap = mpl.colormaps.get_cmap(colormap)
+            cmap = mpl.colormaps.get_cmap(colormap)
         elif isinstance(colormap, mcolors.Colormap):
-            mpl_colormap = colormap
+            cmap = colormap
         else:
             raise AssertionError
+        
+        # Trim the colormap.
+        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
+            assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
+            cmap = mcolors.LinearSegmentedColormap.from_list(
+                f'trunc({cmap.name},{colormap_limits[0]:.2f},{colormap_limits[1]:.2f})',
+                cmap(range(
+                    int(colormap_limits[0] * cmap.N), math.ceil(colormap_limits[1] * cmap.N)
+                ))
+            )
             
         # Load contigs database metadata.
         project_names: Dict[str, str] = {}
@@ -455,11 +478,9 @@ class Mapper:
                 # of databases assigned the highest color value.
                 for sample_point in np.linspace(0, 1, len(contigs_dbs)):
                     if reverse_overlay:
-                        color_priority[
-                            mcolors.rgb2hex(mpl_colormap(sample_point))
-                        ] = 1 - sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                     else:
-                        color_priority[mcolors.rgb2hex(mpl_colormap(sample_point))] = sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
                 db_combos = None
             elif scheme == 'by_database':
                 # Sample the colormap for colors representing the different contigs databases and
@@ -467,16 +488,16 @@ class Mapper:
                 db_combos = []
                 for db_count in range(1, len(contigs_dbs) + 1):
                     db_combos += list(combinations(project_names, db_count))
-                assert len(db_combos) <= mpl_colormap.N
+                assert len(db_combos) <= cmap.N
                 for sample_point in range(len(db_combos)):
                     if reverse_overlay:
                         color_priority[
-                            mcolors.rgb2hex(mpl_colormap(sample_point))
-                        ] = 1 - sample_point / mpl_colormap.N
+                            mcolors.rgb2hex(cmap(sample_point))
+                        ] = 1 - sample_point / cmap.N
                     else:
                         color_priority[
-                            mcolors.rgb2hex(mpl_colormap(sample_point))
-                        ] = (sample_point + 1) / mpl_colormap.N
+                            mcolors.rgb2hex(cmap(sample_point))
+                        ] = (sample_point + 1) / cmap.N
                     
             if colorbar:
                 # Draw a colorbar in a separate file.
@@ -503,7 +524,7 @@ class Mapper:
                     ko_dbs,
                     color_priority,
                     output_dir,
-                    mpl_colormap,
+                    cmap,
                     source_combos=db_combos,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
@@ -635,7 +656,8 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         draw_genome_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[str, mcolors.Colormap, None] = 'RdPu',
+        colormap: Union[str, mcolors.Colormap, None] = 'plasma_r',
+        colormap_limits: Tuple[float, float] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         colorbar: bool = True,
@@ -679,7 +701,7 @@ class Mapper:
             reactions highlighted in the pangenomic map. If True, include all of the genomes in the
             grid. Alternatively, the names of a subset of genomes can be provided.
             
-        colormap : Union[str, matplotlib.colors.Colormap, None], 'RdPu'
+        colormap : Union[str, matplotlib.colors.Colormap, None], 'plasma_r'
             Reactions are dynamically colored to reflect the number of genomes involving the
             reaction, unless the argument value is None. None overrides dynamic coloring via a
             colormap using the argument provided to 'color_hexcode', so that reactions in the
@@ -691,13 +713,19 @@ class Mapper:
             have one or more genes in gene clusters with these consensus KOs.
             
             This argument can take either be the name of a built-in matplotlib colormap or a
-            Colormap object itself. The default sequential colormap, 'RdPu', spans light red (fewer
-            genomes) to purple (more genomes), which emphasizes shared rather than unshared
-            reactions. A colormap spanning dark (fewer genomes) to light (more genomes), such as
-            'magma', is better for highlighting unshared reactions.
+            Colormap object itself. The default sequential colormap, 'plasma_r', spans yellow (fewer
+            genomes) to blue-violet (more genomes). This accentuates reactions that are shared
+            rather than unshared across genomes. A colormap spanning dark (fewer genomes) to light
+            (more genomes), such as 'plasma', is better for drawing attention to unshared reactions.
             
             See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
+            
+        colormap_limits : Tuple[float, float], (0.0, 1.0)
+            Limit the fraction of the colormap used in dynamically selecting colors. The first value
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
+            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. The
+            default limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
             
         reverse_overlay : bool, False
             By default, with False, reactions in more genomes are drawn on top of those in fewer
@@ -829,8 +857,20 @@ class Mapper:
             # Draw pangenomic maps with dynamic coloring by number of genomes.
             if isinstance(colormap, str):
                 cmap = mpl.colormaps.get_cmap(colormap)
+                if colormap_limits is None:
+                    colormap_limits = (0.1, 0.9)
             else:
                 cmap = colormap
+                
+            # Trim the colormap.
+            if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
+                assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
+                cmap = mcolors.LinearSegmentedColormap.from_list(
+                    f'trunc({cmap.name},{colormap_limits[0]:.2f},{colormap_limits[1]:.2f})',
+                    cmap(range(
+                        int(colormap_limits[0] * cmap.N), math.ceil(colormap_limits[1] * cmap.N)
+                    ))
+                )
                 
             # For each consensus KO -- which can annotate more than one gene cluster -- find which
             # genomes contribute genes to clusters represented by the KO.
@@ -855,7 +895,7 @@ class Mapper:
                     color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                 else:
                     color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-                
+                    
             if colorbar:
                 self._draw_colorbar(
                     color_priority,
