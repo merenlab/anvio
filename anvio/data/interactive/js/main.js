@@ -80,6 +80,7 @@ var bbox;
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
 var min_branch_support_value_seen = null;
+var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
@@ -201,6 +202,8 @@ $(document).ready(function() {
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
     }
 
+    scaleBarDrawer();
+
     initData();
         // Sidebar Hide/Show button 
         $(".sidebar-toggle").click(function() {
@@ -213,6 +216,10 @@ $(document).ready(function() {
                 }
                 return text === "Hide" ? "Show" : "Hide";
             });
+        });
+
+        $('#bin_settings').on('click', function() {
+            $.bootstrapSortable();
         });
 });
 
@@ -328,6 +335,9 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            // Scale bar on the sidebar
+            drawInlineScaleBar();
+
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
 
             // redoing intiial bin causes some weird behaviors
@@ -358,7 +368,98 @@ function initData() {
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
-    $('#show_font_size').hide()
+    $('#show-text-option').hide()
+}
+
+function scaleBarDrawer() {
+    const panelCenter = document.getElementById('panel-center');
+    const scaleValue = document.getElementById('scale-value');
+    const scaleBar = document.getElementById('scale-bar');
+
+    let scale = 1;
+    let step = 0;
+    const stepsPerUpdate = 10;
+    const minScaleBarWidth = 40;
+    const maxScaleBarWidth = 100;
+
+    const updateScaleBar = () => {
+        const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
+        scaleValue.textContent = scale.toFixed(decimalPlaces);
+
+        if (scale != 0) {            
+            // Calculate the scale bar width based on the step
+            const stepRatio = Math.abs(step % stepsPerUpdate) / stepsPerUpdate;
+            const scaleBarWidth = minScaleBarWidth + stepRatio * (maxScaleBarWidth - minScaleBarWidth);
+            scaleBar.style.width = `${scaleBarWidth}px`;           
+        }
+    };
+
+    const onWheel = (event) => {
+        event.preventDefault();
+
+        if (event.deltaY < 0) {
+            // Zoom in
+            step--;
+        } else {
+            // Zoom out
+            step++;
+        }
+
+        if (Math.abs(step) >= stepsPerUpdate) {
+            if (step < 0) {
+                scale /= 10;
+            } else {
+                scale *= 10;
+            }
+            step = 0; // Reset step after updating the scale
+        }
+
+        updateScaleBar();
+    };
+
+    panelCenter.addEventListener('wheel', onWheel);
+    updateScaleBar();
+}
+
+function drawInlineScaleBar() {
+    var settings = serializeSettings();
+
+    try {
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_scale_bar',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            }),
+            success: function(data) {
+                var scale_bar_value = data['scale_bar_value'];
+                console.log("Max Branch Length:", scale_bar_value);
+
+                if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+
+                    var scale_bar = document.getElementById('scale-bar-scope');
+                    if (!scale_bar) {
+                        console.error('Scale bar element with id scale-bar-scope not found');
+                        return;
+                    }
+                    var scaleValue = (scale_bar_value).toFixed(2);
+
+                    // Create a text node with the scale value
+                    var textNode = document.createTextNode(scaleValue);
+
+                    // Append the text node to the scale bar element
+                    scale_bar.appendChild(textNode);
+                }
+            },
+            error: function(error) {
+                console.error('Error:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -822,7 +923,7 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a cateogry
+                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
@@ -1504,14 +1605,7 @@ function buildLayersTable(order, settings)
             }
         });
 
-        if($('#custom_layer_margin').is(':checked'))
-        {
-            $('.column-margin').show();
-        }
-        else
-        {
-            $('.column-margin').hide();
-        }
+        $('.column-margin').show();
 
         $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
@@ -1567,11 +1661,10 @@ function serializeSettings(use_layer_names) {
     state['tree-radius'] = $('#tree-radius').val();
     state['tree-height'] = $('#tree_height').val();
     state['tree-width'] = $('#tree_width').val();
-    state['layer-margin'] = $('#layer-margin').val();
+    state['layer-margin'] = $('#layer-margin').val() ? $('#layer-margin').val() : 15;
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['outer-ring-margin'] = $('#outer-ring-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
-    state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked');
     state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
@@ -1602,10 +1695,22 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked')
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
+    state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
     state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
+    state['support-font-color'] = $('#support_font_color').attr('color')
+    state['second-support-font-color'] = $('#second_support_font_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
+    state['support-threshold'] = $('#support_threshold').val()
+    state['support-symbol-data'] = $('#support_symbol_data').val()
+
+    state['support-show-operator'] = $('#support_show_operator').val()
+    state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
+    state['support-bootstrap0-range-high'] = $('#support_bootstrap0_range_high').val()
+    state['support-bootstrap1-range-low'] = $('#support_bootstrap1_range_low').val()
+    state['support-bootstrap1-range-high'] = $('#support_bootstrap1_range_high').val()
+
 
     // sync views object and layers table
     syncViews();
@@ -1721,7 +1826,9 @@ function drawTree() {
     document.getElementById('svg').innerHTML = "";
 
     // Drawing time toasted to the user
-    toastr.success("<span id='draw_delta_time'></span>");
+    if (!document.getElementById('draw_delta_time')) {
+        toastr.success("<span id='draw_delta_time'></span>");
+    }
 
     waitingDialog.show('Drawing ...',
         {
@@ -2051,12 +2158,13 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg(dontDownload) {
+async function exportSvg(dontDownload) {
     if (!drawer)
         return;
 
     // draw bin and layer legend to output svg
     var settings = serializeSettings();
+    this.has_tree = (clusteringData.constructor !== Array);
 
     var bins_to_draw = new Array();
     $('#tbody_bins tr').each(
@@ -2069,11 +2177,16 @@ function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
-                _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
+                var geneClustersElement = $(bin).find('.num-gene-clusters');        
+                if (geneClustersElement.length > 0) {
+                    _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
+                } else {
+                    console.log("geneClustersElement not found");
+                }
+                _bin_info['gene-calls'] = $(bin).find('.num-gene-calls input').val();
             } else {
-                _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
-                _bin_info['contig-count'] = $('#contig_count_' + bin_id).val();
+                _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
+                _bin_info['contig-count'] = $(bin).find('.num-items input').val();
             }
 
             bins_to_draw.push(_bin_info);
@@ -2086,6 +2199,9 @@ function exportSvg(dontDownload) {
     if (bins_to_draw.length > 0) {
         drawBinLegend(bins_to_draw, top, left);
         top = top + 100 + (bins_to_draw.length + 2.5) * 20
+        if(this.has_tree && mode == 'manual'){
+            await drawScaleBar(settings, top, left);
+        }
     }
 
     // important,
@@ -2117,6 +2233,7 @@ function exportSvg(dontDownload) {
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
+    $('#scale_bar').remove();
 }
 
 
@@ -2729,10 +2846,6 @@ function processState(state_name, state) {
         $('#optimize_speed').prop('checked', state['optimize-speed']);
     }
 
-    if (state.hasOwnProperty('custom-layer-margin')){
-        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-    }
-
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
@@ -2835,13 +2948,24 @@ function processState(state_name, state) {
         $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
         $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
     }
+    if (state.hasOwnProperty('support-symbol-color')){
+        $('#support_font_color').attr('color', state['support-font-color'])
+        $('#support_font_color').css('background-color', state['support-font-color'])
+    }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_font_color').attr('color', state['second-support-font-color'])
+        $('#second_support_font_color').css('background-color', state['second-support-font-color'])
+    }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
+    }
+    if(state.hasOwnProperty('support-min-symbol-size')){
+        $('#support_min_symbol_size').val(state['support-min-symbol-size'])
     }
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
         if($('#support_display_number').is(':checked')){
-            $('#show_font_size').show()
+            $('#show-text-option').show()
         }
     }
     if (state.hasOwnProperty('support-font-size')){
@@ -2849,6 +2973,27 @@ function processState(state_name, state) {
     }
     if(state.hasOwnProperty('support-text-rotation')){
         $('#support_text_rotation').val(state['support-text-rotation'])
+    }
+    if(state.hasOwnProperty('support-threshold')){
+        $('#support_threshold').val(state['support-threshold'])
+    }
+    if(state.hasOwnProperty('support-symbol-data')){
+        $('#support_symbol_data').val(state['support-symbol-data'])
+    }
+    if(state.hasOwnProperty('support-show-operator')){
+        $('#support_show_operator').val(state['support-show-operator'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-low')){
+        $('#support_bootstrap0_range_low').val(state['support-bootstrap0-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-high')){
+        $('#support_bootstrap0_range_high').val(state['support-bootstrap0-range-high'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-low')){
+        $('#support_bootstrap1_range_low').val(state['support-bootstrap1-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-high')){
+        $('#support_bootstrap1_range_high').val(state['support-bootstrap1-range-high'])
     }
 
     // reload layers
@@ -3159,6 +3304,27 @@ function checkMaxSupportValueSeen() {
         // set the min/max values since we clearly know them by now.
         $('#support_range_low').val(min_branch_support_value_seen);
         $('#support_range_high').val(max_branch_support_value_seen);
+
+        // multiple thresholds option
+        if(!multiple_support_value_seen){
+            $('#show_multiple_range').css('display', 'none');
+            $('#show_threshold').css('display', 'flex');
+            $('#second_support_symbol_color').css('display', 'none');
+            $('#second_support_font_color').css('display', 'none');
+            $('#support_symbol_data').append($('<option>', {
+                value: 2,
+                text: 'bootstrap'
+            }));
+        }else{
+            $('#support_symbol_data').append($('<option>', {
+                value: 0,
+                text: 'bootstrap 0'
+            }));
+            $('#support_symbol_data').append($('<option>', {
+                value: 1,
+                text: 'bootstrap 1'
+            }));
+        }
     }
 }
 
@@ -3205,4 +3371,18 @@ function ShadowBoxSelection(type) {
             result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
             result.classList.add('border-warning');
         }
+}
+
+function toggleBranchSupportCheckboxes() {
+    if ($('#support_display_symbol').is(':checked')) {
+        $('#support_display_number').prop('disabled', true);
+    } else {
+        $('#support_display_number').prop('disabled', false);
+    }
+
+    if ($('#support_display_number').is(':checked')) {
+        $('#support_display_symbol').prop('disabled', true);
+    } else {
+        $('#support_display_symbol').prop('disabled', false);
+    }
 }

@@ -6,7 +6,6 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 """
 
 import os
-import glob
 import copy
 import shutil
 import pandas as pd
@@ -32,8 +31,7 @@ progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -166,10 +164,13 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.ctx.SCGs if not os.path.exists(self.ctx.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
-                    raise ConfigError("We have a problem, Houston. Even though anvi'o found the directory for taxonomy headquarters, "
-                                      "your setup seems to be missing %d of %d databases required for everything to work "
-                                      "properly :/ The good news? This problem will very likely go away if you run the program "
-                                      "`anvi-setup-scg-taxonomy` and you will be golden." % (len(missing_SCG_databases), len(self.ctx.SCGs)))
+                    raise ConfigError(f"We have a problem, Houston. Even though anvi'o found the directory for taxonomy headquarters, "
+                                      f"your setup seems to be missing {len(missing_SCG_databases)} of {len(self.ctx.SCGs)} databases required "
+                                      f"for everything to work :/ The good news? This problem will very likely go away if you run the program "
+                                      f"`anvi-setup-scg-taxonomy` and you will be golden (please note: if you ran `anvi-setup-scg-taxonomy` "
+                                      f"previously and setup your SCG taxonomy data to a spectific location via the `--scgs-taxonomy-data-dir` "
+                                      f"flag, you can include the same flag to your current command to make everything go smoothly instead of "
+                                      f"running the setup again).")
 
             ###########################################################
             # SCGTaxonomyEstimatorSingle
@@ -275,7 +276,7 @@ class SanityCheck(object):
                     raise ConfigError("Taxonomy estimation classes have been initiated with files for multiple (meta)genomes, but "
                                       "your arguments include also a single contigs or profile database path. You make anvi'o nervous. "
                                       "Please run this program either with a (meta)genomes file or individual contigs/profile databases.")
-                
+
                 if self.args.external_genomes and self.args.metagenomes:
                     raise ConfigError("More than one input file type (external genomes AND metagenomes) has been given to the "
                                       "taxonomy estimation classes. Please run this program with only one input type at a time.")
@@ -908,7 +909,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
-    
+
     def store_scg_taxonomy_super_dict_multi_output_file(self, scg_taxonomy_super_dict_multi):
         """Generates an output just like TaxonomyEstimatorSingle.store_items_taxonomy_super_dict(), but for multiple inputs."""
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
@@ -1126,7 +1127,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         self.args = args
         self.run = run
         self.progress = progress
-
         # update your self args
         SCGTaxonomyArgs.__init__(self, self.args)
 
@@ -1136,6 +1136,27 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         self.SCGs_taxonomy_data_dir = A('scgs_taxonomy_data_dir')
 
         global ctx
+
+        # if the user has specified a GTDB release or taxonomy data directory,
+        # we're getting a new context.
+        if self.SCGs_taxonomy_data_dir:
+            # since this is the first time we're dealing with this path, we will have to do a few
+            # things to make sure it will work smootly. the first step is to make sure it exists,
+            # and the user has write access to it
+            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir, delete_if_exists=False)
+
+            # then, we will have to copy all relevant files from the anvi'o source directory to
+            # the new setup database
+            import shutil, glob
+            shutil.copy(ctx.accession_to_taxonomy_file_path, self.SCGs_taxonomy_data_dir)
+            shutil.copy(ctx.database_version_file_path, self.SCGs_taxonomy_data_dir)
+
+            sdb_dir = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
+            filesnpaths.gen_output_directory(sdb_dir, delete_if_exists=False)
+            [shutil.copy(f, sdb_dir) for f in glob.glob(os.path.join(ctx.search_databases_dir_path, '*.gz'))]
+
+            # now all files are in place, we will re-initialize the context with the right user defined path
+            ctx = SCGTaxonomyContext(scgs_taxonomy_data_dir=self.SCGs_taxonomy_data_dir)
 
         self.ctx = ctx
 

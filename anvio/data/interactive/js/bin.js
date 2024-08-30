@@ -93,13 +93,12 @@ Bins.prototype.NewBin = function(id, binState) {
                        `}
                        <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
-                            <td style="border-top: 0px;">&nbsp;</td>
-                            <td style="border-top: 0px;">&nbsp;</td>
-                            <td colspan="6" style="border-top: 0px; padding-top: 0px;">
-                                <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
-                            </td>
-                    </tr>`;
+                    ${ mode === 'full' || mode === 'refine' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
+                    <td style="border-top: 0px;">&nbsp;</td>
+                    <td style="border-top: 0px;">&nbsp;</td>
+                    <td colspan="6" style="border-top: 0px; padding-top: 0px;">
+                        <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
+                    </td></tr>` : ``}`;
 
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
@@ -199,7 +198,11 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     let bin_row = this.container.querySelector(`tr[bin-id='${bin_id}']`);
 
-    bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    if (bin_row.nextElementSibling) {
+        bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    } else {
+        console.error('Next sibling element not found for bin_row.');
+    }
     bin_row.remove();
 
     if (!this.container.querySelectorAll('*').length) {
@@ -966,8 +969,13 @@ Bins.prototype.RedrawBins = function() {
             }
         }
 
-        var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
-
+        var element = document.getElementById('bin_color_' + bins_to_draw[i][2]);
+        if (element) {
+            var color = element.getAttribute('color');
+        } else {
+            console.error('Element with ID bin_color_' + bins_to_draw[i][2] + ' not found.');
+        }
+        
         if (tree_type == 'circlephylogram')
         {
             drawPie('bin',

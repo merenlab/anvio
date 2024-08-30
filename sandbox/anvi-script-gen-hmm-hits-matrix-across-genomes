@@ -13,8 +13,7 @@ from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
@@ -58,7 +57,7 @@ def main(args):
     gene_names_in_source = [g.strip() for g in s.hmm_hits_info[hmm_source]['genes'].split(',')]
 
     d = {}
-    progress.new('Processing congits databases')
+    progress.new('Processing contigs databases')
     for genome_name in s.genomes:
         d[genome_name] = {}
         for gene_name in gene_names_in_source:

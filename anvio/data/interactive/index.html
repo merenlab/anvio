@@ -67,7 +67,7 @@
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")'></script>
+    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")' defer></script>
     <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
     <!-- /Table sorter -->
 
@@ -104,7 +104,12 @@
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
-
+        <div id="scale-bar-container" style="display: none;">
+            <span>Tree scale: <span id="scale-value">1</span></span>
+            <div id="scale-bar">
+                <div class="middle-line"></div>
+            </div>
+        </div>
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -198,36 +203,63 @@
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                             </span> 
                             <div class="collapse multi-collapse show" id="item-collapse-main">
-                                <div class="ml-2">
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="tree_type" class="form-control">
-                                                    <option value="phylogram">Phylogram</option>
-                                                    <option value="circlephylogram" selected>Circle Phylogram</option>
-                                                </select>
-                                            </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
-                                                <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                                    <br />
-                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                                    <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                    <div class="ml-2" id="items-data-section">
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="tree_type" class="form-control">
+                                                        <option value="phylogram">Phylogram</option>
+                                                        <option value="circlephylogram" selected>Circle Phylogram</option>
+                                                    </select>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="trees_container" data-help="order-by">Order</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                                    <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                        The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                        <br />
+                                                        <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                        <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                                <label class="settings-label" for="views_container" data-help="view">Data</label>
+                                                <div class="col-10 menu-padding">
+                                                    <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                                </div>
+                                        </div>        
+                                        <div class="form-group form-margin manual-mode">
+                                            <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
+                                            <div class="menu-padding">
+                                                <div class="alert alert-secondary col-10 settings-label" role="alert">
+                                                    <div class="d-flex col-sm-10 col-lg-11">
+                                                        <span title="The scale bar is located at the bottom of the page." id="interactive-scale-text" class="d-flex">Interactive Scale</span>
+                                                        <div class="custom-control custom-switch d-flex col-8 ml-3" id="tree-scale-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="interactive-scale-checkbox" onclick="if (this.checked) { $('#scale-bar-container').show();} else { $('#scale-bar-container').hide(); }">
+                                                            <label class="custom-control-label" for="interactive-scale-checkbox"></label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex pt-4">
+                                                        <div class="d-flex">
+                                                            <div class="col-sm-11 col-lg-10 d-flex mr-5" id="calculated-scale-bar">
+                                                                Calculated Scale Bar
+                                                            </div>
+                                                            <div class="">
+                                                                <div class="d-flex scale-bar" id="scale-bar-scope"></div>
+                                                                <img class="d-block" src="./images/scale-bar-image.svg" alt="scale bar">
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                    </div>
-                                    <div class="form-group form-margin">
-                                            <label class="settings-label" for="views_container" data-help="view">Data</label>
-                                            <div class="col-10 menu-padding">
-                                                <select id="views_container" class="form-control" onchange="onViewChange();"></select>
-                                            </div>
+                                        <div>
                                     </div>
                                 </div>
-                                <div class="ml-2">
+                            </div>
+                            <div class="ml-2">
                                     <span class="settings-secondary-header">Display</span>
     
                                     <div id="table_layers_container" class="mt-3">
@@ -467,7 +499,7 @@
                                                 <div class="d-flex">
                                                     <div class="grid_details display-settings" style="display: none;">
                                                         <span class="d-flex align-items-center pl-1 mr-1">Width:</span>
-                                                        <input class="form-control input-xs d-flex ml-4 col-8"  size="5" value="10" id="grid_width" onchange="emit('bin-settings-changed');" />
+                                                        <input class="form-control input-xs d-flex ml-4 col-8" type="number" size="5" value="1" id="grid_width" onchange="emit('bin-settings-changed');" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -508,18 +540,6 @@
                             <div class="ml-3">
                                 <span class="settings-secondary-header">Cosmetics</span>
                                 <div>
-                                    <div class="form-group form-margin d-flex pt-1">
-                                        <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
-                                        <div class="col-6 d-flex">
-                                            <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
-                                        </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex align-items-center">
-                                            <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
-                                            <div class="col-6 d-flex align-items-center input-align">
-                                                <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                            </div>
-                                    </div>
                                     <div class="max-font-size-input" style="display: none;">
                                         <div class="form-group form-margin align-items-center d-flex">
                                                 <label class="col-2 settings-label" for="max_font_size" data-help="max-font-size">Maximum Font Size: </label>
@@ -574,7 +594,7 @@
                                         </div>
                                 </div>
 
-                            <div class="manual-mode">    
+                            <div class="manual-mode full-mode">
                             <span class="settings-secondary-header" >Branch Support</span>
                                 <div class="form-group form-margin d-flex mt-3">
                                     <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
@@ -592,6 +612,9 @@
                                     tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
                                 </div>
                                 <div id="support_value_params">
+                                    <div class="alert alert-info full-mode" role="alert">
+                                        If you are seeing a proper Dendrogram tree on your display and lacking support values, You need to change your Order in Main Menu, <b> ITEMS > ORDER > Tree</b>.
+                                    </div>
                                     <div class="form-group form-margin d-flex">
                                         <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-6 form-inline input-align d-flex">
@@ -600,7 +623,72 @@
                                             <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin d-flex">
+                                    <div class="form-group form-margin align-items-center" id='show_threshold' style="display: none;">
+                                        <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Threshold:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_threshold" style="width: 60px;" value='0' max='100' min='1'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin align-items-center ml-1" id='show_multiple_range' style="display: flex;">
+                                        <label class="col-2 settings-label d-flex" for="show-multiple-range" data-help="support-value-input">Multiple thresholds:</label>
+                                        <div class="col-6 align-items-center input-align d-flex">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#define-range-modal">
+                                                Define Ranges
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Define Range Modal -->
+                                    <div class="modal fade" id="define-range-modal" tabindex="-1" role="dialog" aria-labelledby="define-range-modal-label" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                            <h5 class="modal-title" id="define-range-modal-label">Define multiple threshold ranges</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-info" role="alert">
+                                                    Define custom display thresholds for different metadata sources.
+                                                    These ranges will be applied using the selected operator for Symbol and Text display types.
+                                                </div>
+                                                <hr>
+                                                <div class="form-group form-margin align-items-center" id='show_operator' style="display: flex;">
+                                                    <label class="col-2 settings-label d-flex" for="support-show-operator" data-help="support-show-operator">Operator:</label>
+                                                    <div class="col-6 align-items-center input-align d-flex">
+                                                        <select class="custom-select col-12" id="support_show_operator">
+                                                            <option value="AND">AND</option>
+                                                            <option value="OR">OR</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap0:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap0_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group form-margin d-flex">
+                                                    <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Bootstrap1:</label>
+                                                    <div class="col-6 form-inline input-align d-flex">
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                                        <span class="ml-1">to</span>
+                                                        <input class="form-control input-xs col-3" type="number" id="support_bootstrap1_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="button" class="btn btn-success" onclick="drawTree();">Update threshold</button>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
                                         <label class="col-3 settings-label d-flex" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
                                         <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
@@ -612,16 +700,25 @@
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_symbol_options'>
+                                        <div class="form-group form-margin" style="display: flex;">
+                                            <label class="col-2 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Bootstrap Source:</label>
+                                            <div class="col-4 align-items-center input-align d-flex">
+                                                <select class="custom-select input-group-sm col-12" id="support_symbol_data">
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex">
+                                            <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Symbol Size Range:</label>
+                                            <div class="col-6 form-inline input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_min_symbol_size" style="width: 60px;" value='1' step='1' max='24' min='1'>
+                                                <span class="ml-1">to</span>
+                                                <input class="form-control input-xs col-3" type="number" id="support_symbol_size"style="width: 60px;" value='12' step='1' max='24' min='1'>
+                                            </div>
+                                        </div>
                                         <div class="form-group form-margin" id="support_symbol" style="display: flex;">
                                             <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
                                             <div class="col-4 input-align d-flex">
                                                 <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
-                                            </div>
-                                        </div>
-                                        <div class="form-group form-margin" id="support_symbol" style="display: flex;">
-                                            <label class="col-3 settings-label d-flex" for="multiple_support_symbol" data-help="support-value-checkbox">Multiple Support:</label>
-                                            <div class="col-4 input-align d-flex">
-                                                <input type="checkbox" id="multiple_support_symbol" style="float: left;" name="multiple-support-symbol" onclick="if (this.checked) { $('#second_support_symbol_color').show();} else { $('#second_support_symbol_color').hide(); }">
                                             </div>
                                         </div>
                                         <div class="form-group form-margin">
@@ -630,43 +727,56 @@
                                                 <div class="col-1 input-align d-flex">
                                                     <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; min-width: 16px;"></div>
                                                 </div>
-                                                <div class="input-align d-flex">
+                                                <div class="input-align">
                                                     <div id="second_support_symbol_color"
                                                         class="colorpicker"
                                                         color="#2bab00"
+                                                        style="display: flex;"
                                                         >
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="form-group form-margin" style="display: flex;">
-                                            <label class="col-2 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
-                                            <div class="col-6 form-inline d-flex input-align">
-                                                <input class="form-control input-xs col-3" type="number" id="support_symbol_size" value='12' max='20' min='1'>
-                                            </div>
-                                        </div>
                                     </div>
-                                    <div class="form-group form-margin d-flex">
+                                    <div class="form-group form-margin d-flex" onclick="toggleBranchSupportCheckboxes();">
                                         <label class="col-3 settings-label d-flex" for="support_display_number" data-help="support-value-checkbox">Text:</label>
                                         <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
                                                 id="support_display_number"
                                                 style="float: left;"
                                                 name="show-number"
-                                                onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                onchange="if (this.checked) { $('#show-text-option').show();} else { $('#show-text-option').hide(); } "
                                                 >
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
-                                        <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
-                                        <div class="col-6 align-items-center input-align d-flex">
-                                            <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                    <div id="show-text-option" class="form-group form-margin">
+                                        <div class="form-group form-margin align-items-center" id='show_font_size' style="display: flex;">
+                                            <label class="col-2 settings-label d-flex" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                            <div class="col-6 align-items-center input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
-                                        <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
-                                        <div class="col-6 input-align d-flex">
-                                            <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                        <div class="form-group form-margin">
+                                            <div class="form-group form-margin" style="display: flex;">
+                                                <label class="col-3 settings-label d-flex" for="support_font_size" data-help="support-value-checkbox">Font Color:</label>
+                                                <div class="col-1 input-align d-flex">
+                                                    <div id="support_font_color" class="colorpicker" color="#2bab00" style="background-color:#2bab00; min-width: 16px;"></div>
+                                                </div>
+                                                <div class="input-align d-flex">
+                                                    <div id="second_support_font_color"
+                                                        class="colorpicker"
+                                                        color="#AA0000"
+                                                        style="display: flex;"
+                                                        >
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex align-items-center" id='show_text_rotation'>
+                                            <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                            <div class="col-6 input-align d-flex">
+                                                <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

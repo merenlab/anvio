@@ -12,8 +12,7 @@ import anvio.summarizer as summarizer
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
@@ -39,6 +38,9 @@ def main(args):
     progress.new('Initializing internal genomes')
 
     genome_name = args.bin_id
+
+    if not genome_name:
+        raise ConfigError("You forgot to provide a '--bin' parameter for the bin you wish to focus on :/")
 
     progress.update('Computing gene presence data ...')
     gene_presence_in_the_environment_dict = {}

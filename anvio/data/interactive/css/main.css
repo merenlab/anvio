@@ -1041,6 +1041,88 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     min-width: 16px;
 }
 
+.scale-bar{
+    max-width: 160px;
+    justify-content: center;
+    font-weight: 600;
+    color: var(--primary-text);
+}
+
+#second_support_font_color{
+    display: none;
+    background-color:#AA0000;
+    min-width: 16px;
+}
+
+
+#scale-bar-container {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    background: var(--bg-color-hover);
+    padding: 5px 10px;
+    border-radius: 5px;
+    opacity: 75%;
+}
+
+#scale-bar {
+    height: 2px;
+    background: #000;
+    margin-left: 5px;
+    position: relative;
+}
+
+#scale-bar::before,
+#scale-bar::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 10px;
+    background: #000;
+}
+
+#scale-bar::before {
+    left: 0;
+    top: -4px;
+}
+
+#scale-bar::after {
+    right: 0;
+    top: -4px;
+}
+
+#scale-bar .middle-line {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 5px;
+    background: #000;
+    top: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#tree-scale-switch{
+    justify-content: flex-end;
+}
+
+#calculated-scale-bar{
+    justify-content: flex-start;
+    align-items: center;
+}
+
+#interactive-scale-text{
+    min-width: 107px;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    border-color: var(--success-600);
+    background-color: var(--success-600);
+}
+
 @keyframes glowing {
     0% { background-position: 0 0; }
     50% { background-position: 400% 0; }
@@ -1101,7 +1183,7 @@ position: relative;
 @include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
 }
 
-@media only screen and (min-width:1460px){
+@media only screen and (min-width:1440px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
@@ -1117,7 +1199,7 @@ position: relative;
     }
 }
 
-@media only screen and (min-width:1280px) and (max-width: 1460px){
+@media only screen and (min-width:1280px) and (max-width: 1440px){
     /* styles for browsers larger than 1280px; */
     *:not(text) {
         font-size: 12px;
@@ -1125,16 +1207,18 @@ position: relative;
     }
 
     .fs-2x {
-        font-size: 1.7em !important;
+        font-size: 1.2em !important;
     }
 }
 
-@media only screen and (min-width: 768px) and (max-width: 1280px) {
-    .fa-2x {
-        font-size: 1.5em !important;
+@media only screen and (min-width:768px) and (max-width: 1280px){
+    /* styles for browsers larger than 1280px; */
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
     }
 
     .fs-2x {
-        font-size: 1.7em !important;
+        font-size: 1.1em !important;
     }
 }

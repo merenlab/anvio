@@ -11,8 +11,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
 from anvio.workflows.contigs import ContigsDBWorkflow
 
-__author__ = "Alon Shaiber"
-__copyright__ = "Copyright 2017, The anvio Project"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -328,13 +327,15 @@ rule anvi_run_hmms:
         installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
         hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
 	    also_scan_trnas = M.get_rule_param("anvi_run_hmms", "--also-scan-trnas"),
+        add_to_functions_tbl = M.get_rule_param("anvi_run_hmms", "--add-to-functions-table"),
     threads: M.T('anvi_run_hmms')
     resources: nodes = M.T('anvi_run_hmms'),
     shell: w.r("anvi-run-hmms -c {input} \
                               -T {threads} \
                               {params.hmm_profile_dir} \
                               {params.installed_hmm_profile} \
-			      {params.also_scan_trnas} >> {log} 2>&1")
+			                  {params.also_scan_trnas} \
+                              {params.add_to_functions_tbl} >> {log} 2>&1")
 
 
 rule anvi_run_pfams:

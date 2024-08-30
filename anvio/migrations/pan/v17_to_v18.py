@@ -4,61 +4,41 @@
 import sys
 import argparse
 
-import anvio.db as db
+import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
-
-pan_reaction_network_kegg_table_name      = 'pan_reaction_network_kegg'
-pan_reaction_network_kegg_table_structure = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
-pan_reaction_network_kegg_table_types     = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
-
 run = terminal.Run()
 progress = terminal.Progress()
+
+current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+
 
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    pan_db = db.DB(db_path, None, ignore_version=True)
-    if str(pan_db.get_version()) != current_version:
+    pan_db_info = dbinfo.PanDBInfo(db_path)
+    if str(pan_db_info.version) != current_version:
         raise ConfigError(
-            f"The version of the provided contigs database is {pan_db.get_version}, not the "
-            f"required version, {current_version}, so this script cannot upgrade the database."
-        )
+            f"The version of the provided pan database is {pan_db_info.version}, not the required version, "
+            f"{current_version}, so this script cannot upgrade the database.")
+
+    pan_db = pan_db_info.load_db()
+
+    if str(pan_db.get_version()) != current_version:
+        raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
     progress.new("Migrating")
-    progress.update("Creating a new table for KEGG KO information in a reaction network")
+    progress.update("Updating the self table with a new variable")
 
-    # To be on the safe side, remove any KEGG table that may already exist.
     try:
-        pan_db.drop_table(pan_reaction_network_kegg_table_name)
+        pan_db.remove_meta_key_value_pair('user_provided_gene_clusters_txt')
     except:
         pass
 
-    pan_db.create_table(
-        pan_reaction_network_kegg_table_name,
-        pan_reaction_network_kegg_table_structure,
-        pan_reaction_network_kegg_table_types
-    )
-
-    progress.update("Renaming other reaction network tables")
-
-    # To be on the safe side, remove any tables with the new names that may already exist.
-    try:
-        pan_db.drop_table('pan_reaction_network_reactions')
-        pan_db.drop_table('pan_reaction_network_metabolites')
-    except:
-        pass
-
-    pan_db._exec(
-        'ALTER TABLE gene_cluster_function_reactions RENAME TO pan_reaction_network_reactions'
-    )
-    pan_db._exec(
-        'ALTER TABLE gene_cluster_function_metabolites RENAME TO pan_reaction_network_metabolites'
-    )
+    pan_db.set_meta_value('user_provided_gene_clusters_txt', False)
 
     progress.update("Updating version")
     pan_db.remove_meta_key_value_pair('version')
@@ -70,10 +50,9 @@ def migrate(db_path):
     progress.end()
 
     message = (
-        "Congratulations! Your pan database is now version 18. An empty table has been added to "
-        "improve the functionality of reaction networks, particularly their portability and "
-        "reproducibility. The two existing tables for storing reaction networks have also been "
-        "renamed for the sake of clarity."
+        "Yes! Your pan database is now version 18. This wasn't a biggie and anvi'o just added a new "
+        "variable into the self table to track where are the gene clusters coming from in a given "
+        "pan-db."
     )
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
 

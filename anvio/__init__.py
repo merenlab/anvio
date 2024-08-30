@@ -288,7 +288,8 @@ D = {
                      "analyses is 4, historically. Although tetra-nucleotide frequencies seem to offer the "
                      "the sweet spot of sensitivity, information density, and manageable number of dimensions "
                      "for clustering approaches, you are welcome to experiment (but maybe you should leave "
-                     "it as is for your first set of analyses)."}
+                     "it as is for your first set of analyses). Note that the maximum k-mer size is 5 (unless you "
+                     "can increase the column limit in `sqlite3` to 32k, in which case the max is 7)."}
                 ),
     'prodigal-translation-table': (
             ['--prodigal-translation-table'],
@@ -308,6 +309,19 @@ D = {
              'help': "By default, generating an anvi'o contigs database includes the identification of open reading "
                      "frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that "
                      "process. If you prefer, you can later import your own gene calling results into the database."}
+                ),
+    'prodigal-single-mode': (
+            ['--prodigal-single-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
+                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs prodigal will yield a segmentation fault error due to one or more genes in your "
+                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
+                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
+                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
+                     "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -1282,6 +1296,13 @@ D = {
                      "analyses, where you may want to only focus on genes that are prevalent across the set of genomes "
                      "you wish to analyze."}
                 ),
+    'gene-clusters-txt': (
+            ['--gene-clusters-txt'],
+            {'metavar': 'FILE PATH',
+             'help': "A three-column TAB-delimited file that associates genes across genomes with one another as 'gene clusters' "
+                     "for DIY pangenomics 😬 See https://anvio.org/help/main/artifacts/gene-clusters-txt/ for details "
+                     "of the file format."}
+                ),
     'max-num-gene-clusters-missing-from-genome': (
             ['--max-num-gene-clusters-missing-from-genome'],
             {'default': 0,
@@ -1481,6 +1502,21 @@ D = {
             ['--search-terms'],
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'case-sensitive': (
+            ['--case-sensitive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will perform a search that is case sensitive."}
+                ),
+    'exact-match': (
+            ['--exact-match'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will search for a given string in anywhere within function description or "
+                     "accession IDs. If you declare this flag, then anvi'o will look for 'exact' matches of the search "
+                     "string in its entirety in a given field. This can be very useful if you are CERTAIN about the "
+                     "function or accession id you are interested in, and you want to get nothing but that exact match."}
                 ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],

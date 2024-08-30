@@ -5,6 +5,11 @@
     display: contents;
 }
 
+
+#display-gcc-acc {
+    background: aqua;
+}
+
 #display-container {
     width: 1200px;
     margin: 0 auto 20px auto;
@@ -367,4 +372,15 @@ a{
 #gc_overlay_color{
     background-color: #008000; 
     margin-left: 3px;
+}
+
+.split-page-icon {
+    fill: #772222;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.split-page-icon:hover {
+    fill: #285192;
+    cursor: pointer;
 }
