@@ -75,7 +75,7 @@ Not sure what KEGG snapshots are available for you to request? Well, you could c
 anvi-setup-kegg-data --kegg-snapshot hahaha
 {{ codestop }}
 
-Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data OR models/thresholds for 'stray KOs':
+Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (obsolete as of anvi'o `v8.0-dev`) OR models/thresholds for 'stray KOs':
 
 ```
 v2023-09-18:
@@ -182,15 +182,35 @@ anvi-setup-kegg-data --mode modules \
                        --overwrite-output-destinations
 {{ codestop }}
 
-### Avoiding BRITE setup
+### Avoiding files used in later versions of anvi'o
 
-As of anvi'o `v7.1-dev` or later, KEGG BRITE hierarchies are added to the %(modules-db)s when running this program with `--mode modules`. If you don't want this cool new feature - because you are a rebel, or adverse to change, or something is not working on your computer, whatever - then fine. You can use the `--skip-brite-hierarchies` flag:
+As anvi'o has expanded, new types of KEGG files have been included in the data pack. We highly recommend including these files, as this program does by default, when downloading and setting up KEGG data. However, options are available to skip these files -- perhaps you're a rebel, or adverse to change, or something is not working on your computer... whatever, all good by us.
+
+It should make sense to you that these flags do not work when setting up from a KEGG snapshot that already includes the newer types of files.
+
+#### BRITE hierarchies
+
+As of anvi'o `v7.1-dev` or later, [KEGG BRITE hierarchies](https://www.genome.jp/kegg/brite.html) are added to the %(modules-db)s when running this program with `--mode modules`. These hierarchies are especially useful for classifying and making sense of KOs and other KEGG data. To avoid these files, use the `--skip-brite-hierarchies` flag:
 
 {{ codestart }}
 anvi-setup-kegg-data --mode modules --skip-brite-hierarchies
 {{ codestop }}
 
-Hopefully it makes sense to you that this flag does not work when setting up from a KEGG snapshot that already includes BRITE data in it.
+#### Reaction network
+
+As of anvi'o `v8.0-dev`, [KEGG binary relations files](https://www.genome.jp/brite/br08906) are included in KEGG data when running this program with `--mode modules`. These are needed for %(reaction-network)s construction by %(anvi-reaction-network)s, which is how biochemical data associated with KOs is now interpreted and analyzed. To avoid these files, use the `--skip-binary-relations` flag:
+
+{{ codestart }}
+anvi-setup-kegg-data --mode modules --skip-binary-relations
+{{ codestop }}
+
+#### Pathway visualization
+
+As of anvi'o `v8.0-dev`, [KEGG pathway map](https://www.genome.jp/kegg/pathway.html) PNG and KGML files are included in KEGG data when running this program with `--mode modules`. These are needed by %(anvi-draw-kegg-pathways)s to visualize anvi'o data in the context of biochemical pathways. To avoid these files, use the `--skip-map-images` flag:
+
+{{ codestart }}
+anvi-setup-kegg-data --mode modules --skip-map-images
+{{ codestop }}
 
 ### How do I share this data?
 Suppose you have been living on the edge and annotating your contigs databases with a non-default version of %(kegg-data)s, and you share these databases with a collaborator who wants to run downstream programs like %(anvi-estimate-metabolism)s on them. Your collaborator (who has a different version of %(kegg-data)s on their computer) will likely get version errors as detailed on the %(anvi-estimate-metabolism)s help page.
