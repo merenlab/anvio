@@ -8,6 +8,7 @@ v2020-04-27:
     modules_db_version: 1
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2020-06-23:
@@ -17,6 +18,7 @@ v2020-06-23:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2020-08-06:
@@ -26,6 +28,7 @@ v2020-08-06:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2020-12-23:
@@ -35,6 +38,7 @@ v2020-12-23:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2021-12-18:
@@ -44,6 +48,7 @@ v2021-12-18:
     modules_db_version: 3
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2022-04-14:
@@ -53,6 +58,7 @@ v2022-04-14:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2023-01-10:
@@ -62,6 +68,7 @@ v2023-01-10:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2023-09-18:
@@ -71,6 +78,7 @@ v2023-09-18:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2023-09-22:
@@ -79,6 +87,7 @@ v2023-09-22:
     hash: a2b5bde358bb
     modules_db_version: 4
     no_stray_KOs: True
+    no_binary_relations: True
     no_maps: True
 
 v2024-03-09:
@@ -87,6 +96,7 @@ v2024-03-09:
     hash: 23910d68b4f2
     modules_db_version: 4
     no_modeling_data: True
+    no_binary_relations: True
     no_maps: True
 
 v2024-08-30:
@@ -94,6 +104,7 @@ v2024-08-30:
     archive_name: KEGG_build_2024-08-30_6b658b5c4379.tar.gz
     hash: 6b658b5c4379
     modules_db_version: 4
+    no_stray_KOs: True
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
