@@ -1,8 +1,34 @@
 %(anvi-draw-kegg-pathways)s draws %(kegg-pathway-map)s files incorporating data from anvi'o databases. The visualization of user data in the context of KEGG's curated biochemical pathways can reveal patterns in metabolism.
 
+## Setup
+
+There are hundreds of pathway maps, listed and categorized [here](https://www.genome.jp/kegg/pathway.html). %(anvi-setup-kegg-data)s downloads the maps that have corresponding [files](https://www.kegg.jp/kegg/xml/) that allow elements of the map to be modified. Make sure to use the `--kegg-snapshot` option with the newest snapshot of %(kegg-data)s that includes pathway map files, `v2024-08-30`.
+
+{{ codestart }}
+anvi-setup-kegg-data --kegg-snapshot v2024-08-30
+{{ codestop }}
+
+### Download newest available files
+
+Alternatively, KEGG data including maps can be set up not from a snapshot but by downloading the newest files available from KEGG with the `-D` flag. (`-T` downloads faster by using multiple threads, here 5.)
+
+{{ codestart }}
+anvi-setup-kegg-data -D -T 5
+{{ codestop }}
+
+### Install in non-default location
+
+At the moment, KEGG data that includes maps does _not_ include stray KOs (see %(anvi-setup-kegg-data)s) due to changes in the available files. To preserve KEGG data that is already set up, for this reason or another, the new snapshot or download can be placed in a non-default location with `--kegg-data-dir`.
+
+{{ codestart }}
+anvi-setup-kegg-data --kegg-snapshot v2024-08-30 --kegg-data-dir path/to/other/directory
+{{ codestop }}
+
+`anvi-draw-kegg-pathways` requires the `--kegg-dir` argument to seek KEGG data in a non-default location.
+
 ## Pathway selection
 
-There are hundreds of pathway maps, listed and categorized [here](https://www.genome.jp/kegg/pathway.html). By default, this program draws maps that contain data of interest, e.g., KO gene annotations in a %(contigs-db)s. For all maps to be drawn, including those that don't contain data of interest, use the flag, `--draw-bare-maps`.
+By default, this program draws the maps that contain data of interest, e.g., KO gene annotations in a %(contigs-db)s. For _all_ maps in %(kegg-data)s to be drawn, including those that don't contain data of interest, use the flag, `--draw-bare-maps`.
 
 The optional argument, `--pathway-numbers`, limits the output to maps of interest. A single ID number can be provided, e.g., '00010' for 'Glycolysis / Gluconeogenesis', or multiple numbers can be listed, e.g., '00010 00020'. Regular expressions can also be provided, e.g., '011.. 012..', where '.' represents any character: here the set of numbers given by '011..' corresponds to 'global' maps and '012..' to 'overview' maps.
 
