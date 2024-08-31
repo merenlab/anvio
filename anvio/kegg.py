@@ -627,7 +627,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2024-08-30'
+        self.target_snapshot = self.kegg_snapshot or 'v2024-03-09'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
