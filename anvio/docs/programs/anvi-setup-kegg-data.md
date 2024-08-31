@@ -75,7 +75,7 @@ Not sure what KEGG snapshots are available for you to request? Well, you could c
 anvi-setup-kegg-data --kegg-snapshot hahaha
 {{ codestop }}
 
-Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (obsolete as of anvi'o `v8.0-dev`) OR models/thresholds for 'stray KOs':
+Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (now obsolete as of anvi'o `v8.0-dev`), models/thresholds for 'stray KOs', binary relations files needed for reaction networks, or maps used for pathway visualization:
 
 ```
 v2023-09-18:
@@ -85,6 +85,8 @@ v2023-09-18:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 ```
 
 ## Getting the most up-to-date KEGG data: downloading directly from KEGG
