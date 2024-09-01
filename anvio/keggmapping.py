@@ -165,6 +165,8 @@ class Mapper:
             False.
         """
         # Retrieve the IDs of all KO annotations in the contigs database.
+        self.progress.new("Loading KO data from the contigs database")
+        self.progress.update("...")
         cdb = ContigsDatabase(contigs_db)
         ko_ids = cdb.db.get_single_column_from_table(
             'gene_functions',
@@ -172,15 +174,20 @@ class Mapper:
             unique=True,
             where_clause='source = "KOfam"'
         )
+        self.progress.end()
         
-        return self._map_kos_fixed_colors(
+        drawn = self._map_kos_fixed_colors(
             ko_ids,
             output_dir,
             pathway_numbers=pathway_numbers,
             color_hexcode=color_hexcode,
             draw_maps_lacking_kos=draw_maps_lacking_kos
         )
+        count = sum(drawn.values()) if drawn else 0
+        self.run.info("Number of maps drawn", count)
         
+        return drawn
+    
     def map_genomes_storage_genome_kos(
         self,
         genomes_storage_db: str,
@@ -229,6 +236,8 @@ class Mapper:
             False.
         """
         # Retrieve the IDs of all KO annotations for the genome.
+        self.progress.new("Loading KO data from the genome")
+        self.progress.update("...")
         gsdb = GenomeStorage(
             genomes_storage_db,
             genome_names_to_focus=[genome_name],
@@ -241,15 +250,20 @@ class Mapper:
             unique=True,
             where_clause=f'genome_name = "{genome_name}" AND source = "KOfam"'
         )
+        self.progress.end()
         
-        return self._map_kos_fixed_colors(
+        drawn = self._map_kos_fixed_colors(
             ko_ids,
             output_dir,
             pathway_numbers=pathway_numbers,
             color_hexcode=color_hexcode,
             draw_maps_lacking_kos=draw_maps_lacking_kos
         )
+        count = sum(drawn.values()) if drawn else 0
+        self.run.info("Number of maps drawn", count)
         
+        return drawn
+    
     def map_contigs_databases_kos(
         self,
         contigs_dbs: Iterable[str],
@@ -417,6 +431,9 @@ class Mapper:
                 ))
             )
             
+        self.progress.new("Loading KO data from contigs databases")
+        self.progress.update("...")
+        
         # Load contigs database metadata.
         project_names: Dict[str, str] = {}
         for contigs_db in contigs_dbs:
@@ -444,7 +461,8 @@ class Mapper:
                     ko_dbs[ko_id].append(project_name)
                 except KeyError:
                     ko_dbs[ko_id] = [project_name]
-                    
+        self.progress.end()
+        
         # Find the numeric IDs of the maps to draw.
         pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
         
@@ -456,9 +474,11 @@ class Mapper:
             'grid': {}
         }
         
+        self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
         if scheme == 'static':
             # Draw unified maps of all contigs databases with a static reaction color.
             for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
                 if color_hexcode == 'original':
                     drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
                         pathway_number,
@@ -524,6 +544,7 @@ class Mapper:
                 )
                 
             for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_dbs,
@@ -533,8 +554,11 @@ class Mapper:
                     source_combos=db_combos,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
-            
+        self.progress.end()
+        
         if draw_contigs_db_files is False and draw_grid is False:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info("Number of maps drawn", count)
             return
         
         # Determine the individual database maps to draw.
@@ -575,6 +599,9 @@ class Mapper:
         
         # Draw individual database maps needed as final outputs or for grids.
         for project_name in draw_project_names:
+            self.progress.new(f"Drawing maps for contigs database '{project_name}'")
+            self.progress.update("...")
+            self.quiet = True
             drawn['individual'][project_name] = self.map_contigs_database_kos(
                 project_names[project_name],
                 os.path.join(output_dir, project_name),
@@ -582,9 +609,24 @@ class Mapper:
                 color_hexcode=color_hexcode,
                 draw_maps_lacking_kos=draw_maps_lacking_kos
             )
+            self.quiet = False
+            self.progress.end()
             
         if draw_grid == False:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info(
+                "Number of 'unified' maps drawn incorporating data from all contigs databases",
+                count
+            )
+            if not drawn['individual']:
+                count = 0
+            else:
+                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
+            self.run.info("Number of maps drawn for individual contigs databases", count)
             return
+        
+        self.progress.new("Drawing map grid")
+        self.progress.update("...")
         
         # Draw empty maps needed to fill in grids.
         paths_to_remove: List[str] = []
@@ -600,6 +642,7 @@ class Mapper:
                         drawn_pathway_number[pathway_number] = {project_name: drawn_map}
                         
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            self.quiet = True
             for pathway_number, drawn_project_name in drawn_pathway_number.items():
                 if set(drawn_project_name.values()) != set([True, False]):
                     continue
@@ -616,11 +659,13 @@ class Mapper:
                     paths_to_remove.append(
                         os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf')
                     )
-                    
+            self.quiet = False
+            
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
             unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
@@ -644,13 +689,29 @@ class Mapper:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
                 self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
+        self.progress.end()
 
         # Remove individual database maps that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
         for project_name in set(draw_project_names).difference(set(draw_files_project_names)):
             shutil.rmtree(os.path.join(output_dir, project_name))
+            drawn['individual'].pop(project_name)
             
+        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+        self.run.info(
+            "Number of 'unified' maps drawn incorporating data from all contigs databases",
+            count
+        )
+        if draw_contigs_db_files:
+            if not drawn['individual']:
+                count = 0
+            else:
+                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
+            self.run.info("Number of maps drawn for individual contigs databases", count)
+        count = sum(drawn['grid']) if drawn['grid'] else 0
+        self.run.info("Number of map grids drawn", count)
+        
         return drawn
     
     def map_pan_database_kos(
@@ -1088,8 +1149,10 @@ class Mapper:
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
         
         # Draw maps.
+        self.progress.new("Drawing map")
         drawn: Dict[str, bool] = {}
         for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
             if color_hexcode == 'original':
                 drawn[pathway_number] = self._draw_map_kos_original_color(
                     pathway_number,
@@ -1105,6 +1168,8 @@ class Mapper:
                     output_dir,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
+        self.progress.end()
+        
         return drawn
     
     def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
