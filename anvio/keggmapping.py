@@ -460,14 +460,14 @@ class Mapper:
             # Draw unified maps of all contigs databases with a static reaction color.
             for pathway_number in pathway_numbers:
                 if color_hexcode == 'original':
-                    drawn['unified'] = self._draw_map_kos_original_color(
+                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
                         pathway_number,
                         ko_dbs,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 else:
-                    drawn['unified'] = self._draw_map_kos_single_color(
+                    drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
                         ko_dbs,
                         color_hexcode,
@@ -524,7 +524,7 @@ class Mapper:
                 )
                 
             for pathway_number in pathway_numbers:
-                drawn['unified'] = self._draw_map_kos_membership(
+                drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_dbs,
                     color_priority,
