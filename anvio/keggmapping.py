@@ -28,7 +28,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
 from anvio.dbops import ContigsDatabase, PanSuperclass
-from anvio import FORCE_OVERWRITE, __version__ as VERSION
+from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -75,7 +75,8 @@ class Mapper:
         kegg_dir: str = None,
         overwrite_output: bool = FORCE_OVERWRITE,
         run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
+        progress: terminal.Progress = terminal.Progress(),
+        quiet: bool = QUIET
     ) -> None:
         """
         Parameters
@@ -93,6 +94,9 @@ class Mapper:
             
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
             This object prints transient progress information to the terminal.
+            
+        quiet : bool, anvio.QUIET
+            If True, run and progress information is not printed to the terminal.
         """
         args = Namespace()
         args.kegg_data_dir = kegg_dir
@@ -115,6 +119,7 @@ class Mapper:
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
+        self.quiet = self._quiet = quiet
         
     def map_contigs_database_kos(
         self,
@@ -1710,4 +1715,14 @@ class Mapper:
                 output_page.insert_text((label_x, label_y), label, fontsize=fontsize)
                 
         output_doc.save(out_path)
+        
+    @property
+    def quiet(self):
+        return self._quiet
+    
+    @quiet.setter
+    def quiet(self, new_value: bool):
+        self._quiet = new_value
+        self.run.verbose = not self.quiet
+        self.progress.verbose = not self.quiet
         
