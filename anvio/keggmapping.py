@@ -710,7 +710,7 @@ class Mapper:
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
             self.run.info("Number of maps drawn for individual contigs databases", count)
-        count = sum(drawn['grid']) if drawn['grid'] else 0
+        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
         self.run.info("Number of map grids drawn", count)
         
         return drawn
