@@ -1,6 +1,6 @@
 This artifact represents the metabolic reaction network, which can be stored in a %(contigs-db)s or a %(pan-db)s by %(anvi-reaction-network)s.
 
-Reaction networks enable investigations of biochemical pathways at the molecular level, protein and metabolite abundances, and the relation of these to genomic data stored in anvi'o databases. Networks can be exported as a file formatted for compatibility with metabolic modeling packages such as COBRApy: see %(anvi-get-metabolic-model-file).
+Reaction networks enable investigations of biochemical pathways at the molecular level, protein and metabolite abundances, and the relation of these to genomic data stored in anvi'o databases. Networks can be exported as a file formatted for compatibility with metabolic modeling packages such as COBRApy: see %(anvi-get-metabolic-model-file)s.
 
 ## Network structure
 
