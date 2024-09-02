@@ -857,7 +857,7 @@ class Mapper:
         # loaded.
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
-        
+            
         # Load pan database metadata.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
@@ -875,7 +875,7 @@ class Mapper:
                 discard_ties = False
             else:
                 discard_ties = bool(int(discard_ties))
-        
+                
         # Find consensus KOs from the loaded pan database.
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
@@ -894,7 +894,7 @@ class Mapper:
         pan_super.init_gene_clusters_functions_summary_dict()
         gene_clusters: Dict[str, Dict[str, List[int]]] = pan_super.gene_clusters
         gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
-
+        
         consensus_cluster_ids: List[str] = []
         consensus_ko_ids: List[str] = []
         for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
