@@ -41,8 +41,6 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-run_quiet = terminal.Run(verbose=False)
-
 class Mapper:
     """
     Make KEGG pathway maps incorporating data sourced from anvi'o databases.
@@ -242,7 +240,8 @@ class Mapper:
             genomes_storage_db,
             genome_names_to_focus=[genome_name],
             function_annotation_sources=['KOfam'],
-            run=run_quiet
+            run=terminal.Run(verbose=False),
+            progress=terminal.Progress(verbose=False)
         )
         ko_ids = gsdb.db.get_single_column_from_table(
             'gene_function_calls',
@@ -602,7 +601,10 @@ class Mapper:
         for project_name in draw_project_names:
             self.progress.new(f"Drawing maps for contigs database '{project_name}'")
             self.progress.update("...")
-            self.quiet = True
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
             drawn['individual'][project_name] = self.map_contigs_database_kos(
                 project_names[project_name],
                 os.path.join(output_dir, project_name),
@@ -610,7 +612,8 @@ class Mapper:
                 color_hexcode=color_hexcode,
                 draw_maps_lacking_kos=draw_maps_lacking_kos
             )
-            self.quiet = False
+            self.progress = progress
+            self.run = run
             self.progress.end()
             
         if draw_grid == False:
@@ -643,7 +646,10 @@ class Mapper:
                         drawn_pathway_number[pathway_number] = {project_name: drawn_map}
                         
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
-            self.quiet = True
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
             for pathway_number, drawn_project_name in drawn_pathway_number.items():
                 if set(drawn_project_name.values()) != set([True, False]):
                     continue
@@ -660,7 +666,8 @@ class Mapper:
                     paths_to_remove.append(
                         os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf')
                     )
-            self.quiet = False
+            self.progress = progress
+            self.run = run
             
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
@@ -870,12 +877,18 @@ class Mapper:
                 discard_ties = bool(int(discard_ties))
         
         # Find consensus KOs from the loaded pan database.
+        self.progress.new("Loading consensus KO data from pan database")
+        self.progress.update("...")
+        progress = self.progress
+        self.progress = terminal.Progress(verbose=False)
+        run = self.run
+        self.run = terminal.Run(verbose=False)
         args = Namespace()
         args.pan_db = pan_db
         args.genomes_storage = genomes_storage_db
         args.consensus_threshold = consensus_threshold
         args.discard_ties = discard_ties
-        pan_super = PanSuperclass(args, r=run_quiet)
+        pan_super = PanSuperclass(args, r=self.run, p=self.progress)
         pan_super.init_gene_clusters()
         pan_super.init_gene_clusters_functions()
         pan_super.init_gene_clusters_functions_summary_dict()
@@ -890,6 +903,9 @@ class Mapper:
                 continue
             consensus_cluster_ids.append(cluster_id)
             consensus_ko_ids.append(gene_cluster_ko_data['accession'])
+        self.progress = progress
+        self.run = run
+        self.progress.end()
         
         # Find the numeric IDs of the maps to draw.
         pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
@@ -904,6 +920,7 @@ class Mapper:
             'grid': {}
         }
         
+        self.progress.new("Drawing 'unified' map incorporating data from all genomes")
         if colormap is None:
             # Draw pangenomic maps with a static reaction color.
             for pathway_number in pathway_numbers:
@@ -973,6 +990,7 @@ class Mapper:
                     label='genomes'
                 )
             for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_genomes,
@@ -981,8 +999,11 @@ class Mapper:
                     cmap,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
-                
+        self.progress.end()
+        
         if draw_genome_files is False and draw_grid is False:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info("Number of maps drawn", count)
             return
         
         # Determine the individual genome maps to draw.
@@ -1023,6 +1044,12 @@ class Mapper:
         
         # Draw individual genome maps needed as final outputs or for grids.
         for genome_name in draw_genome_names:
+            self.progress.new(f"Drawing maps for genome '{genome_name}'")
+            self.progress.update("...")
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
             drawn['individual'][genome_name] = self.map_genomes_storage_genome_kos(
                 genomes_storage_db,
                 genome_name,
@@ -1031,9 +1058,25 @@ class Mapper:
                 color_hexcode=color_hexcode,
                 draw_maps_lacking_kos=draw_maps_lacking_kos
             )
+            self.progress = progress
+            self.run = run
+            self.progress.end()
             
         if draw_grid == False:
+            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            self.run.info(
+                "Number of 'unified' maps drawn incorporating data from all genomes",
+                count
+            )
+            if not drawn['individual']:
+                count = 0
+            else:
+                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
+            self.run.info("Number of maps drawn for individual genomes", count)
             return
+        
+        self.progress.new("Drawing map grid")
+        self.progress.update("...")
         
         # Draw empty maps needed to fill in grids.
         paths_to_remove: List[str] = []
@@ -1049,6 +1092,10 @@ class Mapper:
                         drawn_pathway_number[pathway_number] = {genome_name: drawn_map}
                         
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
             for pathway_number, drawn_genome_name in drawn_pathway_number.items():
                 if set(drawn_genome_name.values()) != set([True, False]):
                     continue
@@ -1065,11 +1112,14 @@ class Mapper:
                     paths_to_remove.append(
                         os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf')
                     )
-                    
+            self.progress = progress
+            self.run = run
+            
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
             unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
@@ -1093,13 +1143,29 @@ class Mapper:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
                 self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
-                
+        self.progress.end()
+        
         # Remove individual genome maps that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
         for genome_name in set(draw_genome_names).difference(set(draw_files_genome_names)):
             shutil.rmtree(os.path.join(output_dir, genome_name))
             drawn['individual'].pop(genome_name)
+            
+        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+        self.run.info(
+            "Number of 'unified' maps drawn incorporating data from all genomes",
+            count
+        )
+        if draw_genome_files:
+            if not drawn['individual']:
+                count = 0
+            else:
+                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
+            self.run.info("Number of maps drawn for individual genomes", count)
+        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
+        self.run.info("Number of map grids drawn", count)
+        
         return drawn
     
     def _map_kos_fixed_colors(
