@@ -1557,18 +1557,25 @@ class Drawer:
     ==========
     kegg_context : anvio.kegg.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
-    
+        
     xml_ops : XMLOps
         Loads KGML files.
-    
+        
     overwrite_output : bool
         If True, methods in this class overwrite existing output files.
-    
+        
     run : anvio.terminal.Run
         This object prints run information to the terminal.
-    
+        
     progress : anvio.terminal.Progress
         This object prints transient progress information to the terminal.
+        
+    non_reactant_transparency : float, 1.0
+        This controls the transparency, or alpha, of the background color of compound circles
+        rendered from KGML for non-reactants, or compounds that don't participate in reactions. This
+        value is used to set the attribute of Bio.Graphics.KGML_vis.KGMLCanvas, which is 0.3 by
+        default, which allows the color of the circle in the underlying base map to bleed through,
+        which is probably not desirable.
     """
     def __init__(
         self,
@@ -1604,6 +1611,8 @@ class Drawer:
         self.run = run
         self.progress = progress
         
+        self.non_reactant_transparency = 1.0
+        
     def draw_map(
         self,
         pathway: Pathway,
@@ -1622,7 +1631,7 @@ class Drawer:
             
         output_filepath : str
             Path to PDF output file containing the pathway map.
-        
+            
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a PNG image file is automatically sought in the KEGG data directory, and it is
@@ -1632,7 +1641,7 @@ class Drawer:
             For a standard or overview (not global) map, a 2x resolution 'map' file is sought. If
             the org attribute of the pathway object is an organism code and the argument,
             use_org_map, is True, then a 1x resolution organism-specific file is sought.
-        
+            
             For a global map, a 1x resolution file is sought; it is assumed the KGML data is scaled
             to fit this image size. The org attribute of the pathway object is used to seek the
             corresponding file, i.e., a 'ko' pathway containing reactions with KO IDs results in the
@@ -1646,7 +1655,7 @@ class Drawer:
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or online for download to that directory. If False and the org
             attribute is an organism code, then the 1x 'ko' file is used.
-        
+            
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object. These
             control what is displayed on the map from the KGML file.
@@ -1658,22 +1667,22 @@ class Drawer:
             import_imagemap : bool
                 By default True. Setting to False prevents the base map image from being rendered
                 beneath KGML graphics, which is especially useful for decluttering global maps.
-            
+                
             label_compounds : bool
                 By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
                 COMPOUND IDs.
-            
+                
             label_orthologs : bool
                 By default, Drawer sets to False for global and overview maps to reduce clutter next
                 to reaction arrows and to True for standard maps. Setting to True displays KO IDs.
-            
+                
             label_reaction_entries : bool
                 By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
                 REACTION IDs.
                 
             fontname : str
                 KGML label font name, with the default being Helvetica.
-            
+                
             fontsize : float
                 KGML label font size. Drawer sets the default to 9 for 1x resolution maps and 18
                 for 2x, if the map base image is not provided explicitly by map_filepath. If it is
@@ -1681,7 +1690,7 @@ class Drawer:
                 in an ortholog box on a standard 1x map.
         """
         is_output_file_writable(output_filepath, ok_if_exists=self.overwrite_output)
-
+        
         # These canvas parameters apply to both standard and global/overview maps.
         if kwargs.get('import_imagemap') is None:
             kwargs['import_imagemap'] = True
@@ -1689,7 +1698,7 @@ class Drawer:
             kwargs['label_compounds'] = False
         if map_filepath is not None and kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
-
+            
         if pathway.is_global_map:
             self._draw_global_map(
                 pathway,
@@ -1714,7 +1723,7 @@ class Drawer:
                 use_org_map=use_org_map,
                 **kwargs
             )
-    
+            
     def _draw_global_map(
         self,
         pathway: Pathway,
@@ -1730,10 +1739,10 @@ class Drawer:
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-        
+            
         output_filepath : str
             Path to PDF output file containing the pathway map.
-        
+            
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a 1x resolution PNG file stored in the KEGG directory is used; it is assumed the
@@ -1741,13 +1750,13 @@ class Drawer:
             used to seek the corresponding PNG file, i.e., a 'ko' pathway containing reactions with
             KO IDs results in the reference 'ko' map being sought, whereas an 'ec' pathway
             containing reactions with EC number IDs corresponds to the reference 'ec' map.
-        
+            
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 1x 'ko' file is used.
-        
+            
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
@@ -1785,22 +1794,16 @@ class Drawer:
         else:
             assert not use_org_map
             is_file_exists(map_filepath)
-
+            
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
             kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
             
         bio_pathway.image = map_filepath
         
         canvas = KGMLCanvas(bio_pathway, **kwargs)
-        
-        # Non-reactants are compounds that don't participate in reactions. By default, this
-        # attribute, the alpha of the bg color of the compound circle rendered from the KGML, is set
-        # to 0.3. This allows the color of the circle in the underlying base map to bleed through,
-        # which is not desirable.
-        canvas.non_reactant_transparency = 1
-        
+        canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-    
+        
     def _draw_overview_map(
         self,
         pathway: Pathway,
@@ -1816,21 +1819,21 @@ class Drawer:
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-        
+            
         output_filepath : str
             Path to PDF output file containing the pathway map.
-        
+            
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a 2x resolution 'map' PNG file stored in the KEGG directory is used; it is assumed
             the KGML data is scaled to fit this image size.
-        
+            
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 2x 'ko' file is used.
-        
+            
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
@@ -1868,15 +1871,9 @@ class Drawer:
         bio_pathway.image = map_filepath
         
         canvas = KGMLCanvas(bio_pathway, **kwargs)
-        
-        # Non-reactants are compounds that don't participate in reactions. By default, this
-        # attribute, the alpha of the bg color of the compound circle rendered from the KGML, is set
-        # to 0.3. This allows the color of the circle in the underlying base map to bleed through,
-        # which is not desirable.
-        canvas.non_reactant_transparency = 1
-        
+        canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-
+        
     def _draw_standard_map(
         self,
         pathway: Pathway,
@@ -1892,21 +1889,21 @@ class Drawer:
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-        
+            
         output_filepath : str
             Path to PDF output file containing the pathway map.
-        
+            
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then the 2x resolution 'map' PNG file stored in the KEGG directory is used; it is
             assumed the KGML data is scaled to fit this image size.
-        
+            
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 2x 'ko' file is used.
-        
+            
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
@@ -1931,22 +1928,16 @@ class Drawer:
             is_file_exists(map_filepath)
             if kwargs.get('fontsize') is None:
                 kwargs['fontsize'] = 9
-        
+                
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
             kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
-        
+            
         bio_pathway.image = map_filepath
         
         canvas = KGMLCanvas(bio_pathway, **kwargs)
-        
-        # Non-reactants are compounds that don't participate in reactions. By default, this
-        # attribute, the alpha of the bg color of the compound circle rendered from the KGML, is set
-        # to 0.3. This allows the color of the circle in the underlying base map to bleed through,
-        # which is not desirable.
-        canvas.non_reactant_transparency = 1
-        
+        canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-
+        
 class Tester:
     """
     Tests KGML operations.
