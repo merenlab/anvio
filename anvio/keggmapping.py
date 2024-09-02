@@ -1099,7 +1099,7 @@ class Mapper:
             os.remove(path)
         for genome_name in set(draw_genome_names).difference(set(draw_files_genome_names)):
             shutil.rmtree(os.path.join(output_dir, genome_name))
-            
+            drawn['individual'].pop(genome_name)
         return drawn
     
     def _map_kos_fixed_colors(
