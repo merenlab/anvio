@@ -384,6 +384,7 @@ class Mapper:
             True if the map was drawn, False if the map was not drawn because it did not contain any
             of the select KOs and 'draw_maps_lacking_kos' was False.
         """
+        # This method is similar to map_pan_database_kos, and almost identical after KOs are loaded.
         # Set the colormap scheme.
         if colormap is False:
             scheme = 'static'
@@ -845,6 +846,8 @@ class Mapper:
             was drawn, False if the map was not drawn because it did not contain any of the select
             KOs and 'draw_maps_lacking_kos' was False.
         """
+        # This method is similar to map_contigs_databases_kos, and almost identical after KOs are
+        # loaded.
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
         
