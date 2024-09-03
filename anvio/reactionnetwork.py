@@ -10506,47 +10506,75 @@ class Tester:
         assert not category_sample.difference(set(remaining_category_ids))
 
 class FormulaMatcher:
-    def __init__(self, network: Union[GenomicNetwork, PangenomicNetwork], formula_file: str = None, formula_table: pd.DataFrame = None) -> None:
+    """
+    Match chemical formulas to metabolites in a reaction network.
+    
+    Attributes
+    ==========
+    network : ReactionNetwork
+        Network generated from gene or gene cluster KO annotations.
+    """
+    def __init__(self, network: ReactionNetwork) -> None:
+        """
+        Parameters
+        ==========
+        network : network : ReactionNetwork
+            Network generated from gene or gene cluster KO annotations. This becomes the attribute
+            of the same name.
+        """
         self.network = network
-
-        if not formula_file and not formula_table:
-            self.formula_table = None
-            self.formula_path = None
-            return
-
-        if formula_file and formula_table:
-            raise AssertionError
-
-        if formula_file:
-            filesnpaths.is_file_tab_delimited(formula_file)
-            self.formula_table = pd.read_csv(formula_file, sep='\t', header=0)
-            assert self.formula_table.columns[0] == 'formula'
-            self.formula_path = formula_file
-
-        if formula_table:
-            self.formula_table = formula_table
-            assert self.formula_table.columns[0] == 'formula'
-            self.formula_path = None
-
+        
     def match_metabolites(self, formula: str) -> List[ModelSEEDCompound]:
+        """
+        Match a formula written the standard way to metabolites in the network, returning a list of
+        metabolites.
+        
+        Parameters
+        ==========
+        formula : str
+            Chemical formula written the standard way.
+            
+        Returns
+        =======
+        List[ModelSEEDCompound]
+            Metabolites with the same formula.
+        """
         metabolites: List[ModelSEEDCompound] = []
         for metabolite in self.network.metabolites.values():
             if formula == metabolite.formula:
                 metabolites.append(metabolite)
-
+                
         return metabolites
-
-    def match_metabolites_network(self, formula: str) -> Tuple[List[ModelSEEDCompound], ReactionNetwork]:
+    
+    def match_metabolites_network(
+        self,
+        formula: str
+    ) -> Tuple[List[ModelSEEDCompound], ReactionNetwork]:
+        """
+        Match a formula written the standard way to metabolites in the network, returning a list of
+        metabolites and the subsetted network containing those metabolites.
+        
+        Parameters
+        ==========
+        formula : str
+            Chemical formula written the standard way.
+            
+        Returns
+        =======
+        Tuple[List[ModelSEEDCompound], ReactionNetwork]
+            Metabolites with the same formula and the subsetted network containing those
+            metabolites.
+        """
         metabolites = self.match_metabolites(formula)
         if not metabolites:
             return metabolites, None
-
+        
         subnetwork = self.network.subset_network(
             metabolites_to_subset=[metabolite.modelseed_id for metabolite in metabolites]
         )
-
+        
         return metabolites, subnetwork
-
+    
 def get_chemical_equation(
     reaction: ModelSEEDReaction,
     use_compound_names: Iterable[str] = None,
@@ -10554,21 +10582,21 @@ def get_chemical_equation(
 ) -> str:
     """
     Get a decent-looking chemical equation.
-
+    
     Parameters
     ==========
     reaction : ModelSEEDReaction
         The representation of the reaction with data sourced from ModelSEED Biochemistry.
-
+        
     use_compound_names : Iterable[str], None
         Rather than showing ModelSEED compound IDs in the equation, show ModelSEED compound names --
         except for compounds lacking a name, in which case ID is shown instead. Provide the compound
         names to be used in lieu of IDs, in the same order as the compound IDs in the reaction, and
         with entries of None for nameless compounds.
-
+        
     ignore_compartments : bool, False
         If True, do not show metabolite compartments in the equation.
-
+        
     Returns
     =======
     str
@@ -10598,7 +10626,7 @@ def get_chemical_equation(
                 equation += "<-> "
             else:
                 equation += "-> "
-
+                
         if leftside:
             coeff = -coefficient
         else:
@@ -10607,19 +10635,19 @@ def get_chemical_equation(
             equation += f"{coeff} {compound} + "
         else:
             equation += f"{coeff} {compound} [{compartment}] + "
-
+            
     return equation.rstrip('+ ')
 
 def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
     Convert a list of floats to a list of integers, with a list containing fractional numbers
     transformed to a list of lowest common integer multiples.
-
+    
     Parameters
     ==========
     floats : Iterable[float]
         Numbers to convert.
-
+        
     Returns
     =======
     List[int]
@@ -10627,8 +10655,8 @@ def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
     def lcm(a, b):
         return a * b // math.gcd(a, b)
-
+    
     rationals = [fractions.Fraction(f).limit_denominator() for f in floats]
     lcm_denom = functools.reduce(lcm, [r.denominator for r in rationals])
-
+    
     return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
