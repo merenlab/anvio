@@ -258,28 +258,26 @@ class AnvioPrograms(AnvioAuthors):
                               f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
 
         # report missing provides/requires information
-        if anvio.DEBUG:
-            self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
-                                 "statements :/ This may be normal for some programs, but here is the "
-                                 "complete list of those that are missing __provides__ and __requires__ "
-                                 "tags in their code in case you see something you can complete: '%s'." % \
-                                            (len(self.all_program_filepaths),
-                                             len(programs_without_provides_requires_info),
-                                             ', '.join(programs_without_provides_requires_info)),
-                                 nl_after=1, nl_before=1)
+        self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
+                             "statements :/ This may be normal for some programs, but here is the "
+                             "complete list of those that are missing __provides__ and __requires__ "
+                             "tags in their code in case you see something you can complete: '%s'." % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
         # report missing provides/requires information
-        if anvio.DEBUG:
-            self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
-                                 "help by adding usage information for programs by creating markdown "
-                                 "formatted files under the directory '%s'. Please see examples in anvi'o "
-                                 "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
-                                 "Here is a complete list of programs that are missing usage statements: %s " % \
-                                            (len(self.all_program_filepaths),
-                                             len(programs_without_provides_requires_info),
-                                             anvio.DOCS_PATH,
-                                             ', '.join(programs_without_provides_requires_info)),
-                                 nl_after=1, nl_before=1)
+        self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
+                             "help by adding usage information for programs by creating markdown "
+                             "formatted files under the directory '%s'. Please see examples in anvi'o "
+                             "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
+                             "Here is a complete list of programs that are missing usage statements: %s " % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         anvio.DOCS_PATH,
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
 
 class Program:
