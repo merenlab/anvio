@@ -1,0 +1,160 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+DESCRIPTION = """Run by the shell script of the same name that tests anvi'o reaction networks."""
+
+from argparse import Namespace
+
+import anvio.terminal as terminal
+import anvio.reactionnetwork as rn
+
+from anvio.errors import ConfigError
+from anvio.argparse import ArgumentParser
+from anvio import A, K, __version__ as VERSION
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = VERSION
+__authors__ = ["semiller10"]
+__requires__ = []
+__provides__ = []
+__description__ = DESCRIPTION
+
+
+run = terminal.Run()
+
+
+def main() -> None:
+    """Functionality required to run reaction network component testing."""
+    args = get_args()
+
+    if args.check_default_kegg_database:
+        check_default_kegg_database()
+        return
+    elif args.check_default_modelseed_database:
+        check_default_modelseed_database()
+        return
+
+    tester = rn.Tester(
+        modelseed_dir=args.modelseed_dir,
+        test_dir=args.test_dir,
+        run=run
+    )
+    if args.contigs_db:
+        tester.test_contigs_database_network(args.contigs_db, copy_db=args.copy_db)
+    elif args.pan_db and args.genomes_storage:
+        tester.test_pan_database_network(
+            args.pan_db,
+            args.genomes_storage,
+            copy_db=args.copy_db,
+            consensus_threshold=args.consensus_threshold,
+            discard_ties=args.discard_ties
+        )
+
+def check_default_kegg_database() -> None:
+    """
+    Check if the KEGG database has been set up by anvi'o in the default location, raising an error
+    if this is not the case.
+    """
+    try:
+        rn.KEGGData()
+    except ConfigError:
+        raise ConfigError(
+            "The KEGG database is not set up by anvi'o in the default location, which can be "
+            "rectified by running the program, 'anvi-setup-kegg-data'."
+        )
+
+def check_default_modelseed_database() -> None:
+    """
+    Check if the ModelSEED Biochemistry database has been set up by anvi'o in the default location,
+    print "True" to the terminal if this is the case, and "False" otherwise.
+    """
+    try:
+        rn.ModelSEEDDatabase()
+    except ConfigError:
+        print("False")
+        return
+    print("True")
+
+def get_args() -> Namespace:
+    """
+    Get arguments from the command line.
+
+    Returns
+    =======
+    Namespace
+        Parsed arguments.
+    """
+    parser = ArgumentParser(description=DESCRIPTION)
+
+    groupA = parser.add_argument_group(
+        "CHECKS",
+        "Check that reference databases have been installed by anvi'o in default locations by "
+        "using one (and only one) of the following flags."
+    )
+    groupA.add_argument(
+        "--check-default-kegg-database", default=False, action='store_true', help=
+        "Check if a KEGG database has been set up by anvi'o in the default location, raising an "
+        "error if absent."
+    )
+    groupA.add_argument(
+        "--check-default-modelseed-database", default=False, action='store_true', help=
+        "Prints 'True' to the terminal if the ModelSEED Biochemistry database has been set up by "
+        "anvi'o in the default location, and 'False' otherwise."
+    )
+
+    groupB = parser.add_argument_group(
+        "TESTS",
+        "Test reaction networks constructed from either a contigs database or a pan database (and "
+        "its associated genomes storage database)."
+    )
+    groupB.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
+    groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
+    groupB.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
+    groupB.add_argument(
+        "--test-dir", type=str, metavar='PATH', help=
+        "The directory storing test files. With the default value of None, temporary directories "
+        "are created and deleted as needed by the program. In contrast, if a directory path is "
+        "provided, none of the test files in the directory are deleted."
+    )
+    groupB.add_argument(
+        "--copy-db", default=False, action='store_true', help=
+        "This flag causes the reaction network to be stored in a copy of the input contigs or pan "
+        "database. If a test directory is provided by the argument, '--test-dir', the database "
+        "copy is placed in the test directory with a derived filename, e.g., 'my-CONTIGS.db' is "
+        "copied to a file like 'TEST/my-k2z9jxjd.db' and 'my-PAN.db' is copied to a file like "
+        "'TEST/my-PAN-spiba5e7.db'."
+    )
+    groupB.add_argument(
+        "--modelseed-dir", type=str, metavar='PATH', help=
+        "Path to ModelSEED Biochemistry database directory. If this option is not used, the "
+        "program expects a database set up in the default location used by "
+        "'anvi-setup-modelseed-database'."
+    )
+    groupB.add_argument(
+        "--consensus-threshold", default=None, type=float, metavar='FLOAT', help=
+        "If this argument is provided with a pan database, then a protein annotation must be "
+        "assigned to this minimum proportion of genes in a cluster in order to be imputed to the "
+        "cluster as a whole. By default, without this argument, the annotation assigned to the "
+        "most genes becomes the annotation of the cluster (also see --discard-ties). The consensus "
+        "threshold must be a number from 0 to 1."
+    )
+    groupB.add_argument(
+        "--discard-ties", default=False, action='store_true', help=
+        "By default, a gene cluster in a pan database is assigned a protein annotation by finding "
+        "the protein ortholog that occurs in the greatest number of genes in the cluster (see "
+        "--consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With this "
+        "flag, a tie instead results in an ortholog annotation not being assigned to the cluster."
+    )
+
+    args = parser.get_args(parser)
+    return args
+
+if __name__ == '__main__':
+    try:
+        main()
+    except ConfigError as e:
+        print(e)
+        exit(-1)

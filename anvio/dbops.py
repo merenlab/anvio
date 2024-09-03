@@ -4162,8 +4162,9 @@ class PanDatabase:
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_reactions_table_name, t.pan_gene_cluster_function_reactions_table_structure, t.pan_gene_cluster_function_reactions_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_metabolites_table_name, t.pan_gene_cluster_function_metabolites_table_structure, t.pan_gene_cluster_function_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
+        self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -4298,8 +4299,9 @@ class ContigsDatabase:
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
-        self.db.create_table(t.gene_function_reactions_table_name, t.gene_function_reactions_table_structure, t.gene_function_reactions_table_types)
-        self.db.create_table(t.gene_function_metabolites_table_name, t.gene_function_metabolites_table_structure, t.gene_function_metabolites_table_types)
+        self.db.create_table(t.reaction_network_reactions_table_name, t.reaction_network_reactions_table_structure, t.reaction_network_reactions_table_types)
+        self.db.create_table(t.reaction_network_metabolites_table_name, t.reaction_network_metabolites_table_structure, t.reaction_network_metabolites_table_types)
+        self.db.create_table(t.reaction_network_kegg_table_name, t.reaction_network_kegg_table_structure, t.reaction_network_kegg_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)

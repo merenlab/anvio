@@ -30,6 +30,8 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
          'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
          'metabolism'            : ['run_component_tests_for_metabolism.sh'],
+         'reaction-network'      : ['run_component_tests_for_reaction_network.sh'],
+         'kegg-mapping'          : ['run_component_tests_for_kegg_mapping.sh'],
          'display-functions'     : ['run_component_tests_for_display_functions.sh'],
          'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
          'inversions'            : ['run_component_tests_for_inversions.sh'],

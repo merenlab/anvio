@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-DESCRIPTION = """This program imports protein abundance data and stores it in a profile database."""
+DESCRIPTION = """This program imports protein abundance data into a profile database."""
 
 import pandas as pd
 
@@ -77,10 +77,10 @@ def get_args() -> Namespace:
         """This tab-delimited table contains protein abundance data from different samples. It \
         should have the following named columns: 'source', 'accession', 'sample', and 'abundance'. \
         Each row corresponds to a distinct protein abundance measurement. 'source' is the source of \
-        the identifying accessions, and must correspond to a gene function annotation source stored \
-        in the anvi'o database (available sources can be found with the program, `anvi-db-info`). \
+        the protein accessions, and must be a gene function annotation source stored in the anvi'o \
+        profile database (available sources can be found with the program, `anvi-db-info`). \
         'accession' is the protein ID in the annotation source. A contigs database built from a \
-        GenBank, for example, can contain the source 'NCBI_PGAP' and the accession, \
+        GenBank file, for example, could contain the source, 'NCBI_PGAP', and the accession, \
         'WP_011862028.1'. 'sample' is the name of the sample in which the measurement was made. It \
         need not be the same as any nucleotide sequence samples stored in the profile database. \
         'abundance' is the protein abundance value itself."""

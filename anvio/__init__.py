@@ -3148,6 +3148,22 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
                 ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
+    'skip-map-images': (
+            ['--skip-map-images'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG pathway map image files, which we don't "
+                     "recommend, since they are used in visualizing pathway membership, but let you "
+                     "do anyways."}
+                ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
             {'default': 1.0e-5,
