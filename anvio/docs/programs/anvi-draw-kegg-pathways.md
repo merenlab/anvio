@@ -37,7 +37,11 @@ The option, `--pathway-numbers`, limits the output to maps of interest. A single
 The following command would draw all global maps and the glycolysis map, regardless of whether they contain any anvi'o data of interest (here, KO annotations from a contigs database).
 
 {{ codestart }}
-anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --draw-bare-maps --ko --pathway-numbers 011.. 00010
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        -o output_dir \
+                        --draw-bare-maps \
+                        --ko \
+                        --pathway-numbers 011.. 00010
 {{ codestop }}
 
 ## KO occurrence
@@ -49,7 +53,9 @@ Gene sequences in anvi'o databases can be annotated with KEGG Orthologs (KOs): s
 Here is the basic command to draw KO data from a single %(contigs-db)s.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --ko
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        -o output_dir \
+                        --ko
 {{ codestop }}
 
 Here are three maps drawn with this command from a bacterial genomic contigs database. The map in the upper left, `00010 Glycolysis / Gluconeogenesis`, is a "standard" map, in which boxes are associated with a reaction arrow and one or more KOs. The map in the upper right, `01200 Carbon metabolism`, is a metabolic "overview" map. Overview maps have numerical IDs in the range `012XX`. Reaction arrows in overview maps are associated with one or more KOs and are colored and widened if represented by anvi'o KO data. The bottom map, `01100 Metabolic pathways`, is a "global" metabolic map. Global maps have numerical IDs in the range `011XX`. Reaction lines in global maps are associated with one or more KOs are colored if represented by anvi'o KO data. In all maps, circles are colored if the compound they represent is involved in reactions that are also colored.
@@ -63,7 +69,11 @@ The default color can be changed with the `--set-color` option.
 The argument value can be a color hex code, e.g., `"#FF0000"` for red. It is necessary to enclose a color hex code argument value in quotation marks, as `#` otherwise causes the rest of the command to be ignored as a comment.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --pathway-numbers 00010 --ko --set-color "#2986cc"
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        -o output_dir \
+                        --pathway-numbers 00010 \
+                        --ko \
+                        --set-color "#2986cc"
 {{ codestop }}
 
 ![Change color to blue](../../images/anvi-draw-kegg-pathways/kos_color_blue.png)
@@ -71,7 +81,11 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --pathway-num
 The argument value can also be the string, `original`, for the original color scheme of the reference map. Global maps are especially colorful, with reactions varying in color across the map as a broad indication of function.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --pathway-numbers 00010 01100 01200 --ko --set-color original
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
+                        -o output_dir \
+                        --pathway-numbers 00010 01100 01200 \
+                        --ko \
+                        --set-color original
 {{ codestop }}
 
 ![Use original color scheme](../../images/anvi-draw-kegg-pathways/kos_color_original.png)
@@ -81,11 +95,15 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s -o output_dir --pathway-num
 The KO content of multiple contigs databases can be compared. Database file paths can be provided directly on the command line or in an %(external-genomes)s text file.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s_1 %(contigs-db)s_2 ... %(contigs-db)s_N -o output_dir --ko
+anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s_1 %(contigs-db)s_2 ... %(contigs-db)s_N \
+                        -o output_dir \
+                        --ko
 {{ codestop }}
 
 {{ codestart }}
-anvi-draw-kegg-pathways --external-genomes %(external-genomes)s -o output_dir --ko
+anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
+                        -o output_dir \
+                        --ko
 {{ codestop }}
 
 The images in this section show data from contigs databases of genomes from different strains of the same bacterial species.
@@ -111,7 +129,11 @@ The second and third numerical `--colormap` values are not mandatory, but can be
 The `--reverse-overlay` flag should also be used to reverse the default drawing order. This causes unshared reactions to be rendered above rather than below shared reactions, which is especially important in cluttered global maps.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --external-genomes %(external-genomes)s -o output_dir --ko --colormap plasma 0.1 0.9 --reverse-overlay
+anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
+                        -o output_dir \
+                        --ko \
+                        --colormap plasma 0.1 0.9 \
+                        --reverse-overlay
 {{ codestop }}
 
 ![Emphasize unshared reactions with reversed coloring](../../images/anvi-draw-kegg-pathways/kos_reverse_colormap.png)
@@ -127,7 +149,13 @@ To facilitate comparisons, maps for individual databases can also be drawn along
 The following command would draw individual map files plus grid files; a reverse colormap is used in unified maps to emphasize unshared reactions.
 
 {{ codestart }}
-anvi-draw-kegg-pathways --external-genomes %(external-genomes)s -o output_dir --draw-grid --draw-individual-files --ko --colormap plasma 0.1 0.9 --reverse-overlay
+anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
+                        -o output_dir \
+                        --draw-grid \
+                        --draw-individual-files \
+                        --ko \
+                        --colormap plasma 0.1 0.9 \
+                        --reverse-overlay
 {{ codestop }}
 
 The following map grid reveals unique aspects of galactose metabolism among six related genomes.
@@ -139,7 +167,10 @@ The following map grid reveals unique aspects of galactose metabolism among six 
 Pangenomes are treated similarly to multiple contigs databases. Rather than comparing the occurrence of KOs across contigs databases, consensus KO annotations of gene clusters are compared across genomes in a pangenomic database. Here is the basic structure of the command.
 
 {{ codestart }}
-anvi-draw-kegg-pathways -p %(pan-db)s -g %(genomes-storage-db)s -o output_dir --ko
+anvi-draw-kegg-pathways -p %(pan-db)s \
+                        -g %(genomes-storage-db)s \
+                        -o output_dir \
+                        --ko
 {{ codestop }}
 
 The following maps were produced with a basic command using a pangenome constructed from 12 strains of two related bacterial species.
@@ -149,7 +180,13 @@ The following maps were produced with a basic command using a pangenome construc
 As with the comparison of contigs databases, it can be useful to reverse the colormap and create map grids to compare the KO content of genomes in the pangenome.
 
 {{ codestart }}
-anvi-draw-kegg-pathways -p %(pan-db)s -g %(genomes-storage-db)s -o output_dir --draw-grid --ko --colormap plasma 0.1 0.9 --reverse-overlay
+anvi-draw-kegg-pathways -p %(pan-db)s \
+                        -g %(genomes-storage-db)s \
+                        -o output_dir \
+                        --draw-grid \
+                        --ko \
+                        --colormap plasma 0.1 0.9 \
+                        --reverse-overlay
 {{ codestop }}
 
 The following map grid reveals certain differences between the strains, and particularly the two species, in carbohydrate metabolism, with *faecalis* enriched in enzymes for xylose metabolism (towards the bottom of the map), and *faecium* enriched in enzymes for uronate metabolism (towards the top of the map).
