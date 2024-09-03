@@ -617,7 +617,7 @@ ANVIO_ARTIFACTS ={
     },
     "kegg-pathway-map": {
         "name": "KEGG PATHWAY MAP",
-        "type": "PDF",
+        "type": "DISPLAY",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -950,7 +950,8 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
-    }, "contig-rename-report-txt": {
+    },
+    "contig-rename-report-txt": {
         "name": "CONTIG RENAME REPORT TXT",
         "type": "TXT",
         "provided_by_anvio": True,
