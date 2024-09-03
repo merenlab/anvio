@@ -271,8 +271,6 @@ class KEGGModule:
     name: str = None
     ko_ids: List[str] = field(default_factory=list)
     pathway_ids: List[str] = field(default_factory=list)
-    # TODO: Modules are classified within BRITE hierarchy ko00002, which is not currently downloaded
-    # in anvi'o KEGG data setup. There should be a reference.
 
 @dataclass
 class KEGGPathway:
@@ -315,8 +313,6 @@ class KEGGPathway:
     categorization: Tuple[str] = None
     ko_ids: List[str] = field(default_factory=list)
     module_ids: List[str] = field(default_factory=list)
-    # TODO: I assume that a pathway is only equivalent to a single bottom-most category in ko00001.
-    # TODO: Reference BRITE hierarchies equivalent to pathway.
 
 @dataclass
 class BRITEHierarchy:
@@ -360,7 +356,6 @@ class BRITEHierarchy:
     name: str = None
     categorizations: List[Tuple[str]] = field(default_factory=list)
     ko_ids: List[str] = field(default_factory=list)
-    # TODO: reference BRITE hierarchies equivalent to pathway
 
 @dataclass
 class BRITECategory:
@@ -415,9 +410,6 @@ class BRITECategory:
     subcategory_names: List[str] = field(default_factory=list)
     pathway_id: str = None
     ko_ids: List[str] = field(default_factory=list)
-    # TODO: Are bottom-most categories in the KO hierarchy, ko00001, the only ones equivalent to
-    # pathways? I assume that multiple bottom-most categories in ko00001 are not equivalent to the
-    # same pathway.
 
 @dataclass
 class Gene:
@@ -498,7 +490,6 @@ class GeneCluster:
     gene_cluster_id: int = None
     genomes: List[str] = field(default_factory=list)
     ko_id: str = None
-    # TODO: Track individual gene KO annotations underlying the consensus annotation.
 
 class ReactionNetwork:
     """
@@ -5718,9 +5709,6 @@ class KEGGData:
             if not re.match(ko_id_pattern, orthology_entry):
                 # Screen for "orthology" entries that are validly formatted KO IDs. There are also
                 # orthology entires for modules that are part of other modules.
-                # TODO: Anvi'o KEGG data setup should remove modules within modules as orthology
-                # entries in the modules database. For example, 'M00612' includes 'M00597' and
-                # 'M00165'; these do not convey additional KO information.
                 continue
             ko_id = orthology_entry
 
@@ -7223,10 +7211,6 @@ class Constructor:
             smiles: str = row.smiles
             metabolite.smiles = smiles
 
-    # TODO: modules from gene functions table of contigs database
-    # how to get module for consensus KO of gene cluster? could use modules database
-    # need pathway membership of modules from hierarchy ko00002
-
     def _load_ko_classifications(
         self,
         database: Union[ContigsDatabase, PanDatabase],
@@ -7935,11 +7919,6 @@ class Constructor:
             cdb_db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
             # The KEGG database release is now not explicitly that, but instead the hash of the
             # anvi'o modules database.
-            # TODO: If the modules database is set up from KEGG, add KEGG version metadata to the
-            # database. Either change the metavalue below back to the KEGG version or change the
-            # name of the metavalue to what it actually is, the modules database hash. Also
-            # consider downloading a KEGG info file in the binary relations directory and cross-
-            # checking that with the KEGG release stored in the modules database.
             cdb_db.set_meta_value('reaction_network_kegg_database_release', kegg_db.modules_db_hash)
             cdb_db.set_meta_value('reaction_network_modelseed_database_sha', modelseed_db.sha)
             self.progress.end()
@@ -8324,11 +8303,6 @@ class Constructor:
             pdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
             # The KEGG database release is now not explicitly that, but instead the hash of the
             # anvi'o modules database.
-            # TODO: If the modules database is set up from KEGG, add KEGG version metadata to the
-            # database. Either change the metavalue below back to the KEGG version or change the
-            # name of the metavalue to what it actually is, the modules database hash. Also
-            # consider downloading a KEGG info file in the binary relations directory and cross-
-            # checking that with the KEGG release stored in the modules database.
             pdb.db.set_meta_value('reaction_network_kegg_database_release', kegg_db.modules_db_hash)
             pdb.db.set_meta_value('reaction_network_modelseed_database_sha', modelseed_db.sha)
             pdb.db.set_meta_value('reaction_network_consensus_threshold', consensus_threshold)
@@ -9486,9 +9460,6 @@ class Constructor:
             module_data['name'] = module.name
             module_data['modules'] = ''
             module_data['pathways'] = ', '.join(module.pathway_ids)
-            # TODO: There is a BRITE hierarchy of modules, 'ko00002'. This hierarchy is not
-            # currently downloaded or handled by kegg.py, but the classification of modules, like
-            # that of pathways as categories in the hierarchy, 'ko00001', could be useful.
             module_data['brite_categorization'] = ''
             kegg_data[f'2{module_id}'] = module_data
 
