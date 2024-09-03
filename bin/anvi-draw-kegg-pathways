@@ -282,7 +282,7 @@ def get_args() -> Namespace:
         '--draw-bare-maps', action='store_true', default=False, help=
         "By default, without this flag, only draw maps containing select data from anvi'o "
         "databases, such as KOs with the '--ko' flag. Even if pathway maps are given explicitly "
-        "with '--pathway-numbers' (e.g., '00010 01100'), if they do not contain anvi'o data, they "
+        "with '--pathway-numbers' (e.g., 00010 01100), if they do not contain anvi'o data, they "
         "are not drawn unless this flag is used."
     )
     
@@ -301,9 +301,9 @@ def get_args() -> Namespace:
     groupMAP.add_argument(
         '--pathway-numbers', type=str, nargs='+', help=
         "Five-digit numbers identify pathway maps to draw. By default, all maps are drawn. Numbers "
-        "are five-digits long. This argument accepts regular expression patterns. For example, "
-        "'01100 03...' will draw the global 'Metabolic pathways' map '01100' and all of the "
-        "'Genetic Information Processing' maps with numbers starting '03'. See the following "
+        "are five-digits long. This argument accepts regular expression patterns. For example, the "
+        "values, 01100 03... , will draw the global 'Metabolic pathways' map '01100' and all of "
+        "the 'Genetic Information Processing' maps with numbers starting '03'. See the following "
         "website for a classification of the maps: https://www.genome.jp/kegg/pathway.html"
     )
     groupMAP.add_argument(
@@ -328,7 +328,7 @@ def get_args() -> Namespace:
         "This option takes the name of a Matplotlib Colormap to change the default used for a "
         "numerical data type. In addition to the colormap name, two decimal values between 0.0 and "
         "1.0, with the first value smaller than the second, can be provided to limit the fraction "
-        "of the colormap used. For example, the values 'plasma 0.2 0.8' would sample the middle "
+        "of the colormap used. For example, the values, plasma 0.2 0.8 , would sample the middle "
         "60%% of the 'plasma' colormap, ignoring the darkest 20%% and lightest 20%%. Here is how a "
         "colormap is applied to KO occurrence data. KO reactions can be dynamically colored by "
         "occurrence in multiple contigs databases or the genomes of a pangenome. Pangenomes by "
