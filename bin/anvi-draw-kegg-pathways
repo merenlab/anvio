@@ -16,18 +16,11 @@ from anvio import A, K, __version__ as VERSION
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
+__authors__ = ["semiller10"]
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
-__authors__ = ["semiller10"]
-__requires__ = [
-    "contigs-db",
-    "external-genomes",
-    "pan-db",
-    "genomes-storage-db",
-    "kegg-data"
-]
+__requires__ = ["contigs-db", "external-genomes", "pan-db", "genomes-storage-db", "kegg-data"]
 __provides__ = ["kegg-pathway-map"]
 __description__ = DESCRIPTION
 
