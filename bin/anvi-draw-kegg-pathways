@@ -27,11 +27,11 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    
+
     mapper = keggmapping.Mapper(
         kegg_dir=args.kegg_dir, overwrite_output=args.overwrite_output_destinations
     )
-    
+
     # Transfer contigs database paths from the external_genomes file to the contigs_dbs argument.
     if args.external_genomes is not None:
         if args.contigs_dbs is None:
@@ -39,11 +39,11 @@ def main() -> None:
         external_genomes_table = pd.read_csv(args.external_genomes, sep='\t', header=0)
         assert external_genomes_table.columns.tolist() == ['name', 'contigs_db_path']
         args.contigs_dbs += external_genomes_table['contigs_db_path'].tolist()
-        
+
     # Draw KO data from a single contigs database source.
     if args.contigs_dbs is not None and len(args.contigs_dbs) == 1 and args.ko is True:
         map_contigs_database_kos = mapper.map_contigs_database_kos
-        
+
         if args.set_color is None or args.set_color is True:
             # Use the default color to highlight reactions.
             pass
@@ -51,18 +51,18 @@ def main() -> None:
             map_contigs_database_kos = functools.partial(
                 map_contigs_database_kos, color_hexcode=args.set_color
             )
-            
+
         map_contigs_database_kos(
             args.contigs_dbs[0],
             args.output_dir,
             pathway_numbers=args.pathway_numbers,
             draw_maps_lacking_kos=args.draw_bare_maps
         )
-        
+
     # Draw KO data from multiple contigs database sources.
     if args.contigs_dbs is not None and len(args.contigs_dbs) > 1 and args.ko is True:
         map_contigs_databases_kos = mapper.map_contigs_databases_kos
-        
+
         if args.draw_individual_files is None:
             pass
         elif len(args.draw_individual_files) == 0:
@@ -75,7 +75,7 @@ def main() -> None:
             map_contigs_databases_kos = functools.partial(
                 map_contigs_databases_kos, draw_contigs_db_files=args.draw_individual_files
             )
-            
+
         if args.draw_grid is None:
             pass
         elif len(args.draw_grid) == 0:
@@ -86,9 +86,9 @@ def main() -> None:
             map_contigs_databases_kos = functools.partial(
                 map_contigs_databases_kos, draw_grid=args.draw_grid.split()
             )
-            
+
         assert not ((args.set_color is not None) and (args.colormap is not None))
-        
+
         if args.colormap is None:
             # Dynamically color reactions in unified maps using the default colormap.
             pass
@@ -107,7 +107,7 @@ def main() -> None:
                 colormap=args.colormap[0],
                 colormap_limits=(min_limit, max_limit)
             )
-            
+
         if args.colormap_scheme is None:
             # The scheme is determined automatically by the number of contigs databases.
             pass
@@ -115,7 +115,7 @@ def main() -> None:
             map_contigs_databases_kos = functools.partial(
                 map_contigs_databases_kos, colormap_scheme=args.colormap_scheme
             )
-            
+
         if args.set_color is None:
             # Dynamically color reactions in unified maps by number of contigs databases.
             pass
@@ -127,7 +127,7 @@ def main() -> None:
             map_contigs_databases_kos = functools.partial(
                 map_contigs_databases_kos, colormap=False, color_hexcode=args.set_color
             )
-            
+
         map_contigs_databases_kos(
             args.contigs_dbs,
             args.output_dir,
@@ -135,11 +135,11 @@ def main() -> None:
             reverse_overlay=args.reverse_overlay,
             draw_maps_lacking_kos=args.draw_bare_maps
         )
-        
+
     # Draw KO data from a pangenomic database source.
     if args.pan_db is not None and args.genomes_storage is not None and args.ko is True:
         map_pan_database_kos = mapper.map_pan_database_kos
-        
+
         if args.draw_individual_files is None:
             pass
         elif len(args.draw_individual_files) == 0:
@@ -150,7 +150,7 @@ def main() -> None:
             map_pan_database_kos = functools.partial(
                 map_pan_database_kos, draw_genome_files=args.draw_individual_files
             )
-            
+
         if args.draw_grid is None:
             pass
         elif len(args.draw_grid) == 0:
@@ -161,9 +161,9 @@ def main() -> None:
             map_pan_database_kos = functools.partial(
                 map_pan_database_kos, draw_grid=args.draw_grid.split()
             )
-            
+
         assert not ((args.set_color is not None) and (args.colormap is not None))
-        
+
         if args.set_color is None:
             # Dynamically color reactions in pangenomic maps by number of genomes.
             pass
@@ -175,7 +175,7 @@ def main() -> None:
             map_pan_database_kos = functools.partial(
                 map_pan_database_kos, colormap=None, color_hexcode=args.set_color
             )
-            
+
         if args.colormap is None:
             # Dynamically color reactions in pangenomic maps using the default colormap.
             pass
@@ -194,7 +194,7 @@ def main() -> None:
                 colormap=args.colormap[0],
                 colormap_limits=(min_limit, max_limit)
             )
-            
+
         map_pan_database_kos(
             args.pan_db,
             args.genomes_storage,
@@ -205,10 +205,10 @@ def main() -> None:
             consensus_threshold=args.consensus_threshold,
             discard_ties=args.discard_ties
         )
-        
+
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
-    
+
     groupCONTIGS = parser.add_argument_group(
         "CONTIGS DATABASE",
         "Display data from one or more contigs databases, e.g., for genomes and metagenomes."
@@ -227,7 +227,7 @@ def get_args() -> Namespace:
         "describe a single entry, where the first column is a name for the database, and the "
         "second is the path to the database."
     )
-    
+
     groupPAN = parser.add_argument_group(
         "PANGENOMIC DATABASE",
         "Display data from a pangenome."
@@ -249,7 +249,7 @@ def get_args() -> Namespace:
         "and arbitrarily choosing one ortholog in case of a tie. With this flag, a tie instead "
         "results in an ortholog annotation not being assigned to the cluster."
     )
-    
+
     groupOUT = parser.add_argument_group("OUTPUT", "Output files")
     groupOUT.add_argument(*A('output-dir'), **K('output-dir'))
     groupOUT.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
@@ -278,7 +278,7 @@ def get_args() -> Namespace:
         "with '--pathway-numbers' (e.g., 00010 01100), if they do not contain anvi'o data, they "
         "are not drawn unless this flag is used."
     )
-    
+
     groupDATA = parser.add_argument_group(
         "DATA", "Types of data to display from anvi'o databases."
     )
@@ -289,7 +289,7 @@ def get_args() -> Namespace:
         "genomes contributing to gene clusters annotated by KOs is translated to a color map. "
         "The argument, '--set-color', can be used to display presence/absence rather than counts."
     )
-    
+
     groupMAP = parser.add_argument_group("MAP", "Pathway maps to draw")
     groupMAP.add_argument(
         '--pathway-numbers', type=str, nargs='+', help=
@@ -304,7 +304,7 @@ def get_args() -> Namespace:
         "Path to KEGG database directory containing map files. If this option is not used, the "
         "program expects a database set up in the default location used by 'anvi-setup-kegg-data'."
     )
-    
+
     groupCOLOR = parser.add_argument_group("COLOR", "Color scheme to use")
     groupCOLOR.add_argument(
         '--set-color', nargs='?', const=True, help=
@@ -356,10 +356,10 @@ def get_args() -> Namespace:
         "colormap spanning dark to light, this accentuates unshared rather than shared parts of "
         "a pathway."
     )
-    
+
     args = parser.get_args(parser)
     return args
-    
+
 if __name__ == '__main__':
     try:
         main()
@@ -383,4 +383,4 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
-        
+
