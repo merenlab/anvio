@@ -189,7 +189,7 @@ class AnvioPrograms(AnvioAuthors):
                                   "Probably there is a typo or something :/")
 
 
-    def init_programs(self, okay_if_no_meta=False, quiet=False):
+    def init_programs(self, okay_if_no_meta=False, always_include_those_with_docs=True, quiet=False):
         """Initializes the `self.programs` dictionary."""
 
         num_all_programs = len(self.all_program_filepaths)
@@ -223,14 +223,30 @@ class AnvioPrograms(AnvioAuthors):
                 else:
                     programs_without_usage_info.add(program.name)
 
-            if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
+            keep_program = True
+            if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']):
+                # if we are here, it means the program is missing both provides AND requires statements.
+                # If the user hasn't set `okay_if_no_meta=True`, we're going to get rid of them, and
+                # will NOT include them in `self.programs`
+                if not okay_if_no_meta:
+                    keep_program = False
+
+                # BUT, there are programs that have no provides/requires statements, such as anvi-self-test,
+                # but have a usage statement under docs already, we may want to keep them in the list
+                # regardless. so here we test that:
+                if program.name in programs_with_usage_info and always_include_those_with_docs:
+                    keep_program = True
+
+            if keep_program:
+                # include the program in our final list
+                self.programs[program.name] = program
+            else:
+                # forget all about it
                 try:
                     programs_with_usage_info.remove(program.name)
                     programs_without_usage_info.remove(program.name)
                 except:
                     pass
-            else:
-                self.programs[program.name] = program
 
         self.progress.end()
 
@@ -258,28 +274,26 @@ class AnvioPrograms(AnvioAuthors):
                               f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
 
         # report missing provides/requires information
-        if anvio.DEBUG:
-            self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
-                                 "statements :/ This may be normal for some programs, but here is the "
-                                 "complete list of those that are missing __provides__ and __requires__ "
-                                 "tags in their code in case you see something you can complete: '%s'." % \
-                                            (len(self.all_program_filepaths),
-                                             len(programs_without_provides_requires_info),
-                                             ', '.join(programs_without_provides_requires_info)),
-                                 nl_after=1, nl_before=1)
+        self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
+                             "statements :/ This may be normal for some programs, but here is the "
+                             "complete list of those that are missing __provides__ and __requires__ "
+                             "tags in their code in case you see something you can complete: '%s'." % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
         # report missing provides/requires information
-        if anvio.DEBUG:
-            self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
-                                 "help by adding usage information for programs by creating markdown "
-                                 "formatted files under the directory '%s'. Please see examples in anvi'o "
-                                 "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
-                                 "Here is a complete list of programs that are missing usage statements: %s " % \
-                                            (len(self.all_program_filepaths),
-                                             len(programs_without_provides_requires_info),
-                                             anvio.DOCS_PATH,
-                                             ', '.join(programs_without_provides_requires_info)),
-                                 nl_after=1, nl_before=1)
+        self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
+                             "help by adding usage information for programs by creating markdown "
+                             "formatted files under the directory '%s'. Please see examples in anvi'o "
+                             "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
+                             "Here is a complete list of programs that are missing usage statements: %s " % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         anvio.DOCS_PATH,
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
 
 class Program:
