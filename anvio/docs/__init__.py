@@ -615,6 +615,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "kegg-pathway-map": {
+        "name": "KEGG PATHWAY MAP",
+        "type": "PDF",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
