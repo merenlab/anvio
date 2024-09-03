@@ -26,3 +26,6 @@ networkx
 biopython
 reportlab
 pulp==2.7.0
+ReportLab
+pymupdf
+frontend
