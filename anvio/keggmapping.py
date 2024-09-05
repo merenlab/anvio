@@ -403,11 +403,11 @@ class Mapper:
         # Set the colormap.
         if colormap is True:
             if scheme == 'by_count':
-                cmap = mcolors.Colormap('plasma_r')
+                cmap = plt.colormaps['plasma_r']
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
             elif scheme == 'by_database':
-                cmap = mcolors.Colormap('tab10')
+                cmap = plt.colormaps['tab10']
                 if colormap_limits is None:
                     colormap_limits = (0.0, 1.0)
             else:
@@ -415,7 +415,7 @@ class Mapper:
         elif colormap is False:
             cmap = None
         elif isinstance(colormap, str):
-            cmap = mcolors.Colormap(colormap)
+            cmap = plt.colormaps[colormap]
             if colormap_limits is None:
                 colormap_limits = (0.0, 1.0)
         elif isinstance(colormap, mcolors.Colormap):
@@ -946,7 +946,7 @@ class Mapper:
         else:
             # Draw pangenomic maps with dynamic coloring by number of genomes.
             if isinstance(colormap, str):
-                cmap = mcolors.Colormap(colormap)
+                cmap = plt.colormaps[colormap]
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
             else:
