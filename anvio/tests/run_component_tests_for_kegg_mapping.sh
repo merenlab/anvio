@@ -5,6 +5,9 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
 rn_python_script=`readlink -f run_component_tests_for_reaction_network`
 
+INFO "Checking for the required KEGG database set up by anvi'o in a default location"
+${rn_python_script} --check-default-kegg-database
+
 INFO "Setting up the KEGG mapping analysis directory"
 mkdir -p ${output_dir}/
 # These databases should already contain KO annotations.
