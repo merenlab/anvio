@@ -46,15 +46,15 @@ pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
 pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
-pan_reaction_network_reactions_table_name        = 'reaction_network_reactions'
+pan_reaction_network_reactions_table_name        = 'pan_reaction_network_reactions'
 pan_reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
 pan_reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
 
-pan_reaction_network_metabolites_table_name      = 'reaction_network_metabolites'
+pan_reaction_network_metabolites_table_name      = 'pan_reaction_network_metabolites'
 pan_reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
 pan_reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
 
-pan_reaction_network_kegg_table_name             = 'reaction_network_kegg'
+pan_reaction_network_kegg_table_name             = 'pan_reaction_network_kegg'
 pan_reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
 pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 
