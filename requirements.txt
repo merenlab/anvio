@@ -23,9 +23,8 @@ snakemake
 multiprocess
 plotext
 networkx
-biopython
-reportlab
 pulp==2.7.0
+biopython
 ReportLab
 pymupdf
 frontend
