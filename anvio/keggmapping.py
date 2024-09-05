@@ -1102,8 +1102,9 @@ class Mapper:
                 for genome_name, drawn_map in drawn_genome_name.items():
                     if drawn_map:
                         continue
-                    self.map_contigs_database_kos(
-                        genome_names[genome_name],
+                    self.map_genomes_storage_genome_kos(
+                        genomes_storage_db,
+                        genome_name,
                         os.path.join(output_dir, genome_name),
                         pathway_numbers=[pathway_number],
                         color_hexcode=color_hexcode,
