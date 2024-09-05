@@ -416,8 +416,12 @@ class Mapper:
             cmap = None
         elif isinstance(colormap, str):
             cmap = mcolors.Colormap(colormap)
+            if colormap_limits is None:
+                colormap_limits = (0.0, 1.0)
         elif isinstance(colormap, mcolors.Colormap):
             cmap = colormap
+            if colormap_limits is None:
+                colormap_limits = (0.0, 1.0)
         else:
             raise AssertionError
 
