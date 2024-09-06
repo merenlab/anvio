@@ -6576,7 +6576,9 @@ class Constructor:
         ko_id_pattern = re.compile('K\d{5}')
         reaction_network_ko_ids: Set[str] = set([
             kegg_id for kegg_id in
-            set(cdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            set(cdb_db.get_single_column_from_table(
+                tables.reaction_network_kegg_table_name, 'kegg_id'
+            ))
             if re.fullmatch(ko_id_pattern, kegg_id)
         ])
         contigs_db_ko_ids = set(gene_ko_hits_table['accession'])
@@ -6885,7 +6887,9 @@ class Constructor:
         ko_id_pattern = re.compile('K\d{5}')
         reaction_network_ko_ids: List[str] = [
             kegg_id for kegg_id in
-            set(pdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            set(pdb_db.get_single_column_from_table(
+                tables.pan_reaction_network_kegg_table_name, 'kegg_id'
+            ))
             if re.fullmatch(ko_id_pattern, kegg_id)
         ]
 
