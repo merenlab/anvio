@@ -24,7 +24,7 @@ anvi-setup-kegg-data -D -T 5
 
 ### Install in non-default location
 
-At the moment, KEGG data that includes maps does _not_ include stray KOs (see %(anvi-setup-kegg-data)s) due to changes in the available model files. To preserve KEGG data that you already have set up, for this reason or another, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
+At the moment, KEGG data that includes maps does _not_ include "stray" KOs (see %(anvi-setup-kegg-data)s) due to changes in the available model files. To preserve KEGG data that you already have set up, for this reason or another, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
 
 {{ codestart }}
 anvi-setup-kegg-data --kegg-snapshot v2024-08-30 --kegg-data-dir path/to/other/directory
