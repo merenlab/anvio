@@ -12,7 +12,7 @@ Information on the predicted reactions and the involved metabolites are stored i
 anvi-setup-kegg-data --kegg-snapshot v2024-08-30
 {{ codestop }}
 
-%(anvi-setup-modelseed-database)s sets up the ModelSEED Biochemistry database, which harmonizes biochemical data from various reference databases, including KEGG.
+%(anvi-setup-modelseed-database)s sets up the [ModelSEED Biochemistry database](https://github.com/ModelSEED/ModelSEEDDatabase), which harmonizes biochemical data from various reference databases, including KEGG. The following command sets up the database in a default anvi'o directory.
 
 {{ codestart }}
 anvi-setup-modelseed-database
