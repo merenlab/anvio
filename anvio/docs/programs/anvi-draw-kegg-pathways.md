@@ -8,6 +8,12 @@ There are hundreds of pathway maps, listed and categorized [here](https://www.ge
 anvi-setup-kegg-data --kegg-snapshot v2024-08-30
 {{ codestop }}
 
+Additional Python packages may be needed if you installed anvi'o `v8.0-dev` before this program's package requirements were included. These can be installed with the following command.
+
+{{ codestart }}
+pip install biopython ReportLab pymupdf frontend
+{{ codestop }}
+
 ### Download newest available files
 
 Alternatively, KEGG data including maps can be set up not from a snapshot but by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
