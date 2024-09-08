@@ -1767,16 +1767,15 @@ class KOfamDownload(KeggSetup):
             for i, acc in enumerate(genes_acc_list):
                 acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
                 org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
-                gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
+                gene_name = acc_fields[1]
 
                 # sometimes we have multiple genes per organism, like this: "PSOM: 113322169 113340172"
-                if ' ' in gene_name:
-                    all_genes = gene_name.split(' ')
-                    for g in all_genes:
-                        kegg_genes_code = f"{org_code}:{g}"
-                        kegg_genes_code_list.append(kegg_genes_code)
-                else:
-                    kegg_genes_code_list.append(f"{org_code}:{gene_name}")
+                all_genes = gene_name.split(' ')
+                for g in all_genes:
+                    g = g.split('(')[0] # the gene name needs to have anything in parentheses removed. ex. CTC_p60(tetX) becomes CTC_p60
+                    kegg_genes_code = f"{org_code}:{g}"
+                    kegg_genes_code_list.append(kegg_genes_code)
+                
             ko_to_genes[ko] = kegg_genes_code_list
 
         return ko_to_genes
