@@ -6,10 +6,10 @@ Information on the predicted reactions and the involved metabolites are stored i
 
 ## Setup
 
-%(anvi-setup-kegg-data)s downloads [binary relations files](https://www.genome.jp/brite/br08906) needed to construct a %(reaction-network)s from [KEGG Orthology (KO)](https://www.genome.jp/kegg/ko.html) sequence annotations. Make sure to run that program with the `--kegg-snapshot` option to use the newest snapshot of %(kegg-data)s, [`v2024-08-30`](https://figshare.com/articles/dataset/KEGG_build_2024-08-30/26880559?file=48903154), which includes binary relations files.
+%(anvi-setup-kegg-data)s downloads, among other files, the [binary relations files](https://www.genome.jp/brite/br08906) needed to construct a %(reaction-network)s from [KEGG Orthology (KO)](https://www.genome.jp/kegg/ko.html) sequence annotations. The following command sets up the database in a default anvi'o directory.
 
 {{ codestart }}
-anvi-setup-kegg-data --kegg-snapshot v2024-08-30
+anvi-setup-kegg-data
 {{ codestop }}
 
 %(anvi-setup-modelseed-database)s sets up the [ModelSEED Biochemistry database](https://github.com/ModelSEED/ModelSEEDDatabase), which harmonizes biochemical data from various reference databases, including KEGG. The following command sets up the database in a default anvi'o directory.
@@ -20,7 +20,7 @@ anvi-setup-modelseed-database
 
 ### Download newest available KEGG files
 
-Alternatively, KEGG data including binary relations files can be set up not from a snapshot but by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
+Alternatively, KEGG data can be set up not from a snapshot but by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
 
 {{ codestart }}
 anvi-setup-kegg-data -D -T 5
@@ -28,15 +28,19 @@ anvi-setup-kegg-data -D -T 5
 
 ### Install in non-default location
 
-At the moment, KEGG data that includes binary relations files does _not_ include "stray" KOs (see %(anvi-setup-kegg-data)s) due to changes in the available model files. To preserve KEGG data that you already have set up, for this reason or another, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
+To preserve KEGG data that you already have set up for whatever reason, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
 
 {{ codestart }}
-anvi-setup-kegg-data --kegg-snapshot v2024-08-30 --kegg-data-dir path/to/other/directory
+anvi-setup-kegg-data --kegg-data-dir path/to/other/directory
 {{ codestop }}
 
 `anvi-reaction-network` requires a `--kegg-dir` argument to seek KEGG data in a non-default location.
 
 Likewise, different versions of the ModelSEED Biochemistry database can be set up in non-default locations and used with the `--modelseed-dir` argument.
+
+{{ codestart }}
+anvi-setup-modelseed-database --dir path/to/other/directory
+{{ codestop }}
 
 ## Usage
 
