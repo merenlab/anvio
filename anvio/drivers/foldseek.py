@@ -26,13 +26,14 @@ pp = terminal.pretty_print
 
 class Foldseek():
     
-    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False, output_file_path=None):
+    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False, output_file_path=None, weight=None):
         self.run = run
         self.progress = progress
 
         self.num_threads = num_threads
         self.overwrite_output_destinations = overwrite_output_destinations
         self.output_file_path = output_file_path
+        self.weight = weight
 
         utils.is_program_exists('foldseek')
 
@@ -52,7 +53,7 @@ class Foldseek():
                     'createdb',
                     self.query_fasta,
                     self.output_file_path + 'db',
-                    '--prostt5-model', 'home/msever/weights', # Where should the weight of Prostt5 be placed?
+                    '--prostt5-model', self.weight, # Where should the weight of Prostt5 be placed?
                     '--threads', str(self.num_threads)
                     ]
 
