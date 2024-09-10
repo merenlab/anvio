@@ -403,6 +403,3 @@ anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
                                   -o enrichment_ungrouped.txt \
                                   --no-progress
 SHOW_FILE enrichment_ungrouped.txt
-
-# clean up
-rm -rf $kegg_data_dir
