@@ -57,7 +57,7 @@ def main(args):
     items_order_of_interest = None
     for item_order in item_order_names:
         item_order_name, item_order_distance, item_order_clustering = item_order.split(':')
-        if order_name == item_order_name:
+        if order_name == item_order_name or order_name == item_order:
             items_order_of_interest = item_orders_dict[item_order]
 
     if not items_order_of_interest:
