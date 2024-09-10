@@ -5,6 +5,21 @@ source 00.sh
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
+# If you don't want to use the default KEGG data directory for testing, you should
+# run `export kegg_data_dir=/path/to/data/dir/you/want` in your terminal before starting the self-test
+
+if [ x"${kegg_data_dir}" == "x" ]; then
+ 	INFO "Checking for KEGG database in default location"
+    # Here we use Sam's clever function to check for default KEGG data dir
+    rn_python_script=`readlink -f run_component_tests_for_reaction_network`
+    ${rn_python_script} --check-default-kegg-database
+    source_dir=$(dirname -- "$( readlink -f -- "$0"; )";)
+    kegg_data_dir=${source_dir%/tests}/data/misc/KEGG
+    INFO "Using default KEGG data directory: $kegg_data_dir"
+else
+ 	INFO "Using manually-provided KEGG data directory: $kegg_data_dir"
+fi
+
 INFO "Setting up the metabolism test directory"
 mkdir $output_dir/metabolism_test
 cp $files/data/genomes/bacteria/*.db                    $output_dir/metabolism_test
@@ -15,16 +30,6 @@ cd $output_dir/metabolism_test
 
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-quickly
-
-# generate a temporary directory to store anvi-setup-kegg-data output,
-# and remove it immediately to make sure it doesn't exist:
-kegg_data_dir=`mktemp -d`
-rm -rf $kegg_data_dir
-
-INFO "Setting up KEGG data"
-anvi-setup-kegg-data   --mode all \
-                       --kegg-data-dir $kegg_data_dir \
-                       $thread_controller
 
 INFO "Annotating all databases with KOfams"
 anvi-run-kegg-kofams  -c B_thetaiotamicron_VPI-5482.db \
