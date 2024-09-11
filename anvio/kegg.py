@@ -459,6 +459,8 @@ class KeggContext(object):
             if add_entries_to_regular_ko_dict:
                 stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
                 self.ko_dict.update(stray_kos)
+                # initialize it to None so that things don't break if we try to access this downstream
+                self.stray_ko_dict = None
             else:
                 self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
@@ -3700,7 +3702,7 @@ class KeggEstimatorArgs():
 
                 # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
                 k_anvio = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
-                if self.include_stray_kos and k_anvio in self.ko_dict:
+                if self.include_stray_kos and (k_anvio in self.ko_dict or (self.stray_ko_dict and k_anvio in self.stray_ko_dict)):
                     if k_anvio not in self.all_kos_in_db:
                         src = 'KOfam'
                         func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else self.ko_dict[k_anvio]['definition']
@@ -4211,7 +4213,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
             self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
             if self.include_stray_kos:
-                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=True)
+                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=False)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
