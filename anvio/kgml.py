@@ -47,7 +47,7 @@ __status__ = "Development"
 class Element:
     """
     Representation of an XML element from a KGML file.
-    
+
     Attributes
     ==========
     uuid : str
@@ -57,72 +57,72 @@ class Element:
     tag: str
     # Element attributes are required or not, according to the KGML schema.
     attribute_required: Dict[str, bool]
-    
+
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
-        
+
 class Pathway(Element):
     """
     A pathway element is the parent of all other elements in a KGML file.
-    
+
     Attributes
     ==========
     subelement_tags : Tuple[str]
         Possible child element tags.
-        
+
     name : str, None
         KEGG ID of the pathway map.
-        
+
     org : str, None,
         ko/ec/rn/[org prefix] in ID.
-        
+
     number : str, None
         Map number in ID.
-        
+
     title : str, None
         Map title.
-        
+
     image : str, None
         URL of map image file.
-        
+
     link : str, None
         URL of map information.
-        
+
     xml_declaration : str, None
         XML declaration line from file metadata. This is the first line of a reference KGML file.
-        
+
     xml_doctype : str, None
         Doctype line from file metadata. This is the second line of a reference KGML file.
-        
+
     xml_comment : str, None
         Comment line from file metadata. This is the third line of a reference KGML file.
-        
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
-        
+
     uuid_element_lookup : Dict[str, Element], {}
         Keys are unique IDs of elements, values are element objects.
-        
+
     kegg_id_element_lookup : Dict[str, List[Element]] = {}
         Keys are KEGG IDs, values are lists of element objects with the ID in the name attribute.
         An ID is not necessarily unique to an element, and an element can have multiple KEGG IDs.
-        
+
     is_global_map : bool, None
         True if the pathway map is a global map, as indicated by the map number.
-        
+
     is_overview_map : bool, None
         True if the pathway map is an overview map, as indicated by the map number.
-        
+
     color_priority : Dict[str, Dict[Tuple[str, str], float]]
         This defines the order of entries by the foreground and background colors of their graphics.
         Set this attribute with the method, set_color_priority.
-        
+
         Outer dictionary keys are Entry types, corresponding to the possible values of the type
         attribute of the Entry class, e.g., 'ortholog' and 'compound'. Keys of inner dictionaries
         are length-2 tuples of fgcolor and bgcolor hex codes, respectively. Inner dictionary values
         are non-negative numbers indicating the priority of entries with the given foreground and
         background colors. Higher numbers indicate higher priority colors.
-        
+
         The following is an example of a valid color priority dictionary: orthologs with a
         white background take precedence over those with a gray background.
         {
@@ -146,7 +146,7 @@ class Pathway(Element):
         'relation',
         'reaction'
     )
-    
+
     def __init__(self) -> None:
         self.name: str = None
         self.org: str = None
@@ -154,36 +154,36 @@ class Pathway(Element):
         self.title: str = None
         self.image: str = None
         self.link: str = None
-    
+
         # Store the XML metadata of the KGML file from which the pathway was loaded.
         self.xml_declaration: str = None
         self.xml_doctype: str = None
         self.xml_comment: str = None
-    
+
         self.children: Dict[str, List[str]] = {tag: [] for tag in self.subelement_tags}
-        
+
         self.uuid_element_lookup: Dict[str, Element] = {}
         self.kegg_id_element_lookup: Dict[str, List[Element]] = {}
-        
+
         self._is_global_map: bool = None
         self._is_overview_map: bool = None
-        
+
         self.color_priority: Dict[str, Dict[Tuple[str, str], float]] = {}
-        
+
         super().__init__()
-        
+
     @property
     def is_global_map(self):
         if self.number is None:
             return None
         return True if re.match(kegg.GLOBAL_MAP_ID_PATTERN, self.number) else False
-    
+
     @property
     def is_overview_map(self):
         if self.number is None:
             return None
         return True if re.match(kegg.OVERVIEW_MAP_ID_PATTERN, self.number) else False
-    
+
     def set_color_priority(
         self,
         new_color_priority: Dict[str, Dict[Tuple[str, str], float]],
@@ -194,7 +194,7 @@ class Pathway(Element):
         """
         Set the color_priority attribute. Entry elements in the children attribute are automatically
         reordered.
-        
+
         Though entries (e.g., KOs and compounds) can have multiple Graphics elements due to multiple
         occurrences on a map, Entry Graphics must all have the same foreground and background colors
         if they are to be ordered. Entries with higher priority fg/bg colors are placed first in the
@@ -203,31 +203,31 @@ class Pathway(Element):
         color_priority attribute; these entries are placed first in the Pathway and KGML files, and
         are rendered in the background of the map and thus can be overlaid by higher priority
         entries.
-        
+
         Parameters
         ==========
         new_color_priority : Dict[str, Dict[Tuple[str, str], float]]
             This dictionary is the basis of the color_priority attribute.
-            
+
             It has the same structure as the color_priority attribute. Outer dict keys are Entry
             types, corresponding to the possible values of the type attribute of the Entry class,
             e.g., 'ortholog', 'compound'. Inner dict keys are length-2 tuples of fgcolor and bgcolor
             hex codes, respectively. Inner dict values are non-negative numbers indicating the
             priority of entries with the given fg/bg colors. Higher numbers indicate higher priority
             colors.
-            
+
             What is actually used to set color_priority is a deep copy of the argument in which
             fg/bg color combinations (entries in each inner dict) are reordered in ascending order
             of priority value so that the lowest priority colors appear first in each inner dict.
             The order of Entry types (outer dict entries) does not not change, so if, for example,
             'ortholog' appears before 'compound' in the dict keys, then ortholog entries will occur
             before compound entries in the KGML file, and compounds can be drawn over orthologs.
-            
+
         recolor_unprioritized_entries : Union[str, Dict[str, Tuple[str, str]]], False
             Recolor unprioritized entries, either automatically with a string argument, or with a
             custom dictionary argument for fine-tuning foreground and background colors by Entry
             type.
-            
+
             The valid string arguments for automatic recoloring are 'w' and 'g'. In global maps,
             automatic recoloring is tailored to reaction lines and compound circles. 'w' erases
             unprioritized lines and circles by coloring them white. 'g' colors them a light gray
@@ -239,7 +239,7 @@ class Pathway(Element):
             automatic recoloring is tailored to ortholog boxes, not arrows, and compound circles.
             'w' color unprioritized boxes' and circles' backgrounds white and their (foreground)
             text black. 'g' colors boxes' and circles' backgrounds light gray.
-            
+
             To fine-tune fg/bg colors of unprioritized entries, the arg is a custom dict. Keys are
             Entry type (e.g., 'ortholog', 'compound') and values are length-2 tuples of color hex
             codes for fg and bg colors, respectively. This is shown in the following example, which
@@ -249,12 +249,12 @@ class Pathway(Element):
                 'ortholog': ('#A9A9A9', '#E0E0E0'),
                 'compound': ('#000000', '#FFFFFF')
             }
-            
+
         color_associated_compounds : Literal['high', 'low', 'average'], None
             Automatically set the background color of compound entries based on the color priority
             of ortholog entries involving the compounds. By default, compounds are circles, and
             orthologs are arrows on global/overview maps and boxes on standard maps.
-            
+
             An argument of 'high' or 'low' sets the compound background color to the bg color of the
             ortholog with the highest or lowest priority fg/bg color combination. 'average' sets the
             bg color to the average bg color of orthologs with prioritized colors -- unprioritized
@@ -262,12 +262,12 @@ class Pathway(Element):
             are normalized to the interval [0, 1] and can be converted to a color given by the
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a bg color for the compound Entry.
-            
+
             Automatically colored compound entries are added to the color_priority attribute, and
             Entry elements in the children attribute are reordered accordingly. Compound entries
             that are already in the color_priority attribute are exempt from recoloring and given
             higher priority than automatically recolored compound entries.
-            
+
         colormap : matplotlib.colors.Colormap, None
             If 'average' is used as the color_associated_compounds argument, a colormap must be
             provided to map averaged priority values on the interval [0, 1] to a background color
@@ -277,7 +277,7 @@ class Pathway(Element):
         for new_type_color_priority in new_color_priority.values():
             for priority in new_type_color_priority.values():
                 assert priority >= 0
-                
+
         # Make the color_priority dict, reordering colors from lowest to highest priority.
         color_priority = {}
         for entry_type, new_type_color_priority in new_color_priority.items():
@@ -287,14 +287,14 @@ class Pathway(Element):
             ):
                 type_color_priority[colors] = priority
         self.color_priority = color_priority
-        
+
         # Reorder Entry elements in the children attribute from lowest to highest priority.
         unprioritized_entry_uuids = self.order_entries_by_color_priority()
-        
+
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
                 assert recolor_unprioritized_entries in ('w', 'g')
-                
+
                 # Recolor orthologs.
                 if recolor_unprioritized_entries == 'w':
                     if self.is_overview_map:
@@ -306,7 +306,7 @@ class Pathway(Element):
                 self.recolor_unprioritized_ortholog_entries(
                     unprioritized_entry_uuids, color_hex_code
                 )
-                
+
                 # Recolor compounds.
                 if recolor_unprioritized_entries == 'w':
                     color_hex_code = '#FFFFFF'
@@ -319,14 +319,14 @@ class Pathway(Element):
                 self.recolor_unprioritized_entries(
                     unprioritized_entry_uuids, recolor_unprioritized_entries
                 )
-                
+
         if color_associated_compounds is None:
             return
         self.color_associated_compounds(color_associated_compounds, colormap=colormap)
-        
+
         # Reorder compound entries in the children attribute according to color priority.
         unprioritized_entry_uuids = self.order_entries_by_color_priority()
-        
+
         # Recolor compounds that have not been assigned a color priority.
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
@@ -341,7 +341,7 @@ class Pathway(Element):
                 self.recolor_unprioritized_entries(
                     unprioritized_entry_uuids, recolor_unprioritized_entries
                 )
-                
+
     def recolor_unprioritized_ortholog_entries(
         self,
         unprioritized_entry_uuids: List[str],
@@ -350,16 +350,16 @@ class Pathway(Element):
         """
         Recolor orthologs without a color priority. Orthologs are expected to be lines in global
         and overview maps and boxes in standard maps.
-        
+
         In global and overview maps, the foreground of lines is colored and the background is made
         white. In standard maps, the background (fill) of boxes is colored and the foreground (text)
         is made black.
-        
+
         Parameters
         ==========
         unprioritized_entry_uuids : List[str]
             List of UUIDs of all entries without a color priority.
-        
+
         color_hex_code : str
             Hex code of the color to give ortholog graphics.
         """
@@ -379,15 +379,15 @@ class Pathway(Element):
     ) -> None:
         """
         Recolor compounds, expected to be circles, without a color priority.
-        
+
         In global maps, both the fill and border are colored. In overview and standard maps, the
         fill is colored, and the border is made black.
-        
+
         Parameters
         ==========
         unprioritized_entry_uuids : List[str]
             List of UUIDs of all entries without a color priority.
-            
+
         color_hex_code : str
             Hex code of the color to give compound graphics.
         """
@@ -399,7 +399,7 @@ class Pathway(Element):
             self.recolor_unprioritized_entries(
                 unprioritized_entry_uuids, {'compound': ('#000000', color_hex_code)}
             )
-            
+
     def recolor_unprioritized_entries(
         self,
         unprioritized_entry_uuids: List[str],
@@ -407,12 +407,12 @@ class Pathway(Element):
     ) -> None:
         """
         Entries without a color priority are recolored by Entry type.
-        
+
         Parameters
         ==========
         unprioritized_entry_uuids : List[str]
             List of UUIDs of all entries without a color priority.
-        
+
         type_colors : Dict[str, Tuple[str, str]]
             Keys are Entry type (e.g., 'ortholog', 'compound') and values are length-2 tuples of
             color hex codes for foreground and background colors, respectively. This is shown in the
@@ -435,7 +435,7 @@ class Pathway(Element):
                     "Unprioritized entries cannot be assigned the same combination of foreground "
                     "and background colors as prioritized entries of the same type."
                 )
-        
+
         for entry_uuid in unprioritized_entry_uuids:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             try:
@@ -446,13 +446,13 @@ class Pathway(Element):
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 graphics.fgcolor = fgcolor_hex_code
                 graphics.bgcolor = bgcolor_hex_code
-                
+
     def order_entries_by_color_priority(self) -> List[str]:
         """
         Reorder Entry (e.g., 'ortholog' and 'compound') UUIDs by color priority in the children
         attribute of the Pathway object. This determines how entries are ordered in KGML files and
         rendered in maps.
-        
+
         Returns
         =======
         List[str]
@@ -474,7 +474,7 @@ class Pathway(Element):
             else:
                 reordered_entry_uuids.append(entry_uuid)
                 unprioritized_entry_uuids.append(entry_uuid)
-                
+
         # Sort "qualifying" entries. Loop through each Entry type in the color priority dict.
         for entry_type, type_color_priority in self.color_priority.items():
             # Retrieve each Entry object of the type. Its fg and bg colors determine its priority.
@@ -500,26 +500,26 @@ class Pathway(Element):
                 except KeyError:
                     # The Entry does not have colors in the priority dictionary.
                     priority = -1.0
-                    
+
                 try:
                     type_priority_entry_uuids[priority].append(entry_uuid)
                 except KeyError:
                     type_priority_entry_uuids[priority] = [entry_uuid]
-                    
+
             # Add the reordered UUIDs of the Entry type to the new list of Entry UUIDs and to the
             # dict mapping priority values to UUIDs of entries of all types.
             for priority, entry_uuids in sorted(type_priority_entry_uuids.items()):
                 reordered_entry_uuids += entry_uuids
-                
+
             try:
                 unprioritized_entry_uuids += type_priority_entry_uuids[-1.0]
             except KeyError:
                 pass
-            
+
         self.children['entry'] = reordered_entry_uuids
-        
+
         return unprioritized_entry_uuids
-    
+
     def color_associated_compounds(
         self,
         transfer: Literal['high', 'low', 'average'],
@@ -529,10 +529,10 @@ class Pathway(Element):
         Set the color of compound entries based on the color priority of ortholog entries involving
         the compounds. By default, compounds are circles, and orthologs are arrows on
         global/overview maps and boxes on standard maps.
-        
+
         If the map is global, color both the background (interior) and foreground (border) of the
         circle. Otherwise, just color the interior and leave the border black.
-        
+
         Parameters
         ==========
         transfer : Literal['high', 'low', 'average']
@@ -543,10 +543,10 @@ class Pathway(Element):
             are normalized to the interval [0, 1] and can be converted to a color given by the
             colormap argument. The average priority value of the orthologs with prioritized colors
             is mapped to a color for the compound Entry.
-            
+
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
-        
+
         colormap : matplotlib.colors.Colormap, None
             If 'average' is used as an argument to transfer, a colormap must be provided to map
             averaged priority values on the interval [0, 1] to a background color for compound
@@ -558,7 +558,7 @@ class Pathway(Element):
         for entry_uuid in self.children['reaction']:
             reaction: Reaction = self.uuid_element_lookup[entry_uuid]
             name_reaction[reaction.name] = reaction
-        
+
         # For each compound Entry with associated color-prioritized ortholog entries, record the
         # colors and priorities of these entries.
         compound_uuid_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
@@ -567,7 +567,7 @@ class Pathway(Element):
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             if entry.type != 'ortholog':
                 continue
-            
+
             # Ensure that all of the ortholog Entry Graphics elements have the same fg/bg colors.
             fgcolors: List[str] = []
             bgcolors: List[str] = []
@@ -581,29 +581,29 @@ class Pathway(Element):
                     "have consistent foreground and background colors, which is required for "
                     f"ordering entries based on color: {entry_uuid}"
                 )
-            
+
             try:
                 priority = self.color_priority['ortholog'][(fgcolors[0], bgcolors[0])]
             except KeyError:
                 # Unprioritized ortholog entries do not affect the color of associated compounds.
                 continue
-            
+
             reaction_name = entry.reaction
             if reaction_name is None:
                 # The ortholog is not associated with a reaction.
                 continue
-            
+
             try:
                 reaction = name_reaction[reaction_name]
             except KeyError:
                 # No Reaction element is present with the name of the ortholog reaction.
                 continue
-            
+
             if graphics.type == 'line':
                 ortholog_color = fgcolors[0]
             else:
                 ortholog_color = bgcolors[0]
-                
+
             for substrate_uuid in reaction.children['substrate']:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
                 split_substrate_names = [split_name.split(':') for split_name in substrate.name.split()]
@@ -617,7 +617,7 @@ class Pathway(Element):
                             )
                         except KeyError:
                             compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
-                            
+
             for product_uuid in reaction.children['product']:
                 product: Product = self.uuid_element_lookup[product_uuid]
                 split_product_names = [split_name.split(':') for split_name in product.name.split()]
@@ -631,7 +631,7 @@ class Pathway(Element):
                             )
                         except KeyError:
                             compound_uuid_color_priorities[compound_uuid] = [(ortholog_color, priority)]
-                            
+
         # Make compound entries searchable by ID, which should be a unique pathway element ID.
         id_compound_entry: Dict[str, Entry] = {}
         for entry_uuid in self.children['entry']:
@@ -639,19 +639,19 @@ class Pathway(Element):
             if entry.type != 'compound':
                 continue
             id_compound_entry[entry.id] = entry
-        
+
         # Define functions for finding compound Entry color.
         def _get_high_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
             return sorted(color_priorities, key=lambda t: -t[1])[0]
-        
+
         def _get_low_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
             return sorted(color_priorities, key=lambda t: t[1])[0]
-        
+
         def _get_average_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
             priority = np.mean([t[1] for t in color_priorities])
             color = rgb2hex(colormap(priority))
             return color, priority
-        
+
         if transfer == 'high':
             get_color_priority = _get_high_color
         elif transfer == 'low':
@@ -704,29 +704,29 @@ class Pathway(Element):
     ) -> List[Entry]:
         """
         Get Entry elements from the pathway.
-        
+
         Parameters
         ==========
         entry_type : str, None
             The type of Entry to return. By default entries of all types are returned. Permitted
             Entry types are given by the types attribute of the Entry class.
-            
+
             The box Entry types (line Entry types in global and overview maps) are as follows given
             the map name prefix: maps starting with 'ko' have box/line entries of type 'ortholog',
             'ec' have type 'enzyme', 'rn' have type 'reaction', and organism-specific maps with
             <org prefix> have type 'ko'.
-        
+
         kegg_ids : Iterable[str], None
             If KEGG IDs are provided, then only entries with these IDs in their 'name' attribute are
             sought. With the default argument of None, all entries of the type are returned. KEGG
             IDs should not be the full ID found in the Entry name attribute, but the part after the
             colon. For example, instead of 'ko:K01080', 'cpd:C12144', and 'path:map00604', which is
             how they appear in the KGML file, use 'K01080', 'C12144', and 'map00604'.
-        
+
         expect_kegg_ids : bool, False
             If KEGG IDs are provided and this argument is True, then an exception is raised if they
             are not found among the entries in the pathway.
-        
+
         Returns
         =======
         List[Entry]
@@ -736,7 +736,7 @@ class Pathway(Element):
             assert entry_type in Entry.types
         if kegg_ids is not None:
             assert entry_type is None
-        
+
         entries: List[Entry] = []
 
         if kegg_ids is None:
@@ -746,7 +746,7 @@ class Pathway(Element):
                     continue
                 entries.append(entry)
             return entries
-        
+
         missing_kegg_ids: List[str] = []
         for kegg_id in kegg_ids:
             try:
@@ -763,16 +763,16 @@ class Pathway(Element):
     def scale_graphics(self, factor: float, entry_type: str = None):
         """
         Change the scale of entry graphics.
-        
+
         Rescaling all of the graphics is useful in fitting the KGML file to map images with
         different resolutions. For example, 1x and 2x resolution image files can be downloaded from
         KEGG, but only KGML files fitting the 1x images.
-        
+
         Parameters
         ==========
         factor : float
             Factor by which to rescale all graphical elements in the pathway.
-        
+
         entry_type : str, None
             Only rescale graphics for a certain type of entry in the KGML file, such as "ortholog"
             or "compound". The argument must be from the types attribute of the Entry class.
@@ -793,30 +793,30 @@ class Pathway(Element):
 class Entry(Element):
     """
     An entry element contains information about a node of the pathway.
-    
+
     Attributes
     ==========
     types : Tuple[str]
         Possible entry types.
-    
+
     subelement_tags : Tuple[str]
         Possible subelement tags.
 
     id : str, None
         ID unique to map.
-    
+
     name : str, None
         KEGG ID(s) represented by the element.
-    
+
     type : str, None
         Entry type.
-        
+
     reaction : str, None
         KEGG ID(s) of reaction(s) represented by the element.
-    
+
     link : str, None
         URL of entry information.
-    
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
@@ -850,15 +850,15 @@ class Entry(Element):
         self.type: str = None
         self.reaction: str = None
         self.link: str = None
-    
+
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
-        
+
         super().__init__()
 
 class Graphics(Element):
     """
     A graphics element contains drawing information on the entry parent element.
-    
+
     Attributes
     ==========
     types : Tuple[str]
@@ -866,28 +866,28 @@ class Graphics(Element):
 
     name : str, None
         Label of graphical object on map.
-    
+
     fgcolor : str, None
         Foreground color of graphical object on map.
-    
+
     bgcolor : str, None
         Background color of graphical object on map.
-    
+
     type : str, None
         Shape of graphical object on map.
-    
+
     x : float, None
         X axis position of graphical object on map.
-    
+
     y : float, None
         Y axis position of graphical object on map.
-    
+
     coords : Tuple[float], None
         Polyline coordinates of "line"-type graphical object on map.
-    
+
     width : float, None
         Width of graphical object on map.
-    
+
     height : float, None
         Height of graphical object on map.
     """
@@ -920,13 +920,13 @@ class Graphics(Element):
         self.coords: Tuple[float] = None
         self.width: float = None
         self.height: float = None
-        
+
         super().__init__()
 
 class Component(Element):
     """
     A component element is only applicable to "group"-type entry elements representing a complex.
-    
+
     Attributes
     ==========
     id : str, None
@@ -938,27 +938,27 @@ class Component(Element):
     }
     def __init__(self) -> None:
         self.id: str = None
-        
+
         super().__init__()
 
 class Relation(Element):
     """
     A relation element is an edge between proteins, gene products, compounds, and pathways.
-    
+
     Attributes
     ==========
     types : Tuple[str]
         Possible types of relations.
-        
+
     subelement_tags : Tuple[str]
         Possible subelement tags.
-    
+
     entry1 : str, None
         ID unique to map representing a node in the relationship.
-    
+
     entry2 : str, None
         ID unique to map representing the other node in the relationship.
-    
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
@@ -983,23 +983,23 @@ class Relation(Element):
         self.entry1: str = None
         self.entry2: str = None
         self.type: str = None
-        
+
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
-        
+
         super().__init__()
 
 class Subtype(Element):
     """
     A subtype element specifies more detailed information about the relation.
-    
+
     Attributes
     ==========
     names : Tuple[str]
         Possible names of subcategories of relation.
-    
+
     name : str, None
         Name of the subcategory of relation.
-    
+
     value : str, None
         The value represents information on the subcategory relation.
     """
@@ -1030,30 +1030,30 @@ class Subtype(Element):
     def __init__(self) -> None:
         self.name: str = None
         self.value: str = None
-        
+
         super().__init__()
 
 class Reaction(Element):
     """
     A chemical reaction element.
-    
+
     Attributes
     ==========
     types : Tuple[str]
         Possible types of reactions.
-    
+
     subelement_tags : Tuple[str]
         Possible subelement tags.
-    
+
     id : str, None
         ID of reaction unique to map.
-    
+
     name : str, None
         KEGG ID(s) represented by the reaction.
-    
+
     type : str, None
         Reversible vs. irreversible reaction, as drawn on the map.
-    
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
@@ -1076,15 +1076,15 @@ class Reaction(Element):
         self.id: str = None
         self.name: str = None
         self.type: str = None
-        
+
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
-        
+
         super().__init__()
 
 class Substrate(Element):
     """
     A substrate element represents a substrate node in a parent reaction element.
-    
+
     Attributes
     ==========
     subelement_tags : Tuple[str]
@@ -1092,10 +1092,10 @@ class Substrate(Element):
 
     id : str, None
         ID of substrate unique to map corresponding to a compound entry.
-    
+
     name : str, None
         KEGG ID of the compound.
-    
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
@@ -1111,26 +1111,26 @@ class Substrate(Element):
     def __init__(self) -> None:
         self.id: str = None
         self.name: str = None
-        
+
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
-        
+
         super().__init__()
 
 class Product(Element):
     """
     A product element represents a product node in a parent reaction element.
-    
+
     Attributes
     ==========
     subelement_tags : Tuple[str]
         Possible subelement tags.
-    
+
     id : str, None
         ID of product unique to map corresponding to a compound entry.
-    
+
     name : str, None
         KEGG ID of the compound.
-    
+
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
@@ -1146,15 +1146,15 @@ class Product(Element):
     def __init__(self) -> None:
         self.id: str = None
         self.name: str = None
-        
+
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
-        
+
         super().__init__()
 
 class Alt(Element):
     """
     An alt element specifies an alternative name of a parent substrate or product element.
-    
+
     Attributes
     ==========
     name : str, None
@@ -1167,20 +1167,20 @@ class Alt(Element):
 
     def __init__(self) -> None:
         self.name: str = None
-        
+
         super().__init__()
 
 class XMLOps:
     """
     This class loads KGML (XML) files into memory in an object-oriented framework, and converts KGML
     objects into a properly formatted string that can be written to an XML file.
-    
+
     Attributes
     ==========
     subelement_indentation_increment : int
         Class variable setting the indentation increment of subelements relative to parents in an
         output KGML XML file. The value of 4 spaces is that used in KGML reference files.
-    
+
     attribute_indentations : Dict[Tuple[str, str, str], int]
         Class variable setting the absolute indentation of element attributes placed on new lines in
         an output KGML XML file. Keys are tuples of element tag, name of the attribute before the
@@ -1200,16 +1200,16 @@ class XMLOps:
 
     def __init__(self) -> None:
         pass
-    
+
     def load(self, kgml_filepath: str) -> Pathway:
         """
         Load a KGML file as element objects.
-        
+
         Parameters
         ==========
         kgml_filepath : str
             Path to a KGML file.
-            
+
         Returns
         =======
         Pathway
@@ -1221,7 +1221,7 @@ class XMLOps:
             kgml_bytes = file.read()
         root = ET.fromstring(kgml_bytes)
         assert root.tag == Pathway.tag
-        
+
         pathway: Pathway = self.load_element(root)
         pathway.xml_declaration, pathway.xml_doctype, pathway.xml_comment = [
             line.decode('utf-8') for line in kgml_bytes.split(b'\n')[: 3]
@@ -1232,16 +1232,16 @@ class XMLOps:
     def load_element(self, xml_element: ET.Element, pathway: Pathway = None) -> Element:
         """
         Load a KGML element object representing an XML element from a KGML file.
-        
+
         Parameters
         ==========
         xml_element : xml.etree.ElementTree.Element
             XML element loaded from KGML file.
-        
+
         pathway : Pathway
             The pathway object containing the loaded KGML element, None if the element being loaded
             is the pathway itself.
-        
+
         Returns
         =======
         Element
@@ -1276,7 +1276,7 @@ class XMLOps:
                     value = tuple([int(coord) for coord in value.split(',')])
 
             setattr(kgml_element, attribute, value)
-        
+
         # Recursively load subelements.
         for xml_subelement in xml_element:
             assert xml_subelement.tag in kgml_element.subelement_tags
@@ -1285,10 +1285,10 @@ class XMLOps:
             else:
                 kgml_subelement = self.load_element(xml_subelement, pathway=pathway)
             kgml_element.children[kgml_subelement.tag].append(kgml_subelement.uuid)
-        
+
         if pathway is None:
             return kgml_element
-        
+
         # Map unique IDs to element objects.
         pathway.uuid_element_lookup[kgml_element.uuid] = kgml_element
 
@@ -1320,15 +1320,15 @@ class XMLOps:
     def write(self, pathway: Pathway, output_filepath: str) -> None:
         """
         Write a KGML object representation as a formatted KGML (XML) file.
-        
+
         Parameters
         ==========
         pathway : Pathway
             KGML pathway element object.
-        
+
         output_filepath : str
             Path to KGML (XML) output file.
-        
+
         Returns
         =======
         None
@@ -1336,16 +1336,16 @@ class XMLOps:
         assert is_output_file_writable(output_filepath)
         with open(output_filepath, 'w') as file:
             file.write(self.get_str(pathway))
-    
+
     def get_str(self, pathway: Pathway) -> str:
         """
         Convert a KGML object representation to a formatted KGML XML string.
-        
+
         Parameters
         ==========
         pathway : Pathway
             KGML pathway element object.
-        
+
         Returns
         =======
         str
@@ -1377,20 +1377,20 @@ class XMLOps:
         output_str += self.get_indented_str(tree.getroot())
 
         return output_str
-    
+
     def get_tree(self, pathway: Pathway, str_values: bool = False) -> ET.ElementTree:
         """
         Convert a KGML object representation to an XML tree.
-        
+
         Parameters
         ==========
         pathway : Pathway
             KGML pathway element object.
-            
+
         str_values : bool, False
             If True, convert non-string attribute values stored in KGML element objects to strings
             like those in KGML reference files.
-        
+
         Returns
         =======
         xml.etree.ElementTree.ElementTree
@@ -1399,7 +1399,7 @@ class XMLOps:
         root = self.get_element(pathway, str_values=str_values)
         tree = ET.ElementTree(root)
         return tree
-    
+
     def get_element(
         self,
         kgml_element: Element,
@@ -1408,12 +1408,12 @@ class XMLOps:
     ) -> ET.Element:
         """
         Convert a KGML element object representation to an XML element.
-        
+
         Parameters
         ==========
         kgml_element : Element
             KGML element object to convert into an XML element.
-        
+
         pathway : Pathway
             Pathway object containing the KGML element, needed if the element is not a pathway
             element.
@@ -1421,7 +1421,7 @@ class XMLOps:
         str_values : bool, False
             If True, convert non-string attribute values stored in the KGML element object to
             strings like those in KGML reference files.
-        
+
         Returns
         =======
         xml.etree.ElementTree.Element
@@ -1433,9 +1433,9 @@ class XMLOps:
                     "The 'pathway' element containing 'kgml_element' must be given as an argument."
                 )
             pathway = kgml_element
-        
+
         xml_element = ET.Element(kgml_element.tag)
-        
+
         for attribute in kgml_element.attribute_required:
             # The KGML element object should have a value of each possible attribute, even those not
             # required, for which the default value is None.
@@ -1449,34 +1449,34 @@ class XMLOps:
                     elif attribute == 'coords':
                         value = ','.join([str(round(coord)) for coord in value])
             xml_element.attrib[attribute] = value
-        
+
         if not hasattr(kgml_element, 'children'):
             return xml_element
-        
+
         # Recursively add XML subelements.
         for subelement_uuids in kgml_element.children.values():
             for uuid in subelement_uuids:
                 kgml_subelement = pathway.uuid_element_lookup[uuid]
                 xml_subelement = self.get_element(kgml_subelement, pathway=pathway)
                 xml_element.append(xml_subelement)
-        
+
         return xml_element
-    
+
     def get_indented_str(self, xml_element: ET.Element, tag_indentation: int = 0) -> str:
         """
         Convert a KGML XML element to a string with formatting, including indentation, that is
         consistent with reference KGML files.
-        
+
         Parameters
         ==========
         xml_element : xml.etree.ElementTree
             XML element loaded from KGML file.
-        
+
         tag_indentation : int, 0
             Indentation of the element tag, which, by default, is 0 for the root element, and
             increments by the class variable, `subelement_indentation_increment`, in the recursive
             calls to this class for subelements.
-        
+
         Returns
         =======
         str
@@ -1485,7 +1485,7 @@ class XMLOps:
         tag = xml_element.tag
         attributes = xml_element.attrib
         children = list(xml_element)
-        
+
         if attributes:
             indented_output = f'{" " * tag_indentation}<{tag}'
             for i, (attr, value) in enumerate(attributes.items()):
@@ -1521,7 +1521,7 @@ class XMLOps:
                 "It is assumed that all KGML XML elements have attributes, but an element with the "
                 f"tag, '{tag}', did not have any."
             )
-        
+
         if children:
             indented_output += '>\n'
             for child in children:
@@ -1552,24 +1552,24 @@ class XMLOps:
 class Drawer:
     """
     Write pathway map image files incorporating KGML data.
-    
+
     Attributes
     ==========
     kegg_context : anvio.kegg.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
-        
+
     xml_ops : XMLOps
         Loads KGML files.
-        
+
     overwrite_output : bool
         If True, methods in this class overwrite existing output files.
-        
+
     run : anvio.terminal.Run
         This object prints run information to the terminal.
-        
+
     progress : anvio.terminal.Progress
         This object prints transient progress information to the terminal.
-        
+
     non_reactant_transparency : float, 1.0
         This controls the transparency, or alpha, of the background color of compound circles
         rendered from KGML for non-reactants, or compounds that don't participate in reactions. This
@@ -1594,25 +1594,25 @@ class Drawer:
 
         overwrite_output : bool, anvio.FORCE_OVERWRITE
             If True, methods in this class overwrite existing output files.
-        
+
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
-        
+
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
             This object prints transient progress information to the terminal.
         """
         args = Namespace()
         args.kegg_data_dir = kegg_dir
         self.kegg_context = kegg.KeggContext(args)
-        
+
         self.xml_ops = XMLOps()
-        
+
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
-        
+
         self.non_reactant_transparency = 1.0
-        
+
     def draw_map(
         self,
         pathway: Pathway,
@@ -1628,20 +1628,20 @@ class Drawer:
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-            
+
         output_filepath : str
             Path to PDF output file containing the pathway map.
-            
+
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a PNG image file is automatically sought in the KEGG data directory, and it is
             assumed that the KGML data is scaled to fit the image size; here is more information on
             the files that are sought.
-            
+
             For a standard or overview (not global) map, a 2x resolution 'map' file is sought. If
             the org attribute of the pathway object is an organism code and the argument,
             use_org_map, is True, then a 1x resolution organism-specific file is sought.
-            
+
             For a global map, a 1x resolution file is sought; it is assumed the KGML data is scaled
             to fit this image size. The org attribute of the pathway object is used to seek the
             corresponding file, i.e., a 'ko' pathway containing reactions with KO IDs results in the
@@ -1649,40 +1649,40 @@ class Drawer:
             number IDs corresponds to the reference 'ec' file. If the org attribute is an organism
             code and the argument, use_org_map, is True, then an organism-specific image file is
             sought, and if the argument is False, then a 'ko' file is sought.
-            
+
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or online for download to that directory. If False and the org
             attribute is an organism code, then the 1x 'ko' file is used.
-            
+
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object. These
             control what is displayed on the map from the KGML file.
-            
+
             Arguments include the following. See the KGMLCanvas class definition in the source code
             for a full list.
             https://github.com/biopython/biopython/blob/master/Bio/Graphics/KGML_vis.py
-            
+
             import_imagemap : bool
                 By default True. Setting to False prevents the base map image from being rendered
                 beneath KGML graphics, which is especially useful for decluttering global maps.
-                
+
             label_compounds : bool
                 By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
                 COMPOUND IDs.
-                
+
             label_orthologs : bool
                 By default, Drawer sets to False for global and overview maps to reduce clutter next
                 to reaction arrows and to True for standard maps. Setting to True displays KO IDs.
-                
+
             label_reaction_entries : bool
                 By default, Drawer sets to False to reduce clutter. Setting to True displays KEGG
                 REACTION IDs.
-                
+
             fontname : str
                 KGML label font name, with the default being Helvetica.
-                
+
             fontsize : float
                 KGML label font size. Drawer sets the default to 9 for 1x resolution maps and 18
                 for 2x, if the map base image is not provided explicitly by map_filepath. If it is
@@ -1690,7 +1690,7 @@ class Drawer:
                 in an ortholog box on a standard 1x map.
         """
         is_output_file_writable(output_filepath, ok_if_exists=self.overwrite_output)
-        
+
         # These canvas parameters apply to both standard and global/overview maps.
         if kwargs.get('import_imagemap') is None:
             kwargs['import_imagemap'] = True
@@ -1698,7 +1698,7 @@ class Drawer:
             kwargs['label_compounds'] = False
         if map_filepath is not None and kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
-            
+
         if pathway.is_global_map:
             self._draw_global_map(
                 pathway,
@@ -1723,7 +1723,7 @@ class Drawer:
                 use_org_map=use_org_map,
                 **kwargs
             )
-            
+
     def _draw_global_map(
         self,
         pathway: Pathway,
@@ -1734,15 +1734,15 @@ class Drawer:
     ) -> None:
         """
         Draw a global pathway map with KGML data as a PDF file.
-        
+
         Parameters
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-            
+
         output_filepath : str
             Path to PDF output file containing the pathway map.
-            
+
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a 1x resolution PNG file stored in the KEGG directory is used; it is assumed the
@@ -1750,13 +1750,13 @@ class Drawer:
             used to seek the corresponding PNG file, i.e., a 'ko' pathway containing reactions with
             KO IDs results in the reference 'ko' map being sought, whereas an 'ec' pathway
             containing reactions with EC number IDs corresponds to the reference 'ec' map.
-            
+
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 1x 'ko' file is used.
-            
+
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
@@ -1767,9 +1767,9 @@ class Drawer:
             kwargs['label_reaction_entries'] = False
         if kwargs.get('fontsize') is None:
             kwargs['fontsize'] = 9
-            
+
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
-        
+
         if map_filepath is None:
             if pathway.org == 'ko':
                 map_filepath = os.path.join(
@@ -1794,16 +1794,16 @@ class Drawer:
         else:
             assert not use_org_map
             is_file_exists(map_filepath)
-            
+
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
             kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
-            
+
         bio_pathway.image = map_filepath
-        
+
         canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-        
+
     def _draw_overview_map(
         self,
         pathway: Pathway,
@@ -1814,26 +1814,26 @@ class Drawer:
     ) -> None:
         """
         Draw an overview pathway map with KGML data as a PDF file.
-        
+
         Parameters
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-            
+
         output_filepath : str
             Path to PDF output file containing the pathway map.
-            
+
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then a 2x resolution 'map' PNG file stored in the KEGG directory is used; it is assumed
             the KGML data is scaled to fit this image size.
-            
+
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 2x 'ko' file is used.
-            
+
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
@@ -1842,9 +1842,9 @@ class Drawer:
             kwargs['label_orthologs'] = False
         if kwargs.get('label_reaction_entries') is None:
             kwargs['label_reaction_entries'] = False
-            
+
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
-        
+
         if map_filepath is None:
             if use_org_map:
                 map_filepath = os.path.join(
@@ -1864,16 +1864,16 @@ class Drawer:
             is_file_exists(map_filepath)
             if kwargs.get('fontsize') is None:
                 kwargs['fontsize'] = 9
-            
+
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
             kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
-            
+
         bio_pathway.image = map_filepath
-        
+
         canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-        
+
     def _draw_standard_map(
         self,
         pathway: Pathway,
@@ -1884,32 +1884,32 @@ class Drawer:
     ) -> None:
         """
         Draw a standard (not global/overview) pathway map with KGML data as a PDF file.
-        
+
         Parameters
         ==========
         pathway : Pathway
             Object representation of a KGML file.
-            
+
         output_filepath : str
             Path to PDF output file containing the pathway map.
-            
+
         map_filepath : str, None
             Path to pathway map image file to use as the base image of the output file. If None,
             then the 2x resolution 'map' PNG file stored in the KEGG directory is used; it is
             assumed the KGML data is scaled to fit this image size.
-            
+
         use_org_map : bool, False
             If True and the org attribute of the pathway object is an organism code, such as 'eco'
             for E. coli, then an organism-specific 1x resolution file is used if available locally
             in the KEGG directory or available online for download to that directory. If False and
             the org attribute is an organism code, then the 2x 'ko' file is used.
-            
+
         **kwargs
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
         """
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
-        
+
         if map_filepath is None:
             if use_org_map:
                 map_filepath = os.path.join(
@@ -1928,25 +1928,25 @@ class Drawer:
             is_file_exists(map_filepath)
             if kwargs.get('fontsize') is None:
                 kwargs['fontsize'] = 9
-                
+
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
             kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
-            
+
         bio_pathway.image = map_filepath
-        
+
         canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
-        
+
 class Tester:
     """
     Tests KGML operations.
-    
+
     Attributes
     ==========
     xml_ops : XMLOps()
         Loads KMGL files.
-    
+
     run : anvio.terminal.Run
         This object prints run information to the terminal.
 
@@ -1963,27 +1963,27 @@ class Tester:
         ==========
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
-        
+
         progress : anvio.terminal.Progress, anvio.terminal.Progress()
             This object prints transient progress information to the terminal.
         """
         self.xml_ops = XMLOps()
-        
+
         self.run = run
         self.progress = progress
-    
+
     def load_all_anvio_kgml_files(self, kegg_dirpath: str = None) -> None:
         """
         Load each KGML file within a superdirectory formatted like an anvi'o KEGG directory into
         memory as a KGML pathway object, and test that the object can be converted back to a string
         equivalent to the contents of the file.
-        
+
         Parameters
         ==========
         kegg_dirpath : str, None
             A directory of KEGG files like that installed by `anvi-setup-kegg-data`. By default, the
             default anvi'o KEGG installation location is sought.
-        
+
         Returns
         =======
         None
@@ -2002,12 +2002,12 @@ class Tester:
         """
         Load each KGML file in a single directory into memory as a KGML pathway object, and test
         that the object can be converted back to a string equivalent to the contents of the file.
-        
+
         Parameters
         ==========
         dirpath : str
             Path to a directory in which to look for KGML files, assumed to have a '.xml' extension.
-        
+
         Returns
         =======
         None
@@ -2032,18 +2032,18 @@ class Tester:
         """
         Load a KGML file into memory as a KGML pathway object, and test that the object can be
         converted back to a string equivalent to the contents of the file.
-        
+
         Parameters
         ==========
         filepath : str
             Path to a KGML file.
-        
+
         buffer : int, 100
             If an inconsistency is found between the string representing the contents of the KGML
             file and the string representing a KGML file reconstructed from the loaded pathway
             object, then display the text where these strings diverge, including the number of
             characters given by `buffer` around this point.
-            
+
         Returns
         =======
         None
