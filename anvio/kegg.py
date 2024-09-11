@@ -459,6 +459,8 @@ class KeggContext(object):
             if add_entries_to_regular_ko_dict:
                 stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
                 self.ko_dict.update(stray_kos)
+                # initialize it to None so that things don't break if we try to access this downstream
+                self.stray_ko_dict = None
             else:
                 self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
