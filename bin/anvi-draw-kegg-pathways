@@ -367,8 +367,8 @@ if __name__ == '__main__':
     except ConfigError as e:
         e_str = re.sub(r'\s+', ' ', str(e))
         if (
-            "Unprioritized entries cannot be assigned the same combination of foreground and "
-            "background colors as prioritized entries of the same type."
+            "Unprioritized entry graphics cannot be assigned the same combination of foreground "
+            "and background colors as prioritized entries of the same entry and graphics types."
         ) in e_str:
             raise ConfigError(
                 "The colors of highlighted reactions and compounds cannot be set to reserved "
