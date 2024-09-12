@@ -309,13 +309,14 @@ def get_args() -> Namespace:
     groupCOLOR = parser.add_argument_group("COLOR", "Color scheme to use")
     groupCOLOR.add_argument(
         '--set-color', nargs='?', const=True, help=
-        "This argument can be used as a flag (without a value), to use a default color for "
+        "This argument can be used as a flag (without a value), to use a single default color for "
         "presence/absence data. Alternatively, it can be used with the value 'original' to use "
-        "original colors from the reference map. Lastly, this argument can take a color hexcode, "
-        "such as '#FFA500' for orange, to use instead of the default color. Use of this argument "
-        "with certain data types preempts the default way of displaying the data. For instance, "
-        "pangenomic KO data that would be dynamically colored by genome count is instead colored "
-        "by presence/absence."
+        "original colors from the reference map. Lastly, this argument can take a color hex code, "
+        "such as '#FFA500' for orange, to use instead of the default color. A COLOR HEX CODE "
+        "ARGUMENT MUST BE ENCLOSED IN QUOTES, AS # OTHERWISE CAUSES THE REST OF THE COMMAND TO BE "
+        "IGNORED AS A COMMENT. Use of this argument with certain data types preempts the default "
+        "way of displaying the data. For instance, pangenomic KO data that would be dynamically "
+        "colored by genome count is instead colored by presence/absence."
     )
     groupCOLOR.add_argument(
         '--colormap', nargs='+', help=
