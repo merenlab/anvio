@@ -309,13 +309,14 @@ def get_args() -> Namespace:
     groupCOLOR = parser.add_argument_group("COLOR", "Color scheme to use")
     groupCOLOR.add_argument(
         '--set-color', nargs='?', const=True, help=
-        "This argument can be used as a flag (without a value), to use a default color for "
+        "This argument can be used as a flag (without a value), to use a single default color for "
         "presence/absence data. Alternatively, it can be used with the value 'original' to use "
-        "original colors from the reference map. Lastly, this argument can take a color hexcode, "
-        "such as '#FFA500' for orange, to use instead of the default color. Use of this argument "
-        "with certain data types preempts the default way of displaying the data. For instance, "
-        "pangenomic KO data that would be dynamically colored by genome count is instead colored "
-        "by presence/absence."
+        "original colors from the reference map. Lastly, this argument can take a color hex code, "
+        "such as '#FFA500' for orange, to use instead of the default color. A COLOR HEX CODE "
+        "ARGUMENT MUST BE ENCLOSED IN QUOTES, AS # OTHERWISE CAUSES THE REST OF THE COMMAND TO BE "
+        "IGNORED AS A COMMENT. Use of this argument with certain data types preempts the default "
+        "way of displaying the data. For instance, pangenomic KO data that would be dynamically "
+        "colored by genome count is instead colored by presence/absence."
     )
     groupCOLOR.add_argument(
         '--colormap', nargs='+', help=
@@ -367,8 +368,8 @@ if __name__ == '__main__':
     except ConfigError as e:
         e_str = re.sub(r'\s+', ' ', str(e))
         if (
-            "Unprioritized entries cannot be assigned the same combination of foreground and "
-            "background colors as prioritized entries of the same type."
+            "Unprioritized entry graphics cannot be assigned the same combination of foreground "
+            "and background colors as prioritized entries of the same entry and graphics types."
         ) in e_str:
             raise ConfigError(
                 "The colors of highlighted reactions and compounds cannot be set to reserved "
@@ -385,11 +386,12 @@ if __name__ == '__main__':
         print(e)
         sys.exit(-1)
     except Exception as e:
-        print(
-            "Have you installed the necessary Python package requirements for "
-            "`anvi-draw-kegg-pathways`? This might be the cause of the error that was encountered, "
-            "reported below. Run the following command in your terminal and then try rerunning the "
-            "program:\npip install biopython ReportLab pymupdf frontend\n"
-        )
+        if type(e) != AssertionError:
+            print(
+                "\nHave you installed the necessary Python package requirements for "
+                "`anvi-draw-kegg-pathways`? This might be the cause of the error that was "
+                "encountered, reported below. Run the following command in your terminal and then "
+                "try rerunning the program:\npip install biopython ReportLab pymupdf frontend\n"
+            )
         traceback.print_exception(type(e), e, e.__traceback__)
         sys.exit(-1)

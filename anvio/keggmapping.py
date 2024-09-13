@@ -144,12 +144,11 @@ class Mapper:
             draws all available pathway maps in the KEGG data directory.
 
         color_hexcode : str, '#2ca02c'
-            This is the color, by default green, for reactions containing contigs database
-            KOs. Alternatively to a color hex code, the string, 'original', can be provided to use
-            the original color scheme of the reference map. In global maps, KOs are represented in
-            reaction lines, and in overview maps, KOs are represented in reaction arrows. The
-            foreground color of the lines and arrows is set. In standard maps, KOs are represented
-            in boxes, the background color of which is set.
+            This is the color, by default green, for reactions containing contigs database KOs.
+            Alternatively to a color hex code, the string, 'original', can be provided to use the
+            original color scheme of the reference map. In global and overview maps, KOs are
+            represented in reaction lines. The foreground color of lines is set. In standard maps,
+            KOs are represented in boxes, the background color of which is set, or lines.
 
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the KOs in the contigs database.
@@ -217,10 +216,9 @@ class Mapper:
         color_hexcode : str, '#2ca02c'
             This is the color, by default green, for reactions containing KOs in the genome.
             Alternatively to a color hex code, the string, 'original', can be provided to use the
-            original color scheme of the reference map. In global maps, KOs are represented in
-            reaction lines, and in overview maps, KOs are represented in reaction arrows. The
-            foreground color of the lines and arrows is set. In standard maps, KOs are represented
-            in boxes, the background color of which is set.
+            original color scheme of the reference map. In global and overview maps, KOs are
+            represented in reaction lines. The foreground color of lines is set. In standard maps,
+            KOs are represented in boxes, the background color of which is set, or lines.
 
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the KOs in the genome. If True,
@@ -283,8 +281,8 @@ class Mapper:
         genomes or metagenomes).
 
         A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
-        sequences in a contigs database. In global and overview maps, reaction arrows are colored,
-        whereas in standard maps, boxes alongside arrows are colored.
+        sequences in a contigs database. In global and overview maps, reaction lines are colored.
+        In standard maps, reaction boxes or lines are colored.
 
         Parameters
         ==========
@@ -746,8 +744,9 @@ class Mapper:
         """
         Draw pathway maps, highlighting consensus KOs from the pan database.
 
-        In global and overview maps, KOs are represented as reaction arrows, whereas in standard
-        maps, KOs are represented as boxes, the background color of which is changed.
+        A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
+        sequences in a contigs database. In global and overview maps, reaction lines are colored.
+        In standard maps, reaction boxes or lines are colored.
 
         Parameters
         ==========
@@ -1328,10 +1327,10 @@ class Mapper:
             Select KOs, any of which in the map are colored.
 
         color_hexcode : str
-            This is the color, by default green, for reactions containing provided KOs. In global
-            maps, KOs are represented in reaction lines, and in overview maps, KOs are represented
-            in reaction arrows. The foreground color of the lines and arrows is set. In standard
-            maps, KOs are represented in boxes, the background color of which is set.
+            This is the color, by default green, for reactions containing provided KOs. A reaction
+            on a map can correspond to one or more KOs, and a KO can annotate one or more sequences
+            in a contigs database. In global and overview maps, reaction lines are colored. In
+            standard maps, reaction boxes or lines are colored.
 
         output_dir : str
             Path to an existing output directory in which map PDF files are drawn.
@@ -1353,27 +1352,38 @@ class Mapper:
             return False
 
         # Set the color of Graphics elements for reactions containing select KOs. For other Graphics
-        # elements, change the 'fgcolor' attribute to a nonsense value to ensure that the elements
-        # with the prioritized color can be distinguished from other elements. Also, in overview
-        # maps, widen lines from the base map default of 1.0.
+        # elements, change the 'fgcolor' attribute to a nonsense value of '0' to ensure that the
+        # elements with the prioritized color can be distinguished from other elements. Also, in
+        # overview and standard maps, widen lines from the base map default of 1.0.
         all_entries = pathway.get_entries(entry_type='ortholog')
         select_uuids = [entry.uuid for entry in select_entries]
-        color_priority: Dict[str, Dict[Tuple[str, str], float]] = {'ortholog': {}}
-
         for entry in all_entries:
             if entry.uuid in select_uuids:
                 for uuid in entry.children['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
+                        assert graphics.type == 'line'
                         graphics.fgcolor = color_hexcode
                         graphics.bgcolor = '#FFFFFF'
                     elif pathway.is_overview_map:
+                        assert graphics.type == 'line'
                         graphics.fgcolor = color_hexcode
                         graphics.bgcolor = '#FFFFFF'
                         graphics.width = 5.0
                     else:
-                        graphics.fgcolor = '#000000'
-                        graphics.bgcolor = color_hexcode
+                        if graphics.type == 'rectangle':
+                            graphics.fgcolor = '#000000'
+                            graphics.bgcolor = color_hexcode
+                        elif graphics.type == 'line':
+                            graphics.fgcolor = color_hexcode
+                            graphics.bgcolor = '#FFFFFF'
+                            graphics.width = 5.0
+                        else:
+                            raise AssertionError(
+                                "Ortholog entries are assumed to have Graphics elements of type "
+                                "'rectangle' or 'line', not the encountered type, "
+                                f"'{graphics.type}'."
+                            )
             else:
                 for uuid in entry.children['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
@@ -1382,16 +1392,20 @@ class Mapper:
         # Set the color priority so that the colored reactions are prioritized for display on top.
         # Recolor "unprioritized" reactions to a background color. In global and overview maps,
         # recolor circles to reflect the colors of prioritized reactions involving the compounds.
+        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {}
         if pathway.is_global_map:
-            color_priority = {'ortholog': {(color_hexcode, '#FFFFFF'): 1.0}}
+            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
             recolor_unprioritized_entries = 'g'
             color_associated_compounds = 'high'
         elif pathway.is_overview_map:
-            color_priority = {'ortholog': {(color_hexcode, '#FFFFFF'): 1.0}}
+            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
             recolor_unprioritized_entries = 'w'
             color_associated_compounds = 'high'
         else:
-            color_priority = {'ortholog': {('#000000', color_hexcode): 1.0}}
+            color_priority['ortholog'] = {
+                'rectangle': {('#000000', color_hexcode): 1.0},
+                'line': {(color_hexcode, '#FFFFFF'): 1.0}
+            }
             recolor_unprioritized_entries = 'w'
             color_associated_compounds = None
         pathway.set_color_priority(
@@ -1447,43 +1461,62 @@ class Mapper:
         if not select_entries and not draw_map_lacking_kos:
             return False
 
-        # Set "secondary" colors of Graphics elements for reactions containing select KOs: white
-        # background color of lines or black foreground text of boxes. For other Graphics elements,
-        # change the 'fgcolor' attribute to a nonsense value to ensure that the elements with
-        # prioritized colors can be distinguished from other elements. Also, in overview maps, widen
-        # lines from the base map default of 1.0.
+        # Set "secondary" colors of ortholog Graphics elements for reactions containing select KOs:
+        # white background color of lines or black foreground text of rectangles. For other Graphics
+        # elements, change the 'fgcolor' attribute to a nonsense value to ensure that the elements
+        # with prioritized colors can be distinguished from other elements. Also, in overview and
+        # standard maps, widen lines from the base map default of 1.0.
         all_entries = pathway.get_entries(entry_type='ortholog')
         select_uuids = [entry.uuid for entry in select_entries]
-        prioritized_colors: List[Tuple[str, str]] = []
+        prioritized_colors: Dict[str, List[Tuple[str, str]]] = {}
         for entry in all_entries:
             if entry.uuid in select_uuids:
                 for uuid in entry.children['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
+                        assert graphics.type == 'line'
                         graphics.bgcolor = '#FFFFFF'
                     elif pathway.is_overview_map:
+                        assert graphics.type == 'line'
                         graphics.bgcolor = '#FFFFFF'
                         graphics.width = 5.0
                     else:
-                        graphics.fgcolor = '#000000'
-                    prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
+                        if graphics.type == 'rectangle':
+                            graphics.fgcolor = '#000000'
+                        elif graphics.type == 'line':
+                            graphics.bgcolor = '#FFFFFF'
+                            graphics.width = 5.0
+                        else:
+                            raise AssertionError(
+                                "Ortholog entries are assumed to have Graphics elements of type "
+                                "'rectangle' or 'line', not the encountered type, "
+                                f"'{graphics.type}'."
+                            )
+                    try:
+                        graphics_type_prioritized_colors = prioritized_colors[graphics.type]
+                    except:
+                        prioritized_colors[graphics.type] = graphics_type_prioritized_colors = []
+                    graphics_type_prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
             else:
                 for uuid in entry.children['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     graphics.fgcolor = '0'
 
-        # By default, global maps but not overview and standard maps have reactions with more than
-        # one color. Give higher priority to reaction entries that are encountered later (occur
-        # further down in the KGML file), and would thus be rendered above earlier reactions.
-        seen = set()
-        prioritized_colors = [
-            colors for colors in prioritized_colors if not (colors in seen or seen.add(colors))
-        ]
-        priorities = np.linspace(0, 1, len(prioritized_colors) + 1)[1: ]
-        ortholog_color_priority = {
-            colors: priority for colors, priority in zip(prioritized_colors, priorities)
-        }
-        color_priority = {'ortholog': ortholog_color_priority}
+        # By default, global maps but not overview and standard maps display reaction graphics in
+        # more than one color. Give higher priority to reaction entries that are encountered later
+        # (occur further down in the KGML file), and would thus be rendered above earlier reactions.
+        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {'ortholog': {}}
+        for graphics_type, graphics_type_prioritized_colors in prioritized_colors.items():
+            seen = set()
+            unique_prioritized_colors = [
+                colors for colors in graphics_type_prioritized_colors
+                if not (colors in seen or seen.add(colors))
+            ]
+            priorities = np.linspace(0, 1, len(unique_prioritized_colors) + 1)[1: ]
+            graphics_type_color_priority = {
+                colors: priority for colors, priority in zip(unique_prioritized_colors, priorities)
+            }
+            color_priority['ortholog'][graphics_type] = graphics_type_color_priority
 
         # Recolor "unprioritized" reactions to a background color. In global and overview maps,
         # recolor circles to reflect the colors of prioritized reactions involving the compounds.
@@ -1588,7 +1621,8 @@ class Mapper:
         if not entries and not draw_map_lacking_kos:
             return False
 
-        # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs.
+        # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs. Also,
+        # in overview and standard maps, widen lines from the base map default of 1.0.
         color_hexcodes = list(color_priority)
         for entry in entries:
             source_names = []
@@ -1609,25 +1643,36 @@ class Mapper:
             for uuid in entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if pathway.is_global_map:
+                    assert graphics.type == 'line'
                     graphics.fgcolor = color_hexcode
                     graphics.bgcolor = '#FFFFFF'
                 elif pathway.is_overview_map:
+                    assert graphics.type == 'line'
                     graphics.fgcolor = color_hexcode
                     graphics.bgcolor = '#FFFFFF'
-                    # Widen colored lines in overview maps. The width of lines in the base map is
-                    # 1.0.
                     graphics.width = 5.0
                 else:
-                    graphics.fgcolor = '#000000'
-                    graphics.bgcolor = color_hexcode
+                    if graphics.type == 'rectangle':
+                        graphics.fgcolor = '#000000'
+                        graphics.bgcolor = color_hexcode
+                    elif graphics.type == 'line':
+                        graphics.fgcolor = color_hexcode
+                        graphics.bgcolor = '#FFFFFF'
+                        graphics.width = 5.0
+                    else:
+                        raise AssertionError(
+                            "Ortholog entries are assumed to have Graphics elements of type "
+                            f"'rectangle' or 'line', not the encountered type, '{graphics.type}'."
+                        )
 
         # Set the color priorities of entries for proper overlaying in the image. Recolor
         # "unprioritized" KO graphics to a background color. In global and overview maps, recolor
-        # circles to reflect the colors of prioritized lines and arrows.
-        ortholog_color_priority: Dict[Tuple[str, str], float] = {}
+        # circles to reflect the colors of prioritized reactions involving the compounds.
+        ortholog_color_priority: Dict[str, Dict[Tuple[str, str], float]] = {}
         if pathway.is_global_map:
+            ortholog_color_priority['line'] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                ortholog_color_priority[(color_hexcode, '#FFFFFF')] = priority
+                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
             pathway.set_color_priority(
                 {'ortholog': ortholog_color_priority},
                 recolor_unprioritized_entries='g',
@@ -1635,8 +1680,9 @@ class Mapper:
                 colormap=colormap
             )
         elif pathway.is_overview_map:
+            ortholog_color_priority['line'] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                ortholog_color_priority[(color_hexcode, '#FFFFFF')] = priority
+                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
             pathway.set_color_priority(
                 {'ortholog': ortholog_color_priority},
                 recolor_unprioritized_entries='w',
@@ -1644,8 +1690,11 @@ class Mapper:
                 colormap=colormap
             )
         else:
+            ortholog_color_priority['rectangle'] = rectangle_color_priority = {}
+            ortholog_color_priority['line'] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                ortholog_color_priority[('#000000', color_hexcode)] = priority
+                rectangle_color_priority[('#000000', color_hexcode)] = priority
+                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
             pathway.set_color_priority(
                 {'ortholog': ortholog_color_priority},
                 recolor_unprioritized_entries='w'
