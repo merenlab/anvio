@@ -481,7 +481,7 @@ class Pathway(Element):
         """
         if self.is_global_map or self.is_overview_map:
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids, {'ortholog': {'circle': (color_hex_code, '#FFFFFF')}}
+                unprioritized_entry_uuids, {'ortholog': {'line': (color_hex_code, '#FFFFFF')}}
             )
         else:
             self.recolor_unprioritized_entries(
