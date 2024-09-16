@@ -4730,6 +4730,8 @@ class ContigsDatabase:
         self.db.set_meta_value('reaction_network_ko_annotations_hash', None)
         self.db.set_meta_value('reaction_network_kegg_database_release', None)
         self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
+        self.db.set_meta_value('reaction_network_consensus_threshold', None)
+        self.db.set_meta_value('reaction_network_discard_ties', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
