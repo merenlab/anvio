@@ -252,7 +252,7 @@ def get_args() -> Namespace:
     )
 
     groupOUT = parser.add_argument_group("OUTPUT", "Output files")
-    groupOUT.add_argument(*A('output-dir'), **K('output-dir'))
+    groupOUT.add_argument(*A('output-dir'), **K('output-dir', {'required': True}))
     groupOUT.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
     groupOUT.add_argument(
         '--draw-individual-files', nargs='*', help=
