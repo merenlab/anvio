@@ -697,7 +697,7 @@ class Mapper:
                 labels.append(project_name)
             else:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
-                self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
 
@@ -1145,7 +1145,7 @@ class Mapper:
                 labels.append(genome_name)
             else:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
-                self._make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
 
@@ -1813,7 +1813,7 @@ class Mapper:
         plt.savefig(out_path, format='pdf', bbox_inches='tight')
         plt.close()
 
-    def _make_grid(
+    def make_grid(
         self,
         in_paths: Iterable[str],
         out_path: str,
