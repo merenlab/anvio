@@ -960,6 +960,12 @@ class Mapper:
             if consensus_threshold is not None:
                 consensus_threshold = float(consensus_threshold)
                 assert 0 <= consensus_threshold <= 1
+                self.run.info_single(
+                    "No consensus threshold was explicitly specified for consensus KO assignment "
+                    f"to gene clusters, but there was a value of '{consensus_threshold}' stored in "
+                    "the pan database from reaction network construction, so this was used. (The "
+                    "default if this were not the case is 0, or no threshold.)"
+                )
 
         if discard_ties is None:
             discard_ties = self_table['reaction_network_discard_ties']
@@ -967,6 +973,13 @@ class Mapper:
                 discard_ties = False
             else:
                 discard_ties = bool(int(discard_ties))
+                self.run.info_single(
+                    "It was not explicitly specified whether to discard ties in consensus KO "
+                    f"assignment to gene clusters, but there was a value of '{discard_ties}' "
+                    "stored in the pan database from reaction network construction, so this was "
+                    "used. (The default if this were not the case is False, or do not discard "
+                    "ties.)"
+                )
 
         # Find consensus KOs from the loaded pan database.
         self.progress.new("Loading consensus KO data from pan database")
