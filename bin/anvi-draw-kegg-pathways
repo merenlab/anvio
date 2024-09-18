@@ -36,6 +36,7 @@ def main() -> None:
 
     mapper = Mapper(kegg_dir=args.kegg_dir, overwrite_output=args.overwrite_output_destinations)
 
+    performed = False
     if (
         args.contigs_dbs is not None and
         len(args.contigs_dbs) == 1 and
@@ -43,11 +44,13 @@ def main() -> None:
         args.ko is True
     ):
         map_single_contigs_db_ko_data(args, mapper)
+        performed = True
     elif (
         args.contigs_dbs is not None and
         args.ko is True
     ):
         map_multiple_contigs_dbs_ko_data(args, mapper)
+        performed = True
 
     if (
         args.pan_db is not None and
@@ -55,6 +58,13 @@ def main() -> None:
         args.ko is True
     ):
         map_pan_db_ko_data(args, mapper)
+        performed = True
+
+    if not performed:
+        raise ConfigError(
+            "No task was performed! The minimum requirements are a database source, such as "
+            "`--contigs-dbs`, and a data type to draw, such as `--ko`."
+        )
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
