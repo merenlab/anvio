@@ -2203,4 +2203,3 @@ class Mapper:
         self._quiet = new_value
         self.run.verbose = not self.quiet
         self.progress.verbose = not self.quiet
-
