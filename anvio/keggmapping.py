@@ -41,6 +41,27 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+# The colors of qualitative and repeating colormaps are sampled in order, whereas other colormaps,
+# including sequential colormaps, are sampled evenly.
+qualitative_colormaps: List[str] = [
+    'Pastel1',
+    'Pastel2',
+    'Paired',
+    'Accent',
+    'Dark2',
+    'Set1',
+    'Set2',
+    'Set3',
+    'tab10',
+    'tab20',
+    'tab20b',
+    'tab20c'
+]
+repeating_colormaps: List[str] = [
+    'flag',
+    'prism'
+]
+
 class Mapper:
     """
     Make KEGG pathway maps incorporating data sourced from anvi'o databases.
@@ -329,8 +350,8 @@ class Mapper:
             databases). This accentuates reactions that are shared rather than unshared across
             databases. In contrast, a colormap spanning dark to light, such as 'plasma', is better
             for drawing attention to unshared reactions. The scheme, 'by_database', uses the
-            qualitative colormap, 'tab10', by default; it contains distinct colors appropriate for
-            distinguishing the different databases containing reactions.
+            qualitative colormap, 'tab10', by default; it contains distinct colors suitable for
+            clearly differentiating the different databases containing reactions.
 
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
@@ -338,11 +359,11 @@ class Mapper:
 
         colormap_limits : Tuple[float, float], None
             Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
-            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. By
-            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
-            are set to (0.1, 0.9). For the scheme, 'by_database', the default limits are set to
-            (0.0, 1.0).
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
+            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By default,
+            for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits are set
+            to (0.1, 0.9). By default, for the scheme, 'by_database', the colormap is qualititative
+            ('tab10'), and limits are set to (0.0, 1.0).
 
         colormap_scheme : Literal['by_count', 'by_database'], None
             There are two ways of dynamically coloring reactions by inclusion in contigs databases:
@@ -430,6 +451,15 @@ class Mapper:
         else:
             raise AssertionError
 
+        # Set how the colormap is sampled.
+        if cmap is None:
+            sampling = None
+        else:
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                sampling = 'in_order'
+            else:
+                sampling = 'even'
+
         # Trim the colormap.
         if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
             assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
@@ -484,6 +514,7 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
+        exceeds_colors: Tuple[int, int] = None
         if scheme == 'static':
             # Draw unified maps of all contigs databases with a static reaction color.
             for pathway_number in pathway_numbers:
@@ -505,12 +536,22 @@ class Mapper:
                     )
         else:
             # Draw unified maps with dynamic coloring by number of contigs databases.
+            assert cmap is not None
             color_priority: Dict[str, float] = {}
             if scheme == 'by_count':
                 # Sample the colormap for colors representing each possible number of contigs
-                # databases, with 1 database assigned the lowest color value and the maximum number
-                # of databases assigned the highest color value.
-                for sample_point in np.linspace(0, 1, len(contigs_dbs)):
+                # databases. Lower color values correspond to smaller numbers of databases.
+                if sampling == 'in_order':
+                    sample_points = range(len(contigs_dbs))
+                elif sampling == 'even':
+                    sample_points = np.linspace(0, 1, len(contigs_dbs))
+                else:
+                    raise AssertionError
+
+                if len(contigs_dbs) > cmap.N:
+                    exceeds_colors = (cmap.N, len(contigs_dbs))
+
+                for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                     else:
@@ -518,12 +559,22 @@ class Mapper:
                 db_combos = None
             elif scheme == 'by_database':
                 # Sample the colormap for colors representing the different contigs databases and
-                # their combinations.
+                # their combinations. Lower color values correspond to smaller numbers of databases.
                 db_combos = []
                 for db_count in range(1, len(contigs_dbs) + 1):
                     db_combos += list(combinations(project_names, db_count))
-                assert len(db_combos) <= cmap.N
-                for sample_point in range(len(db_combos)):
+
+                if sampling == 'in_order':
+                    sample_points = range(len(db_combos))
+                elif sampling == 'even':
+                    sample_points = np.linspace(0, 1, len(db_combos))
+                else:
+                    raise AssertionError
+
+                if len(db_combos) > cmap.N:
+                    exceeds_colors = (cmap.N, len(db_combos))
+
+                for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[
                             mcolors.rgb2hex(cmap(sample_point))
@@ -532,6 +583,8 @@ class Mapper:
                         color_priority[
                             mcolors.rgb2hex(cmap(sample_point))
                         ] = (sample_point + 1) / cmap.N
+            else:
+                raise AssertionError
 
             if colorbar:
                 # Draw a colorbar in a separate file.
@@ -564,6 +617,12 @@ class Mapper:
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
+
+        if exceeds_colors:
+            self.run.warning(
+                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
+                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
+            )
 
         if draw_contigs_db_files is False and draw_grid is False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
@@ -807,9 +866,9 @@ class Mapper:
 
         colormap_limits : Tuple[float, float], (0.0, 1.0)
             Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
-            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. The
-            default limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
+            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. The default
+            limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
 
         reverse_overlay : bool, False
             By default, with False, reactions in more genomes are drawn on top of those in fewer
@@ -931,6 +990,7 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all genomes")
+        exceeds_colors: Tuple[int, int] = None
         if colormap is None:
             # Draw pangenomic maps with a static reaction color.
             for pathway_number in pathway_numbers:
@@ -949,6 +1009,8 @@ class Mapper:
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
+            cmap = None
+            sampling = None
         else:
             # Draw pangenomic maps with dynamic coloring by number of genomes.
             if isinstance(colormap, str):
@@ -957,6 +1019,12 @@ class Mapper:
                     colormap_limits = (0.1, 0.9)
             else:
                 cmap = colormap
+
+            # Set how the colormap is sampled.
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                sampling = 'in_order'
+            else:
+                sampling = 'even'
 
             # Trim the colormap.
             if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
@@ -982,11 +1050,20 @@ class Mapper:
             for ko_id, ko_genome_names in ko_genomes.items():
                 ko_genomes[ko_id] = list(set(ko_genome_names))
 
-            # Sample the colormap for colors representing each possible number of genomes, with 1
-            # genome assigned the lowest color value and the maximum number of genomes assigned the
-            # highest color value.
+            # Sample the colormap for colors representing each possible number of genomes. Lower
+            # color values correspond to smaller numbers of databases.
+            if sampling == 'in_order':
+                sample_points = range(len(genome_names))
+            elif sampling == 'even':
+                sample_points = np.linspace(0, 1, len(genome_names))
+            else:
+                raise AssertionError
+
+            if len(genome_names) > cmap.N:
+                exceeds_colors = (cmap.N, len(genome_names))
+
             color_priority: Dict[str, float] = {}
-            for sample_point in np.linspace(0, 1, len(genome_names)):
+            for sample_point in sample_points:
                 if reverse_overlay:
                     color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                 else:
@@ -1010,6 +1087,12 @@ class Mapper:
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
+
+        if exceeds_colors:
+            self.run.warning(
+                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
+                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
+            )
 
         if draw_genome_files is False and draw_grid is False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
