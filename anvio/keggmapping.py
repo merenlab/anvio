@@ -122,11 +122,13 @@ class Mapper:
         self.kegg_context = kegg.KeggContext(args)
 
         if not os.path.exists(self.kegg_context.kegg_map_image_kgml_file):
-            raise ConfigError("One of the key files required by KEGG pathway maps is missing in your active anvi'o "
-                              "installation. If your KEGG data are not stored at the default KEGG data location, please "
-                              "include that path using the `--kegg-dir` parameter. Otherwise, please consider "
-                              "using the program `anvi-setup-kegg-data` to setup the latest KEGG data that "
-                              "includes the necessary files for KEGG pathway maps.")
+            raise ConfigError(
+                "One of the key files required by KEGG pathway maps is missing in your active "
+                "anvi'o installation. If your KEGG data are not stored at the default KEGG data "
+                "location, include that path using the 'kegg_dir' argument. Otherwise, please "
+                "consider using the program `anvi-setup-kegg-data` to set up the latest KEGG data "
+                "that includes the necessary files for KEGG pathway maps."
+            )
 
         available_pathway_numbers: List[str] = []
         for row in pd.read_csv(
