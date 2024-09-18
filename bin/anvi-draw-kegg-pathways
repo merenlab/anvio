@@ -12,6 +12,7 @@ import pandas as pd
 from argparse import Namespace
 
 import anvio.kegg as kegg
+import anvio.filesnpaths as filesnpaths
 
 from anvio.keggmapping import Mapper
 from anvio.argparse import ArgumentParser
@@ -227,12 +228,16 @@ def check_kegg_data(args: Namespace) -> None:
 
 def consolidate_contigs_dbs(args: Namespace) -> None:
     """Transfer contigs database paths from an external_genomes file to the contigs_dbs argument."""
-    if args.external_genomes is not None:
-        if args.contigs_dbs is None:
-            args.contigs_dbs = []
-        external_genomes_table = pd.read_csv(args.external_genomes, sep='\t', header=0)
-        assert external_genomes_table.columns.tolist() == ['name', 'contigs_db_path']
-        args.contigs_dbs += external_genomes_table['contigs_db_path'].tolist()
+    if args.external_genomes is None:
+        return
+
+    if args.contigs_dbs is None:
+        args.contigs_dbs = []
+
+    filesnpaths.is_file_tab_delimited(args.external_genomes, expected_number_of_fields=2)
+    external_genomes_table = pd.read_csv(args.external_genomes, sep='\t', header=0)
+    assert external_genomes_table.columns.tolist() == ['name', 'contigs_db_path']
+    args.contigs_dbs += external_genomes_table['contigs_db_path'].tolist()
 
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     """Draw KO data from a single contigs database source in the absence of a colormap."""
