@@ -213,8 +213,8 @@ def get_args() -> Namespace:
 
 def sanity_check(args: Namespace) -> None:
     kegg_args = Namespace()
-    args.kegg_data_dir = args.kegg_dir
-    kegg_context = kegg.KeggContext(args)
+    kegg_args.kegg_data_dir = args.kegg_dir
+    kegg_context = kegg.KeggContext(kegg_args)
 
     if not os.path.exists(kegg_context.kegg_map_image_kgml_file):
         raise ConfigError(
