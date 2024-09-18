@@ -544,9 +544,15 @@ class Mapper:
                 # Sample the colormap for colors representing each possible number of contigs
                 # databases. Lower color values correspond to smaller numbers of databases.
                 if sampling == 'in_order':
-                    sample_points = range(len(contigs_dbs))
+                    if len(contigs_dbs) == 1:
+                        sample_points = range(1, 2)
+                    else:
+                        sample_points = range(len(contigs_dbs))
                 elif sampling == 'even':
-                    sample_points = np.linspace(0, 1, len(contigs_dbs))
+                    if len(contigs_dbs) == 1:
+                        sample_points = np.linspace(1, 1, 1)
+                    else:
+                        sample_points = np.linspace(0, 1, len(contigs_dbs))
                 else:
                     raise AssertionError
 
@@ -1055,9 +1061,15 @@ class Mapper:
             # Sample the colormap for colors representing each possible number of genomes. Lower
             # color values correspond to smaller numbers of databases.
             if sampling == 'in_order':
-                sample_points = range(len(genome_names))
+                if len(genome_names) == 1:
+                    sample_points = range(1, 2)
+                else:
+                    sample_points = range(len(genome_names))
             elif sampling == 'even':
-                sample_points = np.linspace(0, 1, len(genome_names))
+                if len(genome_names) == 1:
+                    sample_points = np.linspace(1, 1, 1)
+                else:
+                    sample_points = np.linspace(0, 1, len(genome_names))
             else:
                 raise AssertionError
 

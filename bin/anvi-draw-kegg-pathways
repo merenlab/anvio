@@ -35,12 +35,24 @@ def main() -> None:
 
     mapper = Mapper(kegg_dir=args.kegg_dir, overwrite_output=args.overwrite_output_destinations)
 
-    if args.contigs_dbs is not None and len(args.contigs_dbs) == 1 and args.ko is True:
+    if (
+        args.contigs_dbs is not None and
+        len(args.contigs_dbs) == 1 and
+        args.colormap is None and
+        args.ko is True
+    ):
         map_single_contigs_db_ko_data(args, mapper)
-    elif args.contigs_dbs is not None and len(args.contigs_dbs) > 1 and args.ko is True:
+    elif (
+        args.contigs_dbs is not None and
+        args.ko is True
+    ):
         map_multiple_contigs_dbs_ko_data(args, mapper)
 
-    if args.pan_db is not None and args.genomes_storage is not None and args.ko is True:
+    if (
+        args.pan_db is not None and
+        args.genomes_storage is not None and
+        args.ko is True
+    ):
         map_pan_db_ko_data(args, mapper)
 
 def get_args() -> Namespace:
@@ -223,7 +235,7 @@ def consolidate_contigs_dbs(args: Namespace) -> None:
         args.contigs_dbs += external_genomes_table['contigs_db_path'].tolist()
 
 def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
-    """Draw KO data from a single contigs database source."""
+    """Draw KO data from a single contigs database source in the absence of a colormap."""
     map_contigs_database_kos = mapper.map_contigs_database_kos
 
     if args.set_color is None or args.set_color is True:
@@ -242,7 +254,7 @@ def map_single_contigs_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     )
 
 def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
-    """Draw KO data from multiple contigs database sources."""
+    """Draw KO data from contigs database sources."""
     map_contigs_databases_kos = mapper.map_contigs_databases_kos
 
     if args.draw_individual_files is None:
