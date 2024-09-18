@@ -30,7 +30,7 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    sanity_check(args)
+    check_kegg_data(args)
     consolidate_contigs_dbs(args)
 
     mapper = Mapper(kegg_dir=args.kegg_dir, overwrite_output=args.overwrite_output_destinations)
@@ -211,7 +211,7 @@ def get_args() -> Namespace:
     args = parser.get_args(parser)
     return args
 
-def sanity_check(args: Namespace) -> None:
+def check_kegg_data(args: Namespace) -> None:
     kegg_args = Namespace()
     kegg_args.kegg_data_dir = args.kegg_dir
     kegg_context = kegg.KeggContext(kegg_args)
