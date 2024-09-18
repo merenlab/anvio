@@ -194,6 +194,10 @@ class Mapper:
         # Retrieve the IDs of all KO annotations in the contigs database.
         self.progress.new("Loading KO data from the contigs database")
         self.progress.update("...")
+
+        self._check_contigs_db(contigs_db)
+        self._check_contigs_db_ko_annotation(contigs_db)
+
         cdb = ContigsDatabase(contigs_db)
         ko_ids = cdb.db.get_single_column_from_table(
             'gene_functions',
@@ -264,6 +268,10 @@ class Mapper:
         # Retrieve the IDs of all KO annotations for the genome.
         self.progress.new("Loading KO data from the genome")
         self.progress.update("...")
+
+        self._check_genomes_storage_db(genomes_storage_db)
+        self._check_genomes_storage_ko_annotation(genomes_storage_db)
+
         gsdb = GenomeStorage(
             genomes_storage_db,
             genome_names_to_focus=[genome_name],
@@ -474,6 +482,9 @@ class Mapper:
 
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
+
+        self._check_contigs_dbs(contigs_dbs)
+        self._check_contigs_dbs_ko_annotation(contigs_dbs)
 
         # Load contigs database metadata.
         project_names: Dict[str, str] = {}
@@ -935,6 +946,10 @@ class Mapper:
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
 
+        self._check_pan_db(pan_db)
+        self._check_genomes_storage_db(genomes_storage_db)
+        self._check_genomes_storage_ko_annotation(genomes_storage_db)
+
         # Load pan database metadata.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
@@ -1348,6 +1363,164 @@ class Mapper:
         self.progress.end()
 
         return drawn
+
+    @staticmethod
+    def _check_contigs_db(contigs_db: str) -> None:
+        """
+        Check the validity of an expected contigs database.
+
+        Parameters
+        ==========
+        contigs_db : str
+            File path to an expected contigs database.
+        """
+        if not os.path.exists(contigs_db):
+            raise ConfigError(
+                f"There was no file at the following expected contigs database path: '{contigs_db}'"
+            )
+
+        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+        if contigs_db_info is None:
+            raise ConfigError(
+                "The file at the following expected contigs database path is not a contigs "
+                f"database: '{contigs_db}'"
+            )
+
+    @staticmethod
+    def _check_contigs_db_ko_annotation(contigs_db: str) -> None:
+        """
+        Check that a contigs database was annotated with KOs.
+
+        Parameters
+        ==========
+        contigs_db : str
+            File path to a contigs database.
+        """
+        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
+        if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+            raise ConfigError(
+                f"The contigs database, '{contigs_db}', was never annotated with KOs. This can be "
+                "rectified by running `anvi-run-kegg-kofams` on the database."
+            )
+
+    @staticmethod
+    def _check_genomes_storage_db(genomes_storage_db: str) -> None:
+        """
+        Check the validity of an expected genomes storage database.
+
+        Parameters
+        ==========
+        genomes_storage_db : str
+            File path to an expected genomes storage database.
+        """
+        if not os.path.exists(genomes_storage_db):
+            raise ConfigError(
+                "There was no file at the following expected genomes storage database path: "
+                f"'{genomes_storage_db}'"
+            )
+
+        gsdb_info = dbinfo.GenomeStorageDBInfo(
+            genomes_storage_db, dont_raise=True, expecting='genomestorage'
+        )
+        if gsdb_info is None:
+            raise ConfigError(
+                "The file at the following expected genomes storage database path is not a genomes "
+                f"storage database: '{genomes_storage_db}'"
+            )
+
+    @staticmethod
+    def _check_genomes_storage_ko_annotation(genomes_storage_db: str) -> None:
+        """
+        Check that a genomes storage database was annotated with KOs.
+
+        Parameters
+        ==========
+        genomes_storage_db : str
+            File path to a genomes storage database.
+        """
+        gsdb_info = dbinfo.GenomeStorageDBInfo(genomes_storage_db, expecting='genomestorage')
+        if 'KOfam' not in gsdb_info.get_functional_annotation_sources():
+            raise ConfigError(
+                f"The genomes storage database, '{genomes_storage_db}', was never annotated with "
+                "KOs. The genomes storage should be remade with annotated genomes, which can be "
+                "rectified by running `anvi-run-kegg-kofams` on the genome databases."
+            )
+
+    @staticmethod
+    def _check_contigs_dbs(contigs_dbs: Iterable[str]) -> None:
+        """
+        Check the validity of expected contigs databases.
+
+        Parameters
+        ==========
+        contigs_dbs : Iterable[str]
+            File paths to expected contigs databases.
+        """
+        invalid_paths: List[str] = []
+        invalid_filetypes: List[str] = []
+        for contigs_db in contigs_dbs:
+            if not os.path.exists(contigs_db):
+                invalid_paths.append(contigs_db)
+            if invalid_paths:
+                continue
+
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+            if contigs_db_info is None:
+                invalid_filetypes.append(contigs_db)
+            if invalid_filetypes:
+                continue
+
+        if invalid_paths:
+            paths = ', '.join([f'{path}' for path in invalid_paths])
+            raise ConfigError(
+                f"There were no files at the following expected contigs database paths: {paths}"
+            )
+
+        if invalid_filetypes:
+            paths = ', '.join([f'{path}' for path in invalid_filetypes])
+            raise ConfigError(
+                "The files at the following expected contigs database paths are not contigs "
+                f"databases: {paths}"
+            )
+
+    @staticmethod
+    def _check_contigs_dbs_ko_annotation(contigs_dbs: Iterable[str]) -> None:
+        unannotated: List[str] = []
+        for contigs_db in contigs_dbs:
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
+            if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+                unannotated.append(contigs_db)
+            if unannotated:
+                continue
+
+        if unannotated:
+            paths = ', '.join([f'{path}' for path in unannotated])
+            raise ConfigError(
+                "The following contigs databases were never annotated with KOs, but this can be "
+                f"rectified by running `anvi-run-kegg-kofams` on them: {paths}"
+            )
+
+    @staticmethod
+    def _check_pan_db(pan_db: str) -> None:
+        """
+        Check the validity of an expected pan database.
+
+        Parameters
+        ==========
+        pan_db : str
+            File path to an expected pan database.
+        """
+        if not os.path.exists(pan_db):
+            raise ConfigError(
+                f"There was no file at the following expected pan database path: '{pan_db}'"
+            )
+
+        pan_db_info = dbinfo.PanDBInfo(pan_db, dont_raise=True, expecting='pan')
+        if pan_db_info is None:
+            raise ConfigError(
+                "The file at the following expected pan database path is not a pan database: "
+                f"'{pan_db}'"
+            )
 
     def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
         """
