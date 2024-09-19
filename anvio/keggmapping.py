@@ -74,6 +74,10 @@ class Mapper:
     available_pathway_numbers : List[str]
         ID numbers of all pathways set up with PNG and KGML files in the KEGG data directory.
 
+    pathway_names : Dict[str, str]
+        The names of all KEGG pathways, including those without files in the KEGG data directory.
+        Keys are pathway ID numbers and values are pathway names.
+
     rn_constructor : anvio.reactionnetwork.Constructor
         Used for loading reaction networks from anvi'o databases.
 
@@ -82,6 +86,9 @@ class Mapper:
 
     overwrite_output : bool
         If True, methods in this class overwrite existing output files.
+
+    name_files : bool
+        Include the pathway name along with the number in output map file names.
 
     run : anvio.terminal.Run
         This object prints run information to the terminal.
@@ -93,6 +100,7 @@ class Mapper:
         self,
         kegg_dir: str = None,
         overwrite_output: bool = FORCE_OVERWRITE,
+        name_files: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -107,6 +115,9 @@ class Mapper:
 
         overwrite_output : bool, anvio.FORCE_OVERWRITE
             If True, methods in this class overwrite existing output files.
+
+        name_files : bool, False
+            Include the pathway name along with the number in output map file names.
 
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
@@ -139,11 +150,19 @@ class Mapper:
             available_pathway_numbers.append(row.Index[-5:])
         self.available_pathway_numbers = available_pathway_numbers
 
+        pathway_names: Dict[str, str] = {}
+        for pathway_number, pathway_name in pd.read_csv(
+            self.kegg_context.kegg_pathway_list_file, sep='\t', header=None
+        ).itertuples(index=False):
+            pathway_names[pathway_number[3:]] = pathway_name
+        self.pathway_names = pathway_names
+
         self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
 
         self.xml_ops = kgml.XMLOps()
         self.drawer = kgml.Drawer(kegg_dir=self.kegg_context.kegg_data_dir)
 
+        self.name_files = name_files
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
@@ -750,9 +769,13 @@ class Mapper:
                         color_hexcode=color_hexcode,
                         draw_maps_lacking_kos=True
                     )
-                    paths_to_remove.append(
-                        os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf')
-                    )
+                    if self.name_files:
+                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                    else:
+                        pathway_name = ''
+                    paths_to_remove.append(os.path.join(
+                        output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    ))
             self.progress = progress
             self.run = run
 
@@ -761,7 +784,11 @@ class Mapper:
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if self.name_files:
+                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+            else:
+                pathway_name = ''
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
@@ -773,15 +800,23 @@ class Mapper:
             landscape = True if input_aspect_ratio > 1 else False
 
             for project_name in draw_grid_project_names:
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, project_name, f'kos_{pathway_number}.pdf'
+                    output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
-                in_paths.append(os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf'))
+                in_paths.append(individual_map_path)
                 labels.append(project_name)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
@@ -1245,9 +1280,13 @@ class Mapper:
                         color_hexcode=color_hexcode,
                         draw_maps_lacking_kos=True
                     )
-                    paths_to_remove.append(
-                        os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf')
-                    )
+                    if self.name_files:
+                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                    else:
+                        pathway_name = ''
+                    paths_to_remove.append(os.path.join(
+                        output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    ))
             self.progress = progress
             self.run = run
 
@@ -1256,7 +1295,11 @@ class Mapper:
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if self.name_files:
+                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+            else:
+                pathway_name = ''
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
@@ -1268,15 +1311,23 @@ class Mapper:
             landscape = True if input_aspect_ratio > 1 else False
 
             for genome_name in draw_grid_genome_names:
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, genome_name, f'kos_{pathway_number}.pdf'
+                    output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
-                in_paths.append(os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf'))
+                in_paths.append(individual_map_path)
                 labels.append(genome_name)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
@@ -1547,7 +1598,8 @@ class Mapper:
             created if it does not exist.
 
         prefix : str
-            Output filenames are formatted as <prefix>_<pathway_number>.pdf.
+            Output filenames are formatted as <prefix>_<pathway_number>.pdf or
+            <prefix>_<pathway_number>_<pathway_name>.pdf.
 
         patterns : List[str], None
             Regex patterns of pathway numbers, which are five digits.
@@ -1559,7 +1611,11 @@ class Mapper:
 
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
-                out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}{pathway_name}.pdf')
                 if os.path.exists(out_path):
                     raise ConfigError(
                         f"Output files would be overwritten in the output directory, {output_dir}. "
@@ -1705,7 +1761,11 @@ class Mapper:
         )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -1826,7 +1886,11 @@ class Mapper:
         )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -1991,7 +2055,11 @@ class Mapper:
             )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -2035,6 +2103,39 @@ class Mapper:
         pathway = self.xml_ops.load(kgml_path)
 
         return pathway
+
+    def _get_filename_pathway_name(self, pathway_number: str) -> str:
+        """
+        Format the pathway name corresponding to the number to include in file paths.
+
+        Replace all non-alphanumeric characters except parentheses, brackets, and curly braces with
+        underscores. Replace multiple consecutive underscores with a single underscore. Strip
+        leading and trailing underscores.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of a pathway map.
+
+        Returns
+        =======
+        str
+            Altered version of the pathway name.
+        """
+        try:
+            pathway_name = self.pathway_names[pathway_number]
+        except KeyError:
+            raise ConfigError(
+                f"The pathway number, '{pathway_number}', is not recognized in the table of KEGG "
+                "pathway names set up in the KEGG data directory, which can be found here: "
+                f"'{self.kegg_context.kegg_pathway_list_file}'."
+            )
+
+        altered = re.sub(r'[^a-zA-Z0-9()\[\]\{\}]', '_', pathway_name)
+        altered = re.sub(r'_+', '_', altered)
+        altered = altered.strip('_')
+
+        return altered
 
     def _draw_colorbar(
         self,

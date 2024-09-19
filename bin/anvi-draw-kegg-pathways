@@ -34,7 +34,11 @@ def main() -> None:
     check_kegg_data(args)
     consolidate_contigs_dbs(args)
 
-    mapper = Mapper(kegg_dir=args.kegg_dir, overwrite_output=args.overwrite_output_destinations)
+    mapper = Mapper(
+        kegg_dir=args.kegg_dir,
+        overwrite_output=args.overwrite_output_destinations,
+        name_files=args.name_files
+    )
 
     performed = False
     if (
@@ -113,6 +117,17 @@ def get_args() -> Namespace:
     groupOUT = parser.add_argument_group("OUTPUT", "Output files")
     groupOUT.add_argument(*A('output-dir'), **K('output-dir'))
     groupOUT.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
+    groupOUT.add_argument(
+        '--name-files', action='store_true', default=False, help=
+        "Include the pathway name along with the number in output map file names. For example, in "
+        "drawing KO presence/absence data, the 'Glycolysis / Gluconeogenesis' map would be saved "
+        "by default to a file named 'kos_00010.pdf', but with this flag would be saved to a file "
+        "named 'kos_00010_Glycolysis_Gluconeogenesis.pdf'. Likewise, the file name for "
+        "'Glycosylphosphatidylinositol (GPI)-anchor biosynthesis' would be "
+        "'kos_00563_Glycosylphosphatidylinositol_(GPI)_anchor_biosynthesis.pdf', and the file "
+        "name for 'Biosynthesis of 12-, 14- and 16-membered macrolides' would be "
+        "'kos_00522_Biosynthesis_of_12_14_and_16_membered_macrolides.pdf' with this flag."
+    )
     groupOUT.add_argument(
         '--draw-individual-files', nargs='*', help=
         "Draw pathway maps for individual contigs databases if multiple databases are provided, or "
