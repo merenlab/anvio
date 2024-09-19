@@ -92,10 +92,7 @@ def get_args() -> Namespace:
         "second is the path to the database."
     )
 
-    groupPAN = parser.add_argument_group(
-        "PANGENOMIC DATABASE",
-        "Display data from a pangenome."
-    )
+    groupPAN = parser.add_argument_group("PANGENOMIC DATABASE", "Display data from a pangenome.")
     groupPAN.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
     groupPAN.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
     groupPAN.add_argument(
@@ -114,7 +111,7 @@ def get_args() -> Namespace:
         "results in an ortholog annotation not being assigned to the cluster."
     )
 
-    groupOUT = parser.add_argument_group("OUTPUT", "Output files")
+    groupOUT = parser.add_argument_group("OUTPUT", "Output files.")
     groupOUT.add_argument(*A('output-dir'), **K('output-dir'))
     groupOUT.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
     groupOUT.add_argument(
@@ -165,7 +162,7 @@ def get_args() -> Namespace:
         "The argument, '--set-color', can be used to display presence/absence rather than counts."
     )
 
-    groupMAP = parser.add_argument_group("MAP", "Pathway maps to draw")
+    groupMAP = parser.add_argument_group("MAP", "Pathway maps to draw.")
     groupMAP.add_argument(
         '--pathway-numbers', type=str, nargs='+', help=
         "Five-digit numbers identify pathway maps to draw. By default, all maps are drawn. Numbers "
@@ -180,7 +177,7 @@ def get_args() -> Namespace:
         "program expects a database set up in the default location used by 'anvi-setup-kegg-data'."
     )
 
-    groupCOLOR = parser.add_argument_group("COLOR", "Color scheme to use")
+    groupCOLOR = parser.add_argument_group("COLOR", "Everything to do with coloring.")
     groupCOLOR.add_argument(
         '--set-color', nargs='?', const=True, help=
         "This argument can be used as a flag (without a value), to use a single default color for "
