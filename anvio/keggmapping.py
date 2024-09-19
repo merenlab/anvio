@@ -865,8 +865,8 @@ class Mapper:
         Draw pathway maps, highlighting consensus KOs from the pan database.
 
         A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
-        sequences in a contigs database. In global and overview maps, reaction lines are colored.
-        In standard maps, reaction boxes or lines are colored.
+        gene clusters. In global and overview maps, reaction lines are colored. In standard maps,
+        reaction boxes or lines are colored.
 
         Parameters
         ==========
