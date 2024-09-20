@@ -34,6 +34,15 @@ def main() -> None:
     check_kegg_data(args)
     consolidate_contigs_dbs(args)
 
+    if (
+        (args.groups_txt is None and args.group_threshold is not None) or
+        (args.groups_txt is not None and args.group_threshold is None)
+    ):
+        raise ConfigError(
+            "For groups to be used, arguments to both '--groups-txt' and '--group-threshold' must "
+            "be provided."
+        )
+
     mapper = Mapper(
         kegg_dir=args.kegg_dir,
         overwrite_output=args.overwrite_output_destinations,
