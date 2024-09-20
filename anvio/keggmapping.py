@@ -500,7 +500,7 @@ class Mapper:
         if groups_txt is None:
             source_group_dict = None
             group_source_dict = None
-        if groups_txt is not None:
+            membership = contigs_dbs
         else:
             source_group_dict, group_source_dict = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
@@ -509,13 +509,14 @@ class Mapper:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
+            membership = list(group_source_dict)
 
         # Set the colormap scheme.
         if colormap is False:
             scheme = 'static'
         else:
             if colormap_scheme is None:
-                if len(contigs_dbs) < 4:
+                if len(membership) < 4:
                     scheme = 'by_membership'
                 else:
                     scheme = 'by_count'
