@@ -514,6 +514,13 @@ class Mapper:
         # Set the colormap scheme.
         if colormap is False:
             scheme = 'static'
+            if groups_txt is not None:
+                self.run.warning(
+                    "Groups were provided by 'groups_txt', but these will be ignored, since "
+                    "'colormap' was set to False, and dynamic coloring based on KO membership in "
+                    "groups will be overridden by static coloring based on KO presence/absence in "
+                    "any contigs database."
+                )
         else:
             if colormap_scheme is None:
                 if len(membership) < 4:
