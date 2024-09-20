@@ -76,10 +76,15 @@ class Foldseek():
             'easy-search',
             query_db,
             target_db,
-            result_file,
-            tmp,
+            self.output_file_path + '/' + result_file,
+            self.output_file_path + '/' + tmp,
             '--threads', self.num_threads
         ]
 
         utils.run_command(cmd_line, self.run.log_file_path)
+
         self.progress.end()
+
+        expected_output = self.output_file_path + '/' + result_file
+        self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('Foldseek search Result', expected_output)
