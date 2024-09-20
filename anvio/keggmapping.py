@@ -20,6 +20,7 @@ from typing import Dict, Iterable, List, Literal, Tuple, Union
 
 import anvio.kegg as kegg
 import anvio.kgml as kgml
+import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
@@ -485,6 +486,22 @@ class Mapper:
             was False.
         """
         # This method is similar to map_pan_database_kos, and almost identical after KOs are loaded.
+
+        # Load groups.
+        if (
+            (groups_txt is None and group_threshold is not None) or
+            (groups_txt is not None and group_threshold is None)
+        ):
+            raise ConfigError(
+                "To group contigs databases, arguments to both 'groups_txt' and 'group_threshold' "
+                "must be provided."
+            )
+
+        if groups_txt is not None:
+            source_group_dict, group_source_dict = utils.get_groups_txt_file_as_dict(
+                groups_txt, run=self.run, progress=self.progress
+            )
+
         # Set the colormap scheme.
         if colormap is False:
             scheme = 'static'
