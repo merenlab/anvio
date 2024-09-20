@@ -659,50 +659,55 @@ class Mapper:
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
         else:
-            # Draw unified maps with dynamic coloring by number of contigs databases.
+            # Draw unified maps with dynamic coloring by membership in contigs databases or groups.
             assert cmap is not None
             color_priority: Dict[str, float] = {}
             if scheme == 'by_count':
                 # Sample the colormap for colors representing each possible number of contigs
-                # databases. Lower color values correspond to smaller numbers of databases.
+                # databases or groups. Lower color values correspond to smaller numbers of
+                # databases/groups.
                 if sampling == 'in_order':
-                    if len(contigs_dbs) == 1:
+                    if len(membership) == 1:
                         sample_points = range(1, 2)
                     else:
-                        sample_points = range(len(contigs_dbs))
+                        sample_points = range(len(membership))
                 elif sampling == 'even':
-                    if len(contigs_dbs) == 1:
+                    if len(membership) == 1:
                         sample_points = np.linspace(1, 1, 1)
                     else:
-                        sample_points = np.linspace(0, 1, len(contigs_dbs))
+                        sample_points = np.linspace(0, 1, len(membership))
                 else:
                     raise AssertionError
 
-                if len(contigs_dbs) > cmap.N:
-                    exceeds_colors = (cmap.N, len(contigs_dbs))
+                if len(membership) > cmap.N:
+                    exceeds_colors = (cmap.N, len(membership))
 
                 for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                     else:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-                db_combos = None
+                member_combos = None
             elif scheme == 'by_membership':
-                # Sample the colormap for colors representing the different contigs databases and
-                # their combinations. Lower color values correspond to smaller numbers of databases.
-                db_combos = []
-                for db_count in range(1, len(contigs_dbs) + 1):
-                    db_combos += list(combinations(project_names, db_count))
+                # Sample the colormap for colors representing the different contigs databases or
+                # groups and their combinations. Lower color values correspond to smaller numbers of
+                # databases/groups.
+                member_combos = []
+                for member_count in range(1, len(membership) + 1):
+                    if groups_txt is None:
+                        member_combos += list(combinations(project_names, member_count))
+                    else:
+                        member_combos += list(combinations(membership, member_count))
 
                 if sampling == 'in_order':
-                    sample_points = range(len(db_combos))
+                    sample_points = range(len(member_combos))
                 elif sampling == 'even':
-                    sample_points = np.linspace(0, 1, len(db_combos))
+                    sample_points = np.linspace(0, 1, len(member_combos))
                 else:
                     raise AssertionError
 
-                if len(db_combos) > cmap.N:
-                    exceeds_colors = (cmap.N, len(db_combos))
+                if len(member_combos) > cmap.N:
+                    exceeds_colors = (cmap.N, len(member_combos))
 
                 for sample_point in sample_points:
                     if reverse_overlay:
