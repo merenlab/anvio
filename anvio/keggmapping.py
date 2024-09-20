@@ -590,6 +590,19 @@ class Mapper:
             assert project_name not in project_names
             project_names[project_name] = contigs_db
 
+        # Check that groups include all contigs databases.
+        if groups_txt is not None:
+            source_paths = [os.path.abspath(source) for source in source_group_dict]
+            ungrouped_contigs_dbs: List[str] = []
+            for contigs_db in contigs_dbs:
+                if os.path.abspath(contigs_db) not in source_paths:
+                    ungrouped_contigs_dbs.append(contigs_db)
+            message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
+            raise ConfigError(
+                "The following 'contigs_dbs' were not found in the groups provided by "
+                f"'groups_txt': {message}"
+            )
+
         # Find which contigs databases contain each KO.
         ko_dbs: Dict[str, List[str]] = {}
         for project_name, contigs_db in project_names.items():
