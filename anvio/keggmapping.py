@@ -322,12 +322,14 @@ class Mapper:
         self,
         contigs_dbs: Iterable[str],
         output_dir: str,
+        groups_txt: str = None,
+        group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
         draw_contigs_db_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_database'] = None,
+        colormap_scheme: Literal['by_count', 'by_source'] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         colorbar: bool = True,
@@ -335,7 +337,8 @@ class Mapper:
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
         Draw pathway maps, highlighting KOs across contigs databases (representing, for example,
-        genomes or metagenomes).
+        genomes or metagenomes) or groups of databases (representing, for example, taxonomic
+        groups of genomes or geographical groups of metagenomes).
 
         A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
         sequences in a contigs database. In global and overview maps, reaction lines are colored.
@@ -351,6 +354,37 @@ class Mapper:
             Path to the output directory in which pathway map PDF files are drawn. The directory is
             created if it does not exist.
 
+        groups_txt : str, None
+            A tab-delimited text file specifying which group each contigs database belongs to. The
+            first column must have the header, 'contigs_db', and the second column must have the
+            header, 'group'. Items in the first column must be the file paths or project names of
+            contigs databases. The second column contains group names, which are recommended to be
+            single words without fancy characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS'
+            rather than 'my group #1' or 'IS-THIS-OK?'. Each contigs database can only be associated
+            with a single group. The 'group_threshold' argument must also be used for the groups to
+            take effect, assigning colors based on group membership and drawing individual files
+            ('draw_contigs_db_files') and map grids ('draw_grid') for groups rather than individual
+            databases.
+
+        group_threshold : float, None
+            The proportion of contigs databases in a group containing data of interest for the group
+            to be represented in terms of presence/absence in a map feature. Here is a concrete
+            example. Say each contigs database represents a genome, and the 'groups_txt' argument,
+            which must be used with this argument, groups these genomes by their species, 'A', 'B',
+            and 'C'. You wish to understand the distribution of metabolic capabilities across the 3
+            species from KO annotations of genes. Reaction colors are assigned based on the groups
+            rather than individual genomic contigs databases containing the reaction. Thresholds
+            between 0 and 1 can be set to define group membership: a threshold of 0.0 would mean
+            that ANY genome in the group can contain the KO for the KO to be considered present in
+            the group; a threshold of 0.75 means at least 75% of the genomes in the group must
+            contain the KO for it to be present; a threshold of 1.0 means that ALL genomes in the
+            group must contain the KO for it to be present. In our example, set the threshold to
+            0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map corresponds to KO
+            Y. 90% of species A genomes, 50% of species B genomes, and 10% of species C genomes
+            contain KO X, so Reaction J would be colored to indicate that it is represented in
+            species A and B. 0% of species A genomes, 15% of species B genomes, and 40% of species C
+            genomes contain KO Y, so Reaction K would not be colored.
+
         pathway_numbers : Iterable[str], None
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
@@ -360,6 +394,10 @@ class Mapper:
             the contigs databases. Alternatively, the project names of a subset of contigs databases
             can be provided.
 
+            If groups are defined by the 'groups_txt' argument, then maps are instead drawn for
+            individual groups. A subset of group names can be provided to draw maps for select
+            groups.
+
         draw_grid : Union[Iterable[str], bool], False
             If not False, draw a grid for each pathway map showing both the unified map of input
             contigs databases and a map for each contigs database, facilitating identification of
@@ -367,20 +405,25 @@ class Mapper:
             include all of the contigs databases in the grid. Alternatively, the project names of a
             subset of contigs databases can be provided.
 
+            If groups are defined by the 'groups_txt' argument, then the grid instead shows the
+            unified map of groups and maps for individual groups. A subset of group names can be
+            provided to select maps in the grid.
+
         colormap : Union[bool, str, matplotlib.colors.Colormap], True
-            Reactions are dynamically colored to reflect the contigs databases involving the
-            reaction, unless the argument value is False. False overrides dynamic coloring via a
-            colormap using the argument provided to 'color_hexcode', so that reactions represented
-            by KOs in contigs databases are assigned predetermined colors.
+            Reactions are dynamically colored to reflect the contigs databases (or groups of
+            databases) involving the reaction, unless the argument value is False. False overrides
+            dynamic coloring via a colormap with the argument provided to 'color_hexcode', so that
+            reactions represented by KOs in contigs databases are assigned predetermined colors.
 
             The default argument value of True automatically assigns a colormap given the colormap
-            scheme (see the 'colormap_scheme' argument). The scheme, 'by_count', uses the sequential
-            colormap, 'plasma_r', by default; it spans yellow (fewer databases) to blue-violet (more
-            databases). This accentuates reactions that are shared rather than unshared across
-            databases. In contrast, a colormap spanning dark to light, such as 'plasma', is better
-            for drawing attention to unshared reactions. The scheme, 'by_database', uses the
-            qualitative colormap, 'tab10', by default; it contains distinct colors suitable for
-            clearly differentiating the different databases containing reactions.
+            scheme (see the 'colormap_scheme' argument). The scheme, 'by_count', uses by default the
+            sequential colormap, 'plasma_r', which spans yellow (fewer databases or groups) to
+            blue-violet (more databases or groups). This accentuates reactions that are shared
+            rather than unshared across databases. In contrast, a colormap spanning dark to light,
+            such as 'plasma', is better for drawing attention to unshared reactions. The scheme,
+            'by_source', uses by default the qualitative colormap, 'tab10'; it contains distinct
+            colors suitable for clearly differentiating the different databases or groups containing
+            reactions.
 
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
@@ -391,33 +434,35 @@ class Mapper:
             is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
             color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By default,
             for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits are set
-            to (0.1, 0.9). By default, for the scheme, 'by_database', the colormap is qualititative
+            to (0.1, 0.9). By default, for the scheme, 'by_source', the colormap is qualititative
             ('tab10'), and limits are set to (0.0, 1.0).
 
-        colormap_scheme : Literal['by_count', 'by_database'], None
-            There are two ways of dynamically coloring reactions by inclusion in contigs databases:
-            by count or by specific database or combination of database. Given the default argument
-            value of None, with 4 or more databases, reactions are colored by count, and with 2 or
-            3, by database. In coloring by count, the colormap should be sequential, such that the
-            color of a reaction changes 'smoothly' with the count. In contrast, coloring by database
-            means reaction color is determined by membership in a database or combination of
-            databases, so each possibility should have a distinct color from a qualitative colormap.
+        colormap_scheme : Literal['by_count', 'by_source'], None
+            There are two ways of dynamically coloring reactions by inclusion in contigs databases
+            or groups of databases: by count, or explicitly by database/group or combination of
+            databases/groups. Given the default argument value of None, with 4 or more
+            databases/groups, reactions are colored by count, and with 2 or 3, explicitly by source.
+            In coloring by count, the colormap should be sequential, such that the color of a
+            reaction changes 'smoothly' with the count. In contrast, coloring by database/group
+            means reaction color is determined by membership in a database/group or combination of
+            databases/groups, so a qualitative colormap can be suitable for clearly differentiating
+            each.
 
         reverse_overlay : bool, False
-            By default, with False, reactions in more contigs databases are drawn on top of those in
-            fewer databases. With True, the opposite applies; especially in global maps with a
-            non-default colormap spanning dark to light, this accentuates unshared rather than
-            shared parts of a pathway.
+            By default, with False, reactions in more contigs databases or groups of databases are
+            drawn on top of those in fewer databases/groups. With True, the opposite applies;
+            especially in global maps with a non-default colormap spanning dark to light, this
+            accentuates unshared rather than shared parts of a pathway.
 
         color_hexcode : str, '#2ca02c'
             This is the color, by default green, for reactions containing contigs database KOs.
             Alternatively to a color hex code, the string, 'original', can be provided to use the
             original color scheme of the reference map. The 'colormap' argument must be False for
-            this argument to be used, overriding dynamic coloring based on database membership with
-            static coloring based on presence/absence in any database.
+            this argument to be used, overriding dynamic coloring based on database/group membership
+            with static coloring based on presence/absence in any database.
 
         colorbar : bool, True
-            If True and coloring by database membership, save a colorbar legend to the file,
+            If True and coloring by database/group membership, save a colorbar legend to the file,
             'colorbar.pdf', in the output directory.
 
         draw_maps_lacking_kos : bool, False
@@ -428,15 +473,16 @@ class Mapper:
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
             Keys in the outer dictionary are different types of files that can be drawn. 'unified'
-            maps show data from all contigs databases. 'individual' maps show data from individual
-            contigs databases. 'grid' images show both unified and individual maps. 'unified' and
-            'grid' values are Dict[str, bool], where keys are pathway numbers, and values are True
-            if the map was drawn, False if the map was not drawn because it did not contain any of
-            the select KOs and 'draw_maps_lacking_kos' was False. 'individual' values are Dict[str,
-            Dict[str, bool]], where keys in the outer dictionary are contigs database project names,
-            keys in the inner dictionary are pathway numbers, and values in the inner dictionary are
-            True if the map was drawn, False if the map was not drawn because it did not contain any
-            of the select KOs and 'draw_maps_lacking_kos' was False.
+            maps show data from all contigs databases or groups of databases. 'individual' maps show
+            data from individual databases or groups. 'grid' images show both unified and individual
+            maps. 'unified' and 'grid' values are Dict[str, bool], where keys are pathway numbers,
+            and values are True if the map was drawn, False if the map was not drawn because it did
+            not contain any of the select KOs and 'draw_maps_lacking_kos' was False. 'individual'
+            values are Dict[str, Dict[str, bool]], where keys in the outer dictionary are contigs
+            database project names or group names, keys in the inner dictionary are pathway numbers,
+            and values in the inner dictionary are True if the map was drawn, False if the map was
+            not drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos'
+            was False.
         """
         # This method is similar to map_pan_database_kos, and almost identical after KOs are loaded.
         # Set the colormap scheme.
