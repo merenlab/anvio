@@ -256,25 +256,26 @@ def get_args() -> Namespace:
         "in darker colors reactions that are shared rather than unshared across genomes. In "
         "contrast, a colormap spanning dark to light, such as 'plasma', is better for drawing "
         "attention to unshared reactions. Multiple contigs databases and groups can use two "
-        "'schemes' for dynamic coloring, 'by_count' and 'by_source' (see the argument, "
-        "'--colormap-scheme'). As with pangenomes, 'by_count' by default uses the 'plasma_r' "
-        "colormap trimming the top and bottom 10%%. 'by_source' by default uses the qualitative "
-        "colormap, 'tab10', without trimming. This colormap contains distinct colors suitable for "
-        "clearly differentiating the different databases or groups containing reactions. See the "
-        "following webpage for named colormaps: "
+        "'schemes' for dynamic coloring, 'by_count' and 'by_membership' (see the argument, "
+        "'--colormap-scheme'). As with pangenomes, 'by_count' uses by default the 'plasma_r' "
+        "colormap trimming the top and bottom 10%%. 'by_membership' uses by default the "
+        "qualitative colormap, 'tab10', without trimming. This colormap contains distinct colors "
+        "suitable for clearly differentiating the different databases or groups containing "
+        "reactions. See the following webpage for named colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps "
     )
     groupCOLOR.add_argument(
-        '--colormap-scheme', choices=['by_count', 'by_source'], help=
+        '--colormap-scheme', choices=['by_count', 'by_membership'], help=
         "There are two ways of dynamically coloring KO reactions ('--ko') by inclusion in multiple "
         "contigs databases ('--contigs-dbs') or groups ('--groups-txt') of databases or pan "
-        "genomes: by count or by source. By default, with 4 or more databases or groups, reactions "
-        "are colored by count of database or group; with 2 or 3, reactions are colored explicitly "
-        "by database or group source. In coloring by count, the colormap should be sequential, "
-        "such that the color of a reaction changes 'smoothly' with the count. In contrast, "
-        "coloring by source means reaction color is determined by membership in a database/group "
-        "or combination of databases/groups, so a qualitative colormap can be used, as by default, "
-        "instead of a sequential colormap to give a distinct color to each membership category."
+        "genomes: by count or by membership. By default, with 4 or more databases or groups, "
+        "reactions are colored by count of database or group; with 2 or 3, reactions are colored "
+        "explicitly by database or group membership. In coloring by count, the colormap should be "
+        "sequential, such that the color of a reaction changes 'smoothly' with the count. In "
+        "contrast, coloring by membership means reaction color is determined by membership in a "
+        "database/group or combination of databases/groups, so a qualitative colormap can be used, "
+        "as by default, instead of a sequential colormap to give a distinct color to each "
+        "membership category."
     )
     groupCOLOR.add_argument(
         '--reverse-overlay', action='store_true', default=False, help=

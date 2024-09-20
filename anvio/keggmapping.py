@@ -330,7 +330,7 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_source'] = None,
+        colormap_scheme: Literal['by_count', 'by_membership'] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         colorbar: bool = True,
@@ -422,7 +422,7 @@ class Mapper:
             blue-violet (more databases or groups). This accentuates reactions that are shared
             rather than unshared across databases. In contrast, a colormap spanning dark to light,
             such as 'plasma', is better for drawing attention to unshared reactions. The scheme,
-            'by_source', uses by default the qualitative colormap, 'tab10'; it contains distinct
+            'by_membership', uses by default the qualitative colormap, 'tab10'; it contains distinct
             colors suitable for clearly differentiating the different databases or groups containing
             reactions.
 
@@ -435,16 +435,16 @@ class Mapper:
             is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
             color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By default,
             for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits are set
-            to (0.1, 0.9). By default, for the scheme, 'by_source', the colormap is qualititative
-            ('tab10'), and limits are set to (0.0, 1.0).
+            to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
+            qualititative ('tab10'), and limits are set to (0.0, 1.0).
 
-        colormap_scheme : Literal['by_count', 'by_source'], None
+        colormap_scheme : Literal['by_count', 'by_membership'], None
             There are two ways of dynamically coloring reactions by inclusion in contigs databases
             or groups of databases: by count, or explicitly by database/group or combination of
             databases/groups. Given the default argument value of None, with 4 or more
-            databases/groups, reactions are colored by count, and with 2 or 3, explicitly by source.
-            In coloring by count, the colormap should be sequential, such that the color of a
-            reaction changes 'smoothly' with the count. In contrast, coloring by database/group
+            databases/groups, reactions are colored by count, and with 2 or 3, explicitly by
+            membership. In coloring by count, the colormap should be sequential, such that the color
+            of a reaction changes 'smoothly' with the count. In contrast, coloring by database/group
             means reaction color is determined by membership in a database/group or combination of
             databases/groups, so a qualitative colormap can be suitable for clearly differentiating
             each.
@@ -497,10 +497,18 @@ class Mapper:
                 "must be provided."
             )
 
+        if groups_txt is None:
+            source_group_dict = None
+            group_source_dict = None
         if groups_txt is not None:
+        else:
             source_group_dict, group_source_dict = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
+            if not 0 <= group_threshold <= 1:
+                raise ConfigError(
+                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
+                )
 
         # Set the colormap scheme.
         if colormap is False:
@@ -508,13 +516,13 @@ class Mapper:
         else:
             if colormap_scheme is None:
                 if len(contigs_dbs) < 4:
-                    scheme = 'by_source'
+                    scheme = 'by_membership'
                 else:
                     scheme = 'by_count'
             elif colormap_scheme == 'by_count':
                 scheme = 'by_count'
-            elif colormap_scheme == 'by_source':
-                scheme = 'by_source'
+            elif colormap_scheme == 'by_membership':
+                scheme = 'by_membership'
             else:
                 raise AssertionError
 
@@ -524,7 +532,7 @@ class Mapper:
                 cmap = plt.colormaps['plasma_r']
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_source':
+            elif scheme == 'by_membership':
                 cmap = plt.colormaps['tab10']
                 if colormap_limits is None:
                     colormap_limits = (0.0, 1.0)
@@ -658,7 +666,7 @@ class Mapper:
                     else:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
                 db_combos = None
-            elif scheme == 'by_source':
+            elif scheme == 'by_membership':
                 # Sample the colormap for colors representing the different contigs databases and
                 # their combinations. Lower color values correspond to smaller numbers of databases.
                 db_combos = []
@@ -696,7 +704,7 @@ class Mapper:
                         color_labels=range(1, len(contigs_dbs) + 1),
                         label='database count'
                     )
-                elif scheme == 'by_source':
+                elif scheme == 'by_membership':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
                         color_labels=[', '.join(db_combo) for db_combo in db_combos],
