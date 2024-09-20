@@ -128,14 +128,14 @@ def get_args() -> Namespace:
         *A('groups-txt'), **K('groups-txt'), {'help':
         "A tab-delimited text file specifying which group each item belongs to. Items may be "
         "contigs databases, if those are provided with '--contigs-dbs', or genomes in a pangenomic "
-        "database, if that is provided with '--pan-db'. The first column must either have the "
-        "header 'contigs_db' or 'pan_genome' depending on the input. The second column must have "
-        "the header, 'group', and contain the group name for each item. Each item can only be "
-        "associated with a single group. It is recommended that group names be single words "
-        "without fancy characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my "
-        "group #1' or 'IS-THIS-OK?'. The option '--group-threshold' must be also be used for the "
-        "groups to take effect, assigning colors based on group membership and drawing individual "
-        "files ('--draw-individual-files') and map grids ('--draw-grid') for groups."
+        "database, if that is provided with '--pan-db'. The first column can have any header, "
+        "e.g., 'contigs_db', 'pan_genome', or 'source'. The second column must have the header, "
+        "'group', and contain the group name for each item. Each item can only be associated with "
+        "a single group. It is recommended that group names be single words without fancy "
+        "characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or "
+        "'IS-THIS-OK?'. The option '--group-threshold' must be also be used for the groups to take "
+        "effect, assigning colors based on group membership and drawing individual files "
+        "('--draw-individual-files') and map grids ('--draw-grid') for groups."
     })
     groupGROUP = groupGROUP.add_argument(
         '--group-threshold', type=float, metavar='FLOAT', help=
