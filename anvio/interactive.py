@@ -3005,7 +3005,7 @@ class ContigsInteractive():
 
     def generate_tables(self):
         # let's keep track of all keys we will need to access later from the interface. if
-        # we don't do this, non-standard keys (such as 'Gene caller (prodigal)' becomes very
+        # we don't do this, non-standard keys (such as 'Gene caller (pyrodigal-gv)' becomes very
         # inaccessable when we need to access to it the way we access to 'N50' or 'Contig
         # Lengths'):
         self.human_readable_keys = []

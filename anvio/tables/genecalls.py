@@ -472,7 +472,7 @@ class TablesForGeneCalls(Table):
         return gene_call
 
 
-    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='pyrodigal'):
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='pyrodigal-gv'):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
         # get gene calls and amino acid sequences

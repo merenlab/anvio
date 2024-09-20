@@ -295,9 +295,9 @@ D = {
             ['--prodigal-translation-table'],
             {'metavar': 'INT',
              'default': None,
-             'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter "
+             'help': "This is a parameter to pass to the Pyrodigal-gv for a specific translation table. This parameter "
                      "corresponds to the parameter `-g` in Prodigal, the default value of which is 11 (so if you do "
-                     "not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal "
+                     "not set anything, it will be set to 11 in Pyrodigal-gv runtime. Please refer to the Prodigal "
                      "documentation to determine what is the right translation table for you if you think you need "
                      "it.)"}
                 ),
@@ -313,14 +313,14 @@ D = {
             ['--prodigal-single-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
-                     "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
-                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
-                     "given set of contigs prodigal will yield a segmentation fault error due to one or more genes in your "
+             'help': "By default, anvi'o will use pyrodigal-gv for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in pyrodigal-gv run is `-p meta`, which "
+                     "optimizes pyrodigal-gv's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs pyrodigal-gv will yield a segmentation fault error due to one or more genes in your "
                      "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
                      "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
                      "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
-                     "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
+                     "will instruct anvi'o to run pyrodigal-gv without the `-meta` flag, and may resolve this issue for you."}
                 ),
     'full-gene-calling-report': (
             ['--full-gene-calling-report'],

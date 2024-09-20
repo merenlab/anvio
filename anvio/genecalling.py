@@ -13,7 +13,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 from anvio.drivers.prodigal import Prodigal
-from anvio.drivers.pyrodigal import Pyrodigal
+from anvio.drivers.pyrodigal import Pyrodigal_gv
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -29,7 +29,7 @@ progress = terminal.Progress()
 
 
 class GeneCaller:
-    def __init__(self, fasta_file_path, gene_caller='pyrodigal', args=None, progress=progress, run=run, debug=False):
+    def __init__(self, fasta_file_path, gene_caller='pyrodigal-gv', args=None, progress=progress, run=run, debug=False):
         filesnpaths.is_file_exists(fasta_file_path)
         filesnpaths.is_file_fasta_formatted(fasta_file_path)
 
@@ -42,7 +42,7 @@ class GeneCaller:
         self.debug = debug
         self.tmp_dirs = []
 
-        self.gene_callers = {'pyrodigal': Pyrodigal,
+        self.gene_callers = {'pyrodigal-gv': Pyrodigal_gv,
                              'prodigal': Prodigal}
 
         self.gene_caller = gene_caller

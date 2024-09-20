@@ -10,8 +10,8 @@ When run on a %(contigs-fasta)s this program will,
 
 * **Soft-split contigs** longer than 20,000 bp into smaller ones (you can change the split size using the `--split-length` flag). When the gene calling step is not skipped, the process of splitting contigs will consider where genes are and avoid cutting genes in the middle. For very, very large assemblies this process can take a while, and you can skip it with `--skip-mindful-splitting` flag.
 
-* **Identify open reading frames** using [pyrodigal](https://github.com/althonos/pyrodigal) ([doi:10.21105/joss.04296](https://doi.org/10.21105/joss.04296)) (which builds upon [prodigal](http://prodigal.ornl.gov/), the approach originally implemented by Hyatt et al.
-([doi:10.1186/1471-2105-11-119](https://doi.org/10.1186/1471-2105-11-119)), **UNLESS**, (1) you have used the flag `--skip-gene-calling` (no gene calls will be made) or (2) you have provided %(external-gene-calls)s. See other details related to gene calling below.
+* **Identify open reading frames** using [pyrodigal-gv](https://github.com/althonos/pyrodigal-gv) which is an extension of [pyrodigal](https://github.com/althonos/pyrodigal) ([doi:10.21105/joss.04296](https://doi.org/10.21105/joss.04296)) (which builds upon [prodigal](http://prodigal.ornl.gov/), the approach originally implemented by Hyatt et al ([doi:10.1186/1471-2105-11-119](https://doi.org/10.1186/1471-2105-11-119)).
+Additionally, it includes metagenomics models for giant viruses and viruses with alternative genetic codes by Camargo et al [doi:10.1038/s41587-023-01953-y](https://doi.org/10.1038/s41587-023-01953-y). **UNLESS**, (1) you have used the flag `--skip-gene-calling` (no gene calls will be made) or (2) you have provided %(external-gene-calls)s. See other details related to gene calling below.
 
 {:.notice}
 This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention).

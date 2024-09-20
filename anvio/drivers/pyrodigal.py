@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Interface for gene calling that uses `pyrodigal`."""
+"""Interface for gene calling that uses `pyrodigal-gv`."""
 
 import multiprocessing.pool
 
@@ -13,10 +13,10 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 try:
-    import pyrodigal
+    import pyrodigal_gv
 except ImportError:
-    raise ConfigError("Your anvi'o environment is missing the `pyrodigal` package. But it is easy to "
-                      "solve. Please run `pip install pyrodigal` first.")
+    raise ConfigError("Your anvi'o environment is missing the `pyrodigal-gv` package. But it is easy to "
+                      "solve. Please run `pip install pyrodigal-gv` first.")
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -36,7 +36,7 @@ def predict(datum):
     return (contig_name, predictor.find_genes(sequence))
 
 
-class Pyrodigal:
+class Pyrodigal_gv:
     def __init__(self, args=None, progress=progress, run=run):
         self.progress = progress
         self.run = run
@@ -49,8 +49,8 @@ class Pyrodigal:
         self.full_gene_calling_report = A('full_gene_calling_report')
         self.num_threads = A('num_threads')
 
-        self.gene_caller_name = 'pyrodigal'
-        self.gene_caller_version = pyrodigal.__version__
+        self.gene_caller_name = 'pyrodigal-gv'
+        self.gene_caller_version = pyrodigal_gv.__version__
 
         # default header for full report. if you change anything here, please also change
         # the corresponding section in `anvio/docs/programs/anvi-gen-contigs-database.md`
@@ -61,7 +61,7 @@ class Pyrodigal:
 
 
     def process(self, fasta_file_path, output_dir):
-        """Take the fasta file, run pyrodigal on it, and make sense of the output
+        """Take the fasta file, run pyrodigal-gv on it, and make sense of the output
 
         Returns a gene calls dict, and amino acid sequences dict.
         """
@@ -92,17 +92,17 @@ class Pyrodigal:
             fasta.close()
 
             if len(longest_sequence) < 20000:
-                raise ConfigError(f"We have a problem. You are calling prodigal with `--prodigal-single-mode` flag, most "
+                raise ConfigError(f"We have a problem. You are calling pyrodigal-gv with `--prodigal-single-mode` flag, most "
                                   f"likely becasue you are working with a single genome rather than a metagenome. Which "
                                   f"is great. But this mode requires a training step, which cannot be done with a sequence "
                                   f"that is shorter than at least 20,000 nucleotides long. However, the longest sequence in "
                                   f"your FASTA file is only {pp(longest_sequence_length)}. Which means, you will have to drop "
                                   f"the `--prodigal-single-mode` for this to work :/")
 
-            self.predictor = pyrodigal.GeneFinder()
+            self.predictor = pyrodigal_gv.ViralGeneFinder()
             self.predictor.train(longest_sequence)
         else:
-            self.predictor = pyrodigal.GeneFinder(meta=True)
+            self.predictor = pyrodigal_gv.ViralGeneFinder(meta=True)
 
         # since the predictor is now set, next we will read all sequences into the memory :/
         data = []
@@ -111,16 +111,18 @@ class Pyrodigal:
             data.append((fasta.id, fasta.seq, self.predictor),)
         fasta.close()
 
-        self.run.warning("Anvi'o will use 'pyrodigal' by Martin Larralde (doi:10.21105/joss.04296), which builds upon the "
-                         "approach originally implemented by Hyatt et al (doi:10.1186/1471-2105-11-119), to identify open "
-                         "reading frames in your data. If you publish your findings, please do not forget to properly credit "
-                         "both work.", lc='green', header="CITATION")
+        self.run.warning("Anvi'o will use 'pyrodigal-gv' by Martin Larralde to identify open reading frames in your data. "
+                         "It is an extension of 'pyrodigal' (doi:10.21105/joss.04296), which builds upon the approach "
+                         "originally implemented by Hyatt et al (doi:10.1186/1471-2105-11-119), with additional metagenomics "
+                         "models for giant viruses and viruses with alternative genetic codes by Camargo et al. "
+                         "(doi:10.1038/s41587-023-01953-y). If you publish your findings, please do not forget to properly credit "
+                         "all three work.", lc='green', header="CITATION")
 
         # let's learn the number of sequences we will work with early on and report
         num_sequences_in_fasta_file = len(data)
 
         # some nice logs.
-        self.run.warning('', header=f'Finding ORFs using pyrodigal {pyrodigal.__version__}', lc='green')
+        self.run.warning('', header=f'Finding ORFs using pyrodigal-gv {pyrodigal_gv.__version__}', lc='green')
         self.run.info('Number of sequences', pp(num_sequences_in_fasta_file))
         self.run.info('Procedure', 'Single Genome (with `--prodigal-single-mode`)' if self.prodigal_single_mode else 'Metagenome (without `--prodigal-single-mode`)')
         self.run.info('Full gene calling reporting requested?', 'Yes' if self.full_gene_calling_report else 'No')
@@ -163,7 +165,7 @@ class Pyrodigal:
 
         self.progress.end()
 
-        self.run.info('Result', f'Pyrodigal (v{pyrodigal.__version__}) has identified {pp(len(gene_calls_dict))} genes.', nl_after=1)
+        self.run.info('Result', f'Pyrodigal-gv (v{pyrodigal_gv.__version__}) has identified {pp(len(gene_calls_dict))} genes.', nl_after=1)
 
         if self.full_gene_calling_report:
             utils.store_dict_as_TAB_delimited_file(gene_calls_dict, self.full_gene_calling_report, headers=self.header_for_full_report)
