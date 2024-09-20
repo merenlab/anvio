@@ -66,17 +66,18 @@ class Foldseek():
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Foldseek search DB', expected_output)
 
-    def search(self, query_db, target_db, output_dir):
-        self.run.warning(None, header="FOLDSEEK SEARCH", lc="green")
+    def search(self, query_db, target_db, result_file, tmp):
+        self.run.warning(None, header="FOLDSEEK EASY SEARCH", lc="green")
         self.progress.new('FOLDSEEK')
         self.progress.update('Running search using Foldseek ...')
 
         cmd_line = [
             'foldseek',
-            'search',
+            'easy-search',
             query_db,
             target_db,
-            output_dir + '/results',
+            result_file,
+            tmp,
             '--threads', self.num_threads
         ]
 
