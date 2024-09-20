@@ -50,6 +50,10 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         --pathway-numbers 011.. 00010
 {{ codestop }}
 
+## Output file names
+
+Output file names just contain the ID of each map by default, i.e., `kos_00010.pdf` for `Glycolysis / Gluconeogenesis`. The `--name-files` flag attaches an altered version of the pathway name to the file name, i.e., `kos_00010_Glycolysis_Gluconeogenesis.pdf`.
+
 ## KO occurrence
 
 Gene sequences in anvi'o databases can be annotated with KEGG Orthologs (KOs): see %(anvi-run-kegg-kofams)s. A KO indicates functional capabilities of the gene product. KO data from one or more contigs databases or a pan database can be mapped using the `--ko` flag, enabling investigation of the metabolic capabilities of individual organisms or multiple organisms, including community samples. Reactions associated with KOs are colored on the pathway maps.
