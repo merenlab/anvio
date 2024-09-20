@@ -508,13 +508,13 @@ class Mapper:
         else:
             if colormap_scheme is None:
                 if len(contigs_dbs) < 4:
-                    scheme = 'by_database'
+                    scheme = 'by_source'
                 else:
                     scheme = 'by_count'
             elif colormap_scheme == 'by_count':
                 scheme = 'by_count'
-            elif colormap_scheme == 'by_database':
-                scheme = 'by_database'
+            elif colormap_scheme == 'by_source':
+                scheme = 'by_source'
             else:
                 raise AssertionError
 
@@ -524,7 +524,7 @@ class Mapper:
                 cmap = plt.colormaps['plasma_r']
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_database':
+            elif scheme == 'by_source':
                 cmap = plt.colormaps['tab10']
                 if colormap_limits is None:
                     colormap_limits = (0.0, 1.0)
@@ -658,7 +658,7 @@ class Mapper:
                     else:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
                 db_combos = None
-            elif scheme == 'by_database':
+            elif scheme == 'by_source':
                 # Sample the colormap for colors representing the different contigs databases and
                 # their combinations. Lower color values correspond to smaller numbers of databases.
                 db_combos = []
@@ -696,7 +696,7 @@ class Mapper:
                         color_labels=range(1, len(contigs_dbs) + 1),
                         label='database count'
                     )
-                elif scheme == 'by_database':
+                elif scheme == 'by_source':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
                         color_labels=[', '.join(db_combo) for db_combo in db_combos],
