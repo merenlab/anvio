@@ -773,8 +773,7 @@ class Mapper:
                     ko_dbs,
                     color_priority,
                     output_dir,
-                    cmap,
-                    source_combos=db_combos,
+                    category_combos=category_combos,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
@@ -1283,7 +1282,6 @@ class Mapper:
                     ko_genomes,
                     color_priority,
                     output_dir,
-                    cmap,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
@@ -2027,17 +2025,12 @@ class Mapper:
         ko_membership: Dict[str, List[str]],
         color_priority: Dict[str, float],
         output_dir: str,
-        colormap: mcolors.Colormap,
-        source_combos: List[Tuple[str]] = None,
+        category_combos: List[Tuple[str]] = None,
         draw_map_lacking_kos: bool = False
     ) -> bool:
         """
-        Draw a pathway map, coloring reactions by their membership in sources.
-
-        For a pangenome, reactions are colored by genomes containing consensus KOs in the reaction.
-        For contigs databases, reactions are colored by databases containing KOs in the reaction. By
-        default, with 'source_combos' being None, coloring reflects the count of genomes or
-        databases rather than actual genome or database membership.
+        Draw a pathway map, coloring reactions by their membership via KOs in categories, e.g.,
+        contigs databases, genomes of a pangenome, or groups of contigs databases or pan genomes.
 
         In global and overview maps, compounds involved in colored reactions are given the color of
         the reaction with the highest priority.
@@ -2048,32 +2041,22 @@ class Mapper:
             Numeric ID of the map to draw.
 
         ko_membership : Dict[str, List[str]]
-            Keys are KO IDs. Values are lists of "sources:" genome names or project names of contigs
-            databases.
-
-            A KO can annotate more than one gene cluster in a pangenome; a list contains the names
-            of genomes contributing genes to clusters represented by the KO.
+            Keys are KO IDs. Values are lists of categories in which KOs are found.
 
         color_priority : Dict[str, float]
-            Keys are color hex codes. If 'by_count' is True, there should be one color for each
-            possible number of genomes or databases. If 'by_count' is False, there should be one
-            color for each individual genome or database and combination thereof. Values are
-            priorities. KOs with higher priority colors are drawn over KOs with lower priority
-            colors.
+            Keys are color hex codes. Without a 'category_combos' argument, there should be a color
+            for each possible number of categories. With a 'category_combos' argument, there should
+            be a color for each category and combination thereof. Values are priorities. Reactions
+            assigned higher priority colors are drawn over reactions assigned lower priority colors.
 
         output_dir : str
             Path to an existing output directory in which map PDF files are drawn.
 
-        colormap : matplotlib.colors.Colormap
-            This colormap is used to interpolate the colors of compounds involved in reactions with
-            color-prioritized KOs. Colors in the color_priority arguments should be drawn from this
-            colormap.
-
-        source_combos : List[Tuple[str]], None
-            With the default argument value of None, reactions are colored by number of pangenomic
-            genomes or contigs databases containing the reaction. A list of "source combination"
-            tuples can be provided instead to color explicitly by genome or database membership.
-            Tuples should consist of source names (genome names or database project names) and their
+        category_combos : List[Tuple[str]], None
+            With the default argument value of None, reactions are colored by number of categories
+            containing the reaction. A list of "category combination" tuples can be provided to
+            color explicitly by category membership. Tuples should consist of category names (e.g.,
+            contigs database project names, pan genome names, or group names) and their
             combinations, e.g., [('A', ), ('B', ), ('C', ), ('A', 'B'), ('A', 'C'), ('B', 'C'),
             ('A', 'B', 'C')].
 
@@ -2090,8 +2073,8 @@ class Mapper:
         pathway = self._get_pathway(pathway_number)
 
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
-        if source_combos is not None:
-            for combo in source_combos:
+        if category_combos is not None:
+            for combo in category_combos:
                 combo_lookup[tuple(sorted(combo))] = combo
 
         entries = pathway.get_entries(kegg_ids=ko_membership)
@@ -2102,21 +2085,21 @@ class Mapper:
         # in overview and standard maps, widen lines from the base map default of 1.0.
         color_hexcodes = list(color_priority)
         for entry in entries:
-            source_names = []
+            categories = []
             for kegg_name in entry.name.split():
                 split_kegg_name = kegg_name.split(':')
                 kegg_id = split_kegg_name[1]
                 try:
-                    source_names += ko_membership[kegg_id]
+                    categories += ko_membership[kegg_id]
                 except KeyError:
                     continue
-            assert len(source_names)
+            assert len(categories)
 
-            if source_combos is None:
-                color_hexcode = color_hexcodes[len(set(source_names)) - 1]
+            if category_combos is None:
+                color_hexcode = color_hexcodes[len(set(categories)) - 1]
             else:
-                source_combo = combo_lookup[tuple(sorted(set(source_names)))]
-                color_hexcode = color_hexcodes[source_combos.index(source_combo)]
+                combo = combo_lookup[tuple(sorted(set(categories)))]
+                color_hexcode = color_hexcodes[category_combos.index(combo)]
             for uuid in entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if pathway.is_global_map:
@@ -2153,8 +2136,7 @@ class Mapper:
             pathway.set_color_priority(
                 {'ortholog': ortholog_color_priority},
                 recolor_unprioritized_entries='g',
-                color_associated_compounds='high',
-                colormap=colormap
+                color_associated_compounds='high'
             )
         elif pathway.is_overview_map:
             ortholog_color_priority['line'] = line_color_priority = {}
@@ -2163,8 +2145,7 @@ class Mapper:
             pathway.set_color_priority(
                 {'ortholog': ortholog_color_priority},
                 recolor_unprioritized_entries='w',
-                color_associated_compounds='high',
-                colormap=colormap
+                color_associated_compounds='high'
             )
         else:
             ortholog_color_priority['rectangle'] = rectangle_color_priority = {}
