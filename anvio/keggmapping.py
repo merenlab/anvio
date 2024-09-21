@@ -432,15 +432,21 @@ class Mapper:
             groups in terms of the same colors.
 
         draw_grid : Union[Iterable[str], bool], False
-            If not False, draw a grid for each pathway map showing both the unified map of input
-            contigs databases and a map for each contigs database, facilitating identification of
-            the contigs databases containing reactions highlighted in the unified map. If True,
-            include all of the contigs databases in the grid. Alternatively, the project names of a
-            subset of contigs databases can be provided.
+            First consider the case where groups are not defined by 'groups-txt'. If the
+            '--draw-grid' argument is not False, draw a paneled grid file for each pathway map
+            showing the unified map of input contigs databases alongside maps for individual contigs
+            databases. If True, include all of the contigs databases in the grid. Alternatively, the
+            argument can accept the project names of a subset of contigs databases to only draw
+            individual maps in the grid for those.
 
-            If groups are defined by the 'groups_txt' argument, then the grid instead shows the
-            unified map of groups and maps for individual groups. A subset of group names can be
-            provided to select maps in the grid.
+            Consider the case where groups are defined by 'groups-txt'. If the '--draw-grid'
+            argument is not False, draw a paneled grid file for each pathway map showing the unified
+            map of groups alongside maps for individual groups that display the membership of
+            reactions among the contigs databases of the group. If True, include all of the groups
+            in the grid. Alternatively, the argument can accept a subset of group names to only draw
+            individual maps in the grid for those. Individual maps are always colored by contigs
+            database count, never explicitly by membership, allowing the comparison of maps for
+            different groups in terms of the same colors.
 
         colormap : Union[bool, str, matplotlib.colors.Colormap], True
             Reactions are dynamically colored to reflect the contigs databases (or groups of
