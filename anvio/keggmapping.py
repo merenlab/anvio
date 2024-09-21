@@ -364,9 +364,12 @@ class Mapper:
         genomes or metagenomes) or groups of databases (representing, for example, taxonomic
         groups of genomes or geographical groups of metagenomes).
 
-        A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
-        sequences in a contigs database. In global and overview maps, reaction lines are colored.
-        In standard maps, reaction boxes or lines are colored.
+        A reaction a map are defined by one or more KOs. The presence/absence of any of these KOs
+        in the contigs database translates to the presence/absence of the reaction. A KO can
+        annotate one or more sequences in a contigs database.
+
+        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
+        lines are colored.
 
         Parameters
         ==========
