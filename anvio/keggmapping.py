@@ -524,18 +524,18 @@ class Mapper:
             )
 
         if groups_txt is None:
-            source_group_dict = None
-            group_source_dict = None
+            source_group = None
+            group_sources = None
             categories = contigs_dbs
         else:
-            source_group_dict, group_source_dict = utils.get_groups_txt_file_as_dict(
+            source_group, group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
-            categories = list(group_source_dict)
+            categories = list(group_sources)
 
         # Set the colormap scheme.
         if colormap is False:
@@ -611,7 +611,8 @@ class Mapper:
         self._check_contigs_dbs_ko_annotation(contigs_dbs)
 
         # Load contigs database metadata.
-        project_names: Dict[str, str] = {}
+        project_name_contigs_db: Dict[str, str] = {}
+        contigs_db_project_name: Dict[str, str] = {}
         for contigs_db in contigs_dbs:
             contigs_db_info = dbinfo.ContigsDBInfo(contigs_db)
             self_table = contigs_db_info.get_self_table()
@@ -620,25 +621,38 @@ class Mapper:
             assert annotation_sources is not None and 'KOfam' in annotation_sources.split(',')
 
             project_name = self_table['project_name']
-            assert project_name not in project_names
-            project_names[project_name] = contigs_db
+            assert project_name not in project_name_contigs_db
+            project_name_contigs_db[project_name] = contigs_db
+            contigs_db_project_name[contigs_db] = project_name
 
-        # Check that groups include all contigs databases.
+        # Check that groups include all contigs databases. Map project name to group.
+        project_name_group: Dict[str, str] = {}
         if groups_txt is not None:
-            source_paths = [os.path.abspath(source) for source in source_group_dict]
+            source_abspath_group = {
+                os.path.abspath(source): group for source, group in source_group.items()
+            }
             ungrouped_contigs_dbs: List[str] = []
             for contigs_db in contigs_dbs:
-                if os.path.abspath(contigs_db) not in source_paths:
+                contigs_db_abspath = os.path.abspath(contigs_db)
+                try:
+                    group = source_abspath_group[contigs_db_abspath]
+                except KeyError:
                     ungrouped_contigs_dbs.append(contigs_db)
-            message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
-            raise ConfigError(
-                "The following 'contigs_dbs' were not found in the groups provided by "
-                f"'groups_txt': {message}"
-            )
+                    continue
+
+                project_name = contigs_db_project_name[contigs_db]
+                project_name_group[project_name] = group
+
+            if ungrouped_contigs_dbs:
+                message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
+                raise ConfigError(
+                    "The following 'contigs_dbs' were not found in the groups provided by "
+                    f"'groups_txt': {message}"
+                )
 
         # Find which contigs databases contain each KO.
-        ko_dbs: Dict[str, List[str]] = {}
-        for project_name, contigs_db in project_names.items():
+        ko_project_names: Dict[str, List[str]] = {}
+        for project_name, contigs_db in project_name_contigs_db.items():
             cdb = ContigsDatabase(contigs_db)
             for ko_id in cdb.db.get_single_column_from_table(
                 'gene_functions',
@@ -647,9 +661,30 @@ class Mapper:
                 where_clause='source = "KOfam"'
             ):
                 try:
-                    ko_dbs[ko_id].append(project_name)
+                    ko_project_names[ko_id].append(project_name)
                 except KeyError:
-                    ko_dbs[ko_id] = [project_name]
+                    ko_project_names[ko_id] = [project_name]
+
+        # Find which groups meet the threshold for each KO.
+        ko_groups: Dict[str, List[str]] = {}
+        if groups_txt is not None:
+            group_source_count: Dict[str, int] = {
+                group: len(sources) for group, sources in group_sources.items()
+            }
+
+            for ko_id, project_names in ko_project_names.items():
+                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, value=0)
+                for project_name in project_names:
+                    group_counts[project_name_group[project_name]] += 1
+
+                qualifying_groups = ko_groups[ko_id] = []
+                for group, counts in group_counts.items():
+                    if group_threshold == 0:
+                        if counts / group_source_count[group] > 0:
+                            qualifying_groups.append(group)
+                    else:
+                        if counts / group_source_count[group] >= group_threshold:
+                            qualifying_groups.append(group)
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
@@ -672,14 +707,14 @@ class Mapper:
                 if color_hexcode == 'original':
                     drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
                         pathway_number,
-                        ko_dbs,
+                        ko_project_names,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 else:
                     drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
-                        ko_dbs,
+                        ko_project_names,
                         color_hexcode,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
@@ -721,7 +756,9 @@ class Mapper:
                 category_combos = []
                 for category_count in range(1, len(categories) + 1):
                     if groups_txt is None:
-                        category_combos += list(combinations(project_names, category_count))
+                        category_combos += list(
+                            combinations(project_name_contigs_db, category_count)
+                        )
                     else:
                         category_combos += list(combinations(categories, category_count))
 
@@ -770,7 +807,7 @@ class Mapper:
                 self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
-                    ko_dbs,
+                    ko_project_names if groups_txt is None else ko_groups,
                     color_priority,
                     output_dir,
                     category_combos=category_combos,
@@ -791,12 +828,12 @@ class Mapper:
 
         # Determine the individual database maps to draw.
         if draw_contigs_db_files == True:
-            draw_files_project_names = list(project_names)
+            draw_files_project_names = list(project_name_contigs_db)
         elif draw_contigs_db_files == False:
             draw_files_project_names = []
         else:
             for project_name in draw_contigs_db_files:
-                assert project_name in project_names
+                assert project_name in project_name_contigs_db
             draw_files_project_names = draw_contigs_db_files
         seen = set()
         draw_files_project_names = [
@@ -806,12 +843,12 @@ class Mapper:
 
         # Determine the map grids to draw.
         if draw_grid == True:
-            draw_grid_project_names = list(project_names)
+            draw_grid_project_names = list(project_name_contigs_db)
         elif draw_grid == False:
             draw_grid_project_names = []
         else:
             for project_name in draw_grid:
-                assert project_name in project_names
+                assert project_name in project_name_contigs_db
             draw_grid_project_names = draw_grid
         seen = set()
         draw_grid_project_names = [
@@ -834,7 +871,7 @@ class Mapper:
             run = self.run
             self.run = terminal.Run(verbose=False)
             drawn['individual'][project_name] = self.map_contigs_database_kos(
-                project_names[project_name],
+                project_name_contigs_db[project_name],
                 os.path.join(output_dir, project_name),
                 pathway_numbers=pathway_numbers,
                 color_hexcode=color_hexcode,
@@ -885,7 +922,7 @@ class Mapper:
                     if drawn_map:
                         continue
                     self.map_contigs_database_kos(
-                        project_names[project_name],
+                        project_name_contigs_db[project_name],
                         os.path.join(output_dir, project_name),
                         pathway_numbers=[pathway_number],
                         color_hexcode=color_hexcode,
