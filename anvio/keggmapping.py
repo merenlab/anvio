@@ -640,6 +640,62 @@ class Mapper:
             project_name_contigs_db[project_name] = contigs_db
             contigs_db_project_name[contigs_db] = project_name
 
+        # If individual files are requested to be drawn for a subset of contigs databases or groups,
+        # check that the names are valid.
+        if not isinstance(draw_individual_files, bool):
+            if groups_txt is None:
+                unrecognized_project_names: List[str] = []
+                for project_name in draw_individual_files:
+                    if project_name not in project_name_contigs_db:
+                        unrecognized_project_names.append(project_name)
+                if unrecognized_project_names:
+                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
+                    raise ConfigError(
+                        "Individual maps were requested for a subset of contigs databases, but the "
+                        "following project names were not recognized as corresponding to any of "
+                        f"the input contigs databases: {message}"
+                    )
+            else:
+                unrecognized_groups: List[str] = []
+                for group in draw_individual_files:
+                    if group not in group_sources:
+                        unrecognized_groups.append(group)
+                if unrecognized_groups:
+                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    raise ConfigError(
+                        "Individual maps were requested for a subset of contigs database groups, "
+                        "but the following group names were not among those provided in the "
+                        f"groups-txt file: {message}"
+                    )
+
+        # If individual maps in grids are requested to be drawn for a subset of contigs databases or
+        # groups, check that the names are valid.
+        if not isinstance(draw_grid, bool):
+            if groups_txt is None:
+                unrecognized_project_names: List[str] = []
+                for project_name in draw_grid:
+                    if project_name not in project_name_contigs_db:
+                        unrecognized_project_names.append(project_name)
+                if unrecognized_project_names:
+                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
+                    raise ConfigError(
+                        "Individual maps in grids were requested for a subset of contigs "
+                        "databases, but the following project names were not recognized as "
+                        f"corresponding to any of the input contigs databases: {message}"
+                    )
+            else:
+                unrecognized_groups: List[str] = []
+                for group in draw_grid:
+                    if group not in group_sources:
+                        unrecognized_groups.append(group)
+                if unrecognized_groups:
+                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    raise ConfigError(
+                        "Individual maps in grids were requested for a subset of contigs database "
+                        "groups, but the following group names were not among those provided in "
+                        f"the groups-txt file: {message}"
+                    )
+
         # Check that groups include all contigs databases. Map project name to group.
         project_name_group: Dict[str, str] = {}
         if groups_txt is not None:
