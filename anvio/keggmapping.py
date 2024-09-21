@@ -526,7 +526,7 @@ class Mapper:
         if groups_txt is None:
             source_group_dict = None
             group_source_dict = None
-            membership = contigs_dbs
+            categories = contigs_dbs
         else:
             source_group_dict, group_source_dict = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
@@ -535,7 +535,7 @@ class Mapper:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
-            membership = list(group_source_dict)
+            categories = list(group_source_dict)
 
         # Set the colormap scheme.
         if colormap is False:
@@ -549,7 +549,7 @@ class Mapper:
                 )
         else:
             if colormap_scheme is None:
-                if len(membership) < 4:
+                if len(categories) < 4:
                     scheme = 'by_membership'
                 else:
                     scheme = 'by_count'
@@ -693,47 +693,47 @@ class Mapper:
                 # databases or groups. Lower color values correspond to smaller numbers of
                 # databases/groups.
                 if sampling == 'in_order':
-                    if len(membership) == 1:
+                    if len(categories) == 1:
                         sample_points = range(1, 2)
                     else:
-                        sample_points = range(len(membership))
+                        sample_points = range(len(categories))
                 elif sampling == 'even':
-                    if len(membership) == 1:
+                    if len(categories) == 1:
                         sample_points = np.linspace(1, 1, 1)
                     else:
-                        sample_points = np.linspace(0, 1, len(membership))
+                        sample_points = np.linspace(0, 1, len(categories))
                 else:
                     raise AssertionError
 
-                if len(membership) > cmap.N:
-                    exceeds_colors = (cmap.N, len(membership))
+                if len(categories) > cmap.N:
+                    exceeds_colors = (cmap.N, len(categories))
 
                 for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                     else:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-                member_combos = None
+                category_combos = None
             elif scheme == 'by_membership':
                 # Sample the colormap for colors representing the different contigs databases or
                 # groups and their combinations. Lower color values correspond to smaller numbers of
                 # databases/groups.
-                member_combos = []
-                for member_count in range(1, len(membership) + 1):
+                category_combos = []
+                for category_count in range(1, len(categories) + 1):
                     if groups_txt is None:
-                        member_combos += list(combinations(project_names, member_count))
+                        category_combos += list(combinations(project_names, category_count))
                     else:
-                        member_combos += list(combinations(membership, member_count))
+                        category_combos += list(combinations(categories, category_count))
 
                 if sampling == 'in_order':
-                    sample_points = range(len(member_combos))
+                    sample_points = range(len(category_combos))
                 elif sampling == 'even':
-                    sample_points = np.linspace(0, 1, len(member_combos))
+                    sample_points = np.linspace(0, 1, len(category_combos))
                 else:
                     raise AssertionError
 
-                if len(member_combos) > cmap.N:
-                    exceeds_colors = (cmap.N, len(member_combos))
+                if len(category_combos) > cmap.N:
+                    exceeds_colors = (cmap.N, len(category_combos))
 
                 for sample_point in sample_points:
                     if reverse_overlay:
@@ -753,13 +753,13 @@ class Mapper:
                 if scheme == 'by_count':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
-                        color_labels=range(1, len(membership) + 1),
+                        color_labels=range(1, len(categories) + 1),
                         label='database count' if groups_txt is None else 'group count'
                     )
                 elif scheme == 'by_membership':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
-                        color_labels=[', '.join(member_combo) for member_combo in member_combos],
+                        color_labels=[', '.join(combo) for combo in category_combos],
                         label='databases' if groups_txt is None else 'groups'
                     )
                 _draw_colorbar(
