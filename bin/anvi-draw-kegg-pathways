@@ -124,7 +124,7 @@ def get_args() -> Namespace:
         "GROUPS",
         "Display data from groups of contigs databases or genomes in a pangenome."
     )
-    groupGROUP = groupGROUP.add_argument(
+    groupGROUP.add_argument(
         *A('groups-txt'), **K('groups-txt'), {'help':
         "A tab-delimited text file specifying which group each item belongs to. Items may be "
         "contigs database files, if provided with '--contigs-dbs', or the names of genomes in a "
@@ -137,7 +137,7 @@ def get_args() -> Namespace:
         "effect, assigning colors based on group membership and drawing individual files "
         "('--draw-individual-files') and map grids ('--draw-grid') for groups."
     })
-    groupGROUP = groupGROUP.add_argument(
+    groupGROUP.add_argument(
         '--group-threshold', type=float, metavar='FLOAT', help=
         "The proportion of items in a group containing data of interest for it to be represented "
         "in terms of presence/absence in a map feature. Here is a concrete example. Say the "
