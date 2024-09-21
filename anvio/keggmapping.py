@@ -892,45 +892,47 @@ class Mapper:
                 f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
             )
 
-        if draw_contigs_db_files is False and draw_grid is False:
+        if draw_individual_files is False and draw_grid is False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
             return
 
-        # Determine the individual database maps to draw.
-        if draw_contigs_db_files == True:
-            draw_files_project_names = list(project_name_contigs_db)
-        elif draw_contigs_db_files == False:
-            draw_files_project_names = []
+        # Determine the individual maps to draw.
+        if draw_individual_files == True:
+            if groups_txt is None:
+                draw_files_categories = list(project_name_contigs_db)
+            else:
+                draw_files_categories = list(group_sources)
+        elif draw_individual_files == False:
+            draw_files_categories = []
         else:
-            for project_name in draw_contigs_db_files:
-                assert project_name in project_name_contigs_db
-            draw_files_project_names = draw_contigs_db_files
+            draw_files_categories = draw_individual_files
         seen = set()
-        draw_files_project_names = [
-            project_name for project_name in list(draw_files_project_names)
-            if not (project_name in seen or seen.add(project_name))
+        draw_files_categories = [
+            category for category in list(draw_files_categories)
+            if not (category in seen or seen.add(category))
         ]
 
         # Determine the map grids to draw.
         if draw_grid == True:
-            draw_grid_project_names = list(project_name_contigs_db)
+            if groups_txt is None:
+                draw_files_categories = list(project_name_contigs_db)
+            else:
+                draw_files_categories = list(group_sources)
         elif draw_grid == False:
-            draw_grid_project_names = []
+            draw_grid_categories = []
         else:
-            for project_name in draw_grid:
-                assert project_name in project_name_contigs_db
-            draw_grid_project_names = draw_grid
+            draw_grid_categories = draw_grid
         seen = set()
-        draw_grid_project_names = [
-            project_name for project_name in list(draw_grid_project_names)
-            if not (project_name in seen or seen.add(project_name))
+        draw_grid_categories = [
+            category for category in list(draw_grid_categories)
+            if not (category in seen or seen.add(category))
         ]
 
         seen = set()
-        draw_project_names = [
-            project_name for project_name in draw_files_project_names + draw_grid_project_names
-            if not (project_name in seen or seen.add(project_name))
+        draw_categories = [
+            category for category in draw_files_categories + draw_grid_categories
+            if not (category in seen or seen.add(category))
         ]
 
         # Draw individual database maps needed as final outputs or for grids.
@@ -1063,7 +1065,7 @@ class Mapper:
             "Number of 'unified' maps drawn incorporating data from all contigs databases",
             count
         )
-        if draw_contigs_db_files:
+        if draw_individual_files:
             if not drawn['individual']:
                 count = 0
             else:
