@@ -750,14 +750,14 @@ class Mapper:
                 if scheme == 'by_count':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
-                        color_labels=range(1, len(contigs_dbs) + 1),
-                        label='database count'
+                        color_labels=range(1, len(membership) + 1),
+                        label='database count' if groups_txt is None else 'group count'
                     )
                 elif scheme == 'by_membership':
                     _draw_colorbar = functools.partial(
                         _draw_colorbar,
-                        color_labels=[', '.join(db_combo) for db_combo in db_combos],
-                        label='databases'
+                        color_labels=[', '.join(member_combo) for member_combo in member_combos],
+                        label='databases' if groups_txt is None else 'groups'
                     )
                 _draw_colorbar(
                     color_priority, os.path.join(output_dir, 'colorbar.pdf')
