@@ -96,7 +96,30 @@ class Mapper:
 
     progress : anvio.terminal.Progress
         This object prints transient progress information to the terminal.
+
+    colorbar_figsize : Tuple[int, int], (1, 6)
+
+    colorbar_orientation : Literal['horizontal', 'vertical'], 'vertical'
+
+    colorbar_tick_fontsize : int, None
+        Dynamically size font with default of None, else set size to value.
+
+    colorbar_label_rotation : int, None
+        270° if vertical or 0° if horizontal with default of None, else rotate label by value.
+
+    colorbar_label_fontsize : int, 24
+
+    colorbar_labelpad : int, 30
+        Spacing of label from tick labels.
     """
+    # Colorbar customization attributes.
+    colorbar_figsize: Tuple[int, int] = (1, 6)
+    colorbar_orientation: Literal['horizontal', 'vertical'] = 'vertical'
+    colorbar_tick_fontsize: int = None
+    colorbar_label_rotation: int = None
+    colorbar_label_fontsize: int = 24
+    colorbar_labelpad: int = 30
+
     def __init__(
         self,
         kegg_dir: str = None,
@@ -2244,6 +2267,8 @@ class Mapper:
         """
         Save a standalone colorbar to a file.
 
+        The colorbar can further be customized by changing attributes of this Mapper instance.
+
         Parameters
         ==========
         colors : Iterable
@@ -2262,7 +2287,7 @@ class Mapper:
         if color_labels is not None:
             assert len(colors) == len(color_labels)
 
-        fig, ax = plt.subplots(figsize=(1, 6))
+        fig, ax = plt.subplots(figsize=self.colorbar_figsize)
 
         cmap = mcolors.ListedColormap(colors)
         norm = mcolors.BoundaryNorm(boundaries=range(len(colors) + 1), ncolors=len(colors))
@@ -2270,29 +2295,53 @@ class Mapper:
         cb = plt.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=ax,
-            orientation='vertical'
+            orientation=self.colorbar_orientation
         )
 
         # Don't show tick marks.
         cb.ax.tick_params(size=0)
 
         if color_labels:
-            # Calculate appropriate font size of tick labels based on color segment height.
-            height_in_data_coords = 1 / len(colors)
-            height_in_points = (
-                ax.transData.transform((0, height_in_data_coords)) - ax.transData.transform((0, 0))
-            )
-            if height_in_points[1] < 10:
-                tick_font_size = height_in_points[1] * 2
+            if self.colorbar_tick_fontsize is None:
+                # Calculate appropriate font size of tick labels based on color segment height.
+                length_in_data_coords = 1 / len(colors)
+                origin_in_points = ax.transData.transform((0, 0))
+                if self.colorbar_orientation == 'vertical':
+                    size_value = height_in_points = (
+                        ax.transData.transform((0, length_in_data_coords)) - origin_in_points
+                    )[1]
+                elif self.colorbar_orientation == 'horizontal':
+                    size_value = width_in_points = (
+                        ax.transData.transform((length_in_data_coords, 0)) - origin_in_points
+                    )[0]
+                else:
+                    raise AssertionError
+                if size_value < 10:
+                    tick_fontsize = size_value * 2
+                else:
+                    tick_fontsize = min(size_value, 24)
             else:
-                tick_font_size = min(height_in_points[1], 24)
+                tick_fontsize = self.colorbar_tick_fontsize
 
             cb.set_ticks(np.arange(len(colors)) + 0.5)
-            cb.set_ticklabels(color_labels, fontsize=tick_font_size)
+            cb.set_ticklabels(color_labels, fontsize=tick_fontsize)
 
         if label:
-            label_font_size = min(tick_font_size * 1.25, 30)
-            cb.set_label(label, rotation=270, labelpad=label_font_size * 1.25, fontsize=label_font_size)
+            if self.colorbar_label_rotation is None:
+                if self.colorbar_orientation == 'vertical':
+                    label_rotation = 270
+                elif self.colorbar_orientation == 'horizontal':
+                    label_rotation = 0
+                else:
+                    raise AssertionError
+            else:
+                label_rotation = self.colorbar_label_rotation
+            cb.set_label(
+                label,
+                rotation=label_rotation,
+                labelpad=self.colorbar_labelpad,
+                fontsize=self.colorbar_label_fontsize
+            )
 
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
