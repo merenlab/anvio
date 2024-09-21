@@ -285,6 +285,26 @@ def get_args() -> Namespace:
         "colormap spanning dark to light, this accentuates unshared rather than shared parts of "
         "a pathway."
     )
+    groupGROUP.add_argument(
+        '--group-colormap', nargs='+', help=
+        "This option is like '--colormap', but only applies to drawing files for individual groups "
+        "('--draw-individual-files') and panels for individual groups in map grids "
+        "('--draw-grid'). These maps for individual groups show data membership in group sources, "
+        "e.g., contigs databases or pan genomes. They are always colored dynamically by count, "
+        "e.g., the number of databases or genomes in the group containing the data. Like "
+        "'--colormap', this parameter takes the name of a Matplotlib Colormap, and optionally, "
+        "two decimal values between 0.0 and 1.0 to limit the fraction of the colormap used. The "
+        "default configuration is the same, with the colormap being 'plasma_r' and the limits "
+        "being 0.1 and 0.9."
+    )
+    groupGROUP.add_argument(
+        '--group-reverse-overlay', action='store_true', default=False, help=
+        "This flag is like '--reverse-overlay', but only applies to drawing files for individual "
+        "groups ('--draw-individual-files') and panels for individual groups in map grids "
+        "('--draw-grid'). With this flag, these maps for individual groups draw reactions with a "
+        "lesser numerical value (e.g., in fewer group sources like contigs databases or pan "
+        "genomes) on top of reactions with a greater numerical value, the opposite of the default."
+    )
 
     args = parser.get_args(parser)
     return args
