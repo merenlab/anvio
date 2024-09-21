@@ -356,6 +356,9 @@ class Mapper:
         colormap_scheme: Literal['by_count', 'by_membership'] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
+        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_reverse_overlay: bool = False,
         colorbar: bool = True,
         draw_maps_lacking_kos: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
