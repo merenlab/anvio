@@ -797,8 +797,7 @@ class Mapper:
             color_priority: Dict[str, float] = {}
             if scheme == 'by_count':
                 # Sample the colormap for colors representing each possible number of contigs
-                # databases or groups. Lower color values correspond to smaller numbers of
-                # databases/groups.
+                # databases or groups. Lower color values correspond to fewer databases/groups.
                 if sampling == 'in_order':
                     if len(categories) == 1:
                         sample_points = range(1, 2)
@@ -823,7 +822,7 @@ class Mapper:
                 category_combos = None
             elif scheme == 'by_membership':
                 # Sample the colormap for colors representing the different contigs databases or
-                # groups and their combinations. Lower color values correspond to smaller numbers of
+                # groups and their combinations. Lower color values correspond to fewer
                 # databases/groups.
                 category_combos = []
                 for category_count in range(1, len(categories) + 1):
