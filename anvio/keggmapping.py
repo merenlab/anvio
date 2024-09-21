@@ -935,6 +935,26 @@ class Mapper:
             if not (category in seen or seen.add(category))
         ]
 
+        # Gather information needed to draw individual maps for groups, either as separate files or
+        # in map grids.
+        group_ko_project_names: Dict[str, Dict[str, List[str]]] = {}
+        if groups_txt is not None and (draw_individual_files or draw_grid):
+            # Determine KO membership among each group's contigs databases.
+            for ko_id, project_names in ko_project_names.items():
+                for project_name in project_names:
+                    group = project_name_group[project_name]
+                    if group not in draw_categories:
+                        continue
+
+                    try:
+                        inner_ko_project_names = group_ko_project_names[group]
+                    except KeyError:
+                        group_ko_project_names[group] = inner_ko_project_names = {}
+                    try:
+                        inner_project_names = inner_ko_project_names[ko_id]
+                    except:
+                        inner_ko_project_names[ko_id] = inner_project_names = []
+                    inner_project_names.append(project_name)
         # Draw individual database maps needed as final outputs or for grids.
         for project_name in draw_project_names:
             self.progress.new(f"Drawing maps for contigs database '{project_name}'")
