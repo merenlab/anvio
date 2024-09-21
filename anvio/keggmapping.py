@@ -349,7 +349,7 @@ class Mapper:
         groups_txt: str = None,
         group_threshold: float = None,
         pathway_numbers: Iterable[str] = None,
-        draw_contigs_db_files: Union[Iterable[str], bool] = False,
+        draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_limits: Tuple[float, float] = None,
@@ -390,7 +390,7 @@ class Mapper:
             rather than 'my group #1' or 'IS-THIS-OK?'. Each contigs database can only be associated
             with a single group. The 'group_threshold' argument must also be used for the groups to
             take effect, assigning colors based on group membership and drawing individual files
-            ('draw_contigs_db_files') and map grids ('draw_grid') for groups rather than individual
+            ('draw_individual_files') and map grids ('draw_grid') for groups rather than individual
             databases.
 
         group_threshold : float, None
@@ -416,14 +416,20 @@ class Mapper:
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        draw_contigs_db_files : Union[Iterable[str], bool], False
-            Draw pathway maps for each contigs database if not False. If True, draw maps for all of
-            the contigs databases. Alternatively, the project names of a subset of contigs databases
-            can be provided.
+        draw_individual_files : Union[Iterable[str], bool], False
+            First consider the case where groups are not defined by 'groups-txt'. If the
+            '--draw-individual-files' argument is not False, draw map files for individual contigs
+            databases. If True, draw maps for all of the contigs databases. Alternatively, the
+            argument can accept the project names of a subset of contigs databases to only draw maps
+            for those.
 
-            If groups are defined by the 'groups_txt' argument, then maps are instead drawn for
-            individual groups. A subset of group names can be provided to draw maps for select
-            groups.
+            Consider the case where groups are defined by 'groups-txt'. If the
+            '--draw-individual-files' argument is not False, draw unified map files for individual
+            groups showing membership of reactions in the contigs databases defining the group. If
+            True, draw maps for all of the groups. Alternatively, the argument can accept a subset
+            of group names to only draw maps for those. Maps are always colored by contigs database
+            count, never explicitly by membership, allowing the comparison of maps for different
+            groups in terms of the same colors.
 
         draw_grid : Union[Iterable[str], bool], False
             If not False, draw a grid for each pathway map showing both the unified map of input
