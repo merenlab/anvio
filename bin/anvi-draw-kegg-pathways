@@ -364,12 +364,12 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
     elif len(args.draw_individual_files) == 0:
         # Draw maps for all contigs databases.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_contigs_db_files=True
+            map_contigs_databases_kos, draw_individual_files=True
         )
     else:
         # Draw maps for select contigs databases.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_contigs_db_files=args.draw_individual_files
+            map_contigs_databases_kos, draw_individual_files=args.draw_individual_files
         )
 
     if args.draw_grid is None:
