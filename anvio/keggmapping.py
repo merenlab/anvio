@@ -727,7 +727,8 @@ class Mapper:
                         f"the groups-txt file: {message}"
                     )
 
-        # Check that groups include all contigs databases. Map project name to group.
+        # Check that groups include all contigs databases. Relate groups and project names.
+        group_project_names: Dict[str, List[str]] = {}
         project_name_group: Dict[str, str] = {}
         if groups_txt is not None:
             source_abspath_group = {
@@ -743,6 +744,10 @@ class Mapper:
                     continue
 
                 project_name = contigs_db_project_name[contigs_db]
+                try:
+                    group_project_names[group].append(project_name)
+                except KeyError:
+                    group_project_names[group] = [project_name]
                 project_name_group[project_name] = group
 
             if ungrouped_contigs_dbs:
