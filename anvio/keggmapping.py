@@ -619,6 +619,36 @@ class Mapper:
                 cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
             )
 
+        # Set and trim the colormap for individual group maps.
+        group_cmap = None
+        if (
+            groups_txt is not None and
+            (draw_individual_files is not False or draw_grid is not False)
+        ):
+            if isinstance(group_colormap, str):
+                group_cmap = plt.colormaps[group_colormap]
+            elif isinstance(group_colormap, mcolors.Colormap):
+                group_cmap = group_colormap
+            else:
+                raise AssertionError
+
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                self.run.warning(
+                    f"The group colormap, '{cmap.name}', that was provided to color individual "
+                    "group maps is not especially useful for displaying the count of contigs "
+                    "databases. We recommend a sequential colormap like 'plasma' instead."
+                )
+
+            if group_colormap_limits != (0.0, 1.0):
+                lower_limit = group_colormap_limits[0]
+                upper_limit = group_colormap_limits[1]
+                assert 0.0 <= lower_limit <= upper_limit <= 1.0
+                group_cmap = mcolors.LinearSegmentedColormap.from_list(
+                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
+                    group_cmap(range(
+                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
+                    ))
+                )
 
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
