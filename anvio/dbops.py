@@ -3388,25 +3388,27 @@ class ProfileSuperclass(object):
                 self.store_gene_level_coverage_stats_into_genes_db(parameters, gene_caller_ids_to_exclude=failed_gene_caller_ids_set)
 
 
-    def init_split_coverage_values_per_nt_dict(self, split_names=None):
+    def init_split_coverage_values_per_nt_dict(self, split_names=None, no_progress=False):
         if not self.auxiliary_profile_data_available:
             raise ConfigError("What you're trying to do requires the AUXILIARY-DATA.db file :/ Please make sure it is in the "
                               "same directory with the profile database you are working with.")
 
-        self.progress.new('Computing split coverage values per nt ...')
-        self.progress.update('...')
+        if not no_progress:
+            self.progress.new('Computing split coverage values per nt ...')
+            self.progress.update('...')
 
         if not split_names:
             split_names = self.split_names_of_interest
 
         num_splits, counter = len(split_names), 1
         for split_name in split_names:
-            if num_splits > 10 and counter % 10 == 0:
+            if num_splits > 10 and counter % 10 == 0 and not no_progress:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
 
-        self.progress.end()
+        if not no_progress:
+            self.progress.end()
 
 
     def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
