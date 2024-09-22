@@ -3347,7 +3347,7 @@ class ProfileSuperclass(object):
 
             if not init_split_coverage_values_per_nt:
                 # initialize the split coverage dict with just this one split (for better memory usage)
-                self.init_split_coverage_values_per_nt_dict()
+                self.init_split_coverage_values_per_nt_dict(split_name, no_progress=True)
 
             if len(gene_caller_ids_of_interest):
                 gene_level_coverage_stats, failed_gene_caller_ids = self.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest, **parameters)
