@@ -1067,16 +1067,24 @@ class Mapper:
                 self.progress.end()
 
         if draw_grid == False:
+            # Our job here is done.
+            if groups_txt is None:
+                source_message = "contigs databases"
+            else:
+                source_message = "groups"
+
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info(
-                "Number of 'unified' maps drawn incorporating data from all contigs databases",
+                f"Number of 'unified' maps drawn incorporating data from all {source_message}",
                 count
             )
+
             if not drawn['individual']:
                 count = 0
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info("Number of maps drawn for individual contigs databases", count)
+            self.run.info(f"Number of maps drawn for individual {source_message}", count)
+
             return
 
         self.progress.new("Drawing map grid")
