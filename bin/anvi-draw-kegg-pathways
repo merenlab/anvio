@@ -303,7 +303,8 @@ def get_args() -> Namespace:
         "groups ('--draw-individual-files') and panels for individual groups in map grids "
         "('--draw-grid'). With this flag, these maps for individual groups draw reactions with a "
         "lesser numerical value (e.g., in fewer group sources like contigs databases or pan "
-        "genomes) on top of reactions with a greater numerical value, the opposite of the default."
+        "genomes) on top of reactions with a greater numerical value, the opposite of the default "
+        "drawing order."
     )
 
     args = parser.get_args(parser)
