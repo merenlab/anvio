@@ -1025,23 +1025,46 @@ class Mapper:
                         ] = sample_point
 
         # Draw individual database maps needed as final outputs or for grids.
-        for project_name in draw_project_names:
-            self.progress.new(f"Drawing maps for contigs database '{project_name}'")
-            self.progress.update("...")
-            progress = self.progress
-            self.progress = terminal.Progress(verbose=False)
-            run = self.run
-            self.run = terminal.Run(verbose=False)
-            drawn['individual'][project_name] = self.map_contigs_database_kos(
-                project_name_contigs_db[project_name],
-                os.path.join(output_dir, project_name),
-                pathway_numbers=pathway_numbers,
-                color_hexcode=color_hexcode,
-                draw_maps_lacking_kos=draw_maps_lacking_kos
-            )
-            self.progress = progress
-            self.run = run
-            self.progress.end()
+        for category in draw_categories:
+            if groups_txt is None:
+                project_name = category
+                self.progress.new(f"Drawing maps for contigs database '{project_name}'")
+                self.progress.update("...")
+                progress = self.progress
+                self.progress = terminal.Progress(verbose=False)
+                run = self.run
+                self.run = terminal.Run(verbose=False)
+                drawn['individual'][project_name] = self.map_contigs_database_kos(
+                    project_name_contigs_db[project_name],
+                    os.path.join(output_dir, project_name),
+                    pathway_numbers=pathway_numbers,
+                    color_hexcode=color_hexcode,
+                    draw_maps_lacking_kos=draw_maps_lacking_kos
+                )
+                self.progress = progress
+                self.run = run
+                self.progress.end()
+            else:
+                group = category
+                self.progress.new(f"Drawing maps for contigs database group '{group}'")
+                self.progress.update("...")
+                progress = self.progress
+                self.progress = terminal.Progress(verbose=False)
+                run = self.run
+                self.run = terminal.Run(verbose=False)
+                drawn_group: Dict[str, bool] = {}
+                for pathway_number in pathway_numbers:
+                    drawn_group[pathway_number] = self._draw_map_kos_membership(
+                        pathway_number,
+                        group_ko_project_names[group],
+                        group_color_priority[group],
+                        os.path.join(output_dir, group),
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
+                drawn['individual'][group] = drawn_group
+                self.progress = progress
+                self.run = run
+                self.progress.end()
 
         if draw_grid == False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
