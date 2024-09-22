@@ -611,13 +611,14 @@ class Mapper:
 
         # Trim the colormap.
         if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
-            assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
+            lower_limit = colormap_limits[0]
+            upper_limit = colormap_limits[1]
+            assert 0.0 <= lower_limit <= upper_limit <= 1.0
             cmap = mcolors.LinearSegmentedColormap.from_list(
-                f'trunc({cmap.name},{colormap_limits[0]:.2f},{colormap_limits[1]:.2f})',
-                cmap(range(
-                    int(colormap_limits[0] * cmap.N), math.ceil(colormap_limits[1] * cmap.N)
-                ))
+                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
+                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
             )
+
 
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
