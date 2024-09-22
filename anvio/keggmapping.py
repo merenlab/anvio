@@ -953,7 +953,7 @@ class Mapper:
             )
 
         if draw_individual_files is False and draw_grid is False:
-            # Our job here is done.
+            # Our work here is done.
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
 
@@ -1091,15 +1091,15 @@ class Mapper:
                 self.progress.end()
 
         if draw_grid == False:
-            # Our job here is done.
+            # Our work here is done.
             if groups_txt is None:
-                source_message = "contigs databases"
+                category_message = "contigs databases"
             else:
-                source_message = "groups"
+                category_message = "groups"
 
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info(
-                f"Number of 'unified' maps drawn incorporating data from all {source_message}",
+                f"Number of 'unified' maps drawn incorporating data from all {category_message}",
                 count
             )
 
@@ -1107,7 +1107,7 @@ class Mapper:
                 count = 0
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {source_message}", count)
+            self.run.info(f"Number of maps drawn for individual {category_message}", count)
 
             return
 
@@ -1118,31 +1118,30 @@ class Mapper:
         paths_to_remove: List[str] = []
         if not draw_maps_lacking_kos:
             # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
-            # indicating which maps were drawn per contigs database.
+            # indicating which maps were drawn per contigs database or group.
             drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
-            for project_name, drawn_project_name in drawn['individual'].items():
-                for pathway_number, drawn_map in drawn_project_name.items():
+            for category, drawn_category in drawn['individual'].items():
+                for pathway_number, drawn_map in drawn_category.items():
                     try:
-                        drawn_pathway_number[pathway_number][project_name] = drawn_map
+                        drawn_pathway_number[pathway_number][category] = drawn_map
                     except KeyError:
-                        drawn_pathway_number[pathway_number] = {project_name: drawn_map}
+                        drawn_pathway_number[pathway_number] = {category: drawn_map}
 
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
             progress = self.progress
             self.progress = terminal.Progress(verbose=False)
             run = self.run
             self.run = terminal.Run(verbose=False)
-            for pathway_number, drawn_project_name in drawn_pathway_number.items():
-                if set(drawn_project_name.values()) != set([True, False]):
+            for pathway_number, drawn_category in drawn_pathway_number.items():
+                if set(drawn_category.values()) != set([True, False]):
                     continue
-                for project_name, drawn_map in drawn_project_name.items():
+                for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
                     self.map_contigs_database_kos(
-                        project_name_contigs_db[project_name],
-                        os.path.join(output_dir, project_name),
+                        project_name_contigs_db[category],
+                        os.path.join(output_dir, category),
                         pathway_numbers=[pathway_number],
-                        color_hexcode=color_hexcode,
                         draw_maps_lacking_kos=True
                     )
                     if self.name_files:
@@ -1150,7 +1149,7 @@ class Mapper:
                     else:
                         pathway_name = ''
                     paths_to_remove.append(os.path.join(
-                        output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                        output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
                     ))
             self.progress = progress
             self.run = run
@@ -1175,18 +1174,18 @@ class Mapper:
             input_aspect_ratio = page.rect.width / page.rect.height
             landscape = True if input_aspect_ratio > 1 else False
 
-            for project_name in draw_grid_project_names:
+            for category in draw_grid_categories:
                 if self.name_files:
                     pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
                 else:
                     pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
                 in_paths.append(individual_map_path)
-                labels.append(project_name)
+                labels.append(category)
             else:
                 if self.name_files:
                     pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
@@ -1197,24 +1196,32 @@ class Mapper:
                 drawn['grid'][pathway_number] = True
         self.progress.end()
 
-        # Remove individual database maps that were only needed for map grids.
+        # Remove individual maps that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
-        for project_name in set(draw_project_names).difference(set(draw_files_project_names)):
-            shutil.rmtree(os.path.join(output_dir, project_name))
-            drawn['individual'].pop(project_name)
+        for category in set(draw_categories).difference(set(draw_files_categories)):
+            shutil.rmtree(os.path.join(output_dir, category))
+            drawn['individual'].pop(category)
+
+        # Our work here is done.
+        if groups_txt is None:
+            category_message = "contigs databases"
+        else:
+            category_message = "groups"
 
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
-            "Number of 'unified' maps drawn incorporating data from all contigs databases",
+            f"Number of 'unified' maps drawn incorporating data from all {category_message}",
             count
         )
+
         if draw_individual_files:
             if not drawn['individual']:
                 count = 0
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info("Number of maps drawn for individual contigs databases", count)
+            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+
         count = sum(drawn['grid'].values()) if drawn['grid'] else 0
         self.run.info("Number of map grids drawn", count)
 
