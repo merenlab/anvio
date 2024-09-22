@@ -3334,7 +3334,7 @@ class ProfileSuperclass(object):
         # if it was explicitly requested to init the full dict of split coverages, we do that now
         if init_split_coverage_values_per_nt:
             self.init_split_coverage_values_per_nt_dict(split_names)
-
+        
         self.progress.new('Computing gene-level coverage stats in %s mode...' % ('INSEQ' if self.inseq_stats else 'STANDARD'))
         self.progress.update('...')
 
@@ -3344,10 +3344,10 @@ class ProfileSuperclass(object):
         for split_name in split_names:
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
-
+            
             if not init_split_coverage_values_per_nt:
                 # initialize the split coverage dict with just this one split (for better memory usage)
-                self.init_split_coverage_values_per_nt_dict(split_name, no_progress=True)
+                self.init_split_coverage_values_per_nt_dict([split_name], no_progress=True)
 
             if len(gene_caller_ids_of_interest):
                 gene_level_coverage_stats, failed_gene_caller_ids = self.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest, **parameters)
