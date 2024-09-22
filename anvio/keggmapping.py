@@ -503,6 +503,30 @@ class Mapper:
             this argument to be used, overriding dynamic coloring based on database/group membership
             with static coloring based on presence/absence in any database.
 
+        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
+            This parameter is similar in effect to 'colormap', but only applies to drawing files for
+            individual groups ('draw_individual_files') and panels for individual groups in map
+            grids ('draw_grid'). These maps for individual groups show reaction membership in the
+            contigs databases of the group. They are always colored dynamically by count, i.e., the
+            number of databases in the group containing the reaction. Like 'colormap', this
+            parameter can take the name of a Matplotlib Colormap or a Colormap object itself. The
+            default group colormap is 'plasma_r', the same as the default 'colormap' with a
+            'colormap_scheme' of 'by_count'.
+
+        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
+            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
+            for the proprotion of the group colormap. The default group limits of (0.1, 0.9) are the
+            same as the default 'colormap_limits'.
+
+        group_reverse_overlay : bool, False
+            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). If True, these maps for individual groups draw reactions found in
+            fewer of the group's contigs databases on top of reactions found in more of the group's
+            databases, the opposite of the default drawing order.
+
         colorbar : bool, True
             If True and coloring by database/group membership, save a colorbar legend to the file,
             'colorbar.pdf', in the output directory.
