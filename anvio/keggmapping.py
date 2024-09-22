@@ -929,8 +929,10 @@ class Mapper:
             )
 
         if draw_individual_files is False and draw_grid is False:
+            # Our job here is done.
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
+
             return
 
         # Determine the individual maps to draw.
