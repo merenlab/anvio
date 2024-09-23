@@ -553,7 +553,7 @@ class Mapper:
             the map was not drawn because it did not contain any of the select KOs and
             'draw_maps_lacking_kos' was False.
         """
-        # This method is similar to map_pan_database_kos, and almost identical after KOs are loaded.
+        # This method is similar to map_pan_database_kos, especially after KOs are loaded.
 
         # Load groups.
         if (
