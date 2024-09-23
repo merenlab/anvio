@@ -555,6 +555,28 @@ class Mapper:
         """
         # This method is similar to map_pan_database_kos, especially after KOs are loaded.
 
+        self.progress.new("Loading metadata from contigs databases")
+        self.progress.update("...")
+
+        self._check_contigs_dbs(contigs_dbs)
+        self._check_contigs_dbs_ko_annotation(contigs_dbs)
+
+        project_name_contigs_db: Dict[str, str] = {}
+        contigs_db_project_name: Dict[str, str] = {}
+        for contigs_db in contigs_dbs:
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db)
+            self_table = contigs_db_info.get_self_table()
+
+            annotation_sources = self_table['gene_function_sources']
+            assert annotation_sources is not None and 'KOfam' in annotation_sources.split(',')
+
+            project_name = self_table['project_name']
+            assert project_name not in project_name_contigs_db
+            project_name_contigs_db[project_name] = contigs_db
+            contigs_db_project_name[contigs_db] = project_name
+
+        self.progress.end()
+
         # Load groups.
         if (
             (groups_txt is None and group_threshold is not None) or
