@@ -583,20 +583,50 @@ class Mapper:
                 "must be provided."
             )
 
+        group_project_names: Dict[str, List[str]] = {}
+        project_name_group: Dict[str, str] = {}
         if groups_txt is None:
             source_group = None
             group_sources = None
             categories = contigs_dbs
         else:
+            if not 0 <= group_threshold <= 1:
+                raise ConfigError(
+                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
+                )
+
             source_group, group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
             categories = list(group_sources)
 
-            if not 0 <= group_threshold <= 1:
-                raise ConfigError(
-                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
-                )
+            # Check that groups include all contigs databases. Relate groups and project names.
+            if groups_txt is not None:
+                source_abspath_group = {
+                    os.path.abspath(source): group for source, group in source_group.items()
+                }
+                ungrouped_contigs_dbs: List[str] = []
+                for contigs_db in contigs_dbs:
+                    contigs_db_abspath = os.path.abspath(contigs_db)
+                    try:
+                        group = source_abspath_group[contigs_db_abspath]
+                    except KeyError:
+                        ungrouped_contigs_dbs.append(contigs_db)
+                        continue
+
+                    project_name = contigs_db_project_name[contigs_db]
+                    try:
+                        group_project_names[group].append(project_name)
+                    except KeyError:
+                        group_project_names[group] = [project_name]
+                    project_name_group[project_name] = group
+
+                if ungrouped_contigs_dbs:
+                    message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
+                    raise ConfigError(
+                        "The following 'contigs_dbs' were not found in the groups provided by "
+                        f"'groups_txt': {message}"
+                    )
 
             # Report contigs databases in 'groups_txt' that are not among the input databases.
             missing_sources: List[str] = []
@@ -781,36 +811,6 @@ class Mapper:
 
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
-
-        # Check that groups include all contigs databases. Relate groups and project names.
-        group_project_names: Dict[str, List[str]] = {}
-        project_name_group: Dict[str, str] = {}
-        if groups_txt is not None:
-            source_abspath_group = {
-                os.path.abspath(source): group for source, group in source_group.items()
-            }
-            ungrouped_contigs_dbs: List[str] = []
-            for contigs_db in contigs_dbs:
-                contigs_db_abspath = os.path.abspath(contigs_db)
-                try:
-                    group = source_abspath_group[contigs_db_abspath]
-                except KeyError:
-                    ungrouped_contigs_dbs.append(contigs_db)
-                    continue
-
-                project_name = contigs_db_project_name[contigs_db]
-                try:
-                    group_project_names[group].append(project_name)
-                except KeyError:
-                    group_project_names[group] = [project_name]
-                project_name_group[project_name] = group
-
-            if ungrouped_contigs_dbs:
-                message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
-                raise ConfigError(
-                    "The following 'contigs_dbs' were not found in the groups provided by "
-                    f"'groups_txt': {message}"
-                )
 
         # Find which contigs databases contain each KO.
         ko_project_names: Dict[str, List[str]] = {}
@@ -1536,20 +1536,45 @@ class Mapper:
                 "provided."
             )
 
+        group_genomes: Dict[str, List[str]] = {}
+        genome_group: Dict[str, str] = {}
         if groups_txt is None:
             source_group = None
             group_sources = None
             categories = contigs_dbs
         else:
+            if not 0 <= group_threshold <= 1:
+                raise ConfigError(
+                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
+                )
+
             source_group, group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
             categories = list(group_sources)
 
-            if not 0 <= group_threshold <= 1:
-                raise ConfigError(
-                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
-                )
+            # Check that groups include pan genome names. Relate groups and genome names.
+            if groups_txt is not None:
+                ungrouped_genomes: List[str] = []
+                for genome_name in all_genome_names:
+                    try:
+                        group = source_group[genome_name]
+                    except KeyError:
+                        ungrouped_genomes.append(genome_name)
+                        continue
+
+                    try:
+                        group_genomes[group].append(genome_name)
+                    except KeyError:
+                        group_genomes[group] = [genome_name]
+                    genome_group[genome_name] = group
+
+                if ungrouped_genomes:
+                    message = ', '.join([f"'{genome_name}'" for genome_name in ungrouped_genomes])
+                    raise ConfigError(
+                        "The following 'pan_db' genomes were not found in the groups provided by "
+                        f"'groups_txt': {message}"
+                    )
 
             # Report genomes in 'groups_txt' that are not in the pan database.
             missing_sources: List[str] = []
