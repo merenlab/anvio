@@ -1476,7 +1476,8 @@ class Mapper:
             the inner dictionary are True if the map was drawn; False if the map was not drawn
             because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was False.
         """
-        # This method is similar to map_contigs_databases_kos, and almost identical after KOs are
+        # This method is similar to 'map_contigs_databases_kos'.
+
         # loaded.
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
