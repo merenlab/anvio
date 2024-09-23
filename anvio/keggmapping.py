@@ -1010,9 +1010,9 @@ class Mapper:
         # Determine the map grids to draw.
         if draw_grid == True:
             if groups_txt is None:
-                draw_files_categories = list(project_name_contigs_db)
+                draw_grid_categories = list(project_name_contigs_db)
             else:
-                draw_files_categories = list(group_sources)
+                draw_grid_categories = list(group_sources)
         elif draw_grid == False:
             draw_grid_categories = []
         else:
@@ -1541,7 +1541,7 @@ class Mapper:
         if groups_txt is None:
             source_group = None
             group_sources = None
-            categories = contigs_dbs
+            categories = all_genome_names
         else:
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
@@ -1915,7 +1915,7 @@ class Mapper:
             if groups_txt is None:
                 draw_grid_categories = all_genome_names
             else:
-                draw_files_categories = list(group_sources)
+                draw_grid_categories = list(group_sources)
         elif draw_grid == False:
             draw_grid_categories = []
         else:

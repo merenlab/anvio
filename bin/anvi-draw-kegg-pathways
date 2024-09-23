@@ -125,7 +125,7 @@ def get_args() -> Namespace:
         "Display data from groups of contigs databases or genomes in a pangenome."
     )
     groupGROUP.add_argument(
-        *A('groups-txt'), **K('groups-txt'), {'help':
+        *A('groups-txt'), **K('groups-txt', {'help':
         "A tab-delimited text file specifying which group each item belongs to. Items may be "
         "contigs database files, if provided with '--contigs-dbs', or the names of genomes in a "
         "pangenomic database, if provided with '--pan-db'. The first column can have any header, "
@@ -136,7 +136,7 @@ def get_args() -> Namespace:
         "option '--group-threshold' must be also be used for the groups to take effect, assigning "
         "colors based on group membership and drawing individual files ('--draw-individual-files') "
         "and map grids ('--draw-grid') for groups."
-    })
+    }))
     groupGROUP.add_argument(
         '--group-threshold', type=float, metavar='FLOAT', help=
         "The proportion of items in a group containing data of interest for it to be represented "
@@ -466,11 +466,11 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         pass
     elif len(args.draw_individual_files) == 0:
         # Draw maps for all genomes in the pangenome.
-        map_pan_database_kos = functools.partial(map_pan_database_kos, draw_genome_files=True)
+        map_pan_database_kos = functools.partial(map_pan_database_kos, draw_individual_files=True)
     else:
         # Draw maps for select genomes.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, draw_genome_files=args.draw_individual_files
+            map_pan_database_kos, draw_individual_files=args.draw_individual_files
         )
 
     if args.draw_grid is None:
