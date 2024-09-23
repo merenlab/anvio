@@ -16,7 +16,7 @@ import matplotlib.colors as mcolors
 
 from argparse import Namespace
 from itertools import combinations
-from typing import Dict, Iterable, List, Literal, Tuple, Union
+from typing import Dict, Iterable, List, Literal, Set, Tuple, Union
 
 import anvio.kegg as kegg
 import anvio.kgml as kgml
@@ -1725,6 +1725,8 @@ class Mapper:
 
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
+
+        # Load gene cluster data.
         progress = self.progress
         self.progress = terminal.Progress(verbose=False)
         run = self.run
@@ -1740,17 +1742,62 @@ class Mapper:
         pan_super.init_gene_clusters_functions_summary_dict()
         gene_clusters: Dict[str, Dict[str, List[int]]] = pan_super.gene_clusters
         gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
+        self.progress = progress
+        self.run = run
 
-        consensus_cluster_ids: List[str] = []
-        consensus_ko_ids: List[str] = []
+        # Find clusters with consensus KO annotations.
+        consensus_cluster_kos: Dict[str, str] = {}
         for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
             gene_cluster_ko_data = gene_cluster_functions_data['KOfam']
             if gene_cluster_ko_data == {'function': None, 'accession': None}:
                 continue
-            consensus_cluster_ids.append(cluster_id)
-            consensus_ko_ids.append(gene_cluster_ko_data['accession'])
-        self.progress = progress
-        self.run = run
+            consensus_cluster_kos[cluster_id] = gene_cluster_ko_data['accession']
+        unique_consensus_kos: Set[str] = set(consensus_cluster_kos.values())
+
+        # More than one gene cluster can be represented by the same consensus KO. Find which
+        # genomes contribute genes to clusters represented by each consensus KO.
+        consensus_ko_genomes: Dict[str, List[str]] = {}
+        genome_consensus_kos: Dict[str, List[str]] = {}
+        for cluster_id, ko_id in consensus_cluster_kos.items():
+            for genome_name, gcids in gene_clusters[cluster_id].items():
+                if not gcids:
+                    continue
+                try:
+                    consensus_ko_genomes[ko_id].append(genome_name)
+                except KeyError:
+                    consensus_ko_genomes[ko_id] = [genome_name]
+                try:
+                    genome_consensus_kos[genome_name].append(ko_id)
+                except KeyError:
+                    genome_consensus_kos[genome_name] = [ko_id]
+        for ko_id, ko_genome_names in consensus_ko_genomes.items():
+            consensus_ko_genomes[ko_id] = list(set(ko_genome_names))
+
+        # Find which groups meet the threshold for each KO.
+        consensus_ko_groups: Dict[str, List[str]] = {}
+        if groups_txt is not None:
+            group_source_count: Dict[str, int] = {
+                group: len(sources) for group, sources in group_sources.items()
+            }
+            for ko_id, genome_names in consensus_ko_genomes.items():
+                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, value=0)
+                for genome_name in genome_names:
+                    try:
+                        group = genome_group[genome_name]
+                    except KeyError:
+                        # 'groups_txt' is not require to contain every pan genome.
+                        continue
+                    group_counts[group] += 1
+
+                consensus_ko_groups[ko_id] = qualifying_groups = []
+                for group, counts in group_counts.items():
+                    if group_threshold == 0:
+                        if counts / group_source_count[group] > 0:
+                            qualifying_groups.append(group)
+                    else:
+                        if counts / group_source_count[group] >= group_threshold:
+                            qualifying_groups.append(group)
+
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
