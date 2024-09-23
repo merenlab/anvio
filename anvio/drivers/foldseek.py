@@ -31,12 +31,13 @@ class Foldseek():
         self.run = run
         self.progress = progress
 
-        self.num_threads = num_threads
-        self.weight = weight
-
         utils.is_program_exists('foldseek')
 
         self.query_fasta = query_fasta
+        self.num_threads = num_threads
+        self.weight = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
+
+        filesnpaths.is_file_exists(self.weight)
 
         if output_file_path and filesnpaths.check_output_directory(output_file_path):
             self.output_file_path = output_file_path.rstrip('/')
@@ -53,29 +54,31 @@ class Foldseek():
         self.progress.new('FOLDSEEK')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
-        expected_output = os.path.join(self.output_file_path, "db")
-        filesnpaths.gen_output_directory(expected_output, delete_if_exists=False)
+        expected_output_dir = os.path.join(self.output_file_path, "db")
+        expected_output_file = os.path.join(expected_output_dir, "search_db")
+
+        filesnpaths.gen_output_directory(expected_output_dir, delete_if_exists=False)
 
         cmd_line = ['foldseek',
                     'createdb',
                     self.query_fasta,
-                    expected_output + '/' + 'db',
-                    '--prostt5-model', self.weight, # Where should the weight of Prostt5 be placed?
-                    '--threads', str(self.num_threads)
+                    expected_output_file,
+                    '--prostt5-model', self.weight,
+                    '--threads', self.num_threads
                     ]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search DB', expected_output)
+        self.run.info('Foldseek search DB', expected_output_file)
 
-    def search(self, query_db, target_db, result_file, tmp):
+    def search(self, query_db, target_db, tmp):
         self.run.warning(None, header="FOLDSEEK EASY SEARCH", lc="green")
         self.progress.new('FOLDSEEK')
         self.progress.update('Running search using Foldseek ...')
 
-        result_file_dir = os.path.join(self.output_file_path, result_file)
+        result_file_dir = os.path.join(self.output_file_path, 'result')
         tmp_dir = os.path.join(self.output_file_path, tmp)
 
         cmd_line = [
@@ -93,4 +96,4 @@ class Foldseek():
         self.progress.end()
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search Result', result_file_dir)
+        self.run.info('Foldseek search Result', self.output_file_path + '/' + 'result')
