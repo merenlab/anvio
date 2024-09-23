@@ -1894,41 +1894,44 @@ class Mapper:
 
             return drawn
 
-        # Determine the individual genome maps to draw.
-        if draw_genome_files == True:
-            draw_files_genome_names = genome_names
-        elif draw_genome_files == False:
-            draw_files_genome_names = []
+        # Determine the individual maps to draw.
+        if draw_individual_files == True:
+            if groups_txt is None:
+                draw_files_categories = all_genome_names
+            else:
+                draw_files_categories = list(group_sources)
+        elif draw_individual_files == False:
+            draw_files_categories = []
         else:
-            for genome_name in draw_genome_files:
-                assert genome_name in genome_names
-            draw_files_genome_names = draw_genome_files
+            draw_files_categories = draw_individual_files
         seen = set()
-        draw_files_genome_names = [
-            genome_name for genome_name in list(draw_files_genome_names)
-            if not (genome_name in seen or seen.add(genome_name))
+        draw_files_categories = [
+            category for category in list(draw_files_categories)
+            if not (category in seen or seen.add(category))
         ]
 
         # Determine the map grids to draw.
         if draw_grid == True:
-            draw_grid_genome_names = genome_names
+            if groups_txt is None:
+                draw_grid_categories = all_genome_names
+            else:
+                draw_files_categories = list(group_sources)
         elif draw_grid == False:
-            draw_grid_genome_names = []
+            draw_grid_categories = []
         else:
-            for genome_name in draw_grid:
-                assert genome_name in genome_names
-            draw_grid_genome_names = draw_grid
+            draw_grid_categories = draw_grid
         seen = set()
-        draw_grid_genome_names = [
-            genome_name for genome_name in list(draw_grid_genome_names)
-            if not (genome_name in seen or seen.add(genome_name))
+        draw_grid_categories = [
+            category for category in list(draw_grid_categories)
+            if not (category in seen or seen.add(category))
         ]
 
         seen = set()
-        draw_genome_names = [
-            genome_name for genome_name in draw_files_genome_names + draw_grid_genome_names
-            if not (genome_name in seen or seen.add(genome_name))
+        draw_categories = [
+            category for category in draw_files_categories + draw_grid_categories
+            if not (category in seen or seen.add(category))
         ]
+
 
         # Draw individual genome maps needed as final outputs or for grids.
         for genome_name in draw_genome_names:
