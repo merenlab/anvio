@@ -1102,7 +1102,7 @@ class Mapper:
                 self.draw_colorbar(
                     group_color_priority[group],
                     os.path.join(output_dir, group, 'colorbar.pdf'),
-                    color_labels=range(1, len(group_sources[group])),
+                    color_labels=range(1, len(group_sources[group]) + 1),
                     label='database count'
                 )
 
@@ -1195,7 +1195,7 @@ class Mapper:
                 self.draw_colorbar(
                     group_color_priority[group],
                     os.path.join(grid_dir, f'colorbar_{group}.pdf'),
-                    color_labels=range(1, len(group_sources[group])),
+                    color_labels=range(1, len(group_sources[group]) + 1),
                     label='database count'
                 )
 
