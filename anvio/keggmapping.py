@@ -2089,43 +2089,32 @@ class Mapper:
         paths_to_remove: List[str] = []
         if not draw_maps_lacking_kos:
             # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
-            # indicating which maps were drawn per genome.
+            # indicating which maps were drawn per genome or group.
             drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
-            for genome_name, drawn_genome_name in drawn['individual'].items():
-                for pathway_number, drawn_map in drawn_genome_name.items():
+            for category, drawn_category in drawn['individual'].items():
+                for pathway_number, drawn_map in drawn_category.items():
                     try:
-                        drawn_pathway_number[pathway_number][genome_name] = drawn_map
+                        drawn_pathway_number[pathway_number][category] = drawn_map
                     except KeyError:
-                        drawn_pathway_number[pathway_number] = {genome_name: drawn_map}
+                        drawn_pathway_number[pathway_number] = {category: drawn_map}
 
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
-            progress = self.progress
-            self.progress = terminal.Progress(verbose=False)
-            run = self.run
-            self.run = terminal.Run(verbose=False)
-            for pathway_number, drawn_genome_name in drawn_pathway_number.items():
-                if set(drawn_genome_name.values()) != set([True, False]):
+            for pathway_number, drawn_category in drawn_pathway_number.items():
+                if set(drawn_category.values()) != set([True, False]):
                     continue
-                for genome_name, drawn_map in drawn_genome_name.items():
+                pathway = self._get_pathway(pathway_number)
+                for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    self.map_genomes_storage_genome_kos(
-                        genomes_storage_db,
-                        genome_name,
-                        os.path.join(output_dir, genome_name),
-                        pathway_numbers=[pathway_number],
-                        color_hexcode=color_hexcode,
-                        draw_maps_lacking_kos=True
-                    )
                     if self.name_files:
                         pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
                     else:
                         pathway_name = ''
-                    paths_to_remove.append(os.path.join(
-                        output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
-                    ))
-            self.progress = progress
-            self.run = run
+                    out_path = os.path.join(
+                        output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
+                    )
+                    self.drawer.draw_map(pathway, out_path)
+                    paths_to_remove.append(out_path)
 
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
