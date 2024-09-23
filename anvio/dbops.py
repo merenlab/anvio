@@ -3362,13 +3362,14 @@ class ProfileSuperclass(object):
             if callback and counter % callback_interval == 0:
                 callback()
 
+                # don't keep partial dictionaries around
+                self.gene_level_coverage_stats_dict = {}
+                if not init_split_coverage_values_per_nt:
+                    self.split_coverage_values_per_nt_dict = {}
+
             counter += 1
 
         self.progress.end()
-
-        # don't keep partial split dictionaries around
-        if not init_split_coverage_values_per_nt:
-            self.split_coverage_values_per_nt_dict = {}
 
         if len(failed_gene_caller_ids_set):
             self.run.warning(f"Please read this carefully as something sad just happened. While anvi'o was trying to recover "
