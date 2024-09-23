@@ -768,6 +768,8 @@ class Mapper:
                 "recommend a sequential colormap like 'plasma' instead."
             )
 
+        self.progress.new("Loading KO data from contigs databases")
+        self.progress.update("...")
 
         # Check that groups include all contigs databases. Relate groups and project names.
         group_project_names: Dict[str, List[str]] = {}
@@ -835,6 +837,7 @@ class Mapper:
                     else:
                         if counts / group_source_count[group] >= group_threshold:
                             qualifying_groups.append(group)
+
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
@@ -933,24 +936,23 @@ class Mapper:
             else:
                 raise AssertionError
 
-            if colorbar:
-                # Draw a colorbar in a separate file.
-                _draw_colorbar = self._draw_colorbar
-                if scheme == 'by_count':
-                    _draw_colorbar = functools.partial(
-                        _draw_colorbar,
-                        color_labels=range(1, len(categories) + 1),
-                        label='database count' if groups_txt is None else 'group count'
-                    )
-                elif scheme == 'by_membership':
-                    _draw_colorbar = functools.partial(
-                        _draw_colorbar,
-                        color_labels=[', '.join(combo) for combo in category_combos],
-                        label='databases' if groups_txt is None else 'groups'
-                    )
-                _draw_colorbar(
-                    color_priority, os.path.join(output_dir, 'colorbar.pdf')
+            # Draw a colorbar in a separate file.
+            _draw_colorbar = self.draw_colorbar
+            if scheme == 'by_count':
+                _draw_colorbar = functools.partial(
+                    _draw_colorbar,
+                    color_labels=range(1, len(categories) + 1),
+                    label='database count' if groups_txt is None else 'group count'
                 )
+            elif scheme == 'by_membership':
+                _draw_colorbar = functools.partial(
+                    _draw_colorbar,
+                    color_labels=[', '.join(combo) for combo in category_combos],
+                    label='databases' if groups_txt is None else 'groups'
+                )
+            _draw_colorbar(
+                color_priority, os.path.join(output_dir, 'colorbar.pdf')
+            )
 
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
@@ -2520,7 +2522,7 @@ class Mapper:
 
         return altered
 
-    def _draw_colorbar(
+    def draw_colorbar(
         self,
         colors: Iterable,
         out_path: str,
