@@ -519,11 +519,11 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         args.pan_db,
         args.genomes_storage,
         args.output_dir,
+        consensus_threshold=args.consensus_threshold,
+        discard_ties=args.discard_ties,
         pathway_numbers=args.pathway_numbers,
         reverse_overlay=args.reverse_overlay,
         draw_maps_lacking_kos=args.draw_bare_maps,
-        consensus_threshold=args.consensus_threshold,
-        discard_ties=args.discard_ties
     )
 
 if __name__ == '__main__':
