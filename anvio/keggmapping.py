@@ -1188,6 +1188,17 @@ class Mapper:
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
+
+        if groups_txt is not None:
+            # Draw colorbars for each group.
+            for group in draw_categories:
+                self.draw_colorbar(
+                    group_color_priority[group],
+                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
+                    color_labels=range(1, len(group_sources[group])),
+                    label='database count'
+                )
+
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
             if self.name_files:
@@ -1225,6 +1236,7 @@ class Mapper:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
+
         self.progress.end()
 
         # Remove individual maps that were only needed for map grids.
