@@ -553,7 +553,7 @@ class Mapper:
             the map was not drawn because it did not contain any of the select KOs and
             'draw_maps_lacking_kos' was False.
         """
-        # This method is similar to map_pan_database_kos, especially after KOs are loaded.
+        # This method is similar to 'map_pan_database_kos'.
 
         self.progress.new("Loading metadata from contigs databases")
         self.progress.update("...")
@@ -833,14 +833,13 @@ class Mapper:
             group_source_count: Dict[str, int] = {
                 group: len(sources) for group, sources in group_sources.items()
             }
-
             for ko_id, project_names in ko_project_names.items():
                 group_counts: Dict[str, int] = {}.fromkeys(group_source_count, value=0)
                 for project_name in project_names:
                     group = project_name_group[project_name]
                     group_counts[group] += 1
 
-                qualifying_groups = ko_groups[ko_id] = []
+                ko_groups[ko_id] = qualifying_groups = []
                 for group, counts in group_counts.items():
                     if group_threshold == 0:
                         if counts / group_source_count[group] > 0:
@@ -866,7 +865,7 @@ class Mapper:
 
         exceeds_colors: Tuple[int, int] = None
         if scheme == 'static':
-            # Draw unified maps of all contigs databases with a static reaction color.
+            # Draw unified maps of all contigs databases with static reaction colors.
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 if color_hexcode == 'original':
@@ -1043,12 +1042,13 @@ class Mapper:
                         continue
 
                     try:
+                        # Use 'inner_' to distinguish from variable 'ko_project_names'.
                         inner_ko_project_names = group_ko_project_names[group]
                     except KeyError:
                         group_ko_project_names[group] = inner_ko_project_names = {}
                     try:
                         inner_project_names = inner_ko_project_names[ko_id]
-                    except:
+                    except KeyError:
                         inner_ko_project_names[ko_id] = inner_project_names = []
                     inner_project_names.append(project_name)
 
@@ -1081,7 +1081,7 @@ class Mapper:
                             mcolors.rgb2hex(group_cmap(sample_point))
                         ] = sample_point
 
-        # Draw individual database maps needed as final outputs or for grids.
+        # Draw individual database or group maps needed as final outputs or for grids.
         for category in draw_categories:
             if groups_txt is None:
                 project_name = category
@@ -1265,8 +1265,7 @@ class Mapper:
 
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {category_message}",
-            count
+            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
         )
 
         if draw_individual_files:
