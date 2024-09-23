@@ -1275,132 +1275,205 @@ class Mapper:
         pan_db: str,
         genomes_storage_db: str,
         output_dir: str,
+        groups_txt: str = None,
+        group_threshold: float = None,
+        consensus_threshold: float = None,
+        discard_ties: bool = None,
         pathway_numbers: Iterable[str] = None,
-        draw_genome_files: Union[Iterable[str], bool] = False,
+        draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[str, mcolors.Colormap, None] = 'plasma_r',
         colormap_limits: Tuple[float, float] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
-        colorbar: bool = True,
-        draw_maps_lacking_kos: bool = False,
-        consensus_threshold: float = None,
-        discard_ties: bool = None
+        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        group_reverse_overlay: bool = False,
+        draw_maps_lacking_kos: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
-        Draw pathway maps, highlighting consensus KOs from the pan database.
+        Draw pathway maps, highlighting consensus KOs of gene clusters across genomes or groups
+        of genomes (representing, for example, taxa or geographical groups).
 
-        A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
-        gene clusters. In global and overview maps, reaction lines are colored. In standard maps,
-        reaction boxes or lines are colored.
+        A reaction on a map is defined by one or more KOs. These are matched to consensus KOs of
+        pangenomic gene clusters. A consensus KO is imputed to genomes with genes in the cluster.
+        The presence/absence of any of the reaction KOs among the imputed consensus KOs of a genome
+        translates in the map to the presence/absence of the reaction in the genome.
+
+        In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
+        lines are colored.
 
         Parameters
         ==========
         pan_db : str
-            File path to a pangenomic database. If a reaction network was stored in the database,
-            then consensus KOs are determined using the consensus_threshold and discard_ties
-            parameters stored as database metadata unless explicitly given here as arguments. These
-            parameters are only stored in the database when a reaction network is stored.
+            File path to a pangenomic database.
 
         genomes_storage_db : str
-            Path to the genomes storage database associated with the pan database. This contains
+            Path to the genomes storage database associated with the pan database. This must contain
             KO annotations.
 
         output_dir : str
             Path to the output directory in which pathway map PDF files are drawn. The directory is
             created if it does not exist.
 
+        groups_txt : str, None
+            A tab-delimited text file specifying which group each genome belongs to. The first
+            column, which can have any header, contains the names of genomes in the pan database.
+            The second column, which must be headed 'group', contains group names, which are
+            recommended to be single words without fancy characters, such as 'HIGH_TEMPERATURE' or
+            'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'. Each genome can only be
+            associated with a single group. The 'group_threshold' argument must also be used for the
+            groups to take effect, assigning colors based on group membership and drawing individual
+            files ('draw_individual_files') and map grids ('draw_grid') for groups rather than
+            individual databases.
+
+        group_threshold : float, None
+            The proportion of genomes in a group containing data of interest for the group to be
+            represented in terms of presence/absence in a map feature. Here is a concrete example.
+            Say the 'groups_txt' argument, which must be used with this argument, groups genomes by
+            their species, 'A', 'B', and 'C'. You wish to understand the distribution of metabolic
+            capabilities across the 3 species from KO annotations of genes. Reaction colors are
+            assigned based on the groups rather than individual genomes containing the reaction.
+            Thresholds between 0 and 1 can be set to define group membership: a threshold of 0.0
+            would mean that ANY genome in the group can contain the KO for the KO to be considered
+            present in the group; a threshold of 0.75 means that at least 75% of the genomes in the
+            group must contain the KO for it to be present; a threshold of 1.0 means that ALL
+            genomes in the group must contain the KO for it to be present. In our example, set the
+            threshold to 0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map
+            corresponds to KO Y. 90% of species A genomes, 50% of species B genomes, and 10% of
+            species C genomes contain KO X, so Reaction J would be colored to indicate that it is
+            represented in species A and B. 0% of species A genomes, 15% of species B genomes, and
+            40% of species C genomes contain KO Y, so Reaction K would not be colored.
+
+        consensus_threshold : float, None
+            If a reaction ntework is stored in the pan database, then by default consensus KOs are
+            determined using the 'reaction_network_consensus_threshold' value stored as database
+            metadata. If a reaction network is not stored, then by default the consensus threshold
+            is set to 0, meaning that the KO annotation most frequent in a gene cluster is assigned
+            to the cluster as a whole. Alternatively, a number between 0 and 1 can be provided. At
+            least this proportion of genes in the cluster must have the most frequent KO annotation
+            for it to be assigned to the cluster as a whole.
+
+        discard_ties : bool, None
+            If a reaction network is stored in the pan database, then by default consensus KOs are
+            determined using the 'reaction_network_discard_ties' value stored as database metadata.
+            If a reaction network is not stored, then by default 'discard_ties' assumes a value of
+            False. A value of True means that if multiple KO annotations are most frequent among
+            genes in a cluster, then a consensus KO is not assigned to the cluster as a whole,
+            whereas a value of False would cause one of the most frequent KOs to be arbitrarily
+            chosen.
+
         pathway_numbers : Iterable[str], None
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
             draws all available pathway maps in the KEGG data directory.
 
-        draw_genome_files : Union[Iterable[str], bool], False
-            Draw pathway maps for genomes of the pangenome if not False. If True, draw maps for all
-            of the genomes. Alternatively, the names of a subset of genomes can be provided.
+        draw_individual_files : Union[Iterable[str], bool], False
+            First consider the case where groups are not defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual genomes.
+            If True, draw maps for all of the genomes. Alternatively, the argument can accept the
+            project names of a subset of genomes to only draw maps for those genomes.
+
+            Consider the case where groups are defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual groups
+            showing membership of reactions in the genomes defining the group. If True, draw maps
+            for all of the groups. Alternatively, the argument can accept a subset of group names to
+            only draw maps for those groups.
 
         draw_grid : Union[Iterable[str], bool], False
-            If not False, draw a grid for each pathway map showing both the pangenomic map and a map
-            for each genome of the pangenome, facilitating identification of the genomes containing
-            reactions highlighted in the pangenomic map. If True, include all of the genomes in the
-            grid. Alternatively, the names of a subset of genomes can be provided.
+            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
+            argument is not False, draw a paneled grid file for each pathway map showing the unified
+            map of genomes alongside maps for individual genomes. If True, include all of the
+            genomes in the grid. Alternatively, the argument can accept the project names of a
+            subset of genomes to only draw individual maps in the grid for those genomes.
+
+            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
+            is not False, draw a paneled grid file for each pathway map showing the unified map of
+            groups alongside maps for individual groups that color reactions by count of occurrence
+            in genomes of the group. If True, include all of the groups in the grid. Alternatively,
+            the argument can accept a subset of group names to only draw individual maps in the grid
+            for those groups.
 
         colormap : Union[str, matplotlib.colors.Colormap, None], 'plasma_r'
-            Reactions are dynamically colored to reflect the number of genomes involving the
-            reaction, unless the argument value is None. None overrides dynamic coloring via a
-            colormap using the argument provided to 'color_hexcode', so that reactions in the
-            pangenome are assigned predetermined colors.
+            Reactions are dynamically colored to reflect the number of genomes (or groups of
+            genomes) containing the reaction, unless the argument value is None. None overrides
+            dynamic coloring via a colormap using the argument provided to 'color_hexcode', so that
+            reactions in the pangenome are assigned predetermined colors.
 
-            Here is how a reaction is assigned a genome count. A reaction element in a map can
-            contain one or more KOs. Find corresponding consensus KOs from the anvi'o pangenomic
-            database. Each consensus KO is assigned to one or more gene clusters. Counted genomes
-            have one or more genes in gene clusters with these consensus KOs.
-
-            This argument can take either be the name of a built-in matplotlib colormap or a
-            Colormap object itself. The default sequential colormap, 'plasma_r', spans yellow (fewer
-            genomes) to blue-violet (more genomes). This accentuates reactions that are shared
-            rather than unshared across genomes. A colormap spanning dark (fewer genomes) to light
-            (more genomes), such as 'plasma', is better for drawing attention to unshared reactions.
+            This argument can take the name of a Matplotlib Colormap or a Colormap object itself.
+            The default sequential colormap, 'plasma_r', spans yellow (fewer genomes or groups) to
+            blue-violet (more genomes or groups). This accentuates reactions that are shared rather
+            than unshared across genomes/groups. In contrast, a colormap spanning dark to light, such as
+            'plasma', is better for drawing attention to unshared reactions.
 
             See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
 
-        colormap_limits : Tuple[float, float], (0.0, 1.0)
-            Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
-            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. The default
-            limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
+        colormap_limits : Tuple[float, float], (0.1, 0.9)
+            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
+            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
+            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. The
+            default limits of (0.1, 0.9) work well with the default 'plasma_r' colormap.
 
         reverse_overlay : bool, False
-            By default, with False, reactions in more genomes are drawn on top of those in fewer
-            genomes. With True, the opposite applies; especially in global maps with a non-default
-            colormap spanning dark to light, this accentuates unshared rather than shared parts of a
-            pathway.
+            By default, with False, reactions in more genomes or groups of genomes are drawn on top
+            of those in fewer genomes/groups. With True, the opposite applies; especially in global
+            maps with a non-default colormap spanning dark to light, this accentuates unshared
+            rather than shared parts of a pathway.
 
         color_hexcode : str, '#2ca02c'
             This is the color, by default green, for reactions containing consensus KOs from the pan
             database. Alternatively to a color hex code, the string, 'original', can be provided to
-            use the original color scheme of the reference map. The 'colormap' argument must be
-            False for this argument to be used, overriding dynamic coloring based on quantitative
-            data with static coloring based on presence/absence in the pangenome.
+            use the original color scheme of the reference map.
 
-        colorbar : bool, True
-            If True and coloring by number of genomes, save a colorbar legend to the file,
-            'colorbar.pdf', in the output directory.
+            For this argument to be used in coloring unified maps showing KO membership in all
+            genomes, overriding dynamic coloring based on genome/group membership with static
+            coloring based on presence/absence in any genome, the 'colormap' argument must be set
+            to False.
+
+            This argument is used in coloring map files for individual genomes
+            ('draw_individual_files'), regardless of the value of 'colormap'.
+
+        group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
+            This parameter is similar in effect to 'colormap', but only applies to drawing files for
+            individual groups ('draw_individual_files') and panels for individual groups in map
+            grids ('draw_grid'). These maps for individual groups show the number of genomes in the
+            group containing the reaction. Like 'colormap', this parameter can take the name of a
+            Matplotlib Colormap or a Colormap object itself. The default group colormap is
+            'plasma_r', the same as the default 'colormap'.
+
+        group_colormap_limits : Tuple[float, float], (0.1, 0.9)
+            This parameter is similar in effect to 'colormap_limits', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
+            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
+            are the same as the default 'colormap_limits'.
+
+        group_reverse_overlay : bool, False
+            This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
+            files for individual groups and panels for individual groups in map grids (also see
+            'group_colormap'). If True, these maps for individual groups draw reactions found in
+            fewer of the group's genomes on top of reactions found in more of the group's genomes,
+            the opposite of the default drawing order.
 
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
             maps regardless, meaning that nothing may be colored.
 
-        consensus_threshold : float, None
-            With a value of None, if a reaction network was stored in the pan database, then the
-            consensus_threshold metavalue that was also stored in the database is used to find
-            consensus KOs. If a reaction network was not stored, then with a value of None, the KO
-            annotation most frequent in a gene cluster is assigned to the cluster itself. If a
-            numerical value is provided (must be on [0, 1]), at least this proportion of genes in
-            the cluster must have the most frequent annotation for the cluster to be annotated.
-
-        discard_ties : bool, None
-            With a value of None, if a reaction network was stored in the pan database, then the
-            discard_ties metavalue that was also stored in the database is used to find consensus
-            KOs. If a reaction network was not stored, then with a value of None, discard_ties
-            assumes a value of False. A value of True means that if multiple KO annotations are most
-            frequent among genes in a cluster, then a consensus KO is not assigned to the cluster
-            itself, whereas a value of False would cause one of the most frequent KOs to be
-            arbitrarily chosen.
-
         Returns
         =======
         Dict[Literal['unified', 'individual', 'grid'], Dict]
             Keys in the outer dictionary are different types of files that can be drawn. 'unified'
-            maps show data from all genomes. 'individual' maps show data from individual genomes.
-            'grid' images show both unified and individual maps. 'unified' and 'grid' values are
-            Dict[str, bool], where keys are pathway numbers, and values are True if the map was
-            drawn, False if the map was not drawn because it did not contain any of the select KOs
-            and 'draw_maps_lacking_kos' was False. 'individual' values are Dict[str, Dict[str,
-            bool]], where keys in the outer dictionary are genome names, keys in the inner
-            dictionary are pathway numbers, and values in the inner dictionary are True if the map
-            was drawn, False if the map was not drawn because it did not contain any of the select
-            KOs and 'draw_maps_lacking_kos' was False.
+            maps show data from all genomes or groups of genomes. 'individual' maps show data from
+            individual genomes or groups. 'grid' images show both unified and individual maps.
+
+            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers.
+            Values are True if the map was drawn; False if the map was not drawn, because it did not
+            contain any of the select KOs and 'draw_maps_lacking_kos' was False.
+
+            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
+            are genome or group names. Keys in the inner dictionary are pathway numbers. Values in
+            the inner dictionary are True if the map was drawn; False if the map was not drawn
+            because it did not contain any of the select KOs and 'draw_maps_lacking_kos' was False.
         """
         # This method is similar to map_contigs_databases_kos, and almost identical after KOs are
         # loaded.
