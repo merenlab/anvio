@@ -2025,6 +2025,32 @@ class DGR_Finder:
 
 
 
+    def print_primers_dict_to_csv(self, primers_dict):
+        output_directory_path = self.output_directory
+        output_path_for_genes_found = os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
+
+        # Define the header for the CSV file
+        csv_header = ['Primer_ID', 'Initial Primer', 'Anchor Primer', 'Whole Primer']
+
+        # Open the CSV file in write mode
+        with open(output_path_for_genes_found, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(csv_header)  # Write the header row
+            # Iterate through the dictionary and write each gene's information to the CSV file
+            for primer_name, primer_info in primers_dict.items():
+                    initial_primer = primer_info['initial_primer_sequence']
+                    anchor_primer = primer_info['vr_anchor_primer']
+                    whole_primer = primer_info['primer_sequence']
+
+
+                    writer.writerow([
+                    primer_name,
+                    initial_primer,
+                    anchor_primer,
+                    whole_primer
+                    ])
+        return
+
     def compute_dgr_variability_profiling(self, dgrs_dict):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
