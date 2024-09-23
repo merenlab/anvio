@@ -8,6 +8,7 @@ import tempfile
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -26,18 +27,21 @@ pp = terminal.pretty_print
 
 class Foldseek():
     
-    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False, output_file_path=None, weight=None):
+    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, output_file_path=None, weight=None):
         self.run = run
         self.progress = progress
 
         self.num_threads = num_threads
-        self.overwrite_output_destinations = overwrite_output_destinations
-        self.output_file_path = output_file_path
         self.weight = weight
 
         utils.is_program_exists('foldseek')
 
         self.query_fasta = query_fasta
+
+        if output_file_path and filesnpaths.check_output_directory(output_file_path):
+            self.output_file_path = output_file_path.rstrip('/')
+        else:
+            raise ConfigError("Oopss. Something probably went wrong with your output file path's '%s'" % (output_file_path))
 
         if not self.run.log_file_path:
             self.run.log_file_path = 'foldseek-log-file.txt'
@@ -49,10 +53,13 @@ class Foldseek():
         self.progress.new('FOLDSEEK')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
+        expected_output = os.path.join(self.output_file_path, "db")
+        filesnpaths.gen_output_directory(expected_output, delete_if_exists=False)
+
         cmd_line = ['foldseek',
                     'createdb',
                     self.query_fasta,
-                    self.output_file_path + 'db',
+                    expected_output + '/' + 'db',
                     '--prostt5-model', self.weight, # Where should the weight of Prostt5 be placed?
                     '--threads', str(self.num_threads)
                     ]
@@ -60,9 +67,6 @@ class Foldseek():
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
-
-        expected_output = self.output_file_path + 'db.ss'
-
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Foldseek search DB', expected_output)
 
@@ -71,13 +75,16 @@ class Foldseek():
         self.progress.new('FOLDSEEK')
         self.progress.update('Running search using Foldseek ...')
 
+        result_file_dir = os.path.join(self.output_file_path, result_file)
+        tmp_dir = os.path.join(self.output_file_path, tmp)
+
         cmd_line = [
             'foldseek',
             'easy-search',
             query_db,
             target_db,
-            self.output_file_path + '/' + result_file,
-            self.output_file_path + '/' + tmp,
+            result_file_dir,
+            tmp_dir,
             '--threads', self.num_threads
         ]
 
@@ -85,6 +92,5 @@ class Foldseek():
 
         self.progress.end()
 
-        expected_output = self.output_file_path + '/' + result_file
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search Result', expected_output)
+        self.run.info('Foldseek search Result', result_file_dir)
