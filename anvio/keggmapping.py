@@ -2177,18 +2177,24 @@ class Mapper:
             shutil.rmtree(os.path.join(output_dir, category))
             drawn['individual'].pop(category)
 
+        # Our work here is done.
+        if groups_txt is None:
+            category_message = "genomes"
+        else:
+            category_message = "groups"
 
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
-            "Number of 'unified' maps drawn incorporating data from all genomes",
-            count
+            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
         )
-        if draw_genome_files:
+
+        if draw_individual_files:
             if not drawn['individual']:
                 count = 0
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info("Number of maps drawn for individual genomes", count)
+            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+
         count = sum(drawn['grid'].values()) if drawn['grid'] else 0
         self.run.info("Number of map grids drawn", count)
 
