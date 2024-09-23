@@ -1096,6 +1096,14 @@ class Mapper:
                 self.progress = terminal.Progress(verbose=False)
                 run = self.run
                 self.run = terminal.Run(verbose=False)
+
+                self.draw_colorbar(
+                    group_color_priority[group],
+                    os.path.join(output_dir, group, 'colorbar.pdf'),
+                    color_labels=range(1, len(group_sources[group])),
+                    label='database count'
+                )
+
                 drawn_group: Dict[str, bool] = {}
                 for pathway_number in pathway_numbers:
                     drawn_group[pathway_number] = self._draw_map_kos_membership(
@@ -1106,6 +1114,7 @@ class Mapper:
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 drawn['individual'][group] = drawn_group
+
                 self.progress = progress
                 self.run = run
                 self.progress.end()
