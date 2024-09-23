@@ -1812,83 +1812,47 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all genomes")
+
         exceeds_colors: Tuple[int, int] = None
         if colormap is None:
-            # Draw pangenomic maps with a static reaction color.
+            # Draw unified maps of all genomes with static reaction colors.
             for pathway_number in pathway_numbers:
+                self.progress.update(pathway_number)
                 if color_hexcode == 'original':
                     drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
                         pathway_number,
-                        set(consensus_ko_ids),
+                        unique_consensus_kos,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 else:
                     drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
-                        set(consensus_ko_ids),
+                        unique_consensus_kos,
                         color_hexcode,
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
-            cmap = None
-            sampling = None
         else:
-            # Draw pangenomic maps with dynamic coloring by number of genomes.
-            if isinstance(colormap, str):
-                cmap = plt.colormaps[colormap]
-                if colormap_limits is None:
-                    colormap_limits = (0.1, 0.9)
-            else:
-                cmap = colormap
-
-            # Set how the colormap is sampled.
-            if cmap.name in qualitative_colormaps + repeating_colormaps:
-                sampling = 'in_order'
-            else:
-                sampling = 'even'
-
-            # Trim the colormap.
-            if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
-                assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
-                cmap = mcolors.LinearSegmentedColormap.from_list(
-                    f'trunc({cmap.name},{colormap_limits[0]:.2f},{colormap_limits[1]:.2f})',
-                    cmap(range(
-                        int(colormap_limits[0] * cmap.N), math.ceil(colormap_limits[1] * cmap.N)
-                    ))
-                )
-
-            # For each consensus KO -- which can annotate more than one gene cluster -- find which
-            # genomes contribute genes to clusters represented by the KO.
-            ko_genomes: Dict[str, List[str]] = {}
-            for cluster_id, ko_id in zip(consensus_cluster_ids, consensus_ko_ids):
-                for genome_name, gcids in gene_clusters[cluster_id].items():
-                    if not gcids:
-                        continue
-                    try:
-                        ko_genomes[ko_id].append(genome_name)
-                    except KeyError:
-                        ko_genomes[ko_id] = [genome_name]
-            for ko_id, ko_genome_names in ko_genomes.items():
-                ko_genomes[ko_id] = list(set(ko_genome_names))
+            # Draw unified maps with dynamic coloring by number of genomes or groups.
 
             # Sample the colormap for colors representing each possible number of genomes. Lower
             # color values correspond to smaller numbers of databases.
             if sampling == 'in_order':
-                if len(genome_names) == 1:
+                if len(categories) == 1:
                     sample_points = range(1, 2)
                 else:
-                    sample_points = range(len(genome_names))
+                    sample_points = range(len(categories))
             elif sampling == 'even':
-                if len(genome_names) == 1:
+                if len(categories) == 1:
                     sample_points = np.linspace(1, 1, 1)
                 else:
-                    sample_points = np.linspace(0, 1, len(genome_names))
+                    sample_points = np.linspace(0, 1, len(categories))
             else:
                 raise AssertionError
 
-            if len(genome_names) > cmap.N:
-                exceeds_colors = (cmap.N, len(genome_names))
+            if len(categories) > cmap.N:
+                exceeds_colors = (cmap.N, len(categories))
 
             color_priority: Dict[str, float] = {}
             for sample_point in sample_points:
@@ -1897,22 +1861,24 @@ class Mapper:
                 else:
                     color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
 
-            if colorbar:
-                self._draw_colorbar(
-                    color_priority,
-                    os.path.join(output_dir, 'colorbar.pdf'),
-                    color_labels=range(1, len(genome_names) + 1),
-                    label='genomes'
-                )
+            # Draw a colorbar in a separate file.
+            self.draw_colorbar(
+                color_priority,
+                os.path.join(output_dir, 'colorbar.pdf'),
+                color_labels=range(1, len(categories) + 1),
+                label='genome count' if groups_txt is None else 'group count'
+            )
+
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
-                    ko_genomes,
+                    consensus_ko_genomes if groups_txt is None else consensus_ko_groups,
                     color_priority,
                     output_dir,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
+
         self.progress.end()
 
         if exceeds_colors:
