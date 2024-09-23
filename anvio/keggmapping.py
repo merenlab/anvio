@@ -1563,6 +1563,62 @@ class Mapper:
                     f"'pan_db' genomes, and so will not factor into maps: {message}"
                 )
 
+        # If individual files are requested to be drawn for a subset of genomes or groups, check
+        # that the names are valid.
+        if not isinstance(draw_individual_files, bool):
+            if groups_txt is None:
+                unrecognized_genome_names: List[str] = []
+                for genome_name in draw_individual_files:
+                    if genome_name not in all_genome_names:
+                        unrecognized_genome_names.append(genome_name)
+                if unrecognized_genome_names:
+                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
+                    raise ConfigError(
+                        "Individual maps were requested for a subset of genomes, but the following "
+                        "genome names were not recognized as corresponding to any of those in the "
+                        f"pan database: {message}"
+                    )
+            else:
+                unrecognized_groups: List[str] = []
+                for group in draw_individual_files:
+                    if group not in group_sources:
+                        unrecognized_groups.append(group)
+                if unrecognized_groups:
+                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    raise ConfigError(
+                        "Individual maps were requested for a subset of genome groups, but the "
+                        "following group names were not among those provided in 'groups_txt': "
+                        f"{message}"
+                    )
+
+        # If individual maps in grids are requested to be drawn for a subset of genomes or groups,
+        # check that the names are valid.
+        if not isinstance(draw_grid, bool):
+            if groups_txt is None:
+                unrecognized_genome_names: List[str] = []
+                for genome_name in draw_grid:
+                    if genome_name not in all_genome_names:
+                        unrecognized_genome_names.append(genome_name)
+                if unrecognized_genome_names:
+                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
+                    raise ConfigError(
+                        "Individual maps in grids were requested for a subset of genomes, but the "
+                        "following genome names were not recognized as corresponding to any of "
+                        f"those in the pan database: {message}"
+                    )
+            else:
+                unrecognized_groups: List[str] = []
+                for group in draw_grid:
+                    if group not in group_sources:
+                        unrecognized_groups.append(group)
+                if unrecognized_groups:
+                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    raise ConfigError(
+                        "Individual maps in grids were requested for a subset of genome groups, "
+                        "but the following group names were not among those provided in "
+                        f"'groups_txt': {message}"
+                    )
+
 
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
