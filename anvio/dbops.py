@@ -3368,6 +3368,10 @@ class ProfileSuperclass(object):
             self.gene_level_coverage_stats_dict.update(gene_level_coverage_stats)
 
             if callback and counter % callback_interval == 0:
+                if anvio.DEBUG:
+                    self.progress.reset()
+                    self.run.info_single(f"Sending {len(self.gene_level_coverage_stats_dict)} genes to the callback function.")
+                
                 callback()
 
                 # don't keep partial dictionaries around
