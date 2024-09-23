@@ -566,10 +566,6 @@ class Mapper:
         for contigs_db in contigs_dbs:
             contigs_db_info = dbinfo.ContigsDBInfo(contigs_db)
             self_table = contigs_db_info.get_self_table()
-
-            annotation_sources = self_table['gene_function_sources']
-            assert annotation_sources is not None and 'KOfam' in annotation_sources.split(',')
-
             project_name = self_table['project_name']
             assert project_name not in project_name_contigs_db
             project_name_contigs_db[project_name] = contigs_db
