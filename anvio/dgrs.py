@@ -2249,6 +2249,9 @@ class DGR_Finder:
         print('\n')
         print(f'Updated primers dictionary:', primers_dict)
 
+        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.csv' file.")
+        self.print_primers_dict_to_csv(primers_dict)
+
         ##################
         # MULTITHREADING #
         ##################
