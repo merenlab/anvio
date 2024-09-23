@@ -41,6 +41,27 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+# The colors of qualitative and repeating colormaps are sampled in order, whereas other colormaps,
+# including sequential colormaps, are sampled evenly.
+qualitative_colormaps: List[str] = [
+    'Pastel1',
+    'Pastel2',
+    'Paired',
+    'Accent',
+    'Dark2',
+    'Set1',
+    'Set2',
+    'Set3',
+    'tab10',
+    'tab20',
+    'tab20b',
+    'tab20c'
+]
+repeating_colormaps: List[str] = [
+    'flag',
+    'prism'
+]
+
 class Mapper:
     """
     Make KEGG pathway maps incorporating data sourced from anvi'o databases.
@@ -53,6 +74,10 @@ class Mapper:
     available_pathway_numbers : List[str]
         ID numbers of all pathways set up with PNG and KGML files in the KEGG data directory.
 
+    pathway_names : Dict[str, str]
+        The names of all KEGG pathways, including those without files in the KEGG data directory.
+        Keys are pathway ID numbers and values are pathway names.
+
     rn_constructor : anvio.reactionnetwork.Constructor
         Used for loading reaction networks from anvi'o databases.
 
@@ -61,6 +86,9 @@ class Mapper:
 
     overwrite_output : bool
         If True, methods in this class overwrite existing output files.
+
+    name_files : bool
+        Include the pathway name along with the number in output map file names.
 
     run : anvio.terminal.Run
         This object prints run information to the terminal.
@@ -72,6 +100,7 @@ class Mapper:
         self,
         kegg_dir: str = None,
         overwrite_output: bool = FORCE_OVERWRITE,
+        name_files: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -87,6 +116,9 @@ class Mapper:
         overwrite_output : bool, anvio.FORCE_OVERWRITE
             If True, methods in this class overwrite existing output files.
 
+        name_files : bool, False
+            Include the pathway name along with the number in output map file names.
+
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
 
@@ -101,11 +133,13 @@ class Mapper:
         self.kegg_context = kegg.KeggContext(args)
 
         if not os.path.exists(self.kegg_context.kegg_map_image_kgml_file):
-            raise ConfigError("One of the key files required by KEGG pathway maps is missing in your active anvi'o "
-                              "installation. If your KEGG data are not stored at the default KEGG data location, please "
-                              "include that path using the `--kegg-dir` parameter. Otherwise, please consider "
-                              "using the program `anvi-setup-kegg-data` to setup the latest KEGG data that "
-                              "includes the necessary files for KEGG pathway maps.")
+            raise ConfigError(
+                "One of the key files required by KEGG pathway maps is missing in your active "
+                "anvi'o installation. If your KEGG data are not stored at the default KEGG data "
+                "location, include that path using the 'kegg_dir' argument. Otherwise, please "
+                "consider using the program `anvi-setup-kegg-data` to set up the latest KEGG data "
+                "that includes the necessary files for KEGG pathway maps."
+            )
 
         available_pathway_numbers: List[str] = []
         for row in pd.read_csv(
@@ -116,11 +150,19 @@ class Mapper:
             available_pathway_numbers.append(row.Index[-5:])
         self.available_pathway_numbers = available_pathway_numbers
 
+        pathway_names: Dict[str, str] = {}
+        for pathway_number, pathway_name in pd.read_csv(
+            self.kegg_context.kegg_pathway_list_file, sep='\t', header=None
+        ).itertuples(index=False):
+            pathway_names[pathway_number[3:]] = pathway_name
+        self.pathway_names = pathway_names
+
         self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
 
         self.xml_ops = kgml.XMLOps()
         self.drawer = kgml.Drawer(kegg_dir=self.kegg_context.kegg_data_dir)
 
+        self.name_files = name_files
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
@@ -171,6 +213,10 @@ class Mapper:
         # Retrieve the IDs of all KO annotations in the contigs database.
         self.progress.new("Loading KO data from the contigs database")
         self.progress.update("...")
+
+        self._check_contigs_db(contigs_db)
+        self._check_contigs_db_ko_annotation(contigs_db)
+
         cdb = ContigsDatabase(contigs_db)
         ko_ids = cdb.db.get_single_column_from_table(
             'gene_functions',
@@ -241,6 +287,10 @@ class Mapper:
         # Retrieve the IDs of all KO annotations for the genome.
         self.progress.new("Loading KO data from the genome")
         self.progress.update("...")
+
+        self._check_genomes_storage_db(genomes_storage_db)
+        self._check_genomes_storage_ko_annotation(genomes_storage_db)
+
         gsdb = GenomeStorage(
             genomes_storage_db,
             genome_names_to_focus=[genome_name],
@@ -329,8 +379,8 @@ class Mapper:
             databases). This accentuates reactions that are shared rather than unshared across
             databases. In contrast, a colormap spanning dark to light, such as 'plasma', is better
             for drawing attention to unshared reactions. The scheme, 'by_database', uses the
-            qualitative colormap, 'tab10', by default; it contains distinct colors appropriate for
-            distinguishing the different databases containing reactions.
+            qualitative colormap, 'tab10', by default; it contains distinct colors suitable for
+            clearly differentiating the different databases containing reactions.
 
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
@@ -338,11 +388,11 @@ class Mapper:
 
         colormap_limits : Tuple[float, float], None
             Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
-            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. By
-            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
-            are set to (0.1, 0.9). For the scheme, 'by_database', the default limits are set to
-            (0.0, 1.0).
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
+            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By default,
+            for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits are set
+            to (0.1, 0.9). By default, for the scheme, 'by_database', the colormap is qualititative
+            ('tab10'), and limits are set to (0.0, 1.0).
 
         colormap_scheme : Literal['by_count', 'by_database'], None
             There are two ways of dynamically coloring reactions by inclusion in contigs databases:
@@ -430,6 +480,15 @@ class Mapper:
         else:
             raise AssertionError
 
+        # Set how the colormap is sampled.
+        if cmap is None:
+            sampling = None
+        else:
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                sampling = 'in_order'
+            else:
+                sampling = 'even'
+
         # Trim the colormap.
         if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
             assert 0.0 <= colormap_limits[0] <= colormap_limits[1] <= 1.0
@@ -442,6 +501,9 @@ class Mapper:
 
         self.progress.new("Loading KO data from contigs databases")
         self.progress.update("...")
+
+        self._check_contigs_dbs(contigs_dbs)
+        self._check_contigs_dbs_ko_annotation(contigs_dbs)
 
         # Load contigs database metadata.
         project_names: Dict[str, str] = {}
@@ -484,6 +546,7 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
+        exceeds_colors: Tuple[int, int] = None
         if scheme == 'static':
             # Draw unified maps of all contigs databases with a static reaction color.
             for pathway_number in pathway_numbers:
@@ -505,12 +568,28 @@ class Mapper:
                     )
         else:
             # Draw unified maps with dynamic coloring by number of contigs databases.
+            assert cmap is not None
             color_priority: Dict[str, float] = {}
             if scheme == 'by_count':
                 # Sample the colormap for colors representing each possible number of contigs
-                # databases, with 1 database assigned the lowest color value and the maximum number
-                # of databases assigned the highest color value.
-                for sample_point in np.linspace(0, 1, len(contigs_dbs)):
+                # databases. Lower color values correspond to smaller numbers of databases.
+                if sampling == 'in_order':
+                    if len(contigs_dbs) == 1:
+                        sample_points = range(1, 2)
+                    else:
+                        sample_points = range(len(contigs_dbs))
+                elif sampling == 'even':
+                    if len(contigs_dbs) == 1:
+                        sample_points = np.linspace(1, 1, 1)
+                    else:
+                        sample_points = np.linspace(0, 1, len(contigs_dbs))
+                else:
+                    raise AssertionError
+
+                if len(contigs_dbs) > cmap.N:
+                    exceeds_colors = (cmap.N, len(contigs_dbs))
+
+                for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                     else:
@@ -518,12 +597,22 @@ class Mapper:
                 db_combos = None
             elif scheme == 'by_database':
                 # Sample the colormap for colors representing the different contigs databases and
-                # their combinations.
+                # their combinations. Lower color values correspond to smaller numbers of databases.
                 db_combos = []
                 for db_count in range(1, len(contigs_dbs) + 1):
                     db_combos += list(combinations(project_names, db_count))
-                assert len(db_combos) <= cmap.N
-                for sample_point in range(len(db_combos)):
+
+                if sampling == 'in_order':
+                    sample_points = range(len(db_combos))
+                elif sampling == 'even':
+                    sample_points = np.linspace(0, 1, len(db_combos))
+                else:
+                    raise AssertionError
+
+                if len(db_combos) > cmap.N:
+                    exceeds_colors = (cmap.N, len(db_combos))
+
+                for sample_point in sample_points:
                     if reverse_overlay:
                         color_priority[
                             mcolors.rgb2hex(cmap(sample_point))
@@ -532,6 +621,8 @@ class Mapper:
                         color_priority[
                             mcolors.rgb2hex(cmap(sample_point))
                         ] = (sample_point + 1) / cmap.N
+            else:
+                raise AssertionError
 
             if colorbar:
                 # Draw a colorbar in a separate file.
@@ -564,6 +655,12 @@ class Mapper:
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
+
+        if exceeds_colors:
+            self.run.warning(
+                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
+                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
+            )
 
         if draw_contigs_db_files is False and draw_grid is False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
@@ -672,9 +769,13 @@ class Mapper:
                         color_hexcode=color_hexcode,
                         draw_maps_lacking_kos=True
                     )
-                    paths_to_remove.append(
-                        os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf')
-                    )
+                    if self.name_files:
+                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                    else:
+                        pathway_name = ''
+                    paths_to_remove.append(os.path.join(
+                        output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    ))
             self.progress = progress
             self.run = run
 
@@ -683,7 +784,11 @@ class Mapper:
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if self.name_files:
+                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+            else:
+                pathway_name = ''
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
@@ -695,15 +800,23 @@ class Mapper:
             landscape = True if input_aspect_ratio > 1 else False
 
             for project_name in draw_grid_project_names:
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, project_name, f'kos_{pathway_number}.pdf'
+                    output_dir, project_name, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
-                in_paths.append(os.path.join(output_dir, project_name, f'kos_{pathway_number}.pdf'))
+                in_paths.append(individual_map_path)
                 labels.append(project_name)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
@@ -752,8 +865,8 @@ class Mapper:
         Draw pathway maps, highlighting consensus KOs from the pan database.
 
         A reaction on a map can correspond to one or more KOs, and a KO can annotate one or more
-        sequences in a contigs database. In global and overview maps, reaction lines are colored.
-        In standard maps, reaction boxes or lines are colored.
+        gene clusters. In global and overview maps, reaction lines are colored. In standard maps,
+        reaction boxes or lines are colored.
 
         Parameters
         ==========
@@ -807,9 +920,9 @@ class Mapper:
 
         colormap_limits : Tuple[float, float], (0.0, 1.0)
             Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.8) limits
-            color selection to the middle 60% of the colormap, trimming the bottom and top 20%. The
-            default limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
+            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
+            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. The default
+            limits with the default colormap scheme, 'plasma_r', are set to (0.1, 0.9).
 
         reverse_overlay : bool, False
             By default, with False, reactions in more genomes are drawn on top of those in fewer
@@ -868,6 +981,10 @@ class Mapper:
         if isinstance(colormap, str):
             assert colormap in mpl.colormaps()
 
+        self._check_pan_db(pan_db)
+        self._check_genomes_storage_db(genomes_storage_db)
+        self._check_genomes_storage_ko_annotation(genomes_storage_db)
+
         # Load pan database metadata.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
@@ -878,6 +995,12 @@ class Mapper:
             if consensus_threshold is not None:
                 consensus_threshold = float(consensus_threshold)
                 assert 0 <= consensus_threshold <= 1
+                self.run.info_single(
+                    "No consensus threshold was explicitly specified for consensus KO assignment "
+                    f"to gene clusters, but there was a value of '{consensus_threshold}' stored in "
+                    "the pan database from reaction network construction, so this was used. (The "
+                    "default if this were not the case is 0, or no threshold.)"
+                )
 
         if discard_ties is None:
             discard_ties = self_table['reaction_network_discard_ties']
@@ -885,6 +1008,13 @@ class Mapper:
                 discard_ties = False
             else:
                 discard_ties = bool(int(discard_ties))
+                self.run.info_single(
+                    "It was not explicitly specified whether to discard ties in consensus KO "
+                    f"assignment to gene clusters, but there was a value of '{discard_ties}' "
+                    "stored in the pan database from reaction network construction, so this was "
+                    "used. (The default if this were not the case is False, or do not discard "
+                    "ties.)"
+                )
 
         # Find consensus KOs from the loaded pan database.
         self.progress.new("Loading consensus KO data from pan database")
@@ -931,6 +1061,7 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all genomes")
+        exceeds_colors: Tuple[int, int] = None
         if colormap is None:
             # Draw pangenomic maps with a static reaction color.
             for pathway_number in pathway_numbers:
@@ -949,6 +1080,8 @@ class Mapper:
                         output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
+            cmap = None
+            sampling = None
         else:
             # Draw pangenomic maps with dynamic coloring by number of genomes.
             if isinstance(colormap, str):
@@ -957,6 +1090,12 @@ class Mapper:
                     colormap_limits = (0.1, 0.9)
             else:
                 cmap = colormap
+
+            # Set how the colormap is sampled.
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                sampling = 'in_order'
+            else:
+                sampling = 'even'
 
             # Trim the colormap.
             if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
@@ -982,11 +1121,26 @@ class Mapper:
             for ko_id, ko_genome_names in ko_genomes.items():
                 ko_genomes[ko_id] = list(set(ko_genome_names))
 
-            # Sample the colormap for colors representing each possible number of genomes, with 1
-            # genome assigned the lowest color value and the maximum number of genomes assigned the
-            # highest color value.
+            # Sample the colormap for colors representing each possible number of genomes. Lower
+            # color values correspond to smaller numbers of databases.
+            if sampling == 'in_order':
+                if len(genome_names) == 1:
+                    sample_points = range(1, 2)
+                else:
+                    sample_points = range(len(genome_names))
+            elif sampling == 'even':
+                if len(genome_names) == 1:
+                    sample_points = np.linspace(1, 1, 1)
+                else:
+                    sample_points = np.linspace(0, 1, len(genome_names))
+            else:
+                raise AssertionError
+
+            if len(genome_names) > cmap.N:
+                exceeds_colors = (cmap.N, len(genome_names))
+
             color_priority: Dict[str, float] = {}
-            for sample_point in np.linspace(0, 1, len(genome_names)):
+            for sample_point in sample_points:
                 if reverse_overlay:
                     color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
                 else:
@@ -1010,6 +1164,12 @@ class Mapper:
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
         self.progress.end()
+
+        if exceeds_colors:
+            self.run.warning(
+                f"There were fewer distinct colors available in the colormap ({exceeds_colors[0]}) "
+                f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
+            )
 
         if draw_genome_files is False and draw_grid is False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
@@ -1120,9 +1280,13 @@ class Mapper:
                         color_hexcode=color_hexcode,
                         draw_maps_lacking_kos=True
                     )
-                    paths_to_remove.append(
-                        os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf')
-                    )
+                    if self.name_files:
+                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                    else:
+                        pathway_name = ''
+                    paths_to_remove.append(os.path.join(
+                        output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    ))
             self.progress = progress
             self.run = run
 
@@ -1131,7 +1295,11 @@ class Mapper:
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+            if self.name_files:
+                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+            else:
+                pathway_name = ''
+            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
@@ -1143,15 +1311,23 @@ class Mapper:
             landscape = True if input_aspect_ratio > 1 else False
 
             for genome_name in draw_grid_genome_names:
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, genome_name, f'kos_{pathway_number}.pdf'
+                    output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
-                in_paths.append(os.path.join(output_dir, genome_name, f'kos_{pathway_number}.pdf'))
+                in_paths.append(individual_map_path)
                 labels.append(genome_name)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
         self.progress.end()
@@ -1252,6 +1428,164 @@ class Mapper:
 
         return drawn
 
+    @staticmethod
+    def _check_contigs_db(contigs_db: str) -> None:
+        """
+        Check the validity of an expected contigs database.
+
+        Parameters
+        ==========
+        contigs_db : str
+            File path to an expected contigs database.
+        """
+        if not os.path.exists(contigs_db):
+            raise ConfigError(
+                f"There was no file at the following expected contigs database path: '{contigs_db}'"
+            )
+
+        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+        if contigs_db_info is None:
+            raise ConfigError(
+                "The file at the following expected contigs database path is not a contigs "
+                f"database: '{contigs_db}'"
+            )
+
+    @staticmethod
+    def _check_contigs_db_ko_annotation(contigs_db: str) -> None:
+        """
+        Check that a contigs database was annotated with KOs.
+
+        Parameters
+        ==========
+        contigs_db : str
+            File path to a contigs database.
+        """
+        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
+        if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+            raise ConfigError(
+                f"The contigs database, '{contigs_db}', was never annotated with KOs. This can be "
+                "rectified by running `anvi-run-kegg-kofams` on the database."
+            )
+
+    @staticmethod
+    def _check_genomes_storage_db(genomes_storage_db: str) -> None:
+        """
+        Check the validity of an expected genomes storage database.
+
+        Parameters
+        ==========
+        genomes_storage_db : str
+            File path to an expected genomes storage database.
+        """
+        if not os.path.exists(genomes_storage_db):
+            raise ConfigError(
+                "There was no file at the following expected genomes storage database path: "
+                f"'{genomes_storage_db}'"
+            )
+
+        gsdb_info = dbinfo.GenomeStorageDBInfo(
+            genomes_storage_db, dont_raise=True, expecting='genomestorage'
+        )
+        if gsdb_info is None:
+            raise ConfigError(
+                "The file at the following expected genomes storage database path is not a genomes "
+                f"storage database: '{genomes_storage_db}'"
+            )
+
+    @staticmethod
+    def _check_genomes_storage_ko_annotation(genomes_storage_db: str) -> None:
+        """
+        Check that a genomes storage database was annotated with KOs.
+
+        Parameters
+        ==========
+        genomes_storage_db : str
+            File path to a genomes storage database.
+        """
+        gsdb_info = dbinfo.GenomeStorageDBInfo(genomes_storage_db, expecting='genomestorage')
+        if 'KOfam' not in gsdb_info.get_functional_annotation_sources():
+            raise ConfigError(
+                f"The genomes storage database, '{genomes_storage_db}', was never annotated with "
+                "KOs. The genomes storage should be remade with annotated genomes, which can be "
+                "rectified by running `anvi-run-kegg-kofams` on the genome databases."
+            )
+
+    @staticmethod
+    def _check_contigs_dbs(contigs_dbs: Iterable[str]) -> None:
+        """
+        Check the validity of expected contigs databases.
+
+        Parameters
+        ==========
+        contigs_dbs : Iterable[str]
+            File paths to expected contigs databases.
+        """
+        invalid_paths: List[str] = []
+        invalid_filetypes: List[str] = []
+        for contigs_db in contigs_dbs:
+            if not os.path.exists(contigs_db):
+                invalid_paths.append(contigs_db)
+            if invalid_paths:
+                continue
+
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+            if contigs_db_info is None:
+                invalid_filetypes.append(contigs_db)
+            if invalid_filetypes:
+                continue
+
+        if invalid_paths:
+            paths = ', '.join([f'{path}' for path in invalid_paths])
+            raise ConfigError(
+                f"There were no files at the following expected contigs database paths: {paths}"
+            )
+
+        if invalid_filetypes:
+            paths = ', '.join([f'{path}' for path in invalid_filetypes])
+            raise ConfigError(
+                "The files at the following expected contigs database paths are not contigs "
+                f"databases: {paths}"
+            )
+
+    @staticmethod
+    def _check_contigs_dbs_ko_annotation(contigs_dbs: Iterable[str]) -> None:
+        unannotated: List[str] = []
+        for contigs_db in contigs_dbs:
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
+            if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+                unannotated.append(contigs_db)
+            if unannotated:
+                continue
+
+        if unannotated:
+            paths = ', '.join([f'{path}' for path in unannotated])
+            raise ConfigError(
+                "The following contigs databases were never annotated with KOs, but this can be "
+                f"rectified by running `anvi-run-kegg-kofams` on them: {paths}"
+            )
+
+    @staticmethod
+    def _check_pan_db(pan_db: str) -> None:
+        """
+        Check the validity of an expected pan database.
+
+        Parameters
+        ==========
+        pan_db : str
+            File path to an expected pan database.
+        """
+        if not os.path.exists(pan_db):
+            raise ConfigError(
+                f"There was no file at the following expected pan database path: '{pan_db}'"
+            )
+
+        pan_db_info = dbinfo.PanDBInfo(pan_db, dont_raise=True, expecting='pan')
+        if pan_db_info is None:
+            raise ConfigError(
+                "The file at the following expected pan database path is not a pan database: "
+                f"'{pan_db}'"
+            )
+
     def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
         """
         Find the numeric IDs of maps to draw given the file prefix, checking that the map can be
@@ -1264,7 +1598,8 @@ class Mapper:
             created if it does not exist.
 
         prefix : str
-            Output filenames are formatted as <prefix>_<pathway_number>.pdf.
+            Output filenames are formatted as <prefix>_<pathway_number>.pdf or
+            <prefix>_<pathway_number>_<pathway_name>.pdf.
 
         patterns : List[str], None
             Regex patterns of pathway numbers, which are five digits.
@@ -1276,7 +1611,11 @@ class Mapper:
 
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
-                out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}.pdf')
+                if self.name_files:
+                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+                else:
+                    pathway_name = ''
+                out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}{pathway_name}.pdf')
                 if os.path.exists(out_path):
                     raise ConfigError(
                         f"Output files would be overwritten in the output directory, {output_dir}. "
@@ -1422,7 +1761,11 @@ class Mapper:
         )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -1543,7 +1886,11 @@ class Mapper:
         )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -1708,7 +2055,11 @@ class Mapper:
             )
 
         # Draw the map.
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}.pdf')
+        if self.name_files:
+            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
+        else:
+            pathway_name = ''
+        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         if os.path.exists(out_path) and self.overwrite_output:
             os.remove(out_path)
         else:
@@ -1752,6 +2103,39 @@ class Mapper:
         pathway = self.xml_ops.load(kgml_path)
 
         return pathway
+
+    def _get_filename_pathway_name(self, pathway_number: str) -> str:
+        """
+        Format the pathway name corresponding to the number to include in file paths.
+
+        Replace all non-alphanumeric characters except parentheses, brackets, and curly braces with
+        underscores. Replace multiple consecutive underscores with a single underscore. Strip
+        leading and trailing underscores.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of a pathway map.
+
+        Returns
+        =======
+        str
+            Altered version of the pathway name.
+        """
+        try:
+            pathway_name = self.pathway_names[pathway_number]
+        except KeyError:
+            raise ConfigError(
+                f"The pathway number, '{pathway_number}', is not recognized in the table of KEGG "
+                "pathway names set up in the KEGG data directory, which can be found here: "
+                f"'{self.kegg_context.kegg_pathway_list_file}'."
+            )
+
+        altered = re.sub(r'[^a-zA-Z0-9()\[\]\{\}]', '_', pathway_name)
+        altered = re.sub(r'_+', '_', altered)
+        altered = altered.strip('_')
+
+        return altered
 
     def _draw_colorbar(
         self,
@@ -1920,4 +2304,3 @@ class Mapper:
         self._quiet = new_value
         self.run.verbose = not self.quiet
         self.progress.verbose = not self.quiet
-
