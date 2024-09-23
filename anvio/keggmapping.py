@@ -1055,7 +1055,7 @@ class Mapper:
             # For each group, sample the group colormap for colors representing all contigs
             # databases in the group. Lower color values correspond to fewer databases.
             assert group_cmap is not None
-            for group, inner_ko_project_names in group_ko_project_names.itmes():
+            for group, inner_ko_project_names in group_ko_project_names.items():
                 project_names = group_project_names[group]
                 if len(project_names) == 1:
                     sample_points = np.linspace(1, 1, 1)
