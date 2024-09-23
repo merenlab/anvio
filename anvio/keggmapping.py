@@ -2170,12 +2170,13 @@ class Mapper:
 
         self.progress.end()
 
-        # Remove individual genome maps that were only needed for map grids.
+        # Remove individual maps that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
-        for genome_name in set(draw_genome_names).difference(set(draw_files_genome_names)):
-            shutil.rmtree(os.path.join(output_dir, genome_name))
-            drawn['individual'].pop(genome_name)
+        for category in set(draw_categories).difference(set(draw_files_categories)):
+            shutil.rmtree(os.path.join(output_dir, category))
+            drawn['individual'].pop(category)
+
 
         count = sum(drawn['unified'].values()) if drawn['unified'] else 0
         self.run.info(
