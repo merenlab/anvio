@@ -366,9 +366,9 @@ class Mapper:
         genomes or metagenomes) or groups of databases (representing, for example, taxonomic
         groups of genomes or geographical groups of metagenomes).
 
-        A reaction a map are defined by one or more KOs. The presence/absence of any of these KOs
-        in the contigs database translates to the presence/absence of the reaction. A KO can
-        annotate one or more sequences in a contigs database.
+        A reaction on a map is defined by one or more KOs. These are matched to KO sequence
+        annotations in each contigs database. The presence/absence of any of these KOs in a contigs
+        database translates in the map to the presence/absence of the reaction in the database.
 
         In global and overview maps, reaction lines are colored. In standard maps, reaction boxes or
         lines are colored.
@@ -380,20 +380,19 @@ class Mapper:
             different project names, by which they are uniquely identified.
 
         output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn. The directory is
-            created if it does not exist.
+            Path to the output directory in which pathway map and colorbar PDF files are drawn. The
+            directory is created if it does not exist.
 
         groups_txt : str, None
             A tab-delimited text file specifying which group each contigs database belongs to. The
-            first column must have the header, 'contigs_db', and the second column must have the
-            header, 'group'. Items in the first column must be the file paths or project names of
-            contigs databases. The second column contains group names, which are recommended to be
-            single words without fancy characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS'
-            rather than 'my group #1' or 'IS-THIS-OK?'. Each contigs database can only be associated
-            with a single group. The 'group_threshold' argument must also be used for the groups to
-            take effect, assigning colors based on group membership and drawing individual files
-            ('draw_individual_files') and map grids ('draw_grid') for groups rather than individual
-            databases.
+            first column, which can have any header, contains the file paths of contigs databases,
+            those provided to the 'contigs_dbs' argument. The second column, which must be headed
+            'group', contains group names, which are recommended to be single words without fancy
+            characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or
+            'IS-THIS-OK?'. Each contigs database can only be associated with a single group. The
+            'group_threshold' argument must also be used for the groups to take effect, assigning
+            colors based on group membership and drawing individual files ('draw_individual_files')
+            and map grids ('draw_grid') for groups rather than individual databases.
 
         group_threshold : float, None
             The proportion of contigs databases in a group containing data of interest for the group
@@ -419,63 +418,63 @@ class Mapper:
             draws all available pathway maps in the KEGG data directory.
 
         draw_individual_files : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups-txt'. If the
-            '--draw-individual-files' argument is not False, draw map files for individual contigs
+            First consider the case where groups are not defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual contigs
             databases. If True, draw maps for all of the contigs databases. Alternatively, the
             argument can accept the project names of a subset of contigs databases to only draw maps
-            for those.
+            for those databases.
 
-            Consider the case where groups are defined by 'groups-txt'. If the
-            '--draw-individual-files' argument is not False, draw unified map files for individual
-            groups showing membership of reactions in the contigs databases defining the group. If
-            True, draw maps for all of the groups. Alternatively, the argument can accept a subset
-            of group names to only draw maps for those. Maps are always colored by contigs database
-            count, never explicitly by membership, allowing the comparison of maps for different
-            groups in terms of the same colors.
+            Consider the case where groups are defined by 'groups_txt'. If the
+            'draw_individual_files' argument is not False, draw map files for individual groups
+            showing membership of reactions in the contigs databases defining the group. If True,
+            draw maps for all of the groups. Alternatively, the argument can accept a subset of
+            group names to only draw maps for those groups. Maps are always colored by contigs
+            database count, never explicitly by membership, allowing maps for different groups to be
+            compared in terms of the same colors.
 
         draw_grid : Union[Iterable[str], bool], False
-            First consider the case where groups are not defined by 'groups-txt'. If the
-            '--draw-grid' argument is not False, draw a paneled grid file for each pathway map
-            showing the unified map of input contigs databases alongside maps for individual contigs
-            databases. If True, include all of the contigs databases in the grid. Alternatively, the
-            argument can accept the project names of a subset of contigs databases to only draw
-            individual maps in the grid for those.
-
-            Consider the case where groups are defined by 'groups-txt'. If the '--draw-grid'
+            First consider the case where groups are not defined by 'groups_txt'. If the 'draw_grid'
             argument is not False, draw a paneled grid file for each pathway map showing the unified
-            map of groups alongside maps for individual groups that display the membership of
-            reactions among the contigs databases of the group. If True, include all of the groups
-            in the grid. Alternatively, the argument can accept a subset of group names to only draw
-            individual maps in the grid for those. Individual maps are always colored by contigs
+            map of input contigs databases alongside maps for individual contigs databases. If True,
+            include all of the contigs databases in the grid. Alternatively, the argument can accept
+            the project names of a subset of contigs databases to only draw individual maps in the
+            grid for those databases.
+
+            Consider the case where groups are defined by 'groups_txt'. If the 'draw_grid' argument
+            is not False, draw a paneled grid file for each pathway map showing the unified map of
+            groups alongside maps for individual groups that color reactions by count of occurrence
+            in contigs databases of the group. If True, include all of the groups in the grid.
+            Alternatively, the argument can accept a subset of group names to only draw individual
+            maps in the grid for those groups. Individual maps are always colored by contigs
             database count, never explicitly by membership, allowing the comparison of maps for
             different groups in terms of the same colors.
 
         colormap : Union[bool, str, matplotlib.colors.Colormap], True
             Reactions are dynamically colored to reflect the contigs databases (or groups of
-            databases) involving the reaction, unless the argument value is False. False overrides
+            databases) containing the reaction, unless the argument value is False. False overrides
             dynamic coloring via a colormap with the argument provided to 'color_hexcode', so that
             reactions represented by KOs in contigs databases are assigned predetermined colors.
 
             The default argument value of True automatically assigns a colormap given the colormap
-            scheme (see the 'colormap_scheme' argument). The scheme, 'by_count', uses by default the
-            sequential colormap, 'plasma_r', which spans yellow (fewer databases or groups) to
+            scheme (see the 'colormap_scheme' parameter). The scheme, 'by_count', uses by default
+            the sequential colormap, 'plasma_r', which spans yellow (fewer databases or groups) to
             blue-violet (more databases or groups). This accentuates reactions that are shared
-            rather than unshared across databases. In contrast, a colormap spanning dark to light,
-            such as 'plasma', is better for drawing attention to unshared reactions. The scheme,
-            'by_membership', uses by default the qualitative colormap, 'tab10'; it contains distinct
-            colors suitable for clearly differentiating the different databases or groups containing
-            reactions.
+            rather than unshared across databases/groups. In contrast, a colormap spanning dark to
+            light, such as 'plasma', is better for drawing attention to unshared reactions. The
+            scheme, 'by_membership', uses by default the qualitative colormap, 'tab10'; it contains
+            distinct colors suitable for clearly differentiating the different databases/groups
+            containing reactions.
 
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
 
         colormap_limits : Tuple[float, float], None
-            Limit the fraction of the colormap used in dynamically selecting colors. The first value
-            is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9) limits
-            color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By default,
-            for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits are set
-            to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
+            Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
+            value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
+            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
+            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
+            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
             qualititative ('tab10'), and limits are set to (0.0, 1.0).
 
         colormap_scheme : Literal['by_count', 'by_membership'], None
@@ -498,9 +497,15 @@ class Mapper:
         color_hexcode : str, '#2ca02c'
             This is the color, by default green, for reactions containing contigs database KOs.
             Alternatively to a color hex code, the string, 'original', can be provided to use the
-            original color scheme of the reference map. The 'colormap' argument must be False for
-            this argument to be used, overriding dynamic coloring based on database/group membership
-            with static coloring based on presence/absence in any database.
+            original color scheme of the reference map.
+
+            For this argument to be used in coloring unified maps showing KO membership in all input
+            contigs databases, overriding dynamic coloring based on database/group membership with
+            static coloring based on presence/absence in any database, the 'colormap' argument must
+            be set to False.
+
+            This argument is used in coloring map files for individual contigs databases
+            ('draw_individual_files'), regardless of the value of 'colormap'.
 
         group_colormap : Union[str, mcolors.Colormap], 'plasma_r'
             This parameter is similar in effect to 'colormap', but only applies to drawing files for
@@ -516,8 +521,8 @@ class Mapper:
             This parameter is similar in effect to 'colormap_limits', but only applies to drawing
             files for individual groups and panels for individual groups in map grids (also see
             'group_colormap'). Like 'colormap_limits', this parameter takes a lower and upper cutoff
-            for the proprotion of the group colormap. The default group limits of (0.1, 0.9) are the
-            same as the default 'colormap_limits'.
+            for the proportion of the group colormap to use. The default group limits of (0.1, 0.9)
+            are the same as the default 'colormap_limits'.
 
         group_reverse_overlay : bool, False
             This parameter is similar in effect to 'reverse_overlay', but only applies to drawing
@@ -536,14 +541,17 @@ class Mapper:
             Keys in the outer dictionary are different types of files that can be drawn. 'unified'
             maps show data from all contigs databases or groups of databases. 'individual' maps show
             data from individual databases or groups. 'grid' images show both unified and individual
-            maps. 'unified' and 'grid' values are Dict[str, bool], where keys are pathway numbers,
-            and values are True if the map was drawn, False if the map was not drawn because it did
-            not contain any of the select KOs and 'draw_maps_lacking_kos' was False. 'individual'
-            values are Dict[str, Dict[str, bool]], where keys in the outer dictionary are contigs
-            database project names or group names, keys in the inner dictionary are pathway numbers,
-            and values in the inner dictionary are True if the map was drawn, False if the map was
-            not drawn because it did not contain any of the select KOs and 'draw_maps_lacking_kos'
-            was False.
+            maps.
+
+            'unified' and 'grid' values are Dict[str, bool]. Keys are pathway numbers. Values are
+            True if the map was drawn; False if the map was not drawn, because it did not contain
+            any of the select KOs and 'draw_maps_lacking_kos' was False.
+
+            'individual' values are Dict[str, Dict[str, bool]]. Keys in the outer dictionary here
+            are contigs database project names or group names. Keys in the inner dictionary are
+            pathway numbers. Values in the inner dictionary are True if the map was drawn; False if
+            the map was not drawn because it did not contain any of the select KOs and
+            'draw_maps_lacking_kos' was False.
         """
         # This method is similar to map_pan_database_kos, and almost identical after KOs are loaded.
 
