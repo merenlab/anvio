@@ -1887,10 +1887,12 @@ class Mapper:
                 f"than were needed ({exceeds_colors[1]}), so some colors were repeated in use."
             )
 
-        if draw_genome_files is False and draw_grid is False:
+        if draw_individual_files is False and draw_grid is False:
+            # Our work here is done.
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
-            return
+
+            return drawn
 
         # Determine the individual genome maps to draw.
         if draw_genome_files == True:
