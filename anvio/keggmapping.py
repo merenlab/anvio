@@ -1805,8 +1805,6 @@ class Mapper:
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
-        genome_names = self_table['external_genome_names'].split(',')
-
         drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
             'unified': {},
             'individual': {},
