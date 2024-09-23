@@ -2062,17 +2062,25 @@ class Mapper:
             drawn['individual'][category] = drawn_category
 
         if draw_grid == False:
+            # Our work here is done.
+            if groups_txt is None:
+                category_message = "genomes"
+            else:
+                category_message = "groups"
+
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info(
-                "Number of 'unified' maps drawn incorporating data from all genomes",
+                f"Number of 'unified' maps drawn incorporating data from all {category_message}",
                 count
             )
+
             if not drawn['individual']:
                 count = 0
             else:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info("Number of maps drawn for individual genomes", count)
-            return
+            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+
+            return drawn
 
         self.progress.new("Drawing map grid")
         self.progress.update("...")
