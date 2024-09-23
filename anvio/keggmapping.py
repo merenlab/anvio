@@ -591,11 +591,26 @@ class Mapper:
             source_group, group_sources = utils.get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
+            categories = list(group_sources)
+
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
-            categories = list(group_sources)
+
+            # Report contigs databases in 'groups_txt' that are not among the input databases.
+            missing_sources: List[str] = []
+            contigs_db_abspaths = [os.path.abspath(contigs_db) for contigs_db in contigs_dbs]
+            for source in source_group:
+                source_abspath = os.path.abspath(source)
+                if source_abspath not in contigs_db_abspaths:
+                    missing_sources.append(source)
+            if missing_sources:
+                message = ', '.join([f"'{source}'" for source in missing_sources])
+                self.run.warning(
+                    "The following contigs databases were grouped in 'groups_txt' but are not "
+                    f"found among input 'contigs_dbs', and so will not factor into maps: {message}"
+                )
 
         # If individual files are requested to be drawn for a subset of contigs databases or groups,
         # check that the names are valid.
