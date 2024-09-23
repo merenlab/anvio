@@ -2147,18 +2147,18 @@ class Mapper:
             input_aspect_ratio = page.rect.width / page.rect.height
             landscape = True if input_aspect_ratio > 1 else False
 
-            for genome_name in draw_grid_genome_names:
+            for category in draw_grid_categories:
                 if self.name_files:
                     pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
                 else:
                     pathway_name = ''
                 individual_map_path = os.path.join(
-                    output_dir, genome_name, f'kos_{pathway_number}{pathway_name}.pdf'
+                    output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
                 if not os.path.exists(individual_map_path):
                     break
                 in_paths.append(individual_map_path)
-                labels.append(genome_name)
+                labels.append(category)
             else:
                 if self.name_files:
                     pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
@@ -2167,6 +2167,7 @@ class Mapper:
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
                 drawn['grid'][pathway_number] = True
+
         self.progress.end()
 
         # Remove individual genome maps that were only needed for map grids.
