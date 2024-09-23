@@ -1619,6 +1619,84 @@ class Mapper:
                         f"'groups_txt': {message}"
                     )
 
+        self.progress.new("Setting map colors")
+        self.progress.update("...")
+
+        # Set the colormap.
+        ignore_groups = False
+        if isinstance(colormap, str):
+            cmap = plt.colormaps[colormap]
+        elif isinstance(colormap, mcolors.Colormap):
+            cmap = colormap
+        elif colormap is None:
+            cmap = None
+            if groups_txt is not None:
+                ignore_groups = True
+        else:
+            raise AssertionError
+
+        # Set how the colormap is sampled.
+        if cmap is None:
+            sampling = None
+        else:
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                sampling = 'in_order'
+            else:
+                sampling = 'even'
+
+        # Trim the colormap.
+        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
+            lower_limit = colormap_limits[0]
+            upper_limit = colormap_limits[1]
+            assert 0.0 <= lower_limit <= upper_limit <= 1.0
+            cmap = mcolors.LinearSegmentedColormap.from_list(
+                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
+                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
+            )
+
+        # Set and trim the colormap for individual group maps.
+        group_cmap = None
+        poor_colormap = False
+        if (
+            groups_txt is not None and
+            (draw_individual_files is not False or draw_grid is not False)
+        ):
+            if isinstance(group_colormap, str):
+                group_cmap = plt.colormaps[group_colormap]
+            elif isinstance(group_colormap, mcolors.Colormap):
+                group_cmap = group_colormap
+            else:
+                raise AssertionError
+
+            if cmap.name in qualitative_colormaps + repeating_colormaps:
+                poor_colormap = True
+
+            if group_colormap_limits != (0.0, 1.0):
+                lower_limit = group_colormap_limits[0]
+                upper_limit = group_colormap_limits[1]
+                assert 0.0 <= lower_limit <= upper_limit <= 1.0
+                group_cmap = mcolors.LinearSegmentedColormap.from_list(
+                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
+                    group_cmap(range(
+                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
+                    ))
+                )
+
+        self.progress.end()
+
+        if ignore_groups:
+            self.run.warning(
+                "Groups were provided by 'groups_txt', but these will be ignored, since 'colormap' "
+                "was set to None, and dynamic coloring based on KO membership in groups will be "
+                "overridden by static coloring based on KO presence/absence in any genome."
+            )
+
+        if poor_colormap:
+            self.run.warning(
+                f"The group colormap, '{cmap.name}', that was provided to color individual group "
+                "maps is not especially useful for displaying the count of genomes. We recommend a "
+                "sequential colormap like 'plasma' instead."
+            )
 
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
