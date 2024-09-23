@@ -656,16 +656,16 @@ class Mapper:
                         "groups, but the following group names were not among those provided in "
                         f"'groups_txt': {message}"
                     )
+
+        self.progress.new("Setting map colors")
+        self.progress.update("...")
+
         # Set the colormap scheme.
+        ignore_groups = False
         if colormap is False:
             scheme = 'static'
             if groups_txt is not None:
-                self.run.warning(
-                    "Groups were provided by 'groups_txt', but these will be ignored, since "
-                    "'colormap' was set to False, and dynamic coloring based on KO membership in "
-                    "groups will be overridden by static coloring based on KO presence/absence in "
-                    "any contigs database."
-                )
+                ignore_groups = True
         else:
             if colormap_scheme is None:
                 if len(categories) < 4:
@@ -725,6 +725,7 @@ class Mapper:
 
         # Set and trim the colormap for individual group maps.
         group_cmap = None
+        poor_colormap = False
         if (
             groups_txt is not None and
             (draw_individual_files is not False or draw_grid is not False)
@@ -737,11 +738,7 @@ class Mapper:
                 raise AssertionError
 
             if cmap.name in qualitative_colormaps + repeating_colormaps:
-                self.run.warning(
-                    f"The group colormap, '{cmap.name}', that was provided to color individual "
-                    "group maps is not especially useful for displaying the count of contigs "
-                    "databases. We recommend a sequential colormap like 'plasma' instead."
-                )
+                poor_colormap = True
 
             if group_colormap_limits != (0.0, 1.0):
                 lower_limit = group_colormap_limits[0]
@@ -754,82 +751,23 @@ class Mapper:
                     ))
                 )
 
-        self.progress.new("Loading KO data from contigs databases")
-        self.progress.update("...")
+        self.progress.end()
 
-        self._check_contigs_dbs(contigs_dbs)
-        self._check_contigs_dbs_ko_annotation(contigs_dbs)
+        if ignore_groups:
+            self.run.warning(
+                "Groups were provided by 'groups_txt', but these will be ignored, since 'colormap' "
+                "was set to False, and dynamic coloring based on KO membership in groups will be "
+                "overridden by static coloring based on KO presence/absence in any contigs "
+                "database."
+            )
 
-        # Load contigs database metadata.
-        project_name_contigs_db: Dict[str, str] = {}
-        contigs_db_project_name: Dict[str, str] = {}
-        for contigs_db in contigs_dbs:
-            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db)
-            self_table = contigs_db_info.get_self_table()
+        if poor_colormap:
+            self.run.warning(
+                f"The group colormap, '{cmap.name}', that was provided to color individual group "
+                "maps is not especially useful for displaying the count of contigs databases. We "
+                "recommend a sequential colormap like 'plasma' instead."
+            )
 
-            annotation_sources = self_table['gene_function_sources']
-            assert annotation_sources is not None and 'KOfam' in annotation_sources.split(',')
-
-            project_name = self_table['project_name']
-            assert project_name not in project_name_contigs_db
-            project_name_contigs_db[project_name] = contigs_db
-            contigs_db_project_name[contigs_db] = project_name
-
-        # If individual files are requested to be drawn for a subset of contigs databases or groups,
-        # check that the names are valid.
-        if not isinstance(draw_individual_files, bool):
-            if groups_txt is None:
-                unrecognized_project_names: List[str] = []
-                for project_name in draw_individual_files:
-                    if project_name not in project_name_contigs_db:
-                        unrecognized_project_names.append(project_name)
-                if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
-                    raise ConfigError(
-                        "Individual maps were requested for a subset of contigs databases, but the "
-                        "following project names were not recognized as corresponding to any of "
-                        f"the input contigs databases: {message}"
-                    )
-            else:
-                unrecognized_groups: List[str] = []
-                for group in draw_individual_files:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
-                    raise ConfigError(
-                        "Individual maps were requested for a subset of contigs database groups, "
-                        "but the following group names were not among those provided in the "
-                        f"groups-txt file: {message}"
-                    )
-
-        # If individual maps in grids are requested to be drawn for a subset of contigs databases or
-        # groups, check that the names are valid.
-        if not isinstance(draw_grid, bool):
-            if groups_txt is None:
-                unrecognized_project_names: List[str] = []
-                for project_name in draw_grid:
-                    if project_name not in project_name_contigs_db:
-                        unrecognized_project_names.append(project_name)
-                if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
-                    raise ConfigError(
-                        "Individual maps in grids were requested for a subset of contigs "
-                        "databases, but the following project names were not recognized as "
-                        f"corresponding to any of the input contigs databases: {message}"
-                    )
-            else:
-                unrecognized_groups: List[str] = []
-                for group in draw_grid:
-                    if group not in group_sources:
-                        unrecognized_groups.append(group)
-                if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
-                    raise ConfigError(
-                        "Individual maps in grids were requested for a subset of contigs database "
-                        "groups, but the following group names were not among those provided in "
-                        f"the groups-txt file: {message}"
-                    )
 
         # Check that groups include all contigs databases. Relate groups and project names.
         group_project_names: Dict[str, List[str]] = {}
