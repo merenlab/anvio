@@ -1478,9 +1478,8 @@ class Mapper:
         """
         # This method is similar to 'map_contigs_databases_kos'.
 
-        # loaded.
-        if isinstance(colormap, str):
-            assert colormap in mpl.colormaps()
+        self.progress.new("Loading metadata from pan database")
+        self.progress.update("...")
 
         self._check_pan_db(pan_db)
         self._check_genomes_storage_db(genomes_storage_db)
@@ -1489,35 +1488,44 @@ class Mapper:
         # Load pan database metadata.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
+        all_genome_names: List[str] = self_table['external_genome_names'].split(',')
 
         # Parameterize how consensus KOs are found.
+        use_network_consensus_threshold = False
         if consensus_threshold is None:
             consensus_threshold = self_table['reaction_network_consensus_threshold']
             if consensus_threshold is not None:
                 consensus_threshold = float(consensus_threshold)
                 assert 0 <= consensus_threshold <= 1
-                self.run.info_single(
-                    "No consensus threshold was explicitly specified for consensus KO assignment "
-                    f"to gene clusters, but there was a value of '{consensus_threshold}' stored in "
-                    "the pan database from reaction network construction, so this was used. (The "
-                    "default if this were not the case is 0, or no threshold.)"
-                )
+                use_network_consensus_threshold = True
 
+        use_network_discard_ties = False
         if discard_ties is None:
             discard_ties = self_table['reaction_network_discard_ties']
             if discard_ties is None:
                 discard_ties = False
             else:
                 discard_ties = bool(int(discard_ties))
-                self.run.info_single(
-                    "It was not explicitly specified whether to discard ties in consensus KO "
-                    f"assignment to gene clusters, but there was a value of '{discard_ties}' "
-                    "stored in the pan database from reaction network construction, so this was "
-                    "used. (The default if this were not the case is False, or do not discard "
-                    "ties.)"
-                )
+                use_network_discard_ties = True
 
-        # Find consensus KOs from the loaded pan database.
+        self.progress.end()
+
+        if use_network_consensus_threshold:
+            self.run.info_single(
+                "No consensus threshold was explicitly specified for consensus KO assignment to "
+                f"gene clusters, but there was a value of '{consensus_threshold}' stored in the "
+                "pan database from reaction network construction, so this was used. (The default "
+                "if this were not the case is 0, or no threshold.)"
+            )
+
+        if use_network_discard_ties:
+            self.run.info_single(
+                "It was not explicitly specified whether to discard ties in consensus KO "
+                f"assignment to gene clusters, but there was a value of '{discard_ties}' stored in "
+                "the pan database from reaction network construction, so this was used. (The "
+                "default if this were not the case is False, or do not discard ties.)"
+            )
+
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
         progress = self.progress
