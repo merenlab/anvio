@@ -1932,26 +1932,134 @@ class Mapper:
             if not (category in seen or seen.add(category))
         ]
 
+        # Gather information needed to draw individual maps for groups, either as separate files or
+        # in map grids. Determine map colors.
+        group_consensus_ko_genomes: Dict[str, Dict[str, List[str]]] = {}
+        group_color_priority: Dict[str, Dict[str, float]] = {}
+        if groups_txt is not None:
+            # Determine consensus KO membership among each group's genomes.
+            for ko_id, genome_names in consensus_ko_genomes.items():
+                for genome_name in genome_names:
+                    try:
+                        group = genome_group[genome_name]
+                    except KeyError:
+                        # 'groups_txt' is not require to contain every pan genome.
+                        continue
 
-        # Draw individual genome maps needed as final outputs or for grids.
-        for genome_name in draw_genome_names:
-            self.progress.new(f"Drawing maps for genome '{genome_name}'")
-            self.progress.update("...")
-            progress = self.progress
-            self.progress = terminal.Progress(verbose=False)
-            run = self.run
-            self.run = terminal.Run(verbose=False)
-            drawn['individual'][genome_name] = self.map_genomes_storage_genome_kos(
-                genomes_storage_db,
-                genome_name,
-                os.path.join(output_dir, genome_name),
-                pathway_numbers=pathway_numbers,
-                color_hexcode=color_hexcode,
-                draw_maps_lacking_kos=draw_maps_lacking_kos
-            )
-            self.progress = progress
-            self.run = run
-            self.progress.end()
+                    try:
+                        # Use 'inner_' to distinguish from variable 'consensus_ko_genomes'.
+                        inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
+                    except KeyError:
+                        group_consensus_ko_genomes[group] = inner_consensus_ko_genomes = {}
+                    try:
+                        inner_genome_names = inner_consensus_ko_genomes[ko_id]
+                    except KeyError:
+                        inner_genome_names[ko_id] = inner_genome_names = []
+                    inner_genome_names.append(genome_name)
+
+            # For each group, sample the group colormap for colors representing all genomes in the
+            # group. Lower color values correspond to fewer genomes.
+            assert group_cmap is not None
+            for group, inner_consensus_ko_genomes in group_consensus_ko_genomes.items():
+                genome_names = group_genomes[group]
+                if len(genome_names) == 1:
+                    sample_points = np.linspace(1, 1, 1)
+                else:
+                    sample_points = np.linspace(0, 1, len(genome_names))
+
+                if len(genome_names) > group_cmap.N:
+                    self.run.warning(
+                        "There were fewer distinct colors available in the group colormap "
+                        f"({group_cmap.N}) than were needed ({len(genome_names)}) for drawing "
+                        f"individual maps for group '{group}', so some colors were repeated in "
+                        "use."
+                    )
+
+                group_color_priority[group] = inner_color_priority = {}
+                for sample_point in sample_points:
+                    if group_reverse_overlay:
+                        inner_color_priority[
+                            mcolors.rgb2hex(group_cmap(sample_point))
+                        ] = 1 - sample_point
+                    else:
+                        inner_color_priority[
+                            mcolors.rgb2hex(group_cmap(sample_point))
+                        ] = sample_point
+
+        # Draw individual genome or group maps needed as final outputs or for grids.
+        for category in draw_categories:
+            drawn_category: Dict[str, bool] = {}
+            if groups_txt is None:
+                genome_name = category
+                self.progress.new(f"Drawing maps for genome '{genome_name}'")
+                self.progress.update("...")
+                progress = self.progress
+                self.progress = terminal.Progress(verbose=False)
+                run = self.run
+                self.run = terminal.Run(verbose=False)
+
+                group_output_dir = os.path.join(output_dir, genome_name)
+                filesnpaths.gen_output_directory(
+                    group_output_dir, progress=self.progress, run=self.run
+                )
+
+                for pathway_number in pathway_numbers:
+                    ko_ids = genome_consensus_kos[genome_name]
+                    if color_hexcode == 'original':
+                        drawn_category[pathway_number] = self._draw_map_kos_original_color(
+                            pathway_number,
+                            ko_ids,
+                            os.path.join(output_dir, genome_name),
+                            draw_map_lacking_kos=draw_maps_lacking_kos
+                        )
+                    else:
+                        drawn_category[pathway_number] = self._draw_map_kos_single_color(
+                            pathway_number,
+                            ko_ids,
+                            color_hexcode,
+                            os.path.join(output_dir, genome_name),
+                            draw_map_lacking_kos=draw_maps_lacking_kos
+                        )
+
+                self.progress = progress
+                self.run = run
+                self.progress.end()
+            else:
+                group = category
+                self.progress.new(f"Drawing maps for group '{group}'")
+                self.progress.update("...")
+                progress = self.progress
+                self.progress = terminal.Progress(verbose=False)
+                run = self.run
+                self.run = terminal.Run(verbose=False)
+
+                group_output_dir = os.path.join(output_dir, group)
+                filesnpaths.gen_output_directory(
+                    group_output_dir, progress=self.progress, run=self.run
+                )
+
+                self.draw_colorbar(
+                    group_color_priority[group],
+                    os.path.join(output_dir, group, 'colorbar.pdf'),
+                    color_labels=range(1, len(group_genomes[group]) + 1),
+                    label='genome count'
+                )
+
+                inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
+                inner_color_priority = group_color_priority[group]
+                for pathway_number in pathway_numbers:
+                    drawn_category[pathway_number] = self._draw_map_kos_membership(
+                        pathway_number,
+                        inner_consensus_ko_genomes,
+                        inner_color_priority,
+                        group_output_dir,
+                        draw_map_lacking_kos=draw_maps_lacking_kos
+                    )
+
+                self.progress = progress
+                self.run = run
+                self.progress.end()
+            drawn['individual'][category] = drawn_category
 
         if draw_grid == False:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
