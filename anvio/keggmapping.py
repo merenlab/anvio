@@ -852,6 +852,7 @@ class Mapper:
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
+
         exceeds_colors: Tuple[int, int] = None
         if scheme == 'static':
             # Draw unified maps of all contigs databases with a static reaction color.
@@ -964,6 +965,7 @@ class Mapper:
                     category_combos=category_combos,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
+
         self.progress.end()
 
         if exceeds_colors:
@@ -977,7 +979,7 @@ class Mapper:
             count = sum(drawn['unified'].values()) if drawn['unified'] else 0
             self.run.info("Number of maps drawn", count)
 
-            return
+            return drawn
 
         # Determine the individual maps to draw.
         if draw_individual_files == True:
@@ -1138,7 +1140,7 @@ class Mapper:
                 count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
             self.run.info(f"Number of maps drawn for individual {category_message}", count)
 
-            return
+            return drawn
 
         self.progress.new("Drawing map grid")
         self.progress.update("...")
