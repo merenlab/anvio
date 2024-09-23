@@ -1526,6 +1526,44 @@ class Mapper:
                 "default if this were not the case is False, or do not discard ties.)"
             )
 
+        # Load groups.
+        if (
+            (groups_txt is None and group_threshold is not None) or
+            (groups_txt is not None and group_threshold is None)
+        ):
+            raise ConfigError(
+                "To group genomes, arguments to both 'groups_txt' and 'group_threshold' must be "
+                "provided."
+            )
+
+        if groups_txt is None:
+            source_group = None
+            group_sources = None
+            categories = contigs_dbs
+        else:
+            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+                groups_txt, run=self.run, progress=self.progress
+            )
+            categories = list(group_sources)
+
+            if not 0 <= group_threshold <= 1:
+                raise ConfigError(
+                    f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
+                )
+
+            # Report genomes in 'groups_txt' that are not in the pan database.
+            missing_sources: List[str] = []
+            for source in source_group:
+                if source not in all_genome_names:
+                    missing_sources.append(source)
+            if missing_sources:
+                message = ', '.join([f"'{source}'" for source in missing_sources])
+                self.run.warning(
+                    "The following genomes were grouped in 'groups_txt' but are not found among "
+                    f"'pan_db' genomes, and so will not factor into maps: {message}"
+                )
+
+
         self.progress.new("Loading consensus KO data from pan database")
         self.progress.update("...")
         progress = self.progress
