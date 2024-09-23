@@ -3231,14 +3231,22 @@ class ProfileSuperclass(object):
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([])):
-        """This function will populate both `self.split_coverage_values_per_nt_dict` and
-           `self.gene_level_coverage_stats_dict`.
+        """This function will populate `self.gene_level_coverage_stats_dict`. 
+           If you want it to also populate `self.split_coverage_values_per_nt_dict`, you should set 
+           `init_split_coverage_values_per_nt` to True. Otherwise, it will only load one split's coverage stats at a time 
+           to save on memory. 
 
            Note: if a `split_names_of_interest` argument is declared at the class level,
            this function will operate on those splits found in that set.
 
            If there is a collection and a single bin name, then this function will work with
-           the genes database to read form or to write to.
+           the genes database to read from or to write to.
+
+           Note 2: If a `callback` function is provided, `self.gene_level_coverage_stats_dict` will NOT be populated
+           and instead the gene level stats will be sent to the callback function using the interval specified 
+           with `callback_interval` (which is the number of splits to process before sending the result). But this 
+           doesn't happen when there is a genes database available (in which case the callback function is not used 
+           anyway).
            """
 
         # let's get these parameters set
