@@ -95,10 +95,10 @@ def get_args() -> Namespace:
         '--external-genomes', type=str, help=
         "A two-column tab-delimited flat text file that lists anvi'o contigs databases generated "
         "by 'anvi-gen-contigs-database'. Contigs databases can alternatively be provided using the "
-        "argument, '--contigs-dbs'. The first item in the header line of the file should read "
-        "'name', and the second should read 'contigs_db_path'. Each line in the file should "
-        "describe a single entry, where the first column is a name for the database, and the "
-        "second is the path to the database."
+        "argument, '--contigs-dbs'. The first column must have the header, 'name', and the second "
+        "column must have the header, 'contigs_db_path'. Each line in the file should describe a "
+        "single entry, where the first column is a name for the database, and the second is the "
+        "path to the database."
     )
 
     groupPAN = parser.add_argument_group("PANGENOMIC DATABASE", "Display data from a pangenome.")
@@ -129,13 +129,13 @@ def get_args() -> Namespace:
         "A tab-delimited text file specifying which group each item belongs to. Items may be "
         "contigs database files, if provided with '--contigs-dbs', or the names of genomes in a "
         "pangenomic database, if provided with '--pan-db'. The first column can have any header, "
-        "e.g., 'contigs_db', 'pan_genome', or 'source'. The second column must have the header, "
-        "'group', and contain the group name for each item. Each item can only be associated with "
-        "a single group. It is recommended that group names be single words without fancy "
-        "characters, such as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or "
-        "'IS-THIS-OK?'. The option '--group-threshold' must be also be used for the groups to take "
-        "effect, assigning colors based on group membership and drawing individual files "
-        "('--draw-individual-files') and map grids ('--draw-grid') for groups."
+        "e.g., 'contigs_db', 'pan_genome', or 'source'. The second column, headed 'group', must "
+        "contain the group name for each item. Each item can only be associated with a single "
+        "group. It is recommended that group names be single words without fancy characters, such "
+        "as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'. The "
+        "option '--group-threshold' must be also be used for the groups to take effect, assigning "
+        "colors based on group membership and drawing individual files ('--draw-individual-files') "
+        "and map grids ('--draw-grid') for groups."
     })
     groupGROUP.add_argument(
         '--group-threshold', type=float, metavar='FLOAT', help=
