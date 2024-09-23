@@ -1856,6 +1856,16 @@ class DGR_Finder:
                     TR:GCTAACTGACATAATT
         Anchor_primer :GCT..C.G.C.T..TT
                     VR:GCTCACGGACTTCATT
+
+        Parameters
+        ==========
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+
+        Returns
+        =======
+        primers_dict : dict
+            A dictionary containing the various primers for each sample including the compositional sections of each primer (i.e. anchor primer and the initial primer)
         """
 
         #create primers dictionary
