@@ -1020,7 +1020,7 @@ class Mapper:
         # Gather information needed to draw individual maps for groups, either as separate files or
         # in map grids. Determine map colors.
         group_ko_project_names: Dict[str, Dict[str, List[str]]] = {}
-        group_color_priority = Dict[str, Dict[str, float]] = {}
+        group_color_priority: Dict[str, Dict[str, float]] = {}
         if groups_txt is not None:
             # Determine KO membership among each group's contigs databases.
             for ko_id, project_names in ko_project_names.items():
