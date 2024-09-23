@@ -96,4 +96,4 @@ class Foldseek():
         self.progress.end()
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search Result', self.output_file_path + '/' + 'result')
+        self.run.info('Foldseek search Result', result_file_dir)
