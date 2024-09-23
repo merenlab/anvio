@@ -11,6 +11,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -27,7 +28,7 @@ __description__ = ("Export gene coverage and detection data for all genes associ
 run = terminal.Run()
 p = terminal.pluralize
 
-
+@time_program
 def main(args):
     if args.gene_caller_id and args.genes_of_interest:
         raise ConfigError("You either should define a single gene caller id, or a list of "
