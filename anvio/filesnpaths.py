@@ -488,7 +488,7 @@ class AppendableFile:
         if fail_if_file_exists and exists:
             raise FilesNPathsError(f"AppendableFile class is refusing to open your file at {self.path} "
                                     "because it already exists. If you are a user, you should probably give "
-                                    "Anvi'o a different file name to work with. If you are a programmer and you "
+                                    "anvi'o a different file name to work with. If you are a programmer and you "
                                     "don't want this behavior, init this class with `fail_if_file_exists=False` instead.")
 
         is_output_file_writable(self.path)
