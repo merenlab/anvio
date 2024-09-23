@@ -1170,31 +1170,22 @@ class Mapper:
                         drawn_pathway_number[pathway_number] = {category: drawn_map}
 
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
-            progress = self.progress
-            self.progress = terminal.Progress(verbose=False)
-            run = self.run
-            self.run = terminal.Run(verbose=False)
             for pathway_number, drawn_category in drawn_pathway_number.items():
                 if set(drawn_category.values()) != set([True, False]):
                     continue
+                pathway = self._get_pathway(pathway_number)
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    self.map_contigs_database_kos(
-                        project_name_contigs_db[category],
-                        os.path.join(output_dir, category),
-                        pathway_numbers=[pathway_number],
-                        draw_maps_lacking_kos=True
-                    )
                     if self.name_files:
                         pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
                     else:
                         pathway_name = ''
-                    paths_to_remove.append(os.path.join(
+                    out_path = os.path.join(
                         output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
-                    ))
-            self.progress = progress
-            self.run = run
+                    )
+                    self.drawer.draw_map(pathway, out_path)
+                    paths_to_remove.append(out_path)
 
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
