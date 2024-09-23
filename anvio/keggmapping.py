@@ -359,7 +359,6 @@ class Mapper:
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        colorbar: bool = True,
         draw_maps_lacking_kos: bool = False
     ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
         """
@@ -526,10 +525,6 @@ class Mapper:
             'group_colormap'). If True, these maps for individual groups draw reactions found in
             fewer of the group's contigs databases on top of reactions found in more of the group's
             databases, the opposite of the default drawing order.
-
-        colorbar : bool, True
-            If True and coloring by database/group membership, save a colorbar legend to the file,
-            'colorbar.pdf', in the output directory.
 
         draw_maps_lacking_kos : bool, False
             If False, by default, only draw maps containing any of the select KOs. If True, draw
