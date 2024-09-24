@@ -69,6 +69,7 @@ INFO "Testing mapping KOs from a genomic contigs database"
 args=()
 args+=( "--contigs-db" "E_faecalis_6240.db" )
 args+=( "--output-dir" ${output_dir}/contigs_db_kos )
+args+=( "--name-files" )
 args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
 args+=( "--no-progress" )
