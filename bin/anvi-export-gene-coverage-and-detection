@@ -88,29 +88,29 @@ def main(args):
     filesnpaths.is_output_file_writable(gene_coverages_path)
     filesnpaths.is_output_file_writable(gene_detection_path)
 
-    gene_coverages_file = open(gene_coverages_path, 'w')
-    gene_detection_file = open(gene_detection_path, 'w')
+    gene_coverages_file = filesnpaths.AppendableFile(gene_coverages_path, append_type=dict, fail_if_file_exists=True)
+    gene_detection_file = filesnpaths.AppendableFile(gene_detection_path, append_type=dict, fail_if_file_exists=True)
 
-    header_coverages = ['key'] + profile_db.p_meta['samples']
-    header_detection = ['key'] + profile_db.p_meta['samples']
-
-    gene_coverages_file.write('\t'.join(header_coverages) + '\n')
-    gene_detection_file.write('\t'.join(header_detection) + '\n')
+    key_string = 'gene_caller_id'
+    header_coverages = [key_string] + profile_db.p_meta['samples']
+    header_detection = [key_string] + profile_db.p_meta['samples']
 
     def write_to_file():
-        for gene_callers_id in profile_db.gene_level_coverage_stats_dict:
-            line_coverages = [gene_callers_id]
-            line_detection = [gene_callers_id]
+        """This function takes the stats for a subset of gene calls and appends them to the output files."""
+        
+        coverages = {}
+        detection = {}
+        for gene_caller_id in profile_db.gene_level_coverage_stats_dict:
+            coverages[gene_caller_id] = {sample_name: profile_db.gene_level_coverage_stats_dict[gene_caller_id][sample_name]['mean_coverage'] \
+                        for sample_name in profile_db.p_meta['samples']}
+            detection[gene_caller_id] = {sample_name: profile_db.gene_level_coverage_stats_dict[gene_caller_id][sample_name]['detection'] \
+                        for sample_name in profile_db.p_meta['samples']}
 
-            for sample_name in profile_db.p_meta['samples']:
-                line_coverages.append(profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage'])
-                line_detection.append(profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection'])
+        gene_coverages_file.append(coverages, headers=header_coverages, key_header=key_string)
+        gene_detection_file.append(detection, headers=header_detection, key_header=key_string)
 
-            gene_coverages_file.write('\t'.join(map(str, line_coverages)) + '\n')
-            gene_detection_file.write('\t'.join(map(str, line_detection)) + '\n')
+        profile_db.gene_level_coverage_stats_dict = {} # this should be taken care of by the db object, but we do it here as well just in case
 
-        profile_db.gene_level_coverage_stats_dict = {}
-        profile_db.split_coverage_values_per_nt_dict = {}
 
     if genes_of_interest:
         profile_db.init_gene_level_coverage_stats_dicts(callback=write_to_file, callback_interval=1000, gene_caller_ids_of_interest={int(g) for g in genes_of_interest})
