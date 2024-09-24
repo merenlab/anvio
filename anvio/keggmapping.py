@@ -1284,7 +1284,7 @@ class Mapper:
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[str, mcolors.Colormap, None] = 'plasma_r',
-        colormap_limits: Tuple[float, float] = None,
+        colormap_limits: Tuple[float, float] = (0.1, 0.9),
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
