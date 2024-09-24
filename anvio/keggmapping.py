@@ -2915,7 +2915,9 @@ class Mapper:
                     categories += ko_membership[kegg_id]
                 except KeyError:
                     continue
-            assert len(categories)
+            if not categories:
+                # The KO was provided without being in any categories.
+                continue
 
             if category_combos is None:
                 color_hexcode = color_hexcodes[len(set(categories)) - 1]
