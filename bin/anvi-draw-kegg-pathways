@@ -401,7 +401,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
     else:
         # Include select contigs databases or select groups.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_grid=args.draw_grid.split()
+            map_contigs_databases_kos, draw_grid=args.draw_grid
         )
 
     assert not ((args.set_color is not None) and (args.colormap is not None))
@@ -501,7 +501,7 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     else:
         # Include select genomes or select groups.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, draw_grid=args.draw_grid.split()
+            map_pan_database_kos, draw_grid=args.draw_grid
         )
 
     assert not ((args.set_color is not None) and (args.colormap is not None))
