@@ -421,7 +421,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         # Color reactions in unified maps the default static color.
         map_contigs_databases_kos = functools.partial(map_contigs_databases_kos, colormap=False)
     else:
-        # Use the provided color.
+        # Use the provided color or the original map colors.
         map_contigs_databases_kos = functools.partial(
             map_contigs_databases_kos, colormap=False, color_hexcode=args.set_color
         )
@@ -432,12 +432,12 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
             # colormap.
             pass
         elif len(args.group_colormap) == 1:
-            # Use the provided colormap name.
+            # Use the provided group colormap name.
             map_contigs_databases_kos = functools.partial(
                 map_contigs_databases_kos, group_colormap=args.group_colormap[0]
             )
         else:
-            # Use the provided colormap name and limits.
+            # Use the provided group colormap name and limits.
             assert len(args.group_colormap) == 3
             min_limit = float(args.group_colormap[1])
             max_limit = float(args.group_colormap[2])
@@ -465,10 +465,10 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     if args.draw_individual_files is None:
         pass
     elif len(args.draw_individual_files) == 0:
-        # Draw maps for all genomes in the pangenome.
+        # Draw maps for all genomes or groups.
         map_pan_database_kos = functools.partial(map_pan_database_kos, draw_individual_files=True)
     else:
-        # Draw maps for select genomes.
+        # Draw maps for select genomes or groups.
         map_pan_database_kos = functools.partial(
             map_pan_database_kos, draw_individual_files=args.draw_individual_files
         )
@@ -476,36 +476,24 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     if args.draw_grid is None:
         pass
     elif len(args.draw_grid) == 0:
-        # Draw a grid of maps including all genomes in the pangenome.
+        # Draw a grid of maps including all genomes or all groups.
         map_pan_database_kos = functools.partial(map_pan_database_kos, draw_grid=True)
     else:
-        # Include select genomes.
+        # Include select genomes or select groups.
         map_pan_database_kos = functools.partial(
             map_pan_database_kos, draw_grid=args.draw_grid.split()
         )
 
     assert not ((args.set_color is not None) and (args.colormap is not None))
 
-    if args.set_color is None:
-        # Dynamically color reactions in pangenomic maps by number of genomes.
-        pass
-    elif args.set_color is True:
-        # Color reactions in pangenomic maps the default static color.
-        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=None)
-    else:
-        # Use the provided color.
-        map_pan_database_kos = functools.partial(
-            map_pan_database_kos, colormap=None, color_hexcode=args.set_color
-        )
-
     if args.colormap is None:
-        # Dynamically color reactions in pangenomic maps using the default colormap.
+        # Dynamically color reactions by genome or group in unified maps using the default colormap.
         pass
     elif len(args.colormap) == 1:
-        # Use the provided colormap.
+        # Use the provided colormap name.
         map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=args.colormap[0])
     else:
-        # Use the provided colormap and limits.
+        # Use the provided colormap name and limits.
         assert len(args.colormap) == 3
         min_limit = float(args.colormap[1])
         max_limit = float(args.colormap[2])
@@ -515,15 +503,51 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
             colormap_limits=(min_limit, max_limit)
         )
 
+    if args.set_color is None:
+        # Dynamically color reactions in pangenomic maps by number of genomes or groups.
+        pass
+    elif args.set_color is True:
+        # Color reactions in unified maps the default static color.
+        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=None)
+    else:
+        # Use the provided color or the original map colors.
+        map_pan_database_kos = functools.partial(
+            map_pan_database_kos, colormap=None, color_hexcode=args.set_color
+        )
+
+    if args.groups_txt:
+        if args.group_colormap is None:
+            # Dynamically color reactions by group in individual group maps using the default
+            # colormap.
+            pass
+        elif len(args.group_colormap) == 1:
+            # Use the provided group colormap name.
+            map_pan_database_kos = functools.partial(
+                map_pan_database_kos, group_colormap=args.group_colormap[0]
+            )
+        else:
+            # Use the provided group colormap name and limits.
+            assert len(args.group_colormap) == 3
+            min_limit = float(args.group_colormap[1])
+            max_limit = float(args.group_colormap[2])
+            map_pan_database_kos = functools.partial(
+                map_pan_database_kos,
+                group_colormap=args.group_colormap[0],
+                group_colormap_limits=(min_limit, max_limit)
+            )
+
     map_pan_database_kos(
         args.pan_db,
         args.genomes_storage,
         args.output_dir,
+        groups_txt=args.groups_txt,
+        group_threshold=args.group_threshold,
         consensus_threshold=args.consensus_threshold,
         discard_ties=args.discard_ties,
         pathway_numbers=args.pathway_numbers,
         reverse_overlay=args.reverse_overlay,
-        draw_maps_lacking_kos=args.draw_bare_maps,
+        group_reverse_overlay=args.group_reverse_overlay,
+        draw_maps_lacking_kos=args.draw_bare_maps
     )
 
 if __name__ == '__main__':
