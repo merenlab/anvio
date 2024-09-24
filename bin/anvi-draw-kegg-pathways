@@ -536,11 +536,11 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         pass
     elif args.set_color is True:
         # Color reactions in unified maps the default static color.
-        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=None)
+        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=False)
     else:
         # Use the provided color or the original map colors.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, colormap=None, color_hexcode=args.set_color
+            map_pan_database_kos, colormap=False, color_hexcode=args.set_color
         )
 
     if args.groups_txt:
