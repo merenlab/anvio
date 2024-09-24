@@ -834,7 +834,7 @@ class Mapper:
                 group: len(sources) for group, sources in group_sources.items()
             }
             for ko_id, project_names in ko_project_names.items():
-                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, value=0)
+                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
                 for project_name in project_names:
                     group = project_name_group[project_name]
                     group_counts[group] += 1
@@ -1780,7 +1780,7 @@ class Mapper:
                 group: len(sources) for group, sources in group_sources.items()
             }
             for ko_id, genome_names in consensus_ko_genomes.items():
-                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, value=0)
+                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
                 for genome_name in genome_names:
                     try:
                         group = genome_group[genome_name]
@@ -1954,7 +1954,7 @@ class Mapper:
                     try:
                         inner_genome_names = inner_consensus_ko_genomes[ko_id]
                     except KeyError:
-                        inner_genome_names[ko_id] = inner_genome_names = []
+                        inner_consensus_ko_genomes[ko_id] = inner_genome_names = []
                     inner_genome_names.append(genome_name)
 
             # For each group, sample the group colormap for colors representing all genomes in the
