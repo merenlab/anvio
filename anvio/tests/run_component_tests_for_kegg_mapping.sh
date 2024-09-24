@@ -114,7 +114,8 @@ args+=( "--draw-individual-files" )
 args+=( "--draw-grid" )
 args+=( "--ko" )
 args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
-args+=( "--colormap" "magma" )
+args+=( "--colormap" "plasma" "0.1" "0.9")
+args+=( "--reverse-overlay" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
