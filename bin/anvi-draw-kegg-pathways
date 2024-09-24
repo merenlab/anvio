@@ -256,28 +256,28 @@ def get_args() -> Namespace:
         "colormap names to reverse the order of colors), trimming the top and bottom 10%%. "
         "'plasma_r' spans yellow (fewer genomes) to blue-violet (more genomes), which accentuates "
         "in darker colors reactions that are shared rather than unshared across genomes. In "
-        "contrast, a colormap spanning dark to light, such as 'plasma', is better for drawing "
+        "contrast, a colormap spanning dark to light, such as 'plasma', can be better for drawing "
         "attention to unshared reactions. Multiple contigs databases and groups can use two "
         "'schemes' for dynamic coloring, 'by_count' and 'by_membership' (see the argument, "
         "'--colormap-scheme'). As with pangenomes, 'by_count' uses by default the 'plasma_r' "
-        "colormap trimming the top and bottom 10%%. 'by_membership' uses by default the "
+        "colormap, trimming the top and bottom 10%%. 'by_membership' uses by default the "
         "qualitative colormap, 'tab10', without trimming. This colormap contains distinct colors "
-        "suitable for clearly differentiating the different databases or groups containing "
-        "reactions. See the following webpage for named colormaps: "
+        "suitable for clearly differentiating the databases or groups containing reactions. See "
+        "the following webpage for named colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps "
     )
     groupCOLOR.add_argument(
         '--colormap-scheme', choices=['by_count', 'by_membership'], help=
-        "There are two ways of dynamically coloring KO reactions ('--ko') by inclusion in multiple "
-        "contigs databases ('--contigs-dbs') or groups ('--groups-txt') of databases or pan "
-        "genomes: by count or by membership. By default, with 4 or more databases or groups, "
-        "reactions are colored by count of database or group; with 2 or 3, reactions are colored "
-        "explicitly by database or group membership. In coloring by count, the colormap should be "
-        "sequential, such that the color of a reaction changes 'smoothly' with the count. In "
-        "contrast, coloring by membership means reaction color is determined by membership in a "
-        "database/group or combination of databases/groups, so a qualitative colormap can be used, "
-        "as by default, instead of a sequential colormap to give a distinct color to each "
-        "membership category."
+        "There are two ways of dynamically coloring reactions by occurrence in multiple contigs "
+        "databases ('--contigs-dbs') or groups ('--groups-txt') of databases or pan genomes: by "
+        "count or by membership. By default, with 4 or more databases or groups, reactions are "
+        "colored by count of database or group; with 2 or 3, reactions are colored explicitly by "
+        "database or group membership. In coloring by count, the colormap should be sequential, "
+        "such that the color of a reaction changes 'smoothly' with the count. In contrast, "
+        "coloring by membership means reaction color is determined by membership in a "
+        "database/group or combination of databases/groups, so a qualitative colormap can be used "
+        "instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
+        "distinct color to each membership category."
     )
     groupCOLOR.add_argument(
         '--reverse-overlay', action='store_true', default=False, help=
@@ -521,6 +521,14 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
             map_pan_database_kos,
             colormap=args.colormap[0],
             colormap_limits=(min_limit, max_limit)
+        )
+
+    if args.colormap_scheme is None:
+        # The scheme is determined automatically by the number of genomes or groups.
+        pass
+    else:
+        map_pan_database_kos = functools.partial(
+            map_pan_database_kos, colormap_scheme=args.colormap_scheme
         )
 
     if args.set_color is None:

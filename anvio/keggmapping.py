@@ -455,15 +455,14 @@ class Mapper:
             dynamic coloring via a colormap with the argument provided to 'color_hexcode', so that
             reactions represented by KOs in contigs databases are assigned predetermined colors.
 
-            The default argument value of True automatically assigns a colormap given the colormap
-            scheme (see the 'colormap_scheme' parameter). The scheme, 'by_count', uses by default
-            the sequential colormap, 'plasma_r', which spans yellow (fewer databases or groups) to
-            blue-violet (more databases or groups). This accentuates reactions that are shared
-            rather than unshared across databases/groups. In contrast, a colormap spanning dark to
-            light, such as 'plasma', is better for drawing attention to unshared reactions. The
-            scheme, 'by_membership', uses by default the qualitative colormap, 'tab10'; it contains
-            distinct colors suitable for clearly differentiating the different databases/groups
-            containing reactions.
+            The default argument value of True automatically assigns a colormap given the
+            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
+            colormap, 'plasma_r', which spans yellow (fewer databases or groups) to blue-violet
+            (more databases or groups). This accentuates reactions that are shared rather than
+            unshared across databases/groups. In contrast, a colormap spanning dark to light, such
+            as 'plasma', is better for drawing attention to unshared reactions. The scheme,
+            'by_membership', uses by default the qualitative colormap, 'tab10'; it contains distinct
+            colors suitable for clearly differentiating the databases/groups containing reactions.
 
             The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
             used in lieu of the default. See the following webpage for named colormaps:
@@ -1283,8 +1282,9 @@ class Mapper:
         pathway_numbers: Iterable[str] = None,
         draw_individual_files: Union[Iterable[str], bool] = False,
         draw_grid: Union[Iterable[str], bool] = False,
-        colormap: Union[str, mcolors.Colormap, None] = 'plasma_r',
-        colormap_limits: Tuple[float, float] = (0.1, 0.9),
+        colormap: Union[bool, str, mcolors.Colormap] = True,
+        colormap_limits: Tuple[float, float] = None,
+        colormap_scheme: Literal['by_count', 'by_membership'] = None,
         reverse_overlay: bool = False,
         color_hexcode: str = '#2ca02c',
         group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
@@ -1394,26 +1394,42 @@ class Mapper:
             the argument can accept a subset of group names to only draw individual maps in the grid
             for those groups.
 
-        colormap : Union[str, matplotlib.colors.Colormap, None], 'plasma_r'
+        colormap : Union[bool, str, matplotlib.colors.Colormap], True
             Reactions are dynamically colored to reflect the number of genomes (or groups of
-            genomes) containing the reaction, unless the argument value is None. None overrides
+            genomes) containing the reaction, unless the argument value is False. False overrides
             dynamic coloring via a colormap using the argument provided to 'color_hexcode', so that
-            reactions in the pangenome are assigned predetermined colors.
+            reactions represented in the pangenome are assigned predetermined colors.
 
-            This argument can take the name of a Matplotlib Colormap or a Colormap object itself.
-            The default sequential colormap, 'plasma_r', spans yellow (fewer genomes or groups) to
-            blue-violet (more genomes or groups). This accentuates reactions that are shared rather
-            than unshared across genomes/groups. In contrast, a colormap spanning dark to light, such as
-            'plasma', is better for drawing attention to unshared reactions.
+            The default argument value of True automatically assigns a colormap given the
+            'colormap_scheme' parameter. The scheme, 'by_count', uses by default the sequential
+            colormap, 'plasma_r', which spans yellow (fewer genomes or groups) to blue-violet (more
+            genomes or groups). This accentuates reactions that are shared rather than unshared
+            across genomes/groups. In contrast, a colormap spanning dark to light, such as 'plasma',
+            is better for drawing attention to unshared reactions. The scheme, 'by_membership', uses
+            by default the qualitative colormap, 'tab10'; it contains distinct colors suitable for
+            clearly differentiating the genomes/groups containing reactions.
 
-            See the following webpage for named colormaps:
+            The name of a Matplotlib Colormap or a Colormap object itself can also be provided to be
+            used in lieu of the default. See the following webpage for named colormaps:
             https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps
 
-        colormap_limits : Tuple[float, float], (0.1, 0.9)
+        colormap_limits : Tuple[float, float], None
             Limit the fraction of the 'colormap' used in dynamically selecting colors. The first
             value is the lower cutoff and the second value is the upper cutoff, e.g., (0.2, 0.9)
-            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. The
-            default limits of (0.1, 0.9) work well with the default 'plasma_r' colormap.
+            limits color selection to 70% of the colormap, trimming the bottom 20% and top 10%. By
+            default, for the colormap scheme, 'by_count', the colormap is 'plasma_r', and the limits
+            are set to (0.1, 0.9). By default, for the scheme, 'by_membership', the colormap is
+            qualititative ('tab10'), and limits are set to (0.0, 1.0).
+
+        colormap_scheme : Literal['by_count', 'by_membership'], None
+            There are two ways of dynamically coloring reactions by inclusion in genomes or groups
+            of genomes: by count, or explicitly by genome/group or combination of genomes/groups.
+            Given the default argument value of None, with 4 or more genomes/groups, reactions are
+            colored by count, and with 2 or 3, explicitly by membership. In coloring by count, the
+            colormap should be sequential, such that the color of a reaction changes 'smoothly' with
+            the count. In contrast, coloring by genome/group means reaction color is determined by
+            membership in a genome/group or combination of genomes/groups, so a qualitative colormap
+            can be suitable for clearly differentiating each.
 
         reverse_overlay : bool, False
             By default, with False, reactions in more genomes or groups of genomes are drawn on top
@@ -1647,16 +1663,47 @@ class Mapper:
         self.progress.new("Setting map colors")
         self.progress.update("...")
 
-        # Set the colormap.
+        # Set the colormap scheme.
         ignore_groups = False
-        if isinstance(colormap, str):
-            cmap = plt.colormaps[colormap]
-        elif isinstance(colormap, mcolors.Colormap):
-            cmap = colormap
-        elif colormap is None:
-            cmap = None
+        if colormap is False:
+            scheme = 'static'
             if groups_txt is not None:
                 ignore_groups = True
+        else:
+            if colormap_scheme is None:
+                if len(categories) < 4:
+                    scheme = 'by_membership'
+                else:
+                    scheme = 'by_count'
+            elif colormap_scheme == 'by_count':
+                scheme = 'by_count'
+            elif colormap_scheme == 'by_membership':
+                scheme = 'by_membership'
+            else:
+                raise AssertionError
+
+        # Set the colormap.
+        if colormap is True:
+            if scheme == 'by_count':
+                cmap = plt.colormaps['plasma_r']
+                if colormap_limits is None:
+                    colormap_limits = (0.1, 0.9)
+            elif scheme == 'by_membership':
+                cmap = plt.colormaps['tab10']
+                if colormap_limits is None:
+                    colormap_limits = (0.0, 1.0)
+            else:
+                raise AssertionError
+        elif colormap is False:
+            cmap = None
+        elif isinstance(colormap, str):
+            cmap = plt.colormaps[colormap]
+            if colormap_limits is None:
+                colormap_limits = (0.0, 1.0)
+        elif isinstance(colormap, mcolors.Colormap):
+            cmap = colormap
+            if colormap_limits is None:
+                colormap_limits = (0.0, 1.0)
         else:
             raise AssertionError
 
@@ -1712,7 +1759,7 @@ class Mapper:
         if ignore_groups:
             self.run.warning(
                 "Groups were provided by 'groups_txt', but these will be ignored, since 'colormap' "
-                "was set to None, and dynamic coloring based on KO membership in groups will be "
+                "was set to False, and dynamic coloring based on KO membership in groups will be "
                 "overridden by static coloring based on KO presence/absence in any genome."
             )
 
@@ -1814,7 +1861,7 @@ class Mapper:
         self.progress.new("Drawing 'unified' map incorporating data from all genomes")
 
         exceeds_colors: Tuple[int, int] = None
-        if colormap is None:
+        if scheme == 'static':
             # Draw unified maps of all genomes with static reaction colors.
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
@@ -1834,39 +1881,84 @@ class Mapper:
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
         else:
-            # Draw unified maps with dynamic coloring by number of genomes or groups.
+            # Draw unified maps with dynamic coloring by membership in genomes or groups.
+            assert cmap is not None
+            color_priority: Dict[str, float] = {}
+            if scheme == 'by_count':
+                # Sample the colormap for colors representing each possible number of genomes or
+                # groups. Lower color values correspond to fewer genomes/groups.
+                if sampling == 'in_order':
+                    if len(categories) == 1:
+                        sample_points = range(1, 2)
+                    else:
+                        sample_points = range(len(categories))
+                elif sampling == 'even':
+                    if len(categories) == 1:
+                        sample_points = np.linspace(1, 1, 1)
+                    else:
+                        sample_points = np.linspace(0, 1, len(categories))
+                else:
+                    raise AssertionError
 
-            # Sample the colormap for colors representing each possible number of genomes. Lower
-            # color values correspond to smaller numbers of databases.
-            if sampling == 'in_order':
-                if len(categories) == 1:
-                    sample_points = range(1, 2)
+                if len(categories) > cmap.N:
+                    exceeds_colors = (cmap.N, len(categories))
+
+                for sample_point in sample_points:
+                    if reverse_overlay:
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
+                    else:
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
+                category_combos = None
+            elif scheme == 'by_membership':
+                # Sample the colormap for colors representing the different genomes or groups and
+                # their combinations. Lower color values correspond to fewer genomes/groups.
+                category_combos = []
+                for category_count in range(1, len(categories) + 1):
+                    if groups_txt is None:
+                        category_combos += list(
+                            combinations(all_genome_names, category_count)
+                        )
+                    else:
+                        category_combos += list(combinations(categories, category_count))
+
+                if sampling == 'in_order':
+                    sample_points = range(len(category_combos))
+                elif sampling == 'even':
+                    sample_points = np.linspace(0, 1, len(category_combos))
                 else:
-                    sample_points = range(len(categories))
-            elif sampling == 'even':
-                if len(categories) == 1:
-                    sample_points = np.linspace(1, 1, 1)
-                else:
-                    sample_points = np.linspace(0, 1, len(categories))
+                    raise AssertionError
+
+                if len(category_combos) > cmap.N:
+                    exceeds_colors = (cmap.N, len(category_combos))
+
+                for sample_point in sample_points:
+                    if reverse_overlay:
+                        color_priority[
+                            mcolors.rgb2hex(cmap(sample_point))
+                        ] = 1 - sample_point / cmap.N
+                    else:
+                        color_priority[
+                            mcolors.rgb2hex(cmap(sample_point))
+                        ] = (sample_point + 1) / cmap.N
             else:
                 raise AssertionError
 
-            if len(categories) > cmap.N:
-                exceeds_colors = (cmap.N, len(categories))
-
-            color_priority: Dict[str, float] = {}
-            for sample_point in sample_points:
-                if reverse_overlay:
-                    color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
-                else:
-                    color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
-
             # Draw a colorbar in a separate file.
-            self.draw_colorbar(
-                color_priority,
-                os.path.join(output_dir, 'colorbar.pdf'),
-                color_labels=range(1, len(categories) + 1),
-                label='genome count' if groups_txt is None else 'group count'
+            _draw_colorbar = self.draw_colorbar
+            if scheme == 'by_count':
+                _draw_colorbar = functools.partial(
+                    _draw_colorbar,
+                    color_labels=range(1, len(categories) + 1),
+                    label='genome count' if groups_txt is None else 'group count'
+                )
+            elif scheme == 'by_membership':
+                _draw_colorbar = functools.partial(
+                    _draw_colorbar,
+                    color_labels=[', '.join(combo) for combo in category_combos],
+                    label='genomes' if groups_txt is None else 'groups'
+                )
+            _draw_colorbar(
+                color_priority, os.path.join(output_dir, 'colorbar.pdf')
             )
 
             for pathway_number in pathway_numbers:
@@ -1876,6 +1968,7 @@ class Mapper:
                     consensus_ko_genomes if groups_txt is None else consensus_ko_groups,
                     color_priority,
                     output_dir,
+                    category_combos=category_combos,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
 
