@@ -1109,6 +1109,11 @@ class Mapper:
                 run = self.run
                 self.run = terminal.Run(verbose=False)
 
+                group_output_dir = os.path.join(output_dir, group)
+                filesnpaths.gen_output_directory(
+                    group_output_dir, progress=self.progress, run=self.run
+                )
+
                 self.draw_colorbar(
                     group_color_priority[group],
                     os.path.join(output_dir, group, 'colorbar.pdf'),
