@@ -11,6 +11,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from filesnpaths import AppendableFile
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -97,3 +98,77 @@ class Foldseek():
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Foldseek search Result', result_file_dir)
+
+    def process_result(self, result):
+        self.run.warning(None, header="FOLDSEEK PROCESS RESULT", lc="green")
+        self.progress.new('FOLDSEEK')
+        self.progress.update('Processing Foldseek result...')
+
+        m8_file = os.path.join(self.output_file_path, 'result')
+        fasta_file = self.query_fasta
+        output_file = os.path.join(self.output_file_path, 'processed_output.m8')
+
+        fasta_lengths = self.read_fasta_lengths(fasta_file)
+
+        self_bit_scores = self.read_self_bit_scores(m8_file)
+
+        selected_rows = []
+
+        # FIXME Use here AppendableFile to control open/write operation
+        with open(m8_file, 'r') as file:
+            for line in file:
+                fields = line.strip().split('\t')
+                query = fields[0]
+                target = fields[1]
+                fident = float(fields[2])
+                qstart = int(fields[6])
+                qend = int(fields[7])
+                bits = float(fields[11])
+
+                query_length = fasta_lengths.get(query, 0)
+                coverage = (qend - qstart + 1) / query_length if query_length != 0 else 0
+
+                if query in self_bit_scores and target in self_bit_scores:
+                    minbit = bits / min(self_bit_scores[query], self_bit_scores[target])
+                else:
+                    continue
+
+                if minbit < 0.5 or fident < 0.0:
+                    continue
+
+                score = coverage * fident
+
+                selected_rows.append([query, target, str(fident)])
+
+        with open(output_file, 'w') as out_file:
+            header = ["Query", "Target", "Identity"]
+            out_file.write('\t'.join(header) + '\n')
+            for row in selected_rows:
+                out_file.write('\t'.join(row) + '\n')
+
+        self.progress.end()
+        self.run.info('Processed Foldseek Result', output_file)
+
+
+    def read_fasta_lengths(self, fasta_file):
+        lengths = {}
+        fasta = f.SequenceSource(fasta_file)
+        while next(fasta):
+            lengths[fasta.id] = len(fasta.seq)
+        return lengths
+
+    def read_self_bit_scores(self, foldseek_results_file):
+        self_bit_scores = {}
+        try:
+            with open(foldseek_results_file, 'r') as file:
+                for line in file:
+                    fields = line.strip().split('\t')
+                    query = fields[0]
+                    target = fields[1]
+                    bits = float(fields[11])
+
+                    if query == target:
+                        self_bit_scores[query] = bits
+        except Exception as e:
+            print(f"Error reading self bit scores: {e}")
+        return self_bit_scores
