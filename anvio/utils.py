@@ -4097,16 +4097,6 @@ def sanity_check_pfam_accessions(pfam_accession_ids):
                           f"start with \"PF\", please double check the following: {','.join(not_pfam_accession_ids)}")
 
 
-def get_missing_programs_for_hmm_analysis():
-    missing_programs = []
-    for p in ['prodigal', 'hmmscan']:
-        try:
-            is_program_exists(p)
-        except ConfigError:
-            missing_programs.append(p)
-    return missing_programs
-
-
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     if not collection_name or not bin_name:
         raise ConfigError("Genes database must be associated with a collection name and a bin name :/")
