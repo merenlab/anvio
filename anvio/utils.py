@@ -827,52 +827,34 @@ def is_all_columns_present_in_TAB_delim_file(columns, file_path, including_first
     return False if len([False for c in columns if c not in columns_in_file]) else True
 
 
-def is_all_submodules_present():
-    """A function to test whether all anvi'o submodules are present.
+def is_all_npm_packages_installed():
+    """A function to test whether all npm packages are installed in the interactive directory.
 
-    This check is particularly important for those who run anvi'o from a git clone
-    rather than using it via a regular installation.
+    This check is for ensuring that necessary npm packages are installed in the 
+    anvio/data/interactive directory.
     """
 
     # find the root directory of anvi'o module
     anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+    interactive_dir_path = os.path.join(anvio_module_path, 'data', 'interactive')
 
-    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+    if not os.path.exists(interactive_dir_path):
+        raise ConfigError("The interactive directory does not exist in the anvi'o module. "
+                          "Please ensure the directory is present.")
 
-    if not os.path.exists(gitmodules_path):
-        # if this file does not exist, we are likely looking at a case where anvi'o is
-        # installed on the user's computer, so we will let them go.
-        return True
+    # Check if node_modules exists and is not empty
+    node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
-    gitmodules = configparser.ConfigParser()
-
-    try:
-        gitmodules.read(gitmodules_path)
-    except Exception:
-        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
-                          "needs an adult :(")
-
-    # figure out missing modules
-    missing_gitmodules = []
-    for gitmodule in gitmodules.sections():
-        for key, value in gitmodules.items(gitmodule):
-            if key == 'path':
-                gitmodule_path = os.path.join(anvio_module_path, '..', value)
-
-                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
-                    missing_gitmodules.append(value)
-
-    if len(missing_gitmodules):
+    if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
         run.warning("Please read the error below, and then run the commands shown below in your terminal, "
-                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+                    "and you will be fine :)", header="⚠️  ANVI'O NEEDS NPM PACKAGES ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) npm install", level=0, overwrite_verbose=True)
         run.info_single("3) cd -", level=0, overwrite_verbose=True)
 
-        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
-                          "codebase. If you run the commands shown above, you should be golden to try "
-                          "again.")
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
     else:
         return True
 
