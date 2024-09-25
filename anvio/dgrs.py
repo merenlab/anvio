@@ -2560,5 +2560,5 @@ class DGR_Finder:
             self.recover_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
             self.report_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
             self.compute_dgr_variability_profiling(self.DGRs_found_dict) # add if statement to this for the metagenomics mode DGRs
-            #self.process_dgr_data_for_HTML_summary()
+            self.process_dgr_data_for_HTML_summary()
         return
