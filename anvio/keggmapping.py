@@ -403,15 +403,16 @@ class Mapper:
             species from KO annotations of genes. Reaction colors are assigned based on the groups
             rather than individual genomic contigs databases containing the reaction. Thresholds
             between 0 and 1 can be set to define group membership: a threshold of 0.0 would mean
-            that ANY genome in the group can contain the KO for the KO to be considered present in
-            the group; a threshold of 0.75 means at least 75% of the genomes in the group must
-            contain the KO for it to be present; a threshold of 1.0 means that ALL genomes in the
-            group must contain the KO for it to be present. In our example, set the threshold to
-            0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map corresponds to KO
-            Y. 90% of species A genomes, 50% of species B genomes, and 10% of species C genomes
-            contain KO X, so Reaction J would be colored to indicate that it is represented in
-            species A and B. 0% of species A genomes, 15% of species B genomes, and 40% of species C
-            genomes contain KO Y, so Reaction K would not be colored.
+            that ANY genome in the group can contain the reaction via KOs for the reaction to be
+            considered present in the group; a threshold of 0.75 means at least 75% of the genomes
+            in the group must contain the reaction for it to be present; a threshold of 1.0 means
+            that ALL genomes in the group must contain the reaction for it to be present. In our
+            example, set the threshold to 0.5. Reaction J on a map corresponds to KO X, and Reaction
+            K on a map corresponds to KOs Y and Z. 90% of species A genomes, 50% of species B
+            genomes, and 10% of species C genomes contain KO X, so Reaction J would be colored to
+            indicate that it is represented in species A and B. 0% of species A genomes, 15% of
+            species B genomes, and 40% of species C genomes contain KO Y and KO Z, so Reaction K
+            would not be colored.
 
         pathway_numbers : Iterable[str], None
             Regex patterns to match the ID numbers of the drawn pathway maps. The default of None
@@ -1322,15 +1323,16 @@ class Mapper:
             capabilities across the 3 species from KO annotations of genes. Reaction colors are
             assigned based on the groups rather than individual genomes containing the reaction.
             Thresholds between 0 and 1 can be set to define group membership: a threshold of 0.0
-            would mean that ANY genome in the group can contain the KO for the KO to be considered
-            present in the group; a threshold of 0.75 means that at least 75% of the genomes in the
-            group must contain the KO for it to be present; a threshold of 1.0 means that ALL
-            genomes in the group must contain the KO for it to be present. In our example, set the
-            threshold to 0.5. Reaction J on a map corresponds to KO X, and Reaction K on a map
-            corresponds to KO Y. 90% of species A genomes, 50% of species B genomes, and 10% of
-            species C genomes contain KO X, so Reaction J would be colored to indicate that it is
-            represented in species A and B. 0% of species A genomes, 15% of species B genomes, and
-            40% of species C genomes contain KO Y, so Reaction K would not be colored.
+            would mean that ANY genome in the group can contain the reaction via KOs for the
+            reaction to be considered present in the group; a threshold of 0.75 means that at least
+            75% of the genomes in the group must contain the reaction for it to be present; a
+            threshold of 1.0 means that ALL genomes in the group must contain the reaction for it to
+            be present. In our example, set the threshold to 0.5. Reaction J on a map corresponds to
+            KO X, and Reaction K on a map corresponds to KOs Y and Z. 90% of species A genomes, 50%
+            of species B genomes, and 10% of species C genomes contain KO X, so Reaction J would be
+            colored to indicate that it is represented in species A and B. 0% of species A genomes,
+            15% of species B genomes, and 40% of species C genomes contain KO Y or KO Z, so Reaction
+            K would not be colored.
 
         consensus_threshold : float, None
             If a reaction ntework is stored in the pan database, then by default consensus KOs are
