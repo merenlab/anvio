@@ -826,27 +826,6 @@ class Mapper:
                 except KeyError:
                     ko_project_names[ko_id] = [project_name]
 
-        # Find which groups meet the threshold for each KO.
-        ko_groups: Dict[str, List[str]] = {}
-        if groups_txt is not None:
-            group_source_count: Dict[str, int] = {
-                group: len(sources) for group, sources in group_sources.items()
-            }
-            for ko_id, project_names in ko_project_names.items():
-                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
-                for project_name in project_names:
-                    group = project_name_group[project_name]
-                    group_counts[group] += 1
-
-                ko_groups[ko_id] = qualifying_groups = []
-                for group, counts in group_counts.items():
-                    if group_threshold == 0:
-                        if counts / group_source_count[group] > 0:
-                            qualifying_groups.append(group)
-                    else:
-                        if counts / group_source_count[group] >= group_threshold:
-                            qualifying_groups.append(group)
-
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
@@ -968,10 +947,12 @@ class Mapper:
                 self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
-                    ko_project_names if groups_txt is None else ko_groups,
+                    ko_project_names,
                     color_priority,
                     output_dir,
                     category_combos=category_combos,
+                    group_sources=None if groups_txt is None else group_project_names,
+                    group_threshold=None if groups_txt is None else group_threshold,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
 
@@ -1825,31 +1806,6 @@ class Mapper:
         for ko_id, ko_genome_names in consensus_ko_genomes.items():
             consensus_ko_genomes[ko_id] = list(set(ko_genome_names))
 
-        # Find which groups meet the threshold for each KO.
-        consensus_ko_groups: Dict[str, List[str]] = {}
-        if groups_txt is not None:
-            group_source_count: Dict[str, int] = {
-                group: len(sources) for group, sources in group_sources.items()
-            }
-            for ko_id, genome_names in consensus_ko_genomes.items():
-                group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
-                for genome_name in genome_names:
-                    try:
-                        group = genome_group[genome_name]
-                    except KeyError:
-                        # 'groups_txt' is not require to contain every pan genome.
-                        continue
-                    group_counts[group] += 1
-
-                consensus_ko_groups[ko_id] = qualifying_groups = []
-                for group, counts in group_counts.items():
-                    if group_threshold == 0:
-                        if counts / group_source_count[group] > 0:
-                            qualifying_groups.append(group)
-                    else:
-                        if counts / group_source_count[group] >= group_threshold:
-                            qualifying_groups.append(group)
-
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
@@ -1970,10 +1926,12 @@ class Mapper:
                 self.progress.update(pathway_number)
                 drawn['unified'][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
-                    consensus_ko_genomes if groups_txt is None else consensus_ko_groups,
+                    consensus_ko_genomes,
                     color_priority,
                     output_dir,
                     category_combos=category_combos,
+                    group_sources=None if groups_txt is None else group_genomes,
+                    group_threshold=None if groups_txt is None else group_threshold,
                     draw_map_lacking_kos=draw_maps_lacking_kos
                 )
 
@@ -2848,11 +2806,14 @@ class Mapper:
         color_priority: Dict[str, float],
         output_dir: str,
         category_combos: List[Tuple[str]] = None,
+        group_sources: Dict[str, List[str]] = None,
+        group_threshold: float = None,
         draw_map_lacking_kos: bool = False
     ) -> bool:
         """
-        Draw a pathway map, coloring reactions by their membership via KOs in categories, e.g.,
-        contigs databases, genomes of a pangenome, or groups of contigs databases or pan genomes.
+        Draw a pathway map, coloring reactions by their membership via KOs in data sources (e.g.,
+        contigs databases, pan genomes) or groups of data sources (e.g., groups of databases or
+        genomes).
 
         In global and overview maps, compounds involved in colored reactions are given the color of
         the reaction with the highest priority.
@@ -2863,24 +2824,50 @@ class Mapper:
             Numeric ID of the map to draw.
 
         ko_membership : Dict[str, List[str]]
-            Keys are KO IDs. Values are lists of categories in which KOs are found.
+            Keys are KO IDs. Values are lists of data sources in which KOs are found.
 
         color_priority : Dict[str, float]
             Keys are color hex codes. Without a 'category_combos' argument, there should be a color
-            for each possible number of categories. With a 'category_combos' argument, there should
-            be a color for each category and combination thereof. Values are priorities. Reactions
-            assigned higher priority colors are drawn over reactions assigned lower priority colors.
+            for each possible number of data sources or groups. With a 'category_combos' argument,
+            there should be a color for each source/group and combination thereof. Values are
+            priorities. Reactions assigned higher priority colors are drawn over reactions assigned
+            lower priority colors.
 
         output_dir : str
             Path to an existing output directory in which map PDF files are drawn.
 
         category_combos : List[Tuple[str]], None
-            With the default argument value of None, reactions are colored by number of categories
-            containing the reaction. A list of "category combination" tuples can be provided to
-            color explicitly by category membership. Tuples should consist of category names (e.g.,
-            contigs database project names, pan genome names, or group names) and their
-            combinations, e.g., [('A', ), ('B', ), ('C', ), ('A', 'B'), ('A', 'C'), ('B', 'C'),
-            ('A', 'B', 'C')].
+            With the default argument value of None, reactions are colored by count of data sources
+            or groups containing the reaction. A list of tuples representing all possible
+            combinations of sources or groups can be provided to color explicitly by source/group
+            membership. Tuples should consist of source/group names (e.g., contigs database project
+            names, pan genome names, or group names) and their combinations, e.g., [('A', ), ('B',
+            ), ('C', ), ('A', 'B'), ('A', 'C'), ('B', 'C'), ('A', 'B', 'C')].
+
+        group_sources : Dict[str, List[str]], None
+            This argument in conjunction with 'group_threshold' is needed to color reactions by
+            group membership. Keys are group names. Values are lists of data sources (e.g., contigs
+            databases, pan genomes) categorized in the group. Each source must be unique to a single
+            group.
+
+        group_threshold : float, None
+            The proportion of KO data sources (e.g., contigs databases, pan genomes) in a group
+            associated with a reaction Entry needed for the group to be represented in terms of
+            presence/absence of the reaction. Here is a concrete example. Say genomes are grouped by
+            their species, 'A', 'B', and 'C'. You wish to understand the distribution of metabolic
+            capabilities across the 3 species from KO annotations of genes. Reaction colors are
+            assigned based on the groups rather than individual genomes associated with the reaction
+            via KOs. Thresholds between 0 and 1 can be set to define group membership: a threshold
+            of 0.0 would mean that ANY genome in the group can have the reaction for the reaction to
+            be considered present in the group; a threshold of 0.75 means that at least 75% of the
+            genomes in the group must have the reaction for it to be present; a threshold of 1.0
+            means that ALL genomes in the group must contain the reaction for it to be present. In
+            our example, set the threshold to 0.5. Reaction J on a map corresponds to KO X, and
+            Reaction K on a map corresponds to KOs Y and Z. 90% of species A genomes, 50% of species
+            B genomes, and 10% of species C genomes contain KO X, so Reaction J would be colored to
+            indicate that it is represented in species A and B. 0% of species A genomes, 15% of
+            species B genomes, and 40% of species C genomes contain KO Y or KO Z, so Reaction K
+            would not be colored.
 
         draw_map_lacking_kos : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
@@ -2892,6 +2879,11 @@ class Mapper:
             True if the map was drawn, False if the map was not drawn because it did not contain any
             of the select KOs and 'draw_map_lacking_kos' was False.
         """
+        assert not (
+            (group_sources is None and group_threshold is not None) or
+            (group_threshold is None and group_sources is not None)
+        )
+
         pathway = self._get_pathway(pathway_number)
 
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
@@ -2903,26 +2895,73 @@ class Mapper:
         if not entries and not draw_map_lacking_kos:
             return False
 
-        # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs. Also,
-        # in overview and standard maps, widen lines from the base map default of 1.0.
-        color_hexcodes = list(color_priority)
-        for entry in entries:
-            categories = []
+        def _get_reaction_sources(entry: kgml.Entry) -> Set[str]:
+            """Get data sources associated with the ortholog Entry via KOs."""
+            sources = []
             for kegg_name in entry.name.split():
                 split_kegg_name = kegg_name.split(':')
                 kegg_id = split_kegg_name[1]
                 try:
-                    categories += ko_membership[kegg_id]
+                    sources += ko_membership[kegg_id]
                 except KeyError:
                     continue
+            sources = set(sources)
+
+            return sources
+
+        def _get_qualifying_groups(entry: kgml.Entry) -> Set[str]:
+            """Get groups associated with the ortholog Entry via KOs and meeting the threshold."""
+            sources = _get_reaction_sources(entry)
+            group_counts: Dict[str, int] = {}.fromkeys(group_source_count, 0)
+            for source in sources:
+                try:
+                    group = source_group[source]
+                except KeyError:
+                    continue
+                group_counts[group] += 1
+
+            qualifying_groups = []
+            for group, counts in group_counts.items():
+                if group_threshold == 0:
+                    if counts / group_source_count[group] > 0:
+                        qualifying_groups.append(group)
+                else:
+                    if counts / group_source_count[group] >= group_threshold:
+                        qualifying_groups.append(group)
+            qualifying_groups = set(qualifying_groups)
+
+            return qualifying_groups
+
+        group_source_count: Dict[str, int] = {}
+        source_group: Dict[str, str] = {}
+        ko_groups: Dict[str, List[str]] = {}
+        if group_sources:
+            get_categories = _get_qualifying_groups
+
+            for group, sources in group_sources.items():
+                group_source_count[group] = len(sources)
+
+            for group, sources in group_sources.items():
+                for source in sources:
+                    assert source not in source_group
+                    source_group[source] = group
+        else:
+            get_categories = _get_reaction_sources
+
+        # Change the colors of the KO graphics. A reaction Entry can represent multiple KOs. Also,
+        # in overview and standard maps, widen lines from the base map default of 1.0.
+        color_hexcodes = list(color_priority)
+        for entry in entries:
+            # Get categories (data sources or groups) associated with the reaction Entry via KOs.
+            categories = get_categories(entry)
             if not categories:
                 # The KO was provided without being in any categories.
                 continue
 
             if category_combos is None:
-                color_hexcode = color_hexcodes[len(set(categories)) - 1]
+                color_hexcode = color_hexcodes[len(categories) - 1]
             else:
-                combo = combo_lookup[tuple(sorted(set(categories)))]
+                combo = combo_lookup[tuple(sorted(categories))]
                 color_hexcode = color_hexcodes[category_combos.index(combo)]
             for uuid in entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
@@ -2993,6 +3032,7 @@ class Mapper:
         else:
             filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
+
         return True
 
     def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
