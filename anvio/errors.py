@@ -37,8 +37,8 @@ class AnvioError(Exception, object):
         return
 
     def __str__(self):
-        max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        error_lines = ['%s%s' % (l, ' ' * (max_len - len(l))) for l in textwrap.fill(self.e, 80).split('\n')]
+        max_len = max([len(l) for l in textwrap.fill(textwrap.dedent(self.e), 80).split('\n')])
+        error_lines = ['%s%s' % (l, ' ' * (max_len - len(l))) for l in textwrap.fill(textwrap.dedent(self.e), 80).split('\n')]
 
         error_message = ['%s: %s' % (color_text(self.error_type, 'red'), error_lines[0])]
         for error_line in error_lines[1:]:
