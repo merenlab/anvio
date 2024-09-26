@@ -103,6 +103,12 @@ class Mapper:
     grid_drawer : PDFGridDrawer
         Writes PDF files that are a grid of input PDF files.
 
+    ignore_compound_rectangles : bool
+        If True, do not draw KGML compound Entry rectangle Graphics. These are found in a small
+        number of KGML files (see 00121, 00621, 01052, 01054), and when rendered by 'anvio.kgml' via
+        'Bio.Graphics.KGML_vis.KGMLCanvas' have the effect of obscuring underlying drawings of
+        compound structures in the base map image.
+    """
     def __init__(
         self,
         kegg_dir: str = None,
@@ -167,6 +173,7 @@ class Mapper:
         self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
 
         self.xml_ops = kgml.XMLOps()
+        self.ignore_compound_rectangles = True
         self.colorbar_drawer = ColorbarDrawer(overwrite_output=overwrite_output)
         self.grid_drawer = PDFGridDrawer(overwrite_output=overwrite_output)
 
@@ -3045,6 +3052,8 @@ class Mapper:
                 self.kegg_context.kgml_2x_ko_dir, f'ko{pathway_number}.xml'
             )
         pathway = self.xml_ops.load(kgml_path)
+        if self.ignore_compound_rectangles:
+            self._zero_out_compound_rectangles(pathway)
 
         return pathway
 
@@ -3080,6 +3089,36 @@ class Mapper:
         altered = altered.strip('_')
 
         return altered
+
+    @staticmethod
+    def _zero_out_compound_rectangles(pathway: kgml.Pathway) -> int:
+        """
+        Zero out the size of KGML compound Entry rectangle Graphics in the Pathway.
+
+        These are found in a small number of KGML files (see 00121, 00621, 01052, 01054), and when
+        rendered by 'anvio.kgml' via 'Bio.Graphics.KGML_vis.KGMLCanvas' have the effect of obscuring
+        underlying drawings of compound structures in the base map image.
+
+        Parameters
+        ==========
+        pathway : anvio.kgml.Pathway
+            KGML pathway element object.
+
+        Returns
+        =======
+        int
+            Count of zeroed out Graphics.
+        """
+        rectangle_count = 0
+        for compound_entry in pathway.get_entries(entry_type='compound'):
+            compound_rectangle_uuids: List[str] = []
+            for uuid in compound_entry.children['graphics']:
+                graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                if graphics.type == 'rectangle':
+                    graphics.width = 0.0
+                    graphics.height = 0.0
+                    rectangle_count += 1
+        return rectangle_count
 
 class ColorbarDrawer:
     """
