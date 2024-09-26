@@ -1594,7 +1594,7 @@ class XMLOps:
                     v = ','.join([str(round(coord)) for coord in value])
                 else:
                     raise AssertionError(
-                        f"The attribute, '{attr}', had a value, '{value}', of unrecognized type "
+                        f"The attribute, '{attr}', had a value, '{value}', of unrecognized type, "
                         f"'{type(value)}'."
                     )
                 if i == 0:
