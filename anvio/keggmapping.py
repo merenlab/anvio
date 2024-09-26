@@ -97,28 +97,8 @@ class Mapper:
     progress : anvio.terminal.Progress
         This object prints transient progress information to the terminal.
 
-    colorbar_figsize : Tuple[int, int], (1, 6)
-
-    colorbar_orientation : Literal['horizontal', 'vertical'], 'vertical'
-
-    colorbar_tick_fontsize : int, None
-        Dynamically size font with default of None, else set size to value.
-
-    colorbar_label_rotation : int, None
-        270° if vertical or 0° if horizontal with default of None, else rotate label by value.
-
-    colorbar_label_fontsize : int, 24
-
-    colorbar_labelpad : int, 30
-        Spacing of label from tick labels.
-    """
-    # Colorbar customization attributes.
-    colorbar_figsize: Tuple[int, int] = (1, 6)
-    colorbar_orientation: Literal['horizontal', 'vertical'] = 'vertical'
-    colorbar_tick_fontsize: int = None
-    colorbar_label_rotation: int = None
-    colorbar_label_fontsize: int = 24
-    colorbar_labelpad: int = 30
+    colorbar_drawer : ColorbarDrawer
+        Writes standalone colorbar image files.
 
     def __init__(
         self,
@@ -184,7 +164,7 @@ class Mapper:
         self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
 
         self.xml_ops = kgml.XMLOps()
-        self.drawer = kgml.Drawer(kegg_dir=self.kegg_context.kegg_data_dir)
+        self.colorbar_drawer = ColorbarDrawer(overwrite_output=overwrite_output)
 
         self.name_files = name_files
         self.overwrite_output = overwrite_output
@@ -927,7 +907,7 @@ class Mapper:
                 raise AssertionError
 
             # Draw a colorbar in a separate file.
-            _draw_colorbar = self.draw_colorbar
+            _draw_colorbar = self.colorbar_drawer.draw
             if scheme == 'by_count':
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
@@ -1096,7 +1076,7 @@ class Mapper:
                     group_output_dir, progress=self.progress, run=self.run
                 )
 
-                self.draw_colorbar(
+                self.colorbar_drawer.draw(
                     group_color_priority[group],
                     os.path.join(output_dir, group, 'colorbar.pdf'),
                     color_labels=range(1, len(group_sources[group]) + 1),
@@ -1180,7 +1160,7 @@ class Mapper:
         if groups_txt is not None:
             # Draw colorbars for each group.
             for group in draw_categories:
-                self.draw_colorbar(
+                self.colorbar_drawer.draw(
                     group_color_priority[group],
                     os.path.join(grid_dir, f'colorbar_{group}.pdf'),
                     color_labels=range(1, len(group_sources[group]) + 1),
@@ -1198,11 +1178,6 @@ class Mapper:
                 continue
             in_paths = [unified_map_path]
             labels = ['all']
-
-            pdf_doc = fitz.open(in_paths[0])
-            page = pdf_doc.load_page(0)
-            input_aspect_ratio = page.rect.width / page.rect.height
-            landscape = True if input_aspect_ratio > 1 else False
 
             for category in draw_grid_categories:
                 if self.name_files:
@@ -1907,7 +1882,7 @@ class Mapper:
                 raise AssertionError
 
             # Draw a colorbar in a separate file.
-            _draw_colorbar = self.draw_colorbar
+            _draw_colorbar = self.colorbar_drawer.draw
             if scheme == 'by_count':
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
@@ -2096,7 +2071,7 @@ class Mapper:
                     group_output_dir, progress=self.progress, run=self.run
                 )
 
-                self.draw_colorbar(
+                self.colorbar_drawer.draw(
                     group_color_priority[group],
                     os.path.join(output_dir, group, 'colorbar.pdf'),
                     color_labels=range(1, len(group_genomes[group]) + 1),
@@ -2181,7 +2156,7 @@ class Mapper:
         if groups_txt is not None:
             # Draw colorbars for each group.
             for group in draw_categories:
-                self.draw_colorbar(
+                self.colorbar_drawer.draw(
                     group_color_priority[group],
                     os.path.join(grid_dir, f'colorbar_{group}.pdf'),
                     color_labels=range(1, len(group_genomes[group]) + 1),
@@ -2199,11 +2174,6 @@ class Mapper:
                 continue
             in_paths = [unified_map_path]
             labels = ['pangenome']
-
-            pdf_doc = fitz.open(in_paths[0])
-            page = pdf_doc.load_page(0)
-            input_aspect_ratio = page.rect.width / page.rect.height
-            landscape = True if input_aspect_ratio > 1 else False
 
             for category in draw_grid_categories:
                 if self.name_files:
@@ -3107,7 +3077,52 @@ class Mapper:
 
         return altered
 
-    def draw_colorbar(
+class ColorbarDrawer:
+    """
+    Writes standalone colorbar image files.
+
+    Parameters
+    ==========
+    overwrite_output : bool
+        If True, methods in this class overwrite existing output files.
+
+    figsize : Tuple[int, int]
+        Dimensions of the figure in inches.
+
+    orientation : Literal['horizontal', 'vertical']
+        Orientation of the colobar.
+
+    tick_fontsize : Union[int, None]
+        If None, dynamically set the font size of each color segment to fit between ticks, else set
+        to the provided value.
+
+    label_rotation : Union[int, None]
+        If None, the colorbar label is rotated 270° if 'orientation' is vertical or 0° if
+        horizontal. Otherwise rotate the label by the provided value.
+
+    label_fontsize : int
+        Font size of colorbar label.
+
+    labelpad : int
+        Spacing of colorbar label from tick labels in points.
+    """
+    def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
+        """
+        Parameters
+        ==========
+        overwrite_output : bool, FORCE_OVERWRITE
+            If True, methods in this class overwrite existing output files.
+        """
+        self.overwrite_output = overwrite_output
+
+        self.figsize: Tuple[int, int] = (1, 6)
+        self.orientation: Literal['horizontal', 'vertical'] = 'vertical'
+        self.tick_fontsize: Union[int, None] = None
+        self.label_rotation: int = None
+        self.label_fontsize: int = 24
+        self.labelpad: int = 30
+
+    def draw(
         self,
         colors: Iterable,
         out_path: str,
@@ -3117,19 +3132,17 @@ class Mapper:
         """
         Save a standalone colorbar to a file.
 
-        The colorbar can further be customized by changing attributes of this Mapper instance.
-
         Parameters
         ==========
         colors : Iterable
-            Sequence of Matplotlib color specifications for matplotlib.colors.ListedColormap color
+            Sequence of Matplotlib color specifications for 'matplotlib.colors.ListedColormap' color
             parameter.
 
         out_path : str
             Path to PDF output file.
 
         color_labels : Iterable[str], None
-            Labels corresponding to each color.
+            Color segment labels.
 
         label : str, None
             Overall colorbar label.
@@ -3137,7 +3150,7 @@ class Mapper:
         if color_labels is not None:
             assert len(colors) == len(color_labels)
 
-        fig, ax = plt.subplots(figsize=self.colorbar_figsize)
+        fig, ax = plt.subplots(figsize=self.figsize)
 
         cmap = mcolors.ListedColormap(colors)
         norm = mcolors.BoundaryNorm(boundaries=range(len(colors) + 1), ncolors=len(colors))
@@ -3145,22 +3158,22 @@ class Mapper:
         cb = plt.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=ax,
-            orientation=self.colorbar_orientation
+            orientation=self.orientation
         )
 
         # Don't show tick marks.
         cb.ax.tick_params(size=0)
 
         if color_labels:
-            if self.colorbar_tick_fontsize is None:
+            if self.tick_fontsize is None:
                 # Calculate appropriate font size of tick labels based on color segment height.
                 length_in_data_coords = 1 / len(colors)
                 origin_in_points = ax.transData.transform((0, 0))
-                if self.colorbar_orientation == 'vertical':
+                if self.orientation == 'vertical':
                     size_value = height_in_points = (
                         ax.transData.transform((0, length_in_data_coords)) - origin_in_points
                     )[1]
-                elif self.colorbar_orientation == 'horizontal':
+                elif self.orientation == 'horizontal':
                     size_value = width_in_points = (
                         ax.transData.transform((length_in_data_coords, 0)) - origin_in_points
                     )[0]
@@ -3171,32 +3184,29 @@ class Mapper:
                 else:
                     tick_fontsize = min(size_value, 24)
             else:
-                tick_fontsize = self.colorbar_tick_fontsize
+                tick_fontsize = self.tick_fontsize
 
             cb.set_ticks(np.arange(len(colors)) + 0.5)
             cb.set_ticklabels(color_labels, fontsize=tick_fontsize)
 
         if label:
-            if self.colorbar_label_rotation is None:
-                if self.colorbar_orientation == 'vertical':
+            if self.label_rotation is None:
+                if self.orientation == 'vertical':
                     label_rotation = 270
-                elif self.colorbar_orientation == 'horizontal':
+                elif self.orientation == 'horizontal':
                     label_rotation = 0
                 else:
                     raise AssertionError
             else:
-                label_rotation = self.colorbar_label_rotation
+                label_rotation = self.label_rotation
             cb.set_label(
                 label,
                 rotation=label_rotation,
-                labelpad=self.colorbar_labelpad,
-                fontsize=self.colorbar_label_fontsize
+                labelpad=self.labelpad,
+                fontsize=self.label_fontsize
             )
 
-        if os.path.exists(out_path) and self.overwrite_output:
-            os.remove(out_path)
-        else:
-            filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         plt.savefig(out_path, format='pdf', bbox_inches='tight')
         plt.close()
 
