@@ -1662,11 +1662,11 @@ class Drawer:
         This object prints transient progress information to the terminal.
 
     non_reactant_transparency : float, 1.0
-        This controls the transparency, or alpha, of the background color of compound circles
+        This controls the transparency, or alpha, of the background color of compound graphics
         rendered from KGML for non-reactants, or compounds that don't participate in reactions. This
-        value is used to set the attribute of Bio.Graphics.KGML_vis.KGMLCanvas, which is 0.3 by
-        default, which allows the color of the circle in the underlying base map to bleed through,
-        which is probably not desirable.
+        value is used to set the attribute of 'Bio.Graphics.KGML_vis.KGMLCanvas'; the default value
+        of 0.3 allows the color of compound circles in underlying global base maps to bleed through,
+        which is not desirable.
     """
     def __init__(
         self,
