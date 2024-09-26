@@ -1154,16 +1154,12 @@ class Mapper:
                 if set(drawn_category.values()) != set([True, False]):
                     continue
                 pathway = self._get_pathway(pathway_number)
+                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
+                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    if self.name_files:
-                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                    else:
-                        pathway_name = ''
-                    out_path = os.path.join(
-                        output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
-                    )
+                    out_path = os.path.join(output_dir, category, pathway_basename)
                     self.drawer.draw_map(pathway, out_path)
                     paths_to_remove.append(out_path)
 
@@ -1183,10 +1179,7 @@ class Mapper:
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            if self.name_files:
-                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-            else:
-                pathway_name = ''
+            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
             unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
@@ -1194,10 +1187,6 @@ class Mapper:
             labels = ['all']
 
             for category in draw_grid_categories:
-                if self.name_files:
-                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                else:
-                    pathway_name = ''
                 individual_map_path = os.path.join(
                     output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
@@ -1206,10 +1195,6 @@ class Mapper:
                 in_paths.append(individual_map_path)
                 labels.append(category)
             else:
-                if self.name_files:
-                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                else:
-                    pathway_name = ''
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 drawn['grid'][pathway_number] = True
@@ -2150,16 +2135,12 @@ class Mapper:
                 if set(drawn_category.values()) != set([True, False]):
                     continue
                 pathway = self._get_pathway(pathway_number)
+                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
+                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    if self.name_files:
-                        pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                    else:
-                        pathway_name = ''
-                    out_path = os.path.join(
-                        output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
-                    )
+                    out_path = os.path.join(output_dir, category, pathway_basename)
                     self.drawer.draw_map(pathway, out_path)
                     paths_to_remove.append(out_path)
 
@@ -2179,10 +2160,7 @@ class Mapper:
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            if self.name_files:
-                pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-            else:
-                pathway_name = ''
+            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
             unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
             if not os.path.exists(unified_map_path):
                 continue
@@ -2190,10 +2168,6 @@ class Mapper:
             labels = ['pangenome']
 
             for category in draw_grid_categories:
-                if self.name_files:
-                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                else:
-                    pathway_name = ''
                 individual_map_path = os.path.join(
                     output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
                 )
@@ -2202,10 +2176,6 @@ class Mapper:
                 in_paths.append(individual_map_path)
                 labels.append(category)
             else:
-                if self.name_files:
-                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                else:
-                    pathway_name = ''
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 drawn['grid'][pathway_number] = True
@@ -2498,10 +2468,7 @@ class Mapper:
 
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
-                if self.name_files:
-                    pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-                else:
-                    pathway_name = ''
+                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
                 out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}{pathway_name}.pdf')
                 if os.path.exists(out_path):
                     raise ConfigError(
@@ -2648,10 +2615,7 @@ class Mapper:
         )
 
         # Draw the map.
-        if self.name_files:
-            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-        else:
-            pathway_name = ''
+        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         self.drawer.draw_map(pathway, out_path)
         return True
@@ -2769,10 +2733,7 @@ class Mapper:
         )
 
         # Draw the map.
-        if self.name_files:
-            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-        else:
-            pathway_name = ''
+        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         self.drawer.draw_map(pathway, out_path)
         return True
@@ -3000,10 +2961,7 @@ class Mapper:
             )
 
         # Draw the map.
-        if self.name_files:
-            pathway_name = '_' + self._get_filename_pathway_name(pathway_number)
-        else:
-            pathway_name = ''
+        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
         self.drawer.draw_map(pathway, out_path)
 
@@ -3048,9 +3006,9 @@ class Mapper:
 
         return pathway
 
-    def _get_filename_pathway_name(self, pathway_number: str) -> str:
+    def _name_pathway(self, pathway_number: str) -> str:
         """
-        Format the pathway name corresponding to the number to include in file paths.
+        Format the pathway name corresponding to the number for suitability in file paths.
 
         Replace all non-alphanumeric characters except parentheses, brackets, and curly braces with
         underscores. Replace multiple consecutive underscores with a single underscore. Strip
