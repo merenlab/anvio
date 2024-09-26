@@ -181,7 +181,7 @@ class Mapper:
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
-        self.quiet = self._quiet = quiet
+        self.quiet = quiet
 
     def map_contigs_database_kos(
         self,
@@ -3383,13 +3383,3 @@ class PDFGridDrawer:
 
         filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         output_doc.save(out_path)
-
-    @property
-    def quiet(self):
-        return self._quiet
-
-    @quiet.setter
-    def quiet(self, new_value: bool):
-        self._quiet = new_value
-        self.run.verbose = not self.quiet
-        self.progress.verbose = not self.quiet
