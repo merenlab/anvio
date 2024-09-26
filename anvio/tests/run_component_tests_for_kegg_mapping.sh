@@ -71,7 +71,8 @@ args+=( "--contigs-db" "E_faecalis_6240.db" )
 args+=( "--output-dir" ${output_dir}/contigs_db_kos )
 args+=( "--name-files" )
 args+=( "--ko" )
-args+=( "--pathway-numbers" "${pathway_numbers[@]}" )
+args+=( "--pathway-numbers" "${pathway_numbers[@]}" "05310" )
+args+=( "--draw-bare-maps" )
 args+=( "--no-progress" )
 anvi-draw-kegg-pathways "${args[@]}"
 
