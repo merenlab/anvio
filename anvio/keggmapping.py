@@ -100,6 +100,9 @@ class Mapper:
     colorbar_drawer : ColorbarDrawer
         Writes standalone colorbar image files.
 
+    grid_drawer : PDFGridDrawer
+        Writes PDF files that are a grid of input PDF files.
+
     def __init__(
         self,
         kegg_dir: str = None,
@@ -165,6 +168,7 @@ class Mapper:
 
         self.xml_ops = kgml.XMLOps()
         self.colorbar_drawer = ColorbarDrawer(overwrite_output=overwrite_output)
+        self.grid_drawer = PDFGridDrawer(overwrite_output=overwrite_output)
 
         self.name_files = name_files
         self.overwrite_output = overwrite_output
@@ -1197,7 +1201,7 @@ class Mapper:
                 else:
                     pathway_name = ''
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-                self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
@@ -2193,7 +2197,7 @@ class Mapper:
                 else:
                     pathway_name = ''
                 out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-                self.make_grid(in_paths, out_path, labels=labels, landscape=landscape)
+                self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
@@ -3210,13 +3214,47 @@ class ColorbarDrawer:
         plt.savefig(out_path, format='pdf', bbox_inches='tight')
         plt.close()
 
-    def make_grid(
+class PDFGridDrawer:
+    """
+    Writes PDF files that are a grid of input PDF files.
+
+    Attributes
+    ==========
+    overwrite_output : bool
+        If True, methods in this class overwrite existing output files.
+
+    paper_format : Union[str, None]
+        If None, automatically use the first input PDF file, placed in the upper left of the grid,
+        to set the page layout to 'letter-L' (landscape) if aspect ratio > 1, 'letter' if aspect
+        ratio ≤ 1. Alternatively, a paper format string can be provided, e.g., 'letter', 'letter-l',
+        'A4', 'A4-L'.
+
+    margin : float
+        Minimum space between grid cells.
+
+    label_fontsize_scale : Union[float, None]
+        If None, the font size of labels over grid cells is set to 80% of the 'margin' argument.
+        Alternatively, provide a float on (0.0, 1.0] for the proportion of the minimum margin to use
+        as the font size.
+    """
+    def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
+        """
+        Parameters
+        ==========
+        overwrite_output : bool, FORCE_OVERWRITE
+            If True, methods in this class overwrite existing output files.
+        """
+        self.overwrite_output = overwrite_output
+
+        self.paper_format: Union[str, None] = None
+        self.margin: float = 10.0
+        self.label_fontsize_scale: float = 0.8
+
+    def draw(
         self,
         in_paths: Iterable[str],
         out_path: str,
-        labels: Iterable[str] = None,
-        landscape: bool = False,
-        margin: float = 10.0
+        labels: Iterable[str] = None
     ) -> None:
         """
         Write a PDF containing a grid of input PDF images.
@@ -3231,26 +3269,31 @@ class ColorbarDrawer:
 
         labels : Iterable[str], None
             Labels displayed over grid cells corresponding to input files.
-
-        landscape : bool, False
-            Page layout is portrait if False, landscape if True.
-
-        margin : float, 10.0
-            Minimum space between cells.
         """
+        assert len(in_paths) > 0
         if labels:
             assert len(in_paths) == len(labels)
+        assert 0 < self.label_fontsize_scale <= 1
+
+        # Lay out the page.
+        if self.paper_format is None:
+            pdf_doc = fitz.open(in_paths[0])
+            page = pdf_doc.load_page(0)
+            first_input_aspect_ratio = page.rect.width / page.rect.height
+            paper_format = 'letter-L' if first_input_aspect_ratio > 1 else 'letter'
+        else:
+            paper_format = self.paper_format
 
         # Find the number of rows and columns in the grid.
         cols = math.ceil(math.sqrt(len(in_paths)))
         rows = math.ceil(len(in_paths) / cols)
 
         # Find the width and height of each cell.
-        width, height = fitz.paper_size(f'{"letter-l" if landscape else "letter"}')
-        cell_width = (width - (cols + 1) * margin) / cols
-        cell_height = (height - (rows + 1) * margin) / rows
+        width, height = fitz.paper_size(paper_format)
+        cell_width = (width - (cols + 1) * self.margin) / cols
+        cell_height = (height - (rows + 1) * self.margin) / rows
 
-        fontsize = margin * 0.8
+        fontsize = self.margin * self.label_fontsize_scale
 
         # Create a new PDF document.
         output_doc = fitz.open()
@@ -3264,8 +3307,8 @@ class ColorbarDrawer:
             # Calculate position in the grid.
             row = i // cols
             col = i % cols
-            x = margin + col * (cell_width + margin)
-            y = margin + row * (cell_height + margin)
+            x = self.margin + col * (cell_width + self.margin)
+            y = self.margin + row * (cell_height + self.margin)
 
             # Resize the input PDF to the cell by the longest dimension, maintaining aspect ratio.
             input_aspect_ratio = page.rect.width / page.rect.height
@@ -3299,6 +3342,7 @@ class ColorbarDrawer:
                 label_y = draw_y
                 output_page.insert_text((label_x, label_y), label, fontsize=fontsize)
 
+        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
         output_doc.save(out_path)
 
     @property
