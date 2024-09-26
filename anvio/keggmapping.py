@@ -173,6 +173,9 @@ class Mapper:
         self.rn_constructor = rn.Constructor(kegg_dir=self.kegg_context.kegg_data_dir)
 
         self.xml_ops = kgml.XMLOps()
+        self.drawer = kgml.Drawer(
+            kegg_dir=self.kegg_context.kegg_data_dir, overwrite_output=overwrite_output
+        )
         self.ignore_compound_rectangles = True
         self.colorbar_drawer = ColorbarDrawer(overwrite_output=overwrite_output)
         self.grid_drawer = PDFGridDrawer(overwrite_output=overwrite_output)
@@ -2650,10 +2653,6 @@ class Mapper:
         else:
             pathway_name = ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        if os.path.exists(out_path) and self.overwrite_output:
-            os.remove(out_path)
-        else:
-            filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
         return True
 
@@ -2775,10 +2774,6 @@ class Mapper:
         else:
             pathway_name = ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        if os.path.exists(out_path) and self.overwrite_output:
-            os.remove(out_path)
-        else:
-            filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
         return True
 
@@ -3010,10 +3005,6 @@ class Mapper:
         else:
             pathway_name = ''
         out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        if os.path.exists(out_path) and self.overwrite_output:
-            os.remove(out_path)
-        else:
-            filesnpaths.is_output_file_writable(out_path, ok_if_exists=False)
         self.drawer.draw_map(pathway, out_path)
 
         return True
