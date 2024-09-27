@@ -256,7 +256,10 @@ class Pathway(Element):
             It is assumed that standard maps contain ortholog boxes or lines and compound circles.
             'w' colors unprioritized boxes white, with black text; lines black; and circles white.
             'g' colors unprioritized boxes light gray, with black text; lines light gray; and
-            circles light gray.
+            circles light gray. Compound rectangles are also found in a small number of KGML files
+            (see 00121, 00621, 01052, 01054), and it is best if the size of these is set to zero so
+            they don't obscure the chemical structure drawings to which they correspond on maps (see
+            `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
             A custom dictionary argument can be used to set fg/bg colors in detail. Outer dict keys
             are Entry types, e.g., 'ortholog', 'compound'. Inner dict keys are Graphics types, e.g.,
@@ -278,8 +281,9 @@ class Pathway(Element):
 
         color_associated_compounds : Literal['high', 'low', 'average'], None
             Automatically set the background color of compound entries based on the color priority
-            of ortholog entries involving the compounds. By default, compounds are circles, and
-            orthologs are lines on global/overview maps and boxes or lines on standard maps.
+            of ortholog entries involving the compounds. By default, compounds participating in
+            reactions are circles, and orthologs are lines on global/overview maps and boxes or
+            lines on standard maps.
 
             An argument of 'high' or 'low' sets the compound background color to the bg color of the
             ortholog with the highest or lowest priority fg/bg color combination. 'average' sets the
@@ -499,9 +503,13 @@ class Pathway(Element):
         """
         Recolor compounds without a color priority.
 
-        Compound entries are expected to have Graphics elements of type 'circle'. In global maps,
-        the color is applied to both the background (fill) and foreground (border) of the circle. In
+        Compound entries are assumed to have Graphics elements of type 'circle'. In global maps, the
+        color is applied to both the background (fill) and foreground (border) of the circle. In
         overview and standard maps, the background is colored, and the foreground is made black.
+        Compound rectangles are also found in a small number of KGML files (see 00121, 00621, 01052,
+        01054), and it is best if the size of these is set to zero so they don't obscure the
+        chemical structure drawings to which they correspond on maps (see
+        `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
         Parameters
         ==========
@@ -594,9 +602,13 @@ class Pathway(Element):
         Set the color of compound entries based on the color priority of ortholog entries involving
         the compounds.
 
-        Compound entries are expected to have Graphics elements of type 'circle'. If the map is
+        Compound entries are assumed to have Graphics elements of type 'circle'. If the map is
         global, color both the background (interior) and foreground (border) of the circle. In
         overview and standard maps, the background is colored, and the foreground is made black.
+        Compound rectangles are also found in a small number of KGML files (see 00121, 00621, 01052,
+        01054), and it is best if the size of these is set to zero so they don't obscure the
+        chemical structure drawings to which they correspond on maps (see
+        `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
         Parameters
         ==========
@@ -1594,7 +1606,7 @@ class XMLOps:
                     v = ','.join([str(round(coord)) for coord in value])
                 else:
                     raise AssertionError(
-                        f"The attribute, '{attr}', had a value, '{value}', of unrecognized type "
+                        f"The attribute, '{attr}', had a value, '{value}', of unrecognized type, "
                         f"'{type(value)}'."
                     )
                 if i == 0:
@@ -1662,11 +1674,11 @@ class Drawer:
         This object prints transient progress information to the terminal.
 
     non_reactant_transparency : float, 1.0
-        This controls the transparency, or alpha, of the background color of compound circles
+        This controls the transparency, or alpha, of the background color of compound graphics
         rendered from KGML for non-reactants, or compounds that don't participate in reactions. This
-        value is used to set the attribute of Bio.Graphics.KGML_vis.KGMLCanvas, which is 0.3 by
-        default, which allows the color of the circle in the underlying base map to bleed through,
-        which is probably not desirable.
+        value is used to set the attribute of 'Bio.Graphics.KGML_vis.KGMLCanvas'; the default value
+        of 0.3 allows the color of compound circles in underlying global base maps to bleed through,
+        which is not desirable.
     """
     def __init__(
         self,

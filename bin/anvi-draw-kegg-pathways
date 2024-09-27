@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import functools
+import importlib
 import traceback
 import pandas as pd
 
@@ -31,16 +32,26 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
+    check_package_dependencies()
     check_kegg_data(args)
     consolidate_contigs_dbs(args)
+
+    if (
+        (args.groups_txt is None and args.group_threshold is not None) or
+        (args.groups_txt is not None and args.group_threshold is None)
+    ):
+        raise ConfigError(
+            "For groups to be used, arguments to both '--groups-txt' and '--group-threshold' must "
+            "be provided."
+        )
 
     mapper = Mapper(
         kegg_dir=args.kegg_dir,
         overwrite_output=args.overwrite_output_destinations,
         name_files=args.name_files
     )
-
     performed = False
+
     if (
         args.contigs_dbs is not None and
         len(args.contigs_dbs) == 1 and
@@ -86,16 +97,13 @@ def get_args() -> Namespace:
         '--external-genomes', type=str, help=
         "A two-column tab-delimited flat text file that lists anvi'o contigs databases generated "
         "by 'anvi-gen-contigs-database'. Contigs databases can alternatively be provided using the "
-        "argument, '--contigs-dbs'. The first item in the header line of the file should read "
-        "'name', and the second should read 'contigs_db_path'. Each line in the file should "
-        "describe a single entry, where the first column is a name for the database, and the "
-        "second is the path to the database."
+        "argument, '--contigs-dbs'. The first column must have the header, 'name', and the second "
+        "column must have the header, 'contigs_db_path'. Each line in the file should describe a "
+        "single entry, where the first column is a name for the database, and the second is the "
+        "path to the database."
     )
 
-    groupPAN = parser.add_argument_group(
-        "PANGENOMIC DATABASE",
-        "Display data from a pangenome."
-    )
+    groupPAN = parser.add_argument_group("PANGENOMIC DATABASE", "Display data from a pangenome.")
     groupPAN.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
     groupPAN.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
     groupPAN.add_argument(
@@ -114,7 +122,45 @@ def get_args() -> Namespace:
         "results in an ortholog annotation not being assigned to the cluster."
     )
 
-    groupOUT = parser.add_argument_group("OUTPUT", "Output files")
+    groupGROUP = parser.add_argument_group(
+        "GROUPS",
+        "Display data from groups of contigs databases or genomes in a pangenome."
+    )
+    groupGROUP.add_argument(
+        *A('groups-txt'), **K('groups-txt', {'help':
+        "A tab-delimited text file specifying which group each item belongs to. Items may be "
+        "contigs database files, if provided with '--contigs-dbs', or the names of genomes in a "
+        "pangenomic database, if provided with '--pan-db'. The first column can have any header, "
+        "e.g., 'contigs_db', 'pan_genome', or 'source'. The second column, headed 'group', must "
+        "contain the group name for each item. Each item can only be associated with a single "
+        "group. It is recommended that group names be single words without fancy characters, such "
+        "as 'HIGH_TEMPERATURE' or 'LOW_FITNESS' rather than 'my group #1' or 'IS-THIS-OK?'. The "
+        "option '--group-threshold' must be also be used for the groups to take effect, assigning "
+        "colors based on group membership and drawing individual files ('--draw-individual-files') "
+        "and map grids ('--draw-grid') for groups."
+    }))
+    groupGROUP.add_argument(
+        '--group-threshold', type=float, metavar='FLOAT', help=
+        "The proportion of items in a group containing data of interest for it to be represented "
+        "in terms of presence/absence in a map feature. Here is a concrete example. Say the "
+        "'groups-txt' file defines three groups of genome items in a pangenome representing "
+        "different species, 'A', 'B', and 'C'. You wish to understand the distribution of "
+        "metabolic capabilities across the 3 species using KO annotations of genes (see '--ko'). "
+        "Reaction colors are assigned based on the groups rather than individual genomes "
+        "containing the reaction. Thresholds between 0 and 1 can be set to define group "
+        "membership: a threshold of '0' would mean that ANY genome in the group can contain the "
+        "reaction via KOs for the reaction to be considered present in the group; a threshold of "
+        "'0.75' means at least 75%% of the genomes in the group must contain the reaction for it "
+        "to be present; a threshold of '1' means that ALL genomes in the group must contain the "
+        "reaction for it to be present. In our example, set the threshold to '0.5'. Reaction J on "
+        "a map corresponds to KO X, and Reaction K on a map corresponds to KOs Y and Z. 90%% of "
+        "species A genomes, 50%% of species B genomes, and 10%% of species C genomes contain KO X, "
+        "so Reaction J would be colored to indicate that it is represented in species A and B. 0%% "
+        "of species A genomes, 15%% of species B genomes, and 40%% of species C genomes contain KO "
+        "Y or KO Z, so Reaction K would not be colored."
+    )
+
+    groupOUT = parser.add_argument_group("OUTPUT", "Output files.")
     groupOUT.add_argument(*A('output-dir'), **K('output-dir'))
     groupOUT.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
     groupOUT.add_argument(
@@ -130,21 +176,26 @@ def get_args() -> Namespace:
     )
     groupOUT.add_argument(
         '--draw-individual-files', nargs='*', help=
-        "Draw pathway maps for individual contigs databases if multiple databases are provided, or "
-        "for individual genomes of the pangenome. If used as a flag (without values), save files "
-        "for all of the individual databases or genomes. Alternatively, the project names of a "
-        "subset of contigs databases or the names of a subset of genomes can be provided."
+        "Draw pathway maps for individual contigs databases if multiple ungrouped databases are "
+        "provided, or for individual genomes of an ungrouped pangenome. If used as a flag (without "
+        "values), save files for all of the individual databases or genomes. Alternatively, the "
+        "project names of a subset of contigs databases or the names of a subset of genomes can be "
+        "provided. If groups are defined by '--groups-txt', then maps are drawn for individual "
+        "database or pan genome groups. A subset of group names can be provided to draw maps for "
+        "select groups."
     )
     groupOUT.add_argument(
         '--draw-grid', nargs='*', help=
-        "Draw a grid for each pathway map. If using multiple contigs databases, the grid shows "
-        "the unified map of data from all databases and maps for individual databases. If using a "
-        "pangenomic database, the grid shows the pangenomic map and maps for individual genomes. "
-        "The grid view facilitates identification of the contigs databases or genomes containing "
-        "reactions highlighted in the integrative map. If used as a flag (without values), all of "
-        "the contigs databases or genomes are included in the grid. Alternatively, the project "
-        "names of a subset of contigs databases or the names of a subset of genomes can be "
-        "provided."
+        "Draw a grid for each pathway map. If using multiple ungrouped contigs databases, the grid "
+        "shows the unified map of data from all databases and maps for individual databases. If "
+        "using an ungrouped pangenomic database, the grid shows the pangenomic map and maps for "
+        "individual genomes. The grid view facilitates identification of the contigs databases or "
+        "genomes containing reactions highlighted in the integrative map. If used as a flag "
+        "(without values), all of the contigs databases or genomes are included in the grid. "
+        "Alternatively, the project names of a subset of contigs databases or the names of a "
+        "subset of genomes can be provided. If groups are defined by '--groups-txt', then the "
+        "grid shows the unified map of data from all groups or pan genomes and maps for individual "
+        "groups. A subset of group names can be provided to select maps in the grid."
     )
     groupOUT.add_argument(
         '--draw-bare-maps', action='store_true', default=False, help=
@@ -165,7 +216,7 @@ def get_args() -> Namespace:
         "The argument, '--set-color', can be used to display presence/absence rather than counts."
     )
 
-    groupMAP = parser.add_argument_group("MAP", "Pathway maps to draw")
+    groupMAP = parser.add_argument_group("MAP", "Pathway maps to draw.")
     groupMAP.add_argument(
         '--pathway-numbers', type=str, nargs='+', help=
         "Five-digit numbers identify pathway maps to draw. By default, all maps are drawn. Numbers "
@@ -180,7 +231,7 @@ def get_args() -> Namespace:
         "program expects a database set up in the default location used by 'anvi-setup-kegg-data'."
     )
 
-    groupCOLOR = parser.add_argument_group("COLOR", "Color scheme to use")
+    groupCOLOR = parser.add_argument_group("COLOR", "Everything to do with coloring.")
     groupCOLOR.add_argument(
         '--set-color', nargs='?', const=True, help=
         "This argument can be used as a flag (without a value), to use a single default color for "
@@ -200,42 +251,84 @@ def get_args() -> Namespace:
         "used. For example, the values, plasma 0.2 0.9 , would extract 70%% of the 'plasma' "
         "colormap, ignoring the darkest 20%% and lightest 10%%. Here is how a colormap is applied "
         "to KO occurrence data. KO reactions can be dynamically colored by occurrence in multiple "
-        "contigs databases or the genomes of a pangenome. Pangenomes by default use the sequential "
-        "colormap, 'plasma_r' ('_r' can be added to colormap names to reverse the order of "
-        "colors), trimming the top and bottom 10%%. 'plasma_r' spans yellow (fewer genomes) to "
-        "blue-violet (more genomes), which accentuates in darker colors reactions that are shared "
-        "rather than unshared across genomes. In contrast, a colormap spanning dark to light, such "
-        "as 'plasma', is better for drawing attention to unshared reactions. Multiple contigs "
-        "databases can use two 'schemes' for dynamic coloring, 'by_count' and 'by_database' (see "
-        "the argument, '--colormap-scheme'). As with pangenomes, 'by_count' by default uses the "
-        "'plasma_r' colormap trimming the top and bottom 10%%. 'by_database' by default uses the "
+        "contigs databases, the genomes of a pangenome, or groups of databases or pan genomes. "
+        "Pangenomes by default use the sequential colormap, 'plasma_r' ('_r' can be added to "
+        "colormap names to reverse the order of colors), trimming the top and bottom 10%%. "
+        "'plasma_r' spans yellow (fewer genomes) to blue-violet (more genomes), which accentuates "
+        "in darker colors reactions that are shared rather than unshared across genomes. In "
+        "contrast, a colormap spanning dark to light, such as 'plasma', can be better for drawing "
+        "attention to unshared reactions. Multiple contigs databases and groups can use two "
+        "'schemes' for dynamic coloring, 'by_count' and 'by_membership' (see the argument, "
+        "'--colormap-scheme'). As with pangenomes, 'by_count' uses by default the 'plasma_r' "
+        "colormap, trimming the top and bottom 10%%. 'by_membership' uses by default the "
         "qualitative colormap, 'tab10', without trimming. This colormap contains distinct colors "
-        "suitable for clearly differentiating the different databases containing reactions. See "
+        "suitable for clearly differentiating the databases or groups containing reactions. See "
         "the following webpage for named colormaps: "
         "https://matplotlib.org/stable/users/explain/colors/colormaps.html#classes-of-colormaps "
     )
     groupCOLOR.add_argument(
-        '--colormap-scheme', choices=['by_count', 'by_database'], help=
-        "There are two ways of dynamically coloring KO reactions by inclusion in multiple contigs "
-        "databases (using options '--contigs-dbs' and '--ko'): by count or by database. By default, "
-        "with 4 or more databases, reactions are colored by count, and with 2 or 3, by database. "
-        "In coloring by count of databases, the colormap should be sequential, such that the color "
-        "of a reaction changes 'smoothly' with the count. In contrast, coloring by database means "
-        "reaction color is determined by membership in a database or combination of databases, so "
-        "a qualitative colormap can be used, as by default, instead of a sequential colormap to "
-        "give a distinct color to each membership category."
+        '--colormap-scheme', choices=['by_count', 'by_membership'], help=
+        "There are two ways of dynamically coloring reactions by occurrence in multiple contigs "
+        "databases ('--contigs-dbs') or groups ('--groups-txt') of databases or pan genomes: by "
+        "count or by membership. By default, with 4 or more databases or groups, reactions are "
+        "colored by count of database or group; with 2 or 3, reactions are colored explicitly by "
+        "database or group membership. In coloring by count, the colormap should be sequential, "
+        "such that the color of a reaction changes 'smoothly' with the count. In contrast, "
+        "coloring by membership means reaction color is determined by membership in a "
+        "database/group or combination of databases/groups, so a qualitative colormap can be used "
+        "instead of a sequential colormap, as by default with 2 or 3 categories, to give a "
+        "distinct color to each membership category."
     )
     groupCOLOR.add_argument(
         '--reverse-overlay', action='store_true', default=False, help=
         "By default, without this flag, reactions with a greater numerical value (e.g., in more "
-        "contigs databases or pangenomic genomes) are drawn on top of those with a lesser value. "
+        "contigs databases, pan genomes, or groups) are drawn on top of those with a lesser value. "
         "With this flag, the opposite applies; especially in global maps with a non-default "
         "colormap spanning dark to light, this accentuates unshared rather than shared parts of "
         "a pathway."
     )
+    groupGROUP.add_argument(
+        '--group-colormap', nargs='+', help=
+        "This option is like '--colormap', but only applies to drawing files for individual groups "
+        "('--draw-individual-files') and panels for individual groups in map grids "
+        "('--draw-grid'). These maps for individual groups show data membership in group sources, "
+        "e.g., contigs databases or pan genomes. They are always colored dynamically by count, "
+        "e.g., the number of databases or genomes in the group containing the data. Like "
+        "'--colormap', this parameter takes the name of a Matplotlib Colormap, and optionally, "
+        "two decimal values between 0.0 and 1.0 to limit the fraction of the colormap used. The "
+        "default configuration is the same, with the colormap being 'plasma_r' and the limits "
+        "being 0.1 and 0.9."
+    )
+    groupGROUP.add_argument(
+        '--group-reverse-overlay', action='store_true', default=False, help=
+        "This flag is like '--reverse-overlay', but only applies to drawing files for individual "
+        "groups ('--draw-individual-files') and panels for individual groups in map grids "
+        "('--draw-grid'). With this flag, these maps for individual groups draw reactions with a "
+        "lesser numerical value (e.g., in fewer group sources like contigs databases or pan "
+        "genomes) on top of reactions with a greater numerical value, the opposite of the default "
+        "drawing order."
+    )
 
     args = parser.get_args(parser)
     return args
+
+def check_package_dependencies():
+    missing_packages = []
+    for package_name in ('Bio', 'reportlab', 'fitz'):
+        try:
+            importlib.import_module(package_name)
+        except ImportError:
+            missing_packages.append(package_name)
+
+    if missing_packages:
+        message = ', '.join(f"'{package_name}'" for package_name in missing_packages)
+        raise ConfigError(
+            "The following Python packages required to run `anvi-draw-kegg-pathways` could not be "
+            f"imported: {message}. All Python dependencies of anvi'o can be installed by running "
+            "the command `pip install -r requirements.txt` in the top directory of the anvi'o "
+            "codebase, which may have a location like '~/github/anvio' in your file system if you "
+            "followed the anvio.org installation instructions."
+        )
 
 def check_kegg_data(args: Namespace) -> None:
     kegg_args = Namespace()
@@ -290,31 +383,32 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
     if args.draw_individual_files is None:
         pass
     elif len(args.draw_individual_files) == 0:
-        # Draw maps for all contigs databases.
+        # Draw maps for all contigs databases or groups.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_contigs_db_files=True
+            map_contigs_databases_kos, draw_individual_files=True
         )
     else:
-        # Draw maps for select contigs databases.
+        # Draw maps for select contigs databases or groups.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_contigs_db_files=args.draw_individual_files
+            map_contigs_databases_kos, draw_individual_files=args.draw_individual_files
         )
 
     if args.draw_grid is None:
         pass
     elif len(args.draw_grid) == 0:
-        # Draw a grid of maps including all contigs databases.
+        # Draw a grid of maps including all contigs databases or all groups.
         map_contigs_databases_kos = functools.partial(map_contigs_databases_kos, draw_grid=True)
     else:
-        # Include select contigs databases.
+        # Include select contigs databases or select groups.
         map_contigs_databases_kos = functools.partial(
-            map_contigs_databases_kos, draw_grid=args.draw_grid.split()
+            map_contigs_databases_kos, draw_grid=args.draw_grid
         )
 
     assert not ((args.set_color is not None) and (args.colormap is not None))
 
     if args.colormap is None:
-        # Dynamically color reactions in unified maps using the default colormap.
+        # Dynamically color reactions by database or group in unified maps using the default
+        # colormap.
         pass
     elif len(args.colormap) == 1:
         # Use the provided colormap name.
@@ -333,7 +427,7 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         )
 
     if args.colormap_scheme is None:
-        # The scheme is determined automatically by the number of contigs databases.
+        # The scheme is determined automatically by the number of contigs databases or groups.
         pass
     else:
         map_contigs_databases_kos = functools.partial(
@@ -341,22 +435,46 @@ def map_multiple_contigs_dbs_ko_data(args: Namespace, mapper: Mapper) -> None:
         )
 
     if args.set_color is None:
-        # Dynamically color reactions in unified maps by number of contigs databases.
+        # Dynamically color reactions in unified maps by number of contigs databases or groups.
         pass
     elif args.set_color is True:
         # Color reactions in unified maps the default static color.
         map_contigs_databases_kos = functools.partial(map_contigs_databases_kos, colormap=False)
     else:
-        # Use the provided color.
+        # Use the provided color or the original map colors.
         map_contigs_databases_kos = functools.partial(
             map_contigs_databases_kos, colormap=False, color_hexcode=args.set_color
         )
 
+    if args.groups_txt:
+        if args.group_colormap is None:
+            # Dynamically color reactions by group in individual group maps using the default
+            # colormap.
+            pass
+        elif len(args.group_colormap) == 1:
+            # Use the provided group colormap name.
+            map_contigs_databases_kos = functools.partial(
+                map_contigs_databases_kos, group_colormap=args.group_colormap[0]
+            )
+        else:
+            # Use the provided group colormap name and limits.
+            assert len(args.group_colormap) == 3
+            min_limit = float(args.group_colormap[1])
+            max_limit = float(args.group_colormap[2])
+            map_contigs_databases_kos = functools.partial(
+                map_contigs_databases_kos,
+                group_colormap=args.group_colormap[0],
+                group_colormap_limits=(min_limit, max_limit)
+            )
+
     map_contigs_databases_kos(
         args.contigs_dbs,
         args.output_dir,
+        groups_txt=args.groups_txt,
+        group_threshold=args.group_threshold,
         pathway_numbers=args.pathway_numbers,
         reverse_overlay=args.reverse_overlay,
+        group_reverse_overlay=args.group_reverse_overlay,
         draw_maps_lacking_kos=args.draw_bare_maps
     )
 
@@ -367,47 +485,35 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
     if args.draw_individual_files is None:
         pass
     elif len(args.draw_individual_files) == 0:
-        # Draw maps for all genomes in the pangenome.
-        map_pan_database_kos = functools.partial(map_pan_database_kos, draw_genome_files=True)
+        # Draw maps for all genomes or groups.
+        map_pan_database_kos = functools.partial(map_pan_database_kos, draw_individual_files=True)
     else:
-        # Draw maps for select genomes.
+        # Draw maps for select genomes or groups.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, draw_genome_files=args.draw_individual_files
+            map_pan_database_kos, draw_individual_files=args.draw_individual_files
         )
 
     if args.draw_grid is None:
         pass
     elif len(args.draw_grid) == 0:
-        # Draw a grid of maps including all genomes in the pangenome.
+        # Draw a grid of maps including all genomes or all groups.
         map_pan_database_kos = functools.partial(map_pan_database_kos, draw_grid=True)
     else:
-        # Include select genomes.
+        # Include select genomes or select groups.
         map_pan_database_kos = functools.partial(
-            map_pan_database_kos, draw_grid=args.draw_grid.split()
+            map_pan_database_kos, draw_grid=args.draw_grid
         )
 
     assert not ((args.set_color is not None) and (args.colormap is not None))
 
-    if args.set_color is None:
-        # Dynamically color reactions in pangenomic maps by number of genomes.
-        pass
-    elif args.set_color is True:
-        # Color reactions in pangenomic maps the default static color.
-        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=None)
-    else:
-        # Use the provided color.
-        map_pan_database_kos = functools.partial(
-            map_pan_database_kos, colormap=None, color_hexcode=args.set_color
-        )
-
     if args.colormap is None:
-        # Dynamically color reactions in pangenomic maps using the default colormap.
+        # Dynamically color reactions by genome or group in unified maps using the default colormap.
         pass
     elif len(args.colormap) == 1:
-        # Use the provided colormap.
+        # Use the provided colormap name.
         map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=args.colormap[0])
     else:
-        # Use the provided colormap and limits.
+        # Use the provided colormap name and limits.
         assert len(args.colormap) == 3
         min_limit = float(args.colormap[1])
         max_limit = float(args.colormap[2])
@@ -417,15 +523,59 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
             colormap_limits=(min_limit, max_limit)
         )
 
+    if args.colormap_scheme is None:
+        # The scheme is determined automatically by the number of genomes or groups.
+        pass
+    else:
+        map_pan_database_kos = functools.partial(
+            map_pan_database_kos, colormap_scheme=args.colormap_scheme
+        )
+
+    if args.set_color is None:
+        # Dynamically color reactions in pangenomic maps by number of genomes or groups.
+        pass
+    elif args.set_color is True:
+        # Color reactions in unified maps the default static color.
+        map_pan_database_kos = functools.partial(map_pan_database_kos, colormap=False)
+    else:
+        # Use the provided color or the original map colors.
+        map_pan_database_kos = functools.partial(
+            map_pan_database_kos, colormap=False, color_hexcode=args.set_color
+        )
+
+    if args.groups_txt:
+        if args.group_colormap is None:
+            # Dynamically color reactions by group in individual group maps using the default
+            # colormap.
+            pass
+        elif len(args.group_colormap) == 1:
+            # Use the provided group colormap name.
+            map_pan_database_kos = functools.partial(
+                map_pan_database_kos, group_colormap=args.group_colormap[0]
+            )
+        else:
+            # Use the provided group colormap name and limits.
+            assert len(args.group_colormap) == 3
+            min_limit = float(args.group_colormap[1])
+            max_limit = float(args.group_colormap[2])
+            map_pan_database_kos = functools.partial(
+                map_pan_database_kos,
+                group_colormap=args.group_colormap[0],
+                group_colormap_limits=(min_limit, max_limit)
+            )
+
     map_pan_database_kos(
         args.pan_db,
         args.genomes_storage,
         args.output_dir,
+        groups_txt=args.groups_txt,
+        group_threshold=args.group_threshold,
+        consensus_threshold=args.consensus_threshold,
+        discard_ties=args.discard_ties,
         pathway_numbers=args.pathway_numbers,
         reverse_overlay=args.reverse_overlay,
-        draw_maps_lacking_kos=args.draw_bare_maps,
-        consensus_threshold=args.consensus_threshold,
-        discard_ties=args.discard_ties
+        group_reverse_overlay=args.group_reverse_overlay,
+        draw_maps_lacking_kos=args.draw_bare_maps
     )
 
 if __name__ == '__main__':
@@ -450,14 +600,4 @@ if __name__ == '__main__':
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
-        sys.exit(-1)
-    except Exception as e:
-        if type(e) != AssertionError:
-            print(
-                "\nHave you installed the necessary Python package requirements for "
-                "`anvi-draw-kegg-pathways`? This might be the cause of the error that was "
-                "encountered, reported below. Run the following command in your terminal and then "
-                "try rerunning the program:\npip install biopython ReportLab pymupdf frontend\n"
-            )
-        traceback.print_exception(type(e), e, e.__traceback__)
         sys.exit(-1)
