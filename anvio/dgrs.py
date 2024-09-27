@@ -2433,6 +2433,10 @@ class DGR_Finder:
                             gene['has_functions'] = False
                             gene['COLOR'] = '#c3c3c3'
 
+                        # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
+                        if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
+                            gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+
                         gene['TRX'] = gene['start_tr_g']
                         gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
                         gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
@@ -2464,6 +2468,10 @@ class DGR_Finder:
                             else:
                                 gene['has_functions'] = False
                                 gene['COLOR'] = '#c3c3c3'
+
+                            # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
+                            if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
+                                gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
 
                             gene['VRX'] = gene['start_vr_g']
                             gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
