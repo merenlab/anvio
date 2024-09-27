@@ -118,7 +118,17 @@
                                             <rect x='{{ gene|lookup:"TRX" }}' y="23" width='{{ gene|lookup:"TRW" }}' height="15" style='fill: {{ gene.COLOR }}'></rect>
                                             <polygon points='{{ gene|lookup:"TRX_TRW" }} 12, {{ gene|lookup:"TGY" }} 30, {{ gene|lookup:"TRX_TRW" }} 48' style='fill: {{ gene.COLOR }}'></polygon>
                                         </g>
-                                        <text x='{{ gene|lookup:"TCX" }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene.gene_callers_id }}</text>
+                                        <!-- Draw gene caller ID label -->
+                                        <text x='{{ gene|lookup:"TCX" }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">
+                                            {{ gene.gene_callers_id }}
+                                        </text>
+                                        
+                                        <!-- Draw RT label if it's the RT gene -->
+                                        {% if gene.COLOR == '#c366e8' %}  <!-- Assuming this is the RT gene color -->
+                                            <text x='{{ gene|lookup:"TCX" }}' y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ gene.COLOR }}" style="font-weight:bold;">
+                                                RT
+                                            </text>
+                                        {% endif %}
                                     {% endfor %}
                                 {% else %}
                                     <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the genomic context since you have used the flag --skip-recovering-genomic-context (#SAD)</text>
@@ -127,29 +137,43 @@
                         </div>
 
                         <h4>Variable Regions (VR)</h4>
-                         <pre>{{ dgr_data|safe }}</pre>
-                         {% for vr_id, vr_data in dgr_data.items %}
-                         <div class="vr-container" style="margin-top: 25px;">
-                             <h5>VR ID: {{ vr_id }}</h5>
-                             <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
-                                 <svg width="1000" height="80">
-                                     {% for vr_key, vr in vr_data.VRs.items %}
-                                         <rect x='{{ vr.VX }}' y="0" width='{{ vr.VW }}' height="65" style="fill:pink; opacity:0.5"></rect>
-                                         <text x='{{ vr.VT }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="pink" style="font-weight:bold;">{{ vr_key|humanize }}</text>
-                                         
-                                         {% for vr_gene in vr.vr_genes %}
-                                             <g type="button" data-container="body" data-toggle="popover" data-popover-content='{% if vr_gene.direction == "r" %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}-popover{% else %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}{% endif %}' data-placement="bottom" {% if vr_gene.direction == "r" %}transform='translate({{ vr_gene.VGTRANS }}, 0) scale(-1, 1)'{% endif %} id='{{dgr}}-gene-{{ vr_gene.gene_callers_id }}'>
-                                                 <rect x='{{ vr_gene.VRX }}' y="23" width='{{ vr_gene.VRW }}' height="15" style='fill:{{ vr_gene.COLOR }}'></rect>
-                                                 <polygon points='{{ vr_gene.VRX_VRW }} 12, {{ vr_gene.VGY }} 30, {{ vr_gene.VRX_VRW }} 48' style='fill:{{ vr_gene.COLOR }}'></polygon>
-                                             </g>
-                                             <text x='{{ vr_gene.VCX }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ vr_gene.gene_callers_id }}</text>
-                                         {% endfor %}
-                                     {% endfor %}
-                                 </svg>
-                             </div>
-                         </div>
-                     {% endfor %}
-                     
+                        <pre>{{ dgr_data|safe }}</pre>
+                        {% for dict_key, vr_data in dgr_data.items %}
+                            <div class="vr-container" style="margin-top: 25px;">
+                                {% for vr_key, vr in vr_data.VRs.items %}
+                                    <h5>VR ID: {{ vr_key }}</h5>
+                                    <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
+                                        <svg width="1000" height="80">
+
+                                            <!-- Display VR -->
+                                            <rect x='{{ vr.VX }}' y="0" width='{{ vr.VW }}' height="65" style="fill:red; opacity:0.5"></rect>
+                                            <text x='{{ vr.VT }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ vr_key|humanize }}</text>
+
+                                            <!-- Loop through VR genes -->
+                                            {% for vr_gene in vr.vr_genes %}
+                                                <g type="button" data-container="body" data-toggle="popover" data-popover-content='{% if vr_gene.direction == "r" %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}-popover{% else %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}{% endif %}' data-placement="bottom" {% if vr_gene.direction == "r" %}transform='translate({{ vr_gene.VGTRANS }}, 0) scale(-1, 1)'{% endif %} id='{{dgr}}-gene-{{ vr_gene.gene_callers_id }}'>
+                                                    <rect x='{{ vr_gene.VRX }}' y="23" width='{{ vr_gene.VRW }}' height="15" style='fill:{{ vr_gene.COLOR }}'></rect>
+                                                    <polygon points='{{ vr_gene.VRX_VRW }} 12, {{ vr_gene.VGY }} 30, {{ vr_gene.VRX_VRW }} 48' style='fill:{{ vr_gene.COLOR }}'></polygon>
+                                                </g>
+
+                                                <!-- Draw gene caller ID label -->
+                                                <text x='{{ vr_gene.VCX }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">
+                                                    {{ vr_gene.gene_callers_id }}
+                                                </text>
+
+                                                <!-- Draw RT label if it's the RT gene -->
+                                                {% if vr_gene.COLOR == '#c366e8' %}  <!-- Assuming this is the RT gene color -->
+                                                    <text x='{{ vr_gene.VCX }}' y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ vr_gene.COLOR }}" style="font-weight:bold;">
+                                                        RT
+                                                    </text>
+                                                {% endif %}
+                                            {% endfor %}
+
+                                        </svg>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
