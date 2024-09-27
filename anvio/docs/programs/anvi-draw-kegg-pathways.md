@@ -176,9 +176,9 @@ The following map grid uncovers aspects of galactose metabolism among the genome
 
 A %(groups-txt)s file can be supplied to define groups of contigs databases. For example, databases representing genomes could be grouped by taxonomy, databases representing enrichment cultures under different conditions could be grouped by treatment, or databases representing marine metagenomic samples could be grouped by depth. The first column of %(groups-txt)s must contain the paths to the input contigs databases provided with `--contigs-dbs`. The second column headed `group` must contain group names, such as `Pacific`, `Atlantic`, and `Arctic`. Each database can only be assigned to one group.
 
-A `--group-threshold` argument between 0 and 1 must also be provided to analyze groups. The group threshold is the proportion of databases in a group that must contain KOs defining a reaction on a map for the reaction to be associated with the group. A threshold of 0 means that ANY database in the group can contain the reaction for the reaction to be considered present in the group. A threshold of 0.75 means that at least 75% of databases in the group must contain the reaction for it to be present. A threshold of 1 means that ALL of the databases in the group must contain the reaction for it be present.
+A `--group-threshold` argument between 0 and 1 must also be provided to analyze groups. The group threshold is the proportion of databases in a group that must contain KOs defining a reaction on a map for the reaction to be associated with the group. A threshold of 0 means that ANY database in the group can contain the reaction for the reaction to be considered present in the group. A threshold of 0.75 means that at least 75%% of databases in the group must contain the reaction for it to be present. A threshold of 1 means that ALL of the databases in the group must contain the reaction for it be present.
 
-For example, set the threshold to 0.5. Reaction J on a map is defined by KO X and Reaction K is defined by KOs Y and Z. 90% of Pacific, 50% of Atlantic, and 10% of Arctic metagenomes contain KO X, so Reaction J would be colored to indicate that it is found in the Pacific and Atlantic. 0% of Pacific, 15% of Atlantic, and 40% of Arctic metagenomes contain KO Y or KO Z, so Reaction K would not be colored, being considered absent from the groups.
+For example, set the threshold to 0.5. Reaction J on a map is defined by KO X and Reaction K is defined by KOs Y and Z. 90%% of Pacific, 50%% of Atlantic, and 10%% of Arctic metagenomes contain KO X, so Reaction J would be colored to indicate that it is found in the Pacific and Atlantic. 0%% of Pacific, 15%% of Atlantic, and 40%% of Arctic metagenomes contain KO Y or KO Z, so Reaction K would not be colored, being considered absent from the groups.
 
 {{ codestart }}
 anvi-draw-kegg-pathways --external-genomes %(external-genomes)s \
@@ -245,7 +245,7 @@ The following maps were produced with the basic command structure for a pangenom
 
 ![Three maps showing KOs from a pangenome](../../images/anvi-draw-kegg-pathways/kos_pan.png)
 
-Genomes defined in the pangenomic database can be grouped like contigs databases. The %(groups-txt)s file has the same format, but the items in the first column must now be the names of the genomes in the pangenome rather than contigs database files. The following command colors reactions by group, assigning a reaction to a group if the reaction is in at least 50% of the group's genomes.
+Genomes defined in the pangenomic database can be grouped like contigs databases. The %(groups-txt)s file has the same format, but the items in the first column must now be the names of the genomes in the pangenome rather than contigs database files. The following command colors reactions by group, assigning a reaction to a group if the reaction is in at least 50%% of the group's genomes.
 
 {{ codestart }}
 anvi-draw-kegg-pathways -p %(pan-db)s \
@@ -268,7 +268,7 @@ anvi-draw-kegg-pathways -p %(pan-db)s \
                         -o output_dir
 {{ codestop }}
 
-Continuing with the *Enterococcus* pangenome, the following map grid shows differences in xylose and uronate metabolism between *faecalis* and *faecium* and between strains of each species. *faecalis* genomes are enriched in genes for xylose metabolism (towards the bottom of the map), and *faecium* genomes are enriched in enzymes for uronate metabolism (toward the top of the map). The *faecalis* MAG, "SHARON", has genes for the catabolism of "Xylose", via "D-Xylulose" and "D-Xylulose-5P". These are also annotated in three of the *faecalis* isolate genomes, ATCC29212, DENG1, and V583, but not the other three, D32, OG1RF, and Symbioflor_1. Xylose utilization is [known](https://doi.org/10.1186%2Fs12864-015-1367-x) to be variable among *faecalis* strains.
+Continuing with the *Enterococcus* pangenome, the following map grid shows differences in xylose and uronate metabolism between *faecalis* and *faecium* and between strains of each species. *faecalis* genomes are enriched in genes for xylose metabolism (towards the bottom of the map), and *faecium* genomes are enriched in enzymes for uronate metabolism (toward the top of the map). The *faecalis* MAG, "SHARON", has genes for the catabolism of "Xylose", via "D-Xylulose" and "D-Xylulose-5P". These are also annotated in three of the *faecalis* isolate genomes, ATCC29212, DENG1, and V583, but not the other three, D32, OG1RF, and Symbioflor_1. Xylose utilization is [known](https://doi.org/10.1186%%2Fs12864-015-1367-x) to be variable among *faecalis* strains.
 
 ![Pangenomic map grid](../../images/anvi-draw-kegg-pathways/kos_pan_grid.png)
 
