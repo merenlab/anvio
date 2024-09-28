@@ -5,6 +5,7 @@
 import os
 import re
 import fitz
+import json
 import math
 import shutil
 import functools
@@ -3038,6 +3039,49 @@ class Mapper:
         altered = altered.strip('_')
 
         return altered
+
+    def _categorize_pathways(self) -> dict[str, list[str]]:
+        """
+        Categorize pathways in the BRITE hierarchy, 'br08901'.
+
+        Returns
+        =======
+        dict[str, list[str]]
+            Keys are pathway numbers. Values are lists of the categories from general to specific.
+            For example, '00010': ['Metabolism', 'Carbohydrate metabolism']
+        """
+        with open(self.kegg_context.kegg_brite_pathways_file) as f:
+            hierarchy = json.load(f)
+        pathway_categorizations: Dict[str, list[list[str]]] = (
+            self.kegg_context.invert_brite_json_dict(hierarchy)
+        )
+
+        assert len(set(pathway_categorizations)) == len(pathway_categorizations)
+
+        if sum(set(
+            [len(categorizations) for categorizations in pathway_categorizations.values()]
+        )) != 1:
+            raise AssertionError(
+                "The KEGG BRITE hierarchy of pathway maps, 'br08901', did not meet the expectation "
+                "that each pathway be categorized in exactly one place in the hierarchy. This "
+                "prevents output files from being categorized in a subdirectory structure "
+                "corresponding to the hierarchy. The option to categorize files cannot be used. It "
+                "would be worthwhile to make the developers aware of this error so they can "
+                "hopefully figure out a solution."
+            )
+
+        pathway_categorization: Dict[str, list[str]] = {}
+        for pathway, categorizations in pathway_categorizations.items():
+            pathway_number = pathway[:5]
+            assert pathway_number.isdigit()
+            assert pathway_number not in pathway_categorization
+
+            categorization = categorizations[0]
+            assert categorization[0] == 'br08901'
+
+            pathway_categorization[pathway_number] = categorization[1:]
+
+        return pathway_categorization
 
     @staticmethod
     def _zero_out_compound_rectangles(pathway: kgml.Pathway) -> int:
