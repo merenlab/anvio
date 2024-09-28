@@ -24,6 +24,7 @@ KEGG
  |- MODULES.db
  |- ko_list.txt
  |- modules.keg
+ |- br08901.json
  |- hierarchies.json
  |- HMMs
  |   |- Kofam.hmm
@@ -56,7 +57,8 @@ However, for the curious, here is a description of each component in this data d
 - The `orphan_data` subfolder: contains KOfam profiles for KOs that do not have a bitscore threshold in the `ko_list.txt` file (in the `.hmm` file) and their corresponding entries in from the `ko_list.txt` file (in `01_ko_fams_with_no_threshold.txt`). Please note that KOs from the `orphan_data` directory will *not* be annotated in your %(contigs-db)s when you run %(anvi-run-kegg-kofams)s. However, if you ever need to take a look at these profiles or use them in any way, here they are. :)
 - `modules.keg`: a flat text file describing all metabolic modules available in the [KEGG MODULE](https://www.genome.jp/kegg/module.html) resource. This includes pathway and signature modules, but not reaction modules.
 - The `modules` subfolder: contains flat text files, one for each metabolic module, downloaded using the [KEGG REST API](https://www.kegg.jp/kegg/rest/keggapi.html). Each file describes a metabolic module's definition, classification, component orthologs, metabolic reactions, compounds, and any miscellaneous data like references and such. For an example, see the [module file for M00001](https://rest.kegg.jp/get/M00001/).
-- `hierarchies.json`: a JSON-formatted file describing the available functional hierarchies in the [KEGG BRITE](https://www.genome.jp/kegg/brite.html) resource.
+- `br08901.json`: a JSON-formatted KEGG BRITE [file](https://rest.kegg.jp/get/br:br08901/json) classifying [KEGG pathway maps](https://www.genome.jp/kegg/pathway.html).
+- `hierarchies.json`: a JSON-formatted KEGG BRITE [file](https://rest.kegg.jp/get/br:br08902/json) describing the available functional hierarchies in the [KEGG BRITE](https://www.genome.jp/kegg/brite.html) resource.
 - The `BRITE` subfolder: contains JSON-formatted files, each one of which describes a BRITE hierarchy.
 - `MODULES.db`: a SQLite database containing data parsed from the module files and BRITE hierarchies. See %(modules-db)s.
 
