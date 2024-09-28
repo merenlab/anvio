@@ -518,7 +518,8 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
-    def invert_brite_json_dict(self, brite_dict):
+    @staticmethod
+    def invert_brite_json_dict(brite_dict):
         """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
 
         There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
