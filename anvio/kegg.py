@@ -356,6 +356,7 @@ class KeggContext(object):
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
+        self.kegg_brite_pathways_file = os.path.join(self.kegg_data_dir, "br08901.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
         self.kegg_binary_relation_files = {('KO', 'EC'): "ko2ec.xl", ('KO', 'RN'): "ko2rn.xl"}
         self.kegg_pathway_list_file = os.path.join(self.kegg_data_dir, "pathway_list.tsv")
@@ -761,7 +762,7 @@ class KeggSetup(KeggContext):
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         archive_contains_binary_relations = self.check_archive_for_binary_relations(unpacked_archive_name)
-        archive_contains_map_images = self.check_archive_for_map_images(unpacked_archive_name)
+        archive_contains_map_images = self.check_archive_for_map_files(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir):
@@ -785,10 +786,10 @@ class KeggSetup(KeggContext):
 
             if not archive_contains_map_images and not self.skip_map_images:
                 self.run.warning(
-                    "The KEGG data archive does not contain the pathway map image files used for "
-                    "pathway visualization. This is not a problem, and KEGG setup proceeded "
-                    "without it. Map image files are guaranteed to be set up when downloading the "
-                    "latest version of KEGG with `anvi-setup-kegg-data`."
+                    "The KEGG data archive does not contain the expected pathway map files used "
+                    "for pathway visualization. This is not a problem, and KEGG setup proceeded "
+                    "without it. Map files are guaranteed to be set up when downloading the latest "
+                    "version of KEGG with `anvi-setup-kegg-data`."
                 )
 
             # if necessary, warn user about migrating the modules db
@@ -883,27 +884,36 @@ class KeggSetup(KeggContext):
         return is_binary_relation_dir_included
 
 
-    def check_archive_for_map_images(self, unpacked_archive_path):
+    def check_archive_for_map_files(self, unpacked_archive_path):
         """
-        Check the archive for the pathway map directory and image files.
+        Check the archive for the pathway map directory containing image and KGML files, and for the
+        BRITE json file classifying pathway maps.
 
         It is ok for archives not to have these present, but let the user know.
         """
+        are_map_files_included = True
         path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+
         map_image_data_dir = os.path.join(
             path_to_kegg_in_archive, os.path.basename(self.map_image_data_dir)
         )
-        if os.path.isdir(map_image_data_dir):
-            is_map_image_dir_included = True
-        else:
-            is_map_image_dir_included = False
+        if not os.path.isdir(map_image_data_dir):
+            are_map_files_included = False
             if anvio.DEBUG and not self.skip_map_images:
                 self.run.warning(
-                    f"The KEGG archive does not contain the following optional pathway map images "
-                    f"directory, which is used in pathway visualization."
+                    "The KEGG archive does not contain the following optional pathway map images "
+                    f"directory, which is used in pathway visualization: {map_image_data_dir}"
                 )
 
-        return is_map_image_dir_included
+        if not os.path.isfile(self.kegg_brite_pathways_file):
+            are_map_files_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional json file, a BRITE "
+                    f"hierarchy classifying pathway maps: {self.kegg_brite_pathways_file}"
+                )
+
+        return are_map_files_included
 
 
     def setup_kegg_snapshot(self):
@@ -2129,6 +2139,8 @@ class ModulesDownload(KeggSetup):
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
         # download the list of pathways, used for processing map image files
         self.kegg_pathway_list_download_path = "https://rest.kegg.jp/list/pathway"
+        # download a BRITE json file of pathway maps
+        self.kegg_brite_pathways_download_path = os.path.join(self.kegg_rest_api_get, "br:br08901/json")
 
         # check if the data is already downloaded
         expected_files_for_modules = [self.kegg_module_file,
@@ -2140,6 +2152,7 @@ class ModulesDownload(KeggSetup):
             expected_files_for_modules.append(self.binary_relation_data_dir)
         if not self.skip_map_images:
             expected_files_for_modules.append(self.map_image_data_dir)
+            expected_files_for_modules.append(self.kegg_brite_pathways_file)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
             self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
@@ -2376,6 +2389,7 @@ class ModulesDownload(KeggSetup):
 
                 if not self.skip_map_images:
                     self.download_map_images()
+                    self.download_brite_pathway_hierarchy()
             else:
                 # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
@@ -2888,6 +2902,29 @@ class ModulesDownload(KeggSetup):
                             if height is not None:
                                 graphics.height = diameter
                     xml_ops.write(pathway, kgml_path)
+
+    def download_brite_pathway_hierarchy(self):
+        """Download the BRITE 'br08901' json file, a hierarchy of KEGG pathway maps."""
+        # Note that this is the same as the REST API for modules and pathways - perhaps at some
+        # point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(
+                self.kegg_brite_pathways_download_path,
+                self.kegg_brite_pathways_file,
+                progress=self.progress,
+                run=self.run
+            )
+        except Exception as e:
+            print(e)
+            raise ConfigError(
+                "Anvi'o failed to download the KEGG BRITE hierarchy of pathway maps, "
+                "'br08901.json', from the KEGG website. Something likely changed on the KEGG end. "
+                "Please contact the developers to see if this is a fixable issue. If it isn't, we "
+                "may be able to provide you with a legacy KEGG data archive that you can use to "
+                "set up KEGG with the `--kegg-archive` flag."
+            )
 
 
 class RunKOfams(KeggContext):
