@@ -1174,8 +1174,14 @@ class Mapper:
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    out_path = os.path.join(output_dir, category, pathway_basename)
-                    self.drawer.draw_map(pathway, out_path)
+                    out_dir = os.path.join(output_dir, category)
+                    self._draw_map(pathway, out_dir)
+                    if self.pathway_categorization is None:
+                        out_path = os.path.join(out_dir, pathway_basename)
+                    else:
+                        out_path = os.path.join(
+                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
+                        )
                     paths_to_remove.append(out_path)
 
         # Draw map grids.
@@ -1195,23 +1201,41 @@ class Mapper:
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
             pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
+            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            if self.pathway_categorization is None:
+                unified_map_path = os.path.join(output_dir, pathway_basename)
+            else:
+                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
+                unified_map_path = os.path.join(out_dir, pathway_basename)
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
             labels = ['all']
 
             for category in draw_grid_categories:
-                individual_map_path = os.path.join(
-                    output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
-                )
+                if self.pathway_categorization is None:
+                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
+                else:
+                    out_dir = os.path.join(
+                        output_dir, category, *self.pathway_categorization[pathway_number]
+                    )
+                    individual_map_path = os.path.join(out_dir, pathway_basename)
                 if not os.path.exists(individual_map_path):
                     break
                 in_paths.append(individual_map_path)
                 labels.append(category)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
+                if self.pathway_categorization is None:
+                    out_path = os.path.join(grid_dir, pathway_basename)
+                else:
+                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
+                    os.makedirs(out_dir, exist_ok=True)
+                    out_path = os.path.join(out_dir, pathway_basename)
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
+                if self.pathway_categorization is not None:
+                    symlink_dir = os.path.join(grid_dir, 'symlink')
+                    os.makedirs(symlink_dir, exist_ok=True)
+                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
@@ -2155,8 +2179,14 @@ class Mapper:
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
-                    out_path = os.path.join(output_dir, category, pathway_basename)
-                    self.drawer.draw_map(pathway, out_path)
+                    out_dir = os.path.join(output_dir, category)
+                    self._draw_map(pathway, out_dir)
+                    if self.pathway_categorization is None:
+                        out_path = os.path.join(out_dir, pathway_basename)
+                    else:
+                        out_path = os.path.join(
+                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
+                        )
                     paths_to_remove.append(out_path)
 
         # Draw map grids.
@@ -2176,23 +2206,41 @@ class Mapper:
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
             pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            unified_map_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
+            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            if self.pathway_categorization is None:
+                unified_map_path = os.path.join(output_dir, pathway_basename)
+            else:
+                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
+                unified_map_path = os.path.join(out_dir, pathway_basename)
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
             labels = ['pangenome']
 
             for category in draw_grid_categories:
-                individual_map_path = os.path.join(
-                    output_dir, category, f'kos_{pathway_number}{pathway_name}.pdf'
-                )
+                if self.pathway_categorization is None:
+                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
+                else:
+                    out_dir = os.path.join(
+                        output_dir, category, *self.pathway_categorization[pathway_number]
+                    )
+                    individual_map_path = os.path.join(out_dir, pathway_basename)
                 if not os.path.exists(individual_map_path):
                     break
                 in_paths.append(individual_map_path)
                 labels.append(category)
             else:
-                out_path = os.path.join(grid_dir, f'kos_{pathway_number}{pathway_name}.pdf')
+                if self.pathway_categorization is None:
+                    out_path = os.path.join(grid_dir, pathway_basename)
+                else:
+                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
+                    os.makedirs(out_dir, exist_ok=True)
+                    out_path = os.path.join(out_dir, pathway_basename)
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
+                if self.pathway_categorization is not None:
+                    symlink_dir = os.path.join(grid_dir, 'symlink')
+                    os.makedirs(symlink_dir, exist_ok=True)
+                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
@@ -2570,7 +2618,8 @@ class Mapper:
             standard maps, reaction boxes or lines are colored.
 
         output_dir : str
-            Path to an existing output directory in which map PDF files are drawn.
+            Path to the output directory in which map PDF files are drawn, created if it doesn't
+            already exist.
 
         draw_map_lacking_kos : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
@@ -2651,10 +2700,8 @@ class Mapper:
             color_associated_compounds=color_associated_compounds
         )
 
-        # Draw the map.
-        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        self.drawer.draw_map(pathway, out_path)
+        self._draw_map(pathway, output_dir)
+
         return True
 
     def _draw_map_kos_original_color(
@@ -2677,7 +2724,8 @@ class Mapper:
             Select KOs, any of which in the map are colored.
 
         output_dir : str
-            Path to an existing output directory in which map PDF files are drawn.
+            Path to the output directory in which map PDF files are drawn, created if it doesn't
+            already exist.
 
         draw_map_lacking_kos : bool, False
             If False, by default, only draw the map if it contains any of the select KOs. If True,
@@ -2769,10 +2817,8 @@ class Mapper:
             color_associated_compounds=color_associated_compounds
         )
 
-        # Draw the map.
-        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        self.drawer.draw_map(pathway, out_path)
+        self._draw_map(pathway, output_dir)
+
         return True
 
     def _draw_map_kos_membership(
@@ -2810,7 +2856,8 @@ class Mapper:
             lower priority colors.
 
         output_dir : str
-            Path to an existing output directory in which map PDF files are drawn.
+            Path to the output directory in which map PDF files are drawn, created if it doesn't
+            already exist.
 
         category_combos : List[Tuple[str]], None
             With the default argument value of None, reactions are colored by count of data sources
@@ -2997,12 +3044,38 @@ class Mapper:
                 recolor_unprioritized_entries='w'
             )
 
-        # Draw the map.
-        pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-        out_path = os.path.join(output_dir, f'kos_{pathway_number}{pathway_name}.pdf')
-        self.drawer.draw_map(pathway, out_path)
+        self._draw_map(pathway, output_dir)
 
         return True
+
+    def _draw_map(self, pathway: kgml.Pathway, output_dir: str) -> None:
+        """
+        
+        Parameters
+        ==========
+        pathway : anvio.kgml.Pathway
+        
+        output_dir : str
+        """
+        pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
+        out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
+
+        if self.pathway_categorization is None:
+            out_dir = output_dir
+            out_path = os.path.join(output_dir, out_basename)
+        else:
+            out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway.number])
+            out_path = os.path.join(out_dir, out_basename)
+        os.makedirs(out_dir, exist_ok=True)
+
+        self.drawer.draw_map(pathway, out_path)
+
+        if self.pathway_categorization is None:
+            return
+
+        symlink_dir = os.path.join(output_dir, 'symlink')
+        os.makedirs(symlink_dir, exist_ok=True)
+        os.symlink(out_path, os.path.join(symlink_dir, out_basename))
 
     def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
         """
