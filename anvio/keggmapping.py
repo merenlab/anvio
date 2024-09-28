@@ -2466,8 +2466,7 @@ class Mapper:
         Parameters
         ==========
         output_dir : str
-            Path to the output directory in which pathway map PDF files are drawn. The directory is
-            created if it does not exist.
+            Path to the output directory in which pathway map PDF files are drawn.
 
         prefix : str
             Output filenames are formatted as <prefix>_<pathway_number>.pdf or
