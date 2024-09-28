@@ -1118,7 +1118,7 @@ class Mapper:
                         pathway_number,
                         group_ko_project_names[group],
                         group_color_priority[group],
-                        os.path.join(output_dir, group),
+                        group_output_dir,
                         draw_map_lacking_kos=draw_maps_lacking_kos
                     )
                 drawn['individual'][group] = drawn_group
