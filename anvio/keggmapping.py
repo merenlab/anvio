@@ -2500,7 +2500,13 @@ class Mapper:
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
                 pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                out_path = os.path.join(output_dir, f'{prefix}_{pathway_number}{pathway_name}.pdf')
+                out_basename = f'{prefix}_{pathway_number}{pathway_name}.pdf'
+                if self.pathway_categorization is None:
+                    out_path = os.path.join(output_dir, out_basename)
+                else:
+                    out_path = os.path.join(
+                        *self.pathway_categorization[pathway_number], out_basename
+                    )
                 if os.path.exists(out_path):
                     raise ConfigError(
                         f"Output files would be overwritten in the output directory, {output_dir}. "
