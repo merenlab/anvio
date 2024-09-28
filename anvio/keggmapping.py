@@ -92,6 +92,13 @@ class Mapper:
     name_files : bool
         Include the pathway name along with the number in output map file names.
 
+    categorize_files : bool
+        Categorize output files by pathway map within subdirectories corresponding to the BRITE
+        hierarchy of maps (see https://www.genome.jp/brite/br08901).
+
+    pathway_categorization : dict[str, list[str]]
+        Maps pathway numbers to categorization, with categories listed from general to specific.
+
     run : anvio.terminal.Run
         This object prints run information to the terminal.
 
@@ -115,6 +122,7 @@ class Mapper:
         kegg_dir: str = None,
         overwrite_output: bool = FORCE_OVERWRITE,
         name_files: bool = False,
+        categorize_files: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
         quiet: bool = QUIET
@@ -132,6 +140,10 @@ class Mapper:
 
         name_files : bool, False
             Include the pathway name along with the number in output map file names.
+
+        categorize_files : bool, False
+            Categorize output files by pathway map within subdirectories corresponding to the BRITE
+            hierarchy of maps (see https://www.genome.jp/brite/br08901).
 
         run : anvio.terminal.Run, anvio.terminal.Run()
             This object prints run information to the terminal.
@@ -182,6 +194,8 @@ class Mapper:
         self.grid_drawer = PDFGridDrawer(overwrite_output=overwrite_output)
 
         self.name_files = name_files
+        self.categorize_files = categorize_files
+        self.pathway_categorization = self._categorize_pathways() if categorize_files else None
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
