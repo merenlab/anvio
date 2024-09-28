@@ -2480,6 +2480,23 @@ class Mapper:
         else:
             pathway_numbers = self._get_pathway_numbers_from_patterns(patterns)
 
+        if self.pathway_categorization is not None:
+            missing_pathway_numbers: list[str] = []
+            for pathway_number in pathway_numbers:
+                if pathway_number not in self.pathway_categorization:
+                    missing_pathway_numbers.append(pathway_number)
+            if missing_pathway_numbers:
+                message = ', '.join(f"'{p}'" for p in missing_pathway_numbers)
+                raise AssertionError(
+                    "The KEGG BRITE hierarchy of pathway maps, 'br08901', did not contain all of "
+                    "the pathway numbers requested to be drawn. This prevents output files from "
+                    "being categorized in a subdirectory structure corresponding to the hierarchy. "
+                    "The option to categorize files cannot be used. It would be worthwhile to make "
+                    "the developers aware of this error so they can hopefully figure out a "
+                    "solution. Here is the list of pathway numbers missing from the hierarchy: "
+                    f"{message}"
+                )
+
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
                 pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
