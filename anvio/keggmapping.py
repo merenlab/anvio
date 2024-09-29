@@ -1553,12 +1553,12 @@ class Mapper:
                 "provided."
             )
 
-        group_genomes: Dict[str, List[str]] = {}
-        genome_group: Dict[str, str] = {}
         if groups_txt is None:
             source_group = None
             group_sources = None
             categories = all_genome_names
+            group_genomes = None
+            genome_group = None
         else:
             if not 0 <= group_threshold <= 1:
                 raise ConfigError(
@@ -1571,6 +1571,8 @@ class Mapper:
             categories = list(group_sources)
 
             # Check that groups include pan genome names. Relate groups and genome names.
+            group_genomes: Dict[str, List[str]] = {}
+            genome_group: Dict[str, str] = {}
             if groups_txt is not None:
                 ungrouped_genomes: List[str] = []
                 for genome_name in all_genome_names:
