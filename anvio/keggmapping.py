@@ -1148,104 +1148,18 @@ class Mapper:
 
             return drawn
 
-        self.progress.new("Drawing map grid")
-        self.progress.update("...")
-
-        # Draw empty maps needed to fill in grids.
-        paths_to_remove: List[str] = []
-        if not draw_maps_lacking_kos:
-            # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
-            # indicating which maps were drawn per contigs database or group.
-            drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
-            for category, drawn_category in drawn['individual'].items():
-                for pathway_number, drawn_map in drawn_category.items():
-                    try:
-                        drawn_pathway_number[pathway_number][category] = drawn_map
-                    except KeyError:
-                        drawn_pathway_number[pathway_number] = {category: drawn_map}
-
-            # Draw empty maps as needed, for pathways with some but not all maps drawn.
-            for pathway_number, drawn_category in drawn_pathway_number.items():
-                if set(drawn_category.values()) != set([True, False]):
-                    continue
-                pathway = self._get_pathway(pathway_number)
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
-                for category, drawn_map in drawn_category.items():
-                    if drawn_map:
-                        continue
-                    out_dir = os.path.join(output_dir, category)
-                    self._draw_map(pathway, out_dir)
-                    if self.pathway_categorization is None:
-                        out_path = os.path.join(out_dir, pathway_basename)
-                    else:
-                        out_path = os.path.join(
-                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
-                        )
-                    paths_to_remove.append(out_path)
-
-        # Draw map grids.
-        grid_dir = os.path.join(output_dir, 'grid')
-        filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
-
-        if groups_txt is not None:
-            # Draw colorbars for each group.
-            for group in draw_categories:
-                self.colorbar_drawer.draw(
-                    group_color_priority[group],
-                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
-                    color_labels=range(1, len(group_sources[group]) + 1),
-                    label='database count'
-                )
-
-        for pathway_number in pathway_numbers:
-            self.progress.update(pathway_number)
-            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
-            if self.pathway_categorization is None:
-                unified_map_path = os.path.join(output_dir, pathway_basename)
-            else:
-                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
-                unified_map_path = os.path.join(out_dir, pathway_basename)
-            if not os.path.exists(unified_map_path):
-                continue
-            in_paths = [unified_map_path]
-            labels = ['all']
-
-            for category in draw_grid_categories:
-                if self.pathway_categorization is None:
-                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
-                else:
-                    out_dir = os.path.join(
-                        output_dir, category, *self.pathway_categorization[pathway_number]
-                    )
-                    individual_map_path = os.path.join(out_dir, pathway_basename)
-                if not os.path.exists(individual_map_path):
-                    break
-                in_paths.append(individual_map_path)
-                labels.append(category)
-            else:
-                if self.pathway_categorization is None:
-                    out_path = os.path.join(grid_dir, pathway_basename)
-                else:
-                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
-                    os.makedirs(out_dir, exist_ok=True)
-                    out_path = os.path.join(out_dir, pathway_basename)
-                self.grid_drawer.draw(in_paths, out_path, labels=labels)
-                if self.pathway_categorization is not None:
-                    symlink_dir = os.path.join(grid_dir, 'symlink')
-                    os.makedirs(symlink_dir, exist_ok=True)
-                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
-                drawn['grid'][pathway_number] = True
-
-        self.progress.end()
-
-        # Remove individual maps that were only needed for map grids.
-        for path in paths_to_remove:
-            os.remove(path)
-        for category in set(draw_categories).difference(set(draw_files_categories)):
-            shutil.rmtree(os.path.join(output_dir, category))
-            drawn['individual'].pop(category)
+        self._draw_map_grids(
+            pathway_numbers,
+            draw_categories,
+            draw_grid_categories,
+            draw_files_categories,
+            output_dir,
+            drawn,
+            group_sources=group_sources,
+            group_color_priority=group_color_priority,
+            check_maps_lacking_kos=not draw_maps_lacking_kos,
+            source_type='contigs database'
+        )
 
         # Our work here is done.
         if groups_txt is None:
@@ -2155,104 +2069,18 @@ class Mapper:
 
             return drawn
 
-        self.progress.new("Drawing map grid")
-        self.progress.update("...")
-
-        # Draw empty maps needed to fill in grids.
-        paths_to_remove: List[str] = []
-        if not draw_maps_lacking_kos:
-            # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
-            # indicating which maps were drawn per genome or group.
-            drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
-            for category, drawn_category in drawn['individual'].items():
-                for pathway_number, drawn_map in drawn_category.items():
-                    try:
-                        drawn_pathway_number[pathway_number][category] = drawn_map
-                    except KeyError:
-                        drawn_pathway_number[pathway_number] = {category: drawn_map}
-
-            # Draw empty maps as needed, for pathways with some but not all maps drawn.
-            for pathway_number, drawn_category in drawn_pathway_number.items():
-                if set(drawn_category.values()) != set([True, False]):
-                    continue
-                pathway = self._get_pathway(pathway_number)
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
-                for category, drawn_map in drawn_category.items():
-                    if drawn_map:
-                        continue
-                    out_dir = os.path.join(output_dir, category)
-                    self._draw_map(pathway, out_dir)
-                    if self.pathway_categorization is None:
-                        out_path = os.path.join(out_dir, pathway_basename)
-                    else:
-                        out_path = os.path.join(
-                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
-                        )
-                    paths_to_remove.append(out_path)
-
-        # Draw map grids.
-        grid_dir = os.path.join(output_dir, 'grid')
-        filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
-
-        if groups_txt is not None:
-            # Draw colorbars for each group.
-            for group in draw_categories:
-                self.colorbar_drawer.draw(
-                    group_color_priority[group],
-                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
-                    color_labels=range(1, len(group_genomes[group]) + 1),
-                    label='genome count'
-                )
-
-        for pathway_number in pathway_numbers:
-            self.progress.update(pathway_number)
-            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
-            if self.pathway_categorization is None:
-                unified_map_path = os.path.join(output_dir, pathway_basename)
-            else:
-                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
-                unified_map_path = os.path.join(out_dir, pathway_basename)
-            if not os.path.exists(unified_map_path):
-                continue
-            in_paths = [unified_map_path]
-            labels = ['pangenome']
-
-            for category in draw_grid_categories:
-                if self.pathway_categorization is None:
-                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
-                else:
-                    out_dir = os.path.join(
-                        output_dir, category, *self.pathway_categorization[pathway_number]
-                    )
-                    individual_map_path = os.path.join(out_dir, pathway_basename)
-                if not os.path.exists(individual_map_path):
-                    break
-                in_paths.append(individual_map_path)
-                labels.append(category)
-            else:
-                if self.pathway_categorization is None:
-                    out_path = os.path.join(grid_dir, pathway_basename)
-                else:
-                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
-                    os.makedirs(out_dir, exist_ok=True)
-                    out_path = os.path.join(out_dir, pathway_basename)
-                self.grid_drawer.draw(in_paths, out_path, labels=labels)
-                if self.pathway_categorization is not None:
-                    symlink_dir = os.path.join(grid_dir, 'symlink')
-                    os.makedirs(symlink_dir, exist_ok=True)
-                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
-                drawn['grid'][pathway_number] = True
-
-        self.progress.end()
-
-        # Remove individual maps that were only needed for map grids.
-        for path in paths_to_remove:
-            os.remove(path)
-        for category in set(draw_categories).difference(set(draw_files_categories)):
-            shutil.rmtree(os.path.join(output_dir, category))
-            drawn['individual'].pop(category)
+        self._draw_map_grids(
+            pathway_numbers,
+            draw_categories,
+            draw_grid_categories,
+            draw_files_categories,
+            output_dir,
+            drawn,
+            group_sources=group_genomes,
+            group_color_priority=group_color_priority,
+            check_maps_lacking_kos=not draw_maps_lacking_kos,
+            source_type='pangenome'
+        )
 
         # Our work here is done.
         if groups_txt is None:
@@ -3082,6 +2910,174 @@ class Mapper:
         symlink_dir = os.path.join(output_dir, 'symlink')
         os.makedirs(symlink_dir, exist_ok=True)
         os.symlink(out_path, os.path.join(symlink_dir, out_basename))
+
+    def _draw_map_grids(
+        self,
+        pathway_numbers: List[str],
+        draw_categories: List[str],
+        draw_grid_categories: List[str],
+        draw_files_categories: List[str],
+        output_dir: str,
+        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict],
+        group_sources: Dict[str, List[str]] = None,
+        group_color_priority: Dict[str, Dict[str, float]] = None,
+        check_maps_lacking_kos: bool = True,
+        source_type: str = 'unknown'
+    ) -> None:
+        """
+        Make map grids from arbitrary categories of data sources or groups of data sources, where
+        each category corresponds an individual map cell in the grid, e.g., categories of the
+        ungrouped 'pangenome' data source type are genomes, categories of the ungrouped 'contigs
+        database' type are contigs databases, and categories of grouped 'pangenome' or 'contigs
+        database' types are groups.
+
+        This method picks up in map methods for multiple data sources after unified and individual
+        map files are drawn.
+
+        Parameters
+        ==========
+        pathway_numbers : List[str]
+            IDs of pathway maps to draw.
+
+        draw_categories : List[str]
+            All categories for which map files are attempted to be drawn.
+
+        draw_grid_categories : List[str]
+            All categories for which map grids are attempted to be drawn.
+
+        draw_files_categories : List[str]
+            All categories for which individual map files were drawn.
+
+        output_dir : str
+            Path to the output directory, which should already exist, in which pathway map PDF files
+            are drawn.
+
+        drawn : Dict[Literal['unified', 'individual', 'grid'], Dict]
+            Record of drawn map files.
+
+        group_sources : Dict[str, List[str]], None
+            This is required to draw groups. Keys are group names. Values are lists of group data
+            sources.
+
+        group_color_priority : Dict[str, Dict[str, float]], None
+            This is required to draw groups. Keys are group names. Values are dictionaries mapping
+            color hex code to priority. Reactions assigned higher priority colors are drawn over
+            reactions assigned lower priority colors.
+
+        check_maps_lacking_kos : bool, True
+            If True, check for "empty" individual map files that are needed to complete the map grid
+            and draw them as temporary files, deleting them at after map grids are drawn.
+
+        source_type : Literal['contigs database', 'pangenome', 'unknown'], 'unknown'
+            The type of data sources being used
+        """
+        self.progress.new("Drawing map grid")
+        self.progress.update("...")
+
+        # Draw empty maps needed to fill in grids.
+        paths_to_remove: List[str] = []
+        if check_maps_lacking_kos:
+            # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
+            # indicating which maps were drawn per category (e.g., database, pan genome, or group).
+            drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
+            for category, drawn_category in drawn['individual'].items():
+                for pathway_number, drawn_map in drawn_category.items():
+                    try:
+                        drawn_pathway_number[pathway_number][category] = drawn_map
+                    except KeyError:
+                        drawn_pathway_number[pathway_number] = {category: drawn_map}
+
+            # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            for pathway_number, drawn_category in drawn_pathway_number.items():
+                if set(drawn_category.values()) != set([True, False]):
+                    continue
+                pathway = self._get_pathway(pathway_number)
+                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
+                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+                for category, drawn_map in drawn_category.items():
+                    if drawn_map:
+                        continue
+                    out_dir = os.path.join(output_dir, category)
+                    self._draw_map(pathway, out_dir)
+                    if self.pathway_categorization is None:
+                        out_path = os.path.join(out_dir, pathway_basename)
+                    else:
+                        out_path = os.path.join(
+                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
+                        )
+                    paths_to_remove.append(out_path)
+
+        # Draw map grids.
+        grid_dir = os.path.join(output_dir, 'grid')
+        filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
+
+        if group_sources is not None:
+            # Draw colorbars for each group.
+            if source_type == 'pangenome':
+                label = 'genome count'
+            elif source_type == 'contigs database':
+                label = 'database count'
+            else:
+                label = 'source count'
+            for group in draw_categories:
+                self.colorbar_drawer.draw(
+                    group_color_priority[group],
+                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
+                    color_labels=range(1, len(group_sources[group]) + 1),
+                    label=label
+                )
+
+        for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
+            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
+            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            if self.pathway_categorization is None:
+                unified_map_path = os.path.join(output_dir, pathway_basename)
+            else:
+                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
+                unified_map_path = os.path.join(out_dir, pathway_basename)
+            if not os.path.exists(unified_map_path):
+                continue
+            in_paths = [unified_map_path]
+            if source_type == 'pangenome':
+                labels = ['pangenome']
+            else:
+                labels = ['all']
+
+            for category in draw_grid_categories:
+                if self.pathway_categorization is None:
+                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
+                else:
+                    out_dir = os.path.join(
+                        output_dir, category, *self.pathway_categorization[pathway_number]
+                    )
+                    individual_map_path = os.path.join(out_dir, pathway_basename)
+                if not os.path.exists(individual_map_path):
+                    break
+                in_paths.append(individual_map_path)
+                labels.append(category)
+            else:
+                if self.pathway_categorization is None:
+                    out_path = os.path.join(grid_dir, pathway_basename)
+                else:
+                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
+                    os.makedirs(out_dir, exist_ok=True)
+                    out_path = os.path.join(out_dir, pathway_basename)
+                self.grid_drawer.draw(in_paths, out_path, labels=labels)
+                if self.pathway_categorization is not None:
+                    symlink_dir = os.path.join(grid_dir, 'symlink')
+                    os.makedirs(symlink_dir, exist_ok=True)
+                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
+                drawn['grid'][pathway_number] = True
+
+        self.progress.end()
+
+        # Remove individual maps that were only needed for map grids.
+        for path in paths_to_remove:
+            os.remove(path)
+        for category in set(draw_categories).difference(set(draw_files_categories)):
+            shutil.rmtree(os.path.join(output_dir, category))
+            drawn['individual'].pop(category)
 
     def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
         """
