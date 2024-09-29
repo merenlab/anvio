@@ -3052,12 +3052,16 @@ class Mapper:
 
     def _draw_map(self, pathway: kgml.Pathway, output_dir: str) -> None:
         """
-        
+        Draw a map given the KGML pathway data.
+
         Parameters
         ==========
         pathway : anvio.kgml.Pathway
-        
+            KGML pathway element object.
+
         output_dir : str
+            Path to the output directory in which pathway map PDF file is drawn. The directory is
+            created if it does not exist.
         """
         pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
         out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
