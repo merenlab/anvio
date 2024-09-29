@@ -3159,6 +3159,10 @@ class Mapper:
         """
         Categorize pathways in the BRITE hierarchy, 'br08901'.
 
+        Alter category names to make suitable for directory paths. Replace all non-alphanumeric
+        characters except parentheses, brackets, and curly braces with underscores. Replace multiple
+        consecutive underscores with a single underscore. Strip leading and trailing underscores.
+
         Returns
         =======
         dict[str, list[str]]
@@ -3194,7 +3198,14 @@ class Mapper:
             categorization = categorizations[0]
             assert categorization[0] == 'br08901'
 
-            pathway_categorization[pathway_number] = categorization[1:]
+            altered_categorization: list[str] = []
+            for category in categorization[1:]:
+                altered = re.sub(r'[^a-zA-Z0-9()\[\]\{\}]', '_', category)
+                altered = re.sub(r'_+', '_', altered)
+                altered = altered.strip('_')
+                altered_categorization.append(altered)
+
+            pathway_categorization[pathway_number] = altered_categorization
 
         return pathway_categorization
 
