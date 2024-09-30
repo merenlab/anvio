@@ -25,7 +25,7 @@ P = terminal.pluralize
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None, defline_format=None):
         self.run = run
         self.progress = progress
 
@@ -44,6 +44,28 @@ class SequencesForHMMHits:
         self.aa_sequences = {}
         self.genes_in_contigs = {}
         self.splits_in_contigs = {}
+
+        self.defline_data_dict = {'gene_name': None,
+                                  'gene_callers_id': None,
+                                  'contig_name': None,
+                                  'gene_unique_id': None,
+                                  'bin_name': None,
+                                  'source': None,
+                                  'e_value': None,
+                                  'start': None,
+                                  'stop': None,
+                                  'length': None} 
+
+
+        if defline_format:
+            self.defline_format = defline_format
+        else:
+            self.defline_format = ("{gene_name}___{gene_unique_id} bin_id:{bin_name}|source:{source}|"
+                                   "e_value:{e_value}|contig:{contig_name}|gene_callers_id:{gene_callers_id}|"
+                                   "start:{start}|stop:{stop}|length:{length}")
+
+        # an immediate check if the defline format is acceptable
+        utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
 
         if contigs_db_path:
             self.init_dicts(contigs_db_path, split_names_of_interest)
@@ -782,9 +804,22 @@ class SequencesForHMMHits:
 
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
-        entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s ' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
+        e = hmm_sequences_dict_for_splits[gene_unique_id]
+
+        self.defline_data_dict = {'gene_name': e['gene_name'],
+                                  'gene_callers_id': e['gene_callers_id'],
+                                  'contig_name': e['contig'],
+                                  'gene_unique_id': gene_unique_id,
+                                  'bin_name': e['bin_id'],
+                                  'source': e['source'],
+                                  'e_value': e['e_value'],
+                                  'start': e['start'],
+                                  'stop': e['stop'],
+                                  'length': e['length']}
+
+        header = utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+
         return (header, sequence)
 
 
@@ -946,18 +981,15 @@ class SequencesForHMMHits:
             for gene_id in genes_aligned:
                 hmm_sequences_dict_for_splits[gene_id]['sequence'] = genes_aligned[gene_id]
 
-        f = open(output_file_path, 'w')
+        with open(output_file_path, 'w') as f:
+            for gene_unique_id in hmm_sequences_dict_for_splits:
+                header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
 
-        for gene_unique_id in hmm_sequences_dict_for_splits:
-            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
+                if wrap:
+                    sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
-
-            f.write('>%s\n' % header)
-            f.write('%s\n' % sequence)
-
-        f.close()
+                f.write('>%s\n' % header)
+                f.write('%s\n' % sequence)
 
 
     def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):

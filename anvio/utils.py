@@ -1755,6 +1755,43 @@ def get_cmd_line():
     return ' '.join(c_argv)
 
 
+def get_f_string_evaluated_by_dict(f_string, d):
+    """A function to evaluate the contents of an f-string given a dictionary.
+
+    This simple function enables the following, even when the variables in the f-string
+    are not defined in a given context, but appear as keys in a dictionary:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> f_string = "{num}_{bar}_or_{foo}"
+        >>> print(f"{get_f_string_evaluated_by_dict(f_string, d)}")
+            "5_apple_or_pear"
+
+    This functionality enables to receive a user-defined f-string from the commandline,
+    and interpret it into a meaningful string using a dictionary. This is similar to the
+    following use from earlier days of Python, but it doesn't bother the user to know
+    about variable types and deal with an annoying syntax:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> print("%(num)d_%(bar)s_or_%(foo)s" % d)
+            "5_apple_or_pear"
+    """
+
+    stringlets = [p.split('}') for p in f_string.split('{')]
+
+    if any([len(s) == 1 or len(s[0]) == 0 for s in stringlets[1:]]):
+        raise ConfigError("Your f-string syntax is not working for anvi'o :/ Perhaps you "
+                          "forgot to open or close a curly bracket?")
+
+    unrecognized_vars = [s[0] for s in stringlets[1:] if s[0] not in d]
+    if len(unrecognized_vars):
+        raise ConfigError(f"Some of the variables in your f-string does not occur in the source "
+                          f"dictionary :/ Here is the list of those that are not matching to anything: "
+                          f"{', '.join(unrecognized_vars)}. In the meantime, these are the known keys: "
+                          f"{', '.join(d.keys())}.")
+
+    return stringlets[0][0] + ''.join([f"{d[s[0]]}{s[1]}" for s in stringlets[1:]])
+
+
 def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     try:
         local_time = float(local_time)
