@@ -2372,9 +2372,12 @@ class DGR_Finder:
                 if self.skip_recovering_genomic_context:
                     pass
                 else:
-                    # we will get a deepcopy of the gene context associated with the inversion
+                    #print("==== GENOMIC CONTEXT ====")
+                    #print(self.genomic_context_surrounding_dgrs)
+                    # we will get a deepcopy of the gene context associated with the dgr
                     tr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[dgr_id])
-                    vr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[dgr_id])
+                    vr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[vr_id])
+
 
                     # then we will learn about these so we can transform the coordinates of anything we wish
                     # to display in the output
