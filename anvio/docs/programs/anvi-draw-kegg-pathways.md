@@ -70,7 +70,7 @@ The `--categorize-files` flag categorizes output map files into a subdirectory s
 
 Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
 
-![Output options](../../images/anvi-draw-kegg-pathways/output_options.png)
+![Output options](../../images/anvi-draw-kegg-pathways/output_options.png){:.center-img .width-50}
 
 ## KO occurrence
 
@@ -104,7 +104,7 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         -o output_dir \
 {{ codestop }}
 
-![Change color to blue](../../images/anvi-draw-kegg-pathways/kos_color_blue.png)
+![Change color to blue](../../images/anvi-draw-kegg-pathways/kos_color_blue.png){:.center-img .width-60}
 
 The argument can also be the string, `original`, for the original color scheme of the reference map. Global maps are especially colorful, with reactions varying in color across the map as a broad indication of function.
 
