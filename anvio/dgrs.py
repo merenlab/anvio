@@ -2445,7 +2445,7 @@ class DGR_Finder:
 
                         for gene in vr_genes:
                             gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                            gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_tr - genomic_context_start_vr) * new_context_length
+                            gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
 
                             if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
                                 # if we are here, it means the transformed length of the gene is already
