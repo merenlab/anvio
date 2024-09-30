@@ -48,7 +48,8 @@ def main() -> None:
     mapper = Mapper(
         kegg_dir=args.kegg_dir,
         overwrite_output=args.overwrite_output_destinations,
-        name_files=args.name_files
+        name_files=args.name_files,
+        categorize_files=args.categorize_files
     )
     performed = False
 
@@ -173,6 +174,18 @@ def get_args() -> Namespace:
         "'kos_00563_Glycosylphosphatidylinositol_(GPI)_anchor_biosynthesis.pdf', and the file "
         "name for 'Biosynthesis of 12-, 14- and 16-membered macrolides' would be "
         "'kos_00522_Biosynthesis_of_12_14_and_16_membered_macrolides.pdf' with this flag."
+    )
+    groupOUT.add_argument(
+        '--categorize-files', action='store_true', default=False, help=
+        "Categorize output files by pathway map within subdirectories corresponding to the BRITE "
+        "hierarchy of maps (see https://www.genome.jp/brite/br08901). Symlinks to these files are "
+        "also created for easier browsing. For example, if drawing a map file for 'Glycolysis / "
+        "Gluconeogenesis', '00010', then the file will be written to a subdirectory of the output "
+        "directory named 'Metabolism/Carbohydrate_metabolism', and a symlink with the same "
+        "basename as the file will be created in a subdirectory named 'symlink'. If drawing a map "
+        "grid for 'Quorum sensing', '02024', then the file will be written to a subdirectory named "
+        "'grid/Cellular_Processes/Cellular_community_prokaryotes', and a symlink will be created "
+        "in a subdirectory named 'grid/symlink'."
     )
     groupOUT.add_argument(
         '--draw-individual-files', nargs='*', help=

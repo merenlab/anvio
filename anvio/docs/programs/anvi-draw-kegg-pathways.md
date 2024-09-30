@@ -14,6 +14,12 @@ Additional Python packages may be needed if you installed anvi'o `v8.0-dev` befo
 pip install biopython reportlab pymupdf
 {{ codestop }}
 
+The program can be tested with the following command.
+
+{{ codestart }}
+anvi-self-test --suite kegg-mapping
+{{ codestop }}
+
 ### Download newest available files
 
 Alternatively, KEGG data can be set up not from a snapshot but by downloading the newest files available from KEGG using the `-D` flag. In the following command, a higher number of download threads than the default of 1 is provided by `-T`, which significantly speeds up downloading.
@@ -50,9 +56,21 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
                         -o output_dir
 {{ codestop }}
 
-## Output file names
+## Output
 
-Output file names just contain the ID of each map by default, i.e., `kos_00010.pdf` for `Glycolysis / Gluconeogenesis`. The `--name-files` flag attaches an altered version of the pathway name to the file name, i.e., `kos_00010_Glycolysis_Gluconeogenesis.pdf`.
+This program requires the path to a non-existent directory as an argument to `-o` or `--output-dir`. Options are available to make it easier to browse through output files and anticipate their contents.
+
+### File names
+
+By default, output file names contain the ID of each map, e.g., `kos_00010.pdf` for `Glycolysis / Gluconeogenesis`. The `--name-files` flag attaches a simplified version of the pathway name to the file name, e.g., `kos_00010_Glycolysis_Gluconeogenesis.pdf`.
+
+### File categorization
+
+The `--categorize-files` flag categorizes output map files into a subdirectory structure based on the KEGG [BRITE hierarchy of pathways](https://www.genome.jp/brite/br08901). For example, a `Glycolysis / Gluconeogenesis` map would be placed in a directory named `Metabolism/Carbohydrate_metabolism`, as would be a `Citrate cycle (TCA cycle)` map, whereas an `RNA polymerase` map would be placed in a directory named `Genetic_Information_Processing/Transcription`. A subdirectory named `symlink` is also created with symbolic links to all of the categorized map files, allowing all of the files to be accessed from a single directory.
+
+Here is a simple example of the output file structure produced with `--name-files` and `--categorize-files` in the course of `anvi-self-test --suite kegg-mapping` (with the `-o` option to save the temporary directories in the test from removal).
+
+![Output options](../../images/anvi-draw-kegg-pathways/output_options.png)
 
 ## KO occurrence
 
