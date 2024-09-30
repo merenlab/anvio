@@ -3028,6 +3028,22 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+
+        # make sure every entry in the fasta_txt has a path that exists
+        genomes_missing_fasta_files = [g for g, e in fastas.items() if not os.path.exists(e['path'])]
+
+        if len(genomes_missing_fasta_files):
+            if len(genomes_missing_fasta_files) == 1:
+                msg = (f"One of the genome entries in your fasta-txt file, namely '{genomes_missing_fasta_files[0]}' does "
+                       f"not seem to have its FASTA file at the location it is mentioned in the file :/ ")
+            else:
+                msg = (f"Multiple genome entries in your fasta-txt file have a FASTA file path that don't match to an "
+                       f"existing FASTA file :/ Here are the list of offenders: {', '.join(genomes_missing_fasta_files)}. ")
+
+            msg += "Please correct your fasta-txt, and try again."
+
+            raise ConfigError(f"{msg}")
+
         for name in fastas.keys():
             genome_names.add(name)
             hash_for_output_file = hashlib.sha256(name.encode('utf-8')).hexdigest()
