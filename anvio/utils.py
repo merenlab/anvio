@@ -842,6 +842,12 @@ def is_all_npm_packages_installed():
         raise ConfigError("The interactive directory does not exist in the anvi'o module. "
                           "Please ensure the directory is present.")
 
+    # Check if Node.js is installed
+    if shutil.which("node") is None:
+        run.warning("Please install Node.js before proceeding.", header="⚠️  NODE.JS IS NOT INSTALLED ⚠️", overwrite_verbose=True, lc='yellow')
+        run.info_single("1) conda install -c conda-forge nodejs", level=0, overwrite_verbose=True)
+        raise ConfigError("Node.js is not installed. Please install it using conda and try again.")
+
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
