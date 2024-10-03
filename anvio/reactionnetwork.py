@@ -2349,26 +2349,24 @@ class ReactionNetwork:
 
             merged_ko.reaction_ids = sorted(set(ko.reaction_ids + merged_ko.reaction_ids))
 
-            for kegg_reaction_id, modelseed_reaction_ids in merged_ko.kegg_reaction_aliases.items():
+            for modelseed_reaction_id, kegg_ids in ko.kegg_reaction_aliases.items():
                 try:
-                    merged_modelseed_reaction_ids = merged_ko.kegg_reaction_aliases[
-                        kegg_reaction_id
-                    ]
+                    merged_kegg_ids = merged_ko.kegg_reaction_aliases[modelseed_reaction_id]
                 except KeyError:
-                    merged_ko.kegg_reaction_aliases = modelseed_reaction_ids.copy()
+                    merged_ko.kegg_reaction_aliases[modelseed_reaction_id] = kegg_ids.copy()
                     continue
-                merged_ko.kegg_reaction_aliases[kegg_reaction_id] = sorted(
-                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                merged_ko.kegg_reaction_aliases[modelseed_reaction_id] = sorted(
+                    set(merged_kegg_ids + kegg_ids)
                 )
 
-            for ec_number, modelseed_reaction_ids in merged_ko.ec_number_aliases.items():
+            for modelseed_reaction_id, ec_numbers in ko.ec_number_aliases.items():
                 try:
-                    merged_modelseed_reaction_ids = merged_ko.ec_number_aliases[ec_number]
+                    merged_ec_numbers = merged_ko.ec_number_aliases[modelseed_reaction_id]
                 except KeyError:
-                    merged_ko.ec_number_aliases = modelseed_reaction_ids.copy()
+                    merged_ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers
                     continue
-                merged_ko.ec_number_aliases[ec_number] = sorted(
-                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                merged_ko.ec_number_aliases[modelseed_reaction_id] = sorted(
+                    set(merged_ec_numbers + ec_numbers)
                 )
 
         # Copy modules from the second network. Modules from the two networks can contain different
