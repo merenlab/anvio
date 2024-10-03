@@ -2145,23 +2145,15 @@ class ReactionNetwork:
             for reaction_id in subsetted_reaction_ids:
                 subnetwork_ko.reaction_ids.append(reaction_id)
 
-            for kegg_id, modelseed_reaction_ids in ko.kegg_reaction_aliases.items():
-                for reaction_id in modelseed_reaction_ids:
-                    if reaction_id not in subsetted_reaction_ids:
-                        continue
-                    try:
-                        subnetwork_ko.kegg_reaction_aliases[kegg_id].append(reaction_id)
-                    except KeyError:
-                        subnetwork_ko.kegg_reaction_aliases[kegg_id] = [reaction_id]
+            for modelseed_reaction_id, kegg_ids in ko.kegg_reaction_aliases.items():
+                if modelseed_reaction_id not in subsetted_reaction_ids:
+                    continue
+                subnetwork_ko.kegg_reaction_aliases[modelseed_reaction_id] = kegg_ids.copy()
 
-            for ec_number, modelseed_reaction_ids in ko.ec_number_aliases.items():
-                for reaction_id in modelseed_reaction_ids:
-                    if reaction_id not in subsetted_reaction_ids:
-                        continue
-                    try:
-                        subnetwork_ko.ec_number_aliases[ec_number].append(reaction_id)
-                    except KeyError:
-                        subnetwork_ko.ec_number_aliases[ec_number] = [reaction_id]
+            for modelseed_reaction_id, ec_numbers in ko.ec_number_aliases.items():
+                if modelseed_reaction_id not in subsetted_reaction_ids:
+                    continue
+                subnetwork_ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers.copy()
 
             subnetwork.kos[ko_id] = subnetwork_ko
 
