@@ -844,16 +844,23 @@ def is_all_npm_packages_installed():
 
     # Check if Node.js is installed
     if shutil.which("node") is None:
-        run.warning("Please install Node.js before proceeding.", header="⚠️  NODE.JS IS NOT INSTALLED ⚠️", overwrite_verbose=True, lc='yellow')
-        run.info_single("1) conda install -c conda-forge nodejs", level=0, overwrite_verbose=True)
+        run.warning("It seems your installation is missing Node.js, a recent requirement of anvi'o "
+                    "environments. Please run the following command in your terminal, and you should "
+                    "be good to go:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        run.info_single("      conda install -c conda-forge nodejs", level=0, overwrite_verbose=True, nl_before=1)
         raise ConfigError("Node.js is not installed. Please install it using conda and try again.")
 
     # Check if node_modules exists and is not empty
     node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
     if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
-        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
-                    "and you will be fine :)", header="⚠️  ANVI'O NEEDS NPM PACKAGES ⚠️", overwrite_verbose=True,
+        run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
+                    "from git submodules to npm packages. Your current setup does not seem to have the "
+                    "necessary files in place, so the purpose of this warning is to help you match your "
+                    "setup to most up-to-date anvi'o code. If you run the commands below in your terminal, "
+                    "you will most likely be fine :) But if things don't work out, please reach out to us "
+                    "on GitHub or Discord since this is a new feature and some hiccups may occur.",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
         run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
         run.info_single("2) npm install", level=0, overwrite_verbose=True)
