@@ -22,7 +22,7 @@
     "@fontsource/roboto": "5.0.8",
     "@popperjs/core": "2.11.8",
     "blueimp-md5": "2.7.0",
-    "bootstrap": "4.6.0",
+    "bootstrap": "5.0.0",
     "bootstrap-icons": "1.11.3",
     "bootstrap-markdown": "2.10.0",
     "bootstrap-waitingfor": "1.2.7",
