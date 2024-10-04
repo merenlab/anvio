@@ -30,7 +30,7 @@
     "html5sortable": "0.13.3",
     "jquery": "1.12.4",
     "jquery-ui": "1.12.1",
-    "marked": "0.3.6",
+    "marked": "4.0.10",
     "randomcolor": "0.6.2",
     "sortable-tablesort": "3.2.2",
     "svg-pan-zoom": "3.6.1",
