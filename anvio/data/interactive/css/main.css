@@ -293,6 +293,7 @@ html, body, #wrapper {
 
 .toggle-panel-left-pos {
     left: 560px;
+    z-index: 1;
 }
 
 #toggle-panel-left:hover {
@@ -1181,6 +1182,11 @@ position: relative;
 
 .draw-border {
 @include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
+}
+
+.disabled{
+    pointer-events:none;
+    opacity:0.6;
 }
 
 @media only screen and (min-width:1440px){

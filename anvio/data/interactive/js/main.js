@@ -195,8 +195,8 @@ $(document).ready(function() {
         }
     });
 
-    if (!$.browser.chrome)
-    {
+
+    if (!(/Chrome/.test(navigator.userAgent))) {
         toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser.\
                         For the best performance, and to avoid unexpected issues, please consider using anvi'o with\
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -216,10 +216,6 @@ $(document).ready(function() {
                 }
                 return text === "Hide" ? "Show" : "Hide";
             });
-        });
-
-        $('#bin_settings').on('click', function() {
-            $.bootstrapSortable();
         });
 });
 
@@ -282,8 +278,18 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
-            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+            sortable('#tbody_layers', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
+
+            sortable('#tbody_samples', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
 
             let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
 
@@ -798,40 +804,6 @@ function populateColorDicts() {
 }
 
 function buildLegendTables() {
-    if(typeof $('#legend_settings').data("ui-accordion") != "undefined"){
-        $('#legend_settings').accordion("destroy");
-        $('#legend_settings').empty();
-    }
-
-    $('#legend_settings').accordion({
-        collapsible:true,
-    
-        beforeActivate: function(event, ui) {
-             // The accordion believes a panel is being opened
-            if (ui.newHeader[0]) {
-                var currHeader  = ui.newHeader;
-                var currContent = currHeader.next('.ui-accordion-content');
-             // The accordion believes a panel is being closed
-            } else {
-                var currHeader  = ui.oldHeader;
-                var currContent = currHeader.next('.ui-accordion-content');
-            }
-             // Since we've changed the default behavior, this detects the actual status
-            var isPanelSelected = currHeader.attr('aria-selected') == 'true';
-    
-             // Toggle the panel's header
-            currHeader.toggleClass('ui-corner-all',isPanelSelected).toggleClass('accordion-header-active ui-state-active ui-corner-top',!isPanelSelected).attr('aria-selected',((!isPanelSelected).toString()));
-    
-            // Toggle the panel's icon
-            currHeader.children('.ui-icon').toggleClass('ui-icon-triangle-1-e',isPanelSelected).toggleClass('ui-icon-triangle-1-s',!isPanelSelected);
-    
-             // Toggle the panel's content
-            currContent.toggleClass('accordion-content-active',!isPanelSelected)    
-            if (isPanelSelected) { currContent.slideUp(); }  else { currContent.slideDown(); }
-    
-            return false; // Cancels the default action
-        }
-    });
 
     legends = [];
     let toastr_warn_flag = false
@@ -1004,8 +976,6 @@ function buildLegendTables() {
     if(legends.length == 0){
         $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
     }
-
-    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -1360,7 +1330,7 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr>' +
+            var template = '<tr class="sortable">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
@@ -3048,7 +3018,6 @@ function processState(state_name, state) {
     }
 
     populateColorDicts();
-    buildLegendTables();
 
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
