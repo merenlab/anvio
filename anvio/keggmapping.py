@@ -2909,7 +2909,7 @@ class Mapper:
 
         symlink_dir = os.path.join(output_dir, 'symlink')
         os.makedirs(symlink_dir, exist_ok=True)
-        os.symlink(out_path, os.path.join(symlink_dir, out_basename))
+        os.symlink(os.path.abspath(out_path), os.path.join(symlink_dir, out_basename))
 
     def _draw_map_grids(
         self,
@@ -3067,7 +3067,9 @@ class Mapper:
                 if self.pathway_categorization is not None:
                     symlink_dir = os.path.join(grid_dir, 'symlink')
                     os.makedirs(symlink_dir, exist_ok=True)
-                    os.symlink(out_path, os.path.join(symlink_dir, pathway_basename))
+                    os.symlink(
+                        os.path.abspath(out_path), os.path.join(symlink_dir, pathway_basename)
+                    )
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
