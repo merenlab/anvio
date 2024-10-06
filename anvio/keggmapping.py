@@ -3025,6 +3025,8 @@ class Mapper:
                             out_dir, *self.pathway_categorization[pathway_number], pathway_basename
                         )
                     paths_to_remove.append(out_path)
+                    if self.categorize_files:
+                        paths_to_remove.append(os.path.join(out_dir, 'symlink', pathway_basename))
 
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
@@ -3089,7 +3091,7 @@ class Mapper:
 
         self.progress.end()
 
-        # Remove individual maps that were only needed for map grids.
+        # Remove individual maps and symlinks that were only needed for map grids.
         for path in paths_to_remove:
             os.remove(path)
         for category in set(draw_categories).difference(set(draw_files_categories)):
