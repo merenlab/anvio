@@ -787,7 +787,7 @@ class Mapper:
             else:
                 raise AssertionError
 
-            if cmap.name in qualitative_colormaps + repeating_colormaps:
+            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
                 poor_colormap = True
 
             if group_colormap_limits != (0.0, 1.0):
@@ -1657,7 +1657,7 @@ class Mapper:
             else:
                 raise AssertionError
 
-            if cmap.name in qualitative_colormaps + repeating_colormaps:
+            if group_cmap.name in qualitative_colormaps + repeating_colormaps:
                 poor_colormap = True
 
             if group_colormap_limits != (0.0, 1.0):
