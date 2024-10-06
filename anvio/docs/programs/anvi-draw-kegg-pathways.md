@@ -58,7 +58,7 @@ anvi-draw-kegg-pathways --contigs-dbs %(contigs-db)s \
 
 ## Output
 
-This program requires the path to a non-existent directory as an argument to `-o` or `--output-dir`. Options are available to make it easier to browse through output files and anticipate their contents.
+This program requires the path to a directory as an argument to `-o` or `--output-dir`. This must be a non-existent directory unless the flag, `-W` or `--overwrite-output-destinations`, is also used. Options are available to make it easier to browse through output files and anticipate their contents.
 
 ### File names
 
