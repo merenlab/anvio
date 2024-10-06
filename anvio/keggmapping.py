@@ -3007,17 +3007,27 @@ class Mapper:
                         drawn_pathway_number[pathway_number] = {category: drawn_map}
 
             # Draw empty maps as needed, for pathways with some but not all maps drawn.
+            progress = self.progress
+            self.progress = terminal.Progress(verbose=False)
+            run = self.run
+            self.run = terminal.Run(verbose=False)
+
             for pathway_number, drawn_category in drawn_pathway_number.items():
                 if set(drawn_category.values()) != set([True, False]):
                     continue
-                pathway = self._get_pathway(pathway_number)
+
                 pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
                 pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
+
                     out_dir = os.path.join(output_dir, category)
-                    self._draw_map(pathway, out_dir)
+
+                    self._map_kos_fixed_colors(
+                        [], out_dir, [pathway_number], draw_maps_lacking_kos=True
+                    )
+
                     if self.pathway_categorization is None:
                         out_path = os.path.join(out_dir, pathway_basename)
                     else:
@@ -3027,6 +3037,9 @@ class Mapper:
                     paths_to_remove.append(out_path)
                     if self.categorize_files:
                         paths_to_remove.append(os.path.join(out_dir, 'symlink', pathway_basename))
+
+            self.progress = progress
+            self.run = run
 
         # Draw map grids.
         grid_dir = os.path.join(output_dir, 'grid')
