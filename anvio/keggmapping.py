@@ -3098,6 +3098,16 @@ class Mapper:
             shutil.rmtree(os.path.join(output_dir, category))
             drawn['individual'].pop(category)
 
+        # If map files were categorized in a subdirectory structure, remove subdirectories that no
+        # longer contain files.
+        if not self.categorize_files:
+            return
+        for category in draw_files_categories:
+            category_dir = os.path.join(output_dir, category)
+            for dir_path, subdir_names, filenames in os.walk(category_dir, topdown=False):
+                if dir_path != category_dir and not os.listdir(dir_path):
+                    os.rmdir(dir_path)
+
     def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
         """
         Get a Pathway object for the KGML file used in drawing a pathway map.
