@@ -2888,8 +2888,8 @@ class Mapper:
             KGML pathway element object.
 
         output_dir : str
-            Path to the output directory in which pathway map PDF file is drawn. The directory is
-            created if it does not exist.
+            Path to the output directory in which the pathway map PDF file is drawn. The directory
+            is created if it does not exist.
         """
         pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
         out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
@@ -2907,9 +2907,28 @@ class Mapper:
         if self.pathway_categorization is None:
             return
 
+        self._symlink_map(output_dir, out_path)
+
+    def _symlink_map(self, output_dir: str, map_path: str) -> None:
+        """
+        Make a symlink for a map file in a dedicated symlink directory.
+
+        Parameters
+        ==========
+        output_dir : str
+            Path to the output directory in which the map file was drawn (potentially in a
+            subdirectory). A subdirectory called 'symlink' is created if it does not already exist.
+
+        map_path : str
+            Map file path to be symlinked.
+        """
         symlink_dir = os.path.join(output_dir, 'symlink')
         os.makedirs(symlink_dir, exist_ok=True)
-        os.symlink(os.path.abspath(out_path), os.path.join(symlink_dir, out_basename))
+        map_basename = os.path.basename(map_path)
+        symlink_path = os.path.join(symlink_dir, map_basename)
+        if os.path.exists(symlink_path):
+            os.remove(symlink_path)
+        os.symlink(os.path.abspath(map_path), symlink_path)
 
     def _draw_map_grids(
         self,
@@ -3065,11 +3084,7 @@ class Mapper:
                     out_path = os.path.join(out_dir, pathway_basename)
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 if self.pathway_categorization is not None:
-                    symlink_dir = os.path.join(grid_dir, 'symlink')
-                    os.makedirs(symlink_dir, exist_ok=True)
-                    os.symlink(
-                        os.path.abspath(out_path), os.path.join(symlink_dir, pathway_basename)
-                    )
+                    self._symlink_map(grid_dir, out_path)
                 drawn['grid'][pathway_number] = True
 
         self.progress.end()
