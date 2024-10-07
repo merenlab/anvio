@@ -9,7 +9,6 @@
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="./node_modules/jquery-ui/themes/base/draggable.css">
-    <link rel="stylesheet" href="./node_modules/bootstrap4-toggle/css/bootstrap4-toggle.min.css">
     <!-- <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/themes/light.css" />
     <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/dist/tippy.css" /> -->
     <link type="text/css" rel="stylesheet" href="css/pangraph.css" />
@@ -34,7 +33,6 @@
     <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap")'></script>
     <script type="text/javascript" src="./node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
     <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
-    <script type="text/javascript" src="./node_modules/bootstrap4-toggle/js/bootstrap4-toggle.min.js" onerror='alertDependencyError("table-sorter")'></script>
     <script type="text/javascript" src='js/pangraph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
@@ -174,7 +172,7 @@
 
                       <div class="col-12 d-flex mb-1 py-1">      
                         <div class="col-2 d-flex align-items-center">
-                          <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="toggle" data-placement="top" title="Tooltip on top" data-size="sm" data-onstyle="secondary" checked>
+                          <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                         </div>
                         <div class="col-10 d-flex align-items-center">
                           Saturation by significance
@@ -206,7 +204,7 @@
 
                       <div class="col-12 d-flex mb-1 py-1">      
                         <div class="col-2 d-flex align-items-center">
-                          <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="toggle" data-placement="top" title="Tooltip on top" data-size="sm" data-onstyle="secondary">
+                          <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
                         </div>
                         <div class="col-10 d-flex align-items-center">
                           Show phylogenic tree
@@ -304,7 +302,7 @@
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1 py-1">      
                         <div class="col-2 d-flex align-items-center">
-                          <input type="checkbox" id="flexlinear" name="flexlinear" aria-label="..." data-toggle="toggle" data-placement="top" title="Tooltip on top" data-size="sm" data-onstyle="secondary">
+                          <input type="checkbox" id="flexlinear" name="flexlinear" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
                         </div>
                         <div class="col-10 d-flex align-items-center">
                           Linear graph layout
