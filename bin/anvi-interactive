@@ -118,7 +118,7 @@ if __name__ == '__main__':
     args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
-        utils.is_all_submodules_present()
+        utils.is_all_npm_packages_installed()
         d = interactive.Interactive(args)
         args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
     except ConfigError as e:

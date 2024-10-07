@@ -1120,10 +1120,42 @@ class ContigsSuperclass(object):
         return sequences
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
-                                           output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True,
+                                           include_aa_sequences=False, flank_length=0, output_file_path_external_gene_calls=None,
+                                           simple_headers=False, list_defline_variables=False, defline_format='{gene_caller_id}',
+                                           report_aa_sequences=False, wrap=120, rna_alphabet=False):
 
-        # bunch of sanity checks below
+        ##################################################################################################
+        #
+        # DEFLIINE FORMATTING REPORTING RELATED PRE-CHECKS
+        #
+        ##################################################################################################
+        # available options to determine deflines through user-provided f-strings. the dictionary is
+        # populated below, and if you make any changes here, please don't forget to update it there too: 
+        defline_data_dict = {'gene_caller_id': None,
+                             'contig_name': None,
+                             'start': None,
+                             'stop': None,
+                             'direction': None,
+                             'length': None,
+                             'contigs_db_project_name': None} 
+
+        # if the user needs to see the list, show the list and quit
+        if list_defline_variables:
+            self.run.warning(f"Here are the variables you can use to provide a user-defined defline template: ")
+            for key in defline_data_dict.keys():
+                self.run.info_single("{%s}" % key)
+            self.run.info_single("Remember, by default, anvi'o will only use '{gene_caller_id}' to format the deflines of "
+                                 "FASTA files it produces.", level=0, nl_before=1, nl_after=1, mc='red')
+
+            sys.exit()
+
+        ##################################################################################################
+        #
+        # BUNCH OF SANITY CHECKS BEFORE WE GET INTO BUSINESS
+        #
+        ##################################################################################################
+
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -1165,6 +1197,20 @@ class ContigsSuperclass(object):
             raise ConfigError("If you are asking anvi'o to create an external gene calls file for your gene sequences, you can't also "
                               "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
                               "file must match, and anvi'o will have to take care of it without your supervision.")
+
+        # if we came all the way down here without a defline format, let's set one up:
+        if not defline_format:
+            defline_format = "{gene_caller_id}"
+
+        # we will also check if the `defline_format` is composed of variables that are defined in
+        # the  `defline_data_dict` which is filled later
+        utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+
+        ##################################################################################################
+        #
+        # BUSINESS TIME
+        #
+        ##################################################################################################
 
         # finally getting our sequences initialized. please NOTE that we do it only if there are no
         # contig sequences available OR if the gene caller ids of interest is not represented among
@@ -1255,6 +1301,17 @@ class ContigsSuperclass(object):
                 else:
                     gene_call['aa_sequence'] = None
 
+            # let's populate the dictionary that holds all the information that could be used to report
+            # gene FASTA files. if you change anything in this dictionary, please don't forget to
+            # update the list of variables where it is first defined in this function.
+            defline_data_dict = {'gene_caller_id': gene_callers_id,
+                                 'contig_name': gene_call['contig'],
+                                 'start': gene_call['start'],
+                                 'stop': gene_call['stop'],
+                                 'direction': gene_call['direction'],
+                                 'length': gene_call['length'],
+                                 'contigs_db_project_name': self.a_meta['project_name_str']} 
+
             if output_file_path_external_gene_calls:
                 # if the user is asking for an external gene calls file, the FASTA file for sequences
                 # should not start with digits and we also need to set the contig name in sequences
@@ -1266,10 +1323,9 @@ class ContigsSuperclass(object):
                     gene_call['start'] = 0
                     gene_call['stop'] = gene_call['length']
             else:
-                if simple_headers:
-                    gene_call['header'] = '%d' % (gene_callers_id)
-                else:
-                    gene_call['header'] = '%d ' % (gene_callers_id) + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                gene_call['header'] = utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+                if not simple_headers:
+                    gene_call['header'] += gene_call['header'] + ' ' + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
             # adding the updated gene call to our sequences dict.
             sequences_dict[gene_callers_id] = gene_call
@@ -4162,8 +4218,9 @@ class PanDatabase:
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_reactions_table_name, t.pan_gene_cluster_function_reactions_table_structure, t.pan_gene_cluster_function_reactions_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_metabolites_table_name, t.pan_gene_cluster_function_metabolites_table_structure, t.pan_gene_cluster_function_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
+        self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -4246,7 +4303,7 @@ class ContigsDatabase:
 
         # set a project name for the contigs database without any funny
         # characters to make sure it can be used programmatically later.
-        self.meta['project_name_str'] = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_') \
+        self.meta['project_name_str'] = self.meta['project_name'].strip().translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_').strip('_') \
                                 if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
 
         if 'creation_date' not in self.meta:
@@ -4298,8 +4355,9 @@ class ContigsDatabase:
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
-        self.db.create_table(t.gene_function_reactions_table_name, t.gene_function_reactions_table_structure, t.gene_function_reactions_table_types)
-        self.db.create_table(t.gene_function_metabolites_table_name, t.gene_function_metabolites_table_structure, t.gene_function_metabolites_table_types)
+        self.db.create_table(t.reaction_network_reactions_table_name, t.reaction_network_reactions_table_structure, t.reaction_network_reactions_table_types)
+        self.db.create_table(t.reaction_network_metabolites_table_name, t.reaction_network_metabolites_table_structure, t.reaction_network_metabolites_table_types)
+        self.db.create_table(t.reaction_network_kegg_table_name, t.reaction_network_kegg_table_structure, t.reaction_network_kegg_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
@@ -4728,6 +4786,8 @@ class ContigsDatabase:
         self.db.set_meta_value('reaction_network_ko_annotations_hash', None)
         self.db.set_meta_value('reaction_network_kegg_database_release', None)
         self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
+        self.db.set_meta_value('reaction_network_consensus_threshold', None)
+        self.db.set_meta_value('reaction_network_discard_ties', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 

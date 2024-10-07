@@ -99,7 +99,7 @@
                                 Profile DB (<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b> w/ {{ meta|lookup:"profile"|lookup:"samples"|length|pretty }} samples).
                             </div>
                             <div class="card-body">
-                                <table class="table table-striped">
+                                <table class="table table-striped table-responsive">
                                     <thead id="tblHead_basics_profile">
                                         <tr>
                                             <th>Key</th>
@@ -126,7 +126,7 @@
                                 Contigs DB (<b>{{ meta|lookup:"contigs"|lookup:"project_name"|humanize }}</b>)
                             </div>
                             <div class="card-body">
-                                <table class="table table-striped">
+                                <table class="table table-striped table-responsive">
                                     <thead id="tblHead_basics_contigs">
                                         <tr>
                                             <th>Key</th>
@@ -183,7 +183,7 @@
 
                         <div class="card col-12" id="summary-card">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped table-responsive sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th data-defaultsort='disabled' class="text-center"></th>
@@ -254,7 +254,7 @@
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid_tax_{{ bin }}">
+            <table class="table table-striped table-responsive" id="tblGrid_tax_{{ bin }}">
                 <thead id="tblHead_tax_{{ bin }}">
                   <tr>
                     <th>Taxon call</th>
@@ -289,7 +289,7 @@
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid_files_{{ bin }}">
+            <table class="table table-striped table-responsive" id="tblGrid_files_{{ bin }}">
                 <thead id="tblHead_files_{{ bin }}">
                   <tr>
                     <th>File</th>
@@ -331,7 +331,7 @@
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
-            <table class="table table-striped" id="tblGrid_completeness_{{ bin }}">
+            <table class="table table-striped table-responsive" id="tblGrid_completeness_{{ bin }}">
                 <thead id="tblHead_completeness_{{ bin }}">
                   <tr>
                     <th>Source</th>
@@ -395,7 +395,7 @@
 
                             <div class="card">
                                 <div class="card-body">
-                                    <table class="table table-striped sortable">
+                                    <table class="table table-striped table-responsive sortable">
                                         <thead id="tblHead_bin">
                                            <tr>
                                                <th data-defaultsort='disabled' class="text-center"></th>
@@ -461,7 +461,7 @@
 
                         <div class="card ">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped table-responsive sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
                                             <th>Sample</th>
@@ -520,7 +520,7 @@
 
                     <div class="card ">
                         <div class="card-body">
-                            <table class="table table-striped sortable" id="tblGrid_bin">
+                            <table class="table table-striped table-responsive sortable" id="tblGrid_bin">
                                 <thead id="tblHead_bin">
                                     <tr>
                                         <th data-defaultsort='disabled' class="text-center"></th>
@@ -588,7 +588,7 @@
                         <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER HMM PROFILE: -->
                         <div class="card" id="scg-hit-sum">
                             <div class="card-body">
-                                <table class="table table-striped sortable" id="tblGrid_bin">
+                                <table class="table table-striped table-responsive sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                        <tr>
                                            <th data-defaultsort='disabled' class="text-center"></th>
@@ -636,7 +636,7 @@
                                     <!-- INDIVIDUAL TABLES PER HMM ITEM and HMM PROFILE -->
                                     <div class="card">
                                         <div class="card-body">
-                                        <table class="table table-striped sortable">
+                                        <table class="table table-striped table-responsive sortable">
                                             <thead id="tblHead_bin">
                                                <tr>
                                                    <th data-defaultsort='disabled' class="text-center"></th>

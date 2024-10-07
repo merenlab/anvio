@@ -1188,6 +1188,7 @@ position: relative;
     pointer-events:none;
     opacity:0.6;
 }
+
 @media only screen and (min-width:1440px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {

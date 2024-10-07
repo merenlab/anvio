@@ -2617,6 +2617,26 @@ D = {
                      "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
                      "flag all indels are reported."}
                 ),
+    'list-defline-variables': (
+            ['--list-defline-variables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will list the variable names that can be used to construct deflines in "
+                     "FASTA outputs from the user-defined `--defline-format` strings."}
+                ),
+    'defline-format': (
+            ['--defline-format'],
+            {'default': '{gene_caller_id}',
+             'metavar': "F-STRING",
+             'help': "Proivide a defline template for anvi'o to use when generating the FASTA output. The way this "
+                     "works is actually quite simple: first you learn about all the options that exist using the "
+                     "`--list-defline-variables`, and then use them to create your template. Available variables "
+                     "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
+                     "of curly brackets will be kept as is. For instance, if you would like your defline to have "
+                     "the gene caller ID after the contig name in which it occurs, you can use this template: "
+                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. See more "
+                     "examples in online help."}
+                ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
             {'default': False,
@@ -3223,6 +3243,22 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
+    'skip-map-images': (
+            ['--skip-map-images'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG pathway map image files, which we don't "
+                     "recommend, since they are used in visualizing pathway membership, but let you "
+                     "do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],

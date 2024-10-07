@@ -17,7 +17,7 @@ import numpy as np
 import multiprocessing as mp
 
 from scipy import stats
-from typing import List
+from typing import Dict, List, Tuple, Union
 
 import anvio
 import anvio.db as db
@@ -26,8 +26,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
-import anvio.biochemistry.reactionnetwork as reactionnetwork
-from anvio.biochemistry.reactionnetwork import _download_worker
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -294,6 +292,10 @@ KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
 # and to the relevant step metadata clause in write_stat_to_matrix()
 STEP_METADATA_HEADERS = ["step_definition"]
 
+# Global and overview map IDs have certain ranges of numbers.
+GLOBAL_MAP_ID_PATTERN = re.compile(r'\d{1}11\d{2}')
+OVERVIEW_MAP_ID_PATTERN = re.compile(r'\d{1}1[23]\d{2}')
+
 
 class KeggContext(object):
     """The purpose of this base class is to define shared functions and file paths for all KEGG operations."""
@@ -310,6 +312,38 @@ class KeggContext(object):
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
+        self.binary_relation_data_dir = os.path.join(self.kegg_data_dir, "binary_relations")
+
+        # The 'KEGG/map_images' directory has a structure of nested directories. 'map_images'
+        # contains 'png' for image files and 'kgml' for XML mapping files. Within both 'png' and
+        # 'kgml' are directories, '1x' and '2x', for lower and higher resolution maps. 'png/1x'
+        # contains 5 directories of image files highlighting different things: 'map', 'ko', 'ec',
+        # 'rn', and 'org'. 'png/2x' contains 1 directory, 'map', as higher resolution images are
+        # only available for manually drawn maps. 'kgml/1x' and 'kgml/2x' each contain 4 directories
+        # of XML files that allow modification of different lower and higher resolution maps: 'ko',
+        # 'ec', 'rn', and 'org'.
+        self.map_image_data_dir = os.path.join(self.kegg_data_dir, "map_images")
+        self.png_dir = os.path.join(self.map_image_data_dir, "png")
+        self.kgml_dir = os.path.join(self.map_image_data_dir, "kgml")
+        self.png_1x_dir = os.path.join(self.png_dir, "1x")
+        self.png_2x_dir = os.path.join(self.png_dir, "2x")
+        self.png_1x_map_dir = os.path.join(self.png_1x_dir, "map")
+        self.png_1x_ko_dir = os.path.join(self.png_1x_dir, "ko")
+        self.png_1x_ec_dir = os.path.join(self.png_1x_dir, "ec")
+        self.png_1x_rn_dir = os.path.join(self.png_1x_dir, "rn")
+        self.png_1x_org_dir = os.path.join(self.png_1x_dir, "org")
+        self.png_2x_map_dir = os.path.join(self.png_2x_dir, "map")
+        self.kgml_1x_dir = os.path.join(self.kgml_dir, "1x")
+        self.kgml_2x_dir = os.path.join(self.kgml_dir, "2x")
+        self.kgml_1x_ko_dir = os.path.join(self.kgml_1x_dir, "ko")
+        self.kgml_1x_ec_dir = os.path.join(self.kgml_1x_dir, "ec")
+        self.kgml_1x_rn_dir = os.path.join(self.kgml_1x_dir, "rn")
+        self.kgml_1x_org_dir = os.path.join(self.kgml_1x_dir, "org")
+        self.kgml_2x_ko_dir = os.path.join(self.kgml_2x_dir, "ko")
+        self.kgml_2x_ec_dir = os.path.join(self.kgml_2x_dir, "ec")
+        self.kgml_2x_rn_dir = os.path.join(self.kgml_2x_dir, "rn")
+        self.kgml_2x_org_dir = os.path.join(self.kgml_2x_dir, "org")
+
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -322,7 +356,11 @@ class KeggContext(object):
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
+        self.kegg_brite_pathways_file = os.path.join(self.kegg_data_dir, "br08901.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
+        self.kegg_binary_relation_files = {('KO', 'EC'): "ko2ec.xl", ('KO', 'RN'): "ko2rn.xl"}
+        self.kegg_pathway_list_file = os.path.join(self.kegg_data_dir, "pathway_list.tsv")
+        self.kegg_map_image_kgml_file = os.path.join(self.kegg_data_dir, "map_kgml.tsv")
 
         if self.user_input_dir:
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
@@ -394,17 +432,17 @@ class KeggContext(object):
             if not suppress_warnings:
                 self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
-    
+
     def setup_stray_ko_dict(self, add_entries_to_regular_ko_dict=False):
         """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
-        
-        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs` 
+
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs`
         (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
 
         knum	threshold	score_type	definition
         K11700	800.4	full	poly(A) RNA polymerase Cid12 [EC:2.7.7.19]
         K14747_anvio_version	1054.2	full	benzoylacetate-CoA ligase [EC:6.2.1.-]
-        
+
         The dictionary structure is identical to that of self.ko_dict. Note that the `knum` column can contain
         normal KEGG Ortholog accessions (for KOs whose HMMs we haven't updated) and accessions that end with
         STRAY_KO_ANVIO_SUFFIX (for KOs that we created new models for).
@@ -414,7 +452,7 @@ class KeggContext(object):
         Parameters
         ==========
         add_entries_to_regular_ko_dict : Boolean
-            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the 
+            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the
             regular self.ko_dict attribute. Useful if you don't need to keep the two sets separate.
         """
 
@@ -422,6 +460,8 @@ class KeggContext(object):
             if add_entries_to_regular_ko_dict:
                 stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
                 self.ko_dict.update(stray_kos)
+                # initialize it to None so that things don't break if we try to access this downstream
+                self.stray_ko_dict = None
             else:
                 self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
@@ -478,7 +518,8 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
-    def invert_brite_json_dict(self, brite_dict):
+    @staticmethod
+    def invert_brite_json_dict(brite_dict):
         """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
 
         There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
@@ -564,7 +605,8 @@ class KeggSetup(KeggContext):
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
         self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
-
+        self.skip_binary_relations = True if A('skip_binary_relations') else False
+        self.skip_map_images = True if A('skip_map_images') else False
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -589,7 +631,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2024-03-09'
+        self.target_snapshot = self.kegg_snapshot or 'v2024-09-29'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -605,8 +647,6 @@ class KeggSetup(KeggContext):
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
         self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
-        self.expect_modeling_files_in_archive = True if 'no_modeling_data' in self.snapshot_dict[self.target_snapshot].keys() and \
-                                                    (not self.snapshot_dict[self.target_snapshot]['no_modeling_data']) else False
 
         # the KEGG API URL, in case its needed downstream
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
@@ -720,8 +760,10 @@ class KeggSetup(KeggContext):
         utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
 
         self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name, no_modeling_is_ok = (not self.expect_modeling_files_in_archive))
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        archive_contains_binary_relations = self.check_archive_for_binary_relations(unpacked_archive_name)
+        archive_contains_map_images = self.check_archive_for_map_files(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir):
@@ -734,6 +776,22 @@ class KeggSetup(KeggContext):
                 self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
                                  "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
                                  "downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+
+            if not archive_contains_binary_relations and not self.skip_binary_relations:
+                self.run.warning(
+                    "The KEGG data archive does not contain the binary relation files needed for "
+                    "`anvi-reaction-network`. This is not a problem, and KEGG setup proceeded "
+                    "without it. Binary relation files are guaranteed to be set up when "
+                    "downloading the latest version of KEGG with `anvi-setup-kegg-data`."
+                )
+
+            if not archive_contains_map_images and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG data archive does not contain the expected pathway map files used "
+                    "for pathway visualization. This is not a problem, and KEGG setup proceeded "
+                    "without it. Map files are guaranteed to be set up when downloading the latest "
+                    "version of KEGG with `anvi-setup-kegg-data`."
+                )
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -791,6 +849,74 @@ class KeggSetup(KeggContext):
         return is_brite_included
 
 
+    def check_archive_for_binary_relations(self, unpacked_archive_path):
+        """
+        Check the archive for the binary relations directory and files.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        binary_relation_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.binary_relation_data_dir)
+        )
+        if os.path.isdir(binary_relation_data_dir):
+            is_binary_relation_dir_included = True
+        else:
+            is_binary_relation_dir_included = False
+            if anvio.DEBUG and not self.skip_binary_relations:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional binary relations "
+                    f"directory needed for `anvi-reaction-network`: {binary_relation_data_dir}"
+                )
+
+        if is_binary_relation_dir_included:
+            missing_files = []
+            for file in self.kegg_binary_relation_files.values():
+                path = os.path.join(binary_relation_data_dir, file)
+                if not os.path.isfile(path):
+                    missing_files.append(file)
+            if anvio.DEBUG and missing_files:
+                self.run.warning(
+                    "The following binary relation files expected in an up-to-date anvi'o KEGG "
+                    f"installation are missing from the directory, '{binary_relation_data_dir}', "
+                    f"in the archive: {', '.join(missing_files)}"
+                )
+
+        return is_binary_relation_dir_included
+
+
+    def check_archive_for_map_files(self, unpacked_archive_path):
+        """
+        Check the archive for the pathway map directory containing image and KGML files, and for the
+        BRITE json file classifying pathway maps.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        are_map_files_included = True
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+
+        map_image_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.map_image_data_dir)
+        )
+        if not os.path.isdir(map_image_data_dir):
+            are_map_files_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional pathway map images "
+                    f"directory, which is used in pathway visualization: {map_image_data_dir}"
+                )
+
+        if not os.path.isfile(self.kegg_brite_pathways_file):
+            are_map_files_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional json file, a BRITE "
+                    f"hierarchy classifying pathway maps: {self.kegg_brite_pathways_file}"
+                )
+
+        return are_map_files_included
+
+
     def setup_kegg_snapshot(self):
         """This is the default setup strategy in which we unpack a specific KEGG archive.
 
@@ -818,7 +944,7 @@ class KeggSetup(KeggContext):
                              "has been kept. You may want to remove it later.")
 
 
-    def kegg_archive_is_ok(self, unpacked_archive_path, no_modeling_is_ok = False):
+    def kegg_archive_is_ok(self, unpacked_archive_path):
         """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
 
         Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
@@ -835,9 +961,6 @@ class KeggSetup(KeggContext):
         ==========
         unpacked_archive_path : str
             Path to the unpacked archive directory
-        no_modeling_is_ok : boolean
-            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the
-            previous versions of KEGG archives that do not include this data.
         """
 
         is_ok = True
@@ -877,29 +1000,6 @@ class KeggSetup(KeggContext):
                     if anvio.DEBUG:
                         self.run.warning(f"The KEGG archive does not contain the following expected `hmmpress` output: "
                                          f"{path_to_expected_hmmpress_file}")
-
-        # check modeling files
-        # this section needs to be kept up to date with any changes to requirements in reactionnetwork.py
-        # which is a bit silly, but since these two classes don't know about each other it is the workaround we need :(
-        path_to_modeling_files_in_archive = os.path.join(path_to_kegg_in_archive, "KO_REACTION_NETWORK")
-        expected_modeling_files = reactionnetwork.KODatabase.expected_files
-        missing_modeling_files = []
-        for f in expected_modeling_files:
-            path_to_f_in_archive = os.path.join(path_to_modeling_files_in_archive, f)
-            if not os.path.exists(path_to_f_in_archive):
-                is_ok = False or no_modeling_is_ok
-                missing_modeling_files.append(f)
-                if anvio.DEBUG:
-                    self.run.warning(f"The KEGG archive does not contain the following expected modeling file: "
-                                     f"{path_to_f_in_archive}")
-
-        if no_modeling_is_ok and missing_modeling_files:
-            self.run.warning("Modeling files are missing from the KEGG archive you have set up. However, somebody "
-                             "upstream thinks this is okay. Likely you are setting up an early KEGG snapshot version "
-                             "that doesn't contain this data. That's fine. But please keep in mind that you won't be "
-                             "able to run metabolic modeling. If this is a problem, you should either pick a later "
-                             "KEGG snapshot, or download the modeling data independently using the command "
-                             "`anvi-setup-kegg-data --mode modeling`.")
 
         return is_ok
 
@@ -1214,10 +1314,10 @@ class KeggSetup(KeggContext):
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
 
-    
+
     def extract_data_field_from_kegg_file(self, file_path, target_field):
         """This function parses a KEGG file and returns the data value associated with the given target field.
-        
+
         It can work on flat-text files obtained via the REST API (ie, self.kegg_rest_api_get).
         """
 
@@ -1225,7 +1325,7 @@ class KeggSetup(KeggContext):
 
         f = open(file_path, 'r')
         current_data_name = None
-        
+
         for line in f.readlines():
             line = line.strip('\n')
 
@@ -1491,9 +1591,9 @@ class KOfamDownload(KeggSetup):
                              f"We have removed those HMM profiles from the final database. You can find them under the directory "
                              f"'{self.orphan_data_dir}'.")
 
-    
+
     def exec_hmmpress_command_on_ko_file(self, hmm_file_path, log_file_path):
-        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate 
+        """Given a path to a set of KO HMMs and a log file path, this function executes the appropriate
         `hmmpress` command and deletes the log file afterwards if it was successful.
         """
 
@@ -1531,7 +1631,7 @@ class KOfamDownload(KeggSetup):
 
     def download_ko_files(self, kos_to_download, destination_dir, dont_raise=True):
         """Multi-threaded download of KEGG Orthology files.
-        
+
         Parameters
         ==========
         kos_to_download: list of str
@@ -1588,13 +1688,13 @@ class KOfamDownload(KeggSetup):
                                   f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
                                   f"told to quit should this happen, well, here we are. If skipping these failed KOs "
                                   f"is okay, you could always run this function with `dont_raise=True`.")
-        
+
         return undownloaded
 
-    
+
     def download_kegg_genes_files(self, genes_to_download, destination_dir, dont_raise=True):
         """Multi-threaded download of KEGG GENES files.
-        
+
         Parameters
         ==========
         genes_to_download: list of str
@@ -1651,13 +1751,13 @@ class KOfamDownload(KeggSetup):
                                   f"{', '.join(undownloaded)}. Since the function responsible for handling this was "
                                   f"told to quit should this happen, well, here we are. If skipping these failed KOs "
                                   f"is okay, you could always run this function with `dont_raise=True`.")
-        
+
         return undownloaded
 
 
     def get_kegg_gene_accessions_from_ko_files(self, ko_list, ko_file_dir):
         """Extracts KEGG GENES accessions from KO files and returns a dictionary mapping KO to its GENES.
-        
+
         Parameters
         ==========
         ko_list: list of str
@@ -1680,16 +1780,15 @@ class KOfamDownload(KeggSetup):
             for i, acc in enumerate(genes_acc_list):
                 acc_fields = acc.split(": ")            # example accession is "CTC: CTC_p60(tetX)"
                 org_code = acc_fields[0].lower()        # the organism code (before the colon) needs to be converted to lowercase
-                gene_name = acc_fields[1].split('(')[0] # the gene name (after the colon) needs to have anything in parentheses removed
+                gene_name = acc_fields[1]
 
                 # sometimes we have multiple genes per organism, like this: "PSOM: 113322169 113340172"
-                if ' ' in gene_name:
-                    all_genes = gene_name.split(' ')
-                    for g in all_genes:
-                        kegg_genes_code = f"{org_code}:{g}"
-                        kegg_genes_code_list.append(kegg_genes_code)
-                else:
-                    kegg_genes_code_list.append(f"{org_code}:{gene_name}")
+                all_genes = gene_name.split(' ')
+                for g in all_genes:
+                    g = g.split('(')[0] # the gene name needs to have anything in parentheses removed. ex. CTC_p60(tetX) becomes CTC_p60
+                    kegg_genes_code = f"{org_code}:{g}"
+                    kegg_genes_code_list.append(kegg_genes_code)
+
             ko_to_genes[ko] = kegg_genes_code_list
 
         return ko_to_genes
@@ -1697,7 +1796,7 @@ class KOfamDownload(KeggSetup):
 
     def kegg_gene_sequences_to_fasta_file(self, kegg_genes_files, target_fasta_file):
         """This function extracts the amino acid sequences for a list of KEGG GENES and prints them to a FASTA file.
-        
+
         Parameters
         ==========
         kegg_genes_files : List of str
@@ -1708,7 +1807,7 @@ class KOfamDownload(KeggSetup):
         Returns
         =======
         seq_tuples : List of tuples
-            Each sequence added to the FASTA file is also returned in this list, where each tuple contains 
+            Each sequence added to the FASTA file is also returned in this list, where each tuple contains
             (KEGG GENES name, amino acid sequence). Note that the seq name is taken from the name of the KEGG GENES file.
         """
 
@@ -1731,13 +1830,13 @@ class KOfamDownload(KeggSetup):
 
     def build_HMM_from_seqs(self, hmm_name, tuple_of_seqs, hmm_output_file, log_file_path):
         """This function aligns sequences and builds an HMM from them using `muscle` and `hmmbuild`.
-        
+
         Parameters
         ==========
         hmm_name : str
             What to name the model (ie 'NAME' field in the .hmm file)
         tuple_of_seqs : List of (sequence name, sequence) tuples
-            The sequences to align with 'muscle' to create the `hmmbuild` input. 
+            The sequences to align with 'muscle' to create the `hmmbuild` input.
             See anvio.drivers.muscle for example format
         hmm_output_file : str
             File path where to store the new HMM model
@@ -1773,12 +1872,12 @@ class KOfamDownload(KeggSetup):
         ko : str
             KEGG identifier for the KO
         kegg_genes_for_ko : list of str
-            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and 
+            List of KEGG GENE accessions that were used to generate the KO model (for sanity check and
             number of sequences)
         kegg_genes_fasta : str
             Path to FASTA file where the KEGG GENES sequences for this KO are stored
         ko_model_file : str
-            File path of the .hmm file containg the KO model (doesn't need to contain only this model, 
+            File path of the .hmm file containg the KO model (doesn't need to contain only this model,
             but must be hmmpressed already)
         Returns
         =======
@@ -1791,33 +1890,33 @@ class KOfamDownload(KeggSetup):
             self.run.warning(f"The function estimate_bitscore_for_ko() received an empty list of KEGG GENES "
                              f"for {ko}, so it cannot estimate a bit score threshold. The function will return "
                              f"a threshold of `None` for this KO.")
-            return None 
+            return None
 
         # we run hmmscan of the KO against its associated GENES sequences and process the hits
         target_file_dict = {'AA:GENE': kegg_genes_fasta}
         hmmer = HMMer(target_file_dict, num_threads_to_use=self.num_threads, progress=progress_quiet, run=run_quiet)
         hmm_hits_file = hmmer.run_hmmer('KO {ko}', 'AA', 'GENE', None, None, len(kegg_genes_for_ko), ko_model_file, None, None)
-        
+
         if not hmm_hits_file:
             raise ConfigError(f"No HMM hits were found for the KO model {ko}. This is seriously concerning, because we were running it against "
                               f"gene sequences that were used to generate the model.")
-        
+
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', run=run_quiet)
         search_results_dict = parser.get_search_results()
-        
+
         # take the minimum of hits from current KO model as bit score threshold
         all_relevant_bitscores = []
         for hit, hit_info_dict in search_results_dict.items():
             if hit_info_dict['gene_name'] == ko or hit_info_dict['gene_name'] == f"{ko}{STRAY_KO_ANVIO_SUFFIX}":
                 all_relevant_bitscores.append(hit_info_dict['bit_score'])
-        
+
         threshold = min(all_relevant_bitscores)
         return threshold
-            
-    
+
+
     def process_all_stray_kos(self):
         """This driver function processes each stray KO and creates a file of bit score thresholds for them.
-        
+
         The following steps are run for each stray KO:
         1. download of its KO file
         2. identification and download of the KEGG GENES sequences in this family
@@ -1929,14 +2028,14 @@ class KOfamDownload(KeggSetup):
             self.progress.update(f"Working on {k} [{cur_num} of {len(ko_files_to_process)}]")
             self.progress.increment(increment_to=cur_num)
             downloaded_genes_list = [a for a in ko_to_gene_accessions[k] if a in kegg_genes_downloaded]
-            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list, 
-                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"), 
+            threshold_dict[k] = self.estimate_bitscore_for_ko(k, kegg_genes_for_ko=downloaded_genes_list,
+                                        kegg_genes_fasta=os.path.join(self.stray_ko_seqs_dir, f"GENES_FOR_{k}.fa"),
                                         ko_model_file=self.stray_ko_hmm_file_path)
             cur_num += 1
         self.progress.end()
 
         # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
-        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the 
+        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the
         # stray data directory (and we want to keep the strays separate since we process them specially)
         self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos), suppress_warnings=True)
 
@@ -1978,7 +2077,7 @@ class KOfamDownload(KeggSetup):
 
             if self.include_stray_kos:
                 self.process_all_stray_kos()
-            
+
             # there is no reason to keep the original HMM profiles around, unless we are debugging
             if not anvio.DEBUG:
                 shutil.rmtree(os.path.join(self.kegg_data_dir, "profiles"))
@@ -1986,7 +2085,9 @@ class KOfamDownload(KeggSetup):
 
 
 class ModulesDownload(KeggSetup):
-    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES.
+    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES;
+    reaction networks, which require MODULES, BRITE, and binary relation files;
+    and pathway map images and reference KO, EC, and RN KGML files.
 
     Parameters
     ==========
@@ -2006,6 +2107,8 @@ class ModulesDownload(KeggSetup):
         self.progress = progress
         self.skip_init = skip_init
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.skip_binary_relations = A('skip_binary_relations')
+        self.skip_map_images = A('skip_map_images')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
         self.run.info_single("Info from MODULES Download")
@@ -2019,11 +2122,26 @@ class ModulesDownload(KeggSetup):
                              "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
                              "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
 
+        if (not self.download_from_kegg) and self.skip_binary_relations:
+            self.run.warning(
+                "Just so you know, the --skip-binary-relations flag does not do anything (besides "
+                "suppress some warning output) when used without the -D option. You are setting up "
+                "from an archived KEGG snapshot which may already include binary relation files, "
+                "and if it does, this data will not be removed. `anvi-reaction-network` depends on "
+                "these files and will let you know if they're missing."
+            )
+
         # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+        self.kegg_binary_relations_download_path = "https://www.genome.jp/kegg-bin/show?file="
         # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
+        # download the list of pathways, used for processing map image files
+        self.kegg_pathway_list_download_path = "https://rest.kegg.jp/list/pathway"
+        # download a BRITE json file of pathway maps
+        self.kegg_brite_pathways_download_path = os.path.join(self.kegg_rest_api_get, "br:br08901/json")
 
         # check if the data is already downloaded
         expected_files_for_modules = [self.kegg_module_file,
@@ -2031,6 +2149,11 @@ class ModulesDownload(KeggSetup):
         if not self.skip_brite_hierarchies:
             expected_files_for_modules.append(self.kegg_brite_hierarchies_file)
             expected_files_for_modules.append(self.brite_data_dir)
+        if not self.skip_binary_relations:
+            expected_files_for_modules.append(self.binary_relation_data_dir)
+        if not self.skip_map_images:
+            expected_files_for_modules.append(self.map_image_data_dir)
+            expected_files_for_modules.append(self.kegg_brite_pathways_file)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
             self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
@@ -2040,7 +2163,39 @@ class ModulesDownload(KeggSetup):
             filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
             if not self.skip_brite_hierarchies:
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
-
+            if not self.skip_binary_relations:
+                filesnpaths.gen_output_directory(
+                    self.binary_relation_data_dir, delete_if_exists=args.reset
+                )
+            if not self.skip_map_images:
+                filesnpaths.gen_output_directory(
+                    self.map_image_data_dir, delete_if_exists=args.reset
+                )
+                # Create subdirectories of the map image directory.
+                for subdir in (
+                    self.map_image_data_dir,
+                    self.png_dir,
+                    self.kgml_dir,
+                    self.png_1x_dir,
+                    self.png_2x_dir,
+                    self.png_1x_map_dir,
+                    self.png_1x_ko_dir,
+                    self.png_1x_ec_dir,
+                    self.png_1x_rn_dir,
+                    self.png_1x_org_dir,
+                    self.png_2x_map_dir,
+                    self.kgml_1x_dir,
+                    self.kgml_2x_dir,
+                    self.kgml_1x_ko_dir,
+                    self.kgml_1x_ec_dir,
+                    self.kgml_1x_rn_dir,
+                    self.kgml_1x_org_dir,
+                    self.kgml_2x_ko_dir,
+                    self.kgml_2x_ec_dir,
+                    self.kgml_2x_rn_dir,
+                    self.kgml_2x_org_dir
+                ):
+                    filesnpaths.gen_output_directory(subdir)
 
     def download_kegg_module_file(self):
         """This function downloads the KEGG module file, which tells us which module files to download."""
@@ -2167,12 +2322,13 @@ class ModulesDownload(KeggSetup):
 
         for worker in workers:
             worker.terminate()
+        self.progress.end()
+
         if undownloaded:
             raise ConfigError(
                 "Unfortunately, files for the following modules failed to download despite multiple attempts, "
                 f"and so the database needs to be set up again: {', '.join(undownloaded)}"
             )
-        self.progress.end()
 
 
     def confirm_downloaded_modules(self):
@@ -2207,7 +2363,7 @@ class ModulesDownload(KeggSetup):
 
 
     def setup_modules_data(self):
-        """This is a driver function which executes the setup process for pathway prediction data from KEGG."""
+        """This is a driver function which executes the setup process for pathway prediction and reaction network data from KEGG."""
 
         # FIXME: we will have to move user setup to a completely separate program at some point
         # PS. user setup related functions belong to the superclass for now
@@ -2227,13 +2383,25 @@ class ModulesDownload(KeggSetup):
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
                     self.download_brite_hierarchies()
                     self.confirm_downloaded_brite_hierarchies()
+
+                if not self.skip_binary_relations:
+                    self.download_binary_relations()
+                    self.confirm_downloaded_binary_relations()
+
+                if not self.skip_map_images:
+                    self.download_map_images()
+                    self.download_brite_pathway_hierarchy()
             else:
                 # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
                 self.confirm_downloaded_modules()
+
                 if not self.skip_brite_hierarchies:
                     self.process_brite_hierarchy_of_hierarchies()
                     self.confirm_downloaded_brite_hierarchies()
+
+                if not self.skip_binary_relations:
+                    self.confirm_downloaded_binary_relations()
 
             # process the modules file into a database
             if not self.only_download:
@@ -2410,6 +2578,356 @@ class ModulesDownload(KeggSetup):
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
 
 
+    ###### Binary relations-related functions below ######
+    def download_binary_relations(self):
+        """
+        Download binary relations files relating the accession of a type of KEGG data, such as KOs,
+        to related accessions of another type of data, such as EC numbers.
+        """
+        for file in self.kegg_binary_relation_files.values():
+            url = f'{self.kegg_binary_relations_download_path}{file}'
+            dest = os.path.join(self.binary_relation_data_dir, file)
+            try:
+                utils.download_file(url, dest, progress=self.progress, run=self.run)
+            except Exception as e:
+                print(e)
+                raise ConfigError(
+                    f"Anvi'o failed to download the KEGG binary relations file, '{file}', from the "
+                    "KEGG website. Something likely changed on the KEGG end. Please contact the "
+                    "developers to see if this is a fixable issue. If it isn't, we may be able to "
+                    "provide you with a legacy KEGG data archive that you can use to set up KEGG "
+                    "with the --kegg-archive flag."
+                )
+
+
+    def confirm_downloaded_binary_relations(self):
+        """Verify that all expected binary relations files were downloaded."""
+        missing_files = []
+        for file in self.kegg_binary_relation_files.values():
+            path = os.path.join(self.binary_relation_data_dir, file)
+            if not os.path.exists(path):
+                missing_files.append(file)
+        if missing_files:
+            raise ConfigError(
+                "The following binary relation files were not found in the expected directory, "
+                f"'{self.binary_relation_data_dir}', so the KEGG data should be re-downloaded: "
+                f"{', '.join(missing_files)}"
+            )
+        self.run.info(
+            "Number of KEGG binary relations files found", len(self.kegg_binary_relation_files)
+        )
+
+
+    ###### Pathway map image-related functions below ######
+    def download_map_images(
+        self,
+        add_global_reaction_line_width: Union[float, None] = 6.0,
+        global_compound_circle_diameter: Union[float, None] = 17.0
+    ) -> None:
+        """
+        Download reference pathway map image files and associated KGML files.
+
+        Only download maps with at least one reference KGML file, since the purpose is to be able to
+        modify maps with data, and KGML files are required to customize maps. Write a table
+        indicating which KO, EC, and RN KGML files are available for every map available in KEGG,
+        including those not downloaded due to an absence of KGML files.
+
+        Different sets of "global" and non-global "standard" and "overview" map images are
+        downloaded. The following global map images are downloaded: 1x and 2x resolution images with
+        filenames starting "map", and 1x images starting "ko", "ec", and "rn". The "ko", "ec", and
+        "rn" global maps color reactions with accessions in each of the KEGG KO, EC, and RN
+        databases, respectively, and the "map" global maps color reactions with accessions in any of
+        these databases. Non-global 1x and 2x resolution map images starting with "map" are
+        downloaded. KGML files, which are tailored to the position of features in 1x maps, are
+        copied to rescale features to match 2x image files.
+
+        Parameters
+        ==========
+        add_global_reaction_line_width : Union[float, None], 6.0
+            If not None, modify downloaded global map KGML files to add a width attribute to
+            reaction line graphics elements. The default value of 6 (in the 1x resolution maps, 12
+            in the 2x resolution maps) is just wide enough for the lines drawn from the KGML file to
+            cover up the lines in the base map image.
+
+        global_compound_circle_diameter : Union[float, None], 17.0
+            If not None, modify downloaded global map KGML files to adjust the size of compound
+            circle graphics elements. The argument value is used as the width and height attributes
+            in 1x resolution maps, with twice the value used in 2x resolution maps. The default
+            value of 17 is just wide enough for the circles rendered from the KGML file to cover up
+            the circles in the base map image.
+        """
+        # Download a table from KEGG listing all available pathways.
+        try:
+            utils.download_file(
+                self.kegg_pathway_list_download_path,
+                self.kegg_pathway_list_file,
+                progress=self.progress,
+                run=self.run
+            )
+        except Exception as e:
+            print(e)
+            raise ConfigError(
+                "Anvi'o failed to download a list of pathways from the KEGG website. Something "
+                "likely changed on the KEGG end. Please contact the developers to see if this is a "
+                "fixable issue."
+            )
+        pathway_table = pd.read_csv(
+            self.kegg_pathway_list_file, sep='\t', header=None, names=['id', 'name']
+        )
+
+        # Determine the maximum number of map image files that may be downloaded (image files are
+        # only downloaded if a corresponding KGML file is available). 5 versions of each global map
+        # are downloaded: 1x and 2x "map" files and 1x "ko", "ec", and "rn" files. 2 versions of
+        # each non-global map may be downloaded: 1x and 2x "map" files.
+        global_map_count = sum(
+            1 if re.match(GLOBAL_MAP_ID_PATTERN, pathway_id[-5:]) else 0
+            for pathway_id in pathway_table['id']
+        )
+        nonglobal_map_count = len(pathway_table) - global_map_count
+        total_dl_count = global_map_count * 5 + nonglobal_map_count * 2
+        self.run.info_single(
+            f"Up to {total_dl_count} map images will be downloaded. \"Up to\" because only maps "
+            f"found to have associated reference KGML files are downloaded. {self.num_threads} "
+            "cores (threads) will be used in downloading.",
+            nl_before=1
+        )
+
+        # Start the worker threads for downloading map image and KGML files.
+        self.progress.new("Downloading KEGG pathway map files")
+        self.progress.update("0 pathway maps downloaded")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for pathway_id in pathway_table['id']:
+            input_queue.put({
+                'pathway_number': pathway_id[3:],
+                'url_stem': self.kegg_rest_api_get,
+                'data_dir': self.map_image_data_dir
+            })
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(
+                target=_download_pathway_image_files_worker, args=(input_queue, output_queue)
+            )
+            workers.append(worker)
+            worker.start()
+
+        # Process the output of download threads. The threads should return items equal to the
+        # maximum number of image files that may be downloaded. Wait for threads until this number
+        # of items is reached.
+        successful_dls: List[str] = []
+        failed_dls: List[str] = []
+        # Record the paths of KGML files that need to be rescaled to fit 2x resolution images.
+        kgml_paths: List[str] = []
+        # Record which of types of KGML files ('KO', 'EC', 'RN') are available for each downloaded
+        # pathway map image.
+        kgml_availability: Dict[str, Dict[str, int]] = {}
+        processed_count = 0
+        while processed_count < total_dl_count:
+            # For each pathway, a dictionary is returned with keys indicating each type of possible
+            # map image and KGML file that can be downloaded, and length-2 list values containing
+            # 1) the possible filepath and 2) an integer value indicating the success or failure
+            # type of the download.
+            output: Dict[str, List[str, int]] = output_queue.get()
+            pathway_id = os.path.splitext(os.path.basename(output['png_1x_map'][0]))[0]
+            image_keys = ['png_1x_map', 'png_2x_map']
+            if re.match(GLOBAL_MAP_ID_PATTERN, pathway_id[-5:]):
+                image_keys += ['png_1x_ko', 'png_1x_ec', 'png_1x_rn']
+            for image_key in image_keys:
+                if output[image_key][1] == 0:
+                    # This occurs when there were connection errors preventing any KGML files from
+                    # being downloaded, so PNG file downloads were not attempted.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 1:
+                    successful_dls.append(output[image_key][0])
+                    self.progress.update(f"{len(successful_dls)} pathway maps downloaded")
+                elif output[image_key][1] == 2:
+                    # This indicates that the PNG file was unavailable for download. It should have
+                    # been available given KEGG's pathway list.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 3:
+                    # This occurs when connection errors prevented the PNG file from being
+                    # downloaded.
+                    failed_dls.append(output[image_key][0])
+                elif output[image_key][1] == 4:
+                    # This indicates that the program did not attempt to download the PNG file
+                    # because there is no KGML file available, e.g., drug maps have no KO, EC, and
+                    # RN KGML files available.
+                    pass
+                # Record KGML files associated with 2x resolution images. These need to be rescaled.
+                if image_key == 'png_2x_map':
+                    for kgml_key in ('kgml_ko', 'kgml_ec', 'kgml_rn'):
+                        if output[kgml_key][1] == 1:
+                            kgml_paths.append(output[kgml_key][0])
+                processed_count += 1
+            # Record data that goes into the table of KGML availability for each pathway.
+            kgml_availability[pathway_id] = pathway_kgml_availability = {}
+            for pathway_org in ('ko', 'ec', 'rn'):
+                if output[f'kgml_{pathway_org}'][1] == 1:
+                    pathway_kgml_availability[pathway_org.upper()] = 1
+                else:
+                    pathway_kgml_availability[pathway_org.upper()] = 0
+
+        # Downloading is complete. Kill the worker threads.
+        for worker in workers:
+            worker.terminate()
+        self.progress.end()
+
+        # Raise an exception when expected files failed to download. Report the failed files by
+        # pathway ID.
+        if failed_dls:
+            failed_dl_groups: Dict[str, List[str]] = {}
+            for failed_dl in failed_dls:
+                failed_filename = os.path.basename(failed_dl)
+                pathway_number = os.path.splitext(failed_filename)[0][3:]
+                try:
+                    failed_dl_groups[pathway_number].append(failed_filename)
+                except KeyError:
+                    failed_dl_groups[pathway_number] = [failed_filename]
+            failed_message = ''
+            for pathway_number, failed_filenames in failed_dl_groups.items():
+                failed_message += f"map{pathway_number}: {', '.join(failed_filenames)}; "
+            failed_message = failed_message[:-2]
+            raise ConfigError(
+                "Unfortunately, files (in parentheses) for the following pathway maps failed to "
+                "download despite multiple attempts, and so the database needs to be set up again: "
+                f"{failed_message}"
+            )
+        self.run.info("Number of downloaded map images", len(successful_dls))
+
+        # Add reaction line widths to global map KGML files.
+        if add_global_reaction_line_width is not None:
+            self._add_global_kgml_reaction_line_widths(add_global_reaction_line_width)
+
+        # Rescale compound circles in global map KGML files.
+        if global_compound_circle_diameter is not None:
+            self._change_global_kgml_compound_circle_diameters(global_compound_circle_diameter)
+
+        # Create rescaled KGML files to fit 2x resolution map images.
+        self.progress.new(
+            "Creating map KGML files rescaled to 2x resolution",
+            progress_total_items=len(kgml_paths)
+        )
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
+        rescaled_count = 0
+        for input_path in kgml_paths:
+            self.progress.update(f"{rescaled_count} / {len(kgml_paths)} KGML files rescaled")
+            kgml_id: str = os.path.splitext(os.path.basename(input_path))[0]
+            pathway_org = kgml_id[:-5]
+            pathway_number = kgml_id[-5:]
+            pathway = xml_ops.load(input_path)
+            pathway.scale_graphics(2)
+            if pathway_org == 'ko':
+                kgml_dir = self.kgml_2x_ko_dir
+            elif pathway_org == 'ec':
+                kgml_dir = self.kgml_2x_ec_dir
+            elif pathway_org == 'rn':
+                kgml_dir = self.kgml_2x_rn_dir
+            else:
+                raise AssertionError(
+                    "Only KGML files for pathway IDs starting with 'ko', 'ec', and 'rn' should "
+                    f"have been downloaded. The ID, '{kgml_id}', is not recognized."
+                )
+            output_path = os.path.join(kgml_dir, f'{kgml_id}.xml')
+            xml_ops.write(pathway, output_path)
+            rescaled_count += 1
+        self.progress.end()
+
+        # Write a table of the KGML files available for each map image.
+        pd.DataFrame.from_dict(
+            kgml_availability, orient='index', columns=['KO', 'EC', 'RN']
+        ).sort_index().to_csv(self.kegg_map_image_kgml_file, sep='\t')
+
+    def _add_global_kgml_reaction_line_widths(self, width: float) -> None:
+        """
+        Add reaction line widths to newly downloaded KGML files for global maps. Width attributes
+        are not in the files.
+
+        Parameters
+        ==========
+        width : float
+            Width value to add.
+        """
+        assert width > 0
+
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
+
+        for entry_type, kgml_dir in zip(
+            ('ortholog', 'enzyme', 'reaction'),
+            (self.kgml_1x_ko_dir, self.kgml_1x_ec_dir, self.kgml_1x_rn_dir)
+        ):
+            for kgml_path in glob.glob(os.path.join(kgml_dir, '*.xml')):
+                if re.match(
+                    GLOBAL_MAP_ID_PATTERN, os.path.splitext(os.path.basename(kgml_path))[0][-5:]
+                ):
+                    pathway = xml_ops.load(kgml_path)
+                    for entry in pathway.get_entries(entry_type=entry_type):
+                        for uuid in entry.children['graphics']:
+                            graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                            graphics.width = width
+                    xml_ops.write(pathway, kgml_path)
+
+    def _change_global_kgml_compound_circle_diameters(self, diameter: float) -> None:
+        """
+        Change the diameters of compound circles in KGML files for global maps. The purpose of this
+        is to fully cover circles in base map images with circles rendered from KGML files.
+
+        Parameters
+        ==========
+        diameter : float
+            New diameter of compound cirles.
+        """
+        assert diameter > 0
+
+        # This import can't happen at the module level due to a circular import.
+        import anvio.kgml as kgml
+        xml_ops = kgml.XMLOps()
+
+        for kgml_dir in (self.kgml_1x_ko_dir, self.kgml_1x_ec_dir, self.kgml_1x_rn_dir):
+            for kgml_path in glob.glob(os.path.join(kgml_dir, '*.xml')):
+                if re.match(
+                    GLOBAL_MAP_ID_PATTERN, os.path.splitext(os.path.basename(kgml_path))[0][-5:]
+                ):
+                    pathway = xml_ops.load(kgml_path)
+                    for entry in pathway.get_entries(entry_type='compound'):
+                        for uuid in entry.children['graphics']:
+                            graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                            width = graphics.width
+                            height = graphics.height
+                            if width is not None:
+                                graphics.width = diameter
+                            if height is not None:
+                                graphics.height = diameter
+                    xml_ops.write(pathway, kgml_path)
+
+    def download_brite_pathway_hierarchy(self):
+        """Download the BRITE 'br08901' json file, a hierarchy of KEGG pathway maps."""
+        # Note that this is the same as the REST API for modules and pathways - perhaps at some
+        # point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(
+                self.kegg_brite_pathways_download_path,
+                self.kegg_brite_pathways_file,
+                progress=self.progress,
+                run=self.run
+            )
+        except Exception as e:
+            print(e)
+            raise ConfigError(
+                "Anvi'o failed to download the KEGG BRITE hierarchy of pathway maps, "
+                "'br08901.json', from the KEGG website. Something likely changed on the KEGG end. "
+                "Please contact the developers to see if this is a fixable issue. If it isn't, we "
+                "may be able to provide you with a legacy KEGG data archive that you can use to "
+                "set up KEGG with the `--kegg-archive` flag."
+            )
+
+
 class RunKOfams(KeggContext):
     """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
@@ -2475,8 +2993,8 @@ class RunKOfams(KeggContext):
 
             if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
                 self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
-                             "which could very well be useful to you. BRITE is guaranteed to be set up "
-                             "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+                                 "which could very well be useful to you. BRITE is guaranteed to be set up "
+                                 "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
         else:
             self.run.warning("No modules database was found in the KEGG data directory you specified. This is fine, but "
                              "you will not get functional annotations related to KEGG MODULES or BRITE hierarchies in your "
@@ -2734,7 +3252,7 @@ class RunKOfams(KeggContext):
             The list of gene caller ids in the contigs database. We will use this to figure out which
             genes have no annotations
         super_hits_dict : dictionary
-            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output 
+            A two-level dictionary in which keys are the labels for each set of hits and values are the dictionary output
             from the hmmsearch parser, which should contain all hits from the set (ie, weak hits not yet removed)
         next_key : int
             The next integer key that is available for adding functions to self.functions_dict
@@ -3005,7 +3523,7 @@ class RunKOfams(KeggContext):
 
         if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, super_hits_dict, next_key=next_key_in_functions_dict)
-        
+
         # add functions and KEGG modules info to database
         self.store_annotations_in_db()
 
@@ -3222,7 +3740,7 @@ class KeggEstimatorArgs():
 
                 # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
                 k_anvio = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
-                if self.include_stray_kos and k_anvio in self.ko_dict:
+                if self.include_stray_kos and (k_anvio in self.ko_dict or (self.stray_ko_dict and k_anvio in self.stray_ko_dict)):
                     if k_anvio not in self.all_kos_in_db:
                         src = 'KOfam'
                         func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else self.ko_dict[k_anvio]['definition']
@@ -3468,7 +3986,7 @@ class KeggEstimatorArgs():
                 raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
                                   f"for enzyme {knum} but this enzyme is not in the enzyme dictionary "
                                   "(self.ko_dict, or (self.stray_ko_dict) in some cases). This should never have happened.")
-        
+
         return metadata_dict
 
 
@@ -3702,7 +4220,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             estimation_mode = "List of enzymes"
         elif self.pan_db_path:
             estimation_mode = "Gene cluster bins in a pangenome"
-        
+
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
         # a warning for high memory usage with metagenome mode in certain situations
@@ -3733,7 +4251,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
             self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
             if self.include_stray_kos:
-                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=True)
+                self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=False)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
@@ -5152,8 +5670,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
         the value obtained by evaluating the resulting arithmetic expression.
 
-        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but 
-        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the 
+        Some steps are defined by other modules. When module accessions are found, we initially treat them as having a copy number of 0, but
+        we re-compute the copy number of the module later once we have the overall copy number of all other modules (and then we use the
         component module's copy number in the calculation instead).
 
         PARAMETERS
@@ -5285,21 +5803,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         return 0
                     return enzyme_hit_counts[step_string]
 
-    
+
     def are_enzymes_indirect_alternatives_within_step(self, enzyme_list: list, step: str):
-        """An overly simplistic function to determine whether the relationship between the provided alternative 
+        """An overly simplistic function to determine whether the relationship between the provided alternative
         enzymes in the given step is indirect.
-        
-        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by 
+
+        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by
         a character symbolizing a more complex relationship. That is, they are not separated only by commas and other enzymes (which
         indicates a direct relationship, as in the two enzymes are synonymous in the context of the metabolic pathway).
 
-        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include 
-        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two 
-        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in 
+        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include
+        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two
+        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in
         an alternative branch of the step.
 
-        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will 
+        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will
         wrongly suggest they are direct alternatives. However, it is meant to be used only for identifying putative edge cases
         for the `get_dereplicated_enzyme_hits_for_step_in_module()` function, and it works well enough for that.
 
@@ -5316,10 +5834,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             True if the list of provided enzymes contains those that are indirect alternatives within the given step.
         """
 
-        enzyme_data = {e : {'index': step.index(e), 
-                                    'direct_alts': [], 
+        enzyme_data = {e : {'index': step.index(e),
+                                    'direct_alts': [],
                                     'indirect_alts': []} for e in enzyme_list}
-        
+
         contains_indirect = False
         # get enzyme-specific list of alternatives
         for e in enzyme_list:
@@ -5328,12 +5846,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     e_index = enzyme_data[e]['index']
                     z_index = enzyme_data[z]['index']
                     indirect_alternatives = False
-                    
+
                     # indirect alts have a space, parentheses, or plus/minus sign between them
                     for c in step[min(e_index, z_index):max(e_index, z_index)]:
                         if c in [' ', '(', ')', '+', '-']:
                             indirect_alternatives = True
-                    
+
                     if indirect_alternatives:
                         enzyme_data[e]['indirect_alts'].append(z)
                         contains_indirect = True
@@ -5342,14 +5860,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return contains_indirect
 
-    
+
     def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str, mnum: str):
-        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
+        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the
         same gene removed, for the provided step in a metabolic pathway.
 
-        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the 
+        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the
         same reaction, and we don't want these annotations to be double-counted in the stepwise copy number calculation.
-        
+
         PARAMETERS
         ==========
         meta_dict_for_mnum : dictionary of dictionaries
@@ -5358,7 +5876,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             which step in the module to resolve alternative enzymes for, passed as a definition string for the step.
         mnum : string
             module ID (used only for warning output)
-        
+
         RETURNS
         =======
         derep_enzyme_hits : dictionary
@@ -5381,7 +5899,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # and for all other annotations, we reduce the count of hits by one
                 for acc in enzymes[1:]:
                     derep_enzyme_hits[acc] -= 1
-                
+
                 if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on) and self.add_copy_number:
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
@@ -5591,7 +6109,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         RETURNS
         =======
         metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
-            dictionary mapping metagenome name to its metabolism completeness dictionary 
+            dictionary mapping metagenome name to its metabolism completeness dictionary
             (will be empty dictionary if return_superdicts is False)
         metagenome_ko_superdict : dictionary of dictionary of dictionaries
             dictionary mapping metagenome name to its KOfam hits dictionary
@@ -5840,7 +6358,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def init_hits_for_pangenome(self, gene_cluster_list: list):
         """This function loads enzyme annotations from the pangenome for use by downstream metabolism estimation.
-        
+
         For each gene cluster, it takes the most common function from each annotation source relevant to the modules.
 
         PARAMETERS
@@ -5853,7 +6371,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         enzyme_cluster_split_contig : list
             (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
         """
-        
+
         pan_super = PanSuperclass(self.args)
         pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)
         pan_super.init_gene_clusters_functions_summary_dict(source_list = self.annotation_sources_to_use, gene_clusters_of_interest = gene_cluster_list)
@@ -5873,7 +6391,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def estimate_metabolism_for_pangenome_bins(self, enzyme_cluster_split_contig, cluster_collection):
         """Estimates metabolism individually on each bin in a pangenome.
-        
+
         PARAMETERS
         ==========
         enzyme_cluster_split_contig : list
@@ -5882,7 +6400,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         cluster_collection : dictionary
             maps bin names in the collection to the list of gene clusters in each bin
         """
-        
+
         gc_bins_metabolism_superdict = {}
         gc_bins_ko_superdict = {}
         num_bins = len(cluster_collection)
@@ -5913,7 +6431,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.progress.end()
 
-        return gc_bins_metabolism_superdict, gc_bins_ko_superdict        
+        return gc_bins_metabolism_superdict, gc_bins_ko_superdict
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
@@ -8215,22 +8733,22 @@ class ModulesDatabase(KeggContext):
             # the same or similar, so we arbitrarily return the first one
             return dict_from_mod_table[0]['data_definition']
 
-    
+
     def get_ko_reactions_from_modules_table(self, ko_num):
         """This function returns the KEGG reaction ID for the given KO from its data definition entry in the modules table.
 
-        Reactions are indicated within brackets of the data definition entry, like these: [RN:R05339] or [RN:R01538 R03033]. 
-        This function parses all reactions out of the entry and returns a list in which each reaction ID number is prefixed by 
+        Reactions are indicated within brackets of the data definition entry, like these: [RN:R05339] or [RN:R01538 R03033].
+        This function parses all reactions out of the entry and returns a list in which each reaction ID number is prefixed by
         the standard KEGG reaction indicator 'RN:', as in ["RN:R01538", "RN:R03033"].
-        
-        Note that the modules table will only contain information for KOs that belong to modules, so this function 
+
+        Note that the modules table will only contain information for KOs that belong to modules, so this function
         returns None for those KOs that are not in modules.
         """
 
         definition_line = self.get_ko_definition_from_modules_table(ko_num)
         if not definition_line: # this KO was not in the modules db
             return None
-        
+
         def_fields = definition_line.split('[') # the last split should start with RN: and end with ]
         for f in def_fields:
             if f.startswith("RN:"):
@@ -9564,3 +10082,280 @@ def module_definition_to_enzyme_accessions(mod_definition):
     acc_list = re.split(r'\s+', mod_definition)
 
     return acc_list
+
+
+def _download_worker(
+    input_queue: mp.Queue,
+    output_queue: mp.Queue,
+    max_num_tries: int = 100,
+    wait_secs: float = 10.0
+) -> None:
+    """
+    Multiprocessing worker to download files from a queue.
+
+    Parameters
+    ==========
+    input_queue : multiprocessing.Queue
+        Queue of length-two iterables of the URL and local path for each file to download.
+
+    output_queue : multiprocessing.Queue
+        Queue in which the success of each download operation is recorded, with True put in the
+        output queue if the download succeeded and the local path from the input queue put in the
+        output queue if the download failed (after exceeding the maximum number of tries).
+
+    max_num_tries : int, 100
+        The maximum number of times to try downloading a file (in case of a connection reset).
+
+    wait_secs : float, 10.0
+        The number of seconds to wait between each file download attempt.
+
+    Returns
+    =======
+    None
+    """
+    while True:
+        url, path = input_queue.get()
+        num_tries = 0
+        while True:
+            try:
+                utils.download_file(url, path)
+                output = True
+                break
+            except (ConfigError, ConnectionResetError) as e:
+                num_tries += 1
+                if num_tries > max_num_tries:
+                    output = path
+                    break
+                time.sleep(wait_secs)
+        output_queue.put(output)
+
+
+def download_org_pathway_image_files(
+    pathway_name: str,
+    data_dir: str,
+    kegg_rest_api_get: str = 'http://rest.kegg.jp/get'
+) -> Tuple[str, str]:
+    """
+    Download an organism-specific pathway map and associated KGML file.
+
+    Parameters
+    ==========
+    pathway_name : str
+        This ID has 2 parts: the first 3 org characters are specific to the organism, such as 'eco'
+        for E. coli, and the last 5 digits identify the pathway, such as '00010'.
+
+    data_dir : str
+        Path to KEGG data directory set up by anvi'o with the necessary subdirectory structure.
+
+    kegg_rest_api_get : str, 'http://rest.kegg.jp/get'
+        KEGG API URL for downloading files.
+
+    Returns
+    =======
+    Tuple[str, str]
+        Pathway PNG image and KGML XML filepaths of downloaded files.
+    """
+    png_url = f'{kegg_rest_api_get}/{pathway_name}/image'
+    kgml_url = f'{kegg_rest_api_get}/{pathway_name}/kgml'
+
+    png_path = os.path.join(data_dir, 'png', '1x', 'org', f'{pathway_name}.png')
+    kgml_path = os.path.join(data_dir, 'kgml', '1x', 'org', f'{pathway_name}.xml')
+
+    utils.download_file(png_url, png_path)
+    utils.download_file(kgml_url, kgml_path)
+
+    return (png_path, kgml_path)
+
+def _download_pathway_image_files_worker(
+    input_queue: mp.Queue,
+    output_queue: mp.Queue,
+    max_num_tries: int = 100,
+    wait_secs: float = 10.0
+) -> None:
+    """
+    Multiprocessing worker to download pathway maps and associated KGML files given a pathway ID.
+
+    Parameters
+    ==========
+    input_queue : multiprocessing.Queue
+        Queue of input data stored in dictionaries formatted as follows, with values being strings.
+        {
+            'pathway_number': <last 5-digit part of the pathway ID>,
+            'url_stem': <URL stem for KEGG downloads>,
+            'data_dir': <KEGG map data directory with proper subdirectory structure>
+        }
+        Here is a description of the required subdirectory structure of the data directory. It must
+        contain subdirectories 'png' and 'kgml', within each of which are subdirectories '1x' and
+        '2x'. Within 'png/1x' are 5 directories, 'map', 'ko', 'ec', 'rn', and 'org'. Within 'png/2x'
+        is one directory, 'map'. Within 'kgml/1x' and 'kgml/2x' are 4 directories, 'ko', 'ec', 'rn',
+        and 'org'.
+
+    output_queue : multiprocessing.Queue
+        Queue of output data stored in dictionaries formatted as follows, with values being length-2
+        lists of 1) the target download filepath and 2) an integer indicating what happened with the
+        download. A value of 0 indicates that there was no attempt at downloading the file because
+        the program did not need to try, e.g., for non-global maps, 'ko', 'ec', and 'rn' map images
+        are not downloaded; also, if there was a connection error in trying to download a KGML file,
+        then the associated map image files did not need to be downloaded. A value of 1 indicates
+        that the file downloaded successfully. A value of 2 indicates that the file was unavailable
+        for download, e.g., there is no KGML RN file available for the pathway. A value of 3
+        indicates that there was a connection error preventing download. A value of 4 indicates that
+        there was no attempt to download because the program found that other requisite files were
+        unavailable, e.g., a map image is not downloaded if it has no reference KGML files
+        associated with it.
+        {
+            'png_1x_map': [<filepath>, <integer>],
+            'png_2x_map': [<filepath>, <integer>],
+            'png_1x_ko': [<filepath>, <integer>],
+            'png_1x_ec': [<filepath>, <integer>],
+            'png_1x_rn': [<filepath>, <integer>],
+            'kgml_ko': [<filepath>, <integer>],
+            'kgml_ec': [<filepath>, <integer>],
+            'kgml_rn': [<filepath>, <integer>]
+        }
+
+    max_num_tries : int, 10
+        The maximum number of times to try downloading a file (in case of a connection reset).
+
+    wait_secs : float, 10.0
+        The number of seconds to wait between each file download attempt.
+
+    Returns
+    =======
+    None
+    """
+    while True:
+        input = input_queue.get()
+        pathway_number: str = input['pathway_number']
+        url: str = input['url_stem']
+        data_dir: str = input['data_dir']
+
+        png_1x_map_url = f'{url}/map{pathway_number}/image'
+        png_2x_map_url = f'{url}/map{pathway_number}/image2x'
+        png_1x_ko_url = f'{url}/ko{pathway_number}/image'
+        png_1x_ec_url = f'{url}/ec{pathway_number}/image'
+        png_1x_rn_url = f'{url}/rn{pathway_number}/image'
+        kgml_ko_url = f'{url}/ko{pathway_number}/kgml'
+        kgml_ec_url = f'{url}/ec{pathway_number}/kgml'
+        kgml_rn_url = f'{url}/rn{pathway_number}/kgml'
+
+        png_1x_map_path = os.path.join(data_dir, 'png', '1x', 'map', f'map{pathway_number}.png')
+        png_2x_map_path = os.path.join(data_dir, 'png', '2x', 'map', f'map{pathway_number}.png')
+        png_1x_ko_path = os.path.join(data_dir, 'png', '1x', 'ko', f'ko{pathway_number}.png')
+        png_1x_ec_path = os.path.join(data_dir, 'png', '1x', 'ec', f'ec{pathway_number}.png')
+        png_1x_rn_path = os.path.join(data_dir, 'png', '1x', 'rn', f'rn{pathway_number}.png')
+        kgml_ko_path = os.path.join(data_dir, 'kgml', '1x', 'ko', f'ko{pathway_number}.xml')
+        kgml_ec_path = os.path.join(data_dir, 'kgml', '1x', 'ec', f'ec{pathway_number}.xml')
+        kgml_rn_path = os.path.join(data_dir, 'kgml', '1x', 'rn', f'rn{pathway_number}.xml')
+
+        output: Dict[str, List[str, int]] = {
+            'png_1x_map': [png_1x_map_path, 0],
+            'png_2x_map': [png_2x_map_path, 0],
+            'png_1x_ko': [png_1x_ko_path, 0],
+            'png_1x_ec': [png_1x_ec_path, 0],
+            'png_1x_rn': [png_1x_rn_path, 0],
+            'kgml_ko': [kgml_ko_path, 0],
+            'kgml_ec': [kgml_ec_path, 0],
+            'kgml_rn': [kgml_rn_path, 0]
+        }
+
+        if re.match(GLOBAL_MAP_ID_PATTERN, pathway_number):
+            is_global_map = True
+        else:
+            is_global_map = False
+
+        # First try to download KGML files for the pathway. Map images are only downloaded if there
+        # is at least 1 KGML file associated with it.
+        max_tries_exceeded = False
+        for key, kgml_url, kgml_path in (
+            ('kgml_ko', kgml_ko_url, kgml_ko_path),
+            ('kgml_ec', kgml_ec_url, kgml_ec_path),
+            ('kgml_rn', kgml_rn_url, kgml_rn_path)
+        ):
+            num_tries = 0
+            while True:
+                try:
+                    utils.download_file(kgml_url, kgml_path)
+                    output[key][1] = 1
+                    break
+                except ConnectionResetError:
+                    num_tries += 1
+                    if num_tries > max_num_tries:
+                        max_tries_exceeded = True
+                        output[key][1] = 3
+                        break
+                    time.sleep(wait_secs)
+                except ConfigError as e:
+                    if 'HTTP Error 404' in str(e):
+                        output[key][1] = 2
+                        break
+                    else:
+                        num_tries += 1
+                        if num_tries > max_num_tries:
+                            max_tries_exceeded = True
+                            output[key][1] = 3
+                            break
+                        time.sleep(wait_secs)
+
+        if max_tries_exceeded:
+            # Connection errors prevented at least 1 of the KO, EC, or RN KGML files from being
+            # downloaded, so it remains unknown if these files are actually available for the
+            # pathway map.
+            output_queue.put(output)
+            continue
+        elif output['kgml_ko'][1] == 2 and output['kgml_ec'][1] == 2 and output['kgml_rn'][1] == 2:
+            # No KO, EC, and RN KGML files are available for the pathway map. For instance, this is
+            # the case for drug maps with KEGG IDs starting with 'map07', such as 'map07011',
+            # 'Penicillins'.
+            output['png_1x_map'][1] = 4
+            output['png_2x_map'][1] = 4
+            if is_global_map:
+                output['png_1x_ko'][1] = 4
+                output['png_1x_ec'][1] = 4
+                output['png_1x_rn'][1] = 4
+            output_queue.put(output)
+            continue
+
+        dl_items = [
+            ('png_1x_map', png_1x_map_url, png_1x_map_path),
+            ('png_2x_map', png_2x_map_url, png_2x_map_path)
+        ]
+        if is_global_map:
+            if output['kgml_ko'][1] == 1:
+                dl_items.append(('png_1x_ko', png_1x_ko_url, png_1x_ko_path))
+            elif output['kgml_ko'][1] == 2:
+                output['png_1x_ko'][1] = 4
+
+            if output['kgml_ec'][1] == 1:
+                dl_items.append(('png_1x_ec', png_1x_ec_url, png_1x_ec_path))
+            elif output['kgml_ec'][1] == 2:
+                output['png_1x_ec'][1] = 4
+
+            if output['kgml_rn'][1] == 1:
+                dl_items.append(('png_1x_rn', png_1x_rn_url, png_1x_rn_path))
+            elif output['kgml_rn'][1] == 2:
+                output['png_1x_rn'][1] = 4
+        for key, image_url, image_path in dl_items:
+            num_tries = 0
+            while True:
+                try:
+                    utils.download_file(image_url, image_path)
+                    output[key][1] = 1
+                    break
+                except ConnectionResetError:
+                    num_tries += 1
+                    if num_tries > max_num_tries:
+                        output[key][1] = 3
+                        break
+                    time.sleep(wait_secs)
+                except ConfigError as e:
+                    if 'HTTP Error 404' in str(e):
+                        output[key][1] = 2
+                        break
+                    else:
+                        num_tries += 1
+                        if num_tries > max_num_tries:
+                            output[key][1] = 3
+                            break
+                        time.sleep(wait_secs)
+        output_queue.put(output)
