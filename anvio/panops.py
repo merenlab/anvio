@@ -1179,6 +1179,7 @@ class Pangraph():
         self.ancest = nx.DiGraph()
 
         # additional self variables that are used during the tools execution
+        self.single_copy_core = set()
         self.grouping = {}
         self.project_name = ''
         self.global_y = 0
@@ -1573,6 +1574,9 @@ class Pangraph():
                     unresolved = True
                     drop.add(gc[int(len(gc)/2)])
 
+                elif self.k == 0 and len(genome_gc_frequency) == len(self.genomes):
+                    self.single_copy_core.add(gc)
+
             if self.k == 0:
                 self.paralog_dict = copy.deepcopy(self.genome_gc_occurence)
 
@@ -1673,6 +1677,10 @@ class Pangraph():
 
         if self.priority_genome in info.keys():
             weight_add = 100
+        elif gene_cluster_i in self.single_copy_core and gene_cluster_j in self.single_copy_core:
+            weight_add = 2
+        elif gene_cluster_i in self.single_copy_core or gene_cluster_j in self.single_copy_core:
+            weight_add = 1
         else:
             weight_add = 0
 
