@@ -1421,10 +1421,10 @@ class DGR_Finder:
             RT_end = int(dgr_data.get('HMM_stop'))
 
             # Initialize TR context
-            tr_context_genes = []
+            tr_context_genes = {}
 
             # Initialize RT context
-            rt_context_genes = []
+            rt_context_genes = {}
 
             if TR_contig_name not in gene_calls_per_TR_contig:
                 where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
@@ -1485,10 +1485,10 @@ class DGR_Finder:
                                 f"length:{gene_call['length']}"])
                 gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                tr_context_genes.append(gene_call)
+                # Store the gene call in the dictionary using gene_callers_id as the key
+                tr_context_genes[gene_callers_id] = gene_call
 
             self.genomic_context_surrounding_dgrs[dgr_id] = copy.deepcopy(tr_context_genes)
-
 
             if TR_contig_name not in gene_calls_per_RT_contig:
                 where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
@@ -1549,10 +1549,10 @@ class DGR_Finder:
                                 f"length:{gene_call['length']}"])
                 gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                rt_context_genes.append(gene_call)
+                # Store the gene call in the dictionary using gene_callers_id as the key
+                rt_context_genes[gene_callers_id] = gene_call
 
             self.genomic_context_surrounding_rts[dgr_id] = copy.deepcopy(rt_context_genes)
-
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1564,7 +1564,7 @@ class DGR_Finder:
                 VR_end = vr_data.get('VR_end_position')
 
                 # Initialize VR context
-                vr_context_genes = []
+                vr_context_genes = {}
 
                 if VR_contig not in gene_calls_per_VR_contig:
                     where_clause = f'''contig="{VR_contig}" and source="{self.gene_caller_to_consider_in_context}"'''
@@ -1624,9 +1624,10 @@ class DGR_Finder:
                                     f"length:{gene_call['length']}"])
                     gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                    vr_context_genes.append(gene_call)
+                    # Store the gene call in the dictionary using gene_callers_id as the key
+                    vr_context_genes[gene_callers_id] = gene_call
 
-                self.genomic_context_surrounding_dgrs[vr_id] = copy.deepcopy(vr_context_genes)
+                    self.genomic_context_surrounding_dgrs[dgr_id][vr_id] = copy.deepcopy(vr_context_genes)
 
         contigs_db.disconnect()
         self.progress.end()
@@ -1634,7 +1635,7 @@ class DGR_Finder:
 
         self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
                     f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
-                    f"And recovered for {PL('VR', len(self.genomic_context_surrounding_dgrs[vr_id]))}",
+                    f"And recovered for {PL('VR', len(self.genomic_context_surrounding_dgrs[dgr_id][vr_id]))}",
                     f"And recovered for {PL('RT',len(self.genomic_context_surrounding_rts[dgr_id]))}",
                     nl_before=1,
                     lc="yellow")
@@ -1713,17 +1714,27 @@ class DGR_Finder:
                 d['stop'] = dgr_data.get('TR_end_position')
                 tr_genes_output.write(f"{dgr_id}_TR\tTEMPLATE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
-                #Check if there are surrounding genes for the TR and write them
+                # Check if there are surrounding genes for the TR and write them
                 if dgr_id in self.genomic_context_surrounding_dgrs:
-                    for gene_call in self.genomic_context_surrounding_dgrs[dgr_id]:
-                        tr_genes_output.write(f"{dgr_id}_TR\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
+                    # Iterate over the gene_callers_id and the associated gene_call dictionary
+                    for gene_callers_id, gene_call in self.genomic_context_surrounding_dgrs[dgr_id].items():
+                        # Ensure the gene_call is a dictionary
+                        if isinstance(gene_call, dict):
+                            # Write gene information to the output, ensuring we access the correct fields
+                            tr_genes_output.write(f"{dgr_id}_TR\tGENE\t%s\n" % '\t'.join([f"{gene_call.get(h, '')}" for h in genes_output_headers]))
 
-                        if 'functions' in gene_call:
-                            for hit in gene_call['functions']:
-                                tr_functions_output.write(f"{dgr_id}_TR\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                            # If 'functions' is present in the gene_call, write functions to the output
+                            if 'functions' in gene_call and gene_call['functions']:
+                                for hit in gene_call['functions']:
+                                    tr_functions_output.write(f"{dgr_id}_TR\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                            else:
+                                # Write placeholder if no functions are found
+                                tr_functions_output.write(f"{dgr_id}_TR\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
-                            tr_functions_output.write(f"{dgr_id}_TR\t{gene_call['gene_callers_id']}\t\t\t\n")
+                            # Log if gene_call is not a dictionary
+                            print(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})")
 
+                # Log information about the reporting files
                 self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
                 self.run.info(f"Reporting file on functional context for {dgr_id} TR", tr_functions_output_path, nl_after=1)
 
@@ -1744,20 +1755,29 @@ class DGR_Finder:
                 d['stop'] = dgr_data.get('HMM_stop')
                 rt_genes_output.write(f"{dgr_id}_RT\tREVERSE_TRANSCRIPTASE\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
-                #Check if there are surrounding genes for the TR and write them
+                # Check if there are surrounding genes for the TR and write them
                 if dgr_id in self.genomic_context_surrounding_rts:
-                    for gene_call in self.genomic_context_surrounding_rts[dgr_id]:
-                        rt_genes_output.write(f"{dgr_id}_RT\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
+                    # Iterate over the gene_callers_id and the associated gene_call dictionary
+                    for gene_callers_id, gene_call in self.genomic_context_surrounding_rts[dgr_id].items():
+                        # Ensure the gene_call is a dictionary
+                        if isinstance(gene_call, dict):
+                            # Write gene information to the output, ensuring we access the correct fields
+                            rt_genes_output.write(f"{dgr_id}_RT\tGENE\t%s\n" % '\t'.join([f"{gene_call.get(h, '')}" for h in genes_output_headers]))
 
-                        if 'functions' in gene_call:
-                            for hit in gene_call['functions']:
-                                rt_functions_output.write(f"{dgr_id}_RT\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                            # If 'functions' is present in the gene_call, write functions to the output
+                            if 'functions' in gene_call and gene_call['functions']:
+                                for hit in gene_call['functions']:
+                                    rt_functions_output.write(f"{dgr_id}_RT\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                            else:
+                                # Write placeholder if no functions are found
+                                rt_functions_output.write(f"{dgr_id}_RT\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
-                            rt_functions_output.write(f"{dgr_id}_RT\t{gene_call['gene_callers_id']}\t\t\t\n")
+                            # Log if gene_call is not a dictionary
+                            print(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})")
 
+                # Log information about the reporting files
                 self.run.info(f"Reporting file on gene context for {dgr_id} RT", rt_genes_output_path)
                 self.run.info(f"Reporting file on functional context for {dgr_id} RT", rt_functions_output_path, nl_after=1)
-
 
             # Fill in non-empty data for each VR in the DGR and insert it:
             for vr_key, vr_data in dgr_data['VRs'].items():
@@ -1785,9 +1805,9 @@ class DGR_Finder:
 
                             if 'functions' in gene_call:
                                 for hit in gene_call['functions']:
-                                    vr_functions_output.write(f"{dgr_id} VR_{vr_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                                    vr_functions_output.write(f"{dgr_id} {vr_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
                             else:
-                                vr_functions_output.write(f"{dgr_id} VR_{vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
+                                vr_functions_output.write(f"{dgr_id} {vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
 
                     self.run.info(f'Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
                     self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
@@ -1887,7 +1907,6 @@ class DGR_Finder:
                 TR_FRAME = vr_data['TR_frame']
                 vr_data['original_VR_frame'] = VR_FRAME
                 vr_data['original_TR_frame'] = TR_FRAME
-                print(f"dgrs dit: {dgrs_dict}")
 
                 VR_frame = vr_data['VR_frame']
                 TR_frame = vr_data['TR_frame']
@@ -1907,8 +1926,6 @@ class DGR_Finder:
                 #add every primer sequence to the dgrs_dict
                 vr_data['vr_primer_region'] = vr_primer_region
 
-                print(f"original dgr dict: {dgrs_dict}")
-                print('\n')
                 VR_sequence = vr_data['VR_sequence']
                 TR_sequence = vr_data['TR_sequence']
                 vr_start = vr_data.get('VR_start_position')
@@ -1947,8 +1964,6 @@ class DGR_Finder:
 
                 print(f"FINAL:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
                 print(f"FINAL:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
-
-                #print(f"Updated dgr dict after frame handling: {dgrs_dict}\n")
 
                 #check the TR and VR sequence are the same length
                 if len(TR_sequence) == len(VR_sequence):
@@ -2003,8 +2018,6 @@ class DGR_Finder:
 
                     # Add the vr_anchor_primer sequence to the dgrs_dict
                     vr_data['vr_anchor_primer'] = vr_anchor_primer
-
-                    print(dgrs_dict)
 
                 elif len(TR_sequence) != len(VR_sequence):
                     print(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an anchor primer sequence")
@@ -2348,8 +2361,7 @@ class DGR_Finder:
                                 'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
 
-        print("Configured Summary Type:", self.summary['meta']['summary_type'])
-
+        #print("Configured Summary Type:", self.summary['meta']['summary_type'])
 
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
@@ -2358,145 +2370,167 @@ class DGR_Finder:
             # Assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key
 
-            self.summary['dgrs'][dgr_id] = {'dgr_data': copy.deepcopy(dgr_data)}
+            self.summary['dgrs'][dgr_id] = {'dgr_data': copy.deepcopy(dgr_data), 'tr_genes': {}, 'vr_genes': {}}
 
-            for vr_key, vr_data in dgr_data['VRs'].items():
-                vr_id = vr_key
+            # Handle genomic context recovery
+            if not self.skip_recovering_genomic_context:
+                # Deep copy the genomic context for TR and VR genes
+                tr_genes = {gene_id: gene_info
+                    for gene_id, gene_info in self.genomic_context_surrounding_dgrs.get(dgr_id, {}).items()
+                    if isinstance(gene_id, int)}
 
-                # Ensure the dictionary structure for the VR exists
-                if 'VRs' not in self.summary['dgrs'][dgr_id]['dgr_data']:
-                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = {}
+                # then we will learn about these so we can transform the coordinates of anything we wish
+                # to display in the output
+                # Get the start and stop positions of the first and last genes in tr_genes
+                genomic_context_start_tr = min(gene['start'] for gene in tr_genes.values()) - 100
+                genomic_context_end_tr = max(gene['stop'] for gene in tr_genes.values()) + 100
 
-                self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id] = {}
+                # this is our magic number, which is matching to the actual width of the genomic context
+                # display in the static HTML output. we will have to transform start-stop coordinates
+                # of each gene to this value.
+                new_context_length = 1000
 
-                if self.skip_recovering_genomic_context:
-                    pass
-                else:
-                    #print("==== GENOMIC CONTEXT ====")
-                    #print(self.genomic_context_surrounding_dgrs)
-                    # we will get a deepcopy of the gene context associated with the dgr
-                    tr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[dgr_id])
-                    vr_genes = copy.deepcopy(self.genomic_context_surrounding_dgrs[vr_id])
+                # how big the gene arrows should be (in an ideal world -- see below the real world, Neo)
+                default_gene_arrow_width = 20
 
+                # before we start working on the genes, we will figure out the location of the inverted site
+                # in the genomic context. here we quickly identify the transformed start and the end position
+                # and store it in the dgr data dict
+                tr_start = (int(dgr_data['TR_start_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                tr_end  = (int(dgr_data['TR_end_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                self.summary['dgrs'][dgr_id]['dgr_data']['TX'] = tr_start
+                self.summary['dgrs'][dgr_id]['dgr_data']['TW'] = tr_end - tr_start
+                self.summary['dgrs'][dgr_id]['dgr_data']['TT'] = tr_start + (tr_end - tr_start) / 2
 
-                    # then we will learn about these so we can transform the coordinates of anything we wish
-                    # to display in the output
-                    genomic_context_start_tr = tr_genes[0]['start'] - 100
-                    genomic_context_end_tr = tr_genes[-1]['stop'] + 100
-                    genomic_context_start_vr = vr_genes[0]['start'] - 100
-                    genomic_context_end_vr = vr_genes[-1]['stop'] + 100
+                # here we will add transformed gene coordinates to the genes dict
+                for gene_id, gene in tr_genes.items():
+                    gene['start_tr_g'] = (gene['start'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                    gene['stop_tr_g'] = (gene['stop'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
 
-                    # this is our magic number, which is matching to the actual width of the genomic context
-                    # display in the static HTML output. we will have to transform start-stop coordinates
-                    # of each gene to this value.
-                    new_context_length = 1000
+                    if (gene['stop_tr_g'] - gene['start_tr_g']) < default_gene_arrow_width:
+                        # if we are here, it means the transformed length of the gene is already
+                        # shorter than the space we assign for the arrow to display gene calls.
+                        # this means we will only will be able to show an arrow, but even in that
+                        # case the `gene_arrow_width` may be too long to display (i.e., if the
+                        # transformed gene length is 10 and arrow is 15, we are already showing
+                        # too much). The solution is to make the gene nothing more but the arrow
+                        # but make the arrow width equal to the gene width
+                        gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
+                        gene['stop_tr_g'] = gene['start_tr_g']
+                        gene['TRW'] = 0
+                    else:
+                        gene_arrow_width = default_gene_arrow_width
+                        gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
 
-                    # how big the gene arrows should be (in an ideal world -- see below the real world, Neo)
-                    default_gene_arrow_width = 20
+                    if 'functions' in gene.keys():
+                        gene['has_functions'] = True
+                        gene['COLOR'] = '#008000'
+                    else:
+                        gene['has_functions'] = False
+                        gene['COLOR'] = '#c3c3c3'
 
-                    # before we start working on the genes, we will figure out the location of the inverted site
-                    # in the genomic context. here we quickly identify the transformed start and the end position
-                    # and store it in the dgr data dict
-                    tr_start = (int(dgr_data['TR_start_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
-                    tr_end  = (int(dgr_data['TR_end_position']) - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
-                    self.summary['dgrs'][dgr_id]['dgr_data']['TX'] = tr_start
-                    self.summary['dgrs'][dgr_id]['dgr_data']['TW'] = tr_end - tr_start
-                    self.summary['dgrs'][dgr_id]['dgr_data']['TT'] = tr_start + (tr_end - tr_start) / 2
+                    # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
+                    if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
+                        gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
 
-                    vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                    vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
-                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
-                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
+                    gene['TRX'] = gene['start_tr_g']
+                    gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
+                    gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
+                    gene['TGTRANS'] = gene['TRX'] + gene['TRX'] + gene['TRW'] + gene_arrow_width
+                    gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
-                    # here we will add transformed gene coordinates to the genes dict
-                    for gene in tr_genes:
-                        gene['start_tr_g'] = (gene['start'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
-                        gene['stop_tr_g'] = (gene['stop'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
+                    # Append transformed TR genes to the summary
+                    self.summary['dgrs'][dgr_id]['tr_genes'][gene_id] = gene
 
-                        if (gene['stop_tr_g'] - gene['start_tr_g']) < default_gene_arrow_width:
-                            # if we are here, it means the transformed length of the gene is already
-                            # shorter than the space we assign for the arrow to display gene calls.
-                            # this means we will only will be able to show an arrow, but even in that
-                            # case the `gene_arrow_width` may be too long to display (i.e., if the
-                            # transformed gene length is 10 and arrow is 15, we are already showing
-                            # too much). The solution is to make the gene nothing more but the arrow
-                            # but make the arrow width equal to the gene width
-                            gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
-                            gene['stop_tr_g'] = gene['start_tr_g']
-                            gene['TRW'] = 0
-                        else:
-                            gene_arrow_width = default_gene_arrow_width
-                            gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
+                    for vr_key, vr_data in dgr_data.get('VRs', {}).items():
+                        vr_id = vr_key
+                        self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = self.summary['dgrs'][dgr_id]['dgr_data'].get('VRs', {})
 
-                        if 'functions' in gene.keys():
-                            gene['has_functions'] = True
-                            gene['COLOR'] = '#008000'
-                        else:
-                            gene['has_functions'] = False
-                            gene['COLOR'] = '#c3c3c3'
+                        # Extract VR genes (string keys like 'VR_001')
+                        vr_genes = {}
 
-                        # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
-                        if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
-                            gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+                        for key, value in self.genomic_context_surrounding_dgrs.get(dgr_id, {}).items():
+                            if isinstance(key, str) and key.startswith('VR_'):
+                                vr_genes[key] = value  # Keep the key ('VR_001', 'VR_002') and its associated value
 
-                        gene['TRX'] = gene['start_tr_g']
-                        gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
-                        gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
-                        gene['TGTRANS'] = gene['TRX'] + gene['TRX'] + gene['TRW'] + gene_arrow_width
-                        gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                        for vr_id in vr_genes:
+                            # Calculate genomic context for VR genes
+                            genomic_context_start_vr = min(
+                                gene_info['start']
+                                for vr in vr_genes.values()
+                                for gene_info in vr.values()
+                            ) - 100
 
+                            genomic_context_end_vr = max(
+                                gene_info['stop']
+                                for vr in vr_genes.values()
+                                for gene_info in vr.values()
+                            ) + 100
+
+                        print("Genomic Context Start:", genomic_context_start_vr)
+                        print("Genomic Context End:", genomic_context_end_vr)
+
+                        #transform coordinates for VR data
                         vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
                         vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+
+                        # store transformed VR info
                         self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
                         self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
                         self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
 
-                        for gene in vr_genes:
-                            gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                            gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                        for vr in vr_genes.values():  # Iterate over VR dictionaries
+                            for gene in vr.values():
+                                gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                                gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
 
-                            if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
-                                # if we are here, it means the transformed length of the gene is already
-                                # shorter than the space we assign for the arrow to display gene calls.
-                                # this means we will only will be able to show an arrow, but even in that
-                                # case the `gene_arrow_width` may be too long to display (i.e., if the
-                                # transformed gene length is 10 and arrow is 15, we are already showing
-                                # too much). The solution is to make the gene nothing more but the arrow
-                                # but make the arrow width equal to the gene width
-                                gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
-                                gene['stop_vr_g'] = gene['start_vr_g']
-                                gene['VRW'] = 0
-                            else:
-                                gene_arrow_width = default_gene_arrow_width
-                                gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
+                                if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
+                                    # if we are here, it means the transformed length of the gene is already
+                                    # shorter than the space we assign for the arrow to display gene calls.
+                                    # this means we will only will be able to show an arrow, but even in that
+                                    # case the `gene_arrow_width` may be too long to display (i.e., if the
+                                    # transformed gene length is 10 and arrow is 15, we are already showing
+                                    # too much). The solution is to make the gene nothing more but the arrow
+                                    # but make the arrow width equal to the gene width
+                                    gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
+                                    gene['stop_vr_g'] = gene['start_vr_g']
+                                    gene['VRW'] = 0
+                                else:
+                                    gene_arrow_width = default_gene_arrow_width
+                                    gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
-                            if 'functions' in gene.keys():
-                                gene['has_functions'] = True
-                                gene['COLOR'] = '#008000'
-                            else:
-                                gene['has_functions'] = False
-                                gene['COLOR'] = '#c3c3c3'
+                                if 'functions' in gene.keys():
+                                    gene['has_functions'] = True
+                                    gene['COLOR'] = '#008000'
+                                else:
+                                    gene['has_functions'] = False
+                                    gene['COLOR'] = '#c3c3c3'
 
-                            # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
-                            if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
-                                gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+                                # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
+                                if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
+                                    gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
 
-                            gene['VRX'] = gene['start_vr_g']
-                            gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
-                            gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
-                            gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
-                            gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                                gene['VRX'] = gene['start_vr_g']
+                                gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
+                                gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
+                                gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
+                                gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+
+                            # Append transformed VR genes to the summary
+                            self.summary['dgrs'][dgr_id]['vr_genes'][vr_id] = gene
 
                             # and finally we will store this hot mess in our dictionary
                             self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
                             self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
 
-                            # also we need the path to the output files
-                            self.summary['files'][dgr_id] = {'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
-                                                                'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt')}
-                            self.summary['files'][dgr_id] = {'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
-                                                                        'functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')}
+                        # also we need the path to the output files
+                        # Store output file paths for DGRs and VRs
+                        self.summary['files'][dgr_id] = {
+                            'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
+                            'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt'),
+                            'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
+                            'vr_functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
+                        }
 
         # Ensure the destination directory does not exist before generating the summary HTML
         destination_dir = 'summary_html_output'
@@ -2505,7 +2539,7 @@ class DGR_Finder:
 
         summary_html_output = SummaryHTMLOutput(self.summary)
         summary_html_output.generate('summary_html_output')
-
+        print(vr_genes)
         return
 
     def parameter_output_sheet(self):
