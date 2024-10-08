@@ -32,9 +32,9 @@ def letterFrequency(fileName, letter):
     # modified from https://www.geeksforgeeks.org/count-the-number-of-times-a-letter-appears-in-a-text-file-in-python/
     file = open(fileName, 'r')
     text = file.read()
-    frequency = text.count(letter)
+    num_contigs = text.count(letter)
     length = len(text)
-    return(frequency, length)
+    return(num_contigs, length)
 
 def main(args):
 
@@ -60,16 +60,14 @@ def main(args):
 
     for fasta_file in input_fasta_files:
         try:
-            frequency, length_curr = letterFrequency(fasta_file, '>')
+            num_contigs, length_curr = letterFrequency(fasta_file, '>')
 
-            if frequency == 1:
+            if num_contigs == 1:
                 reference_fasta = fasta_file if length_curr > length_max else reference_fasta
                 length_max = length_curr if length_curr > length_max else length_max
 
         except FilesNPathsError:
             run.info_single(f"Skipping {file_path} not formatted as fasta.")
-
-    sys.exit()
 
     if not reference_fasta:
         raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")
