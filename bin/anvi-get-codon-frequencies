@@ -28,7 +28,7 @@ __requires__ = ['contigs-db',
                 'external-genomes']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt']
 __description__ = (
-    "Get codon or amino acid frequency statistics from genomes, genes, and functions.")
+    "Get codon or amino acid frequency statistics from genomes, genes, and functions")
 
 
 run = terminal.Run()
