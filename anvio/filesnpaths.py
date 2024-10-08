@@ -269,14 +269,18 @@ def is_file_json_formatted(file_path):
     return True
 
 
-def is_file_fasta_formatted(file_path):
+def is_file_fasta_formatted(file_path, dont_raise=False):
     is_file_exists(file_path)
 
     try:
         f = u.SequenceSource(file_path)
     except u.FastaLibError as e:
-        raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
-                           "what the lib says: '%s'." % (file_path, e))
+        if dont_raise:
+            f.close()
+            return False
+        else:
+            raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
+                               "what the lib says: '%s'." % (file_path, e))
 
     f.close()
 
