@@ -10,6 +10,7 @@ from Bio import SeqIO, SearchIO
 from Bio.SeqRecord import SeqRecord
 
 import anvio
+import anvio.fastalib as f
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -28,54 +29,86 @@ __description__ = "Reorient contigs based on the longest complete genome presend
 run = terminal.Run()
 P = terminal.pluralize
 
-def letterFrequency(fileName, letter):
-    # modified from https://www.geeksforgeeks.org/count-the-number-of-times-a-letter-appears-in-a-text-file-in-python/
-    file = open(fileName, 'r')
-    text = file.read()
-    num_contigs = text.count(letter)
-    length = len(text)
+
+def get_num_contigs_and_genome_length(file_path):
+    fasta = f.SequenceSource(file_path)
+
+    num_contigs = 0
+    length = 0
+
+    while next(fasta):
+        num_contigs += 1
+        length += len(fasta.seq)
+
     return(num_contigs, length)
 
-def main(args):
 
+def main(args):
     input_dir = args.input_dir
-    filesnpaths.is_output_dir_writable(input_dir)
+    prioritize_genome_size = args.prioritize_genome_size
+    prioritize_number_of_contigs = args.prioritize_number_of_contigs
 
     reference_fasta = None
-    length_max = 0
-    length_curr = 0
 
-    #find FASTA files in the user directory
+    filesnpaths.is_output_dir_writable(input_dir)
+
+    if (not prioritize_genome_size and not prioritize_number_of_contigs) or (prioritize_genome_size and prioritize_number_of_contigs):
+        raise ConfigError("You must choose one of these parameters -- not both, not none: `--prioritize-genome-size` "
+                          "or `--prioritize-number-of-contigs`.")
+
+    # find FASTA files in the user directory and determine the best reference de novo
+    genome_properties = {}
+
+    best_length = 0
+    best_num_contigs = sys.maxsize
+
     F = lambda x: glob.glob(os.path.join(input_dir, x))
-    input_fasta_files = set([])
-    for file_path in F('*.fa') + F('*.fasta') + F('*.fna') + F('*.ffn') + F('*.faa'):
-        if filesnpaths.is_file_fasta_formatted(file_path):
-            input_fasta_files.add(file_path)
+    input_fasta_files = F('*.fa') + F('*.fasta') + F('*.fna') + F('*.ffn') + F('*.faa')
 
-    run.warning(f"Anvi'o found {P('fasta file', len(input_fasta_files))} in out input directory, and "
+    run.warning(f"Anvi'o found {P('FASTA file', len(input_fasta_files))} in out input directory, and "
                 f"will try to orient contigs in them based on the best reference in the same directory.",
                 header="FASTA FILES FOUND", lc="yellow")
-    for fasta_file in input_fasta_files:
-        run.info_single(f"{fasta_file}", level=2)
 
     for fasta_file in input_fasta_files:
-        try:
-            num_contigs, length_curr = letterFrequency(fasta_file, '>')
+        num_contigs, length = get_num_contigs_and_genome_length(fasta_file)
+        genome_properties[fasta_file] = {'num_contigs': num_contigs, 'length': length}
 
-            if num_contigs == 1:
-                reference_fasta = fasta_file if length_curr > length_max else reference_fasta
-                length_max = length_curr if length_curr > length_max else length_max
+        run.info_single(f"{os.path.basename(fasta_file)} ({P('contig', num_contigs)}; {P('nt', length)})", level=2)
 
-        except FilesNPathsError:
-            run.info_single(f"Skipping {file_path} not formatted as fasta.")
+        if prioritize_genome_size and length > best_length:
+            reference_fasta = fasta_file
+            best_length = length
+        elif prioritize_number_of_contigs and num_contigs < best_num_contigs:
+            reference_fasta = fasta_file
+            best_num_contigs = num_contigs
+        elif prioritize_number_of_contigs and num_contigs == best_num_contigs:
+            if length > best_length:
+                reference_fasta = fasta_file
+                best_length = length
+        else:
+            # wtf case
+            pass
 
-    if not reference_fasta:
-        raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")
+    run.info("Method to select reference", "Minimum number of contigs" if prioritize_number_of_contigs else "Maximum length", nl_before=1)
+    stat = P('nt', genome_properties[reference_fasta]['length']) if prioritize_genome_size else P('contig', genome_properties[reference_fasta]['num_contigs'])
+    run.info("Reference FASTA", f"{reference_fasta} ({stat})", nl_after=1)
+
+    if genome_properties[reference_fasta]['num_contigs'] != 1:
+        if prioritize_genome_size:
+            raise ConfigError("Sadly, the reference genome anvi'o chose for you based on geonome size priority seems to have multiple contigs, "
+                              "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
+                              "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
+                              "flag if you have a complete genome.")
+        elif prioritize_number_of_contigs:
+            raise ConfigError("The genome in your collection with the smallest number of contigs is still not a complete genome :( There is nothing "
+                              "this program can do for you at this point. Sorry!")
+        else:
+            # wtf case
+            pass
+
 
     for file_path in input_fasta_files:
-
-        fasta_file = input_dir + '/' + file_path
-        blast_result_file = input_dir + '/' + file_path.split('.')[0] + '_blast'
+        blast_result_file = '.'.join(file_path.split('.')[:-1]) + '_blast'
 
         if fasta_file != reference_fasta:
 
@@ -115,17 +148,23 @@ def main(args):
                         SeqIO.write(reoriented_record, output_handle, "fasta")
 
                     else:
-                        run.info_single(f"No output possible, the fastas do not align :(")
+                        run.info_single(f"No output possible, the FASTA files do not align :(")
 
 
 if __name__ == '__main__':
-
     parser = ArgumentParser(description=__description__)
-    groupA = parser.add_argument_group('Folder containing the fasta files')
+    groupA = parser.add_argument_group('INPUT FILES')
     groupA.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Path for the directory "
                 "that contains the FASTA files of interest. Anvi'o will take into consideration any file "
                 "in this directory that has any of the following extensions: '.fa', '.fasta', '.fna', "
                 "'.ffn', and '.faa'."}))
+
+    groupB = parser.add_argument_group('REFERECE GENOME OPTIONS', description="Orienting contigs will require a reference genome that "
+                "must be chosen by none other than YOU.")
+    groupB.add_argument('--prioritize-genome-size', action="store_true", default=False, help="Of all the candidates, choose the genome "
+                        "with largest size as 'reference' to orient contigs in other FASTA files.")
+    groupB.add_argument('--prioritize-number-of-contigs', action="store_true", default=False, help="Of all the candidates, choose the genome "
+                        "with the smallest number of contigs as 'reference' to orient contigs in other FASTA files.")
 
     args = parser.get_args(parser)
 
