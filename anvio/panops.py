@@ -1209,8 +1209,8 @@ class Pangraph():
                             "parameter for the graph results to be stored. Please set an output file path so anvi'o has at least one "
                             "way to store results.")
     
-        if not self.genomes_names:
-            raise ConfigError("Please be nice enough to use a genome name that is present in your dataset, you know, to let the code take the wheel.")
+        # if not self.genomes_names:
+        #     raise ConfigError("Please be nice enough to use a genome name that is present in your dataset, you know, to let the code take the wheel.")
 
 
     def process(self):
@@ -1368,7 +1368,7 @@ class Pangraph():
 
         for genome, contigs_db_path in external_genomes.iterrows():
 
-            if genome in self.genomes_names:
+            if genome in self.genomes_names or not self.genomes_names:
 
                 self.genomes.append(genome)
 
