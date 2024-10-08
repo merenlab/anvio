@@ -30,4 +30,7 @@ anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
 anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/output
 anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR
 anvio/data/misc/KEGG/
+anvio/data/misc/PROSTT5/
 anvio/data/misc/TRNA_TAXONOMY/
+anvio/data/interactive/node_modules
+anvio/data/interactive/package-lock.json
