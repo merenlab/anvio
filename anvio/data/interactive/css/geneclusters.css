@@ -187,3 +187,55 @@ td {
   min-width: fit-content;
   min-height: fit-content;
 }
+
+.genomeTitle {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 500;
+    fill: #666;
+}
+
+.callerTitle {
+    line-height: 32px;
+    font-weight: 300;
+    fill: #333;
+}
+
+#display-gcc-inner-div {
+    background: #F3F3F3;
+    margin-bottom: 20px;
+    margin-top: 7px;
+    border: 1px solid lightgray;
+    border-radius: 10px;
+}
+
+#gc-acc-main th {
+    border: none !important;
+    border-left: 1px #e0e0e0 solid !important;
+    text-align: center;
+    line-height: 0.85em;
+}
+
+#gc-acc-main {
+    width: 100%;
+    overflow-x: hidden;
+    white-space: nowrap;
+    margin-right: auto;
+    margin-left: auto;
+    margin-bottom: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+@media (min-width: 768px) {
+    .gc-container {
+        padding: 0 2rem;
+    }
+}
+@media (min-width: 992px) {
+    .gc-container {
+        padding: 0 2.5rem;
+    }
+}
+@media (min-width: 1200px) {
+}

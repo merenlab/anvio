@@ -15,8 +15,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -111,9 +110,11 @@ def reformat_FASTA(args):
         replace_chars = True
         if args.seq_type == 'AA':
             acceptable_chars = set(sorted(list(constants.AA_to_single_letter_code.values())))
+            acceptable_chars.add('X')
             replacement = 'X'
         else:
             acceptable_chars = set(constants.nucleotides)
+            acceptable_chars.add('N')
             replacement = 'N'
     else:
         replace_chars = False

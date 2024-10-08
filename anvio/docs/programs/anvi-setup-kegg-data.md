@@ -75,7 +75,7 @@ Not sure what KEGG snapshots are available for you to request? Well, you could c
 anvi-setup-kegg-data --kegg-snapshot hahaha
 {{ codestop }}
 
-Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data OR models/thresholds for 'stray KOs':
+Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (now obsolete as of anvi'o `v8.0-dev`), models/thresholds for 'stray KOs', binary relations files needed for reaction networks, or maps used for pathway visualization:
 
 ```
 v2023-09-18:
@@ -85,6 +85,8 @@ v2023-09-18:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 ```
 
 ## Getting the most up-to-date KEGG data: downloading directly from KEGG
@@ -182,15 +184,35 @@ anvi-setup-kegg-data --mode modules \
                        --overwrite-output-destinations
 {{ codestop }}
 
-### Avoiding BRITE setup
+### Avoiding files used in later versions of anvi'o
 
-As of anvi'o `v7.1-dev` or later, KEGG BRITE hierarchies are added to the %(modules-db)s when running this program with `--mode modules`. If you don't want this cool new feature - because you are a rebel, or adverse to change, or something is not working on your computer, whatever - then fine. You can use the `--skip-brite-hierarchies` flag:
+As anvi'o has expanded, new types of KEGG files have been included in the data pack. We highly recommend including these files, as this program does by default, when downloading and setting up KEGG data. However, options are available to skip these files -- perhaps you're a rebel, or adverse to change, or something is not working on your computer... whatever, all good by us.
+
+It should make sense to you that these flags do not work when setting up from a KEGG snapshot that already includes the newer types of files.
+
+#### BRITE hierarchies
+
+As of anvi'o `v7.1-dev` or later, [KEGG BRITE hierarchies](https://www.genome.jp/kegg/brite.html) are added to the %(modules-db)s when running this program with `--mode modules`. These hierarchies are especially useful for classifying and making sense of KOs and other KEGG data. To avoid these files, use the `--skip-brite-hierarchies` flag:
 
 {{ codestart }}
 anvi-setup-kegg-data --mode modules --skip-brite-hierarchies
 {{ codestop }}
 
-Hopefully it makes sense to you that this flag does not work when setting up from a KEGG snapshot that already includes BRITE data in it.
+#### Reaction network
+
+As of anvi'o `v8.0-dev`, [KEGG binary relations files](https://www.genome.jp/brite/br08906) are included in KEGG data when running this program with `--mode modules`. These are needed for %(reaction-network)s construction by %(anvi-reaction-network)s, which is how biochemical data associated with KOs is now interpreted and analyzed. To avoid these files, use the `--skip-binary-relations` flag:
+
+{{ codestart }}
+anvi-setup-kegg-data --mode modules --skip-binary-relations
+{{ codestop }}
+
+#### Pathway visualization
+
+As of anvi'o `v8.0-dev`, [KEGG pathway map](https://www.genome.jp/kegg/pathway.html) PNG and KGML files are included in KEGG data when running this program with `--mode modules`. These are needed by %(anvi-draw-kegg-pathways)s to visualize anvi'o data in the context of biochemical pathways. To avoid these files, use the `--skip-map-images` flag:
+
+{{ codestart }}
+anvi-setup-kegg-data --mode modules --skip-map-images
+{{ codestop }}
 
 ### How do I share this data?
 Suppose you have been living on the edge and annotating your contigs databases with a non-default version of %(kegg-data)s, and you share these databases with a collaborator who wants to run downstream programs like %(anvi-estimate-metabolism)s on them. Your collaborator (who has a different version of %(kegg-data)s on their computer) will likely get version errors as detailed on the %(anvi-estimate-metabolism)s help page.
@@ -217,7 +239,7 @@ Periodically (especially before releasing a new version of anvi'o), we want to a
 
 Available KEGG snapshots are stored in the anvi'o code repository in `anvio/data/misc/KEGG-SNAPSHOTS.yaml`. To add a new snapshot, you first need to create one by downloading and processing the data from KEGG, testing to make sure it works, and then updating this file. Here are the steps:
 
-1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot. You may want to reduce or increase the number of threads (`-T`) according to your available compute resources.
+1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --include-stray-KOs --kegg-data-dir ./KEGG -T 5`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot. You may want to reduce or increase the number of threads (`-T`) according to your available compute resources.
 2. Get the hash value and version info from the MODULES.db by running `anvi-db-info ./KEGG/MODULES.db`.
 3. Archive the KEGG data directory by running `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`. Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2. This convention makes it easier to distinguish between KEGG snapshots by simply looking at the file name.
 4. Test that setup works with this archive by running `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`.

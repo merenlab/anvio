@@ -11,37 +11,38 @@
     <meta http-equiv="pragma" content="no-cache" />
     <meta name="google" value="notranslate">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    <link rel="stylesheet" href="lib/bootstrap-icons/font/bootstrap-icons.min.css" type="text/css">
-    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    
+    <!-- Import packages from node_modules -->
+    <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
     <script type="text/javascript" src="js/error.js"></script>
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
-    <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <script type="text/javascript" src="lib/popperjs/popper.min.js"></script>
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+    <script>$.uiBackCompat = false; //Do not change the order of jquery-ui files</script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/plugin.js" onerror='alertDependencyError("jquery-plugin")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/resizable.js" onerror='alertDependencyError("jquery-core")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
+    <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
+    
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/draggable.js" onerror='alertDependencyError("jquery-draggable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/accordion.js" onerror='alertDependencyError("jquery-accordian")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/resizable.js" onerror='alertDependencyError("jquery-resizable")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/button.js" onerror='alertDependencyError("jquery-button")'></script>
-    <script type="text/javascript" src="lib/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
-    <script type="text/javascript" src="lib/randomColor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
+    <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
+    <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
     <script type="text/javascript" src="lib/svg-crowbar/svg-crowbar.js"onerror='alertDependencyError("svg-crowbar")'></script>
-    <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
-    <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js" onerror='alertDependencyError("md5")'></script>
+    <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="./node_modules/blueimp-md5/js/md5.js" onerror='alertDependencyError("md5")'></script>
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("col-picker")'></script>
-    <script type="text/javascript" src="lib/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
+    <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
 
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/main.js"></script>
@@ -66,14 +67,14 @@
     <script type="text/javascript" src="js/migrations.js"></script>
     <script type="text/javascript" src="js/inspectionutils.js"></script>
 
-    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
-    <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js" onerror='alertDependencyError("bootstrap-sortable")' defer></script>
-    <link href="lib/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+    <!-- Table sorter -->
+    <link href="./node_modules/sortable-tablesort/sortable.min.css" rel="stylesheet">
+    <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
     <!-- /Table sorter -->
 
-    <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
-    <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
-    <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
+    <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
+    <link rel="stylesheet" href="./node_modules/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
+    <script type="text/javascript" src="./node_modules/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/loading.css" />
     <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
@@ -499,7 +500,7 @@
                                                 <div class="d-flex">
                                                     <div class="grid_details display-settings" style="display: none;">
                                                         <span class="d-flex align-items-center pl-1 mr-1">Width:</span>
-                                                        <input class="form-control input-xs d-flex ml-4 col-8"  size="5" value="10" id="grid_width" onchange="emit('bin-settings-changed');" />
+                                                        <input class="form-control input-xs d-flex ml-4 col-8" type="number" size="5" value="1" id="grid_width" onchange="emit('bin-settings-changed');" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -540,18 +541,6 @@
                             <div class="ml-3">
                                 <span class="settings-secondary-header">Cosmetics</span>
                                 <div>
-                                    <div class="form-group form-margin d-flex pt-1">
-                                        <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
-                                        <div class="col-6 d-flex">
-                                            <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
-                                        </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex align-items-center">
-                                            <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
-                                            <div class="col-6 d-flex align-items-center input-align">
-                                                <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                            </div>
-                                    </div>
                                     <div class="max-font-size-input" style="display: none;">
                                         <div class="form-group form-margin align-items-center d-flex">
                                                 <label class="col-2 settings-label" for="max_font_size" data-help="max-font-size">Maximum Font Size: </label>
@@ -866,7 +855,7 @@
                                     </p>
                                 </div>
 
-                                <table class="table sortable" id="bins-table">
+                                <table class="table" id="bins-table">
                                     <thead id="thead_bins">
                                         <tr>
                                             <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>

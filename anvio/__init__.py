@@ -1296,6 +1296,13 @@ D = {
                      "analyses, where you may want to only focus on genes that are prevalent across the set of genomes "
                      "you wish to analyze."}
                 ),
+    'gene-clusters-txt': (
+            ['--gene-clusters-txt'],
+            {'metavar': 'FILE PATH',
+             'help': "A three-column TAB-delimited file that associates genes across genomes with one another as 'gene clusters' "
+                     "for DIY pangenomics 😬 See https://anvio.org/help/main/artifacts/gene-clusters-txt/ for details "
+                     "of the file format."}
+                ),
     'max-num-gene-clusters-missing-from-genome': (
             ['--max-num-gene-clusters-missing-from-genome'],
             {'default': 0,
@@ -1495,6 +1502,21 @@ D = {
             ['--search-terms'],
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
+                ),
+    'case-sensitive': (
+            ['--case-sensitive'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will perform a search that is case sensitive."}
+                ),
+    'exact-match': (
+            ['--exact-match'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will search for a given string in anywhere within function description or "
+                     "accession IDs. If you declare this flag, then anvi'o will look for 'exact' matches of the search "
+                     "string in its entirety in a given field. This can be very useful if you are CERTAIN about the "
+                     "function or accession id you are interested in, and you want to get nothing but that exact match."}
                 ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
@@ -2519,6 +2541,26 @@ D = {
                      "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
                      "flag all indels are reported."}
                 ),
+    'list-defline-variables': (
+            ['--list-defline-variables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will list the variable names that can be used to construct deflines in "
+                     "FASTA outputs from the user-defined `--defline-format` strings."}
+                ),
+    'defline-format': (
+            ['--defline-format'],
+            {'default': '{gene_caller_id}',
+             'metavar': "F-STRING",
+             'help': "Proivide a defline template for anvi'o to use when generating the FASTA output. The way this "
+                     "works is actually quite simple: first you learn about all the options that exist using the "
+                     "`--list-defline-variables`, and then use them to create your template. Available variables "
+                     "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
+                     "of curly brackets will be kept as is. For instance, if you would like your defline to have "
+                     "the gene caller ID after the contig name in which it occurs, you can use this template: "
+                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. See more "
+                     "examples in online help."}
+                ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
             {'default': False,
@@ -3125,6 +3167,22 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
+    'skip-map-images': (
+            ['--skip-map-images'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG pathway map image files, which we don't "
+                     "recommend, since they are used in visualizing pathway membership, but let you "
+                     "do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],

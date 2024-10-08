@@ -9,8 +9,7 @@ import anvio.trnaseq as trnaseq
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -24,7 +23,7 @@ __description__ = ("This program processes one or more anvi'o tRNA-seq databases
                    "and these tRNAs may be shared among the samples. "
                    "tRNA may be 3' fragments and thereby subsequences of longer tRNAs from other samples which would become seeds. "
                    "The profile database produced by this program records the coverages of seeds in each sample. "
-                   "This program finalizes predicted nucleotide modification sites using tunable substitution rate parameters.")
+                   "This program finalizes predicted nucleotide modification sites using tunable substitution rate parameters")
 
 
 if __name__ == '__main__':

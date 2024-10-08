@@ -24,8 +24,7 @@ import anvio.constants as constants
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -37,6 +36,12 @@ __status__ = "Development"
 ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 non_ascii_escape = re.compile(r'[^\x00-\x7F]+')
 CLEAR = lambda line: ansi_escape.sub('', non_ascii_escape.sub('', line.strip()))
+
+
+mc_color_dict = {'Yes': 'green',
+                 'True': 'green',
+                 'No': 'red',
+                 'False': 'red'}
 
 
 class SuppressAllOutput(object):
@@ -359,6 +364,9 @@ class Run:
         self.verbose = verbose
         self.width = width
 
+        # when True, various output messages may be colored automatically
+        self.autocolor = False
+
         # learn about the terminal
         self.terminal_width = get_terminal_width()
 
@@ -434,6 +442,9 @@ class Run:
             value = remove_spaces(value)
         elif isinstance(value, int):
             value = pretty_print(value)
+
+        if self.autocolor and value in mc_color_dict:
+            mc = mc_color_dict[value]
 
         label = constants.get_pretty_name(key)
 

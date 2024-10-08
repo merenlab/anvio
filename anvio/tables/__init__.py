@@ -6,18 +6,17 @@ from anvio.constants import codons, nucleotides, essential_genome_info, TRNA_FEA
 
 import itertools
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "23"
+contigs_db_version = "24"
 profile_db_version = "40"
 genes_db_version = "6"
-pan_db_version = "17"
+pan_db_version = "21"
 auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
@@ -47,14 +46,17 @@ pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
 pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
-pan_gene_cluster_function_reactions_table_name        = 'gene_cluster_function_reactions'
-pan_gene_cluster_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
-pan_gene_cluster_function_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
+pan_reaction_network_reactions_table_name        = 'pan_reaction_network_reactions'
+pan_reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
+pan_reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
 
-pan_gene_cluster_function_metabolites_table_name      = 'gene_cluster_function_metabolites'
-pan_gene_cluster_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
-pan_gene_cluster_function_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
+pan_reaction_network_metabolites_table_name      = 'pan_reaction_network_metabolites'
+pan_reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
+pan_reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
 
+pan_reaction_network_kegg_table_name             = 'pan_reaction_network_kegg'
+pan_reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
+pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 
 ####################################################################################################
 #
@@ -94,13 +96,17 @@ gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
 gene_function_calls_table_types        = [    'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
-gene_function_reactions_table_name        = 'gene_function_reactions'
-gene_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
-gene_function_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'         ,       'text'      ,          'text'           ,      'text'    ,     'text'    ,      'bool'    ]
+reaction_network_reactions_table_name        = 'reaction_network_reactions'
+reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
+reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'         ,       'text'      ,          'text'           ,      'text'    ,     'text'    ,      'bool'    ]
 
-gene_function_metabolites_table_name      = 'gene_function_metabolites'
-gene_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
-gene_function_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
+reaction_network_metabolites_table_name      = 'reaction_network_metabolites'
+reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
+reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
+
+reaction_network_kegg_table_name             = 'reaction_network_kegg'
+reaction_network_kegg_table_structure        = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
+reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
 
 taxon_names_table_name                 = 'taxon_names'
 taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -401,12 +407,18 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
-                                  pan_gene_cluster_function_reactions_table_name: False,
-                                  pan_gene_cluster_function_metabolites_table_name: False,
+                                  'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
+                                  pan_reaction_network_reactions_table_name: False,
+                                  'gene_cluster_function_metabolites': False, # renamed to 'pan_reaction_network_metabolites'
+                                  pan_reaction_network_metabolites_table_name: False,
+                                  pan_reaction_network_kegg_table_name: False,
                                   genes_in_splits_table_name: True,
                                   gene_function_calls_table_name: True,
-                                  gene_function_reactions_table_name: False,
-                                  gene_function_metabolites_table_name: False,
+                                  'gene_function_reactions': False, # renamed to 'reaction_network_reactions'
+                                  reaction_network_reactions_table_name: False,
+                                  'gene_function_metabolites': False, # renamed to 'reaction_network_metabolites'
+                                  reaction_network_metabolites_table_name: False,
+                                  reaction_network_kegg_table_name: False,
                                   hmm_hits_splits_table_name: True,
                                   scg_taxonomy_table_name: True,
                                   trna_taxonomy_table_name: True,

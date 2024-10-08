@@ -7,13 +7,11 @@ import argparse
 import anvio
 import anvio.kegg as kegg
 
-from anvio.biochemistry.reactionnetwork import KODatabase
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 from anvio.ttycolors import color_text as c
+from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva', 'semiller10']
@@ -28,11 +26,12 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                           'only-processing': {'flags': anvio.A('only-processing'),
                                                            'definition': anvio.K('only-processing')},
                                           'include-stray-KOs': {'flags': anvio.A('include-stray-KOs'),
-                                                           'definition': anvio.K('include-stray-KOs')}                 
+                                                           'definition': anvio.K('include-stray-KOs')}
                                           }
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
-                                           'mode if you want to run pathway prediction with `anvi-estimate-metabolism`.',
+                                           'mode if you want to run pathway prediction with `anvi-estimate-metabolism`. This mode does the '
+                                           'necessary setup that allows you to run `anvi-reaction-network` and visualize KEGG pathway maps.',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                             'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
@@ -45,20 +44,12 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                                             "are using the --only-processing flag"})},
                                           'skip-brite-hierarchies': {'flags': anvio.A('skip-brite-hierarchies'),
                                                             'definition': anvio.K('skip-brite-hierarchies')},
+                                          'skip-binary-relations': {'flags': anvio.A('skip-binary-relations'),
+                                                            'definition': anvio.K('skip-binary-relations')},
+                                          'skip-map-images': {'flags': anvio.A('skip-map-images'),
+                                                            'definition': anvio.K('skip-map-images')}
                                         }
                             },
-                'modeling': {'description': 'KEGG orthologs and reactions. Use this mode if '
-                                            'you want to run metabolic modeling with `anvi-reaction-network`.',
-                            'arguments': {'dir': {'flags': ['--dir'],
-                                            'definition': {'default': None, 
-                                                    'type': str,
-                                                    'help': "You have the option to store the modeling data in a different location "
-                                                            "on your computer than other KEGG stuff (ie, NOT --kegg-data-dir). "
-                                                            "Use this argument to select a custom directory in which to store "
-                                                            "the modeling data."
-                                                            f"(default: {KODatabase.default_dir})"}}
-                                        },
-                },
                 'all': {'description': 'Download ALL KEGG data. This is the default mode.',
                                  'arguments': {'kegg-snapshot': {'flags': anvio.A('kegg-snapshot'),
                                                             'definition': anvio.K('kegg-snapshot')},
@@ -68,7 +59,6 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                             'definition': anvio.K('kegg-archive')}
                                             },
                 }
-        
 }
 
 
@@ -99,11 +89,11 @@ def main(args, unknown_args):
                     p_flag = "--" + p.replace("_", "-")
                     if p_flag in mode_unknown:
                         mode_unknown.remove(p_flag)
-    
+
     args = argparse.Namespace(**vars(args), **vars(mode_args))
     # global flags are already handled by anvi'o and shouldn't be in the unknown list
     # these are coming from __init__.py and not all are relevant to this code but we catch them anyway
-    global_flags_to_catch = ['--debug', '--no-progress', '--force', '--quiet', '--as-markdown', 
+    global_flags_to_catch = ['--debug', '--no-progress', '--force', '--quiet', '--as-markdown',
                              '--force-overwrite', '--fix-sad-tables', '--display-db-calls', '--I-know-this-is-not-a-good-idea',
                              '--force-use-my-tree', '--debug-auto-fill-anvio-dbs']
     for gf in global_flags_to_catch:
@@ -128,20 +118,6 @@ def main(args, unknown_args):
             args.download_from_kegg = True
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
-        if mode == "modeling" or mode == "all":
-            setup_directory = None
-            # we ignore the dir parameter for all mode
-            if mode == "all":
-                setup_directory = args.kegg_data_dir
-            else:
-                # the --dir parameter overrides --kegg-data-dir
-                if args.dir:
-                    setup_directory = args.dir
-                elif not args.dir and args.kegg_data_dir:
-                    setup_directory = args.kegg_data_dir
-            
-            KODatabase.set_up(num_threads = args.num_threads, dir = setup_directory, reset = args.reset)
-    
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
@@ -155,7 +131,7 @@ if __name__ == '__main__':
                 "certain subsets of the data available from KEGG. Use --list-modes to see " + \
                 f"a description of the options. Available modes: {', '.join(DOWNLOAD_MODES.keys())}"
     groupM.add_argument('--mode', choices=DOWNLOAD_MODES.keys(), help=mode_help, default='all')
-    groupM.add_argument('--list-modes', **{'default': False, 'action': 'store_true', 
+    groupM.add_argument('--list-modes', **{'default': False, 'action': 'store_true',
                                          'help': "List the available modes and their descriptions."})
 
     # common arguments
@@ -172,7 +148,7 @@ if __name__ == '__main__':
     if show_help:
         parser.print_help()
 
-    
+
     subparsers = {}
     for mode, info_dict in DOWNLOAD_MODES.items():
         subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
@@ -183,7 +159,7 @@ if __name__ == '__main__':
 
         if show_help:
             subparser.print_help()
-    
+
         subparsers[mode] = subparser
 
 

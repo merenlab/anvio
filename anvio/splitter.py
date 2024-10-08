@@ -36,8 +36,7 @@ from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -723,6 +722,8 @@ class LocusSplitter:
         self.input_contigs_db_path = A('contigs_db')
         self.num_genes = A('num_genes')
         self.search_term = A('search_term')
+        self.case_sensitive = A('case_sensitive')
+        self.exact_match = A('exact_match')
         self.gene_caller_ids = A('gene_caller_ids')
         self.delimiter = A('delimiter')
         self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
@@ -734,9 +735,6 @@ class LocusSplitter:
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
         self.is_in_flank_mode = bool(A('flank_mode'))
-
-        if self.annotation_sources:
-            self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
             dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
@@ -774,11 +772,12 @@ class LocusSplitter:
                                   "needs exactly 2." % num_genes)
 
         if self.search_term:
-            self.search_term = self.search_term.split(self.delimiter)
+            self.search_term = list(set([term.strip() for term in self.search_term.split(self.delimiter)]))
 
-        utils.is_contigs_db(self.input_contigs_db_path)
+        if self.annotation_sources:
+            self.annotation_sources = list(set([source.strip() for source in self.annotation_sources.split(self.delimiter)]))
 
-        if len(self.hmm_sources):
+        if self.hmm_sources:
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(self.delimiter)])
 
         # If user is in default mode, they MUST provide --num-genes
@@ -800,7 +799,7 @@ class LocusSplitter:
             if self.delimiter in self.num_genes:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
-                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
+                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[1]))
 
         utils.check_sample_id(self.output_file_prefix)
 
@@ -849,11 +848,11 @@ class LocusSplitter:
             counter = 1
             for term in self.search_term:
                 self.run.info('Search term %d of %d' % (counter,len(self.search_term)), term, mc='green')
-                self.run.info('Function calls being used', ', '.join((contigs_db.gene_function_call_sources
+                self.run.info('Queried annotation sources', ', '.join((contigs_db.gene_function_call_sources
                                                                       if not self.annotation_sources
                                                                       else self.annotation_sources)))
 
-                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
+                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True, case_sensitive=self.case_sensitive, exact_match=self.exact_match)
                 # gene id's of genes with the searched function
                 genes_that_hit = [i[0] for i in search_report]
                 gene_caller_ids_of_interest.extend(genes_that_hit)

@@ -293,6 +293,7 @@ html, body, #wrapper {
 
 .toggle-panel-left-pos {
     left: 560px;
+    z-index: 1;
 }
 
 #toggle-panel-left:hover {
@@ -1183,7 +1184,12 @@ position: relative;
 @include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
 }
 
-@media only screen and (min-width:1460px){
+.disabled{
+    pointer-events:none;
+    opacity:0.6;
+}
+
+@media only screen and (min-width:1440px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
@@ -1199,7 +1205,7 @@ position: relative;
     }
 }
 
-@media only screen and (min-width:1280px) and (max-width: 1460px){
+@media only screen and (min-width:1280px) and (max-width: 1440px){
     /* styles for browsers larger than 1280px; */
     *:not(text) {
         font-size: 12px;
@@ -1207,16 +1213,18 @@ position: relative;
     }
 
     .fs-2x {
-        font-size: 1.7em !important;
+        font-size: 1.2em !important;
     }
 }
 
-@media only screen and (min-width: 768px) and (max-width: 1280px) {
-    .fa-2x {
-        font-size: 1.5em !important;
+@media only screen and (min-width:768px) and (max-width: 1280px){
+    /* styles for browsers larger than 1280px; */
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
     }
 
     .fs-2x {
-        font-size: 1.7em !important;
+        font-size: 1.1em !important;
     }
 }

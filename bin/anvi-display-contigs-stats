@@ -14,8 +14,7 @@ from anvio.bottleroutes import BottleApplication
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -67,7 +66,7 @@ if __name__ == '__main__':
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
-        utils.is_all_submodules_present()
+        utils.is_all_npm_packages_installed()
 
         if A('report_as_text'):
             if not A('output_file'):

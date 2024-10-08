@@ -13,8 +13,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -58,12 +57,14 @@ def main(args):
     items_order_of_interest = None
     for item_order in item_order_names:
         item_order_name, item_order_distance, item_order_clustering = item_order.split(':')
-        if order_name == item_order_name:
+        if order_name == item_order_name or order_name == item_order:
             items_order_of_interest = item_orders_dict[item_order]
 
     if not items_order_of_interest:
-        raise ConfigError("The item order '%s' is not one of the item orders in the database. This what you "
-                          "have in there: '%s'." % (order_name, ', '.join(item_order_names)))
+        raise ConfigError(f"The item order '{order_name}' is not one of the item orders in the database. Here "
+                          f"is a comma-separated list of what you have in there (please note that you can, but do not need "
+                          f"to include the distance/clustering types after the ':' character in each name): "
+                          f"{', '.join(item_order_names)}")
 
     order_data_type_newick = items_order_of_interest['type'] == 'newick'
     run.info("Database", db_path)

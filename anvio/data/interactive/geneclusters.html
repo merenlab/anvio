@@ -9,20 +9,19 @@
         <meta http-equiv="pragma" content="no-cache" />
         <meta name="google" value="notranslate">
         <link rel="stylesheet" type="text/css" href="css/loading.css" />
-        <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.css" />
+        <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
         <link rel="stylesheet" type="text/css" href="css/geneclusters.css" />
-        <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+        <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
         <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->	
          <script type="text/javascript" src="js/utils.js"></script>
-        <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
-        <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
-        <script type="text/javascript" src="lib/popperjs/popper.min.js"></script>
-        <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.bundle.js"></script>
+        <script type="text/javascript" src="./node_modules/jquery/dist/jquery.min.js"></script>
+        <script type="text/javascript" src="./node_modules/d3/d3.min.js"></script>
+        <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
         <script type="text/javascript" src="js/color-coding.js"></script>
         <script type="text/javascript" src="js/geneclusters.js"></script>
         <script type="text/javascript" src="js/inspectionutils.js"></script>
-        <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+        <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js"></script>
         <script type="text/javascript" src="js/constants.js"></script>
     </head>
     <body onload="loadAll();">
@@ -32,10 +31,12 @@
                 <br />Loading...
             </div>
         </div>
-        <div class="container main-container">
-            <header>
-                <h1 id="header"></h1>
-            </header>
+        <div>
+            <div class="container">
+                <header>
+                    <h1 id="header"></h1>
+                </header>
+            </div>
 
             <section class="main">
                 <div id="display-controls">
@@ -46,14 +47,30 @@
                     Font Size: <input type="text" id="font_size" value="12" size="5" onchange="createDisplay(); "/>
                           <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
                           <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
-                          <input type="button" value="Color Settings" style="margin-left: 30px;" onclick="$('#display-conservation-controls').toggle(); " />
+                          <input type="button" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
                 </div>
 
-		<div id="display-conservation-controls" style="display: none">
-		</div>
+                <div class="d-flex justify-content-center">
+                    <div class="col-6" id="display-conservation-controls" style="display: none"></div>
+                </div>
+                <div id="display-gcc-acc" class="d-flex justify-content-center">
+                    <div id="display-gcc-inner-div">
+                        <table id="gc-acc-main" class="table table-responsive col-12">
+                            <thead>
+                                <tr>
+                                    <th scope="col" id="gc-acc-table-header" style="border-left: none !important; color: red;">??</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th scope="row" id="gc-acc-table-data" style="border-left: none !important; color: red;">-&gt;</th>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="display-container">
-                    <svg id="svg">
-                    </svg>
+                    <svg id="svg"></svg>
                 </div>
             </section>
         </div>

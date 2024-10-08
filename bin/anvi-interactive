@@ -16,8 +16,7 @@ from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, GenesDBError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Doğan Can Kilment", "Gökmen Göksel", "Gökmen Görgen"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -119,7 +118,7 @@ if __name__ == '__main__':
     args = parser.get_args(parser, auto_fill_anvio_dbs=True)
 
     try:
-        utils.is_all_submodules_present()
+        utils.is_all_npm_packages_installed()
         d = interactive.Interactive(args)
         args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
     except ConfigError as e:

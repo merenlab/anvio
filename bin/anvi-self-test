@@ -17,13 +17,14 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import FilesNPathsError, ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'semiller10', 'ekiefl', 'ivagljiva', 'mschecht']
-__description__ = "A script for anvi'o to test itself"
+__requires__ = []
+__provides__ = []
+__description__ = "A program for anvi'o to test itself"
 
 
 tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomics.sh'],
@@ -31,6 +32,8 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
          'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
          'metabolism'            : ['run_component_tests_for_metabolism.sh'],
+         'reaction-network'      : ['run_component_tests_for_reaction_network.sh'],
+         'kegg-mapping'          : ['run_component_tests_for_kegg_mapping.sh'],
          'display-functions'     : ['run_component_tests_for_display_functions.sh'],
          'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
          'inversions'            : ['run_component_tests_for_inversions.sh'],

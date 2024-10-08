@@ -24,7 +24,7 @@ anvi-gen-genomes-storage -e external-genomes.txt \
                          -o TEST-GENOMES.db \
                          --no-progress
 
-INFO "Running the pangenome anaysis with default parameters"
+INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
                 -o TEST/ \
                 -n TEST \
