@@ -35,80 +35,80 @@ def main(args):
 
     fasta_directory = args.fasta_directory
     filesnpaths.is_output_dir_writable(fasta_directory)
-    
+
     fasta_main = ''
     length_max = 0
     length_curr = 0
     fasta_files = []
-    
+
     for fasta_name in os.listdir(fasta_directory):
-    
+
         fasta_file = fasta_directory + '/' + fasta_name
-    
-        if os.path.isfile(fasta_file): 
-        
+
+        if os.path.isfile(fasta_file):
+
             try:
                 filesnpaths.is_file_fasta_formatted(fasta_file)
-        
+
                 fasta_files += [fasta_name]
-            
+
                 frequency, length_curr = letterFrequency(fasta_file, '>')
-            
+
                 if frequency == 1:
                     fasta_main = fasta_file if length_curr > length_max else fasta_main
                     length_max = length_curr if length_curr > length_max else length_max
-        
+
             except FilesNPathsError:
                 run.info_single(f"Skipping {fasta_name} not formatted as fasta.")
-    
+
         else:
             run.info_single(f"Skipping {fasta_name} not a file.")
-            
+
     if not fasta_main:
-        raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")    
-     
+        raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")
+
     for fasta_name in fasta_files:
-    
+
         fasta_file = fasta_directory + '/' + fasta_name
         blast_result_file = fasta_directory + '/' + fasta_name.split('.')[0] + '_blast'
-        
+
         if fasta_file != fasta_main:
-           
+
             pass_arg=["blastn", "-query", fasta_main, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
             blast_result_txt = subprocess.run(pass_arg, text=True, capture_output=True)
             qresult = SearchIO.read(blast_result_file, 'blast-xml')
             fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
-    
+
             with open(fasta_file, "w+") as output_handle:
-            
+
                 for contig in qresult:
-    
+
                     original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
-        
+
                     original_record_sequence = original_record.seq
                     reversed_record_sequence = original_record.seq.reverse_complement()
-        
+
                     reoriented_record_hit = contig[0].hit.seq.replace("-", "")
                     reoriented_record_sequence = ""
-        
+
                     if reoriented_record_hit in original_record_sequence:
                         reoriented_record_sequence = original_record_sequence
                     elif reoriented_record_hit in reversed_record_sequence:
                         reoriented_record_sequence = reversed_record_sequence
                     else:
                         run.info_single(f"This case is not yet implemented.")
-        
+
                     if reoriented_record_sequence:
-        
+
                         reoriented_record = SeqRecord(
                             reoriented_record_sequence,
                             id=original_record.id,
                             name=original_record.name,
                             description=original_record.description,
                         )
-            
+
                         SeqIO.write(reoriented_record, output_handle, "fasta")
-        
+
                     else:
                         run.info_single(f"No output possible, the fastas do not align :(")
 
