@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import sys
 import subprocess
-import os
-from anvio.argparse import ArgumentParser
+
+from Bio import SeqIO, SearchIO
+from Bio.SeqRecord import SeqRecord
+
 import anvio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-from Bio import SeqIO, SearchIO
-from Bio.SeqRecord import SeqRecord
+
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
