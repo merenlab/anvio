@@ -3,6 +3,7 @@
 
 import os
 import sys
+import glob
 import subprocess
 
 from Bio import SeqIO, SearchIO
@@ -25,6 +26,7 @@ __provides__ = []
 __description__ = "Reorient contigs based on the longest complete genome presend in the given folder"
 
 run = terminal.Run()
+P = terminal.pluralize
 
 def letterFrequency(fileName, letter):
     # modified from https://www.geeksforgeeks.org/count-the-number-of-times-a-letter-appears-in-a-text-file-in-python/
@@ -42,39 +44,40 @@ def main(args):
     reference_fasta = None
     length_max = 0
     length_curr = 0
-    fasta_files = []
 
-    #find FASTA files in the directory
-    for fasta_file in os.listdir(dir_path):
+    #find FASTA files in the user directory
+    F = lambda x: glob.glob(os.path.join(input_dir, x))
+    input_fasta_files = set([])
+    for file_path in F('*.fa') + F('*.fasta') + F('*.fna') + F('*.ffn') + F('*.faa'):
+        if filesnpaths.is_file_fasta_formatted(file_path):
+            input_fasta_files.add(file_path)
 
-        fasta_file = dir_path + '/' + file_path
+    run.warning(f"Anvi'o found {P('fasta file', len(input_fasta_files))} in out input directory, and "
+                f"will try to orient contigs in them based on the best reference in the same directory.",
+                header="FASTA FILES FOUND", lc="yellow")
+    for fasta_file in input_fasta_files:
+        run.info_single(f"{fasta_file}", level=2)
 
-        if os.path.isfile(fasta_file):
+    for fasta_file in input_fasta_files:
+        try:
+            frequency, length_curr = letterFrequency(fasta_file, '>')
 
-            try:
-                filesnpaths.is_file_fasta_formatted(fasta_file)
+            if frequency == 1:
+                reference_fasta = fasta_file if length_curr > length_max else reference_fasta
+                length_max = length_curr if length_curr > length_max else length_max
 
-                fasta_files += [file_path]
+        except FilesNPathsError:
+            run.info_single(f"Skipping {file_path} not formatted as fasta.")
 
-                frequency, length_curr = letterFrequency(fasta_file, '>')
-
-                if frequency == 1:
-                    reference_fasta = fasta_file if length_curr > length_max else reference_fasta
-                    length_max = length_curr if length_curr > length_max else length_max
-
-            except FilesNPathsError:
-                run.info_single(f"Skipping {file_path} not formatted as fasta.")
-
-        else:
-            run.info_single(f"Skipping {file_path} not a file.")
+    sys.exit()
 
     if not reference_fasta:
         raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")
 
-    for file_path in fasta_files:
+    for file_path in input_fasta_files:
 
-        fasta_file = dir_path + '/' + file_path
-        blast_result_file = dir_path + '/' + file_path.split('.')[0] + '_blast'
+        fasta_file = input_dir + '/' + file_path
+        blast_result_file = input_dir + '/' + file_path.split('.')[0] + '_blast'
 
         if fasta_file != reference_fasta:
 
