@@ -1426,9 +1426,9 @@ class Pangraph():
                 if not i == int(len(a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         if n[1] != m[1]:
-                            r_val += 1
+                            r_val += 0.5
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        r_val += 1
+                        r_val += 0
                     elif n == m:
                         r_val += 1
 
@@ -1437,9 +1437,9 @@ class Pangraph():
                 if not i == int(len(a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         if n[1] != m[1]:
-                            f_val += 1
+                            f_val += 0.5
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        f_val += 1
+                        f_val += 0
                     elif n == m:
                         f_val += 1
 
