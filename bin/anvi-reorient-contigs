@@ -36,8 +36,8 @@ def letterFrequency(fileName, letter):
 
 def main(args):
 
-    dir_path = args.dir_path
-    filesnpaths.is_output_dir_writable(dir_path)
+    input_dir = args.input_dir
+    filesnpaths.is_output_dir_writable(input_dir)
 
     reference_fasta = None
     length_max = 0
@@ -121,7 +121,10 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('Folder containing the fasta files')
-    groupA.add_argument("-f", "--fasta_directory", help="Path to the directory with the to be oriented fastas.", required=True)
+    groupA.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Path for the directory "
+                "that contains the FASTA files of interest. Anvi'o will take into consideration any file "
+                "in this directory that has any of the following extensions: '.fa', '.fasta', '.fna', "
+                "'.ffn', and '.faa'."}))
 
     args = parser.get_args(parser)
 
