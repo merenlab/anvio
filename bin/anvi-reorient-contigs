@@ -36,48 +36,49 @@ def letterFrequency(fileName, letter):
 
 def main(args):
 
-    fasta_directory = args.fasta_directory
-    filesnpaths.is_output_dir_writable(fasta_directory)
+    dir_path = args.dir_path
+    filesnpaths.is_output_dir_writable(dir_path)
 
-    fasta_main = ''
+    reference_fasta = None
     length_max = 0
     length_curr = 0
     fasta_files = []
 
-    for fasta_name in os.listdir(fasta_directory):
+    #find FASTA files in the directory
+    for fasta_file in os.listdir(dir_path):
 
-        fasta_file = fasta_directory + '/' + fasta_name
+        fasta_file = dir_path + '/' + file_path
 
         if os.path.isfile(fasta_file):
 
             try:
                 filesnpaths.is_file_fasta_formatted(fasta_file)
 
-                fasta_files += [fasta_name]
+                fasta_files += [file_path]
 
                 frequency, length_curr = letterFrequency(fasta_file, '>')
 
                 if frequency == 1:
-                    fasta_main = fasta_file if length_curr > length_max else fasta_main
+                    reference_fasta = fasta_file if length_curr > length_max else reference_fasta
                     length_max = length_curr if length_curr > length_max else length_max
 
             except FilesNPathsError:
-                run.info_single(f"Skipping {fasta_name} not formatted as fasta.")
+                run.info_single(f"Skipping {file_path} not formatted as fasta.")
 
         else:
-            run.info_single(f"Skipping {fasta_name} not a file.")
+            run.info_single(f"Skipping {file_path} not a file.")
 
-    if not fasta_main:
+    if not reference_fasta:
         raise ConfigError(f"Unfortunately no fasta file in your folder is a complete genome.")
 
-    for fasta_name in fasta_files:
+    for file_path in fasta_files:
 
-        fasta_file = fasta_directory + '/' + fasta_name
-        blast_result_file = fasta_directory + '/' + fasta_name.split('.')[0] + '_blast'
+        fasta_file = dir_path + '/' + file_path
+        blast_result_file = dir_path + '/' + file_path.split('.')[0] + '_blast'
 
-        if fasta_file != fasta_main:
+        if fasta_file != reference_fasta:
 
-            pass_arg=["blastn", "-query", fasta_main, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
+            pass_arg=["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
             blast_result_txt = subprocess.run(pass_arg, text=True, capture_output=True)
             qresult = SearchIO.read(blast_result_file, 'blast-xml')
             fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
