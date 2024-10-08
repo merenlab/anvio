@@ -1401,11 +1401,13 @@ class Pangraph():
                 self.run.info_single(f"Loaded genome {genome}.")
 
             else:
-
                 self.run.info_single(f"Skipped genome {genome}.")
 
         if not self.genomes:
             raise ConfigError(f"Please keep at least one genome in the dataset. With the current setting you skip over all.")
+        else:
+            if not self.genomes_names:
+                self.genomes_names = self.genomes
 
         self.run.info_single("Done")
 
