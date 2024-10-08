@@ -21,11 +21,13 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['ahenoch']
+__authors__ = ['ahenoch', 'meren']
 __requires__ = []
 __provides__ = []
 __description__ = "Reorient contigs based on the longest complete genome presend in the given folder"
 
+
+progress = terminal.Progress()
 run = terminal.Run()
 P = terminal.pluralize
 
@@ -90,8 +92,8 @@ def main(args):
             pass
 
     run.info("Method to select reference", "Minimum number of contigs" if prioritize_number_of_contigs else "Maximum length", nl_before=1)
-    stat = P('nt', genome_properties[reference_fasta]['length']) if prioritize_genome_size else P('contig', genome_properties[reference_fasta]['num_contigs'])
-    run.info("Reference FASTA", f"{reference_fasta} ({stat})", nl_after=1)
+    addtl_info = P('nt', genome_properties[reference_fasta]['length']) if prioritize_genome_size else P('contig', genome_properties[reference_fasta]['num_contigs'])
+    run.info("Reference FASTA", f"{reference_fasta} ({addtl_info})", nl_after=1)
 
     if genome_properties[reference_fasta]['num_contigs'] != 1:
         if prioritize_genome_size:
@@ -107,20 +109,22 @@ def main(args):
             pass
 
 
-    for file_path in input_fasta_files:
-        blast_result_file = '.'.join(file_path.split('.')[:-1]) + '_blast'
+    progress.new("BLAST")
+    for fasta_file in input_fasta_files:
+        blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
 
         if fasta_file != reference_fasta:
+            # run BLAST
+            progress.update(f"Running {os.path.basename(fasta_file)} against the reference ...")
+            cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
+            subprocess.run(cmd_line, text=True, capture_output=True)
 
-            pass_arg=["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
-            blast_result_txt = subprocess.run(pass_arg, text=True, capture_output=True)
+            progress.update(f"Parsing {os.path.basename(fasta_file)} hits ...")
             qresult = SearchIO.read(blast_result_file, 'blast-xml')
             fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
 
             with open(fasta_file, "w+") as output_handle:
-
                 for contig in qresult:
-
                     original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
 
                     original_record_sequence = original_record.seq
@@ -134,21 +138,16 @@ def main(args):
                     elif reoriented_record_hit in reversed_record_sequence:
                         reoriented_record_sequence = reversed_record_sequence
                     else:
-                        run.info_single(f"This case is not yet implemented.")
+                        pass
 
                     if reoriented_record_sequence:
-
-                        reoriented_record = SeqRecord(
-                            reoriented_record_sequence,
-                            id=original_record.id,
-                            name=original_record.name,
-                            description=original_record.description,
-                        )
-
+                        reoriented_record = SeqRecord(reoriented_record_sequence, id=original_record.id, name=original_record.name, description=original_record.description)
                         SeqIO.write(reoriented_record, output_handle, "fasta")
-
                     else:
+                        progress.reset()
                         run.info_single(f"No output possible, the FASTA files do not align :(")
+
+    progress.end()
 
 
 if __name__ == '__main__':
