@@ -265,25 +265,32 @@ function getParameterByName(name, url) {
 function renderMarkdown(content) {
     var renderer = new marked.Renderer();
 
-    renderer.link = function( href, title, text ) {
+    renderer.link = function (hrefObj, title, text) {
+        var href = typeof hrefObj === 'string' ? hrefObj : hrefObj.href;
+
+        if (typeof href !== 'string') {
+            console.error('Expected href to be a string, got:', hrefObj);
+            return `<a href="#">${text}</a>`;
+        }
+
         if (href.startsWith('item://')) {
             var item_name = href.split('//')[1];
-
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
                 <span href="#" onclick="bins.HighlightItems(\'' + item_name + '\');">HIGHLIGHT</span>';
 
-            if (mode == 'full' | mode == 'pan') {
-                var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
+            if (mode === 'full' || mode === 'pan') {
+                var target = (mode === 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
                 html += ' | <span href="#" onclick="context_menu_target_id = label_to_node_map[\'' + item_name + '\'].id; \
                                                  menu_callback(\'' + target + '\');">INSPECT</span>';
             }
 
             return html + '</span></a>';
         }
-        return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
-    }
 
-    return marked(content, { renderer:renderer });
+        return `<a target="_blank" href="${href}" title="${title}">${text}</a>`;
+    };
+
+    return marked.parse(content, { renderer: renderer });
 }
 
 //--------------------------------------------------------------------------------------------------
