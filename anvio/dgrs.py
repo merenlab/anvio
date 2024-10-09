@@ -2442,95 +2442,84 @@ class DGR_Finder:
                     # Append transformed TR genes to the summary
                     self.summary['dgrs'][dgr_id]['tr_genes'][gene_id] = gene
 
-                    for vr_key, vr_data in dgr_data.get('VRs', {}).items():
-                        vr_id = vr_key
-                        self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = self.summary['dgrs'][dgr_id]['dgr_data'].get('VRs', {})
+                for vr_key, vr_data in dgr_data.get('VRs', {}).items():
+                    vr_id = vr_key
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = self.summary['dgrs'][dgr_id]['dgr_data'].get('VRs', {})
 
-                        # Extract VR genes (string keys like 'VR_001')
-                        vr_genes = {}
+                    # Extract VR genes (string keys like 'VR_001')
+                    vr_genes = self.genomic_context_surrounding_dgrs.get(dgr_id, {})[vr_key]
 
-                        for key, value in self.genomic_context_surrounding_dgrs.get(dgr_id, {}).items():
-                            if isinstance(key, str) and key.startswith('VR_'):
-                                vr_genes[key] = value  # Keep the key ('VR_001', 'VR_002') and its associated value
+                    # Calculate genomic context for VR genes
+                    genomic_context_start_vr = min(
+                        vr_genes[gene]['start']
+                        for gene in vr_genes
+                    ) - 100
 
-                        for vr_id in vr_genes:
-                            # Calculate genomic context for VR genes
-                            genomic_context_start_vr = min(
-                                gene_info['start']
-                                for vr in vr_genes.values()
-                                for gene_info in vr.values()
-                            ) - 100
+                    genomic_context_end_vr = max(
+                        vr_genes[gene]['stop']
+                        for gene in vr_genes
+                    ) + 100
 
-                            genomic_context_end_vr = max(
-                                gene_info['stop']
-                                for vr in vr_genes.values()
-                                for gene_info in vr.values()
-                            ) + 100
+                    #transform coordinates for VR data
+                    vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                    vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
 
-                        print("Genomic Context Start:", genomic_context_start_vr)
-                        print("Genomic Context End:", genomic_context_end_vr)
+                    # store transformed VR info
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
 
-                        #transform coordinates for VR data
-                        vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                        vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                    for gene in vr_genes.values():
+                        gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                        gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
 
-                        # store transformed VR info
-                        self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
-                        self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
-                        self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
+                        if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
+                            # if we are here, it means the transformed length of the gene is already
+                            # shorter than the space we assign for the arrow to display gene calls.
+                            # this means we will only will be able to show an arrow, but even in that
+                            # case the `gene_arrow_width` may be too long to display (i.e., if the
+                            # transformed gene length is 10 and arrow is 15, we are already showing
+                            # too much). The solution is to make the gene nothing more but the arrow
+                            # but make the arrow width equal to the gene width
+                            gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
+                            gene['stop_vr_g'] = gene['start_vr_g']
+                            gene['VRW'] = 0
+                        else:
+                            gene_arrow_width = default_gene_arrow_width
+                            gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
-                        for vr in vr_genes.values():  # Iterate over VR dictionaries
-                            for gene in vr.values():
-                                gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
-                                gene['stop_vr_g'] = (gene['stop'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
+                        if 'functions' in gene.keys():
+                            gene['has_functions'] = True
+                            gene['COLOR'] = '#008000'
+                        else:
+                            gene['has_functions'] = False
+                            gene['COLOR'] = '#c3c3c3'
 
-                                if (gene['stop_vr_g'] - gene['start_vr_g']) < default_gene_arrow_width:
-                                    # if we are here, it means the transformed length of the gene is already
-                                    # shorter than the space we assign for the arrow to display gene calls.
-                                    # this means we will only will be able to show an arrow, but even in that
-                                    # case the `gene_arrow_width` may be too long to display (i.e., if the
-                                    # transformed gene length is 10 and arrow is 15, we are already showing
-                                    # too much). The solution is to make the gene nothing more but the arrow
-                                    # but make the arrow width equal to the gene width
-                                    gene_arrow_width = gene['stop_vr_g'] - gene['start_vr_g']
-                                    gene['stop_vr_g'] = gene['start_vr_g']
-                                    gene['VRW'] = 0
-                                else:
-                                    gene_arrow_width = default_gene_arrow_width
-                                    gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
+                        # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
+                        if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
+                            gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
 
-                                if 'functions' in gene.keys():
-                                    gene['has_functions'] = True
-                                    gene['COLOR'] = '#008000'
-                                else:
-                                    gene['has_functions'] = False
-                                    gene['COLOR'] = '#c3c3c3'
+                        gene['VRX'] = gene['start_vr_g']
+                        gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
+                        gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
+                        gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
+                        gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
-                                # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
-                                if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
-                                    gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+                    # Append transformed VR genes to the summary
+                    self.summary['dgrs'][dgr_id]['vr_genes'][vr_id] = gene
 
-                                gene['VRX'] = gene['start_vr_g']
-                                gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
-                                gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
-                                gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
-                                gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                    # and finally we will store this hot mess in our dictionary
+                    self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
 
-                            # Append transformed VR genes to the summary
-                            self.summary['dgrs'][dgr_id]['vr_genes'][vr_id] = gene
-
-                            # and finally we will store this hot mess in our dictionary
-                            self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
-                            self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
-
-                        # also we need the path to the output files
-                        # Store output file paths for DGRs and VRs
-                        self.summary['files'][dgr_id] = {
-                            'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
-                            'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt'),
-                            'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
-                            'vr_functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
-                        }
+                    # also we need the path to the output files
+                    # Store output file paths for DGRs and VRs
+                    self.summary['files'][dgr_id] = {
+                        'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
+                        'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt'),
+                        'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
+                        'vr_functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
+                    }
 
         # Ensure the destination directory does not exist before generating the summary HTML
         destination_dir = 'summary_html_output'
@@ -2539,7 +2528,7 @@ class DGR_Finder:
 
         summary_html_output = SummaryHTMLOutput(self.summary)
         summary_html_output.generate('summary_html_output')
-        print(vr_genes)
+
         return
 
     def parameter_output_sheet(self):
