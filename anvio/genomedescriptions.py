@@ -278,7 +278,7 @@ class GenomeDescriptions(object):
                              "anvi'o found genomes with identical hashes (which means they were practically "
                              "identical to each other). But since you have instructed anvi'o to ignore that "
                              "it is now continuing with the flow (even though %d hashes for your internal "
-                             "genomes and %d) hashes for your external gneomes appeared more than once). "
+                             "genomes and %d) hashes for your external genomes appeared more than once). "
                              "See below the genome names with identical hashes:" \
                                      % (len(self.internal_genomes_with_identical_hashes),
                                         len(self.external_genomes_with_identical_hashes)),
