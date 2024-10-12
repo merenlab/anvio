@@ -277,11 +277,12 @@ class GenomeDescriptions(object):
             self.run.warning("While processing internal and/or external genomes files you have provided, "
                              "anvi'o found genomes with identical hashes (which means they were practically "
                              "identical to each other). But since you have instructed anvi'o to ignore that "
-                             "it is now continuing with the flow (even %d hashes for your internal genomes and %d) "
-                             "hashes for your external gneomes appeared more than once). See below the genome names "
-                             "with identical hashes:" % (len(self.internal_genomes_with_identical_hashes),
-                                                         len(self.external_genomes_with_identical_hashes)),
-                                                         overwrite_verbose=True)
+                             "it is now continuing with the flow (even though %d hashes for your internal "
+                             "genomes and %d) hashes for your external gneomes appeared more than once). "
+                             "See below the genome names with identical hashes:" \
+                                     % (len(self.internal_genomes_with_identical_hashes),
+                                        len(self.external_genomes_with_identical_hashes)),
+                                        overwrite_verbose=True)
 
             for _t, _d in [('Internal', self.internal_genomes_with_identical_hashes), ('External', self.external_genomes_with_identical_hashes)]:
                 all_genome_hashes = list(_d.keys())
@@ -308,7 +309,7 @@ class GenomeDescriptions(object):
             # init all the bulky stuff, we still can give them the contents of the meta tables.
             self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
             self.progress.update('...')
-            
+
             for genome_name in self.genomes:
                 self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
