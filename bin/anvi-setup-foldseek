@@ -22,7 +22,7 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    parser.add_argument(*anvio.A('weight-dir'), **anvio.K('weight-dir'))
+    parser.add_argument(*anvio.A('foldseek-weight-dir'), **anvio.K('foldseek-weight-dir'))
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
 
     args = parser.get_args(parser)
