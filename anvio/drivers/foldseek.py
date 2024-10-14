@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 # coding: utf-8
 """ Foldseek to Pangenome"""
 
 import os
+import argparse
 import pandas as pd
 import tempfile
 

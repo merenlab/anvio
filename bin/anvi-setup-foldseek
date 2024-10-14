@@ -1,5 +1,5 @@
-# coding: utf-8
-
+#!/usr/bin/env python
+# -*- coding: utf-8
 
 import sys
 import anvio
@@ -14,8 +14,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Metehan Sever"
 __email__ = "metehaansever@gmail.com"
-__provides__ = ['foldseek--prostt5-weights']
+__provides__ = ['foldseek-prostt5-weights']
 __description__ = "Setup Foldseek PROSTT5 weights"
+__resources__ = [(" Documents of Foldseek ")]
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
