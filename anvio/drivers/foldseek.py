@@ -14,7 +14,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.constants as constants
 
 from anvio.errors import ConfigError
-from filesnpaths import AppendableFile
+from anvio.filesnpaths import AppendableFile
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -39,7 +39,7 @@ class Foldseek():
 
         self.query_fasta = query_fasta
         self.num_threads = num_threads
-        self.weight_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
+        self.weight_dir = A('foldseek-weight-dir', null) or constants.default_foldseek_weight_path
 
         filesnpaths.is_file_exists(self.weight_dir)
 
@@ -179,11 +179,11 @@ class Foldseek():
 
 class FoldseekSetupWeight:
     """A class to download and setup the weights of PROSTT5"""
-    def __init__(self, args=Args(), weight_dir=None, run=run, progress=progress):
+    def __init__(self, args, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
-        self.weight_dir = args.weight_dir
+        self.weight_dir = args.foldseek_weight_dir
 
         if self.weight_dir and args.reset:
             raise ConfigError("You are attempting to run Foldseek setup on a non-default data directory (%s) using the --reset flag. "
@@ -205,13 +205,15 @@ class FoldseekSetupWeight:
         if not args.reset and not anvio.DEBUG:
             self.is_weight_exists()
 
+        if not self.run.log_file_path:
+            self.run.log_file_path = os.path.join(self.weight_dir, 'foldseek-setup-log-file.txt')
 
+        filesnpaths.gen_output_directory(self.weight_dir, delete_if_exists=args.reset)
 
     def is_weight_exists(self):
         """Raise ConfigError if weight exists"""
 
-        # WE have readme file in that dir rn! you should delete that first
-        if (os.path.exists(self.weight_dir)):
+        if os.path.exists(self.weight_dir) and os.listdir(self.weight_dir):
             raise ConfigError("It seems you already have the Foldseek Weight downloaded in '%s', please "
                               "use --reset flag if you want to re-download it." % self.weight_dir)
 
@@ -224,12 +226,20 @@ class FoldseekSetupWeight:
     def download_foldseek_weight(self):
         """ Download the Weights of PROSTT5 models weight """ 
 
+        self.progress.new('FOLDSEEK')
+        self.progress.update('Downloading ...')
+
         cmd_line = [
             'foldseek',
             'databases',
-            'PROSTT5',
+            'ProstT5',
             self.weight_dir,
-            'tmp'
+            os.path.join(self.weight_dir, 'tmp')
         ]
 
         utils.run_command(cmd_line, self.run.log_file_path)
+
+        self.progress.end()
+
+        self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('Log file', self.run.log_file_path)
