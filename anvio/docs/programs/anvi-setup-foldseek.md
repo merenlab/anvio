@@ -5,8 +5,6 @@ By executing this command, the necessary ProstT5 model weights will be downloade
 
 Setting up the Foldseek ProstT5 model is simple:
 
-It's easy as 1-2-3:
-
 {{ codestart }}
 anvi-setup-foldseek
 {{ codestop }}
