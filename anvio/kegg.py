@@ -639,7 +639,7 @@ class KeggSetup(KeggContext):
             self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
             available_snapshots = sorted(list(self.snapshot_dict.keys()))
             for snapshot_name in available_snapshots:
-                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+                self.run.info_single(f"{snapshot_name}\thash: {self.snapshot_dict[snapshot_name]['hash']}" + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
 
             raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
                                 "this time pick from the list shown above.")
