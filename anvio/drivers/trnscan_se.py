@@ -31,7 +31,7 @@ class tRNAScanSE:
     def __init__(self, args, program_name='tRNAscan-SE', run=None, progress=None, skip_sanity_check=False):
         self.program_name = program_name
 
-        self.tested_versions = ['2.0.5', '2.0.7', '2.0.9']
+        self.tested_versions = ['2.0.5', '2.0.7', '2.0.9', '2.0.12']
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
