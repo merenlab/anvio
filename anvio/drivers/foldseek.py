@@ -8,11 +8,14 @@ import pandas as pd
 import tempfile
 
 import anvio
+import anvio.fastalib as f
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.constants as constants
 
+from collections import defaultdict
+from anvio.drivers.mcl import MCL
 from anvio.errors import ConfigError
 from anvio.filesnpaths import AppendableFile
 
@@ -176,6 +179,70 @@ class Foldseek():
         except Exception as e:
             print(f"Error reading self bit scores: {e}")
         return self_bit_scores
+
+    def mcl_network(self, processed_result):
+        """ Turn to Search Results to Network with MCL"""
+
+        # Convert M8 to ABC format
+        abc_file = os.path.join(self.output_file_path, 'mcl_input.abc')
+        self.convert_m8_to_abc(processed_result, abc_file)
+
+        # Create an instance of MCL
+        mcl_instance = MCL(mcl_input_file_path=abc_file, num_threads=self.num_threads)
+
+        # Set the inflation parameter (MCL-specific)
+        mcl_instance.inflation = 2
+
+        # Run the clustering algorithm
+        clusters_dict = mcl_instance.get_clusters_dict(name_prefix='Cluster')
+
+        output_clusters_file = os.path.join(self.output_file_path, 'clusters.txt')
+        tsv_output_file = os.path.join(self.output_file_path, 'clusters_output.tsv')
+
+        # Output clusters to a text file
+        with open(output_clusters_file, 'w') as outfile:
+            for cluster_name, members in clusters_dict.items():
+                outfile.write(f"{cluster_name}\t{','.join(members)}\n")
+
+        print(f"Clusters have been written to {output_clusters_file}")
+
+        # Create a set of all unique identifiers
+        unique_identifiers = set()
+        for members in clusters_dict.values():
+            for member in members:
+                unique_identifiers.add(self.extract_unique_identifier(member))
+
+        # Create a DataFrame for the clusters
+        cluster_data = defaultdict(lambda: {uid: 0 for uid in unique_identifiers})
+
+        for cluster_name, members in clusters_dict.items():
+            for member in members:
+                uid = self.extract_unique_identifier(member)
+                cluster_data[cluster_name][uid] += 1
+
+        # Convert to DataFrame
+        cluster_df = pd.DataFrame(cluster_data).T.reset_index().rename(columns={"index": "Cluster"})
+
+        # Reorder columns
+        columns = ["Cluster"] + sorted(unique_identifiers)
+        cluster_df = cluster_df[columns]
+
+        # Write to TSV (TAB-delimited) file
+        cluster_df.to_csv(tsv_output_file, sep='\t', index=False)
+        print(f"Clusters have been written to {tsv_output_file}")
+
+    def convert_m8_to_abc(self, m8_file, abc_file):
+        with open(m8_file, 'r') as infile, open(abc_file, 'w') as outfile:
+            next(infile)  # Skip header
+            for line in infile:
+                fields = line.strip().split('\t')
+                query = fields[0]
+                target = fields[1]
+                bit_score = fields[2]
+                outfile.write(f"{query}\t{target}\t{bit_score}\n")
+
+    def extract_unique_identifier(self, member):
+        return member.split('_')[0]
 
 
 class FoldseekSetupWeight:
