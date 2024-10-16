@@ -191,6 +191,7 @@ class Foldseek():
         mcl_instance = MCL(mcl_input_file_path=abc_file, num_threads=self.num_threads)
 
         # Set the inflation parameter (MCL-specific)
+        # FIXME default value should be 2 and should be taken parametrically from the user 
         mcl_instance.inflation = 2
 
         # Run the clustering algorithm
@@ -200,6 +201,7 @@ class Foldseek():
         tsv_output_file = os.path.join(self.output_file_path, 'clusters_output.tsv')
 
         # Output clusters to a text file
+        # FIXME Use here AppendableFile to control open/write operation 
         with open(output_clusters_file, 'w') as outfile:
             for cluster_name, members in clusters_dict.items():
                 outfile.write(f"{cluster_name}\t{','.join(members)}\n")
