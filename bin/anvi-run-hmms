@@ -37,12 +37,6 @@ P = terminal.pluralize
 
 @time_program
 def main(args):
-    # first check whether this computer is capable of doing an HMM search.
-    missing_programs =  utils.get_missing_programs_for_hmm_analysis()
-    if missing_programs:
-        raise ConfigError("Well, in order to run this program, you need %s to be installed on your system." %\
-                                                                                     (', and '.join(missing_programs)))
-
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir and args.installed_hmm_profile:
