@@ -35,11 +35,16 @@ pp = terminal.pretty_print
 
 class StructurePan(object):
     
-    def __init__(self, run=run, progress=progress, num_threads=1, output_file_path=None, result=None):
+    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, output_file_path=None, result=None):
         self.run = run
         self.progress = progress
 
         utils.is_program_exists('foldseek')
+
+        if not query_fasta:
+            raise ConfigError("Oopss. Something probably went wrong with your query fasta file path's '%s'" % (query_fasta))
+
+        self.query_fasta = query_fasta
 
         if not result:
             raise ConfigError("Oopss. Something probably went wrong with your result file path's '%s'" % (result))
@@ -51,7 +56,7 @@ class StructurePan(object):
         if output_file_path and filesnpaths.check_output_directory(output_file_path):
             self.output_file_path = output_file_path.rstrip('/')
         else:
-            raise ConfigError("Oopss. Something probably went wrong with your output file path's '%s'" % (output_file_path))
+            raise ConfigError("You must provide a output directory path '%s'" % (output_file_path))
 
         if not self.run.log_file_path:
             self.run.log_file_path = 'structurepan-log-file.txt'
@@ -59,6 +64,7 @@ class StructurePan(object):
         
     def process_result(self, result):
         self.run.warning(None, header="FOLDSEEK PROCESS RESULT", lc="green")
+        # FIXME  Progress.new() can't be called before ending the previous one
         self.progress.new('FOLDSEEK')
         self.progress.update('Processing Foldseek result...')
 
