@@ -46,14 +46,14 @@ class StructurePan(object):
 
         self.query_fasta = query_fasta
 
-        if not result:
+        if result and filesnpaths.is_file_exists(result):
+            self.result = result
+        else:
             raise ConfigError("Oopss. Something probably went wrong with your result file path's '%s'" % (result))
-
-        self.result_dir = result
 
         self.num_threads = num_threads
 
-        if output_file_path and filesnpaths.check_output_directory(output_file_path):
+        if output_file_path:
             self.output_file_path = output_file_path.rstrip('/')
         else:
             raise ConfigError("You must provide a output directory path '%s'" % (output_file_path))
@@ -62,13 +62,12 @@ class StructurePan(object):
             self.run.log_file_path = 'structurepan-log-file.txt'
 
         
-    def process_result(self, result):
+    def process_result(self):
         self.run.warning(None, header="FOLDSEEK PROCESS RESULT", lc="green")
-        # FIXME  Progress.new() can't be called before ending the previous one
-        self.progress.new('FOLDSEEK')
+        self.progress.new('FOLDSEEK PROCESS RESULT')
         self.progress.update('Processing Foldseek result...')
 
-        m8_file = os.path.join(self.output_file_path, 'result')
+        m8_file = os.path.join(self.output_file_path, self.result)
         fasta_file = self.query_fasta
         output_file = os.path.join(self.output_file_path, 'processed_output.m8')
 
@@ -140,6 +139,10 @@ class StructurePan(object):
     def mcl_network(self, processed_result):
         """ Turn to Search Results to Network with MCL"""
 
+        self.run.warning(None, header="FOLDSEEK MCL NETWORK", lc="green")
+        self.progress.new('FOLDSEEK MCL NETWORK')
+        self.progress.update('Processing Foldseek mcl network...')
+
         # Convert M8 to ABC format
         abc_file = os.path.join(self.output_file_path, 'mcl_input.abc')
         self.convert_m8_to_abc(processed_result, abc_file)
@@ -189,6 +192,9 @@ class StructurePan(object):
         # Write to TSV (TAB-delimited) file
         cluster_df.to_csv(tsv_output_file, sep='\t', index=False)
         print(f"Clusters have been written to {tsv_output_file}")
+
+        self.progress.end()
+        self.run.info('MCL Network', tsv_output_file)
 
     def convert_m8_to_abc(self, m8_file, abc_file):
         with open(m8_file, 'r') as infile, open(abc_file, 'w') as outfile:
