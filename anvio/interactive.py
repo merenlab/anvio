@@ -3187,6 +3187,9 @@ class AdHocRunGenerator:
 
 
     def populate_additional_data(self, profile_db_path):
+        if not self.additional_view_data:
+            return
+
         table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=profile_db_path))
         table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
 
