@@ -3666,7 +3666,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
-                                        ignore_duplicated_keys=False):
+                                        ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
 
        - If `return_failed_lines` is True, it the function will not throw an exception, but instead
@@ -3786,6 +3786,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = 'line__%09d__' % line_counter
         else:
             entry_name = line_fields[indexing_field]
+
+            if key_prefix:
+                entry_name = key_prefix + entry_name
 
         if entry_name in d and not ignore_duplicated_keys:
             raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. There may be more "
