@@ -3143,7 +3143,7 @@ class AdHocRunGenerator:
                                "path, or use the bool member 'delete_output_directory_if_exists' to overwrite "
                                "any existing directory.")
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists, dont_warn=True)
 
 
     def get_output_file_path(self, file_name):
