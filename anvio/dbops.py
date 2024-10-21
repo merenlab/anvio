@@ -1131,18 +1131,18 @@ class ContigsSuperclass(object):
         #
         ##################################################################################################
         # available options to determine deflines through user-provided f-strings. the dictionary is
-        # populated below, and if you make any changes here, please don't forget to update it there too: 
+        # populated below, and if you make any changes here, please don't forget to update it there too:
         defline_data_dict = {'gene_caller_id': None,
                              'contig_name': None,
                              'start': None,
                              'stop': None,
                              'direction': None,
                              'length': None,
-                             'contigs_db_project_name': None} 
+                             'contigs_db_project_name': None}
 
         # if the user needs to see the list, show the list and quit
         if list_defline_variables:
-            self.run.warning(f"Here are the variables you can use to provide a user-defined defline template: ")
+            self.run.warning("Here are the variables you can use to provide a user-defined defline template: ")
             for key in defline_data_dict.keys():
                 self.run.info_single("{%s}" % key)
             self.run.info_single("Remember, by default, anvi'o will only use '{gene_caller_id}' to format the deflines of "
