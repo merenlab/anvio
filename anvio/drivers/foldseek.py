@@ -34,7 +34,7 @@ pp = terminal.pretty_print
 
 class Foldseek():
     
-    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, output_file_path=None):
+    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, output_file_path=None, weight_dir=None):
         self.run = run
         self.progress = progress
 
@@ -42,8 +42,7 @@ class Foldseek():
 
         self.query_fasta = query_fasta
         self.num_threads = num_threads
-        # FIXME we should get args in here to get weights in user defined dir
-        self.weight_dir = constants.default_foldseek_weight_path
+        self.weight_dir = weight_dir or constants.default_foldseek_weight_path
 
         filesnpaths.is_file_exists(self.weight_dir)
 
