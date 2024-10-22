@@ -21,6 +21,7 @@ import getpass
 import argparse
 import datetime
 import importlib
+import networkx as nx
 
 from hashlib import md5
 from ete3 import Tree
@@ -38,6 +39,7 @@ import multiprocess as multiprocessing
 
 import anvio
 import anvio.dbops as dbops
+import anvio.panops as panops
 import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal
@@ -197,7 +199,12 @@ class BottleApplication(Bottle):
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
-
+        self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
+        self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
+        self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
+        self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
+        self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
+        self.route('/pangraph/filter',                         callback=self.get_pangraph_passed_gene_clusters, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -266,6 +273,8 @@ class BottleApplication(Bottle):
             homepage = 'structure.html'
         elif self.interactive.mode == 'metabolism':
             homepage = 'metabolism.html'
+        elif self.interactive.mode == 'pangraph':
+            homepage = 'pangraph.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
@@ -1069,7 +1078,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-        
+
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
@@ -1534,7 +1543,7 @@ class BottleApplication(Bottle):
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
+
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
@@ -1552,3 +1561,132 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
             
         return json.dumps({'scale_bar_value': total_branch_length})
+
+    def get_pangraph_json_data(self):
+
+        return self.interactive.get_pangraph_json()
+    
+
+    def get_pangraph_bin_summary(self):
+
+        payload = request.json
+        selection = payload['selection']
+        result = {}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        bin_functions = {}
+        all_functions = []
+
+        for bin in list(payload.keys())[1:]:
+            
+            bin_functions[bin] = []
+            gene_cluster_list = payload[bin]
+            for gene_cluster_name in gene_cluster_list:
+                function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
+                
+                bin_functions[bin].append(function)
+                all_functions.append(function)
+                
+        for function in all_functions:
+            result[function] = {}
+            for bin in bin_functions.keys():
+                if function in bin_functions[bin]:
+                    result[function][bin] = 1
+                else:
+                    result[function][bin] = 0
+
+        return json.dumps(result)
+
+    def get_pangraph_settings(self):
+
+        payload = request.json
+        max_edge_length_filter = payload['maxlength']
+        gene_cluster_grouping_threshold = payload['condtr']
+        groupcompress = payload['groupcompress']
+        ungrouping_area = payload['ungroup']
+        print(ungrouping_area)
+
+        args = argparse.Namespace(
+            pan_graph_json=self.interactive.pan_graph_json_path,
+            output_pan_graph_json=self.interactive.pan_graph_json_path,
+            max_edge_length_filter=max_edge_length_filter,
+            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
+            gene_cluster_grouping_compression=groupcompress,
+            ungrouping_area = ungrouping_area
+            )
+
+        Pangraph = panops.Pangraph(args)
+
+        Pangraph.load_graph_from_json_file()
+        Pangraph.run_synteny_layout_algorithm()
+        Pangraph.update_json_dict()
+        Pangraph.store_network()
+
+        return({'status': 0})
+
+    def get_pangraph_gc_alignment(self):
+
+        payload = request.json
+        result = {}
+
+        for genome in payload.keys():
+            genecall, contig, direction, name = payload[genome]
+            gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
+            sequence = gene_cluster_alignment_dict[genome][int(genecall)]
+
+            result[genome] = [genecall, contig, direction, sequence]
+
+        return(result)
+    
+    def get_pangraph_gc_function(self):
+
+        payload = request.json
+        result = {}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        gene_cluster_name = payload['genecluster']
+
+        for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
+            result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
+        return json.dumps(result)
+    
+    def get_pangraph_passed_gene_clusters(self):
+
+        payload = request.json
+        result = {'gene_clusters': []}
+
+        self.interactive.init_gene_clusters()
+        self.interactive.init_gene_clusters_functions_summary_dict()
+
+        functions_dict = self.interactive.gene_clusters_functions_summary_dict
+
+        for gene_cluster in functions_dict.keys():
+            for selection in payload.keys():
+                if selection in functions_dict[gene_cluster].keys():
+                    for search in payload[selection]:
+                        value = functions_dict[gene_cluster][selection]
+
+                        accession = value['accession']
+                        func = value['function']
+
+                        if not accession or not func:
+                            accession = ''
+                            func = ''
+
+                        if search == '':
+
+                            print(search, accession, func)
+                            if search == accession or search == func:
+                                if gene_cluster not in result['gene_clusters']:
+                                    result['gene_clusters'] += [gene_cluster]
+
+                        else:
+                            if search.lower() in accession.lower() or search.lower() in func.lower():
+                                if gene_cluster not in result['gene_clusters']:
+                                    result['gene_clusters'] += [gene_cluster]
+
+        return json.dumps(result)
