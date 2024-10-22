@@ -35,30 +35,24 @@ pp = terminal.pretty_print
 
 class StructurePan(object):
     
-    def __init__(self, args, query_fasta=None, run=run, progress=progress, num_threads=1, output_file_path=None, result=None):
+    def __init__(self, args, query_fasta=None, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
 
-        utils.is_program_exists('foldseek')
+        # FIXME Should I use Contigs to get fasta or should we use anvi-script-reformat-fasta and give fasta?
 
-        # FIXME Fix rest of the code base on args
-
-        self.makedb = A('makedb', null)
         self.foldseek_weight_dir = A('foldseek_weight_dir', null) or constants.default_foldseek_weight_path
+        self.contig_db_path = A('contig_db_path', null)
+        self.tmp_dir = A('tmp_dir', null)
+        self.output_dir = A('output_dir', null)
+        self.num_threads = A('num_threads', null)
+        self.just_do_it = A('just_do_it', null)
 
-        self.easy_search = A('easy-search', null)
-        self.query_db = A('query-db', null)
-        self.comparison_db = A('comparison-db', null)
-        self.tmp_dir = A('tmp-dir', null)
-
-        self.result = A('result', null)
-        self.output_dir = A('output-dir', null)
-        self.num_threads = A('num-threads', null)
-        self.just_do_it = A('just-do-it', null)
-
+        utils.is_program_exists('foldseek')
+        utils.is_contigs_db(self.contigs_db_path)
 
         # FIXME Update here with CONTIGSDB
         if not query_fasta:
@@ -71,8 +65,6 @@ class StructurePan(object):
         else:
             raise ConfigError("Oopss. Something probably went wrong with your result file path's '%s'" % (result))
 
-        self.num_threads = num_threads
-
         if output_file_path:
             self.output_file_path = output_file_path.rstrip('/')
         else:
@@ -81,16 +73,9 @@ class StructurePan(object):
         if not self.run.log_file_path:
             self.run.log_file_path = 'structurepan-log-file.txt'
 
-        # Burada Foldseek driver i init etmemiz lazim. Contig db baglantisini yapip fasta + gene_caller_id ile birlestirecegiz `anvi-script-reformat-fasta` gibi calismali
-        # anvi-setup-foldseek'de verilen dir alacagiz
+        # INIT FOLDSEEK
+        self.fs = Foldseek(query_fasta=query_fasta, num_threads=self.num_threads, output_file_path=self.output_dir)
 
-        fs = Foldseek(query_fasta=query_fasta, num_threads=num_threads, output_file_path=output_file_path)
-
-    def make_db(self):
-        fs.create_db()
-
-    def easy_search(self):
-        s = Foldseek.search()
     
     def process_result(self):
         self.run.warning(None, header="FOLDSEEK PROCESS RESULT", lc="green")
@@ -238,8 +223,28 @@ class StructurePan(object):
     def extract_unique_identifier(self, member):
         return member.split('_')[0]
 
-    def process():
+    def process(self):
         """ Runs Foldseek """
+        try:
+            if self.contig_db_path:
+                # FIXME with real contig value
+                self.fs.create_db()
+
+            db_path = os.path.join(self.output_dir, 'db', 'search_db')
+
+            if  filesnpaths.is_file_exists(db_path):
+                self.fs.search(db_path, db_path, self.tmp_dir)
+
+            result_path = os.path.join(self.output_dir, 'result')
+
+            if filesnpaths.is_file_exists(result_path):
+                # FIXME instead of read/write keep result in parameter and give it here
+                self.process_result()
+                self.mcl_network()
+
+        except ConfigError as e:
+            print(e)
+
 
 class FoldseekSetupWeight:
     """A class to download and setup the weights of PROSTT5"""
