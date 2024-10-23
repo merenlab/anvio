@@ -293,7 +293,7 @@ if __name__ == '__main__':
              "acid in each gene or function.")
     groupD.add_argument(
         '--return-amino-acids', default=False, action='store_true',
-        help="Return frequencies of codons encoding the same amino acid.")
+        help="Return frequencies of the sets of codons encoding the same amino acid.")
     groupD.add_argument(
         '--encodings-txt',
         help="Changes to the standard genetic code can be provided in this tab-delimited file of "
