@@ -116,7 +116,7 @@ rule anvi_summarize:
     output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}_summarize.done"))
     threads: M.T('anvi_summarize')
     run: 
-        shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it;')
+        shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it >> {log} 2>&1')
         
 
 rule make_anvio_state_file:
@@ -327,13 +327,21 @@ rule anvi_import_everything_metagenome:
     run:
         state = os.path.join(dirs_dict['HOME'], f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
 
-        shell("anvi-import-state -p {params.profileDB} -s {state} -n default")
+        shell("echo -e 'Step 1: anvi-import-state:\n' >> {log}")
+        shell("anvi-import-state -p {params.profileDB} -s {state} -n default >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
-        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.hmm}_tree")
+        shell("echo -e 'Step 2: anvi-import-items-order:\n' >> {log}")
+        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.hmm}_tree >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
-        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")
+        shell("echo -e 'Step 3: anvi-import-misc-data:\n' >> {log}")
+        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
         
         if hmm_source in M.internal_hmm_sources:
-            shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
+            shell("echo -e 'Step 4: anvi-import-misc-data:\n' >> {log}")
+            shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")
+            shell("echo -e '' >> {log}")

@@ -29,7 +29,7 @@ __requires__ = ['contigs-db',
                 'internal-genomes',
                 'external-genomes']
 __provides__ = []
-__description__ = ("Get codon usage bias (CUB) statistics of genes and functions.")
+__description__ = ("Get codon usage bias (CUB) statistics of genes and functions")
 
 
 run = terminal.Run()

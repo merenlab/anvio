@@ -2145,23 +2145,15 @@ class ReactionNetwork:
             for reaction_id in subsetted_reaction_ids:
                 subnetwork_ko.reaction_ids.append(reaction_id)
 
-            for kegg_id, modelseed_reaction_ids in ko.kegg_reaction_aliases.items():
-                for reaction_id in modelseed_reaction_ids:
-                    if reaction_id not in subsetted_reaction_ids:
-                        continue
-                    try:
-                        subnetwork_ko.kegg_reaction_aliases[kegg_id].append(reaction_id)
-                    except KeyError:
-                        subnetwork_ko.kegg_reaction_aliases[kegg_id] = [reaction_id]
+            for modelseed_reaction_id, kegg_ids in ko.kegg_reaction_aliases.items():
+                if modelseed_reaction_id not in subsetted_reaction_ids:
+                    continue
+                subnetwork_ko.kegg_reaction_aliases[modelseed_reaction_id] = kegg_ids.copy()
 
-            for ec_number, modelseed_reaction_ids in ko.ec_number_aliases.items():
-                for reaction_id in modelseed_reaction_ids:
-                    if reaction_id not in subsetted_reaction_ids:
-                        continue
-                    try:
-                        subnetwork_ko.ec_number_aliases[ec_number].append(reaction_id)
-                    except KeyError:
-                        subnetwork_ko.ec_number_aliases[ec_number] = [reaction_id]
+            for modelseed_reaction_id, ec_numbers in ko.ec_number_aliases.items():
+                if modelseed_reaction_id not in subsetted_reaction_ids:
+                    continue
+                subnetwork_ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers.copy()
 
             subnetwork.kos[ko_id] = subnetwork_ko
 
@@ -2357,26 +2349,24 @@ class ReactionNetwork:
 
             merged_ko.reaction_ids = sorted(set(ko.reaction_ids + merged_ko.reaction_ids))
 
-            for kegg_reaction_id, modelseed_reaction_ids in merged_ko.kegg_reaction_aliases.items():
+            for modelseed_reaction_id, kegg_ids in ko.kegg_reaction_aliases.items():
                 try:
-                    merged_modelseed_reaction_ids = merged_ko.kegg_reaction_aliases[
-                        kegg_reaction_id
-                    ]
+                    merged_kegg_ids = merged_ko.kegg_reaction_aliases[modelseed_reaction_id]
                 except KeyError:
-                    merged_ko.kegg_reaction_aliases = modelseed_reaction_ids.copy()
+                    merged_ko.kegg_reaction_aliases[modelseed_reaction_id] = kegg_ids.copy()
                     continue
-                merged_ko.kegg_reaction_aliases[kegg_reaction_id] = sorted(
-                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                merged_ko.kegg_reaction_aliases[modelseed_reaction_id] = sorted(
+                    set(merged_kegg_ids + kegg_ids)
                 )
 
-            for ec_number, modelseed_reaction_ids in merged_ko.ec_number_aliases.items():
+            for modelseed_reaction_id, ec_numbers in ko.ec_number_aliases.items():
                 try:
-                    merged_modelseed_reaction_ids = merged_ko.ec_number_aliases[ec_number]
+                    merged_ec_numbers = merged_ko.ec_number_aliases[modelseed_reaction_id]
                 except KeyError:
-                    merged_ko.ec_number_aliases = modelseed_reaction_ids.copy()
+                    merged_ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers
                     continue
-                merged_ko.ec_number_aliases[ec_number] = sorted(
-                    set(merged_modelseed_reaction_ids + modelseed_reaction_ids)
+                merged_ko.ec_number_aliases[modelseed_reaction_id] = sorted(
+                    set(merged_ec_numbers + ec_numbers)
                 )
 
         # Copy modules from the second network. Modules from the two networks can contain different
@@ -6576,7 +6566,9 @@ class Constructor:
         ko_id_pattern = re.compile('K\d{5}')
         reaction_network_ko_ids: Set[str] = set([
             kegg_id for kegg_id in
-            set(cdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            set(cdb_db.get_single_column_from_table(
+                tables.reaction_network_kegg_table_name, 'kegg_id'
+            ))
             if re.fullmatch(ko_id_pattern, kegg_id)
         ])
         contigs_db_ko_ids = set(gene_ko_hits_table['accession'])
@@ -6885,7 +6877,9 @@ class Constructor:
         ko_id_pattern = re.compile('K\d{5}')
         reaction_network_ko_ids: List[str] = [
             kegg_id for kegg_id in
-            set(pdb_db.get_single_column_from_table('reaction_network_kegg', 'kegg_id'))
+            set(pdb_db.get_single_column_from_table(
+                tables.pan_reaction_network_kegg_table_name, 'kegg_id'
+            ))
             if re.fullmatch(ko_id_pattern, kegg_id)
         ]
 
@@ -10479,7 +10473,7 @@ class Tester:
 class FormulaMatcher:
     """
     Match chemical formulas to metabolites in a reaction network.
-    
+
     Attributes
     ==========
     network : ReactionNetwork
@@ -10494,17 +10488,17 @@ class FormulaMatcher:
             of the same name.
         """
         self.network = network
-        
+
     def match_metabolites(self, formula: str) -> List[ModelSEEDCompound]:
         """
         Match a formula written the standard way to metabolites in the network, returning a list of
         metabolites.
-        
+
         Parameters
         ==========
         formula : str
             Chemical formula written the standard way.
-            
+
         Returns
         =======
         List[ModelSEEDCompound]
@@ -10514,9 +10508,9 @@ class FormulaMatcher:
         for metabolite in self.network.metabolites.values():
             if formula == metabolite.formula:
                 metabolites.append(metabolite)
-                
+
         return metabolites
-    
+
     def match_metabolites_network(
         self,
         formula: str
@@ -10524,12 +10518,12 @@ class FormulaMatcher:
         """
         Match a formula written the standard way to metabolites in the network, returning a list of
         metabolites and the subsetted network containing those metabolites.
-        
+
         Parameters
         ==========
         formula : str
             Chemical formula written the standard way.
-            
+
         Returns
         =======
         Tuple[List[ModelSEEDCompound], ReactionNetwork]
@@ -10539,13 +10533,13 @@ class FormulaMatcher:
         metabolites = self.match_metabolites(formula)
         if not metabolites:
             return metabolites, None
-        
+
         subnetwork = self.network.subset_network(
             metabolites_to_subset=[metabolite.modelseed_id for metabolite in metabolites]
         )
-        
+
         return metabolites, subnetwork
-    
+
 def get_chemical_equation(
     reaction: ModelSEEDReaction,
     use_compound_names: Iterable[str] = None,
@@ -10553,21 +10547,21 @@ def get_chemical_equation(
 ) -> str:
     """
     Get a decent-looking chemical equation.
-    
+
     Parameters
     ==========
     reaction : ModelSEEDReaction
         The representation of the reaction with data sourced from ModelSEED Biochemistry.
-        
+
     use_compound_names : Iterable[str], None
         Rather than showing ModelSEED compound IDs in the equation, show ModelSEED compound names --
         except for compounds lacking a name, in which case ID is shown instead. Provide the compound
         names to be used in lieu of IDs, in the same order as the compound IDs in the reaction, and
         with entries of None for nameless compounds.
-        
+
     ignore_compartments : bool, False
         If True, do not show metabolite compartments in the equation.
-        
+
     Returns
     =======
     str
@@ -10597,7 +10591,7 @@ def get_chemical_equation(
                 equation += "<-> "
             else:
                 equation += "-> "
-                
+
         if leftside:
             coeff = -coefficient
         else:
@@ -10606,19 +10600,19 @@ def get_chemical_equation(
             equation += f"{coeff} {compound} + "
         else:
             equation += f"{coeff} {compound} [{compartment}] + "
-            
+
     return equation.rstrip('+ ')
 
 def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
     Convert a list of floats to a list of integers, with a list containing fractional numbers
     transformed to a list of lowest common integer multiples.
-    
+
     Parameters
     ==========
     floats : Iterable[float]
         Numbers to convert.
-        
+
     Returns
     =======
     List[int]
@@ -10626,8 +10620,8 @@ def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
     def lcm(a, b):
         return a * b // math.gcd(a, b)
-    
+
     rationals = [fractions.Fraction(f).limit_denominator() for f in floats]
     lcm_denom = functools.reduce(lcm, [r.denominator for r in rationals])
-    
+
     return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)

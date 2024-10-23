@@ -63,7 +63,7 @@ def check_default_kegg_database() -> None:
     except ConfigError:
         raise ConfigError(
             "The KEGG database is not set up by anvi'o in the default location, which can be "
-            "rectified by running the program, 'anvi-setup-kegg-data'."
+            "rectified by running the command, 'anvi-setup-kegg-data --kegg-snapshot v2024-08-30'."
         )
 
 def check_default_modelseed_database() -> None:

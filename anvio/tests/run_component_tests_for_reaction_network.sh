@@ -36,7 +36,7 @@ if [ "${use_default_modelseed_db}" == "True" ]
 then
     INFO "Using the ModelSEED Biochemistry database already set up by anvi'o in a default location"
 else
-    INFO "Setting up the ModelSEED Biochemistry database in a temporary directory"
+    INFO "Setting up the ModelSEED Biochemistry database in a temporary directory (a permanent ModelSEED database can be installed in the default location with 'anvi-setup-modelseed-database')"
     data_dir=`mktemp -d`
     anvi-setup-modelseed-database --dir ${data_dir}
     modelseed_data_dir=${data_dir}/MODELSEED
