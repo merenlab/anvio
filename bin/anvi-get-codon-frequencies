@@ -187,6 +187,7 @@ def main(args):
         g = AdHocRunGenerator(output_dir, data_dict, None, codons, linkage='ward')
         g.delete_output_directory_if_exists = True
         g.generate()
+        g.add_state('default', state_path=os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json'))
 
 
 def parse_select_functions_table(args, from_function_sources):
