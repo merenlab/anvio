@@ -4,7 +4,8 @@
 import sys
 
 import anvio
-from anvio.structurepan import sp
+import anvio.terminal as terminal
+import anvio.structurepan as span
 from anvio.argparse import ArgumentParser
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -26,7 +27,7 @@ progress = terminal.Progress()
 
 @time_program
 def main(args):
-    p = sp.StructurePan(args)
+    p = span.StructurePan(args)
     p.process()
 
 
