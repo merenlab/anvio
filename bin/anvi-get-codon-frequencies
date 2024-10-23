@@ -377,7 +377,9 @@ if __name__ == '__main__':
         '--exclude-amino-acids', nargs='+',
         help="Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
              "and STP for stop codons). If `--synonymous`, this argument defaults to \"STP Met "
-             "Trp\".")
+             "Trp\", and if other amino acids are excluded, for STP, Met, and Trp codons to still "
+             "be excluded from the output table, they must also be explicitly provided in the "
+             "argument.")
     groupF.add_argument(
         '--include-amino-acids', nargs='+',
         help="This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
