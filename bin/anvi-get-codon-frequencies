@@ -182,9 +182,10 @@ def main(args):
 
         data_dict = get_TAB_delimited_file_as_dictionary(args.output_file, key_prefix='g_')
 
-        codons = constants.coding_codons
+        codons_in_data_dict = next(iter(data_dict.values())).keys()
+        codons_to_display = [codon for codon in constants.coding_codons if codon in codons_in_data_dict]
 
-        g = AdHocRunGenerator(output_dir, data_dict, None, codons, linkage='ward')
+        g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward')
         g.delete_output_directory_if_exists = True
         g.generate()
         g.add_state('default', state_path=os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json'))
