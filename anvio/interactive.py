@@ -3191,6 +3191,9 @@ class AdHocRunGenerator:
 
 
     def add_state(self, state_name, state_json=None, state_path=None):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
         if state_json or state_path:
             t.states.TablesForStates(self.profile_db_path).store_state(state_name, state_json if state_json else open(state_path).read())
         else:
@@ -3200,6 +3203,9 @@ class AdHocRunGenerator:
     def populate_additional_data(self):
         if not self.additional_view_data:
             return
+
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
 
         table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
         table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
