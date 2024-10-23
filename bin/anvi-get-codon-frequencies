@@ -177,10 +177,44 @@ def main(args):
 
 
     if args.contigs_db:
+        import anvio.dbops as dbops
+        import anvio.tables as t
+        import anvio.utils as utils
+
         # determine the output directory
         output_dir = os.path.join(os.path.dirname(os.path.abspath(args.output_file)), DBInfo(args.contigs_db).project_name + '-codons-interactive')
 
         data_dict = get_TAB_delimited_file_as_dictionary(args.output_file, key_prefix='g_')
+
+        # get functions
+        contigs_db = dbops.ContigsDatabase(args.contigs_db)
+        functions_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
+        functions_dict = utils.get_filtered_dict(functions_dict, 'source', set(['KOfam']))
+        contigs_db.disconnect()
+
+        gene_caller_id_to_kofam = {}
+        for entry in list(functions_dict.values()):
+            if entry['accession']:
+                gene_caller_id_to_kofam[entry['gene_callers_id']] = entry['accession'].split('!!!')[0]
+
+        # setup additional items data. remember, at this point every gene caller id has a prefix `g_`
+        # to avoid downstream issues, so one of the ways to ensure we keep track of gene calls is to
+        # have an additional data layer with the actual anvi'o gene caller ID information
+        additional_items_data = {}
+        ribosomal_proteins = ["K02946", "K02906", "K02926", "K02930", "K02892", "K02886", "K02965", "K02890", "K02982", "K02878", "K02904", "K02961", "K02874", "K02895", "K02987", "K02931", "K02954", "K02994", "K02933", "K02912", "K02885", "K02881", "K02988", "K02907", "K02876", "K02919", "K02952", "K02948", "K02986", "K02883", "K02879", "K02871", "K02996", "K02992", "K02950", "K07590", "K02936", "K02979", "K02896", "K02935", "K02869", "K02864", "K02863", "K02867", "K02967", "K02956", "K02916", "K02887", "K02914", "K02939", "K02963", "K02990", "K02888", "K02899", "K02902", "K02913", "K02911", "K02909", "K02897", "K02959", "K02884", "K02968", "K02945", "K02970"]
+        for gene_call_with_prefix in data_dict:
+            gene_call = int(gene_call_with_prefix.lstrip('g_'))
+
+            if gene_call in gene_caller_id_to_kofam:
+                print(gene_caller_id_to_kofam[gene_call])
+                if gene_caller_id_to_kofam[gene_call] in ribosomal_proteins:
+                    d = {'gene_call': gene_call, 'function_category': 'Ribosomal Proteins'}
+                else:
+                    d = {'gene_call': gene_call, 'function_category': None}
+            else:
+                d = {'gene_call': gene_call, 'function_category': None}
+
+            additional_items_data[gene_call_with_prefix] = d
 
         codons_in_data_dict = next(iter(data_dict.values())).keys()
         codons_to_display = [codon for codon in constants.coding_codons if codon in codons_in_data_dict]
@@ -188,6 +222,7 @@ def main(args):
         g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward')
         g.delete_output_directory_if_exists = True
         g.generate()
+        g.add_items_additional_data(additional_items_data, ['gene_call', 'function_category'])
         g.add_state('default', state_path=os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json'))
 
 
