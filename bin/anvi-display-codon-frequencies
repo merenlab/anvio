@@ -27,16 +27,11 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'semiller10']
-__requires__ = ['contigs-db',
-                'profile-db',
-                'collection',
-                'bin']
+__requires__ = ['contigs-db', 'profile-db', 'collection', 'bin']
 __provides__ = ['interactive', 'svg']
-__description__ = ("Display codon frequency statistics across genes in a given")
-
+__description__ = ("Display codon frequency statistics across genes in a given genome")
 
 run = terminal.Run()
-
 
 def main(args):
     """Prepare arguments to get codon frequencies."""
@@ -59,7 +54,7 @@ def main(args):
     args.pansequence_min_amino_acids = [int(args.pansequence_min_amino_acids[0]),
                                         float(args.pansequence_min_amino_acids[1])]
 
-    single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
+    single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=terminal.Run(verbose=False))
     frequency_df = single_genome_codon_usage.get_frequencies(
         return_amino_acids=args.return_amino_acids,
         gene_caller_ids=args.gene_caller_ids,
@@ -72,7 +67,6 @@ def main(args):
         drop_amino_acids=args.exclude_amino_acids,
         sequence_min_amino_acids=args.sequence_min_amino_acids,
         pansequence_min_amino_acids=args.pansequence_min_amino_acids,
-        label_amino_acids=args.header_amino_acids,
         infinity_to_zero=args.infinity_to_zero)
 
     # determine the output directory to write the frequency view data
@@ -130,7 +124,7 @@ def main(args):
     for codon in codons_to_display:
         additional_layers_data[codon] = {'amino_acid': constants.codon_to_AA[codon]}
 
-    g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward')
+    g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward', run=terminal.Run(verbose=False))
     g.delete_output_directory_if_exists = True
     g.generate()
     g.add_items_additional_data(additional_items_data, ['gene_call', 'function_category'])
