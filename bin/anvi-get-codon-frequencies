@@ -206,7 +206,6 @@ def main(args):
             gene_call = int(gene_call_with_prefix.lstrip('g_'))
 
             if gene_call in gene_caller_id_to_kofam:
-                print(gene_caller_id_to_kofam[gene_call])
                 if gene_caller_id_to_kofam[gene_call] in ribosomal_proteins:
                     d = {'gene_call': gene_call, 'function_category': 'Ribosomal Proteins'}
                 else:
