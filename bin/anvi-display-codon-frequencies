@@ -170,121 +170,33 @@ if __name__ == '__main__':
     groupA.add_argument(
         '--gene-caller-ids', type=int, nargs='+', help="Select genes by ID, space-separated.")
 
-    groupC = parser.add_argument_group(
-        'OUTPUT FILES',
-        "This program writes codon or amino acid frequency tables. When functions rather than "
-        "genes are analyzed, one of two possible files can be produced: a table of frequencies per "
-        "gene or per function, using `--gene-table-output` or `--function-table-output`, "
-        "respectively. The per-function table can be derived from the per-gene table by summing "
-        "genes with the same function annotation, which are found in columns 2-4.")
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupC.add_argument(
-        '--gene-table-output',
-        help="A tab-delimited file of genes x codons or amino acids. The index columns before "
-             "frequency data contain genome names (optional, if multiple genomes are considered) "
-             "and gene callers IDs.")
-    groupC.add_argument(
-        '--header-amino-acids', default=False, action='store_true',
-        help="Include the amino acid for each codon in the column header of codon output, i.e., "
-             "LysAAA instead of AAA.")
-    groupC.add_argument(
-        '--infinity-to-zero', default=False, action='store_true',
-        help="Replace NA (empty) values in output with 0.0. NA occurs with `--synonymous` when all "
+    groupC = parser.add_argument_group('OUTPUT PARAMETERS')
+    groupC.add_argument('--infinity-to-zero', default=False, action='store_true', help="Replace "
+             "NA (empty) values in output with 0.0. NA occurs with `--synonymous` when all "
              "codons for an amino acid are absent in a gene or function, resulting in 0/0, "
-             "reported as NA. Use with caution, for NA and 0.0 mean different things and this will "
-             "skew downstream analyses of synonymous relative frequencies, such as codon usage "
-             "bias.")
-
+             "reported as NA. Use with caution.")
 
     groupD = parser.add_argument_group('FREQUENCY STATISTICS', "How should codon frequencies be computed.")
-    groupD.add_argument(
-        '--relative', default=False, action='store_true',
-        help="Return relative frequencies across codons or amino acids in each gene or function.")
-    groupD.add_argument(
-        '--synonymous', default=False, action='store_true',
-        help="Return synonymous (per-amino acid) frequencies among the codons encoding each amino "
-             "acid in each gene or function.")
-    groupD.add_argument(
-        '--return-amino-acids', default=False, action='store_true',
-        help="Return frequencies of codons encoding the same amino acid.")
-    groupD.add_argument(
-        '--encodings-txt',
-        help="Changes to the standard genetic code can be provided in this tab-delimited file of "
-             "two columns. Each entry in the first column is a codon and each entry in the second "
-             "column is the three-letter code for the decoded amino acid. For example, to recode "
-             "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
-             "the same row of the second. Stop/termination codons are abbreviated \"STP\". This "
-             "option affects per-amino acid and synonymous codon output (when using "
-             "`--return-amino-acids` or `--synonymous`).")
-    groupD.add_argument(
-        '--sum', default=False, action='store_true',
-        help="Sum frequencies across genes, returning a single row for each genome. When functions "
-             "or function sources are selected, genes are subsetted to those annotated with the "
-             "requested functions or annotated by the requested sources.")
-    groupD.add_argument(
-        '--average', default=False, action='store_true',
-        help="Average frequencies across genes in the genome, returning a single row for each "
-             "genome. When functions or function sources are selected, genes are subsetted to "
-             "those annotated with the requested functions or annotated by the requested sources.")
+    groupD.add_argument(*anvio.A('relative'), **anvio.K('relative'))
+    groupD.add_argument(*anvio.A('synonymous'), **anvio.K('synonymous'))
+    groupD.add_argument(*anvio.A('return-amino-acids'), **anvio.K('return-amino-acids'))
+    groupD.add_argument(*anvio.A('encodings-txt'), **anvio.K('encodings-txt'))
+    groupD.add_argument(*anvio.A('sum'), **anvio.K('sum'))
+    groupD.add_argument(*anvio.A('average'), **anvio.K('average'))
 
-    groupF = parser.add_argument_group(
-        'FILTER GENES, FUNCTIONS, CODONS',
+    groupF = parser.add_argument_group('FILTER GENES, FUNCTIONS, CODONS',
         "Genes/functions can be filtered by the number of codons they contain, e.g., ignore genes "
         "shorter than 300 codons. Codons can be selected a priori, e.g., ignore Ala codons, or "
         "rarer codons can be excluded, e.g., ignore amino acids that are decoded by ≤3 codons in "
         "≥90%% of genes. Filters can improve the statistical utility of codon relative frequency "
         "data.")
-    groupF.add_argument(
-        '--gene-min-codons', type=int, default=0,
-        help="Set the minimum number of codons required in a gene. When functions are returned "
-             "rather than genes, this filter is applied to genes before grouping them as "
-             "functions.")
-    groupF.add_argument(
-        '--function-min-codons', type=int, default=0,
-        help="Set the minimum number of codons required in a function. Genes with fewer than "
-             "`--gene-min-codons` are first removed, and then functional groups of the remaining "
-             "genes with fewer than `--function-min-codons` are removed. This filter only applies "
-             "when returning functions.")
-    groupF.add_argument(
-        '--exclude-amino-acids', nargs='+',
-        help="Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
-             "and STP for stop codons). If `--synonymous`, this argument defaults to \"STP Met "
-             "Trp\".")
-    groupF.add_argument(
-        '--include-amino-acids', nargs='+',
-        help="This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
-             "acids are analyzed and reported.")
-    groupF.add_argument(
-        '--sequence-min-amino-acids', type=int, default=0,
-        help="Do not report codons for amino acids (and STP) that are less numerous than the given "
-             "argument. For example, if the argument is 5, and a gene or function query has 4 "
-             "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
-             "will have missing values in Asn columns. This filter occurs at the end of the "
-             "analysis before writing results and so does not affect prior calculations.")
-    groupF.add_argument(
-        '--pansequence-min-amino-acids', nargs=2, default=[0, 1.0],
-        help="The first value of the argument is a positive integer representing a minimum number "
-             "of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a number "
-             "between 0 and 1 representing a fraction of genes -- 'min_gene_fraction'. Remove "
-             "codons for amino acids (and STP) that are less numerous than 'min_amino_acids' in a "
-             "'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and "
-             "'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for an amino "
-             "acid/STP in ≥90%% of genes, then the columns for these codons are dropped.")
-    groupF.add_argument(
-        '--min-codon-filter', choices=['length', 'remaining', 'both'], default='both',
-        help="This argument arises from the ambiguity of filters that remove genes and functions "
-             "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
-             "filters that drop codons (`--exclude/include-amino-acids` and "
-             "`--pansequence-min-amino-acids`). Genes (and functions) can be filtered by "
-             "their full length, e.g., genes shorter than 300 codons are ignored. They can also be "
-             "filtered by the number of codons remaining after dropping codons. The codon length "
-             "filter followed by dropping codons can result in genes and functions with fewer "
-             "codons than the original codon threshold -- thus the option of both \"length\" and "
-             "\"remaining\" filters to ensure that total codon frequencies in the output always "
-             "meet the minimum codon threshold. \"both\" is needed as an option in addition to "
-             "\"remaining\" so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
-             "on genes that passed the first length filter.")
-
+    groupF.add_argument(*anvio.A('gene-min-codons'), **anvio.K('gene-min-codons'))
+    groupF.add_argument(*anvio.A('function-min-codons'), **anvio.K('function-min-codons'))
+    groupF.add_argument(*anvio.A('exclude-amino-acids'), **anvio.K('exclude-amino-acids'))
+    groupF.add_argument(*anvio.A('include-amino-acids'), **anvio.K('include-amino-acids'))
+    groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
+    groupF.add_argument(*anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids'))
+    groupF.add_argument(*anvio.A('min-codon-filter'), **anvio.K('min-codon-filter'))
 
     groupX = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupX.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
@@ -294,8 +206,6 @@ if __name__ == '__main__':
     groupX.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupX.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupX.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
-
-
 
     args = parser.get_args(parser)
 
