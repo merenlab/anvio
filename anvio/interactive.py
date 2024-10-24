@@ -168,9 +168,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
-            run.warning("Most likely the misc data module is complaining about a missing genes database. If that's the case,\
-                         you can ignore it as this will sort itself out in a second (this is a workaround for a design\
-                         bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
+            run.warning("Most likely the misc data module is complaining about a missing genes database. If that's the case, "
+                        "you can ignore it as this will sort itself out in a second (this is a workaround for a design "
+                        "bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
 
         for group_name in self.layers_additional_data_keys:
             layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
