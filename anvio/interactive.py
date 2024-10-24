@@ -3200,11 +3200,19 @@ class AdHocRunGenerator:
             t.states.TablesForStates(self.profile_db_path).store_state('default', '{"version": "3"}')
 
 
-    def add_items_additional_data(self, additional_data, layer_names):
+    def add_items_additional_data(self, additional_data, item_names):
         if not self.profile_db_path:
             raise ConfigError("You must call `self.generate()` before calling this member function :/")
 
         table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+        table.add(additional_data, item_names, skip_check_names=True)
+
+
+    def add_layers_additional_data(self, additional_data, layer_names):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
         table.add(additional_data, layer_names, skip_check_names=True)
 
 
