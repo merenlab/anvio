@@ -289,7 +289,6 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('sum'), **anvio.K('sum'))
     groupD.add_argument(*anvio.A('average'), **anvio.K('average'))
 
-
     groupE = parser.add_argument_group(
         'FUNCTIONS',
         "Frequencies can be calculated for functions rather than genes, summing the frequencies of "
