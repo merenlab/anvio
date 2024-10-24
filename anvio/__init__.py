@@ -3669,7 +3669,174 @@ D = {
                      "a comma-separated list. The default stats are 'detection' and "
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
-    )
+    ),
+    'min-codon-filter': (
+            ['--min-codon-filter'],
+            {'choices': ['length', 'remaining', 'both'],
+             'default': 'both',
+             'help': "This argument arises from the ambiguity of filters that remove genes and functions "
+                     "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
+                     "filters that drop codons (`--exclude/include-amino-acids` and "
+                     "`--pansequence-min-amino-acids`). Genes (and functions) can be filtered by "
+                     "their full length, e.g., genes shorter than 300 codons are ignored. They can also be "
+                     "filtered by the number of codons remaining after dropping codons. The codon length "
+                     "filter followed by dropping codons can result in genes and functions with fewer "
+                     "codons than the original codon threshold -- thus the option of both 'length' and "
+                     "'remaining' filters to ensure that total codon frequencies in the output always "
+                     "meet the minimum codon threshold. 'both' is needed as an option in addition to "
+                     "'remaining' so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
+                     "on genes that passed the first length filter."}
+    ),
+    'pansequence-min-amino-acids': (
+            ['--pansequence-min-amino-acids'],
+            {'nargs': 2,
+             'default': [0, 1.0],
+             'help': "The first value of the argument is a positive integer representing a minimum number "
+                     "of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a number "
+                     "between 0 and 1 representing a fraction of genes -- 'min_gene_fraction'. Remove "
+                     "codons for amino acids (and STP) that are less numerous than 'min_amino_acids' in a "
+                     "'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and "
+                     "'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for an amino "
+                     "acid/STP in ≥90%% of genes, then the columns for these codons are dropped."}
+    ),
+    'sequence-min-amino-acids': (
+            ['--sequence-min-amino-acids'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Do not report codons for amino acids (and STP) that are less numerous than the given "
+                     "argument. For example, if the argument is 5, and a gene or function query has 4 "
+                     "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
+                     "will have missing values in Asn columns. This filter occurs at the end of the "
+                     "analysis before writing results and so does not affect prior calculations."}
+    ),
+    'include-amino-acids': (
+            ['--include-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
+                     "acids are analyzed and reported."}
+    ),
+    'exclude-amino-acids': (
+            ['--exclude-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
+                     "and STP for stop codons). If `--synonymous`, this argument defaults to 'STP Met "
+                     "Trp', and if other amino acids are excluded, for STP, Met, and Trp codons to still "
+                     "be excluded from the output table, they must also be explicitly provided in the "
+                     "argument."}
+        ),
+    'function-min-codons': (
+            ['--function-min-codons'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Set the minimum number of codons required in a function. Genes with fewer than "
+                     "`--gene-min-codons` are first removed, and then functional groups of the remaining "
+                     "genes with fewer than `--function-min-codons` are removed. This filter only applies "
+                     "when returning functions."}
+        ),
+    'gene-min-codons': (
+            ['--gene-min-codons'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Set the minimum number of codons required in a gene. When functions are returned "
+                     "rather than genes, this filter is applied to genes before grouping them as "
+                     "functions."}
+        ),
+    'relative': (
+            ['--relative'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Return relative frequencies across codons or amino acids in each gene or function."}
+        ),
+    'synonymous': (
+           ['--synonymous'],
+           {'default': False,
+            'action': 'store_true',
+            'help': "Return synonymous (per-amino acid) frequencies among the codons encoding each amino "
+                    "acid in each gene or function."}
+            ),
+    'return-amino-acids': (
+            ['--return-amino-acids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Return frequencies of the sets of codons encoding the same amino acid."}
+        ),
+    'encodings-txt': (
+            ['--encodings-txt'],
+            {'help': "Changes to the standard genetic code can be provided in this tab-delimited file of "
+                     "two columns. Each entry in the first column is a codon and each entry in the second "
+                     "column is the three-letter code for the decoded amino acid. For example, to recode "
+                     "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
+                     "the same row of the second. Stop/termination codons are abbreviated 'STP'. This "
+                     "option affects per-amino acid and synonymous codon output (when using "
+                     "`--return-amino-acids` or `--synonymous`)."}
+        ),
+    'sum': (
+            ['--sum'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sum frequencies across genes, returning a single row for each genome. When functions "
+                     "or function sources are selected, genes are subsetted to those annotated with the "
+                     "requested functions or annotated by the requested sources."}
+        ),
+    'average': (
+            ['--average'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Average frequencies across genes in the genome, returning a single row for each "
+                     "genome. When functions or function sources are selected, genes are subsetted to "
+                     "those annotated with the requested functions or annotated by the requested sources."}
+        ),
+    'function-sources': (
+            ['--function-sources'],
+            {'nargs': '*',
+             'help': "Return frequencies for functions annotated by these sources, e.g., 'KOfam', "
+                     "'KEGG_BRITE', 'COG20_FUNCTION'. When used with certain other options, such as "
+                     "`--sum`, rather than returning statistics for each function, analyzed genes are "
+                     "subsetted to those annotated by the provided sources. If `--function-sources` is "
+                     "used as a flag without any arguments, then every source will be considered."}
+        ),
+    'function-accessions': (
+            ['--function-accessions'],
+            {'nargs': '+',
+             'help': "Return frequencies for functions with these accessions from the source provided in "
+                     "`--function-sources`. To get accessions from multiple sources, instead use "
+                     "`--select-functions-txt`."}
+        ),
+    'function-names': (
+            ['--function-names'],
+            {'nargs': '+',
+             'help': "Return frequencies for functions with these names from the source provided in "
+                     "`--function-sources`. To get function names from multiple sources, instead "
+                     "use `--select-functions-txt`."}
+        ),
+    'select-functions-txt': (
+            ['--select-functions-txt'],
+            {'help': "Selected functions can be listed in this tab-delimited file of three columns. The "
+                     "first column should contain function annotation sources, the second column "
+                     "accessions, and the third function names. An entry in the source column is required "
+                     "in every row, and either an accession or name, or both, should also be in a row. "
+                     "The file should not have a header of column names."}
+        ),
+    'expect-functions': (
+            ['--expect-functions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, functions provided by `--function-accessions`, `--function-names`, and "
+                     "`--select-functions-txt` need not be annotated in the input genomes. With this flag, "
+                     "an error will be raised if any of the functions are not present in an input genome."}
+        ),
+    'shared-function-sources': (
+            ['--shared-function-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude function annotation sources that were not run on every "
+                     "input genome."}
+        ),
 }
 
 # two functions that works with the dictionary above.
