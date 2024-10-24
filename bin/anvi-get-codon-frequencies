@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 """Get codon or amino acid frequency statistics from genomes, genes, and functions."""
 
-import os
 import sys
 import pandas as pd
 
@@ -12,11 +11,8 @@ import anvio.constants as constants
 import anvio.codonusage as codonusage
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbinfo import DBInfo
 from anvio.argparse import ArgumentParser
-from anvio.interactive import AdHocRunGenerator
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.utils import get_TAB_delimited_file_as_dictionary
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -174,19 +170,6 @@ def main(args):
     else:
         frequency_df.to_csv(args.gene_table_output, sep='\t')
         run.info("Gene table output", args.gene_table_output)
-
-
-    if args.contigs_db:
-        # determine the output directory
-        output_dir = os.path.join(os.path.dirname(os.path.abspath(args.output_file)), DBInfo(args.contigs_db).project_name + '-codons-interactive')
-
-        data_dict = get_TAB_delimited_file_as_dictionary(args.output_file, key_prefix='g_')
-
-        codons = constants.coding_codons
-
-        g = AdHocRunGenerator(output_dir, data_dict, None, codons, linkage='ward')
-        g.delete_output_directory_if_exists = True
-        g.generate()
 
 
 def parse_select_functions_table(args, from_function_sources):

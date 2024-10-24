@@ -62,7 +62,7 @@ def main(args):
             if not g.isnumeric():
                 raise ConfigError(f"Anvi'o found a gene caller ID that was not a number. Specifically, this one: {g}. "
                                   f"This is a no-no, so please make sure all your gene caller IDs are integers.")
-        
+
         progress.new("Filtering the functions dict for requested gene calls")
         functions_dict = utils.get_filtered_dict(functions_dict, 'gene_callers_id', set([int(x) for x in requested_genes]))
         progress.end()

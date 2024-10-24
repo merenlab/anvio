@@ -1,0 +1,589 @@
+{
+    "version": "3",
+    "tree-type": "phylogram",
+    "order-by": "tree:unknown:unknown",
+    "current-view": "single",
+    "tree-width": "30000",
+    "outer-ring-height": "200",
+    "outer-ring-margin": "90",
+    "bin-labels-font-size": "250",
+    "max-font-size-label": "250",
+    "show-grid-for-bins": true,
+    "grid-color": "#FFFFFF",
+    "grid-width": "1",
+    "layer-order": [
+        "AGA",
+        "AGG",
+        "CGA",
+        "CGT",
+        "CGC",
+        "CGG",
+        
+        "CAC",
+        "CAT",
+        
+        "AAA",
+        "AAG",
+        
+        
+        "GAC",
+        "GAT",
+        
+        "GAA",
+        "GAG",
+        
+        "AGC",
+        "AGT",
+        "TCA",
+        "TCG",
+        "TCC",
+        "TCT",
+        
+        "ACA",
+        "ACT",
+        "ACC",
+        "ACG",
+        
+        "AAC",
+        "AAT",
+        
+        "CAA",
+        "CAG",
+        
+        "GCA",
+        "GCT",
+        "GCC",
+        "GCG",
+        
+        "GTA",
+        "GTT",
+        "GTC",
+        "GTG",
+        
+        "ATA",
+        "ATT",
+        "ATC",
+        
+        "CTA",
+        "CTT",
+        "CTC",
+        "CTG",
+        "TTA",
+        "TTG",
+        
+        "ATG",
+        
+        "TTC",
+        "TTT",
+        
+        "TAC",
+        "TAT",
+        
+        "TGG",
+        
+        "TGC",
+        "TGT",
+        
+        "GGA",
+        "GGT",
+        "GGC",
+        "GGG",
+        
+        "CCA",
+        "CCT",
+        "CCC",
+        "CCG",
+
+        "gene_call",
+        "function_category"
+    ],
+    "layers": {
+        "AAA": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AAC": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AAG": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AAT": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ACA": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ACC": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ACG": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ACT": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AGA": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AGC": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "180",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AGG": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "AGT": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ATA": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ATC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ATG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ATT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CAA": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CAC": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CAG": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CAT": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CCA": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CCC": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CCG": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CCT": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CGA": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CGC": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CGG": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CGT": {
+            "color": "#074d66",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CTA": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CTC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CTG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "CTT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GAA": {
+            "color": "#1b7696",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GAC": {
+            "color": "#1b7696",
+            "height": "180",
+            "margin": "180",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GAG": {
+            "color": "#1b7696",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GAT": {
+            "color": "#1b7696",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GCA": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "180",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GCC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GCG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GCT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GGA": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GGC": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GGG": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GGT": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GTA": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GTC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GTG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "GTT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TAC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TAT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TCA": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TCC": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TCG": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TCT": {
+            "color": "#6b3c75",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TGC": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "180",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TGG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TGT": {
+            "color": "#5c3a42",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TTA": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TTC": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TTG": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "TTT": {
+            "color": "#3a5c3b",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "gene_call": {
+            "color": "#000000",
+            "height": "200",
+            "margin": "180",
+            "type": "intensity",
+            "color-start": "#FFFFFF"
+        },
+        "function_category": {
+            "color": "#000000",
+            "height": "200",
+            "margin": "180",
+            "type": "color",
+            "color-start": "#DDDDDD"
+        }
+    },
+    "samples-categorical-colors": {
+        "default": {
+            "amino_acid": {
+                "Lys": "#62297d",
+                "Asn": "#6c5178",
+                "Thr": "#755285",
+                "Arg": "#7c00b5",
+                "Ser": "#6d2f8a",
+                "Ile": "#25572c",
+                "Gln": "#816d8a",
+                "His": "#682687",
+                "Pro": "#823c3c",
+                "Leu": "#2e5733",
+                "Glu": "#9a3ac7",
+                "Asp": "#901fc4",
+                "Ala": "#055710",
+                "Gly": "#8c2727",
+                "Val": "#15541d",
+                "Tyr": "#4e6e52",
+                "Phe": "#446648",
+                "Met": "#2d521b",
+                "Trp": "#396e2b",
+                "Cys": "#944040"
+            }
+        }
+    },
+    "samples-layers": {
+        "default": {
+            "amino_acid": {
+                "data-type": "categorical",
+                "height": 200,
+                "margin": 90,
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        }
+    },
+    "samples-groups": {
+        "default": true
+    }
+}

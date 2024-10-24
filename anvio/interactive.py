@@ -3121,6 +3121,8 @@ class AdHocRunGenerator:
         self.run = run
         self.progress = progress
 
+        self.profile_db_path = None
+
         self.view_data = view_data
         self.additional_view_data = additional_view_data
         self.samples = samples
@@ -3168,11 +3170,11 @@ class AdHocRunGenerator:
                 f.write(newick)
 
         # create new profile.db and populate additional data
-        profile_db_path = self.get_output_file_path('profile.db')
-        self.run.info('Profile database', profile_db_path)
+        self.profile_db_path = self.get_output_file_path('profile.db')
+        self.run.info('Profile database', self.profile_db_path)
 
         args = argparse.Namespace()
-        args.profile_db = profile_db_path
+        args.profile_db = self.profile_db_path
         args.manual_mode = True
         args.dry_run = True
         args.view_data = view_data_path
@@ -3180,22 +3182,50 @@ class AdHocRunGenerator:
         args.title = None
         Interactive(args)
 
-        self.populate_additional_data(profile_db_path)
+        self.populate_additional_data()
+
+        self.add_state('default')
 
         self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
-        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (profile_db_path, tree_path, view_data_path), cut_after=200, nl_after=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
 
 
-    def populate_additional_data(self, profile_db_path):
+    def add_state(self, state_name, state_json=None, state_path=None):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        if state_json or state_path:
+            t.states.TablesForStates(self.profile_db_path).store_state(state_name, state_json if state_json else open(state_path).read())
+        else:
+            t.states.TablesForStates(self.profile_db_path).store_state('default', '{"version": "3"}')
+
+
+    def add_items_additional_data(self, additional_data, item_names):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+        table.add(additional_data, item_names, skip_check_names=True)
+
+
+    def add_layers_additional_data(self, additional_data, layer_names):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+        table.add(additional_data, layer_names, skip_check_names=True)
+
+
+    def populate_additional_data(self):
         if not self.additional_view_data:
             return
 
-        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=profile_db_path))
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
         table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
 
-        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=profile_db_path))
+        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=self.profile_db_path))
         layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
         table.add({'default': {'data_type': 'newick', 'data_value': layer_newick}})
-
-        # put a default state while you're at it
-        t.states.TablesForStates(profile_db_path).store_state('default', '{"version": "3"}')
