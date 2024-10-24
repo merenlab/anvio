@@ -3204,7 +3204,7 @@ class AdHocRunGenerator:
         if not self.profile_db_path:
             raise ConfigError("You must call `self.generate()` before calling this member function :/")
 
-        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run)
         table.add(additional_data, item_names, skip_check_names=True)
 
 
@@ -3212,7 +3212,7 @@ class AdHocRunGenerator:
         if not self.profile_db_path:
             raise ConfigError("You must call `self.generate()` before calling this member function :/")
 
-        table = t.miscdata.TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+        table = t.miscdata.TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run)
         table.add(additional_data, layer_names, skip_check_names=True)
 
 
