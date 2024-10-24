@@ -42,6 +42,8 @@ def main(args):
     if A('output_dir'):
         filesnpaths.check_output_directory(A('output_dir'))
 
+    utils.is_all_npm_packages_installed()
+
     # k, gud. lets move on with business.
     db_type = utils.get_db_type(args.pan_or_profile_db)
 

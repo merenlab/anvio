@@ -1242,6 +1242,31 @@ class AggregateFunctions:
 
         g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
         g.load_genomes_descriptions(skip_sanity_check=True)
+
+        ################################################################################
+        # make sure the requested function source is present across all external genomes
+        ################################################################################
+        genomes_missing_requested_function_annotation_source = set([])
+        for genome_name in g.genomes:
+            if not g.genomes[genome_name]['gene_function_sources'] or self.function_annotation_source not in g.genomes[genome_name]['gene_function_sources']:
+                genomes_missing_requested_function_annotation_source.add(genome_name)
+
+        if len(genomes_missing_requested_function_annotation_source):
+            if len(genomes_missing_requested_function_annotation_source) == len(g.genomes):
+                error_msg_prefix = f"None of the {len(g.genomes)} genomes"
+            else:
+                error_msg_prefix = f"{len(genomes_missing_requested_function_annotation_source)} of the {len(g.genomes)} genomes"
+
+            raise ConfigError(f"{error_msg_prefix} in your external-genomes-txt seem to have the function annotation source "
+                              f"'{self.function_annotation_source}' you have requested :/ You can double check what function "
+                              f"annotation sources available in a given contigs-db using the program `anvi-db-info`. Please "
+                              f"make sure every genome you are including in your analysis is annotated with the function "
+                              f"annotation source you are interested in surveying. For instance, here is one example that "
+                              f"represents this problematic situation: '{genomes_missing_requested_function_annotation_source.pop()}'")
+        ################################################################################
+        # /make sure the requested function source is present across all external genomes
+        ################################################################################
+
         g.init_functions()
 
         self.run.warning("Just FYI, for any gene call with multiple functional annotations from the same source "

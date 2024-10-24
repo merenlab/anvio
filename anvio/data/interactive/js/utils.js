@@ -98,6 +98,25 @@ function getCleanCagCode(code) {
 
 //-----------------------------------------------------------------------------
 
+function search_protein_structure_in_alphafold(gene_id, target) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        async: false,
+        url: '/data/' + target + '/' + gene_id,
+        success: function(data) {
+            if ('error' in data) {
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            } else {
+                var sequence = data['aa_sequence'];
+
+                var alphafoldUrl = 'https://www.alphafold.ebi.ac.uk/search/text/' + encodeURIComponent(sequence);
+                window.open(alphafoldUrl, '_blank');
+            }
+        }
+    });
+}
+
 function search_gene_sequence_in_remote_dbs(gene_id, program, database, target) {
     
         $.ajax({
