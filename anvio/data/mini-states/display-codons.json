@@ -539,5 +539,51 @@
             "type": "color",
             "color-start": "#DDDDDD"
         }
+    },
+    "samples-categorical-colors": {
+        "default": {
+            "amino_acid": {
+                "Lys": "#62297d",
+                "Asn": "#6c5178",
+                "Thr": "#755285",
+                "Arg": "#7c00b5",
+                "Ser": "#6d2f8a",
+                "Ile": "#25572c",
+                "Gln": "#816d8a",
+                "His": "#682687",
+                "Pro": "#823c3c",
+                "Leu": "#2e5733",
+                "Glu": "#9a3ac7",
+                "Asp": "#901fc4",
+                "Ala": "#055710",
+                "Gly": "#8c2727",
+                "Val": "#15541d",
+                "Tyr": "#4e6e52",
+                "Phe": "#446648",
+                "Met": "#2d521b",
+                "Trp": "#396e2b",
+                "Cys": "#944040"
+            }
+        }
+    },
+    "samples-layers": {
+        "default": {
+            "amino_acid": {
+                "data-type": "categorical",
+                "height": 200,
+                "margin": 90,
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        }
+    },
+    "samples-groups": {
+        "default": true
     }
 }
