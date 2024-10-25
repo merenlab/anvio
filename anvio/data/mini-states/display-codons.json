@@ -566,6 +566,20 @@
             }
         }
     },
+    "samples-layer-order": [
+        {
+            "layer_name": "amino_acid",
+            "group": "default"
+        },
+        {
+            "layer_name": "codon_frequency",
+            "group": "default"
+        },
+        {
+            "layer_name": "amino_acid_frequency",
+            "group": "default"
+        }
+    ],
     "samples-layers": {
         "default": {
             "amino_acid": {
@@ -580,6 +594,40 @@
                     "value": null,
                     "disabled": false
                 }
+            },
+            "codon_frequency": {
+                "data-type": "numeric",
+                "height": 1000,
+                "margin": 90,
+                "normalization": "none",
+                "color": "#3b3b3b",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 72708,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            },
+            "amino_acid_frequency": {
+                "data-type": "numeric",
+                "height": 1000,
+                "margin": 90,
+                "normalization": "none",
+                "color": "#3b3b3b",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 164581,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
             }
         }
     },
