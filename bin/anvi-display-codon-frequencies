@@ -100,6 +100,7 @@ def main(args):
     contigs_db = dbops.ContigsDatabase(args.contigs_db)
     functions_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
     functions_dict = utils.get_filtered_dict(functions_dict, 'source', set(['KOfam']))
+    gene_calls_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
     contigs_db.disconnect()
 
     gene_caller_id_to_kofam = {}
@@ -123,6 +124,9 @@ def main(args):
         else:
             d = {'gene_call': gene_call, 'function_category': None}
 
+        d['length'] = gene_calls_dict[gene_call]['stop'] - gene_calls_dict[gene_call]['start']
+        d['direction'] = gene_calls_dict[gene_call]['direction']
+
         additional_items_data[gene_call_with_prefix] = d
 
     # learn about our codons
@@ -141,7 +145,7 @@ def main(args):
     g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward', run=terminal.Run(verbose=False))
     g.delete_output_directory_if_exists = True
     g.generate()
-    g.add_items_additional_data(additional_items_data, ['gene_call', 'function_category'])
+    g.add_items_additional_data(additional_items_data, ['gene_call', 'length', 'direction', 'function_category'])
     g.add_layers_additional_data(additional_layers_data, ['amino_acid', 'codon_frequency', 'amino_acid_frequency'])
     g.add_state('default', state_path=os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json'))
 
