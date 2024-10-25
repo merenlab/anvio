@@ -6,20 +6,24 @@ import os
 import sys
 import argparse
 
+from collections import Counter
+
 import anvio
+import anvio.tables as t
+import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.codonusage as codonusage
 import anvio.filesnpaths as filesnpaths
+import anvio.interactive as interactive
 
 from anvio.dbinfo import DBInfo
 from anvio.argparse import ArgumentParser
 from anvio.interactive import AdHocRunGenerator
+from anvio.bottleroutes import BottleApplication
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.utils import get_TAB_delimited_file_as_dictionary
-
-import anvio.interactive as interactive
-from anvio.bottleroutes import BottleApplication
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -51,10 +55,27 @@ def main(args):
             else:
                 args.exclude_amino_acids.append(amino_acid)
 
+    # determine the output directory to write the frequency view data
+    output_dir = filesnpaths.get_temp_directory_path()
+    run.info("Output file directory", output_dir)
+
+    single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=terminal.Run(verbose=False))
+
+    # get the raw frequency data to learn about total number of codons and amino acids across the genome
+    output_file = os.path.join(output_dir, 'raw-frequency-data.txt')
+    raw_frequency_df = single_genome_codon_usage.get_frequencies()
+    total_counts_per_codon = raw_frequency_df.sum().to_dict()
+    total_counts_per_aa = Counter({})
+    for codon in total_counts_per_codon:
+        aa = constants.codon_to_AA[codon]
+        total_counts_per_aa[aa] += total_counts_per_codon[codon]
+
+    # now get the frequency data considering user parameters
+    output_file = os.path.join(output_dir, 'condon-frequency-data.txt')
+
     args.pansequence_min_amino_acids = [int(args.pansequence_min_amino_acids[0]),
                                         float(args.pansequence_min_amino_acids[1])]
 
-    single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=terminal.Run(verbose=False))
     frequency_df = single_genome_codon_usage.get_frequencies(
         return_amino_acids=args.return_amino_acids,
         gene_caller_ids=args.gene_caller_ids,
@@ -69,19 +90,10 @@ def main(args):
         pansequence_min_amino_acids=args.pansequence_min_amino_acids,
         infinity_to_zero=args.infinity_to_zero)
 
-    # determine the output directory to write the frequency view data
-    output_dir = filesnpaths.get_temp_directory_path()
-
-    output_file = os.path.join(output_dir, 'condon-frequency-data.txt')
-
     # Write output tables.
     frequency_df.to_csv(output_file, sep='\t')
 
-    import anvio.dbops as dbops
-    import anvio.tables as t
-    import anvio.utils as utils
-
-
+    # get back the data dict with a prefix for visualization purposes.
     data_dict = get_TAB_delimited_file_as_dictionary(output_file, key_prefix='g_')
 
     # get functions
@@ -122,13 +134,15 @@ def main(args):
 
     # start with codon to AA
     for codon in codons_to_display:
-        additional_layers_data[codon] = {'amino_acid': constants.codon_to_AA[codon]}
+        additional_layers_data[codon] = {'amino_acid': constants.codon_to_AA[codon],
+                                         'codon_frequency': total_counts_per_codon[codon],
+                                         'amino_acid_frequency': total_counts_per_aa[constants.codon_to_AA[codon]]}
 
     g = AdHocRunGenerator(output_dir, data_dict, None, codons_to_display, linkage='ward', run=terminal.Run(verbose=False))
     g.delete_output_directory_if_exists = True
     g.generate()
     g.add_items_additional_data(additional_items_data, ['gene_call', 'function_category'])
-    g.add_layers_additional_data(additional_layers_data, ['amino_acid'])
+    g.add_layers_additional_data(additional_layers_data, ['amino_acid', 'codon_frequency', 'amino_acid_frequency'])
     g.add_state('default', state_path=os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json'))
 
     J = lambda x: os.path.join(output_dir, x)
@@ -145,6 +159,7 @@ def main(args):
                                               server_only=args.server_only,
                                               password_protected=args.password_protected,
                                               user_server_shutdown=args.user_server_shutdown)
+
     # go interactive
     d = interactive.Interactive(args_for_interactive)
     args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
