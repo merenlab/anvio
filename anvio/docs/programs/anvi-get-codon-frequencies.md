@@ -96,8 +96,8 @@ The following tables show how to use options to get certain results.
 | [Only include codons with C or G at all positions in output](#select-codons) | `--report-codons [CG][CG][CG]` |
 | [Exclude stop codons and single-codon amino acids from analysis](#select-amino-acids) | `--exclude-amino-acids STP Met Trp` |
 | [Only include codons encoding certain amino acids in analysis](#select-amino-acids) | `--include-amino-acids Leu Ile` |
-| [Exclude stop codons and single-codon amino acids from output but not analysis](#select-amino-acids) | `--dont-report-amino-acids STP Met Trp` |
-| [Only include codons encoding certain amino acids in output](#select-amino-acids) | `--report-amino-acids Leu Ile` |
+| [Don't report stop codons and single-codon amino acids in output](#select-amino-acids) | `--dont-report-amino-acids STP Met Trp` |
+| [Only report codons encoding certain amino acids in output](#select-amino-acids) | `--report-amino-acids Leu Ile` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#exclude-rarer-amino-acids-from-output) | `--sequence-min-amino-acids 5` |
 | [Exclude codons for amino acids with <5 codons in >90%% of genes](#dynamically-exclude-rarer-amino-acids-from-analysis) | `--pansequence-min-amino-acids 5 0.9` |
 | [Exclude genes shorter than 250 codons](#filter-genes-by-codon-count) | `--gene-min-codons 250` |
@@ -174,17 +174,19 @@ Codons can be excluded from or included in the analysis or just the output table
 
 #### Select codons
 
-`--exclude-codons` removes codons from the analysis. `--include-codons` retains select codons, to the exclusion of others, in the analysis. These options accept regular expressions. For example, `--exclude-codons ..A` removes codons ending in A, and `--include-codons G.. T..` retains codons starting with G or T.
+`--exclude-codons` removes specified codons from the analysis. `--include-codons` retains select codons, to the exclusion of others, in the analysis. These options accept regular expressions. For example, `--exclude-codons ..A` removes codons ending in A, and `--include-codons G.. T..` retains codons starting with G or T.
 
 `--dont-report-codons` drops columns for the specified codons from the output table. `--report-codons` retains columns for select codons, to the exclusion of others, in the output table. Again, these options accept regular expressions. For example, `--dont-report-codons A.[CT]` drops columns for codons starting with A and ending with C or T, and `--report-codons [CG][CG][CG]` retains columns for codons with C or G at all positions.
 
 #### Select amino acids
 
-`--exclude-amino-acids` removes codons encoding amino acids specified by their three-letter codes from the analysis. `--include-amino-acids` retains codons encoding specified amino acids, to the exclusion of other amino acids, in the analysis.
+`--exclude-amino-acids` removes codons for amino acids specified by their three-letter codes from the analysis. `--include-amino-acids` retains codons for select amino acids, to the exclusion of other amino acids, in the analysis.
 
 The following example would return a table of relative frequencies just among the set of codons for amino acids that can be positively charged: `--include-amino-acids Arg Lys His`.
 
 In calculating synonymous codon frequencies with `--synonymous`, and in the absence of `--exclude-amino-acids` and `--include-amino-acids`, the program behaves as if `--exclude-amino-acids` were passed `STP Met Trp`: stop codons and the single codons encoding Met and Trp are excluded calculation of synonymous codon relative frequencies. If `--exclude-amino-acids` or `--include-amino-acids` are used, then this behavior does not apply. For example, to also exclude Cys from the analysis, then use `--exclude-amino-acids Cys STP Met Trp`. If for some reason you wish to retain all codons in the synonymous codon analysis, including stop, Met, and Trp codons, then use `--exclude-amino-acids` as a flag without passing any values.
+
+`--dont-report-amino-acids` drops codon columns from the output table for the specified amino acids. `--report-amino-acids` retains codon columns in the output table for select amino acids, to the exclusion of others.
 
 #### Exclude rarer amino acids from output
 
