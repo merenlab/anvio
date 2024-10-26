@@ -188,7 +188,7 @@ In calculating synonymous codon frequencies with `--synonymous`, and in the abse
 
 #### Exclude rarer amino acids from output
 
-`--sequence-min-amino-acids` only affects how the output table is displayed, replacing codon values for rarer amino acids within each gene or function row with NaN (or 0 with `--infinity-to-zero`). For example, amino acids with <5 codons in the gene or function are discarded in the table with `--sequence-min-amino-acids 5`. This may be useful for screening statistically significant data.
+`--sequence-min-amino-acids` only affects how the output table is displayed, replacing codon values for rarer amino acids within each gene or function row with NaN ([or 0](#replace-nan-with-zero-in-output) with `--infinity-to-zero`). For example, amino acids with <5 codons in the gene or function are discarded in the table with `--sequence-min-amino-acids 5`. This may be useful for screening statistically significant data.
 
 #### Dynamically exclude rarer amino acids from analysis
 
@@ -207,3 +207,7 @@ In calculating synonymous codon frequencies with `--synonymous`, and in the abse
 #### Filter functions by codon count
 
 `--function-min-codons` removes reported functions lacking the specified minimum number of codons. Function codon count filters occur after gene codon count filters: the set of genes contributing to function codon frequencies can be restricted by also using `--gene-min-codons`.
+
+### Replace NaN with 0 in output
+
+`--infinity-to-zero` replaces null values in the output table with 0. Codons for absent amino acids have null values in synonymous analysis. Be careful using this option, since NaN replaced by 0 in synonymous analysis does not have the intended meaning, introducing an inaccuracy which can propagate in downstream calculations like codon usage bias.
