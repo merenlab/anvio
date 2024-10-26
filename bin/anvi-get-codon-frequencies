@@ -301,19 +301,24 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('expect-functions'), **anvio.K('expect-functions'))
     groupE.add_argument(*anvio.A('shared-function-sources'), **anvio.K('shared-function-sources'))
 
-    groupF = parser.add_argument_group('GENE / FUNCTION / CODON FILTERS',
-        "Genes/functions can be filtered by the number of codons they contain, e.g., ignore genes "
-        "shorter than 300 codons. Codons can be selected a priori, e.g., ignore Ala codons, or "
-        "rarer codons can be excluded, e.g., ignore amino acids that are decoded by ≤3 codons in "
-        "≥90%% of genes. Filters can improve the statistical utility of codon relative frequency "
-        "data.")
-    groupF.add_argument(*anvio.A('gene-min-codons'), **anvio.K('gene-min-codons'))
-    groupF.add_argument(*anvio.A('function-min-codons'), **anvio.K('function-min-codons'))
+    groupF = parser.add_argument_group('CODON / GENE / FUNCTION FILTERS',
+        "Codons can be selected a priori, e.g., ignore Ala codons. Rarer codons can be excluded, "
+        "e.g., ignore amino acids that are decoded by <3 codons in ≥90%% of genes. Genes/functions "
+        "can be filtered by the number of codons they contain, e.g., ignore genes shorter than 250 "
+        "codons. Filters can improve the statistical utility of codon relative frequency data.")
+    groupF.add_argument(*anvio.A('exclude-codons'), **anvio.K('exclude-codons'))
+    groupF.add_argument(*anvio.A('include-codons'), **anvio.K('include-codons'))
+    groupF.add_argument(*anvio.A('dont-report-codons'), **anvio.K('dont-report-codons'))
+    groupF.add_argument(*anvio.A('report-codons'), **anvio.K('report-codons'))
     groupF.add_argument(*anvio.A('exclude-amino-acids'), **anvio.K('exclude-amino-acids'))
     groupF.add_argument(*anvio.A('include-amino-acids'), **anvio.K('include-amino-acids'))
+    groupF.add_argument(*anvio.A('dont-report-amino-acids'), **anvio.K('dont-report-amino-acids'))
+    groupF.add_argument(*anvio.A('report-amino-acids'), **anvio.K('report-amino-acids'))
     groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids'))
+    groupF.add_argument(*anvio.A('gene-min-codons'), **anvio.K('gene-min-codons'))
     groupF.add_argument(*anvio.A('min-codon-filter'), **anvio.K('min-codon-filter'))
+    groupF.add_argument(*anvio.A('function-min-codons'), **anvio.K('function-min-codons'))
 
     args = parser.get_args(parser)
 
