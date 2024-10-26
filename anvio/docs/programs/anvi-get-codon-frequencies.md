@@ -210,4 +210,4 @@ In calculating synonymous codon frequencies with `--synonymous`, and in the abse
 
 ### Replace NaN with 0 in output
 
-`--infinity-to-zero` replaces null values in the output table with 0. Codons for absent amino acids have null values in synonymous analysis. Be careful using this option, since NaN replaced by 0 in synonymous analysis does not have the intended meaning, introducing an inaccuracy which can propagate in downstream calculations like codon usage bias.
+`--infinity-to-zero` replaces null values in the output table with 0. Codons for absent amino acids have null synonymous relative frequency values. Be careful using this option, since NaN replaced by 0 in synonymous analysis does not have the intended meaning, introducing an inaccuracy which can propagate in downstream calculations like codon usage bias.
