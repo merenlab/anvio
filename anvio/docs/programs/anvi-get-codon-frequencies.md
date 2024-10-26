@@ -91,7 +91,7 @@ The following tables show how to use options to get certain results.
 | Get | Options |
 | --- | ------- |
 | [Exclude codons ending with A from analysis](#select-codons) | `--exclude-codons ..A` |
-| [Include codons starting with G or T in analysis](#select-codons) | `--include-codons G.. T..` |
+| [Include codons starting with G or T in analysis](#select-codons) | `--include-codons [GT]..` |
 | [Exclude codons starting with A and ending C or T from output but not analysis](#select-codons) | `--dont-report-codons A.[CT]` |
 | [Only include codons with C or G at all positions in output](#select-codons) | `--report-codons [CG][CG][CG]` |
 | [Exclude stop codons and single-codon amino acids from analysis](#select-amino-acids) | `--exclude-amino-acids STP Met Trp` |
