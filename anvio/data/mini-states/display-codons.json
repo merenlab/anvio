@@ -95,8 +95,20 @@
         "CCG",
 
         "gene_call",
+        "direction",
+        "length",
         "function_category"
     ],
+    "categorical_data_colors": {
+        "direction": {
+            "f": "#7700b3",
+            "r": "#c27e00"
+        },
+        "function_category": {
+            "None": "#FFFFFF",
+            "Ribosomal Proteins": "#FF5555"
+        }
+    },
     "layers": {
         "AAA": {
             "color": "#074d66",
@@ -525,19 +537,33 @@
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "gene_call": {
+        "direction": {
             "color": "#000000",
-            "height": "200",
-            "margin": "180",
-            "type": "intensity",
-            "color-start": "#FFFFFF"
+            "height": "300",
+            "margin": "90",
+            "type": "color",
+            "color-start": "#DDDDDD"
         },
         "function_category": {
             "color": "#000000",
-            "height": "200",
-            "margin": "180",
+            "height": "300",
+            "margin": "90",
             "type": "color",
             "color-start": "#DDDDDD"
+        },
+        "gene_call": {
+            "color": "#000000",
+            "height": "300",
+            "margin": "180",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "length": {
+            "color": "#d10000",
+            "height": "300",
+            "margin": "90",
+            "type": "bar",
+            "color-start": "#FFFFFF"
         }
     },
     "samples-categorical-colors": {
@@ -566,6 +592,20 @@
             }
         }
     },
+    "samples-layer-order": [
+        {
+            "layer_name": "amino_acid",
+            "group": "default"
+        },
+        {
+            "layer_name": "codon_frequency",
+            "group": "default"
+        },
+        {
+            "layer_name": "amino_acid_frequency",
+            "group": "default"
+        }
+    ],
     "samples-layers": {
         "default": {
             "amino_acid": {
@@ -580,6 +620,40 @@
                     "value": null,
                     "disabled": false
                 }
+            },
+            "codon_frequency": {
+                "data-type": "numeric",
+                "height": 1000,
+                "margin": 90,
+                "normalization": "none",
+                "color": "#3b3b3b",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 72708,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            },
+            "amino_acid_frequency": {
+                "data-type": "numeric",
+                "height": 1000,
+                "margin": 90,
+                "normalization": "none",
+                "color": "#3b3b3b",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 164581,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
             }
         }
     },
