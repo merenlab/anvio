@@ -182,9 +182,9 @@ Codons can be excluded from or included in the analysis or just the output table
 
 `--exclude-amino-acids` removes codons encoding amino acids specified by their three-letter codes from the analysis. `--include-amino-acids` retains codons encoding specified amino acids, to the exclusion of other amino acids, in the analysis.
 
-In calculating synonymous codon frequencies with `--synonymous`, and in the absence of `--exclude-amino-acids` and `--include-amino-acids`, the program behaves as if `--exclude-amino-acids` were passed `STP Met Trp`: stop codons and the single codons encoding Met and Trp are excluded calculation of synonymous codon relative frequencies. If `--exclude-amino-acids` or `--include-amino-acids` are used, then this behavior does not apply. For example, to also exclude Cys from the analysis, then use `--exclude-amino-acids Cys STP Met Trp`.
-
 The following example would return a table of relative frequencies just among the set of codons for amino acids that can be positively charged: `--include-amino-acids Arg Lys His`.
+
+In calculating synonymous codon frequencies with `--synonymous`, and in the absence of `--exclude-amino-acids` and `--include-amino-acids`, the program behaves as if `--exclude-amino-acids` were passed `STP Met Trp`: stop codons and the single codons encoding Met and Trp are excluded calculation of synonymous codon relative frequencies. If `--exclude-amino-acids` or `--include-amino-acids` are used, then this behavior does not apply. For example, to also exclude Cys from the analysis, then use `--exclude-amino-acids Cys STP Met Trp`. If for some reason you wish to retain all codons in the synonymous codon analysis, including stop, Met, and Trp codons, then use `--exclude-amino-acids` as a flag without passing any values.
 
 #### Exclude rarer amino acids from output
 
