@@ -3709,23 +3709,60 @@ D = {
                      "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
                      "will have missing values in Asn columns. This filter occurs at the end of the "
                      "analysis before writing results and so does not affect prior calculations."}
-    ),
+        ),
     'include-amino-acids': (
             ['--include-amino-acids'],
             {'nargs': '+',
              'metavar': 'AMINO ACID',
-             'help': "This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
-                     "acids are analyzed and reported."}
-    ),
+             'help': "Only codons for the given amino acids are analyzed and reported in the output table."}
+        ),
     'exclude-amino-acids': (
             ['--exclude-amino-acids'],
             {'nargs': '+',
              'metavar': 'AMINO ACID',
-             'help': "Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
-                     "and STP for stop codons). If `--synonymous`, this argument defaults to 'STP Met "
-                     "Trp', and if other amino acids are excluded, for STP, Met, and Trp codons to still "
-                     "be excluded from the output table, they must also be explicitly provided in the "
-                     "argument."}
+             'help': "Remove codons for the given amino acids from the analysis (use three-letter codes, e.g., "
+                     "Ala and STP for stop codons). If `--synonymous`, the default behavior in the absence of "
+                     "this option is equivalent to '--exclude-amino-acids STP Met Trp'; for stop, Met, and "
+                     "Trp codons to still be excluded if `--exclude-amino-acids` is used, they must be "
+                     "explicitly provided in the argument."}
+        ),
+    'dont-report-amino-acids': (
+            ['--dont-report-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "Exclude codon columns for the given amino acids from the output table."}
+        ),
+    'report-amino-acids': (
+            ['--report-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "Only codon columns for the given amino acids are included in the output table."}
+        ),
+    'exclude-codons': (
+            ['--exclude-codons'],
+            {'nargs': '+',
+             'metavar': 'CODON',
+             'help': "Remove codons from the analysis. Regular expressions can be used, e.g., \"..A [CG]..\" "
+                     "to exclude all codons ending with an A or starting with a C or G."}
+        ),
+    'include-codons': (
+            ['--include-codons'],
+            {'nargs': '+',
+             'metavar': 'CODON',
+             'help': "Only include given codons in the analysis. Regular expression can be used, e.g., "
+                     "\"[GT]..\" to only consider codons starting with a G or T."}
+        ),
+    'dont-report-codons': (
+            ['--dont-report-codons'],
+            {'nargs': '+',
+             'metavar': 'CODON',
+             'help': "Exclude columns for the given codons from the output table."}
+        ),
+    'report-codons': (
+            ['--report-codons'],
+            {'nargs': '+',
+             'metavar': 'CODON',
+             'help': "Only columns for the given codons are included in the output table."}
         ),
     'function-min-codons': (
             ['--function-min-codons'],
