@@ -89,6 +89,8 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
+        self.de_novo_compute_mode = A('mode') or 'sequence'
+
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
 
@@ -245,7 +247,12 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
-        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        if self.de_novo_compute_mode == "sequence" or self.user_defined_gene_clusters:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        elif self.de_novo_compute_mode == "structure":
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
+        else:
+            raise ConfigError("Something is wrong")
 
 
     def process_additional_params(self):
@@ -931,6 +938,34 @@ class Pangenome(object):
             output_queue.put(output)
 
 
+    def get_gene_clusters_based_on_structure(self):
+        """Function to compute gene clusters based on protein structural similarities using Foldseek"""
+        # With these changes, we don't need `anvi-structural-pan-genome` anymore. We can run everystep in here.       
+        
+        # get all amino acid sequences:
+        combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
+        self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path,
+                                                             exclude_partial_gene_calls=self.exclude_partial_gene_calls)
+
+        # FIXME Not sure does it work with .db extension genomes
+        # get unique amino acid sequences:
+        self.progress.new('Uniquing the output FASTA file')
+        self.progress.update('...')
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
+        self.progress.new('Uniquing the output FASTA file')
+        self.progress.update('...')
+        
+        # FIXME move those funcs from structurepan.py
+        # Foldseek createdb
+
+        # Foldseek run easy-search
+
+        # Process the result of Foldseek search
+
+        # get clusters from MCL
+
+
+
     def get_gene_clusters_de_novo(self):
         """Function to compute gene clusters de novo"""
 
@@ -1017,8 +1052,12 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        else:
+        elif self.de_novo_compute_mode == "sequence":
             gene_clusters_dict = self.get_gene_clusters_de_novo()
+        elif self.de_novo_compute_mode == "structure":
+            gene_clusters_dict = self.get_gene_clusters_based_on_structure()
+        else:
+            raise ConfigError("Something is wrong")
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
