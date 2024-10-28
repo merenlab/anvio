@@ -54,6 +54,7 @@ class Foldseek():
         if not self.run.log_file_path:
             self.run.log_file_path = 'foldseek-log-file.txt'
 
+        self.names_dict = None
 
     def create_db(self):
         self.run.warning(None, header="FOLDSEEK CREATEDB", lc="green")
@@ -103,3 +104,14 @@ class Foldseek():
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Foldseek search Result', result_file_dir)
+
+    def process(self, query_db, target_db, tmp):
+
+        self.create_db()
+        self.search(query_db, target_db, tmp)
+
+    def get_foldseek_results(self):
+        """ Return result.m8 file """
+        result_dir = os.path.join(self.output_file_path, 'result')
+
+        return result_dir
