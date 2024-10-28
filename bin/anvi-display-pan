@@ -41,7 +41,6 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
     groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
-    groupB.add_argument(*anvio.A('mode'), **anvio.K('mode'))
 
     groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
