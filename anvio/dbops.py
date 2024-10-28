@@ -1471,6 +1471,10 @@ class ContigsSuperclass(object):
         taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         output = open(output_file_path, 'w')
+        column_list = ['split_name'] + [k for k in taxon_names_table[list(taxon_names_table.keys())[0]].keys()]
+        header = "\t".join(column_list)
+        print(header)
+        output.write(f"{header}\n")
         for split_name in self.splits_basic_info:
             if split_name in splits_taxonomy_table:
                 taxon_id = splits_taxonomy_table[split_name]['taxon_id']
