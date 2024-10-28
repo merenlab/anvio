@@ -34,6 +34,7 @@ from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
+from anvio.drivers.foldseek import Foldseek
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
@@ -96,6 +97,9 @@ class Pangenome(object):
 
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
+
+        if self.mode == 'structure':
+            self.skip_alignments = True
 
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -316,12 +320,31 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        if self.use_ncbi_blast:
-            return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
-        else:
-            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+    def run_foldseek(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        """ Running Foldseek """
 
+        fs = Foldseek(query_fasta=unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
+                                num_threads=self.num_threads, output_file_path=self.overwrite_output_destinations)
+
+        # It may help downstream analysis in the future but for now have no functionality :/ 
+        fs.names_dict = unique_AA_sequences_names_dict
+
+        db_dir = os.path.join(self.overwrite_output_destinations, "db")
+        # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
+        tmp_dir = os.path.join(self.overwrite_output_destinations, "tmp")
+
+        fs.process_result(db_dir, db_dir, tmp_dir)
+
+        return fs.get_foldseek_results()
+
+    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        if not self.mode == 'structure':
+            if self.use_ncbi_blast:
+                return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+            else:
+                return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+        else:
+            return self.run_foldseek(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
 
     def run_mcl(self, mcl_input_file_path):
         mcl = MCL(mcl_input_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
@@ -938,34 +961,6 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def get_gene_clusters_based_on_structure(self):
-        """Function to compute gene clusters based on protein structural similarities using Foldseek"""
-        # With these changes, we don't need `anvi-structural-pan-genome` anymore. We can run everystep in here.       
-        
-        # get all amino acid sequences:
-        combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
-        self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path,
-                                                             exclude_partial_gene_calls=self.exclude_partial_gene_calls)
-
-        # FIXME Not sure does it work with .db extension genomes
-        # get unique amino acid sequences:
-        self.progress.new('Uniquing the output FASTA file')
-        self.progress.update('...')
-        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
-        self.progress.new('Uniquing the output FASTA file')
-        self.progress.update('...')
-        
-        # FIXME move those funcs from structurepan.py
-        # Foldseek createdb
-
-        # Foldseek run easy-search
-
-        # Process the result of Foldseek search
-
-        # get clusters from MCL
-
-
-
     def get_gene_clusters_de_novo(self):
         """Function to compute gene clusters de novo"""
 
@@ -1052,12 +1047,8 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        elif self.de_novo_compute_mode == "sequence":
-            gene_clusters_dict = self.get_gene_clusters_de_novo()
-        elif self.de_novo_compute_mode == "structure":
-            gene_clusters_dict = self.get_gene_clusters_based_on_structure()
         else:
-            raise ConfigError("Something is wrong")
+            gene_clusters_dict = self.get_gene_clusters_de_novo()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
