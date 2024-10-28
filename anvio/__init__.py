@@ -3686,7 +3686,7 @@ D = {
     'mode': (
         ['--mode', '-M'],
         {'default': None,
-         'metavar': 'STRUCTURE',
+         'metavar': 'structure',
          'type': str,
          'help': 'Use this flag to set mode to structure or sequence.'}
     )
