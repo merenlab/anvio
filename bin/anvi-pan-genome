@@ -55,7 +55,6 @@ if __name__ == '__main__':
                                 introduce extra heterogeneity within those gene clusters. Using this flag, you can request anvi'o to exclude\
                                 partial gene calls from the analysis (whether a gene call is partial or not is an information that comes directly\
                                 from the gene caller used to identify genes during the generation of the contigs database).")
-    groupA.add_argument(*anvio.A('mode'), **anvio.K('mode', {'required': False}))
 
 
     groupB = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
@@ -74,6 +73,7 @@ if __name__ == '__main__':
                                 f"you should set this parameter like this manually: --additional-params-for-seq-search "
                                 f"\"{panops.additional_param_sets_for_sequence_search['diamond']} --sensitive\". DO NOT EVER FORGET THE DOUBLE QUOTES, unless "
                                 f"you hate your computer and want to see it melting beforey our eyes.")
+    groupB.add_argument(*anvio.A('mode'), **anvio.K('mode', {'required': False}))
 
 
     groupB = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
