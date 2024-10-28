@@ -1476,9 +1476,10 @@ class ContigsSuperclass(object):
                 taxon_id = splits_taxonomy_table[split_name]['taxon_id']
                 if taxon_id:
                     self.splits_taxonomy_dict[split_name] = taxon_names_table[taxon_id]
-                    output.write('{0}\t{1}\n'.format(split_name, '\t'.join(x for x in self.splits_taxonomy_dict[split_name].values())))
+                    taxonomy_string = "\t".join(str(x) for x in self.splits_taxonomy_dict[split_name].values())
+                    output.write(f"{split_name}\t{taxonomy_string}\n")
                 else:
-                    output.write('{0}\t\n'.format(split_name))
+                    output.write(f"{split_name}\t\n")
         output.close()
 
         contigs_db.disconnect()
