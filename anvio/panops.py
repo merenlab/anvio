@@ -98,7 +98,7 @@ class Pangenome(object):
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
 
-        if self.mode == 'structure':
+        if self.de_novo_compute_mode == 'structure':
             self.skip_alignments = True
 
         # when it is time to organize gene_clusters
@@ -338,7 +338,7 @@ class Pangenome(object):
         return fs.get_foldseek_results()
 
     def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        if not self.mode == 'structure':
+        if not self.de_novo_compute_mode == 'structure':
             if self.use_ncbi_blast:
                 return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
             else:
