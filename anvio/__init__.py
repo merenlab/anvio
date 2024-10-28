@@ -3682,6 +3682,13 @@ D = {
                      "a comma-separated list. The default stats are 'detection' and "
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
+    ),
+    'mode': (
+        ['--mode', '-M'],
+        {'default': None,
+         'metavar': 'STRUCTURE',
+         'type': str,
+         'help': 'Use this flag to set mode to structure or sequence.'}
     )
 }
 
