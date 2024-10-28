@@ -1462,24 +1462,28 @@ class ContigsSuperclass(object):
         if not self.a_meta['gene_level_taxonomy_source']:
             raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
-        if not len(self.splits_taxonomy_dict):
-            self.init_splits_taxonomy()
 
-        if not len(self.splits_taxonomy_dict):
-            raise ConfigError("The splits taxonomy is empty. There is nothing to report. Could it be "
-                               "possible the taxonomy caller you used did not assign any taxonomy to "
-                               "anything?")
+        self.progress.new('Initializing splits taxonomy')
+        self.progress.update('...')
 
-        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        splits_taxonomy_table = contigs_db.db.smart_get(t.splits_taxonomy_table_name, 'split', self.split_names_of_interest, string_the_key=True, error_if_no_data=False, progress=self.progress)
+        taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         output = open(output_file_path, 'w')
         for split_name in self.splits_basic_info:
-            if split_name in self.splits_taxonomy_dict:
-                output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
-            else:
-                output.write('{0}\t\n'.format(split_name))
+            if split_name in splits_taxonomy_table:
+                taxon_id = splits_taxonomy_table[split_name]['taxon_id']
+                if taxon_id:
+                    self.splits_taxonomy_dict[split_name] = taxon_names_table[taxon_id]
+                    output.write('{0}\t{1}\n'.format(split_name, '\t'.join(x for x in self.splits_taxonomy_dict[split_name].values())))
+                else:
+                    output.write('{0}\t\n'.format(split_name))
         output.close()
 
+        contigs_db.disconnect()
+        self.progress.end()
+        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(splits_taxonomy_table), len(self.splits_basic_info)))
         self.run.info("Output", output_file_path)
 
 
