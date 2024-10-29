@@ -324,16 +324,17 @@ class Pangenome(object):
         """ Running Foldseek """
 
         fs = Foldseek(query_fasta=unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
-                                num_threads=self.num_threads, output_file_path=self.overwrite_output_destinations)
+                                num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         # It may help downstream analysis in the future but for now have no functionality :/ 
         fs.names_dict = unique_AA_sequences_names_dict
+        fs.output_file = self.get_output_file_path('foldseek-search-results')
+        fs.log_file_path = self.log_file_path
 
-        db_dir = os.path.join(self.overwrite_output_destinations, "db")
+        db_dir = os.path.join(self.output_dir, "db")
         # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
-        tmp_dir = os.path.join(self.overwrite_output_destinations, "tmp")
 
-        fs.process_result(db_dir, db_dir, tmp_dir)
+        fs.process(db_dir, db_dir)
 
         return fs.get_foldseek_results()
 
