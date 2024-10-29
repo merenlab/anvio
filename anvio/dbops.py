@@ -693,7 +693,7 @@ class ContigsSuperclass(object):
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
 
 
-    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False):
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
 
@@ -755,10 +755,13 @@ class ContigsSuperclass(object):
             response = [r for r in response if r[0] in self.gene_callers_id_to_split_name_dict]
 
             # now we are good to go with extending the report
-            full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
-
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
-            split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
+            if genes_as_split_names:
+                split_names[search_term] = [f"g_{gene_callers_id}" for gene_callers_id in matching_gene_caller_ids[search_term]]
+                full_report.extend([(r[0], r[1], r[2], r[3], search_term, f"g_{r[0]}") for r in response])
+            else:
+                split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
+                full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
             self.progress.end()
 
