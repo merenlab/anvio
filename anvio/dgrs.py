@@ -2468,6 +2468,7 @@ class DGR_Finder:
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VX'] = vr_start
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VW'] = vr_end - vr_start
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['VT'] = vr_start + (vr_end - vr_start) / 2
+                    self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['midline'] = vr_data['midline']
 
                     for gene in vr_genes.values():
                         gene['start_vr_g'] = (gene['start'] - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
