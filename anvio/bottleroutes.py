@@ -194,6 +194,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
+        self.route('/data/get_functions_for_a_collection_of_genes',    callback=self.get_functions_for_a_collection_of_genes, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
@@ -1518,6 +1519,29 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps(output)
+
+
+    def get_functions_for_a_collection_of_genes(self):
+        if not self.interactive.gene_function_calls_initiated:
+            message = "Gene functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        gene_caller_ids = json.loads(request.forms.get('gene_caller_ids'))
+
+        d = {}
+        for gene_callers_id in gene_caller_ids:
+            # remember, the gene caller ids we get here will all ahve the `g_` prefix (why? because
+            # anvi'o refuses to work with trees where leaf names that are composed of digits only, and
+            # to cluster our genes we had to add `g_` to the beginning of them)
+            gene_callers_id = int(gene_callers_id.lstrip('g_'))
+
+            if gene_callers_id not in self.interactive.gene_function_calls_dict:
+                d[gene_callers_id] = {}
+            else:
+                d[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
+
+        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_function_call_sources)})
 
 
     def get_functions_for_gene_clusters(self):
