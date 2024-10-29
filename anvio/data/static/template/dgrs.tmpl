@@ -116,37 +116,123 @@
                             </pre>
                         </div>
                     <h4>Genomic context <small class="text-muted">:: What we know about the genes that surround both the Template and Variable Regions.</small></h4>
-                        <h4>Template Region (TR)</h4>
+                    <h4>Template Region (TR)</h4>
 
-                        <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
-                            <svg width="1000" height="80">
-                                {% if meta.genomic_context_recovered %}
-                                    <rect x='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TX" }}' y="0" width='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TW" }}' height="65" style="fill:pink; opacity:0.5"></rect>
-                                    <text x='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TT" }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="pink" style="font-weight:bold;">TR</text>
+                    <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
+                        <svg width="1000" height="80">
+                            {% if meta.genomic_context_recovered %}
+                                <rect x='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TX" }}' y="0" width='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TW" }}' height="65" style="fill:pink; opacity:0.5"></rect>
+                                <text x='{{ dgrs|lookup:dgr|lookup:"dgr_data"|lookup:"TT" }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="pink" style="font-weight:bold;">TR</text>
 
-                                    <!-- TR Genes -->
-                                    {% for gene_key, gene in dgr_data.tr_genes.items %}
-                                        <g type="button" data-container="body" data-toggle="popover" data-popover-content='{% if gene.direction == "r" %}#{{dgr}}-gene-{{ gene.gene_callers_id }}-popover{% else %}#{{dgr}}-gene-{{ gene.gene_callers_id }}{% endif %}' data-placement="bottom" {% if gene.direction == "r" %}transform='translate({{ gene.TGTRANS }}, 0) scale(-1, 1)'{% endif %} id='{{dgr}}-gene-{{ gene.gene_callers_id }}'>
-                                            <rect x='{{ gene|lookup:"TRX" }}' y="23" width='{{ gene|lookup:"TRW" }}' height="15" style='fill: {{ gene.COLOR }}'></rect>
-                                            <polygon points='{{ gene|lookup:"TRX_TRW" }} 12, {{ gene|lookup:"TGY" }} 30, {{ gene|lookup:"TRX_TRW" }} 48' style='fill: {{ gene.COLOR }}'></polygon>
-                                        </g>
-                                        <!-- Draw gene caller ID label -->
-                                        <text x='{{ gene|lookup:"TCX" }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">
-                                            {{ gene.gene_callers_id }}
+                                <!-- TR Genes SVG Elements -->
+                                {% for gene_key, gene in dgr_data.tr_genes.items %}
+                                    <g type="button" data-container="body" data-toggle="popover" data-popover-content="#{{dgr}}-gene-{{ gene.gene_callers_id }}-popover" data-placement="bottom" {% if gene.direction == "r" %}transform='translate({{ gene.TGTRANS }}, 0) scale(-1, 1)'{% endif %} id='{{dgr}}-gene-{{ gene.gene_callers_id }}'>
+                                        <rect x='{{ gene|lookup:"TRX" }}' y="23" width='{{ gene|lookup:"TRW" }}' height="15" style='fill: {{ gene.COLOR }}'></rect>
+                                        <polygon points='{{ gene|lookup:"TRX_TRW" }} 12, {{ gene|lookup:"TGY" }} 30, {{ gene|lookup:"TRX_TRW" }} 48' style='fill: {{ gene.COLOR }}'></polygon>
+                                    </g>
+                                    <!-- Draw gene caller ID label -->
+                                    <text x='{{ gene|lookup:"TCX" }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">
+                                        {{ gene.gene_callers_id }}
+                                    </text>
+
+                                    <!-- Draw RT label if it's the RT gene -->
+                                    {% if gene.COLOR == '#c366e8' %}  <!-- Assuming this is the RT gene color -->
+                                        <text x='{{ gene|lookup:"TCX" }}' y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ gene.COLOR }}" style="font-weight:bold;">
+                                            RT
                                         </text>
-                                        
-                                        <!-- Draw RT label if it's the RT gene -->
-                                        {% if gene.COLOR == '#c366e8' %}  <!-- Assuming this is the RT gene color -->
-                                            <text x='{{ gene|lookup:"TCX" }}' y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ gene.COLOR }}" style="font-weight:bold;">
-                                                RT
-                                            </text>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the genomic context since you have used the flag --skip-recovering-genomic-context (#SAD)</text>
-                                {% endif %}
-                            </svg>
-                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">
+                                    We don't know anything about the genomic context since you have used the flag --skip-recovering-genomic-context (#SAD)
+                                </text>
+                            {% endif %}
+                        </svg>
+
+                            {% for gene_key, gene in dgr_data.tr_genes.items %}
+                            <!-- Popover Element-->
+                            <div class="d-none hidden popover fade in top col-12" id="{{dgr}}-gene-{{ gene.gene_callers_id }}-popover">
+                            <div  class="popover-body table-responsive">
+                                <div class="card" id="popover-panel">
+                                    <div id="{{dgr}}-gene-{{ gene.gene_callers_id }}-popover" class="popover-body">
+                                    <div class="card" id="popover-panel">
+                                        <div class="card-header mt-2" style="width: 100%;">
+                                            <h4>Gene Call</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-striped gene-call-table table-responsive" style="width: 100%; text-align: center;">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Source</th>
+                                                        <th>Contig</th>
+                                                        <th>Length</th>
+                                                        <th>Direction</th>
+                                                        <th>Start</th>
+                                                        <th>Stop</th>
+                                                        <th>Call Type</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>{{ gene.gene_callers_id|pretty }}</td>
+                                                        <td>{{ gene.source|pretty }}</td>
+                                                        <td>{{ gene.contig|pretty }}</td>
+                                                        <td>{{ gene.length|pretty }}</td>
+                                                        <td>{{ gene.direction|pretty }}</td>
+                                                        <td>{{ gene.start|pretty }}</td>
+                                                        <td>{{ gene.stop|pretty }}</td>
+                                                        <td>{{ gene.call_type|pretty }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <!-- Additional sections like DNA/AA sequences and Function Annotations follow here as needed -->
+                                    </div>
+                                </div>
+
+                                        <!-- DNA/AA Buttons -->
+                                        <div class="d-flex seq-buttons ml-3">
+                                            <div class="col-xs-1 mr-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_sequence('{{ gene.header|escapejs }}', '{{ gene.DNA_sequence|escapejs }}')">DNA</button>
+                                            </div>
+                                            <div class="col-xs-1">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_aa_sequence('{{ gene.header|escapejs }}', '{{ gene.AA_sequence|escapejs }}')">AA</button>
+                                            </div>
+                                        </div>
+                                        <!-- Functional Annotations Table -->
+                                        <div class="card-header mt-2" style="width: 100%;">
+                                            <h4>Function Annotations</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            {% if gene.has_functions %}
+                                                <table class="table table-striped table-responsive" style="width: 100%;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Source</th>
+                                                            <th>Accession</th>
+                                                            <th>Function</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for function in gene.functions %}
+                                                            <tr>
+                                                                <td class="long">{{ function.source|pretty }}</td>
+                                                                <td>{{ function.accession|pretty }}</td>
+                                                                <td class="long">{{ function.function|pretty }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            {% else %}
+                                                <p>No known function in {{ meta.gene_function_sources|pretty_join:"or" }} :/</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                    </div>
 
                         <h4>Variable Regions (VR)</h4>
                         {% for vr_key, vr in dgr_data.dgr_data.VRs.items %}
