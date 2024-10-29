@@ -1013,8 +1013,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                  'dict': data_dict}}
 
         # create a new, empty profile database for manual operations
-        profile_db_path = J('profile.db')
-        profile_db = ProfileDatabase(profile_db_path)
+        self.profile_db_path = J('profile.db')
+        profile_db = ProfileDatabase(self.profile_db_path)
         profile_db.create({'db_type': 'profile',
                            'blank': True,
                            'merged': True,
@@ -1034,16 +1034,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
 
             # then add the items order to the database
-            dbops.add_items_order_to_db(profile_db_path, item_order_name, items_order, order_data_type_newick=True,
+            dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
                                         distance=self.distance, linkage=self.linkage, make_default=True if view == 'codon_frequencies_view' else False,
                                         check_names_consistency=False)
 
             # add vew tables to the database
-            TablesForViews(profile_db_path).create_new_view(
-                                            view_data=self.views[view]['dict'],
-                                            table_name=f"{view}",
-                                            view_name=f"{view}",
-                                            from_matrix_form=True)
+            TablesForViews(self.profile_db_path).create_new_view(view_data=self.views[view]['dict'],
+                                                                 table_name=f"{view}",
+                                                                 view_name=f"{view}",
+                                                                 from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
         self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
@@ -1054,12 +1053,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # could in fact buld these two variables from scracth this way, but I like the idea of re-reading
         # them since if something went wrong with the data the programmer will realize that before the
         # interactive interface pulls up.
-        args = argparse.Namespace(profile_db=profile_db_path, target_data_table="items", just_do_it=True)
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
         TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(additional_items_data, ['gene_call', 'length', 'direction', 'function_category'], skip_check_names=True)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
         # layer additional data into the profile database
-        args = argparse.Namespace(profile_db=profile_db_path, target_data_table="layers", just_do_it=True)
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layers", just_do_it=True)
         TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(additional_layers_data, ['amino_acid', 'codon_frequency', 'amino_acid_frequency'], skip_check_names=True)
         layers_additional_data_keys, layers_additional_data_dict = TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).get()
         self.layers_additional_data_keys, self.layers_additional_data_dict = {'default': layers_additional_data_keys}, {'default': layers_additional_data_dict}
@@ -1067,16 +1066,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # everything we need is in the database now. time to add a mini state:
         mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json')).read()
         mini_state = mini_state.replace('CODON_FREQ_MAX', str(round(int(max(total_counts_per_codon.values()))))).replace('AA_FREQ_MAX', str(round(int(max(total_counts_per_aa.values())))))
-        TablesForStates(profile_db_path).store_state('default', mini_state)
+        TablesForStates(self.profile_db_path).store_state('default', mini_state)
 
         # create an instance of states table
-        self.states_table = TablesForStates(profile_db_path)
+        self.states_table = TablesForStates(self.profile_db_path)
 
         # also populate collections, if there are any
-        self.collections.populate_collections_dict(profile_db_path)
+        self.collections.populate_collections_dict(self.profile_db_path)
 
         # read description from self table, if it is not available get_description function will return placeholder text
-        self.p_meta['description'] = get_description_in_db(profile_db_path)
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
         self.title = self.args.title or self.p_meta['sample_id']
 
@@ -1085,7 +1084,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     "the profil database anvi'o is about to show you, you can always re-visualize the same "
                     "data by running `anvi-interactive` on that profile database with `--manual` flag.",
                     header="YOUR PROFILE-DB IS READY", lc="cyan")
-        run.info("Profile database path", profile_db_path, nl_after=1)
+        run.info("Profile database path", self.profile_db_path, nl_after=1)
 
 
     def load_functional_mode(self):
