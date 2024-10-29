@@ -210,7 +210,7 @@ $(document).ready(function() {
             $(this).text(function(i, text) {
                 if(text === "Hide"){
                     $('#inner-sidebar').hide();
-    
+
                 }else{
                     $('#inner-sidebar').show();
                 }
@@ -392,11 +392,11 @@ function scaleBarDrawer() {
         const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
         scaleValue.textContent = scale.toFixed(decimalPlaces);
 
-        if (scale != 0) {            
+        if (scale != 0) {
             // Calculate the scale bar width based on the step
             const stepRatio = Math.abs(step % stepsPerUpdate) / stepsPerUpdate;
             const scaleBarWidth = minScaleBarWidth + stepRatio * (maxScaleBarWidth - minScaleBarWidth);
-            scaleBar.style.width = `${scaleBarWidth}px`;           
+            scaleBar.style.width = `${scaleBarWidth}px`;
         }
     };
 
@@ -518,6 +518,13 @@ function switchUserInterfaceMode(project, title) {
                 }
             }
         })
+    }
+
+    if (mode == 'codon-frequencies') {
+        $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
+        $('#redundancy_title').hide();
+        $('#splits_title').hide();
+        $('#len_title').hide();
     }
 
     if (server_mode) {
@@ -1986,6 +1993,84 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
+function showGeneFunctions(bin_id, updateOnly) {
+    if (typeof updateOnly === 'undefined')
+        updateOnly = false;
+
+    var title = 'Genes in "' + $('#bin_name_' + bin_id).val() + '"';
+
+    if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
+        return;
+
+    let bin_info = bins.ExportBin(bin_id);
+
+    $.ajax({
+        type: 'POST',
+        url: '/data/get_functions_for_a_collection_of_genes',
+        data: {
+            'gene_caller_ids': JSON.stringify(bin_info['items'], null, 4),
+        },
+        success: (response) => {
+            if (response.hasOwnProperty('status') && response.status != 0) {
+                toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
+                return;
+            }
+
+            let content = `<table class="table table-striped">
+                           <thead class="thead-light">
+                           <tr>
+                             <th>Gene call</th>
+                             <th>Source</th>
+                             <th>Accession</th>
+                             <th>Function</th>
+                           </tr>
+                           </thead>
+
+                           <tbody>`;
+
+            // building the table for each gene cluster
+            Object.keys(response['functions']).map(function(gene_callers_id) {
+
+                let d = response['functions'][gene_callers_id];
+
+                Object.keys(response['sources']).map(function(index) {
+                    let function_source = response['sources'][index];
+
+                    if (d[function_source]) {
+                        accession_string = getPrettyFunctionsString(d[function_source][0], function_source);
+                        function_string = getPrettyFunctionsString(d[function_source][1])
+                    } else {
+                        accession_string = 'N/A';
+                        function_string = 'N/A';
+                    }
+
+
+                    if (index == 0) {
+                        content += `<tr style="border-top: 3px solid #d0d0d0;">
+                                    <td rowspan="${ Object.keys(response['sources']).length }"><b>${gene_callers_id}</b></td>
+                                    <td>${ function_source }</a></td>
+                                    <td>${ accession_string }</td>
+                                    <td>${ function_string }</td>
+                                    </tr>`;
+                    } else {
+                        content += `<tr>
+                                    <td>${ function_source }</a></td>
+                                    <td>${ accession_string }</td>
+                                    <td>${ function_string }</td>
+                                    </tr>`;
+                    }
+                });
+            });
+
+        content += `</tbody></table>`
+
+        showGeneFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".', content + '</table>');
+        }
+    });
+
+}
+
+
 function showGeneClusterDetails(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -1996,7 +2081,6 @@ function showGeneClusterDetails(bin_id, updateOnly) {
         return;
 
     let bin_info = bins.ExportBin(bin_id);
-    console.log(bin_info);
 
     $.ajax({
         type: 'POST',
@@ -2147,13 +2231,15 @@ async function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                var geneClustersElement = $(bin).find('.num-gene-clusters');        
+                var geneClustersElement = $(bin).find('.num-gene-clusters');
                 if (geneClustersElement.length > 0) {
                     _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
                 } else {
                     console.log("geneClustersElement not found");
                 }
                 _bin_info['gene-calls'] = $(bin).find('.num-gene-calls input').val();
+            } else if (mode === 'codon-frequencies') {
+                _bin_info['contig-count'] = $(bin).find('.num-items input').val();
             } else {
                 _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
                 _bin_info['contig-count'] = $(bin).find('.num-items input').val();

@@ -83,8 +83,7 @@ Bins.prototype.NewBin = function(id, binState) {
         template += '<td data-value="' + num_gene_clusters + '" class="num-gene-clusters"><input type="button" value="' + num_gene_clusters + '" title="Click for quick gene cluster summaries" onclick="showGeneClusterDetails(' + id + ');"></td>' +
                     '<td data-value="' + num_gene_calls + '" class="num-gene-calls"><input type="button" value="' + num_gene_calls + '"></td>';
     } else if (mode === 'codon-frequencies') {
-        template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showContigNames(' + id + ');"></td>' +
-                    '<td data-value="' + contig_length + '" class="length-sum"><span>' + contig_length + '</span></td>';
+        template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showGeneFunctions(' + id + ');"></td>';
     } else {
         template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showContigNames(' + id + ');"></td>' +
                     '<td data-value="' + contig_length + '" class="length-sum"><span>' + contig_length + '</span></td>';
@@ -494,6 +493,20 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                 bin_row.querySelector('td.num-gene-calls').setAttribute('data-value', num_gene_calls);
                 bin_row.querySelector('td.num-gene-calls>input').value = num_gene_calls;
             }
+        } else if (mode === 'codon-frequencies') {
+            let num_items = 0;
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    num_items++;
+                }
+            }
+
+            let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').value;
+
+            bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
+            bin_row.querySelector('td.num-items>input').value = num_items;
         } else {
             let num_items = 0;
             let length_sum = 0;
