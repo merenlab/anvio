@@ -400,6 +400,7 @@ table_requires_unique_entry_id = {'self': False,
                                   'presence_absence_view': False,    # These two tables are for pangeomes
                                   'functions_frequency_view': True,        #
                                   'functions_presence_absence_view': True, # And these two are for anvi-display-functions stuff
+                                  'codon_frequencies_view': True, # this table is generated and used by `anvi-display-codon-frequencies`
                                   'atomic_data_splits': False,
                                   'atomic_data_contigs': False,
                                   'max_normalized_ratio_contigs': False,
