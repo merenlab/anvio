@@ -632,7 +632,7 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 72708,
+                    "value": CODON_FREQ_MAX,
                     "disabled": false
                 },
                 "type": "bar",
@@ -649,7 +649,7 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 164581,
+                    "value": AA_FREQ_MAX,
                     "disabled": false
                 },
                 "type": "bar",
