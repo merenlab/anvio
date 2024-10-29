@@ -1840,6 +1840,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     items[item] = [i for i in items[item] if i in self.split_names_of_interest]
 
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
+        elif self.mode == 'codon-frequencies':
+            items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources, genes_as_split_names=True)
         elif self.mode == 'pan':
             items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
         else:
