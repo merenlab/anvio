@@ -2731,7 +2731,8 @@ D = {
                      "coverage values for each contig to be first concatenated so they can be sorted to calculate the "
                      "most accurate Q2Q3 value for a given bin. This flag ensures anvi'o calculates mean coverage Q2Q3 "
                      "values in that careful way at the expense of things taking much longer (but it really is worth it "
-                     "for your final summary of everything)."}
+                     "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
+                     "details."}
                 ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
