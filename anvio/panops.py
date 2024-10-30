@@ -91,7 +91,7 @@ class Pangenome(object):
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
         self.de_novo_compute_mode = A('mode') or 'sequence'
-        self.prostt5_weight_dir = A('prostt5-weight-dir')
+        self.prostt5_weight_dir = A('prostt5_weight_dir')
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False

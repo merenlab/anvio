@@ -129,7 +129,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'PAN_DB_DIR'}))
     groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupE.add_argument(*anvio.A('--prostt5-weight-dir'), **anvio.K('prostt5-weight-dir'))
+    groupE.add_argument(*anvio.A('prostt5-weight-dir'), **anvio.K('prostt5-weight-dir'))
 
     groupF = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")
     groupF.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
