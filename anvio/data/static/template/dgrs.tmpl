@@ -240,80 +240,78 @@
                                 <h5>VR ID: {{ vr_key }}</h5>
                                 <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
                                     <svg width="1000" height="80">
-                                    <!-- Loop through VR genes -->
-                                    {% for gene_key, vr_gene in vr.vr_genes.items %}
-                                        <g type="button" data-container="body" data-toggle="popover" data-popover-content='{% if vr_gene.direction == "r" %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}-popover{% else %}#{{dgr}}-gene-{{ vr_gene.gene_callers_id }}{% endif %}' data-placement="bottom" {% if vr_gene.direction == "r" %}transform='translate({{ vr_gene.VGTRANS }}, 0) scale(-1, 1)'{% endif %} id='{{dgr}}-gene-{{ vr_gene.gene_callers_id }}'>
-                                            <rect x='{{ vr_gene.VRX }}' y="23" width='{{ vr_gene.VRW }}' height="15" style='fill:{{ vr_gene.COLOR }}'></rect>
-                                            <polygon points='{{ vr_gene.VRX_VRW }} 12, {{ vr_gene.VGY }} 30, {{ vr_gene.VRX_VRW }} 48' style='fill:{{ vr_gene.COLOR }}'></polygon>
-                                        </g>
+                                        <!-- Display VR Region -->
+                                        <rect x="{{ vr.VX }}" y="0" width="{{ vr.VW }}" height="65" style="fill:red; opacity:0.5"></rect>
+                                        <text x="{{ vr.VT }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ vr_key|humanize }}</text>
 
-                                        <!-- Display VR -->
-                                        <rect x='{{ vr.VX }}' y="0" width='{{ vr.VW }}' height="65" style="fill:red; opacity:0.5"></rect>
-                                        <text x='{{ vr.VT }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ vr_key|humanize }}</text>
+                                        <!-- Loop through VR genes -->
+                                        {% for gene_key, vr_gene in vr.vr_genes.items %}
+                                            <g type="button" data-container="body"
+                                            data-toggle="popover"
+                                            data-popover-content="#{{ dgr }}-vr-{{ vr_key }}-gene-{{ gene_key }}-popover"
+                                            data-placement="bottom"
+                                            {% if vr_gene.direction == "r" %}transform="translate({{ vr_gene.VGTRANS }}, 0) scale(-1, 1)"{% endif %}
+                                            id="{{ dgr }}-vr-{{ vr_key }}-gene-{{ gene_key }}">
 
-                                            <!-- Draw gene caller ID label -->
-                                            <text x='{{ vr_gene.VCX }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">
-                                                {{ vr_gene.gene_callers_id }}
-                                            </text>
+                                                <!-- VR Gene Rectangle -->
+                                                <rect x="{{ vr_gene.VRX }}" y="23" width="{{ vr_gene.VRW }}" height="15" style="fill:{{ vr_gene.COLOR }}"></rect>
+                                                <!-- Arrow Polygon for VR Gene -->
+                                                <polygon points="{{ vr_gene.VRX_VRW }} 12, {{ vr_gene.VGY }} 30, {{ vr_gene.VRX_VRW }} 48" style="fill:{{ vr_gene.COLOR }}"></polygon>
+                                            </g>
 
-                                            <!-- Draw RT label if it's the RT gene -->
-                                            {% if vr_gene.COLOR == '#c366e8' %}  <!-- Assuming this is the RT gene color -->
-                                                <text x='{{ vr_gene.VCX }}' y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ vr_gene.COLOR }}" style="font-weight:bold;">
-                                                    RT
-                                                </text>
+                                            <!-- Gene Caller ID Label -->
+                                            <text x="{{ vr_gene.VCX }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ vr_gene.gene_callers_id }}</text>
+
+                                            {% if vr_gene.COLOR == '#c366e8' %}
+                                                <!-- RT Label for Specific Gene Color -->
+                                                <text x="{{ vr_gene.VCX }}" y="70" dominant-baseline="middle" text-anchor="middle" fill="{{ vr_gene.COLOR }}" style="font-weight:bold;">RT</text>
                                             {% endif %}
                                         {% endfor %}
                                     </svg>
-                                    {% if vr.vr_genes %}
-                                        {% for gene_key, vr_gene in vr.vr_genes.items %}
-                                            <!-- Popover Element-->
-                                            <div class="d-none hidden popover fade in top col-12" id="{{dgr}}-gene-{{ vr_gene.gene_callers_id }}-popover">
-                                            <div  class="popover-body table-responsive">
-                                                <div class="card" id="popover-panel">
-                                                    <div id="{{dgr}}-gene-{{ vr_gene.gene_callers_id }}-popover" class="popover-body">
-                                                    <div class="card" id="popover-panel">
-                                                        <div class="card-header mt-2" style="width: 100%;">
-                                                            <h4>Gene Call</h4>
-                                                        </div>
-                                                        <div class="card-body">
-                                                            <table class="table table-striped gene-call-table table-responsive" style="width: 100%; text-align: center;">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>ID</th>
-                                                                        <th>Source</th>
-                                                                        <th>Contig</th>
-                                                                        <th>Length</th>
-                                                                        <th>Direction</th>
-                                                                        <th>Start</th>
-                                                                        <th>Stop</th>
-                                                                        <th>Call Type</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <tr>
-                                                                        <td>{{ vr_gene.gene_callers_id|pretty }}</td>
-                                                                        <td>{{ vr_gene.source|pretty }}</td>
-                                                                        <td>{{ vr_gene.contig|pretty }}</td>
-                                                                        <td>{{ vr_gene.length|pretty }}</td>
-                                                                        <td>{{ vr_gene.direction|pretty }}</td>
-                                                                        <td>{{ vr_gene.start|pretty }}</td>
-                                                                        <td>{{ vr_gene.stop|pretty }}</td>
-                                                                        <td>{{ vr_gene.call_type|pretty }}</td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                        <!-- Additional sections like DNA/AA sequences and Function Annotations follow here as needed -->
-                                                    </div>
-                                                </div>
 
+                                    <!-- Popover Content for Each Gene (placed outside of SVG) -->
+                                    {% for gene_key, vr_gene in vr.vr_genes.items %}
+                                        <div class="d-none hidden popover fade in top col-12" id="{{ dgr }}-vr-{{ vr_key }}-gene-{{ gene_key }}-popover">
+                                            <div class="popover-body table-responsive">
+                                                <div class="card" id="popover-panel">
+                                                    <div class="card-header mt-2" style="width: 100%;">
+                                                        <h4>Gene Call</h4>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <table class="table table-striped gene-call-table table-responsive" style="width: 100%; text-align: center;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>ID</th>
+                                                                    <th>Source</th>
+                                                                    <th>Contig</th>
+                                                                    <th>Length</th>
+                                                                    <th>Direction</th>
+                                                                    <th>Start</th>
+                                                                    <th>Stop</th>
+                                                                    <th>Call Type</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td>{{ vr_gene.gene_callers_id|pretty }}</td>
+                                                                    <td>{{ vr_gene.source|pretty }}</td>
+                                                                    <td>{{ vr_gene.contig|pretty }}</td>
+                                                                    <td>{{ vr_gene.length|pretty }}</td>
+                                                                    <td>{{ vr_gene.direction|pretty }}</td>
+                                                                    <td>{{ vr_gene.start|pretty }}</td>
+                                                                    <td>{{ vr_gene.stop|pretty }}</td>
+                                                                    <td>{{ vr_gene.call_type|pretty }}</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                     <!-- DNA/AA Buttons -->
                                                     <div class="d-flex seq-buttons ml-3">
                                                         <div class="col-xs-1 mr-2">
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_sequence('{{ gene.header|escapejs }}', '{{ gene.DNA_sequence|escapejs }}')">DNA</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_sequence('{{ vr_gene.header|escapejs }}', '{{ vr_gene.DNA_sequence|escapejs }}')">DNA</button>
                                                         </div>
                                                         <div class="col-xs-1">
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_aa_sequence('{{ gene.header|escapejs }}', '{{ gene.AA_sequence|escapejs }}')">AA</button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_aa_sequence('{{ vr_gene.header|escapejs }}', '{{ vr_gene.AA_sequence|escapejs }}')">AA</button>
                                                         </div>
                                                     </div>
                                                     <!-- Functional Annotations Table -->
@@ -321,7 +319,7 @@
                                                         <h4>Function Annotations</h4>
                                                     </div>
                                                     <div class="card-body">
-                                                        {% if gene.has_functions %}
+                                                        {% if vr_gene.has_functions %}
                                                             <table class="table table-striped table-responsive" style="width: 100%;">
                                                                 <thead>
                                                                     <tr>
@@ -331,7 +329,7 @@
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                    {% for function in gene.functions %}
+                                                                    {% for function in vr_gene.functions %}
                                                                         <tr>
                                                                             <td class="long">{{ function.source|pretty }}</td>
                                                                             <td>{{ function.accession|pretty }}</td>
@@ -347,10 +345,8 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        {% endfor %}
-                                    {% endif %}
+                                    {% endfor %}
                                 </div>
-
                             </div>
                         {% endfor %}
                     </div>
