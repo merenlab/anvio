@@ -2720,6 +2720,19 @@ D = {
                      "is because anvi'o computes gene coverages by going back to actual coverage values of each gene to "
                      "average them, instead of using contig average coverage values, for extreme accuracy."}
                 ),
+    'calculate-Q2Q3-carefully': (
+            ['--calculate-Q2Q3-carefully'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o summarizes collections by cutting corners. One of those corners is to take values "
+                     "for mean coverage Q2Q3 for each contig, and normalize that value by the size of the contig, and "
+                     "average those values to have a single value for the bin. While this strategy works quite well for "
+                     "regular mean coverage, the calculation of mean coverage Q2Q3 requires the ENTIRETY of the raw "
+                     "coverage values for each contig to be first concatenated so they can be sorted to calculate the "
+                     "most accurate Q2Q3 value for a given bin. This flag ensures anvi'o calculates mean coverage Q2Q3 "
+                     "values in that careful way at the expense of things taking much longer (but it really is worth it "
+                     "for your final summary of everything)."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
