@@ -91,6 +91,7 @@ class Pangenome(object):
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
         self.de_novo_compute_mode = A('mode') or 'sequence'
+        self.prostt5_weight_dir = A('prostt5-weight-dir')
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
@@ -325,7 +326,7 @@ class Pangenome(object):
         result_dir = self.get_output_file_path('foldseek-search-results')
 
         fs = Foldseek(query_fasta=unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
-                                num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
+                                num_threads=self.num_threads, weight_dir=self.prostt5_weight_dir, overwrite_output_destinations=self.overwrite_output_destinations)
 
         # It may help downstream analysis in the future but for now have no functionality :/ 
         fs.names_dict = unique_AA_sequences_names_dict
