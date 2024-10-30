@@ -38,7 +38,7 @@ default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'da
 
 default_interacdome_data_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Interacdome')
 
-default_foldseek_weight_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
+default_prostt5_weight_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
 
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
