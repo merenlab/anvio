@@ -42,7 +42,7 @@ class Foldseek():
 
         self.query_fasta = query_fasta
         self.num_threads = num_threads
-        self.weight_dir = weight_dir or constants.default_foldseek_weight_path
+        self.weight_dir = weight_dir or constants.default_prostt5_weight_path
         self.overwrite_output_destinations = overwrite_output_destinations
         self.tmp_dir = tempfile.gettempdir()
 
