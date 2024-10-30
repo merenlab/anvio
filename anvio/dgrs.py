@@ -2422,12 +2422,13 @@ class DGR_Finder:
                         gene_arrow_width = default_gene_arrow_width
                         gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
 
-                    if 'functions' in gene.keys():
+                    # Assign colors based on presence of functions
+                    if gene['functions']:
                         gene['has_functions'] = True
-                        gene['COLOR'] = '#008000'
+                        gene['COLOR'] = '#008000'  # Green for genes with functions
                     else:
                         gene['has_functions'] = False
-                        gene['COLOR'] = '#c3c3c3'
+                        gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
 
                     # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
                     if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
@@ -2489,12 +2490,13 @@ class DGR_Finder:
                             gene_arrow_width = default_gene_arrow_width
                             gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
-                        if 'functions' in gene.keys():
+                        # Assign colors based on presence of functions
+                        if gene['functions']:
                             gene['has_functions'] = True
-                            gene['COLOR'] = '#008000'
+                            gene['COLOR'] = '#008000'  # Green for genes with functions
                         else:
                             gene['has_functions'] = False
-                            gene['COLOR'] = '#c3c3c3'
+                            gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
 
                         # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
                         if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
