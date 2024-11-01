@@ -224,6 +224,10 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
+        if self.de_novo_compute_mode and self.user_defined_gene_clusters:
+            raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode` and `gene_clusters_txt` at the same time."
+                                "When `pan-mode` is active, please skip setting `gene_clusters_txt`.")
+
         if self.user_defined_gene_clusters:
             filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
 
