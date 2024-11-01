@@ -73,7 +73,7 @@ if __name__ == '__main__':
                                 f"you should set this parameter like this manually: --additional-params-for-seq-search "
                                 f"\"{panops.additional_param_sets_for_sequence_search['diamond']} --sensitive\". DO NOT EVER FORGET THE DOUBLE QUOTES, unless "
                                 f"you hate your computer and want to see it melting beforey our eyes.")
-    groupB.add_argument(*anvio.A('mode'), **anvio.K('mode', {'required': False}))
+    groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
 
 
     groupB = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
