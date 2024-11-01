@@ -4,7 +4,7 @@
 import sys
 import anvio
 
-from anvio.structurepan import Prostt5SetupWeight
+from anvio.drivers.foldseek import Prostt5SetupWeight
 from anvio.errors import ConfigError, FilesNPathsError
 
 
