@@ -37,6 +37,7 @@ def main():
 
     bam = bamops.BAMFileObject(args.bam_file, 'rb')
     min_dist_to_end = args.min_dist_to_end
+    min_clipping_ratio = args.clipping_ratio
     run.info('BAM file', args.bam_file)
     run.info('Length of contig\'s end to ignore', args.min_dist_to_end)
 
@@ -65,6 +66,11 @@ def main():
     # got through each read, compute coverage and idc (insertion, deletion, (hard - soft)clipping).
     for read in bam:
         read_count += 1
+
+        # skip secondary alignments. Not to be confused with supplementary alignments, which are valid.
+        if read.is_secondary:
+            continue
+
         if read_count % 500 == 0:
             progress.update('%d / %d' % (read_count, total_reads))
 
@@ -110,7 +116,7 @@ def main():
                 clipping = cov_dict[contig]['clipping'][pos]
                 clipping_ratio = clipping/cov
                 relative_pos = pos/contig_length
-                if clipping_ratio > 0.8 and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
+                if clipping_ratio > min_clipping_ratio and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
                     file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
 
     zero_ouput = args.output_prefix + "-zero_cov.txt"
@@ -190,7 +196,7 @@ if __name__ == '__main__':
         '-r',
         '--clipping-ratio',
         default=0.8,
-        type=int,
+        type=float,
         help = ("Minimum ratio of 'total-coverage / coverage-of-clipped-reads' that will be reported "
                 "in the output file. Default is 0.8")
     )
