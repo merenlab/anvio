@@ -3670,25 +3670,26 @@ D = {
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     ),
-    'mode': (
-        ['--mode', '-M'],
-        {'default': None,
-         'metavar': 'structure',
-         'type': str,
-         'help': 'Use this flag to set mode to structure or sequence.'}
+    'pan-mode': (
+            ['--pan-mode', '-M'],
+            {'default': None,
+             'metavar': 'CHOICE',
+             'choices': constants.choice_of_pangenome,
+             'type': str,
+             'help': 'Use this flag to set pan-mode to structure or sequence.'}
     ),
    'prostt5-weight-dir': (
-        ['--prostt5-weight-dir'],
-        {'default': None,
-         'type': str,
-         'metavar': 'PATH',
-         'help': "The path for the PROSTT5 Weights to be stored. "
-                 "If you leave it as is without specifying anything, anvi'o will set up everything in "
-                 "a pre-defined default directory. The advantage of using "
-                 "the default directory at the time of set up is that every user of anvi'o on a computer "
-                 "system will be using a single data directory, but then you may need to run the setup "
-                 "program with superuser privileges. If you don't have superuser privileges, then you can "
-                 "use this parameter to tell anvi'o the location you wish to use to setup your weights."}
+            ['--prostt5-weight-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the PROSTT5 Weights to be stored. "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your weights."}
         ),
 }
 
