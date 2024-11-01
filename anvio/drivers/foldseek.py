@@ -128,7 +128,7 @@ class Prostt5SetupWeight:
 
         utils.is_program_exists('foldseek')
 
-        self.weight_dir = args.prostt5_weight_dir
+        self.weight_dir = args.prostt5_data_dir
 
         if self.weight_dir and args.reset:
             raise ConfigError("You are attempting to run PROSTT5 setup on a non-default data directory (%s) using the --reset flag. "

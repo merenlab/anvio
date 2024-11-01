@@ -3678,8 +3678,8 @@ D = {
              'type': str,
              'help': 'Use this flag to set pan-mode to structure or sequence.'}
     ),
-   'prostt5-weight-dir': (
-            ['--prostt5-weight-dir'],
+   'prostt5-data-dir': (
+            ['--prostt5-data-dir'],
             {'default': None,
              'type': str,
              'metavar': 'PATH',
