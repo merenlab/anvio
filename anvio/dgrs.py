@@ -1333,10 +1333,10 @@ class DGR_Finder:
         """
         # Check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
-            raise ConfigError("Error: No DGRS were found so no output file will be written.")
+            raise ConfigError("No DGRS were found so no output file will be written.")
 
         if not self.DGRs_found_dict and not self.dgrs_in_collections:
-            raise ConfigError("Error: No DGRS were found so no output file will be written :(")
+            raise ConfigError("No DGRS were found so no output file will be written :(")
 
         output_directory_path = self.output_directory
 
