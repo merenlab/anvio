@@ -639,7 +639,7 @@ class KeggSetup(KeggContext):
             self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
             available_snapshots = sorted(list(self.snapshot_dict.keys()))
             for snapshot_name in available_snapshots:
-                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+                self.run.info_single(f"{snapshot_name}\thash: {self.snapshot_dict[snapshot_name]['hash']}" + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
 
             raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
                                 "this time pick from the list shown above.")
@@ -3592,6 +3592,11 @@ class KeggEstimatorArgs():
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
 
+        # the below will be filled in by init_data_from_modules_db()
+        self.all_modules_in_db = {}
+        self.all_kos_in_db = {}
+        self.module_paths_dict = {}
+
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
             self.module_completion_threshold = 0.0
@@ -3665,10 +3670,6 @@ class KeggEstimatorArgs():
         'product_list'              list of product compounds (outputs of the module)
         'top_level_steps'           list of top-level steps in the module DEFINITION
         """
-
-        self.all_modules_in_db = {}
-        self.all_kos_in_db = {}
-        self.module_paths_dict = {}
 
         # LOAD KEGG DATA (MODULES)
         if not self.only_user_modules:
@@ -6492,12 +6493,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
-            # we either get the modules DB info from the previous class, or we have to initialize it here
+            # we either get the modules DB info from the previous class, or we have to initialize it here (unless that already happened)
             if all_modules_in_db:
                 self.all_modules_in_db = all_modules_in_db
                 self.all_kos_in_db = all_kos_in_db
                 self.module_paths_dict = module_paths_dict
-            else:
+            elif not self.all_modules_in_db:
                 self.init_data_from_modules_db()
 
             if self.enzymes_txt:
