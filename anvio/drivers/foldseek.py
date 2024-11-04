@@ -139,7 +139,7 @@ class Prostt5SetupWeight:
         self.weight_dir = args.prostt5_data_dir
 
         if self.weight_dir and args.reset:
-            raise ConfigError("You are attempting to run PROSTT5 setup on a non-default data directory (%s) using the --reset flag. "
+            raise ConfigError("You are attempting to run ProstT5 setup on a non-default data directory (%s) using the --reset flag. "
                               "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
                               "directories that have been specified with --weight-dir. If you really want to get rid of this "
                               "directory and regenerate it with InteracDome data inside, then please remove the directory yourself using "
@@ -149,7 +149,7 @@ class Prostt5SetupWeight:
         if not self.weight_dir:
             self.weight_dir = constants.default_prostt5_weight_path
 
-        self.run.warning('', header='Setting up PROSTT5 Weights', lc='yellow')
+        self.run.warning('', header='Setting up ProstT5 Weights', lc='yellow')
         self.run.info('Data directory', self.weight_dir)
         self.run.info('Reset contents', args.reset)
 
@@ -168,17 +168,17 @@ class Prostt5SetupWeight:
         """Raise ConfigError if weight exists"""
 
         if os.path.exists(self.weight_dir) and os.listdir(self.weight_dir):
-            raise ConfigError("It seems you already have the PROSTT5 Weights downloaded in '%s', please "
+            raise ConfigError("It seems you already have the ProstT5 Weights downloaded in '%s', please "
                               "use --reset flag if you want to re-download it." % self.weight_dir)
 
     def setup(self):
-        """ Sets up the PROSTT5 Weights directory for Foldseek """
+        """ Sets up the ProstT5 Weights directory for Foldseek """
 
         self.run.warning('', header='Downloading Weight Model', lc='yellow')
         self.download_foldseek_weight()
 
     def download_foldseek_weight(self):
-        """Download the weights of PROSTT5 models and clean up temporary files"""
+        """Download the weights of ProstT5 models and clean up temporary files"""
 
         self.progress.new('FOLDSEEK')
         self.progress.update('Downloading ...')
