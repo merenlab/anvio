@@ -16,7 +16,7 @@ import anvio.constants as constants
 
 from collections import defaultdict
 from anvio.drivers.mcl import MCL
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.filesnpaths import AppendableFile
 
 
@@ -46,7 +46,15 @@ class Foldseek():
         self.overwrite_output_destinations = overwrite_output_destinations
         self.tmp_dir = tempfile.gettempdir()
 
-        filesnpaths.is_file_exists(self.weight_dir)
+        try: 
+            filesnpaths.is_file_exists(self.weight_dir)
+        except FilesNPathsError:
+            run.warning("Anvi'o requires to have ProstT5 to run --pan-mode structure."
+                        " You can easily download that with the command down below.",
+                        header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+            run.info_single("anvi-setup-prostt5", level=0, overwrite_verbose=True)
+            raise ConfigError("It seems like you forgot to download the ProstT5 model."
+                            " Please run 'anvi-setup-prostt5' and try again.")
 
         self.output_file = 'foldseek-search-results'
 
