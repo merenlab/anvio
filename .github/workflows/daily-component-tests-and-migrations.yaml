@@ -31,12 +31,20 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install .
+    - name: "Set Anvi'o interactive directory path"
+      shell: bash -l {0}
+      run: |
+        interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
+        echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
     - name: "Install npm dependencies for Anvi'o interactive interfaces"
       shell: bash -l {0}
       run: |
-        cd /home/runner/miniconda3/envs/anvio_env/lib/python3.10/site-packages/anvio/data/interactive
+        cd ${{ env.interactive_dir_path }}
         npm install
-        cd -        
+        cd -
     - name: "Run component tests"
       shell: bash -l {0}
       run: |
