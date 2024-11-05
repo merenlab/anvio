@@ -969,6 +969,36 @@ class Pangenome(object):
             output_queue.put(output)
 
 
+    def get_gene_clusters_structure(self):
+        """Function to compute gene clusters de novo"""
+
+        # get all amino acid sequences:
+        combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
+        self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path,
+                                                             exclude_partial_gene_calls=self.exclude_partial_gene_calls)
+
+        # get unique amino acid sequences:
+        self.progress.new('Uniquing the output FASTA file')
+        self.progress.update('...')
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
+        self.progress.end()
+        self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
+
+        # run search
+        foldseek_result = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
+
+        # generate MCL input from filtered foldseek_result
+        mcl_input_file_path = self.gen_mcl_input(foldseek_result)
+
+        # get clusters from MCL
+        mcl_clusters = self.run_mcl(mcl_input_file_path)
+
+        # we have the raw gene clusters dict, but we need to re-format it for following steps
+        gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
+        del mcl_clusters
+
+        return gene_clusters_dict
+
     def get_gene_clusters_de_novo(self):
         """Function to compute gene clusters de novo"""
 
@@ -1055,6 +1085,8 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+        elif self.de_novo_compute_mode == "structure":
+            gene_clusters_dict = self.get_gene_clusters_structure()
         else:
             gene_clusters_dict = self.get_gene_clusters_de_novo()
 
