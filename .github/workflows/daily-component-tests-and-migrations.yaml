@@ -31,6 +31,12 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install .
+    - name: "Install npm dependencies for Anvi'o interactive interfaces"
+      shell: bash -l {0}
+      run: |
+        cd /home/runner/miniconda3/envs/anvio_env/lib/python3.10/site-packages/anvio/data/interactive
+        npm install
+        cd -        
     - name: "Run component tests"
       shell: bash -l {0}
       run: |
