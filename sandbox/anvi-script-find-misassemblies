@@ -67,10 +67,6 @@ def main():
     for read in bam:
         read_count += 1
 
-        # skip secondary alignments. Not to be confused with supplementary alignments, which are valid.
-        if read.is_secondary:
-            continue
-
         if read_count % 500 == 0:
             progress.update('%d / %d' % (read_count, total_reads))
 
