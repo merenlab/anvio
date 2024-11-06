@@ -532,7 +532,7 @@ class DGR_Finder:
 
         Takes the xml file and filters for hits with less than 100% identity, then gives every hit a name
         with its original position in the sequence, counts the bases that are mismatching and on which strand they occur.
-        Finally initialises all of these within a dictionary.
+        Finally initializes all of these within a dictionary.
 
         Parameters
         ==========
