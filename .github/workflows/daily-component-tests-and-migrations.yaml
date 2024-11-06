@@ -21,6 +21,10 @@ jobs:
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
         python-version: ${{ matrix.python-version }}
+    - name: "Install Bioconductor qvalue package for R"
+      shell: bash -l {0}
+      run: |
+        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
     - name: "Conda environment summary"
       shell: bash -l {0}
       run: |
