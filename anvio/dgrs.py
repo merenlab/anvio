@@ -1452,10 +1452,8 @@ class DGR_Finder:
         # with gene calls and functions
         gene_calls_per_TR_contig = {}
         gene_calls_per_VR_contig = {}
-        gene_calls_per_RT_contig = {}
         trs_with_no_gene_calls_around = set([])
         vrs_with_no_gene_calls_around = set([])
-        rts_with_no_gene_calls_around = set([])
 
 
         for dgr_key, dgr_data in dgrs_dict.items():
@@ -1533,17 +1531,6 @@ class DGR_Finder:
                 tr_context_genes[gene_callers_id] = gene_call
 
             self.genomic_context_surrounding_dgrs[dgr_id] = copy.deepcopy(tr_context_genes)
-
-            if TR_contig_name not in gene_calls_per_RT_contig:
-                where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
-                gene_calls_per_RT_contig[TR_contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
-
-            gene_calls_in_RT_contig = gene_calls_per_RT_contig[TR_contig_name]
-
-            if not len(gene_calls_in_RT_contig):
-                rts_with_no_gene_calls_around.add(dgr_id)
-                print(f'No gene calls found around RT {dgr_id}')
-                continue
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
@@ -1635,9 +1622,6 @@ class DGR_Finder:
                             f"{', '.join(trs_with_no_gene_calls_around)}.")
         if len(vrs_with_no_gene_calls_around):
             print('No gene calls around the following VRs:', vrs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(vrs_with_no_gene_calls_around)}.")
-
-        if len(rts_with_no_gene_calls_around):
-            print('No gene calls around the following RTs:', rts_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(rts_with_no_gene_calls_around)}.")
 
         if not len(self.genomic_context_surrounding_dgrs):
             self.run.warning(f"Even though the tool went through all {PL('DGR', len(dgrs_dict))} "
@@ -1760,7 +1744,6 @@ class DGR_Finder:
 
                     self.run.info(f'Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
                     self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
-
 
 
     # Function to get the consensus base
