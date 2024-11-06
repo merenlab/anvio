@@ -1442,7 +1442,7 @@ class DGR_Finder:
         if not len(function_sources_found):
             self.run.warning("There are no functions for genes in your contigs database :/ Your reports on the "
                             "genomic context that surrounds the variable regions associated with the diversity-generating retroelements will not have any functions "
-                            "for genes. PITY.")
+                            "for the genes. PITY.")
             return
 
         self.progress.new('Recovering genomic context surrounding the DGRs', progress_total_items=len(self.DGRs_found_dict))
