@@ -2286,7 +2286,6 @@ class DGR_Finder:
                                 #'num_samples': len(self.profile_db_paths) if self.metagenomics_contigs_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
-                                #'inversion_activity_computed': not self.skip_compute_inversion_activity,
                                 # if no function source, it says 'the contigs.db' because it fits with the message
                                 # displayed in the final index.html. See the inversion template, line 215
                                 # if it works, it works
@@ -2334,19 +2333,13 @@ class DGR_Finder:
                 self.summary['dgrs'][dgr_id]['dgr_data']['TW'] = tr_end - tr_start
                 self.summary['dgrs'][dgr_id]['dgr_data']['TT'] = tr_start + (tr_end - tr_start) / 2
 
-                # here we will add transformed gene coordinates to the genes dict
                 for gene_id, gene in tr_genes.items():
+                    # Transform start and stop coordinates for the gene
                     gene['start_tr_g'] = (gene['start'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
                     gene['stop_tr_g'] = (gene['stop'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
 
                     if (gene['stop_tr_g'] - gene['start_tr_g']) < default_gene_arrow_width:
-                        # if we are here, it means the transformed length of the gene is already
-                        # shorter than the space we assign for the arrow to display gene calls.
-                        # this means we will only will be able to show an arrow, but even in that
-                        # case the `gene_arrow_width` may be too long to display (i.e., if the
-                        # transformed gene length is 10 and arrow is 15, we are already showing
-                        # too much). The solution is to make the gene nothing more but the arrow
-                        # but make the arrow width equal to the gene width
+                        # If the transformed length of the gene is smaller than the default arrow width
                         gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
                         gene['stop_tr_g'] = gene['start_tr_g']
                         gene['TRW'] = 0
@@ -2354,7 +2347,7 @@ class DGR_Finder:
                         gene_arrow_width = default_gene_arrow_width
                         gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
 
-                    # Assign colors based on presence of functions
+                    # Determine color based on gene functions first
                     if gene['functions']:
                         gene['has_functions'] = True
                         gene['COLOR'] = '#008000'  # Green for genes with functions
@@ -2362,17 +2355,25 @@ class DGR_Finder:
                         gene['has_functions'] = False
                         gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
 
-                    # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
-                    if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
-                        gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+                    # Check for hmm_id and gene_id match if provided in the dgr_data
+                    try:
+                        hmm_id = int(dgr_data.get('HMM_gene_callers_id'))
+                        current_gene_id = int(gene.get('gene_callers_id'))
+                    except (TypeError, ValueError):
+                        hmm_id = None
+                        current_gene_id = None
 
+                    if hmm_id is not None and current_gene_id is not None and hmm_id == current_gene_id:
+                        gene['COLOR'] = '#c366e8'  # Purple if there's a match based on hmm_id and gene_id
+
+                    # Additional transformations for coordinates
                     gene['TRX'] = gene['start_tr_g']
                     gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
                     gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
                     gene['TGTRANS'] = gene['TRX'] + gene['TRX'] + gene['TRW'] + gene_arrow_width
-                    gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+                    gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5
 
-                    # Append transformed TR genes to the summary
+                    # Append the gene to the summary
                     self.summary['dgrs'][dgr_id]['tr_genes'][gene_id] = gene
 
                 for vr_key, vr_data in dgr_data.get('VRs', {}).items():
@@ -2422,7 +2423,7 @@ class DGR_Finder:
                             gene_arrow_width = default_gene_arrow_width
                             gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
-                        # Assign colors based on presence of functions
+                        # Determine color based on gene functions first
                         if gene['functions']:
                             gene['has_functions'] = True
                             gene['COLOR'] = '#008000'  # Green for genes with functions
@@ -2430,9 +2431,17 @@ class DGR_Finder:
                             gene['has_functions'] = False
                             gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
 
-                        # Compare HMM_gene_callers_id from dgr_data with gene_callers_id in gene dictionary
-                        if int(dgr_data.get('HMM_gene_callers_id')) == int(gene.get('gene_callers_id')):
-                            gene['COLOR'] = '#c366e8'  # Change color if there's a match (purple)
+                        # Check for hmm_id and gene_id match if provided in the dgr_data
+                        try:
+                            hmm_id = int(dgr_data.get('HMM_gene_callers_id'))
+                            current_gene_id = int(gene.get('gene_callers_id'))
+                        except (TypeError, ValueError):
+                            hmm_id = None
+                            current_gene_id = None
+
+                        if hmm_id is not None and current_gene_id is not None and hmm_id == current_gene_id:
+                            gene['COLOR'] = '#c366e8'  # Purple if there's a match based on hmm_id and gene_id
+
 
                         gene['VRX'] = gene['start_vr_g']
                         gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
