@@ -127,6 +127,11 @@ class DGR_Finder:
     def sanity_check(self):
         """Basic checks for a smooth operation"""
 
+        #First check the contigs.db and profile.db exists
+        utils.is_contigs_db(self.contigs_db_path)
+        if self.profile_db_path:
+            utils.is_profile_db(self.profile_db_path)
+
         try:
             output_dir = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False or self.just_do_it)
 
