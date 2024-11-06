@@ -109,12 +109,9 @@
             <div style="font-family: monospace; width: 100%; max-height: 400px; overflow-x: auto; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
                 <pre style="margin: 0; white-space: pre;">
 {% for vr_key, vr in dgr_data.dgr_data.VRs.items %}
-<strong>TR Sequence:</strong>
-        {{ vr.TR_sequence }}
-<strong>Midline:</strong>
-        {{ vr.midline }}
-<strong>VR Sequence:</strong>
-        {{ vr.VR_sequence }}
+{{ vr.TR_sequence }}  <strong>TR Sequence</strong>
+{{ vr.midline }}  <strong>Midline</strong>
+{{ vr.VR_sequence }}  <strong>VR Sequence({{ vr_key }})</strong>
 {% endfor %}
                             </pre>
                         </div>
