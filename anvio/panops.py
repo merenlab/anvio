@@ -345,13 +345,21 @@ class Pangenome(object):
 
         return fs.get_foldseek_results()
 
-    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        if not self.de_novo_compute_mode == 'structure':
+    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict, de_novo_to_structure=False):
+        # Classical Pangenome
+        if self.de_novo_compute_mode != 'structure':
+            if self.use_ncbi_blast:
+                return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+            else:
+                return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
+        # Classical pangenome in Structural Pangenome
+        elif self.de_novo_compute_mode == 'structure' and de_novo_to_structure == True:
             if self.use_ncbi_blast:
                 return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
             else:
                 return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
         else:
+            # Structural Pangenome
             return self.run_foldseek(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
 
     def run_mcl(self, mcl_input_file_path):
@@ -985,7 +993,7 @@ class Pangenome(object):
         self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
         # run search
-        foldseek_result = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
+        foldseek_result = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict, False)
 
         # generate MCL input from filtered foldseek_result
         mcl_input_file_path = self.gen_mcl_input(foldseek_result)
@@ -1015,7 +1023,7 @@ class Pangenome(object):
         self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
         # run search
-        blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
+        blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict, True)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
@@ -1081,83 +1089,91 @@ class Pangenome(object):
         # gen pan_db
         self.generate_pan_db()
 
-        # time to get the gene clusters. by default, we compute them de novo. but we also can
-        # get them from the user themselves through gene-clusters-txt
+        modes_to_compute = []
         if self.user_defined_gene_clusters:
-            gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        elif self.de_novo_compute_mode == "structure":
-            gene_clusters_dict = self.get_gene_clusters_structure()
+            modes_to_compute.append("user_defined")
         else:
-            gene_clusters_dict = self.get_gene_clusters_de_novo()
+            modes_to_compute.append("de_novo")
+            if self.de_novo_compute_mode == "structure":
+                modes_to_compute.append("structure")
 
-        # compute alignments for genes within each gene_cluster (or don't)
-        gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
-
-        if len(unsuccessful_alignments):
-            if anvio.DEBUG:
-               self.run.warning(f"The alignment of sequences failed for {len(unsuccessful_alignments)} of the total {len(gene_clusters_dict)} "
-                                f"gene clusters anvi'o identified in your pangenome, and you can find the FASTA files for them in your logs "
-                                f"above. SAD DAY FOR EVERYONE.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+        for mode in modes_to_compute:
+            # Generate gene clusters dict based on the current mode
+            if mode == "user_defined":
+                gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+            elif mode == "de_novo":
+                gene_clusters_dict = self.get_gene_clusters_de_novo()
             else:
-               self.run.warning(f"SOME BAD NEWS :/ The alignment of sequences failed for {len(unsuccessful_alignments)} of the total "
-                                f"{len(gene_clusters_dict)} gene clusters anvi'o identified in your pangenome :/ This often happens "
-                                f"when you have extremely long genes (often due to improper gene calling across scaffolds) or gene "
-                                f"clusters with extremely large number of genes (often happens with transposons or other mobile elements). "
-                                f"This is not the end of the world, since most things will continue to work. But you will be missing some "
-                                f"things for these gene clusters, including gene cluster functional and geometric homogeneity calculations "
-                                f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
-                                f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
-                                f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
-                                f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
-                                f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
-                                f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
-                                f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
-                                f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
-                                f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+                gene_clusters_dict = self.get_gene_clusters_structure()
 
-        # populate the pan db with results
-        gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+            # compute alignments for genes within each gene_cluster (or don't)
+            gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
 
-        # store gene clusters dict into the db
-        self.store_gene_clusters(gene_clusters_dict)
+            if len(unsuccessful_alignments):
+                if anvio.DEBUG:
+                    self.run.warning(f"The alignment of sequences failed for {len(unsuccessful_alignments)} of the total {len(gene_clusters_dict)} "
+                                     f"gene clusters anvi'o identified in your pangenome, and you can find the FASTA files for them in your logs "
+                                     f"above. SAD DAY FOR EVERYONE.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+                else:
+                    self.run.warning(f"SOME BAD NEWS :/ The alignment of sequences failed for {len(unsuccessful_alignments)} of the total "
+                                     f"{len(gene_clusters_dict)} gene clusters anvi'o identified in your pangenome :/ This often happens "
+                                     f"when you have extremely long genes (often due to improper gene calling across scaffolds) or gene "
+                                     f"clusters with extremely large number of genes (often happens with transposons or other mobile elements). "
+                                     f"This is not the end of the world, since most things will continue to work. But you will be missing some "
+                                     f"things for these gene clusters, including gene cluster functional and geometric homogeneity calculations "
+                                     f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
+                                     f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
+                                     f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
+                                     f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
+                                     f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
+                                     f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
+                                     f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
+                                     f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
+                                     f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
 
-        # generate a hierarchical clustering of gene clusters (or don't)
-        self.gen_hierarchical_clustering_of_gene_clusters()
+            # populate the pan db with results
+            gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
 
-        # generate orderings of gene_clusters based on synteny of genes
-        self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
+            # store gene clusters dict into the db
+            self.store_gene_clusters(gene_clusters_dict)
 
-        # populate layers additional data and orders
-        self.populate_layers_additional_data_and_orders()
+            # generate a hierarchical clustering of gene clusters (or don't)
+            self.gen_hierarchical_clustering_of_gene_clusters()
 
-        # work with gene cluster homogeneity index
-        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+            # generate orderings of gene_clusters based on synteny of genes
+            self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
 
-        # let people know if they have too much data for their own comfort
-        if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
-            if len(gene_clusters_dict) > 20000 and len(self.genomes) > 150:
-                _ = "gene clusters and genomes"
-            elif len(gene_clusters_dict) > 20000:
-                _ = "gene clusters"
-            else:
-                _ = "genomes"
+            # populate layers additional data and orders
+            self.populate_layers_additional_data_and_orders()
 
-            self.run.warning(f"It seems you have a lot of {_} in this pan database :) It is all good! But please be aware that you may "
-                             f"run into performance issues when you try to interactively visaulize these data using `anvi-display-pan`. "
-                             f"In some cases it may even be impossible to do it, in fact. This is largely because the part of the "
-                             f"anvi'o workflow to offer interactive access to a pangenomes is not designed to accommodate very"
-                             f" large number of {_}, but rather enable in-depth exploratory analyses of pangenomes interactively. You still "
-                             f"can work with large pangenomes via the command line utilities and do a lot of science with them. If you "
-                             f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
-                             f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
-                             f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
-                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
-                             f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
-                             f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
+            # work with gene cluster homogeneity index
+            self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
 
-        # done
-        self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
-                             f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
+            # let people know if they have too much data for their own comfort
+            if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
+                if len(gene_clusters_dict) > 20000 and len(self.genomes) > 150:
+                    _ = "gene clusters and genomes"
+                elif len(gene_clusters_dict) > 20000:
+                    _ = "gene clusters"
+                else:
+                    _ = "genomes"
+
+                self.run.warning(f"It seems you have a lot of {_} in this pan database :) It is all good! But please be aware that you may "
+                                 f"run into performance issues when you try to interactively visaulize these data using `anvi-display-pan`. "
+                                 f"In some cases it may even be impossible to do it, in fact. This is largely because the part of the "
+                                 f"anvi'o workflow to offer interactive access to a pangenomes is not designed to accommodate very"
+                                 f" large number of {_}, but rather enable in-depth exploratory analyses of pangenomes interactively. You still "
+                                 f"can work with large pangenomes via the command line utilities and do a lot of science with them. If you "
+                                 f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
+                                 f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
+                                 f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
+                                 f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
+                                 f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
+                                 f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
+
+            # done
+            self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
+                                f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
 
 
         self.run.quit()
