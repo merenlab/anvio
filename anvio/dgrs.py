@@ -1345,32 +1345,73 @@ class DGR_Finder:
 
         output_directory_path = self.output_directory
 
+        # Set up the file path and headers based on the dictionary type
         if dgrs_dict == self.DGRs_found_dict:
+            print('/n')
+            print(self.DGRs_found_dict)
             output_path_dgrs = os.path.join(output_directory_path, "DGRs_found.csv")
-            headers = ["DGR", "VR", "VR_contig", "VR_strand_direction", "VR_sequence", "Midline", "VR_start_position", "VR_end_position","VR_bin", "Mismatch %",
-                    "TR_contig", "TR_strand_direction", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
-                    "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
+            headers = [
+                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
+                "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
+                "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
+                "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
+                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
+                "HMM_stop", "HMM_gene_callers_id"
+            ]
         elif dgrs_dict == self.dgrs_in_collections:
-            # Create new directory for DGRs_found_in_collections
+            # Create directory for DGRs_found_in_collections
             self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
             if not os.path.exists(self.collections_dir):
                 os.makedirs(self.collections_dir)
             output_path_dgrs = os.path.join(self.collections_dir, "DGRs_found_with_collections_mode.csv")
-            headers = ["DGR", "VR", "VR_contig","VR_strand_direction", "VR_sequence", "Midline", "VR_start_position", "VR_end_position", "VR_bin",  "VR_frame","VR_reverse_comp_for_primer", "Mismatch %", "TR_contig", "TR_strand_direction", "TR_sequence", "Base", "Reverse Complement", "TR_start_position", "TR_end_position", "TR_bin", "TR_reverse_comp_for_primer", "HMM_source", "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start", "HMM_stop", "HMM_gene_callers_id"]
+            headers = [
+                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
+                "VR_start_position", "VR_end_position", "VR_bin", "VR_frame",
+                "VR_reverse_comp_for_primer", "Mismatch %", "TR_contig", "TR_frame",
+                "TR_sequence", "Base", "Reverse Complement", "TR_start_position",
+                "TR_end_position", "TR_bin", "TR_reverse_comp_for_primer", "HMM_source",
+                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
+                "HMM_stop", "HMM_gene_callers_id"
+            ]
 
+        # Open the CSV file and write headers and rows
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(headers)
 
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    csv_row = [dgr, vr, vr_data['VR_contig'],vr_data['VR_frame'], vr_data['VR_sequence'], vr_data['midline'],
-                            vr_data['VR_start_position'], vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'), vr_data.get('VR_reverse_comp_for_primer', 'FALSE'), vr_data['percentage_of_mismatches'],
-                            tr['TR_contig'],vr_data['TR_frame'], vr_data['TR_sequence'], tr['base'], vr_data['TR_reverse_complement'],
-                            vr_data['TR_start_position'], vr_data['TR_end_position'], tr.get('TR_bin', 'N/A'), vr_data.get('TR_reverse_comp_for_primer', 'FALSE'), tr['HMM_source'], tr["distance_to_HMM"],
-                            tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"], tr["HMM_stop"], tr["HMM_gene_callers_id"]]
+                    if dgrs_dict == self.DGRs_found_dict:
+                        # Populate csv_row for DGRs_found.csv format
+                        csv_row = [
+                            dgr, vr, vr_data['VR_contig'], vr_data.get('VR_frame', 'N/A'),
+                            vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
+                            vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'),
+                            vr_data['percentage_of_mismatches'], tr['TR_contig'],
+                            vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
+                            tr['base'], vr_data['TR_reverse_complement'],
+                            vr_data['TR_start_position'], vr_data['TR_end_position'],
+                            tr.get('TR_bin', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
+                            tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
+                            tr["HMM_stop"], tr["HMM_gene_callers_id"]
+                        ]
+                    else:
+                        # Populate csv_row for DGRs_found_with_collections_mode.csv format
+                        csv_row = [
+                            dgr, vr, vr_data['VR_contig'], vr_data.get('VR_strand_direction', 'N/A'),
+                            vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
+                            vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'), vr_data['VR_frame'],
+                            vr_data.get('VR_reverse_comp_for_primer', 'FALSE'), vr_data['percentage_of_mismatches'],
+                            tr['TR_contig'], vr_data.get('TR_strand_direction', 'N/A'), vr_data['TR_sequence'],
+                            tr['base'], vr_data['TR_reverse_complement'], vr_data['TR_start_position'],
+                            vr_data['TR_end_position'], tr.get('TR_bin', 'N/A'),
+                            vr_data.get('TR_reverse_comp_for_primer', 'FALSE'), tr['HMM_source'],
+                            tr["distance_to_HMM"], tr["HMM_gene_name"], tr["HMM_direction"],
+                            tr["HMM_start"], tr["HMM_stop"], tr["HMM_gene_callers_id"]
+                        ]
                     csv_writer.writerow(csv_row)
-            return
+
+        return
 
 
 
