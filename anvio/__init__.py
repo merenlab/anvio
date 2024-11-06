@@ -2172,9 +2172,9 @@ D = {
              'type': str,
              'help': "File path to create and store a testing yaml for a existing pangenome."}
                 ),
-     'output-graph-summary': (
-            ['--output-graph-summary'],
-            {'metavar': 'FILE_PATH',
+     'output-dir-summary': (
+            ['--output-dir-summary'],
+            {'metavar': 'DIR_PATH',
              'type': str,
              'help': "File path to store a CSV file containing values describing the pan-graph for downstream analysis."}
                 ),

@@ -18,7 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch']
 __requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
-__provides__ = ['pan-graph-json', 'pan-graph']
+__provides__ = ['pan-graph-json']
 __description__ = ("An anvi'o program to compute a graph representation of pangenomes. It will do its magic, and store it into your "
                    "pan-db, or report a JSON formatted graph file, for downstream visualization and analyses with `anvi-display-pan-graph`")
 __resources__ = []
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('output-graphml'), **anvio.K('output-graphml'))
     groupB.add_argument(*anvio.A('output-pan-graph-json'), **anvio.K('output-pan-graph-json'))
     groupB.add_argument(*anvio.A('output-testing-yaml'), **anvio.K('output-testing-yaml'))
-    groupB.add_argument(*anvio.A('output-graph-summary'), **anvio.K('output-graph-summary'))
+    groupB.add_argument(*anvio.A('output-dir-summary'), **anvio.K('output-dir-summary'))
     groupB.add_argument(*anvio.A('output-dir-graphics'), **anvio.K('output-dir-graphics'))
     groupB.add_argument(*anvio.A('output-raw-gene-additional-data'), **anvio.K('output-raw-gene-additional-data'))
     groupB.add_argument(*anvio.A('output-raw-gc-additional-data'), **anvio.K('output-raw-gc-additional-data'))

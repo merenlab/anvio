@@ -1152,7 +1152,7 @@ class Pangraph():
 
         self.output_graphml = A('output_graphml')
         self.output_yaml = A('output_testing_yaml')
-        self.output_summary = A('output_graph_summary')
+        self.output_summary = A('output_dir_summary')
         self.output_graphics = A('output_dir_graphics')
 
         self.output_raw_gc_additional_data = A('output_raw_gc_additional_data')
@@ -1268,7 +1268,7 @@ class Pangraph():
             self.add_additional_gene_layer_values()
 
         if not self.pan_graph_json and not self.output_yaml and self.output_summary:
-            self.get_hypervariable_regions()
+            self.get_genomic_motifs()
 
         if not self.pan_graph_json and not self.output_yaml:
             self.get_json_dict_for_graph()
@@ -2636,86 +2636,459 @@ class Pangraph():
         self.run.info_single("Done")
 
 
-    def get_hypervariable_regions(self, core_threshold = 0.8):
+    def walk_one_step(self, G, current, nodes_position_dict, visited):
+        successors = [successor for successor in G.successors(current) if successor not in visited]
+        predecessors = [predecessor for predecessor in G.predecessors(current) if predecessor not in visited]
 
-        self.run.warning(None, header="Calculate summary file for included graph motifs", lc="green")
+        current_position_x, current_position_y = nodes_position_dict[current]
+        
+        if len(successors) > 0:
+            
+            nodes_position = [(nodes_position_dict[successor][0] - current_position_x, successor) for successor in successors]
+            successor_position, successor = sorted(nodes_position)[0]
+            
+            successor_position_x, successor_position_y = nodes_position_dict[successor]        
+            return(successor_position_x, successor_position_y, successor)
 
-        hypervariable_region_dict_list = []
+        elif len(predecessors) > 0:
+            nodes_position = [(current_position_x - nodes_position_dict[predecessor][0], predecessor) for predecessor in predecessors]
+            predecessor_position, predecessor = sorted(nodes_position, reverse=True)[0]
+            
+            predecessor_position_x, predecessor_position_y = nodes_position_dict[predecessor]
+            return(predecessor_position_x, predecessor_position_y, predecessor)
 
-        for genome in self.gene_synteny_data_dict.keys():
+        else:
+            return(-1, -1, '')
 
-            for contig in self.gene_synteny_data_dict[genome].keys():
 
-                inside_region = False
-                left_flanking_core = ''
-                right_flanking_core = ''
-                current_region = []
+    def is_node_core(self, node):
+        if set(self.ancest.nodes()[node]['genome'].keys()) == set(self.genomes_names):
+            return(True)
+        else:
+            return(False)
 
-                gene_calls_of_contig = list(self.gene_synteny_data_dict[genome][contig].keys())
 
-                for gene_call in gene_calls_of_contig:
-                    gene_cluster_id = self.gene_synteny_data_dict[genome][contig][gene_call]['gene_cluster_id']
+    def get_genomic_motifs(self):
 
-                    core_fraction = len(self.ancest.nodes[gene_cluster_id]['genome'].keys()) / len(self.genomes)
+        self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
 
-                    if core_fraction >= core_threshold or gene_call == gene_calls_of_contig[-1]:
+        graph_min = self.ancest.nodes()['start']['pos'][0] + 1
+        graph_max = self.ancest.nodes()['stop']['pos'][0] - 1
 
-                        if inside_region == False:
-                            left_flanking_core = gene_cluster_id
+        region_id = 0
+        regions = {}
+        region_sides = {}
 
-                        else:
+        for genome in self.genomes_names:
+            # print(genome)
 
-                            if core_fraction >= core_threshold:
-                                right_flanking_core = gene_cluster_id
+            G_subset_nodes = [n for n,d in self.ancest.nodes(data='genome') if genome not in d.keys()]
+            G_subset_edges = [(i,j) for i,j,d in self.ancest.edges(data='genome') if genome not in d.keys()]
+            G3 = self.ancest.copy()
+            G3.remove_nodes_from(['start', 'stop'] + G_subset_nodes)
+            G3.remove_edges_from(G_subset_edges)
 
-                            if left_flanking_core != '' and right_flanking_core != '':
-                                for current_region_gene_cluster_id in current_region:
-                                    hypervariable_region_dict_list.append({
-                                        'genome': genome,
-                                        'contig': contig,
-                                        'gene_cluster': current_region_gene_cluster_id,
-                                        'x_position': self.ancest.nodes[current_region_gene_cluster_id]["pos"][0],
-                                        'y_position': self.ancest.nodes[current_region_gene_cluster_id]["pos"][1],
-                                        'left_flanking_core': left_flanking_core,
-                                        'right_flanking_core': right_flanking_core,
-                                        'length': str(len(current_region))
-                                    })
+            region_type = {}
+            regions_reverse = []
+            nodes_position_dict = dict(G3.nodes(data="pos"))
 
-                            inside_region = False
-                            left_flanking_core = gene_cluster_id
-                            right_flanking_core = ''
-                            current_region = []
+            starting_points = []
+            for node in list(G3.nodes()):
+                if len(list(G3.successors(node))) <= 1 and len(list(G3.predecessors(node))) == 0:
+                    starting_points += [node]
 
+            starting_points = sorted(starting_points, key=lambda x: nodes_position_dict[x][0]) 
+
+            # Prepare first starting point in data structure
+            node = starting_points[0]
+            starting_points.remove(node)
+
+            node_position_x, node_position_y = nodes_position_dict[node]
+            former_position = node_position_x
+
+            region_id += 1
+
+            # gene cluster core?
+            if self.is_node_core(node):
+                # start new core region
+                regions[region_id] = [(node_position_x, node_position_y, node)]
+                is_core = True
+            else:
+                # start new accessory region
+                regions[region_id] = [(node_position_x, node_position_y, node)]
+                is_core = False
+
+            visited = set([node])
+            mode = ''
+
+            while True:
+                node_position_x, node_position_y, node = self.walk_one_step(G3, node, nodes_position_dict, visited)
+
+                if node:
+                    mode = ''
+                else:
+                    if starting_points:
+                        node = starting_points[0]
+                        starting_points.remove(node)
+                        node_position_x, node_position_y = nodes_position_dict[node]
+                        direction = ''
+                        mode = 'break'
                     else:
-                        current_region += [gene_cluster_id]
-                        inside_region = True
+                        break
+                
+                # extend current region?
+                if node_position_x == former_position + 1 or node_position_x == (former_position - graph_max) + 1:
+                    # extend core region?
+                    if is_core:
+                        # gene cluster core?
+                        if self.is_node_core(node):
+                            # extend core region with core gene cluster
+                            regions[region_id] += [(node_position_x, node_position_y, node)]
+                            is_core = True
+                        else:
+                            # end core region
+                            region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+                            region_id += 1
 
-        hypervariable_region_df = pd.DataFrame.from_dict(hypervariable_region_dict_list)
+                            # start accessory region
+                            regions[region_id] = [(node_position_x, node_position_y, node)]
+                            is_core = False
+                    else:
+                        # gene cluster core?
+                        if self.is_node_core(node):
+                            # end accessory region
+                            region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+                            region_id += 1
 
-        groups = hypervariable_region_df.groupby(['left_flanking_core', 'right_flanking_core'])
+                            # start core region
+                            regions[region_id] = [(node_position_x, node_position_y, node)]
+                            is_core = True
+                        else:
+                            # extend accessory region
+                            regions[region_id] += [(node_position_x, node_position_y, node)]
+                            is_core = False
 
-        hypervariable_region_index = 0
+                elif node_position_x == former_position:
+                    if is_core:
+                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+                    else:
+                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
 
-        hypervariable_region_stack_list = []
+                    region_id += 1
 
-        for group_name, df_group in groups:
+                    if self.is_node_core(node):
+                        # start new core region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = True
+                    else:
+                        # start new accessory region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = False
 
-            df_group['name'] = 'HVR' + str(hypervariable_region_index)
+                # new forward bridge region? 
+                elif (node_position_x > former_position + 1 and abs(node_position_x - former_position) <= graph_max / 2) or (node_position_x < former_position + 1 and abs(former_position - node_position_x) > graph_max / 2):
+                    # is the region to end core?
+                    if is_core:  
+                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+                    else:
+                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
 
-            graph_length = self.global_x - 1
-            graph_num_genomes = len(self.genomes)
+                    region_id += 1
 
-            hvr_num_diff_gc = int(df_group['gene_cluster'].nunique())
-            hvr_length = int(df_group['length'].max())
-            hvr_num_genomes = int(df_group['genome'].nunique())
+                    if node_position_x > former_position + 1:
+                        regions[region_id] = [(i, '', '') for i in range(former_position + 1, node_position_x, 1)]
+                    else:
+                        regions[region_id] = [(i, '', '') for i in range(former_position + 1, graph_max + 1, 1)] + [(i, '', '') for i in range(graph_min, node_position_x, 1)]
 
-            df_group['score'] = (hvr_num_genomes / graph_num_genomes) * (hvr_num_diff_gc / hvr_length)
+                    if mode == 'break':
+                        region_type[region_id] = ('break', regions[region_id][0][0], regions[region_id][-1][0])
+                    else:
+                        region_type[region_id] = ('forward', regions[region_id][0][0], regions[region_id][-1][0])
 
-            hypervariable_region_stack_list.append(df_group)
-            hypervariable_region_index += 1
+                    region_id += 1
 
-        hypervariable_region_stack_df = pd.concat(hypervariable_region_stack_list,ignore_index=True)
-        hypervariable_region_stack_df.to_csv(self.output_summary, index=False)
+                    # gene cluster core?
+                    if self.is_node_core(node):
+                        # start new core region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = True
+                    else:
+                        # start new accessory region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = False
+
+                # new backward bridge region?
+                elif (node_position_x < former_position + 1 and abs(former_position - node_position_x) <= graph_max / 2) or (node_position_x > former_position + 1 and abs(node_position_x - former_position) > graph_max / 2):
+                    # is the region to end core?
+                    if is_core:  
+                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+                    else:
+                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+
+                    region_id += 1
+
+                    if node_position_x < former_position + 1:
+                        regions[region_id] = [(i, '', '') for i in range(former_position - 1, node_position_x, -1)]
+                    else:
+                        regions[region_id] = [(i, '', '') for i in range(former_position - 1, graph_min - 1, -1)] + [(i, '', '', '', genome) for i in range(graph_max, node_position_x, -1)]
+
+                    region_type[region_id] = ('reverse', regions[region_id][0][0], regions[region_id][-1][0])
+
+                    # mark a backward bridge region
+                    regions_reverse += [(regions[region_id][0][0], regions[region_id][-1][0])]
+                    region_id += 1
+                    
+                    # gene cluster core?
+                    if self.is_node_core(node):
+                        # start new core region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = True
+                    else:
+                        # start new accessory region
+                        regions[region_id] = [(node_position_x, node_position_y, node)]
+                        is_core = False
+
+                else:
+                    print('A motif of this type is not yet implemented as we never saw it before.')
+
+                visited.add(node)
+                former_position = node_position_x
+
+            if is_core:  
+                region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+            else:
+                region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])       
+
+            for region_id_inner, region_tuple in region_type.items():
+                # overlap = False
+                # for region_reverse in regions_reverse:
+
+                #     if region_tuple[1] == region_reverse[0] and region_tuple[2] == region_reverse[1]:
+                #         overlap = True
+                    
+                #     elif region_tuple[1] <= region_tuple[2] and region_reverse[0] >= region_reverse[1]:
+                #         # reverse: 15 -> 12
+                #         # current: 13 -> 16
+                        
+                #         #    ------------
+                #         # ------------
+                #         # 12 13 14 15 16
+            
+                #         # left_difference: abs(12 - 13) = 1
+                #         # right_difference: abs(15 - 16) = 1
+                #         # region_compare_size: (16 - 12) + 1 = 5
+                #         # region_overlap_size = 5 - (1 +  1) = 3
+            
+                #         # region_reverse_size: (15 - 12) + 1 = 4
+                #         # region_current_size: (16 - 13) + 1 = 4
+            
+                #         # test: 3 >= (4 * (1/2)) = True
+            
+                #         left_difference = abs(min(region_tuple[1], region_tuple[2]) - min(region_reverse[0], region_reverse[1]))
+                #         right_difference = abs(max(region_tuple[1], region_tuple[2]) - max(region_reverse[0], region_reverse[1]))
+                #         region_compare_size = (max(region_tuple[1], region_tuple[2], region_reverse[0], region_reverse[1]) - min(region_tuple[1], region_tuple[2], region_reverse[0], region_reverse[1])) + 1
+                #         region_overlap_size = region_compare_size - (left_difference +  right_difference)
+            
+                #         region_reverse_size = (max(region_reverse[0], region_reverse[1]) - min(region_reverse[0], region_reverse[1])) + 1
+                #         region_current_size = (max(region_tuple[1], region_tuple[2]) - min(region_tuple[1], region_tuple[2])) + 1
+            
+                #         if region_overlap_size >= (region_current_size / 2):
+                #             overlap = True
+
+                #     else:
+                #         print('A rearrangement event over the start and end border of the graph is not yet implemented')
+                
+                # if overlap:
+                #     region_sides[region_id_inner] = {'start': region_tuple[1], 'end': region_tuple[2], 'types': region_tuple[0], 'consensus': 1.0, 'motif': 'reassortment'}
+                # else:
+                region_sides[region_id_inner] = {'start': region_tuple[1], 'end': region_tuple[2], 'types': region_tuple[0], 'genome': genome, 'consensus': -1, 'motif': ''}
+        
+        tab = pd.DataFrame.from_dict(region_sides, orient='index')
+        tab.rename_axis("region_id", inplace=True)
+        tab.sort_values(['start', 'end'], inplace=True)
+        
+        drop_rows = []
+        groups = tab.groupby(['genome', 'types'])
+        # come up with grouping like 0-10, 0-6, 7-10 end up in one group 
+        # easy search for all connections from i = 0 -> 5, 8, 10 take the highest
+        # i = 0 ... 10 then pick all fragments inside of 0 and 10 e.g. 0 ... 5, 4 ... 8
+        # then check every position for at most every genome once before combine
+        for name, group in groups:
+
+            i = 0
+            j = i + 1
+            while i < len(group) - 1:
+
+                row_i = group.iloc[i]
+                start_i, end_i, types_i, genome_i, consensus_i, motif_i = row_i
+                index_i = row_i.name
+        
+                row_j = group.iloc[j]
+                start_j, end_j, types_j, genome_j, consensus_j, motif_j = row_j
+                index_j = row_j.name
+                
+                if (end_i + 1) == start_j:
+                    end_new = max(end_i, end_j)
+
+                    tab.at[index_i, 'end'] = end_new
+                    drop_rows += [index_j]
+                    
+                    regions[index_i] += regions[index_j]
+                    regions.pop(index_j)
+                    tab.drop(index=index_j, inplace=True)
+
+                    j += 1
+
+                else:
+                    i = j + 1
+                    j = i + 1
+
+        # return(regions, all_nodes)
+        tab.reset_index(drop=False, inplace=True)
+        tab['motif_id'] = tab.loc[:, 'region_id']
+
+        # for key in regions.keys():
+        #     regions[key] = set(regions[key])
+        
+        groups = tab.groupby(['start', 'end'])
+        for name, group in groups:
+        
+            types_list = list(group['types'])
+        
+            if len(set(types_list)) == 1 and len(types_list) <= len(self.genomes_names):
+        
+                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+                
+                for index_i, index_j, join_boolean in joining_list:
+                    if join_boolean:
+                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = tab.loc[index_i]
+                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = tab.loc[index_j]
+                    
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+
+                        tab.at[index_i, 'consensus'] = 1.0
+                        tab.at[index_j, 'consensus'] = 1.0
+                        
+                        tab.at[index_i, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(self.genomes_names) else types_i
+                        tab.at[index_j, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(self.genomes_names) else types_i
+
+                        # regions[region_id_i] += regions[region_id_j]
+                        
+            elif set(types_list) == set(['forward', 'accessory']) and len(types_list) <= len(self.genomes_names):
+        
+                forward_group = group[group["types"] == 'forward']
+                accessory_group = group[group["types"] == 'accessory']
+                
+                joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
+                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+                
+                for index_i, index_j, join_boolean in joining_list:
+                    if join_boolean:
+                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = tab.loc[index_i]
+                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = tab.loc[index_j]
+                        
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+
+                        if joining_equal:
+                            a = len(forward_group)
+                            b = len(accessory_group)
+                            if a >= b:
+                                consensus = round(a / (a+b), 3)
+                                motif = 'insertion'
+                            else:
+                                consensus = round(b / (a+b), 3)
+                                motif = 'deletion'
+                        else:
+                            consensus = 1.0
+                            motif = 'hypervariability'
+
+                        tab.at[index_i, 'consensus'] = consensus
+                        tab.at[index_j, 'consensus'] = consensus
+
+                        tab.at[index_i, 'motif'] = motif
+                        tab.at[index_j, 'motif'] = motif
+
+                        # regions[region_id_i] += regions[region_id_j]
+                
+            elif set(types_list) == set(['break', 'accessory']) and len(types_list) <= len(self.genomes_names):
+                
+                joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
+                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+                
+                for index_i, index_j, join_boolean in joining_list:
+                    if join_boolean:
+                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = tab.loc[index_i]
+                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = tab.loc[index_j]
+                    
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+                        tab.at[index_j, 'motif_id'] = motif_id_i
+
+                        if joining_equal:
+                            consensus = 1.0
+                            motif = 'broken core'
+                        else:
+                            consensus = 1.0
+                            motif = 'hypervariability'
+
+                        tab.at[index_i, 'consensus'] = consensus
+                        tab.at[index_j, 'consensus'] = consensus
+
+                        tab.at[index_i, 'motif'] = motif
+                        tab.at[index_j, 'motif'] = motif
+
+                        # regions[region_id_i] += regions[region_id_j]
+
+            else:
+                continue
+
+        tab.sort_values(['start', 'end'], inplace=True)
+        tab.reset_index(drop=True, inplace=True)
+
+        groups = tab.groupby(['motif_id'])
+        nodes_dict_id = 0
+        nodes_dict = {}
+        for motif_id, group in groups:
+
+            for index, row in group.iterrows():
+
+                region_id = row['region_id']
+                genome = row['genome']
+
+                for region in regions[region_id]:
+                    node_position_x, node_position_y, node = region
+
+                    if node:
+                        nodes_dict[nodes_dict_id] = {'motif_id': motif_id, 'node_position_x': node_position_x, 'node_position_y': node_position_y, 'gene_cluster_id': node, 'genome': genome}
+                        nodes_dict_id += 1
+
+        tab2 = pd.DataFrame.from_dict(nodes_dict, orient='index').set_index(['gene_cluster_id', 'genome'])
+        tab1 = tab.drop(['region_id'], axis=1).set_index(['motif_id', 'genome'])
+        
+        nodes_dict = {n:d for n,d in self.ancest.nodes(data='genome')}
+        tab3 = pd.DataFrame.from_dict(
+            {(i,j): nodes_dict[i][j]
+            for i in nodes_dict.keys()
+            for j in nodes_dict[i].keys()
+            if i != 'start' and i != 'stop'}, orient='index')
+        
+        tab3.drop('gene_cluster_id', inplace=True, axis=1)
+        tab3.rename_axis(['gene_cluster_id', 'genome'], inplace=True)
+
+        for source in self.functional_annotation_sources_available:
+            tab3[source] = tab3[source].apply(lambda x: ('None', 'None', 'None') if x == 'None' else x)
+            tab3[[source + '_ID', source + 'TEXT', source + '_E_VALUE']] = pd.DataFrame(tab3[source].values.tolist(), index=tab3.index)
+            tab3.drop(source, inplace=True, axis=1)
+
+        tab3.fillna('None', inplace=True)
+        tab4 = pd.merge(tab2, tab3, how='left', on=['gene_cluster_id', 'genome'])
+        
+        if len(tab2) != len(tab3):
+            self.run.info_single('Genecall entries are missing from the result table!')
+            
+        tab1.to_csv(self.output_summary + '/motifs.tsv', sep='\t')
+        tab4.to_csv(self.output_summary + '/genes.tsv', sep='\t')
 
         self.run.info_single("Done")
 
@@ -2879,7 +3252,7 @@ class Pangraph():
     def store_network(self):
         """Function to store final graph structure in a pan-db and/or JSON flat text output file"""
 
-        self.run.warning(None, header="Exporting network to JSON", lc="green")
+        self.run.warning(None, header="Exporting pangenome graph to JSON", lc="green")
 
         if self.output_graphml:
 
