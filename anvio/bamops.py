@@ -210,6 +210,20 @@ class PairedEndTemplateDist:
 
 
 class BAMFileObject(pysam.AlignmentFile):
+class SecondaryAlignmentsTracker:
+    def __init__(self):
+        self.primary_alignments = {}
+        self.secondary_alignments_tracked = False
+
+    def populate_primary_alignments_dict(self):
+        for read in self.fetch():
+            # If this read is a primary alignment, store it in the dictionary
+            if not read.is_secondary:
+                self.primary_alignments[read.query_name] = read.query_sequence
+
+        self.secondary_alignments_tracked = True
+
+
     def __init__(self, *args):
         """A class that is essentially pysam.AlignmentFile, with some added bonuses
 
