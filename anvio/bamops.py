@@ -209,7 +209,6 @@ class PairedEndTemplateDist:
         plt.show()
 
 
-class BAMFileObject(pysam.AlignmentFile):
 class SecondaryAlignmentsTracker:
     def __init__(self):
         self.primary_alignments = {}
@@ -224,6 +223,7 @@ class SecondaryAlignmentsTracker:
         self.secondary_alignments_tracked = True
 
 
+class BAMFileObject(pysam.AlignmentFile, SecondaryAlignmentsTracker):
     def __init__(self, *args):
         """A class that is essentially pysam.AlignmentFile, with some added bonuses
 
@@ -238,6 +238,24 @@ class SecondaryAlignmentsTracker:
         self.fetch_filter = None
 
         pysam.AlignmentFile.__init__(self)
+
+        # the following does nothing, UNLESS the user calls the function to populate
+        # primary alignments dict after initializing the bam file the first
+        # time, like this:
+        #
+        #    ```
+        #    bam_file = bamops.BAMFileObject(self.input_file_path)
+        #    bam_file.enable_secondary_alignment_tracking() # <---- this is the line that has to be called
+        #    bam_file.fetch_filter = self.fetch_filter
+        #    ```
+        # this will incrase the profiling time a bit.
+        SecondaryAlignmentsTracker.__init__(self)
+
+
+    def enable_secondary_alignment_tracking(self):
+        """Function to generate necessary information to track secondary alignments in a given BAM"""
+
+        self.populate_primary_alignments_dict()
 
 
     def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
@@ -263,6 +281,9 @@ class SecondaryAlignmentsTracker:
         """
 
         for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
+            if self.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = self.primary_alignments[read.query_name]
+
             if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -763,6 +784,9 @@ class Coverage:
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
         for read in bam.fetch_only(contig_name, start, end):
+            if bam.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = bam.primary_alignments[read.query_name]
+
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
