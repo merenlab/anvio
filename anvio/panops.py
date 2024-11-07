@@ -974,17 +974,29 @@ class Pangenome(object):
 
     def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
         """A very simple way to select representatives per GC based on minimum number of gaps and max length"""
-        """ E.g MCL Data: {'GC_00000001': [{'gene_caller_id': 24, 'gene_cluster_id': 'GC_00000001', 'genome_name': 'E_faecalis_6255', 'alignment_summary': ''}, {'gene_caller_id': 24, 'gene_cluster_id': 'GC_00000001', 'genome_name': 'E_faecalis_6512', 'alignment_summary': ''}}]"""
-        representative_sequences = []
-        for gene_cluster_name in gene_clusters_dict:
-            sequence_info = []
-            for genome_name in gene_clusters_dict[gene_cluster_name]:
-                for gene_caller_id in gene_clusters_dict[gene_cluster_name][genome_name]:
-                    sequence = gene_clusters_dict[gene_cluster_name][genome_name][gene_caller_id]
-                    sequence_info.append((sequence.count('-'), len(sequence), sequence))
 
+        representative_sequences = {}
+
+        # here we will do three things. first, get the aa sequence for each gene in de novo gene clusters,
+        # and then reover restored alignments, and build a new dictionary that will containa single
+        # representative sequence for each gene cluster
+        for gc_name in gene_clusters_dict:
+            sequence_info = []
+            for gc_info in gene_clusters_dict[gc_name]:
+                # recover key data
+                genome_name = gc_info['genome_name']
+                gene_caller_id = gc_info['gene_caller_id']
+                alignment_summary = gc_info['alignment_summary']
+
+                # recover restored alignment for sequence
+                sequence = utils.restore_alignment(self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence'], alignment_summary)
+                sequence_info.append((sequence.count('-'), len(sequence), sequence))
+
+            # sort based on minimum number of gaps and maximum length
             representative_sequence = sorted(sequence_info, key=lambda x:(x[0], -x[1]))[0][2]
-            representative_sequences.append((gene_cluster_name, representative_sequence))
+
+            # store the representative sequence
+            representative_sequences[gc_name] = {'sequence': representative_sequence}
 
         return representative_sequences
 
