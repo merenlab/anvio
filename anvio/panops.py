@@ -326,17 +326,16 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_foldseek(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+    def run_foldseek(self, fasta_path):
         """ Running Foldseek """
         result_dir = self.get_output_file_path('foldseek-search-results')
 
-        fs = Foldseek(query_fasta=unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
-                                num_threads=self.num_threads, weight_dir=self.prostt5_data_dir, overwrite_output_destinations=self.overwrite_output_destinations)
-
-        # It may help downstream analysis in the future but for now have no functionality :/ 
-        fs.names_dict = unique_AA_sequences_names_dict
-        fs.output_file = result_dir
-        fs.log_file_path = self.log_file_path
+        fs = Foldseek(query_fasta=fasta_path,
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads,
+                      weight_dir=self.prostt5_data_dir,
+                      overwrite_output_destinations=self.overwrite_output_destinations)
 
         db_dir = os.path.join(result_dir, 'db')
         # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
