@@ -1007,14 +1007,23 @@ class Pangenome(object):
         # get de novo gene clusters first to reduce search space for structure
         gene_clusters_dict = self.get_gene_clusters_de_novo()
 
-        # get gene cluster representative sequences
+        # next, we will align non-singleton gene clusters to make sure we have all the information
+        # we need to be able to pick an appropriate representative for each gene cluster.
+        skip_alignments = self.skip_alignments
+        self.skip_alignments = False
+        gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
+        self.skip_alignments = skip_alignments
+
+        # now the `gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
+        # representative sequences
         gene_cluster_representatives = self.get_gene_cluster_representative_sequences(gene_clusters_dict)
 
-        # generate a FASTA file for gene cluster representatives
+        # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
+        # with foldseek
         gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
         with open(gene_cluster_representatives_FASTA_path, 'w') as output:
-            for gene_cluster_name, sequence in gene_cluster_representatives:
-                output.write(f">{gene_cluster_name}\n{sequence}\n")
+            for gc_name in gene_cluster_representatives:
+                output.write(f">{gc_name}\n{gene_cluster_representatives[gc_name]['sequence']}\n")
 
         # run search
         foldseek_result = self.run_search_structure(gene_cluster_representatives_FASTA_path)
