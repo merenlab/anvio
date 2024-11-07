@@ -788,6 +788,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         try:
             self.bam = bamops.BAMFileObject(self.input_file_path)
+            self.bam.enable_secondary_alignment_tracking()
         except Exception as e:
             raise ConfigError(f"Sorry, this BAM file does not look like a BAM file :( Here is "
                               f"the complaint coming from the depths of the codebase: '{e}'.")
@@ -951,6 +952,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.enable_secondary_alignment_tracking()
         bam_file.fetch_filter = self.fetch_filter
 
         while True:
@@ -1050,6 +1052,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         """The main method for anvi-profile when num_threads is 1"""
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.enable_secondary_alignment_tracking()
         bam_file.fetch_filter = self.fetch_filter
 
         received_contigs = 0
