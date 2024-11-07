@@ -974,7 +974,7 @@ class Pangenome(object):
 
     def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
         """A very simple way to select representatives per GC based on minimum number of gaps and max length"""
-
+        """ E.g MCL Data: {'GC_00000001': [{'gene_caller_id': 24, 'gene_cluster_id': 'GC_00000001', 'genome_name': 'E_faecalis_6255', 'alignment_summary': ''}, {'gene_caller_id': 24, 'gene_cluster_id': 'GC_00000001', 'genome_name': 'E_faecalis_6512', 'alignment_summary': ''}}]"""
         representative_sequences = []
         for gene_cluster_name in gene_clusters_dict:
             sequence_info = []
