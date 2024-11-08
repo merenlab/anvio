@@ -330,6 +330,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
+        self.track_secondary_alignments = A('track_secondary_alignments') or True
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
@@ -560,6 +561,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
         self.run.info('Report FULL variability data?', self.report_variability_full)
+        self.run.info('Track secondary alignments?', 'Yes (ouch)' if self.track_secondary_alignments else 'No')
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
                          "consideration anything below that. If you need to kill this an restart your "
@@ -788,7 +790,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         try:
             self.bam = bamops.BAMFileObject(self.input_file_path)
-            self.bam.enable_secondary_alignment_tracking()
         except Exception as e:
             raise ConfigError(f"Sorry, this BAM file does not look like a BAM file :( Here is "
                               f"the complaint coming from the depths of the codebase: '{e}'.")
@@ -814,6 +815,25 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                   "Please remove this flag or redo your mapping.")
 
         utils.check_contig_names(self.contig_names)
+
+        # the user wants secondary alignments to be tracked?
+        if self.track_secondary_alignments:
+            # yes. ok. so here we will do something cray. if the user wishes to track secondary
+            # alignments, it is quite easy to do using `BAMFileObject` class: just call the function
+            # `track_secondary_alignments`, and the information that is necessary for downstream
+            # processes will be stored in a relevant dictionary in the class. But the BAMProfiler
+            # class opens a given BAM file multiple times, and when it is run in multiple threads,
+            # as many times as there are threads. So that means, if the user wishes to track
+            # secondary alignments, the computationally intense steps of calculating that
+            # information will be done many many times. So here we are going to do a trick:
+            # we will ask secondary alignments to be calculated, and we will copy the resulting
+            # dictionary into a separate object so we can pass that to the future instances
+            # of BAMFileObject class below. this way we will optimize both compute time, and
+            # memory for applications that use many many threads.
+            self.bam.track_secondary_alignments(progress=self.progress)
+            self.primary_alignments = copy.deepcopy(self.bam.primary_alignments)
+        else:
+            self.primary_alignments = None
 
         self.run.info('Input BAM', self.input_file_path)
         self.run.info('Output directory path', self.output_directory, display_only=True, nl_after=1)
@@ -952,8 +972,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
         bam_file = bamops.BAMFileObject(self.input_file_path)
-        bam_file.enable_secondary_alignment_tracking()
         bam_file.fetch_filter = self.fetch_filter
+
+        if self.track_secondary_alignments:
+            bam_file.primary_alignments = self.primary_alignments
+            bam_file.secondary_alignments_tracked = True
 
         while True:
             try:
@@ -1052,8 +1075,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         """The main method for anvi-profile when num_threads is 1"""
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
-        bam_file.enable_secondary_alignment_tracking()
         bam_file.fetch_filter = self.fetch_filter
+
+        if self.track_secondary_alignments:
+            bam_file.primary_alignments = self.primary_alignments
+            bam_file.secondary_alignments_tracked = True
 
         received_contigs = 0
 
