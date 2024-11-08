@@ -94,8 +94,8 @@ if __name__ == '__main__':
     groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
 
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
-    groupB.add_argument("--step", help="Length of base pairs you would like to cut your genome/sequence into", type=int, default=100)
-    groupB.add_argument("--word-size", help="BLASTn word size parameter", type=str, default=8)
+    groupB.add_argument("--step", help="Length of base pairs you would like to cut your genome/sequence into. Default = 100", type=int, default=100)
+    groupB.add_argument("--word-size", help="BLASTn word size parameter. Default = 8", type=str, default=8)
 
     groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this program's location of variable regions'")
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
@@ -109,14 +109,14 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
-    groupD.add_argument("-m","--percentage-mismatch", help="The percentage of mismatching bases in the template region that are one 'type' of base. Has to be between 0.5 and 1.00", type=my_float_range, default=0.8)
-    groupD.add_argument("-n","--number-of-mismatches", help="Number of one 'type' of base in the template region that is mismatching to the variable region sequence", type=int, default=7)
-    groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases)", type=int, default=2)
+    groupD.add_argument("-m","--percentage-mismatch", help="The percentage of mismatching bases in the template region that are one 'type' of base. Has to be between 0.5 and 1.00. Default = 0.8", type=my_float_range, default=0.8)
+    groupD.add_argument("-n","--number-of-mismatches", help="Number of one 'type' of base in the template region that is mismatching to the variable region sequence. Default = 7", type=int, default=7)
+    groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2)
 
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window ", type=int, default=5)
-    groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window", type=int, default=5)
-    groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'", type=int, default=20)
+    groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 5 ", type=int, default=5)
+    groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window. Default = 5", type=int, default=5)
+    groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 20", type=int, default=20)
     groupE.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
     groupE.add_argument("-I","--hmm-usage", required = True, help="The name of the HMM run with your Contigs.db, ideally the 'Reverse_Transcriptase' HMM, or your own HMM of reverse transcriptases "
                         "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "

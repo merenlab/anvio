@@ -1050,7 +1050,7 @@ class DGR_Finder:
         #MAKE into WRITE DGR_genes_found write function
         #define output path
         output_directory_path = self.output_directory
-        output_path_for_genes_found = os.path.join(output_directory_path, "DGR_genes_found.csv")
+        output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.csv")
 
         # Define the header for the CSV file
         csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Gene_Caller_Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Gene_Functions', 'Gene_Function_Source', 'Gene_Function_Accession']
