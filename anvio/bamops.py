@@ -209,21 +209,7 @@ class PairedEndTemplateDist:
         plt.show()
 
 
-class SecondaryAlignmentsTracker:
-    def __init__(self):
-        self.primary_alignments = {}
-        self.secondary_alignments_tracked = False
-
-    def populate_primary_alignments_dict(self):
-        for read in self.fetch():
-            # If this read is a primary alignment, store it in the dictionary
-            if not read.is_secondary:
-                self.primary_alignments[read.query_name] = read.query_sequence
-
-        self.secondary_alignments_tracked = True
-
-
-class BAMFileObject(pysam.AlignmentFile, SecondaryAlignmentsTracker):
+class BAMFileObject(pysam.AlignmentFile):
     def __init__(self, *args):
         """A class that is essentially pysam.AlignmentFile, with some added bonuses
 
@@ -239,23 +225,55 @@ class BAMFileObject(pysam.AlignmentFile, SecondaryAlignmentsTracker):
 
         pysam.AlignmentFile.__init__(self)
 
-        # the following does nothing, UNLESS the user calls the function to populate
-        # primary alignments dict after initializing the bam file the first
-        # time, like this:
-        #
-        #    ```
-        #    bam_file = bamops.BAMFileObject(self.input_file_path)
-        #    bam_file.enable_secondary_alignment_tracking() # <---- this is the line that has to be called
-        #    bam_file.fetch_filter = self.fetch_filter
-        #    ```
-        # this will incrase the profiling time a bit.
-        SecondaryAlignmentsTracker.__init__(self)
+        # these are two member varialbes that are filled later if the user explicitly requests
+        # for them
+        self.primary_alignments = {}
+        self.secondary_alignments_tracked = False
 
 
-    def enable_secondary_alignment_tracking(self):
-        """Function to generate necessary information to track secondary alignments in a given BAM"""
+    def track_secondary_alignments(self, progress=terminal.Progress()):
+        """Function to generate necessary information to track secondary alignments in a given BAM file
 
-        self.populate_primary_alignments_dict()
+        This is necessary since if the mapping software reports secondary alignments, the entries may not
+        include the query sequence to avoid redundancy in reported BAM files. The purpose of this function
+        is to recover query sequences for each secondary alignment and keep it in a dictionary to consult
+        later.
+        """
+
+        if self.secondary_alignments_tracked:
+            return
+
+        progress.new("Identifying secondary alignments", progress_total_items=self.mapped)
+        progress.update("Step 01/02 ...")
+        # this is a bit convoluted. we will first go through all the reads
+        # to identify which ones are seconday alignments, and store their
+        # query names
+        counter = 0
+        for read in self.fetch():
+            counter += 1
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update(f"Step 01/02 [processed {pp(counter)} reads]")
+            if read.is_secondary:
+                self.primary_alignments[read.query_name] = None
+        progress.end()
+
+        progress.new("Identifying secondary alignments", progress_total_items=self.mapped)
+        progress.update("Step 02/02 ...")
+        # then we will go through all entries again, and fill in the sequences
+        # of primary alignments FOR those secondary alignments missing
+        # any sequences
+        counter = 0
+        for read in self.fetch():
+            counter += 1
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update(f"Step 02/02 [processed {pp(counter)} reads]")
+            if not read.is_secondary and read.query_name in self.primary_alignments and self.primary_alignments[read.query_name] == None:
+                self.primary_alignments[read.query_name] = read.query_sequence
+        progress.end()
+
+        self.secondary_alignments_tracked = True
 
 
     def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
@@ -266,6 +284,9 @@ class BAMFileObject(pysam.AlignmentFile, SecondaryAlignmentsTracker):
         """
 
         for read in self.fetch(contig_name, start, end):
+            if self.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = self.primary_alignments[read.query_name]
+
             if self.fetch_filter:
                 if constants.fetch_filters[self.fetch_filter](read):
                     yield read
