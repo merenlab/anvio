@@ -2524,6 +2524,29 @@ D = {
              'action': 'store_true',
              'help': "Be bold (at your own risk), and delete if exists."}
                 ),
+    'track-secondary-alignments': (
+            ['--track-secondary-alignments'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Most read recruitment analyses is performed when each read is mapped to a single location within "
+                     "reference sequences. However, most mapping software (such as Bowtie2, BWA, minimap, and others) "
+                     "include options for user to map a single read in multiple locations if the identity of a given "
+                     "read is above a user-defined threshold for multiple locations across a single or multiple "
+                     "reference sequences. Those additional hits are typically called secondary alignments. Most mapping "
+                     "software do not report actual sequences for those additional hits to avoid redundancy, since all "
+                     "additional hits are represented by the same sequence in any given BAM file. However, this becomes "
+                     "a problem during the profiling of secondary alignments: when anvi'o is going through each hit in "
+                     "the BAM file and when it finally runs into a secondary alignment, it is unable to recover the "
+                     "actual sequence for this secondary alignment through its primary alignment since random access to "
+                     "reads in BAM files through read query names is not possible via pysam. This flag instructs anvi'o BAM "
+                     "profiler to first go through the entire BAM file to identify all secondary hits and their query "
+                     "names, and then go through the BAM file once again to recover sequences for those query names "
+                     "from the primary alignments, and store this information in a dictionary for later access. This is a "
+                     "costly process (despite our best efforts to minimize its compute time and memory fingerprint) but "
+                     "it is a necessary evil if the mapping step allowed a given read to be mapped to multiple locations "
+                     "to profile the coverage of those reads accurately. If this makes no sense to you, then you don't "
+                     "need to use this flag."}
+                ),
     'report-variability-full': (
             ['--report-variability-full'],
             {'default': False,
