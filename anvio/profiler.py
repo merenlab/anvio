@@ -389,8 +389,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if A('contigs_of_interest'):
             filesnpaths.is_file_exists(args.contigs_of_interest)
-            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
-                                                                           if c.strip() and not c.startswith('#')])
+            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines() if c.strip() and not c.startswith('#')])
         else:
             self.contig_names_of_interest = set([])
 
@@ -410,7 +409,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
-        # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
+        # this voice in your head telling you that the tinkering with self.run here feels kind of out
         # of place. that voice is right, but the voice doesn't know the struggles of poor souls that
         # had to resort to a solution like this. You see, we don't want to see any run messages from
         # ContigsSuper in profiler output. But when we pass a `run=null_run` to the class, due to
