@@ -33,3 +33,4 @@ dependencies:
 - bioconductor-qvalue
 - meme
 - fastani
+- nodejs

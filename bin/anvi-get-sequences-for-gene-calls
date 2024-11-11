@@ -45,9 +45,12 @@ def export_from_contigs(args):
         gene_caller_ids_list=gene_caller_ids,
         output_file_path=args.output_file,
         simple_headers=not args.report_extended_deflines,
-        list_defline_variables=args.list_defline_variables,
         wrap=args.wrap
     )
+
+    if args.export_gff3 and (args.list_defline_variables or args.defline_format):
+        raise ConfigError("User-defined deflines for gene sequence output files is not compatible with the "
+                          "GFF3 output mode. Sorry :/")
 
     if args.export_gff3:
         if args.get_aa_sequences:
@@ -64,7 +67,8 @@ def export_from_contigs(args):
         if args.annotation_source:
             raise ConfigError("A functional annotation source is only relevant for the GFF output format.")
         c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length,
-                                             output_file_path_external_gene_calls=args.external_gene_calls, defline_format=args.defline_format)
+                                             output_file_path_external_gene_calls=args.external_gene_calls, defline_format=args.defline_format,
+                                             list_defline_variables=args.list_defline_variables)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):

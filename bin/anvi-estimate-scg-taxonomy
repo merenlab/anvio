@@ -48,7 +48,8 @@ if __name__ == '__main__':
                                                     the contigs database represents a single genome. If the contigs database is actually\
                                                     a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupA.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
+    groupA.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode', {'help': "Treat a given contigs database as an \
+                                                    unbinned metagenome rather than treating it as a single genome."}))
 
     groupB = parser.add_argument_group('INPUT #2', "In addition, you can also point out a profile database. In which case you also must\
                                                     provide a collection name. When you do that anvi'o will offer taxonomy estimates for\

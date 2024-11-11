@@ -1462,24 +1462,32 @@ class ContigsSuperclass(object):
         if not self.a_meta['gene_level_taxonomy_source']:
             raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
-        if not len(self.splits_taxonomy_dict):
-            self.init_splits_taxonomy()
 
-        if not len(self.splits_taxonomy_dict):
-            raise ConfigError("The splits taxonomy is empty. There is nothing to report. Could it be "
-                               "possible the taxonomy caller you used did not assign any taxonomy to "
-                               "anything?")
+        self.progress.new('Initializing splits taxonomy')
+        self.progress.update('...')
 
-        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        splits_taxonomy_table = contigs_db.db.smart_get(t.splits_taxonomy_table_name, 'split', self.split_names_of_interest, string_the_key=True, error_if_no_data=False, progress=self.progress)
+        taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         output = open(output_file_path, 'w')
+        column_list = ['split_name'] + [k for k in taxon_names_table[list(taxon_names_table.keys())[0]].keys()]
+        header = "\t".join(column_list)
+        output.write(f"{header}\n")
         for split_name in self.splits_basic_info:
-            if split_name in self.splits_taxonomy_dict:
-                output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
-            else:
-                output.write('{0}\t\n'.format(split_name))
+            if split_name in splits_taxonomy_table:
+                taxon_id = splits_taxonomy_table[split_name]['taxon_id']
+                if taxon_id:
+                    self.splits_taxonomy_dict[split_name] = taxon_names_table[taxon_id]
+                    taxonomy_string = "\t".join(str(x) for x in self.splits_taxonomy_dict[split_name].values())
+                    output.write(f"{split_name}\t{taxonomy_string}\n")
+                else:
+                    output.write(f"{split_name}\t\n")
         output.close()
 
+        contigs_db.disconnect()
+        self.progress.end()
+        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(splits_taxonomy_table), len(self.splits_basic_info)))
         self.run.info("Output", output_file_path)
 
 
@@ -3838,7 +3846,7 @@ class ProfileSuperclass(object):
             return split_coverages_dict
 
 
-    def init_collection_profile(self, collection_name):
+    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         # we only have a self.collections instance if the profile super has been inherited by summary super class.
@@ -3859,6 +3867,14 @@ class ProfileSuperclass(object):
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
+        if calculate_Q2Q3_carefully:
+            self.run.warning("The anvi'o sumarizer class is instructed (hopefully by you) to calculate Q2Q3 mean "
+                             "coverages carefully. This means, depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But then you will get the best "
+                             "mean coverage values for your populations (so brace yourself).",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+
         self.progress.new(f"Collection profile for '{collection_name}'")
         for table_name in table_names:
             # if SNVs are not profiled, skip the `variability` table
@@ -3869,32 +3885,42 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                # populate averages per bin
-                averages = copy.deepcopy(samples_template)
-
-                # These weights are used to properly account for differences in split lengths.
-                # Consider table_name == 'mean_coverage', for a bin with 2 splits. Without
-                # weighting, if one split is length 100 with coverage 100 and the other is length
-                # 900 wth coverage 500, the mean_coverage for this bin is (100 + 500)/2 = 300. But
-                # more accurately, mean_coverage of this bin is 100*[100/1000] + 500*[900/1000] =
-                # 460
-                weights = []
-
-                for split_name in collection[bin_id]:
-                    if split_name not in table_data:
-                        continue
-
-                    weights.append(self.splits_basic_info[split_name]['length'])
-
+                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3':
+                    self.collection_profile[bin_id][table_name] = {}
+                    # we need to do something specific here.
                     for sample_name in samples_template:
-                        averages[sample_name].append(table_data[split_name][sample_name])
+                        nucleotide_level_coverage_values = numpy.array([])
+                        for split_name in collection[bin_id]:
+                            nucleotide_level_coverage_values = numpy.append(nucleotide_level_coverage_values, self.split_coverage_values.get(split_name)[sample_name])
+                        stats = utils.CoverageStats(nucleotide_level_coverage_values)
+                        self.collection_profile[bin_id][table_name][sample_name] = stats.mean_Q2Q3
+                else:
+                    # populate averages per bin
+                    averages = copy.deepcopy(samples_template)
 
-                # finalize averages per bin:
-                for sample_name in samples_template:
-                    # weights is automatically normalized in numpy.average such that sum(weights) == 1
-                    averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
+                    # These weights are used to properly account for differences in split lengths.
+                    # Consider table_name == 'mean_coverage', for a bin with 2 splits. Without
+                    # weighting, if one split is length 100 with coverage 100 and the other is length
+                    # 900 wth coverage 500, the mean_coverage for this bin is (100 + 500)/2 = 300. But
+                    # more accurately, mean_coverage of this bin is 100*[100/1000] + 500*[900/1000] =
+                    # 460
+                    weights = []
 
-                self.collection_profile[bin_id][table_name] = averages
+                    for split_name in collection[bin_id]:
+                        if split_name not in table_data:
+                            continue
+
+                        weights.append(self.splits_basic_info[split_name]['length'])
+
+                        for sample_name in samples_template:
+                            averages[sample_name].append(table_data[split_name][sample_name])
+
+                    # finalize averages per bin:
+                    for sample_name in samples_template:
+                        # weights is automatically normalized in numpy.average such that sum(weights) == 1
+                        averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
+
+                    self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
         coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
