@@ -1881,10 +1881,9 @@ class DGR_Finder:
                     TR_frame = vr_data['TR_frame'] * -1
                     TR_sequence = utils.rev_comp(vr_data['TR_sequence'])
 
+                print(f"After TR Reverse Complementary Check:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
 
-                print(f"AFTER TR REV COMP CHECK:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
-
-                print(f"AFTER TR REV COMP CHECK:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+                print(f"After VR Reverse Complementary Check:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
 
                 #make every frame positive so that the initial primer is always on the left and then both the vr and tr are being compared on the same strand.
                 #Always make the VR strand +1 so that you can compare the primer to the fasta file by definition
@@ -1914,10 +1913,6 @@ class DGR_Finder:
                     # Extract the contig name from split_name
                     snvs_table['contig_name'] = snvs_table['split_name'].str.split('_split_', expand=True)[0]
 
-
-                    print("snvs table")
-                    print(snvs_table)
-
                     vr_positions = set(range(vr_start, vr_end))
 
                     # Filter snvs_table to include only rows with the matching VR_contig
@@ -1925,13 +1920,6 @@ class DGR_Finder:
 
                     # Convert the positions to a set for faster lookups
                     primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
-
-
-                    # Optional: Print to verify
-                    print(f"VR_contig: {vr_contig}")
-                    print(f"Filtered positions for VR_contig: {primer_snv_positions}")
-                    print(f"vr positions lists: {vr_positions}")
-
 
                     vr_primer = []
                     # Create the vr_primer sequence
@@ -1971,9 +1959,6 @@ class DGR_Finder:
                 vr_id = vr_key
                 primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_primer_region'],
                                                                 'vr_anchor_primer': vr_data['vr_anchor_primer']}
-        print('\n')
-        print(f'original primers dictionary:' , primers_dict)
-
         return primers_dict
 
 
