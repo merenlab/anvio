@@ -158,7 +158,7 @@ class DGR_Finder:
             # check fasta input
             filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
 
-        if self.step < 0 or self.word_size < 0:
+        if int(self.step) < 0 or int(self.word_size) < 0:
             raise ConfigError('The step value and/or word size value you are trying to input should be positive integer.')
 
         if self.variable_buffer_length < 0:
