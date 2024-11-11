@@ -816,7 +816,33 @@ class Pangenome(object):
         pan_db.disconnect()
 
 
-    def gen_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+    def gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters, gene_clusters_de_novo, name_prefix="PSGC"):
+        """Turn MCL clusters from structure search into a gene clusters dict
+
+        The only difference between this function and `gen_de_novo_gene_clusters_dict_from_mcl_clusters` is that
+        the latter takes in de novo gene clusters, where hashes must be replaced with actual genome names. In
+        contrast, this function takes clusters of gene clusters, which must be turned into a dictionary where
+        gene clusters resolved back to individual genes they had originally.
+        """
+
+        # we will build the following dictionary here from the MCL results and de novo gene clusters
+        protein_structure_informed_gene_clusters_dict = {}
+
+        counter = 0
+        for gene_cluster_group in mcl_clusters.values():
+            counter += 1
+            psgc_name = f"{name_prefix}_{counter:08d}"
+
+            protein_structure_informed_gene_clusters_dict[psgc_name] = []
+
+            # FIXME:
+            # it is time to find all the genes in `gene_cluster_group` items to fill an equivalent of this:
+            # entry: protein_structure_informed_gene_clusters_dict[psgc_name].append({'gene_caller_id': int(gene_caller_id), 'gene_cluster_id': gene_cluster, 'genome_name': genome_name, 'alignment_summary': ''})
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def gen_de_novo_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
         self.progress.new('Generating the gene clusters dictionary from raw MCL clusters')
         self.progress.update('...')
 
@@ -1004,18 +1030,18 @@ class Pangenome(object):
         """Function to compute gene clusters de novo"""
 
         # get de novo gene clusters first to reduce search space for structure
-        gene_clusters_dict = self.get_gene_clusters_de_novo()
+        de_novo_gene_clusters_dict = self.get_gene_clusters_de_novo()
 
         # next, we will align non-singleton gene clusters to make sure we have all the information
         # we need to be able to pick an appropriate representative for each gene cluster.
         skip_alignments = self.skip_alignments
         self.skip_alignments = False
-        gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
+        de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(de_novo_gene_clusters_dict)
         self.skip_alignments = skip_alignments
 
-        # now the `gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
+        # now the `de_novo_gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
         # representative sequences
-        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(gene_clusters_dict)
+        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(de_novo_gene_clusters_dict)
 
         # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
         # with foldseek
@@ -1034,15 +1060,15 @@ class Pangenome(object):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
+        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, de_novo_gene_clusters_dict)
         del mcl_clusters
 
         # decompose resulting mcl clusters into a new gene clusters dictionary:
         pass
+
         #CL1 = GC_00000036 GC_00000006
         # gene_cluster decompose result will return with gene_clusters_dict
-
-        return gene_clusters_dict,
+        return protein_structure_informed_gene_clusters_dict
 
 
     def get_gene_clusters_de_novo(self):
@@ -1070,7 +1096,7 @@ class Pangenome(object):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
+        gene_clusters_dict = self.gen_de_novo_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
         return gene_clusters_dict
