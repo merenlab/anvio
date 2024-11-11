@@ -1199,23 +1199,12 @@ class DGR_Finder:
                 if filtered_vrs:
                     self.dgrs_in_collections[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
 
-                self.get_hmm_info(self.dgrs_in_collections)
-
-                self.create_found_tr_vr_csv(self.dgrs_in_collections)
-
-                self.recover_genomic_context_surrounding_dgrs(self.dgrs_in_collections)
-
-                self.report_genomic_context_surrounding_dgrs(self.dgrs_in_collections)
-
-                self.compute_dgr_variability_profiling(self.dgrs_in_collections)
-
-
             profile_db.disconnect()
             contig_db.disconnect()
 
             return
 
-    def get_hmm_info(self, dgrs_dict):
+    def get_hmm_info(self):
         """
         This function creates a dictionary of the HMMs provided that are the closest to the template
         regions, this is done by finding the middle of the template region and the middle of the HMM gene
@@ -1231,6 +1220,12 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
+
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
+        else:
+            dgrs_dict = self.DGRs_found_dict
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
@@ -1322,7 +1317,7 @@ class DGR_Finder:
 
 
 
-    def create_found_tr_vr_csv(self, dgrs_dict):
+    def create_found_tr_vr_csv(self):
         """
         This function creates a csv tabular format of the template and variable regions that are found from this tool.
         Parameters
@@ -1336,34 +1331,14 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
-        # Check if either dictionary is empty or lacks meaningful keys
-        if not any(dgrs_dict.values()):
-            raise ConfigError("No DGRS were found so no output file will be written.")
-
-        if not self.DGRs_found_dict and not self.dgrs_in_collections:
-            raise ConfigError("No DGRS were found so no output file will be written :(")
-
         output_directory_path = self.output_directory
 
-        # Set up the file path and headers based on the dictionary type
-        if dgrs_dict == self.DGRs_found_dict:
-            print('/n')
-            print(self.DGRs_found_dict)
-            output_path_dgrs = os.path.join(output_directory_path, "DGRs_found.csv")
-            headers = [
-                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
-                "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
-                "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
-                "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
-                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
-                "HMM_stop", "HMM_gene_callers_id"
-            ]
-        elif dgrs_dict == self.dgrs_in_collections:
-            # Create directory for DGRs_found_in_collections
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
             self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
             if not os.path.exists(self.collections_dir):
                 os.makedirs(self.collections_dir)
-            output_path_dgrs = os.path.join(self.collections_dir, "DGRs_found_with_collections_mode.csv")
+            output_path_dgrs = os.path.join(self.collections_dir, f"{self.output_directory}_DGRs_found_with_collections_mode.csv")
             headers = [
                 "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
                 "VR_start_position", "VR_end_position", "VR_bin", "VR_frame",
@@ -1373,6 +1348,24 @@ class DGR_Finder:
                 "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
                 "HMM_stop", "HMM_gene_callers_id"
             ]
+        else:
+            dgrs_dict = self.DGRs_found_dict
+            output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
+            headers = [
+                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
+                "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
+                "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
+                "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
+                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
+                "HMM_stop", "HMM_gene_callers_id"
+            ]
+
+        # Check if either dictionary is empty or lacks meaningful keys
+        if not any(dgrs_dict.values()):
+            self.run.warning("No DGRS were found so no output file will be written :( However, you can go "
+                            "back and tinker with the parameters of this tool if you believe this should not "
+                            "be the case. Anvi'o wishes you a nice day :)")
+            return
 
         # Open the CSV file and write headers and rows
         with open(output_path_dgrs, 'w', newline='') as csvfile:
@@ -1415,11 +1408,16 @@ class DGR_Finder:
 
 
 
-    def recover_genomic_context_surrounding_dgrs(self, dgrs_dict):
+    def recover_genomic_context_surrounding_dgrs(self):
         """Learn about what surrounds the variable region sites of each found DGR"""
 
         # in which we will store the genomic context that surrounds dgrs for downstream fun
         self.genomic_context_surrounding_dgrs = {}
+
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
+        else:
+            dgrs_dict = self.DGRs_found_dict
 
         # we know when we are not wanted
         if self.skip_recovering_genomic_context:
@@ -1631,7 +1629,7 @@ class DGR_Finder:
 
 
 
-    def report_genomic_context_surrounding_dgrs(self, dgrs_dict):
+    def report_genomic_context_surrounding_dgrs(self):
         """
         Reports two long-format output files for genes and functions around inversion
         STOLEN (modified) FROM INVERSIONS CODE (line 1925)
@@ -1653,6 +1651,11 @@ class DGR_Finder:
         if not len(self.genomic_context_surrounding_dgrs):
             print("No genomic context data available to report")
             return
+
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
+        else:
+            dgrs_dict = self.DGRs_found_dict
 
         # we are in business
         genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
@@ -1996,7 +1999,7 @@ class DGR_Finder:
                     ])
         return
 
-    def compute_dgr_variability_profiling(self, dgrs_dict):
+    def compute_dgr_variability_profiling(self):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
         Parameters
@@ -2019,7 +2022,12 @@ class DGR_Finder:
             return
         print(f'self.samples_txt_dict:', self.samples_txt_dict)
 
-        if not len(self.DGRs_found_dict):
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
+        else:
+            dgrs_dict = self.DGRs_found_dict
+
+        if not len(dgrs_dict):
             self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
                                 "compute in-sample variability :/", mc="red")
 
@@ -2281,8 +2289,7 @@ class DGR_Finder:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'dgrs',
-                                #'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
-                                'num_dgrs': len(self.DGRs_found_dict),
+                                'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
                                 #'num_samples': len(self.profile_db_paths) if self.metagenomics_contigs_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
@@ -2297,7 +2304,12 @@ class DGR_Finder:
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
 
-        for dgr_key, dgr_data in self.DGRs_found_dict.items():
+        if self.metagenomics_contigs_mode:
+            dgrs_dict = self.dgrs_in_collections
+        else:
+            dgrs_dict = self.DGRs_found_dict
+
+        for dgr_key, dgr_data in dgrs_dict.items():
             # Assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key
 
@@ -2539,10 +2551,10 @@ class DGR_Finder:
             print('\n')
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
-            self.get_hmm_info(self.DGRs_found_dict)
-            self.create_found_tr_vr_csv(self.DGRs_found_dict) #TODO: check if this works if the dictionary is empty or do you need a different method?
-            self.recover_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
-            self.report_genomic_context_surrounding_dgrs(self.DGRs_found_dict)
-            self.compute_dgr_variability_profiling(self.DGRs_found_dict) # add if statement to this for the metagenomics mode DGRs
+            self.get_hmm_info()
+            self.create_found_tr_vr_csv()
+            self.recover_genomic_context_surrounding_dgrs()
+            self.report_genomic_context_surrounding_dgrs()
+            self.compute_dgr_variability_profiling() # add if statement to this for the metagenomics mode DGRs
             self.process_dgr_data_for_HTML_summary()
         return
