@@ -835,9 +835,16 @@ class Pangenome(object):
 
             protein_structure_informed_gene_clusters_dict[psgc_name] = []
 
-            # FIXME:
-            # it is time to find all the genes in `gene_cluster_group` items to fill an equivalent of this:
-            # entry: protein_structure_informed_gene_clusters_dict[psgc_name].append({'gene_caller_id': int(gene_caller_id), 'gene_cluster_id': gene_cluster, 'genome_name': genome_name, 'alignment_summary': ''})
+            # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
+            for gene_cluster_id in gene_cluster_group:
+                if gene_cluster_id in gene_clusters_de_novo:
+                    for gene_entry in gene_clusters_de_novo[gene_cluster_id]:
+                        protein_structure_informed_gene_clusters_dict[psgc_name].append({
+                            'gene_caller_id': int(gene_entry['gene_caller_id']),
+                            'gene_cluster_id': gene_cluster_id,
+                            'genome_name': gene_entry['genome_name'],
+                            'alignment_summary': gene_entry.get('alignment_summary', '')
+                        })
 
         return protein_structure_informed_gene_clusters_dict
 
