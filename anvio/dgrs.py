@@ -1292,6 +1292,11 @@ class DGR_Finder:
                         closest_distances['distance'] = distance
 
             if not HMM_found:
+                self.run.warning(f"No HMM Reverse Transcriptase was found for {DGR_id}. This does not affect the "
+                                "outcome of the tool, other than meaning that there is no RT found on the same contig "
+                                "as the Template Region meaning it might be a good idea to manually inspect your data "
+                                "to see if any RT's are present.")
+
                 HMM_gene_callers_id = ''
                 DGR_info['HMM_gene_callers_id'] = ''
                 DGR_info['distance_to_HMM'] = ''
@@ -1974,6 +1979,7 @@ class DGR_Finder:
 
 
     def print_primers_dict_to_csv(self, primers_dict):
+        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.csv'.")
         output_directory_path = self.output_directory
         output_path_for_genes_found = os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
 
@@ -2143,7 +2149,7 @@ class DGR_Finder:
                             self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
                         if sample_names_given == samples_missing_in_snv_table:
                             raise ConfigError(f"Anvi'o is not angry just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), yet you have none of these samples in your profile.db. "
-                                                "This is fatal, anvio will now quit. Either you recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
+                                                "This is fatal, anvi'o will now quit. Either you recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
                                                 "or you give 'anvi-report-dgrs' samples that were used to create your profile.db.")
 
                         for sample_name in sample_names:
@@ -2547,8 +2553,7 @@ class DGR_Finder:
             return
 
         else:
-            self.run.info_single("Computing the Genes the Variable Regions occur in and creating a 'DGR_genes_found.csv'.")
-            print('\n')
+            self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
             self.get_hmm_info()
