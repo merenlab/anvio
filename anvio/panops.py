@@ -92,6 +92,7 @@ class Pangenome(object):
 
         self.de_novo_compute_mode = A('pan_mode') or 'sequence'
         self.prostt5_data_dir = A('prostt5_data_dir')
+        self.foldseek_search_results_output_file = A('foldseek_search_results')
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
@@ -263,6 +264,9 @@ class Pangenome(object):
             self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
         else:
             raise ConfigError("Something is wrong")
+
+        if self.foldseek_search_results_output_file:
+            filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
 
 
     def process_additional_params(self):

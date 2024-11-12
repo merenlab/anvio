@@ -57,13 +57,18 @@ if __name__ == '__main__':
                                 from the gene caller used to identify genes during the generation of the contigs database).")
 
 
-    groupB = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
+    groupB = parser.add_argument_group('MODE: SEQUENCE-BASED or STRUCTURE-INFORMED', "Anvi'o can calculate a pangenome based one amino acid sequence homology "
+                                "or based on predicted protein structures by utilizing the protein language model ProstT5 to go from a AA sequence to a 3di "
+                                "to form gene clusters.")
+    groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
+
+    groupC = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
                                 "within the gene pool of input genomes. If you don't change anything in this section, things will work fine, and anvi'o will "
                                 "use DIAMOND by default to accomplish the search with default parameters anvi'o developers set for you. But please go "
                                 "through each parameter anyway to have an idea regarding what is available to you to play with.")
-    groupB.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
+    groupC.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
                                 "but if you'd like to use the good ol' blastp by the NCBI instead, it can't stop you.")
-    groupB.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
+    groupC.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
                                 f"anvi'o has some defaults for whichever approach you choose to use for your sequence search, you can assume full control "
                                 f"over what is passed to the search program. Put anything you wish anvi'o to send your search program in double quotes, and "
                                 f"they will be passed to the program. If you don't use this parameter, in addition to the additional parameters anvi'o will "
@@ -73,13 +78,11 @@ if __name__ == '__main__':
                                 f"you should set this parameter like this manually: --additional-params-for-seq-search "
                                 f"\"{panops.additional_param_sets_for_sequence_search['diamond']} --sensitive\". DO NOT EVER FORGET THE DOUBLE QUOTES, unless "
                                 f"you hate your computer and want to see it melting beforey our eyes.")
-    groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
 
-
-    groupB = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
+    groupC = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: NETWORK RESOLUTION', "The second step in this workflow is to use the sequence search results "
                                 "to determine gene clusters. Which is a straightforward step thanks to the MCL algorithm. The following parameters are there "
                                 "to tweak this step, even though default choices will work for the vast majority of cases.")
-    groupB.add_argument('--minbit', type = float, default = 0.5, metavar = "MINBIT", help = "The minimum minbit value. The minbit heuristic \
+    groupC.add_argument('--minbit', type = float, default = 0.5, metavar = "MINBIT", help = "The minimum minbit value. The minbit heuristic \
                                 provides a mean to set a to eliminate weak matches between two amino acid sequences. We learned it from ITEP \
                                 (Benedict MN et al, doi:10.1186/1471-2164-15-8), which is a comprehensive analysis workflow for pangenomes, \
                                 and decided to use it in the anvi'o pangenomic workflow, as well. Briefly, If you have two amino acid sequences,\
@@ -87,64 +90,65 @@ if __name__ == '__main__':
                                 between two sequences goes to 1 if they are very similar over the entire length of the 'shorter' amino acid sequence,\
                                 and goes to 0 if (1) they match over a very short stretch compared even to the length of the shorter amino acid sequence\
                                 or (2) the match between sequence identity is low. The default is %(default)g.")
-    groupB.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
+    groupC.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
                                 the sensitivity of the algorithm during the identification of the gene clusters. More information on this\
                                 parameter and it's effect on cluster granularity is here: (http://micans.org/mcl/man/mclfaq.html#faq7.2).\
                                 The default is %(default)g.")
-    groupB.add_argument('--min-percent-identity', type = float, default = 0.0, metavar = "PERCENT", help = "Minimum percent identity\
+    groupC.add_argument('--min-percent-identity', type = float, default = 0.0, metavar = "PERCENT", help = "Minimum percent identity\
                                 between the two amino acid sequences for them to have an edge for MCL analysis. This value will be used\
                                 to filter hits from Diamond search results. Because percent identity is not a predictor of a good match (since\
                                 it does not communicate many other important factors such as the alignment length between the two sequences and\
                                 its proportion to the entire length of those involved), we suggest you rely on 'minbit' parameter. But you know\
                                 what? Maybe you shouldn't listen to anyone, and experiment on your own! The default is %(default)g percent.")
-    groupB.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singletons? You don't?\
+    groupC.add_argument('--min-occurrence', type = int, default = 1, metavar = 'NUM_OCCURRENCE', help = "Do you not want singletons? You don't?\
                                 Well, this parameter will help you get rid of them (along with doubletons, if you want). Anvi'o will remove\
                                 gene clusters that occur less than the number you set using this parameter from the analysis. The default\
                                 is %(default)d, which means everything will be kept. If you want to remove singletons, set it to 2, if you want to\
                                 remove doubletons as well, set it to 3, and so on.")
 
-    groupC = parser.add_argument_group('ALTERNATIVE GENE CLUSTER FORMATION: USER-PROVIDED GENE CLUSTERS', "As an alternative approach, you can provide "
+    groupD = parser.add_argument_group('ALTERNATIVE GENE CLUSTER FORMATION: USER-PROVIDED GENE CLUSTERS', "As an alternative approach, you can provide "
                                 "anvi'o with your own gene cluster affiliations. In this case, anvi'o would not use the default way of computing gene "
                                 "clusters de novo, but take your word for which genes go together.")
-    groupC.add_argument(*anvio.A('gene-clusters-txt'), **anvio.K('gene-clusters-txt'))
+    groupD.add_argument(*anvio.A('gene-clusters-txt'), **anvio.K('gene-clusters-txt'))
 
-    groupD = parser.add_argument_group("GENE CLUSTER CHARACTERIZATION", "Parameters that mostly impact how anvi'o characterizes your gene clusters once "
+    groupE = parser.add_argument_group("GENE CLUSTER CHARACTERIZATION", "Parameters that mostly impact how anvi'o characterizes your gene clusters once "
                                 "they are identified. Such as aligning within gene cluster sequences, computing homogeneity indices for them, etc. "
                                 "Important stuff.")
-    groupD.add_argument('--skip-alignments', default = False, action = 'store_true', help = "By default, anvi'o attempts to align amino acid\
+    groupE.add_argument('--skip-alignments', default = False, action = 'store_true', help = "By default, anvi'o attempts to align amino acid\
                                 sequences in each gene cluster using multiple sequence alignment via muscle. You can use this flag to skip\
                                 that step and be upset later.")
-    groupD.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
-    groupD.add_argument('--skip-homogeneity', default=False, action='store_true', dest='skip_homogeneity',help="By default, anvi'o attempts to calculate homogeneity\
+    groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupE.add_argument('--skip-homogeneity', default=False, action='store_true', dest='skip_homogeneity',help="By default, anvi'o attempts to calculate homogeneity\
                                 values for every gene cluster, given that they are aligned. You can use this flag to have anvi'o skip\
                                 homogeneity calculations. Anvi'o will ignore this flag if you decide to skip alignments")
-    groupD.add_argument('--quick-homogeneity', default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
+    groupE.add_argument('--quick-homogeneity', default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
                                 algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
                                 flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.\
                                 Anvi'o will ignore this flag if you skip homogeneity calculations or alignments all together.")
 
-    groupE = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
-    groupE.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
-    groupE.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'PAN_DB_DIR'}))
-    groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
-    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupE.add_argument(*anvio.A('prostt5-data-dir'), **anvio.K('prostt5-data-dir'))
+    groupF = parser.add_argument_group("OTHERS", "Sweet parameters of convenience.")
+    groupF.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+    groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'PAN_DB_DIR'}))
+    groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupF.add_argument(*anvio.A('prostt5-data-dir'), **anvio.K('prostt5-data-dir'))
+    groupF.add_argument(*anvio.A('foldseek-search-results'), **anvio.K('foldseek-search-results'))
 
-    groupF = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")
-    groupF.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
+    groupG = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")
+    groupG.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help': "Anvi'o attempts\
                                 to generate a hierarchical clustering of your gene clusters once it identifies them so you can use\
                                 `anvi-display-pan` to play with it. But if you want to skip this step, this is your flag."}))
-    groupF.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
+    groupG.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
                                 want anvi'o to try to generate a hierarchical clustering of your gene clusters even if the number of gene clusters exceeds\
                                 its suggested limit for hierarchical clustering, you can use this flag to enforce it. Are you are a\
                                 rebel of some sorts? Or did computers make you upset? Express your anger towards machine using this\
                                 flag."}))
-    groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
+    groupG.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
                       'The distance metric for the clustering of gene clusters. If you do not use this flag,\
                        the default distance metric will be used for each clustering configuration\
                        which is "%s".' % constants.distance_metric_default}))
-    groupF.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
+    groupG.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
