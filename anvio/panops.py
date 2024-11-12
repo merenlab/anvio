@@ -836,8 +836,6 @@ class Pangenome(object):
             for gene_cluster_id in gene_cluster_group:
                 if gene_cluster_id in gene_clusters_de_novo:
                     for gene_entry in gene_clusters_de_novo[gene_cluster_id]:
-                        #updated_gene_cluster_id = f"{name_prefix}_{gene_cluster_id.replace('GC_', '')}"
-
                         protein_structure_informed_gene_clusters_dict[psgc_name].append({
                             'gene_caller_id': int(gene_entry['gene_caller_id']),
                             'gene_cluster_id': gene_cluster_id,
