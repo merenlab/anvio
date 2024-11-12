@@ -843,7 +843,7 @@ class Pangenome(object):
                         gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id)
 
                         protein_structure_informed_gene_clusters_dict[psgc_name].append({
-                            'gene_caller_id': int(gene_caller_id),
+                            'gene_caller_id': int(gene_entry['gene_caller_id']),
                             'gene_cluster_id': psgc_name,
                             'genome_name': genome_name,
                             'alignment_summary': gene_entry.get('alignment_summary', ''),
