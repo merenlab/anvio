@@ -56,19 +56,17 @@ class Foldseek():
             raise ConfigError("It seems like you forgot to download the ProstT5 model."
                             " Please run 'anvi-setup-prostt5' and try again.")
 
-        self.output_file = 'foldseek-search-results'
-
         if not self.run.log_file_path:
             self.run.log_file_path = filesnpaths.get_temp_file_path()
 
         self.names_dict = None
 
-    def create_db(self):
+    def create_db(self, output_file):
         self.run.warning(None, header="FOLDSEEK CREATEDB", lc="green")
         self.progress.new('FOLDSEEK')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
-        expected_output_dir = os.path.join(self.output_file, "db")
+        expected_output_dir = os.path.join(output_file, "db")
         expected_output_file = os.path.join(expected_output_dir, "search_db")
 
         filesnpaths.gen_output_directory(expected_output_dir, delete_if_exists=False)
@@ -81,19 +79,22 @@ class Foldseek():
                     '--threads', self.num_threads
                     ]
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        try:
+            utils.run_command(cmd_line, self.run.log_file_path)
+        except FilesNPathsError:
+            run.warning("Opss! CREATEDB not working. Probably you are giving wrong file path :/")
 
         self.progress.end()
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search DB', expected_output_file)
+        #self.run.info('Foldseek search DB', expected_output_file)
 
     def search(self, query_db, target_db):
         self.run.warning(None, header="FOLDSEEK EASY SEARCH", lc="green")
         self.progress.new('FOLDSEEK')
         self.progress.update('Running search using Foldseek ...')
 
-        query_db = os.path.join(query_db, 'search_db')
-        target_db = os.path.join(target_db, 'search_db')
+        query_db = os.path.join(query_db, 'db', 'search_db')
+        target_db = os.path.join(target_db, 'db', 'search_db')
 
         result_file_dir = os.path.join(self.output_file, 'result')
 
@@ -114,10 +115,10 @@ class Foldseek():
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Foldseek search Result', result_file_dir)
 
-    def process(self, query_db, target_db):
+    def process(self, output_file):
 
-        self.create_db()
-        self.search(query_db, target_db)
+        self.create_db(output_file)
+        self.search(output_file, output_file)
 
     def get_foldseek_results(self):
         """ Return result.m8 file """

@@ -332,8 +332,6 @@ class Pangenome(object):
 
     def run_foldseek(self, fasta_path):
         """ Running Foldseek """
-        result_dir = self.get_output_file_path('foldseek-search-results')
-
         fs = Foldseek(query_fasta=fasta_path,
                       run=self.run,
                       progress=self.progress,
@@ -341,10 +339,9 @@ class Pangenome(object):
                       weight_dir=self.prostt5_data_dir,
                       overwrite_output_destinations=self.overwrite_output_destinations)
 
-        db_dir = os.path.join(result_dir, 'db')
         # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
 
-        fs.process(db_dir, db_dir)
+        fs.process(self.output_dir)
 
         return fs.get_foldseek_results()
 
@@ -839,6 +836,8 @@ class Pangenome(object):
             for gene_cluster_id in gene_cluster_group:
                 if gene_cluster_id in gene_clusters_de_novo:
                     for gene_entry in gene_clusters_de_novo[gene_cluster_id]:
+                        #updated_gene_cluster_id = f"{name_prefix}_{gene_cluster_id.replace('GC_', '')}"
+
                         protein_structure_informed_gene_clusters_dict[psgc_name].append({
                             'gene_caller_id': int(gene_entry['gene_caller_id']),
                             'gene_cluster_id': gene_cluster_id,
