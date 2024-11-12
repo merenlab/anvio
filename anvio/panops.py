@@ -353,11 +353,7 @@ class Pangenome(object):
         if self.use_ncbi_blast:
             return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
         else:
-            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
-
-
-    def run_search_structure(self, fasta_path):
-        return self.run_foldseek(fasta_path)
+            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict) 
 
 
     def run_mcl(self, mcl_input_file_path):
@@ -1037,11 +1033,11 @@ class Pangenome(object):
         return representative_sequences
 
 
-    def get_gene_clusters_structure(self):
+    def get_structure_informed_gene_clusters(self):
         """Function to compute gene clusters de novo"""
 
         # get de novo gene clusters first to reduce search space for structure
-        de_novo_gene_clusters_dict = self.get_gene_clusters_de_novo()
+        de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()
 
         # next, we will align non-singleton gene clusters to make sure we have all the information
         # we need to be able to pick an appropriate representative for each gene cluster.
@@ -1061,29 +1057,27 @@ class Pangenome(object):
             for gc_name in gene_cluster_representatives:
                 output.write(f">{gc_name}\n{gene_cluster_representatives[gc_name]['sequence']}\n")
 
-        # run search
-        foldseek_result = self.run_search_structure(gene_cluster_representatives_FASTA_path)
+        # get foldseek search results (please NOTE that if there is a user-provided search output, we utilize that here)
+        if not self.foldseek_search_results_output_file:
+            self.foldseek_search_results_output_file = self.run_foldseek(gene_cluster_representatives_FASTA_path)
 
         # generate MCL input from filtered foldseek_result
-        mcl_input_file_path = self.gen_mcl_input(foldseek_result)
+        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file)
 
         # get clusters from MCL
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
         protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, de_novo_gene_clusters_dict)
+
+        # invoke the garbage collector to clean up some mess
         del mcl_clusters
 
-        # decompose resulting mcl clusters into a new gene clusters dictionary:
-        pass
-
-        #CL1 = GC_00000036 GC_00000006
-        # gene_cluster decompose result will return with gene_clusters_dict
         return protein_structure_informed_gene_clusters_dict
 
 
-    def get_gene_clusters_de_novo(self):
-        """Function to compute gene clusters de novo"""
+    def get_sequence_based_gene_clusters(self):
+        """Function to compute gene clusters de novo based on amino acid sequences"""
 
         # get all amino acid sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
@@ -1169,9 +1163,9 @@ class Pangenome(object):
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
         elif self.de_novo_compute_mode == "structure":
-            gene_clusters_dict = self.get_gene_clusters_structure()
+            gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
-            gene_clusters_dict = self.get_gene_clusters_de_novo()
+            gene_clusters_dict = self.get_sequence_based_gene_clusters()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
