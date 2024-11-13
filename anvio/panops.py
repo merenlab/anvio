@@ -589,13 +589,28 @@ class Pangenome(object):
             for gc_name, psgc_name in self.gc_psgc_associations:
                 if psgc_name:
                     psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
+
+            # Count total genes per PSGC
+            psgc_gene_counts = {}
+            for gene_cluster in gene_clusters_dict:
+                if gene_cluster.startswith('PSGC'):
+                    psgc_gene_counts[gene_cluster] = len(gene_clusters_dict[gene_cluster])
             
-            # Add to additional view data
+            # Debug to check that we have the correct counts of GCs and genes per PSGC
+            if anvio.DEBUG:
+                self.run.warning(None, header='PSGC DEBUG INFO', lc='yellow')
+                for psgc_name in psgc_gene_counts:
+                    self.run.info(f'PSGC {psgc_name}', 
+                                f'Contains {psgc_gc_counts.get(psgc_name, 0)} GCs '
+                                f'with total {psgc_gene_counts.get(psgc_name, 0)} genes')
+
+            # Add both pieces of information to additional view data
             for gene_cluster in self.view_data:
                 if gene_cluster.startswith('PSGC'):
                     self.additional_view_data[gene_cluster]['num_gene_clusters_in_psgc'] = psgc_gc_counts.get(gene_cluster, 0)
+                    self.additional_view_data[gene_cluster]['num_genes_in_psgc'] = psgc_gene_counts.get(gene_cluster, 0)
 
-            item_additional_data_keys.append('num_gene_clusters_in_psgc')
+            item_additional_data_keys.extend(['num_gene_clusters_in_psgc', 'num_genes_in_psgc'])
 
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
