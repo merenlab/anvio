@@ -583,34 +583,9 @@ class Pangenome(object):
         item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
 
-        # If we're in structure mode, add information about how many GCs each PSGC represents
+        # If we're in structure mode, add information about PSGCs
         if self.pan_mode == 'structure':
-            psgc_gc_counts = {}
-            for gc_name, psgc_name in self.gc_psgc_associations:
-                if psgc_name:
-                    psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
-
-            # Count total genes per PSGC
-            psgc_gene_counts = {}
-            for gene_cluster in gene_clusters_dict:
-                if gene_cluster.startswith('PSGC'):
-                    psgc_gene_counts[gene_cluster] = len(gene_clusters_dict[gene_cluster])
-            
-            # Debug to check that we have the correct counts of GCs and genes per PSGC
-            if anvio.DEBUG:
-                self.run.warning(None, header='PSGC DEBUG INFO', lc='yellow')
-                for psgc_name in psgc_gene_counts:
-                    self.run.info(f'PSGC {psgc_name}', 
-                                f'Contains {psgc_gc_counts.get(psgc_name, 0)} GCs '
-                                f'with total {psgc_gene_counts.get(psgc_name, 0)} genes')
-
-            # Add both pieces of information to additional view data
-            for gene_cluster in self.view_data:
-                if gene_cluster.startswith('PSGC'):
-                    self.additional_view_data[gene_cluster]['num_gene_clusters_in_psgc'] = psgc_gc_counts.get(gene_cluster, 0)
-                    self.additional_view_data[gene_cluster]['num_genes_in_psgc'] = psgc_gene_counts.get(gene_cluster, 0)
-
-            item_additional_data_keys.extend(['num_gene_clusters_in_psgc', 'num_genes_in_psgc'])
+            self.add_psgc_layers(gene_clusters_dict, item_additional_data_keys)
 
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
@@ -624,6 +599,130 @@ class Pangenome(object):
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
         return gene_clusters_dict
+        return gene_clusters_dict
+
+    def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
+        """Add PSGC-related layers to the additional view data.
+        
+        Args:
+            gene_clusters_dict: Dictionary containing gene cluster information
+            item_additional_data_keys: List to store the names of additional data keys
+        """
+        psgc_gc_counts = self.count_gene_clusters_per_psgc()
+        psgc_gene_counts = self.count_genes_per_psgc(gene_clusters_dict)
+        psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
+        
+        self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
+        item_additional_data_keys.extend([
+            'num_gene_clusters_in_psgc', 
+            'num_genes_in_psgc',
+            'gene_types!core', 
+            'gene_types!singleton', 
+            'gene_types!else'
+        ])
+
+    def count_gene_clusters_per_psgc(self):
+        """Count the number of gene clusters in each PSGC.
+        
+        Counts how many gene clusters belong to each PSGC using gc_psgc_associations.
+
+        Example:
+            self.gc_psgc_associations = [
+                ('GC_00001', 'PSGC_00001'),
+                ('GC_00002', 'PSGC_00001'),
+                ('GC_00003', 'PSGC_00002'),
+                ('GC_00004', 'PSGC_00002'),
+                ('GC_00005', 'PSGC_00002')
+            ]
+
+            Returns:
+                {
+                    'PSGC_00001': 2,  # contains 2 gene clusters
+                    'PSGC_00002': 3   # contains 3 gene clusters
+                }
+        """        
+        psgc_gc_counts = {}
+        for gc_name, psgc_name in self.gc_psgc_associations:
+            if psgc_name:
+                psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
+        return psgc_gc_counts
+
+    def count_genes_per_psgc(self, gene_clusters_dict):
+        """Count the total number of genes in each PSGC.
+        
+        For each PSGC, counts the total number of genes it contains.
+
+        Example:
+            gene_clusters_dict = {
+                'PSGC_00001': [
+                    {'gene_1': ...},
+                    {'gene_2': ...},
+                    {'gene_3': ...}
+                ],
+                'PSGC_00002': [
+                    {'gene_4': ...},
+                    {'gene_5': ...}
+                ]
+            }
+
+            Returns:
+                {
+                    'PSGC_00001': 3,  # contains 3 genes
+                    'PSGC_00002': 2   # contains 2 genes
+                }
+        """
+        return {gc: len(genes) for gc, genes in gene_clusters_dict.items() 
+                if gc.startswith('PSGC')}
+
+    def classify_gene_types(self, gene_clusters_dict):
+        """Classify genes as core, singleton, or other.
+
+            Example: 
+                self.view_data['PSGC_00001'] = {
+                        'genome1': 1,
+                        'genome2': 1,
+                        'genome3': 1,
+                        'genome4': 1,
+                        'genome5': 1
+                        }
+
+            # genomes_in_gc would be 5 (all genomes have it)
+            # gene_count would be 5 (total genes)
+            # It would be classified as 'core' because all genomes have it
+        """
+
+        for gene_cluster in self.view_data:
+            if gene_cluster.startswith('PSGC'):
+                genomes_in_gc = sum(1 for genome in self.view_data[gene_cluster].values() if genome > 0)
+                gene_count = sum(self.view_data[gene_cluster].values())
+                
+                if genomes_in_gc == len(self.genomes):
+                    self.additional_view_data[gene_cluster].update({
+                        'gene_types!core': gene_count,
+                        'gene_types!singleton': 0,
+                        'gene_types!else': 0
+                    })
+                elif genomes_in_gc == 1:
+                    self.additional_view_data[gene_cluster].update({
+                        'gene_types!core': 0,
+                        'gene_types!singleton': gene_count,
+                        'gene_types!else': 0
+                    })
+                else:
+                    self.additional_view_data[gene_cluster].update({
+                        'gene_types!core': 0,
+                        'gene_types!singleton': 0,
+                        'gene_types!else': gene_count
+                    })
+
+    def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
+        """Add all PSGC layers to the view data."""
+        for gene_cluster in self.view_data:
+            if gene_cluster.startswith('PSGC'):
+                self.additional_view_data[gene_cluster].update({
+                    'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0),
+                    'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0)
+                })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
