@@ -64,3 +64,42 @@ class TableForGeneClusters(Table):
         database.disconnect()
 
 
+
+class TableForPSGCGCAssociations(Table):
+    """A class to populate protein structure-informed gene cluster <-> de novo gene cluster associations in a pan db.
+
+      Here is an example:
+
+        >>> table = TableForPSGCGCAssociations(db_path)
+        >>> for ...:
+        >>>     table.add({'gene_cluster_id': gene_cluster_id, 'protein_structure_informed_gene_cluster_id': psgc_id})
+        >>> table.store()
+    """
+
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        utils.is_pan_db(db_path)
+
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, anvio.__pan__version__, run, progress)
+
+        self.entries = []
+
+
+    def add(self, entry_dict):
+        self.entries.append([entry_dict[key] for key in t.pan_gc_psgc_associations_table_structure])
+
+
+    def store(self):
+        self.delete_contents_of_table(t.pan_gc_psgc_associations_table_name, warning=False)
+
+        db_entries = [tuple(entry) for entry in self.entries]
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.pan_gc_psgc_associations_table_name, db_entries)
+        database.disconnect()
+
+
