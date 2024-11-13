@@ -90,7 +90,7 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
-        self.de_novo_compute_mode = A('pan_mode') or 'sequence'
+        self.pan_mode = A('pan_mode') or 'sequence'
         self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
 
@@ -100,7 +100,7 @@ class Pangenome(object):
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
 
-        if self.de_novo_compute_mode == 'structure':
+        if self.pan_mode == 'structure':
             self.skip_alignments = True
             self.skip_homogeneity = True
 
@@ -225,7 +225,7 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
-        if self.de_novo_compute_mode == 'structure' and self.user_defined_gene_clusters:
+        if self.pan_mode == 'structure' and self.user_defined_gene_clusters:
             raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode --structure` and `gene_clusters_txt` at the same time."
                                 "When `structure` is active, please skip setting `gene_clusters_txt`.")
 
@@ -258,9 +258,9 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
-        if self.de_novo_compute_mode == "sequence" or self.user_defined_gene_clusters:
+        if self.pan_mode == "sequence" or self.user_defined_gene_clusters:
             self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
-        elif self.de_novo_compute_mode == "structure":
+        elif self.pan_mode == "structure":
             self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
         else:
             raise ConfigError("Something is wrong")
@@ -1166,7 +1166,7 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        elif self.de_novo_compute_mode == "structure":
+        elif self.pan_mode == "structure":
             gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
             gene_clusters_dict = self.get_sequence_based_gene_clusters()
