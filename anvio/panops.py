@@ -143,7 +143,8 @@ class Pangenome(object):
 
 
     def generate_pan_db(self):
-        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
+        meta_values = {'pan_mode': self.pan_mode,
+                       'internal_genome_names': ','.join(self.internal_genome_names),
                        'external_genome_names': ','.join(self.external_genome_names),
                        'num_genomes': len(self.genomes),
                        'min_percent_identity': self.min_percent_identity,
