@@ -859,6 +859,33 @@ class Pangenome(object):
                         'gene_function_calls': gene_functions or {}
                     })
 
+        # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
+        # table for downsteram steps. as we went through psgcs and matched gcs that were contained in
+        # them with the de novo gcs, we don't know if there are any de novo gcs that did not end up in
+        # any of the psgcs. this is an extremely unlikely scenario, but those are the kinds of things
+        # we are here for. so we will go t
+        known_gcs = set(list(gene_clusters_de_novo.keys()))
+        gcs_found_in_psgcs = set([tpl[0] for tpl in self.gc_psgc_associations])
+        gcs_not_reprsented_in_psgcs = known_gcs.difference(gcs_found_in_psgcs)
+        if gcs_not_reprsented_in_psgcs:
+            self.run.warning(f"Anvi'o noticed something unexpected, and she wants you to know about it. It seems "
+                             f"{pp(len(gcs_not_reprsented_in_psgcs))} of {pp(len(known_gcs))} gene clusters anvi'o "
+                             f"computed based on their amino acid sequences somehow were lost when protein "
+                             f"structure-informed gene clusters were computed from their representatives. We are "
+                             f"not sure under what circumstances this can happen. If you are seeing this error "
+                             f"message, you can help us implement more functionality in this class to debug it "
+                             f"properly. Here is the list of de novo gene clusters that were lost along the way: "
+                             f"{', '.join(gcs_not_reprsented_in_psgcs)}")
+
+            for gc_name in gcs_not_reprsented_in_psgcs:
+                self.gc_psgc_associations.append((gc_name, None))
+
+        self.run.warning(f"Hi! Anvi'o just finished calculating your protein structure-informed gene clusters dictionary "
+                         f"that consolidated {pp(len(known_gcs))} gene clusters (that were generated based on the good ol' "
+                         f"amino acid sequence homology considerations) into {pp(len(protein_structure_informed_gene_clusters_dict))} "
+                         f"protein structure-informed gene clusters. We keep our fingers crossed that something will not "
+                         f"explode after this.", header="🎉 GCs TO PSGCs IS WORKING 🎉", lc='green')
+
         return protein_structure_informed_gene_clusters_dict
 
 
