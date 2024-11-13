@@ -117,7 +117,7 @@ class Pangenome(object):
         self.additional_view_data = {}
         self.aligner = None
 
-        # this is to fill a table that will only be relevant in strucure mode.
+        # this is to fill a table that will only be relevant in structure mode.
         self.gc_psgc_associations = []
 
         # we don't know what we are about
