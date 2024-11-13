@@ -858,18 +858,11 @@ class Pangenome(object):
 
                 # go through every gene entry in de novo clusters
                 for gene_entry in gene_clusters_de_novo[gc_name]:
-                    genome_name = gene_entry['genome_name']
-                    gene_caller_id = gene_entry['gene_caller_id']
-
-                    # Get function calls from genome storage
-                    gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id) or {}
-
                     protein_structure_informed_gene_clusters_dict[psgc_name].append({
                         'gene_caller_id': int(gene_entry['gene_caller_id']),
                         'gene_cluster_id': psgc_name,
-                        'genome_name': genome_name,
-                        'alignment_summary': gene_entry.get('alignment_summary', ''),
-                        'gene_function_calls': gene_functions
+                        'genome_name': gene_entry['genome_name'],
+                        'alignment_summary': gene_entry.get('alignment_summary', '')
                     })
 
         # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
