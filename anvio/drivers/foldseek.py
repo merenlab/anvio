@@ -96,7 +96,7 @@ class Foldseek():
         query_db = os.path.join(query_db, 'db', 'search_db')
         target_db = os.path.join(target_db, 'db', 'search_db')
 
-        result_file_dir = os.path.join(self.output_file, 'result')
+        result_file_dir = os.path.join(output_file, 'result')
 
         cmd_line = [
             'foldseek',
