@@ -46,6 +46,10 @@ pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
 pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
+pan_gc_psgc_associations_table_name      = 'gc_psgc_associations'
+pan_gc_psgc_associations_table_structure = ['gene_cluster_id', 'protein_structure_informed_gene_cluster_id']
+pan_gc_psgc_associations_table_types     = [     'str'       ,                    'str'                    ]
+
 pan_reaction_network_reactions_table_name        = 'pan_reaction_network_reactions'
 pan_reaction_network_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
 pan_reaction_network_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
@@ -407,6 +411,7 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  pan_gc_psgc_associations_table_name: False, # the first entry is always the de novo gene cluster name, which should be unique
                                   'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
                                   pan_reaction_network_reactions_table_name: False,
                                   'gene_cluster_function_metabolites': False, # renamed to 'pan_reaction_network_metabolites'
