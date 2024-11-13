@@ -117,6 +117,9 @@ class Pangenome(object):
         self.additional_view_data = {}
         self.aligner = None
 
+        # this is to fill a table that will only be relevant in strucure mode.
+        self.gc_psgc_associations = []
+
         # we don't know what we are about
         self.description = None
 
@@ -834,22 +837,27 @@ class Pangenome(object):
             protein_structure_informed_gene_clusters_dict[psgc_name] = []
 
             # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
-            for gene_cluster_id in gene_cluster_group:
-                if gene_cluster_id in gene_clusters_de_novo:
-                    for gene_entry in gene_clusters_de_novo[gene_cluster_id]:
-                        genome_name = gene_entry['genome_name']
-                        gene_caller_id = gene_entry['gene_caller_id']
-                        
-                        # Get function calls from genome storage
-                        gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id)
+            for gc_name in gene_cluster_group:
 
-                        protein_structure_informed_gene_clusters_dict[psgc_name].append({
-                            'gene_caller_id': int(gene_entry['gene_caller_id']),
-                            'gene_cluster_id': psgc_name,
-                            'genome_name': genome_name,
-                            'alignment_summary': gene_entry.get('alignment_summary', ''),
-                            'gene_function_calls': gene_functions or {}
-                        })
+                # as we are now going through de novo gene clusters that are represented in protein structure-informed
+                # clusters, we will update our talbe to track psgc <-> gc associations table
+                self.gc_psgc_associations.append((gc_name, psgc_name))
+
+                # go through every gene entry in de novo clusters
+                for gene_entry in gene_clusters_de_novo[gc_name]:
+                    genome_name = gene_entry['genome_name']
+                    gene_caller_id = gene_entry['gene_caller_id']
+
+                    # Get function calls from genome storage
+                    gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id)
+
+                    protein_structure_informed_gene_clusters_dict[psgc_name].append({
+                        'gene_caller_id': int(gene_entry['gene_caller_id']),
+                        'gene_cluster_id': psgc_name,
+                        'genome_name': genome_name,
+                        'alignment_summary': gene_entry.get('alignment_summary', ''),
+                        'gene_function_calls': gene_functions or {}
+                    })
 
         return protein_structure_informed_gene_clusters_dict
 
