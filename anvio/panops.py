@@ -582,6 +582,21 @@ class Pangenome(object):
 
         item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
+
+        # If we're in structure mode, add information about how many GCs each PSGC represents
+        if self.pan_mode == 'structure':
+            psgc_gc_counts = {}
+            for gc_name, psgc_name in self.gc_psgc_associations:
+                if psgc_name:
+                    psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
+            
+            # Add to additional view data
+            for gene_cluster in self.view_data:
+                if gene_cluster.startswith('PSGC'):
+                    self.additional_view_data[gene_cluster]['num_gene_clusters_in_psgc'] = psgc_gc_counts.get(gene_cluster, 0)
+
+            item_additional_data_keys.append('num_gene_clusters_in_psgc')
+
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
         #                                                                                   /
