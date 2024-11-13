@@ -840,14 +840,14 @@ class Pangenome(object):
                         gene_caller_id = gene_entry['gene_caller_id']
                         
                         # Get function calls from genome storage
-                        gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id)
+                        gene_functions = self.genomes_storage.get_gene_functions(genome_name, gene_caller_id) or {}
 
                         protein_structure_informed_gene_clusters_dict[psgc_name].append({
                             'gene_caller_id': int(gene_entry['gene_caller_id']),
                             'gene_cluster_id': psgc_name,
                             'genome_name': genome_name,
                             'alignment_summary': gene_entry.get('alignment_summary', ''),
-                            'gene_function_calls': gene_functions or {}
+                            'gene_function_calls': gene_functions
                         })
 
         return protein_structure_informed_gene_clusters_dict
