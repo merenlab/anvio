@@ -546,6 +546,39 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Num genes in PSGC',
     },
+    'gene_types!core': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!singleton': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!else': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    }
 };
 
 named_category_colors = {
