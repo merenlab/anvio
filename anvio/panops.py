@@ -38,7 +38,7 @@ from anvio.drivers.foldseek import Foldseek
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.geneclusters import TableForGeneClusters, TableForPSGCGCAssociations
 from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -810,6 +810,19 @@ class Pangenome(object):
         self.progress.end()
 
         table_for_gene_clusters.store()
+
+        self.progress.new('Storing gc <-> psgc associations in the database')
+        self.progress.update('...')
+
+        table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
+
+        for gc_name, psgc_name in self.gc_psgc_associations:
+            table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
+
+        self.progress.end()
+
+        table_for_gc_psgc_associations.store()
+
 
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
         pan_db.db.set_meta_value('num_gene_clusters', len(gene_clusters_dict))
