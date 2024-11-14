@@ -9,10 +9,11 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+current_version, next_version = [x[1:] for x in __name__.split("_to_")]
 
 run = terminal.Run()
 progress = terminal.Progress()
+
 
 def migrate(db_path):
     if db_path is None:
@@ -22,7 +23,8 @@ def migrate(db_path):
     if str(contigs_db_info.version) != current_version:
         raise ConfigError(
             f"The version of the provided contigs database is {contigs_db_info.version}, "
-            f"not the required version, {current_version}, so this script cannot upgrade the database.")
+            f"not the required version, {current_version}, so this script cannot upgrade the database."
+        )
 
     progress.new("Migrating")
     progress.update("Adding any missing database metavariables")
@@ -30,15 +32,15 @@ def migrate(db_path):
     self_table = contigs_db_info.get_self_table()
     contigs_db = contigs_db_info.load_db()
     for key in [
-        'reaction_network_ko_annotations_hash',
-        'reaction_network_kegg_database_release',
-        'reaction_network_modelseed_database_sha'
+        "reaction_network_ko_annotations_hash",
+        "reaction_network_kegg_database_release",
+        "reaction_network_modelseed_database_sha",
     ]:
         if key not in self_table:
             contigs_db.set_meta_value(key, None)
 
     progress.update("Updating version")
-    contigs_db.remove_meta_key_value_pair('version')
+    contigs_db.remove_meta_key_value_pair("version")
     contigs_db.set_version(next_version)
 
     progress.update("Committing changes")
@@ -55,11 +57,18 @@ def migrate(db_path):
         "database; if the version 21 database migrated from version 20, then nothing at all should have "
         "changed in the database except the version number."
     )
-    run.info_single(message, nl_after=1, nl_before=1, mc='green')
+    run.info_single(message, nl_after=1, nl_before=1, mc="green")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=f"A simple script to upgrade an anvi'o contigs database from version {current_version} to version {next_version}")
-    parser.add_argument("contigs_db", metavar="CONTIGS_DB", help=f"An anvi'o contigs database of version {current_version}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=f"A simple script to upgrade an anvi'o contigs database from version {current_version} to version {next_version}"
+    )
+    parser.add_argument(
+        "contigs_db",
+        metavar="CONTIGS_DB",
+        help=f"An anvi'o contigs database of version {current_version}",
+    )
     args, unknown = parser.parse_known_args()
 
     try:

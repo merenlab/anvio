@@ -19,29 +19,66 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class Centrifuge(Parser):
-    def __init__(self, input_file_paths, taxonomy_table_structure, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(
+        self,
+        input_file_paths,
+        taxonomy_table_structure,
+        run=terminal.Run(),
+        progress=terminal.Progress(),
+    ):
         self.run = run
         self.progress = progress
 
         self.min_hit_score = 250
 
-        files_expected = {'report': input_file_paths[0] if len(input_file_paths) > 0 else 'centrifuge_report.tsv',
-                          'hits': input_file_paths[1] if len(input_file_paths) > 1 else 'centrifuge_hits.tsv'
-                         }
+        files_expected = {
+            "report": (
+                input_file_paths[0]
+                if len(input_file_paths) > 0
+                else "centrifuge_report.tsv"
+            ),
+            "hits": (
+                input_file_paths[1]
+                if len(input_file_paths) > 1
+                else "centrifuge_hits.tsv"
+            ),
+        }
 
-        files_structure = {'report':
-                                {'col_names': ['t_species', 'taxon_id', 'f1', 'f2', 'f3', 'f4', 'f5'],
-                                 'col_mapping': [str, int, str, str, str, str, str],
-                                 'indexing_field': 1},
-                           'hits':
-                                {'col_names': ['gene_callers_id', 'f1', 'taxon_id', 'score', 'f2', 'f3', 'f4', 'f5'],
-                                 'col_mapping': [lambda x: int(x.split('|')[0]), str, int, int, str, str, str, str],
-                                 'indexing_field': -1},
-                          }
+        files_structure = {
+            "report": {
+                "col_names": ["t_species", "taxon_id", "f1", "f2", "f3", "f4", "f5"],
+                "col_mapping": [str, int, str, str, str, str, str],
+                "indexing_field": 1,
+            },
+            "hits": {
+                "col_names": [
+                    "gene_callers_id",
+                    "f1",
+                    "taxon_id",
+                    "score",
+                    "f2",
+                    "f3",
+                    "f4",
+                    "f5",
+                ],
+                "col_mapping": [
+                    lambda x: int(x.split("|")[0]),
+                    str,
+                    int,
+                    int,
+                    str,
+                    str,
+                    str,
+                    str,
+                ],
+                "indexing_field": -1,
+            },
+        }
 
         self.taxonomy_table_structure = taxonomy_table_structure
-        Parser.__init__(self, 'centrifuge', input_file_paths, files_expected, files_structure)
-
+        Parser.__init__(
+            self, "centrifuge", input_file_paths, files_expected, files_structure
+        )
 
     def process(self):
         """Parse two files, returns two dicts: genes_taxonomy, taxon_names.
@@ -68,38 +105,41 @@ class Centrifuge(Parser):
         report = {}
         hits = {}
 
-        for taxon_id in self.dicts['report']:
-            taxon = self.dicts['report'][taxon_id]['t_species']
-            report[taxon_id] = {'t_species': ' '.join(taxon.split()[0:2])}
+        for taxon_id in self.dicts["report"]:
+            taxon = self.dicts["report"][taxon_id]["t_species"]
+            report[taxon_id] = {"t_species": " ".join(taxon.split()[0:2])}
 
         # we are done with this one:
-        del self.dicts['report']
+        del self.dicts["report"]
 
-        self.run.info('Total num hits found', len(self.dicts['hits']))
+        self.run.info("Total num hits found", len(self.dicts["hits"]))
 
         num_hits_below_hit_score = 0
-        for hit in list(self.dicts['hits'].values()):
-            if hit['score'] < self.min_hit_score:
+        for hit in list(self.dicts["hits"].values()):
+            if hit["score"] < self.min_hit_score:
                 num_hits_below_hit_score += 1
                 continue
 
-            gene_callers_id = hit['gene_callers_id']
-            taxon_id = hit['taxon_id']
+            gene_callers_id = hit["gene_callers_id"]
+            taxon_id = hit["taxon_id"]
 
             if not taxon_id in report:
                 continue
 
-            taxon = report[taxon_id]['t_species']
+            taxon = report[taxon_id]["t_species"]
 
             if gene_callers_id not in hits:
                 hits[gene_callers_id] = Counter()
 
             hits[gene_callers_id][taxon] += 1
 
-        self.run.info('Removed due to low hit score of %d' % self.min_hit_score, num_hits_below_hit_score)
+        self.run.info(
+            "Removed due to low hit score of %d" % self.min_hit_score,
+            num_hits_below_hit_score,
+        )
 
         # we are done with this one too:
-        del self.dicts['hits']
+        del self.dicts["hits"]
 
         removed_due_to_too_many_hits = 0
         for gene_callers_id in hits:
@@ -107,27 +147,37 @@ class Centrifuge(Parser):
 
             num_hits = len(counter_obj)
             if num_hits == 1:
-                annotations_dict[gene_callers_id] = {'t_species': counter_obj.most_common()[0][0]}
+                annotations_dict[gene_callers_id] = {
+                    "t_species": counter_obj.most_common()[0][0]
+                }
             else:
                 counter_obj_ordered = counter_obj.most_common()
                 if counter_obj_ordered[0][1] > counter_obj_ordered[1][1]:
-                    annotations_dict[gene_callers_id] = {'t_species': counter_obj.most_common()[0][0]}
+                    annotations_dict[gene_callers_id] = {
+                        "t_species": counter_obj.most_common()[0][0]
+                    }
                 else:
                     removed_due_to_too_many_hits += 1
                     continue
 
             # add the other levels of taxonomy. this has to be done in a much better
             # way at some point, but here is a workaround to deal with this for now:
-            annotations_dict[gene_callers_id]['t_genus'] = annotations_dict[gene_callers_id]['t_species'].split()[0]
-            annotations_dict[gene_callers_id]['t_family'] = None
-            annotations_dict[gene_callers_id]['t_order'] = None
-            annotations_dict[gene_callers_id]['t_class'] = None
-            annotations_dict[gene_callers_id]['t_phylum'] = None
-            annotations_dict[gene_callers_id]['t_domain'] = None
+            annotations_dict[gene_callers_id]["t_genus"] = annotations_dict[
+                gene_callers_id
+            ]["t_species"].split()[0]
+            annotations_dict[gene_callers_id]["t_family"] = None
+            annotations_dict[gene_callers_id]["t_order"] = None
+            annotations_dict[gene_callers_id]["t_class"] = None
+            annotations_dict[gene_callers_id]["t_phylum"] = None
+            annotations_dict[gene_callers_id]["t_domain"] = None
 
-        self.run.info('Removed due to too many competing hits', removed_due_to_too_many_hits)
-        self.run.info('Final num hits', len(annotations_dict))
+        self.run.info(
+            "Removed due to too many competing hits", removed_due_to_too_many_hits
+        )
+        self.run.info("Final num hits", len(annotations_dict))
 
-        genes_taxonomy, taxon_names = TaxonomyHelper(annotations_dict).get_genes_taxonomy_and_taxon_names_dicts()
+        genes_taxonomy, taxon_names = TaxonomyHelper(
+            annotations_dict
+        ).get_genes_taxonomy_and_taxon_names_dicts()
 
         return (genes_taxonomy, taxon_names)

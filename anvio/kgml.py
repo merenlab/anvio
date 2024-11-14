@@ -44,6 +44,7 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
+
 class Element:
     """
     Representation of an XML element from a KGML file.
@@ -53,6 +54,7 @@ class Element:
     uuid : str
         Unique ID, which can be used to look up child elements in a Pathway object.
     """
+
     # Subclass names are the same as the capitalized tag attribute.
     tag: str
     # Element attributes are required or not, according to the KGML schema.
@@ -60,6 +62,7 @@ class Element:
 
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
+
 
 class Pathway(Element):
     """
@@ -141,20 +144,17 @@ class Pathway(Element):
             }
         }
     """
-    tag = 'pathway'
+
+    tag = "pathway"
     attribute_required = {
-        'name': True,
-        'org': True,
-        'number': True,
-        'title': False,
-        'image': False,
-        'link': False
+        "name": True,
+        "org": True,
+        "number": True,
+        "title": False,
+        "image": False,
+        "link": False,
     }
-    subelement_tags: Tuple[str] = (
-        'entry',
-        'relation',
-        'reaction'
-    )
+    subelement_tags: Tuple[str] = ("entry", "relation", "reaction")
 
     def __init__(self) -> None:
         self.name: str = None
@@ -197,8 +197,8 @@ class Pathway(Element):
         self,
         new_color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]],
         recolor_unprioritized_entries: Union[str, Dict[str, Tuple[str, str]]] = False,
-        color_associated_compounds: Literal['high', 'low', 'average'] = None,
-        colormap: Colormap = None
+        color_associated_compounds: Literal["high", "low", "average"] = None,
+        colormap: Colormap = None,
     ) -> None:
         """
         Set the color_priority attribute. Entry elements in the children attribute are automatically
@@ -313,8 +313,13 @@ class Pathway(Element):
         color_priority = {}
         for entry_type, new_entry_color_priority in new_color_priority.items():
             color_priority[entry_type] = entry_type_color_priority = {}
-            for graphics_type, new_graphics_color_priority in new_entry_color_priority.items():
-                entry_type_color_priority[graphics_type] = graphics_type_color_priority = {}
+            for (
+                graphics_type,
+                new_graphics_color_priority,
+            ) in new_entry_color_priority.items():
+                entry_type_color_priority[graphics_type] = (
+                    graphics_type_color_priority
+                ) = {}
                 for colors, priority in sorted(
                     new_graphics_color_priority.items(), key=lambda item: item[1]
                 ):
@@ -326,25 +331,25 @@ class Pathway(Element):
 
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
-                assert recolor_unprioritized_entries in ('w', 'g')
+                assert recolor_unprioritized_entries in ("w", "g")
 
                 # Recolor orthologs.
-                if recolor_unprioritized_entries == 'w':
+                if recolor_unprioritized_entries == "w":
                     if self.is_overview_map:
-                        color_hex_code = '#000000'
+                        color_hex_code = "#000000"
                     else:
-                        color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
+                        color_hex_code = "#FFFFFF"
+                elif recolor_unprioritized_entries == "g":
+                    color_hex_code = "#E0E0E0"
                 self.recolor_unprioritized_ortholog_entries(
                     unprioritized_entry_uuids, color_hex_code
                 )
 
                 # Recolor compounds.
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
+                if recolor_unprioritized_entries == "w":
+                    color_hex_code = "#FFFFFF"
+                elif recolor_unprioritized_entries == "g":
+                    color_hex_code = "#E0E0E0"
                 self.recolor_unprioritized_compound_entries(
                     unprioritized_entry_uuids, color_hex_code
                 )
@@ -363,10 +368,10 @@ class Pathway(Element):
         # Recolor compounds that have not been assigned a color priority.
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
+                if recolor_unprioritized_entries == "w":
+                    color_hex_code = "#FFFFFF"
+                elif recolor_unprioritized_entries == "g":
+                    color_hex_code = "#E0E0E0"
                 self.recolor_unprioritized_compound_entries(
                     unprioritized_entry_uuids, color_hex_code
                 )
@@ -395,7 +400,7 @@ class Pathway(Element):
         qualifying_entry_uuids: Dict[str, List[str]] = {
             entry_type: [] for entry_type in self.color_priority
         }
-        for entry_uuid in self.children['entry']:
+        for entry_uuid in self.children["entry"]:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             if entry.type in self.color_priority:
                 qualifying_entry_uuids[entry.type].append(entry_uuid)
@@ -417,13 +422,15 @@ class Pathway(Element):
                 graphics_types: List[str] = []
                 fgcolors: List[str] = []
                 bgcolors: List[str] = []
-                for graphics_uuid in entry.children['graphics']:
+                for graphics_uuid in entry.children["graphics"]:
                     graphics_element: Graphics = self.uuid_element_lookup[graphics_uuid]
                     graphics_types.append(graphics_element.type)
                     fgcolors.append(graphics_element.fgcolor)
                     bgcolors.append(graphics_element.bgcolor)
                 if len(set(graphics_types)) != 1:
-                    graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
+                    graphics_type_message = ", ".join(
+                        [f"'{gt}'" for gt in graphics_types]
+                    )
                     raise AssertionError(
                         f"The Graphics elements for the Entry with UUID '{entry_uuid}' do not "
                         "have the same type, which is required for ordering entries based on "
@@ -438,7 +445,9 @@ class Pathway(Element):
 
                 graphics_type = graphics_types[0]
                 try:
-                    priority = entry_type_color_priority[graphics_type][(fgcolors[0], bgcolors[0])]
+                    priority = entry_type_color_priority[graphics_type][
+                        (fgcolors[0], bgcolors[0])
+                    ]
                 except KeyError:
                     # The Entry does not have colors in the priority dictionary.
                     priority = -1.0
@@ -458,14 +467,12 @@ class Pathway(Element):
             except KeyError:
                 pass
 
-        self.children['entry'] = reordered_entry_uuids
+        self.children["entry"] = reordered_entry_uuids
 
         return unprioritized_entry_uuids
 
     def recolor_unprioritized_ortholog_entries(
-        self,
-        unprioritized_entry_uuids: List[str],
-        color_hex_code: str
+        self, unprioritized_entry_uuids: List[str], color_hex_code: str
     ) -> None:
         """
         Recolor orthologs without a color priority.
@@ -485,20 +492,22 @@ class Pathway(Element):
         """
         if self.is_global_map or self.is_overview_map:
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids, {'ortholog': {'line': (color_hex_code, '#FFFFFF')}}
+                unprioritized_entry_uuids,
+                {"ortholog": {"line": (color_hex_code, "#FFFFFF")}},
             )
         else:
             self.recolor_unprioritized_entries(
                 unprioritized_entry_uuids,
-                {'ortholog': {
-                    'rectangle': ('#000000', color_hex_code), 'line': (color_hex_code, '#000000')
-                }}
+                {
+                    "ortholog": {
+                        "rectangle": ("#000000", color_hex_code),
+                        "line": (color_hex_code, "#000000"),
+                    }
+                },
             )
 
     def recolor_unprioritized_compound_entries(
-        self,
-        unprioritized_entry_uuids: List[str],
-        color_hex_code: str
+        self, unprioritized_entry_uuids: List[str], color_hex_code: str
     ) -> None:
         """
         Recolor compounds without a color priority.
@@ -522,17 +531,18 @@ class Pathway(Element):
         if self.is_global_map:
             self.recolor_unprioritized_entries(
                 unprioritized_entry_uuids,
-                {'compound': {'circle': (color_hex_code, color_hex_code)}}
+                {"compound": {"circle": (color_hex_code, color_hex_code)}},
             )
         else:
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids, {'compound': {'circle': ('#000000', color_hex_code)}}
+                unprioritized_entry_uuids,
+                {"compound": {"circle": ("#000000", color_hex_code)}},
             )
 
     def recolor_unprioritized_entries(
         self,
         unprioritized_entry_uuids: List[str],
-        type_colors: Dict[str, Dict[str, Tuple[str, str]]]
+        type_colors: Dict[str, Dict[str, Tuple[str, str]]],
     ) -> None:
         """
         Entries without a color priority are recolored by Entry type.
@@ -568,7 +578,9 @@ class Pathway(Element):
                 continue
             for graphics_type, graphics_type_colors in entry_type_colors.items():
                 try:
-                    graphics_type_color_priority = entry_type_color_priority[graphics_type]
+                    graphics_type_color_priority = entry_type_color_priority[
+                        graphics_type
+                    ]
                 except KeyError:
                     continue
                 if graphics_type_colors in graphics_type_color_priority:
@@ -584,19 +596,19 @@ class Pathway(Element):
                 entry_type_colors = type_colors[entry.type]
             except KeyError:
                 continue
-            for graphics_uuid in entry.children['graphics']:
+            for graphics_uuid in entry.children["graphics"]:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 try:
-                    fgcolor_hex_code, bgcolor_hex_code = entry_type_colors[graphics.type]
+                    fgcolor_hex_code, bgcolor_hex_code = entry_type_colors[
+                        graphics.type
+                    ]
                 except KeyError:
                     continue
                 graphics.fgcolor = fgcolor_hex_code
                 graphics.bgcolor = bgcolor_hex_code
 
     def color_associated_compounds(
-        self,
-        transfer: Literal['high', 'low', 'average'],
-        colormap: Colormap = None
+        self, transfer: Literal["high", "low", "average"], colormap: Colormap = None
     ) -> None:
         """
         Set the color of compound entries based on the color priority of ortholog entries involving
@@ -632,7 +644,7 @@ class Pathway(Element):
         # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
         # elements to ortholog Entry elements.
         name_reaction: Dict[str, Reaction] = {}
-        for entry_uuid in self.children['reaction']:
+        for entry_uuid in self.children["reaction"]:
             reaction: Reaction = self.uuid_element_lookup[entry_uuid]
             name_reaction[reaction.name] = reaction
 
@@ -640,22 +652,22 @@ class Pathway(Element):
         # colors and priorities of these entries.
         compound_uuid_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
         # Loop through each ortholog Entry.
-        for entry_uuid in self.children['entry']:
+        for entry_uuid in self.children["entry"]:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
-            if entry.type != 'ortholog':
+            if entry.type != "ortholog":
                 continue
 
             # Ensure that all of the ortholog Entry Graphics elements have the same fg/bg colors.
             graphics_types: List[str] = []
             fgcolors: List[str] = []
             bgcolors: List[str] = []
-            for graphics_uuid in entry.children['graphics']:
+            for graphics_uuid in entry.children["graphics"]:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 graphics_types.append(graphics.type)
                 fgcolors.append(graphics.fgcolor)
                 bgcolors.append(graphics.bgcolor)
             if len(set(graphics_types)) != 1:
-                graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
+                graphics_type_message = ", ".join([f"'{gt}'" for gt in graphics_types])
                 raise AssertionError(
                     f"The Graphics elements for the Entry with UUID '{entry_uuid}' do not "
                     "have the same type, which is required for ordering entries based on "
@@ -672,7 +684,9 @@ class Pathway(Element):
             fgcolor = fgcolors[0]
             bgcolor = bgcolors[0]
             try:
-                priority = self.color_priority['ortholog'][graphics_type][(fgcolor, bgcolor)]
+                priority = self.color_priority["ortholog"][graphics_type][
+                    (fgcolor, bgcolor)
+                ]
             except KeyError:
                 # Unprioritized ortholog entries do not affect the color of associated compounds.
                 continue
@@ -688,15 +702,15 @@ class Pathway(Element):
                 # No Reaction element is present with the name of the ortholog reaction.
                 continue
 
-            if graphics.type == 'line':
+            if graphics.type == "line":
                 ortholog_color = fgcolor
             else:
                 ortholog_color = bgcolor
 
-            for substrate_uuid in reaction.children['substrate']:
+            for substrate_uuid in reaction.children["substrate"]:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
                 split_substrate_names = [
-                    split_name.split(':') for split_name in substrate.name.split()
+                    split_name.split(":") for split_name in substrate.name.split()
                 ]
                 for split_name in split_substrate_names:
                     for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
@@ -711,9 +725,11 @@ class Pathway(Element):
                                 (ortholog_color, priority)
                             ]
 
-            for product_uuid in reaction.children['product']:
+            for product_uuid in reaction.children["product"]:
                 product: Product = self.uuid_element_lookup[product_uuid]
-                split_product_names = [split_name.split(':') for split_name in product.name.split()]
+                split_product_names = [
+                    split_name.split(":") for split_name in product.name.split()
+                ]
                 for split_name in split_product_names:
                     for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
                         compound_entry: Entry
@@ -729,41 +745,49 @@ class Pathway(Element):
 
         # Make compound entries searchable by ID, which should be a unique pathway element ID.
         id_compound_entry: Dict[str, Entry] = {}
-        for entry_uuid in self.children['entry']:
+        for entry_uuid in self.children["entry"]:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
-            if entry.type != 'compound':
+            if entry.type != "compound":
                 continue
             id_compound_entry[entry.id] = entry
 
         # Define functions for finding compound Entry color.
-        def _get_high_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_high_color(
+            color_priorities: List[Tuple[str, float]]
+        ) -> Tuple[str, float]:
             return sorted(color_priorities, key=lambda t: -t[1])[0]
 
-        def _get_low_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_low_color(
+            color_priorities: List[Tuple[str, float]]
+        ) -> Tuple[str, float]:
             return sorted(color_priorities, key=lambda t: t[1])[0]
 
-        def _get_average_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_average_color(
+            color_priorities: List[Tuple[str, float]]
+        ) -> Tuple[str, float]:
             priority = np.mean([t[1] for t in color_priorities])
             color = rgb2hex(colormap(priority))
             return color, priority
 
-        if transfer == 'high':
+        if transfer == "high":
             get_color_priority = _get_high_color
-        elif transfer == 'low':
+        elif transfer == "low":
             get_color_priority = _get_low_color
-        elif transfer == 'average':
+        elif transfer == "average":
             get_color_priority = _get_average_color
         else:
             raise AssertionError
 
         # Set compound Entry color.
         for compound_uuid, color_priorities in compound_uuid_color_priorities.items():
-            compound: Union[Substrate, Product] = self.uuid_element_lookup[compound_uuid]
+            compound: Union[Substrate, Product] = self.uuid_element_lookup[
+                compound_uuid
+            ]
             compound_entry: Entry = id_compound_entry[compound.id]
 
             # Get all of the Graphics elements for the Entry.
             graphics_elements: List[Graphics] = []
-            for graphics_uuid in compound_entry.children['graphics']:
+            for graphics_uuid in compound_entry.children["graphics"]:
                 graphics_elements.append(self.uuid_element_lookup[graphics_uuid])
 
             set_color = True
@@ -771,7 +795,9 @@ class Pathway(Element):
                 try:
                     # The compound Entry has already been assigned a color priority, so don't
                     # recolor it automatically.
-                    self.color_priority['compound']['circle'][(graphics.fgcolor, graphics.bgcolor)]
+                    self.color_priority["compound"]["circle"][
+                        (graphics.fgcolor, graphics.bgcolor)
+                    ]
                     set_color = False
                 except KeyError:
                     continue
@@ -787,23 +813,27 @@ class Pathway(Element):
 
             # Record the compound Element color priority.
             try:
-                entry_type_color_priority = self.color_priority['compound']
+                entry_type_color_priority = self.color_priority["compound"]
             except KeyError:
-                self.color_priority['compound'] = entry_type_color_priority = {}
+                self.color_priority["compound"] = entry_type_color_priority = {}
             try:
-                graphics_type_color_priority = entry_type_color_priority['circle']
+                graphics_type_color_priority = entry_type_color_priority["circle"]
             except KeyError:
-                entry_type_color_priority['circle'] = graphics_type_color_priority = {}
+                entry_type_color_priority["circle"] = graphics_type_color_priority = {}
             if self.is_global_map:
-                graphics_type_color_priority[(compound_color, compound_color)] = compound_priority
+                graphics_type_color_priority[(compound_color, compound_color)] = (
+                    compound_priority
+                )
             else:
-                graphics_type_color_priority[(graphics.fgcolor, compound_color)] = compound_priority
+                graphics_type_color_priority[(graphics.fgcolor, compound_color)] = (
+                    compound_priority
+                )
 
     def get_entries(
         self,
         entry_type: str = None,
         kegg_ids: Iterable[str] = None,
-        expect_kegg_ids: bool = False
+        expect_kegg_ids: bool = False,
     ) -> List[Entry]:
         """
         Get Entry elements from the pathway.
@@ -843,7 +873,7 @@ class Pathway(Element):
         entries: List[Entry] = []
 
         if kegg_ids is None:
-            for uuid in self.children['entry']:
+            for uuid in self.children["entry"]:
                 entry: Entry = self.uuid_element_lookup[uuid]
                 if entry_type is not None and entry.type != entry_type:
                     continue
@@ -881,17 +911,18 @@ class Pathway(Element):
             or "compound". The argument must be from the types attribute of the Entry class.
         """
         for entry in self.get_entries(entry_type=entry_type):
-            for graphics_uuid in entry.children['graphics']:
+            for graphics_uuid in entry.children["graphics"]:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
-                for attrib in ('x', 'y', 'width', 'height'):
+                for attrib in ("x", "y", "width", "height"):
                     value = getattr(graphics, attrib, None)
                     if value is None:
                         continue
                     setattr(graphics, attrib, value * factor)
-                value = getattr(graphics, 'coords', None)
+                value = getattr(graphics, "coords", None)
                 if value is None:
                     continue
-                setattr(graphics, 'coords', tuple([coord * factor for coord in value]))
+                setattr(graphics, "coords", tuple([coord * factor for coord in value]))
+
 
 class Entry(Element):
     """
@@ -923,29 +954,27 @@ class Entry(Element):
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
-    tag = 'entry'
+
+    tag = "entry"
     attribute_required = {
-        'id': True,
-        'name': True,
-        'type': True,
-        'reaction': False,
-        'link': False
+        "id": True,
+        "name": True,
+        "type": True,
+        "reaction": False,
+        "link": False,
     }
     types: Tuple[str] = (
-        'ortholog',
-        'enzyme',
-        'reaction',
-        'gene',
-        'group',
-        'compound',
-        'map',
-        'brite',
-        'other'
+        "ortholog",
+        "enzyme",
+        "reaction",
+        "gene",
+        "group",
+        "compound",
+        "map",
+        "brite",
+        "other",
     )
-    subelement_tags: Tuple[str] = (
-        'graphics',
-        'component'
-    )
+    subelement_tags: Tuple[str] = ("graphics", "component")
 
     def __init__(self) -> None:
         self.id: str = None
@@ -957,6 +986,7 @@ class Entry(Element):
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
+
 
 class Graphics(Element):
     """
@@ -994,24 +1024,20 @@ class Graphics(Element):
     height : float, None
         Height of graphical object on map.
     """
-    tag = 'graphics'
+
+    tag = "graphics"
     attribute_required = {
-        'name': False,
-        'fgcolor': False,
-        'bgcolor': False,
-        'type': False,
-        'x': False,
-        'y': False,
-        'coords': False,
-        'width': False,
-        'height': False
+        "name": False,
+        "fgcolor": False,
+        "bgcolor": False,
+        "type": False,
+        "x": False,
+        "y": False,
+        "coords": False,
+        "width": False,
+        "height": False,
     }
-    types: Tuple[str] = (
-        'rectangle',
-        'circle',
-        'roundrectangle',
-        'line'
-    )
+    types: Tuple[str] = ("rectangle", "circle", "roundrectangle", "line")
 
     def __init__(self) -> None:
         self.name: str = None
@@ -1026,6 +1052,7 @@ class Graphics(Element):
 
         super().__init__()
 
+
 class Component(Element):
     """
     A component element is only applicable to "group"-type entry elements representing a complex.
@@ -1035,14 +1062,15 @@ class Component(Element):
     id : str, None
         ID of component element unique to map.
     """
-    tag = 'component'
-    attribute_required = {
-        'id': True
-    }
+
+    tag = "component"
+    attribute_required = {"id": True}
+
     def __init__(self) -> None:
         self.id: str = None
 
         super().__init__()
+
 
 class Relation(Element):
     """
@@ -1066,22 +1094,11 @@ class Relation(Element):
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
 
-    tag = 'relation'
-    attribute_required = {
-        'entry1': True,
-        'entry2': True,
-        'type': True
-    }
-    types: Tuple[str] = (
-        'ECrel',
-        'PPrel',
-        'GErel',
-        'PCrel',
-        'maplink'
-    )
-    subelement_tags: Tuple[str] = (
-        'subtype',
-    )
+    tag = "relation"
+    attribute_required = {"entry1": True, "entry2": True, "type": True}
+    types: Tuple[str] = ("ECrel", "PPrel", "GErel", "PCrel", "maplink")
+    subelement_tags: Tuple[str] = ("subtype",)
+
     def __init__(self) -> None:
         self.entry1: str = None
         self.entry2: str = None
@@ -1090,6 +1107,7 @@ class Relation(Element):
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
+
 
 class Subtype(Element):
     """
@@ -1106,28 +1124,26 @@ class Subtype(Element):
     value : str, None
         The value represents information on the subcategory relation.
     """
-    tag = 'subtype'
-    attribute_required = {
-        'name': True,
-        'value': True
-    }
+
+    tag = "subtype"
+    attribute_required = {"name": True, "value": True}
     names: Tuple[str] = (
-        'compound',
-        'hidden compound',
-        'activation',
-        'inhibition',
-        'expression',
-        'repression',
-        'indirect effect',
-        'state change',
-        'binding/association',
-        'dissociation',
-        'missing information',
-        'phosphorylation',
-        'dephosphorylation',
-        'glycosylation',
-        'ubiquitination',
-        'methylation'
+        "compound",
+        "hidden compound",
+        "activation",
+        "inhibition",
+        "expression",
+        "repression",
+        "indirect effect",
+        "state change",
+        "binding/association",
+        "dissociation",
+        "missing information",
+        "phosphorylation",
+        "dephosphorylation",
+        "glycosylation",
+        "ubiquitination",
+        "methylation",
     )
 
     def __init__(self) -> None:
@@ -1135,6 +1151,7 @@ class Subtype(Element):
         self.value: str = None
 
         super().__init__()
+
 
 class Reaction(Element):
     """
@@ -1160,20 +1177,11 @@ class Reaction(Element):
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
-    tag = 'reaction'
-    attribute_required = {
-        'id': True,
-        'name': True,
-        'type': True
-    }
-    types: Tuple[str] = (
-        'reversible',
-        'irreversible'
-    )
-    subelement_tags: Tuple[str] = (
-        'substrate',
-        'product'
-    )
+
+    tag = "reaction"
+    attribute_required = {"id": True, "name": True, "type": True}
+    types: Tuple[str] = ("reversible", "irreversible")
+    subelement_tags: Tuple[str] = ("substrate", "product")
 
     def __init__(self) -> None:
         self.id: str = None
@@ -1183,6 +1191,7 @@ class Reaction(Element):
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
+
 
 class Substrate(Element):
     """
@@ -1202,14 +1211,10 @@ class Substrate(Element):
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
-    tag = 'substrate'
-    attribute_required = {
-        'id': True,
-        'name': True
-    }
-    subelement_tags: Tuple[str] = (
-        'alt',
-    )
+
+    tag = "substrate"
+    attribute_required = {"id": True, "name": True}
+    subelement_tags: Tuple[str] = ("alt",)
 
     def __init__(self) -> None:
         self.id: str = None
@@ -1218,6 +1223,7 @@ class Substrate(Element):
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
+
 
 class Product(Element):
     """
@@ -1237,14 +1243,10 @@ class Product(Element):
     children : Dict[str, List[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
-    tag = 'product'
-    attribute_required = {
-        'id': True,
-        'name': True
-    }
-    subelement_tags: Tuple[str] = (
-        'alt',
-    )
+
+    tag = "product"
+    attribute_required = {"id": True, "name": True}
+    subelement_tags: Tuple[str] = ("alt",)
 
     def __init__(self) -> None:
         self.id: str = None
@@ -1253,6 +1255,7 @@ class Product(Element):
         self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
+
 
 class Alt(Element):
     """
@@ -1263,15 +1266,15 @@ class Alt(Element):
     name : str, None
         Alternative KEGG ID of the compound.
     """
-    tag = 'alt'
-    attribute_required = {
-        'name': True
-    }
+
+    tag = "alt"
+    attribute_required = {"name": True}
 
     def __init__(self) -> None:
         self.name: str = None
 
         super().__init__()
+
 
 class XMLOps:
     """
@@ -1291,14 +1294,15 @@ class XMLOps:
         The attributes placed on new lines and numbers of spaces are those used in KGML reference
         files.
     """
+
     subelement_indentation_increment: int = 4
     attribute_indentations: Dict[Tuple[str, str, str], int] = {
-        ('pathway', 'number', 'title'): 9,
-        ('pathway', 'title', 'image'): 9,
-        ('pathway', 'image', 'link'): 9,
-        ('entry', 'reaction', 'link'): 8,
-        ('entry', 'type', 'link'): 8,
-        ('graphics', 'bgcolor', 'type'): 13
+        ("pathway", "number", "title"): 9,
+        ("pathway", "title", "image"): 9,
+        ("pathway", "image", "link"): 9,
+        ("entry", "reaction", "link"): 8,
+        ("entry", "type", "link"): 8,
+        ("graphics", "bgcolor", "type"): 13,
     }
 
     def __init__(self) -> None:
@@ -1320,14 +1324,14 @@ class XMLOps:
         """
         assert os.path.exists(kgml_filepath)
 
-        with open(kgml_filepath, 'rb') as file:
+        with open(kgml_filepath, "rb") as file:
             kgml_bytes = file.read()
         root = ET.fromstring(kgml_bytes)
         assert root.tag == Pathway.tag
 
         pathway: Pathway = self.load_element(root)
         pathway.xml_declaration, pathway.xml_doctype, pathway.xml_comment = [
-            line.decode('utf-8') for line in kgml_bytes.split(b'\n')[: 3]
+            line.decode("utf-8") for line in kgml_bytes.split(b"\n")[:3]
         ]
 
         return pathway
@@ -1366,17 +1370,18 @@ class XMLOps:
                     raise AssertionError(
                         "An XML element was encountered that should but does not contain an "
                         f"attribute, '{attribute}'. Here is a list of the element's attributes "
-                        f"read from the KGML file:{error_message}")
+                        f"read from the KGML file:{error_message}"
+                    )
                 else:
                     # The optional attribute was not present.
                     continue
 
             # Convert certain non-string values stored in KGML element objects.
-            if kgml_element.tag == 'graphics':
-                if attribute in ('x', 'y', 'width', 'height'):
+            if kgml_element.tag == "graphics":
+                if attribute in ("x", "y", "width", "height"):
                     value = float(value)
-                elif attribute == 'coords':
-                    value = tuple([int(coord) for coord in value.split(',')])
+                elif attribute == "coords":
+                    value = tuple([int(coord) for coord in value.split(",")])
 
             setattr(kgml_element, attribute, value)
 
@@ -1384,7 +1389,9 @@ class XMLOps:
         for xml_subelement in xml_element:
             assert xml_subelement.tag in kgml_element.subelement_tags
             if pathway is None:
-                kgml_subelement = self.load_element(xml_subelement, pathway=kgml_element)
+                kgml_subelement = self.load_element(
+                    xml_subelement, pathway=kgml_element
+                )
             else:
                 kgml_subelement = self.load_element(xml_subelement, pathway=pathway)
             kgml_element.children[kgml_subelement.tag].append(kgml_subelement.uuid)
@@ -1400,16 +1407,16 @@ class XMLOps:
         # 'ko:K01080', 'cpd:C12144', and 'path:map00604' become 'K01080', 'C12144', and 'map00604'
         # in the dictionary keys.
         if kgml_element.tag in (
-            'pathway',
-            'entry',
-            'reaction',
-            'substrate',
-            'product',
-            'alt'
+            "pathway",
+            "entry",
+            "reaction",
+            "substrate",
+            "product",
+            "alt",
         ):
             for kegg_name in kgml_element.name.split():
                 # Some Entry names are "undefined".
-                split_kegg_name = kegg_name.split(':')
+                split_kegg_name = kegg_name.split(":")
                 if len(split_kegg_name) != 2:
                     continue
                 kegg_id = split_kegg_name[1]
@@ -1437,7 +1444,7 @@ class XMLOps:
         None
         """
         assert is_output_file_writable(output_filepath)
-        with open(output_filepath, 'w') as file:
+        with open(output_filepath, "w") as file:
             file.write(self.get_str(pathway))
 
     def get_str(self, pathway: Pathway) -> str:
@@ -1457,25 +1464,25 @@ class XMLOps:
         assert pathway.tag == Pathway.tag
         tree = self.get_tree(pathway, str_values=True)
 
-        output_str = ''
+        output_str = ""
 
         # Record KGML XML metadata, stored in the pathway object. Note that special HTML characters
         # (&, >, <) are not escaped, as these were not observed in the metadata of KGML reference
         # files.
         xml_declaration = pathway.xml_declaration
         if xml_declaration is not None:
-            assert xml_declaration[: 6] == '<?xml ' and xml_declaration[-2: ] == '?>'
-            output_str += f'<?xml {xml_declaration[6: -2]}?>\n'
+            assert xml_declaration[:6] == "<?xml " and xml_declaration[-2:] == "?>"
+            output_str += f"<?xml {xml_declaration[6: -2]}?>\n"
 
         xml_doctype = pathway.xml_doctype
         if xml_doctype is not None:
-            assert xml_doctype[: 10] == '<!DOCTYPE ' and xml_doctype[-1: ] == '>'
-            output_str += f'<!DOCTYPE {xml_doctype[10: -1]}>\n'
+            assert xml_doctype[:10] == "<!DOCTYPE " and xml_doctype[-1:] == ">"
+            output_str += f"<!DOCTYPE {xml_doctype[10: -1]}>\n"
 
         xml_comment = pathway.xml_comment
         if xml_comment is not None:
-            assert xml_comment[: 5] == '<!-- ' and xml_comment[-4: ] == ' -->'
-            output_str += f'<!-- {xml_comment[5: -4]} -->\n'
+            assert xml_comment[:5] == "<!-- " and xml_comment[-4:] == " -->"
+            output_str += f"<!-- {xml_comment[5: -4]} -->\n"
 
         output_str += self.get_indented_str(tree.getroot())
 
@@ -1504,10 +1511,7 @@ class XMLOps:
         return tree
 
     def get_element(
-        self,
-        kgml_element: Element,
-        pathway: Pathway = None,
-        str_values: bool = False
+        self, kgml_element: Element, pathway: Pathway = None, str_values: bool = False
     ) -> ET.Element:
         """
         Convert a KGML element object representation to an XML element.
@@ -1531,7 +1535,7 @@ class XMLOps:
             XML representation of the KGML element.
         """
         if pathway is None:
-            if kgml_element.tag != 'pathway':
+            if kgml_element.tag != "pathway":
                 raise ValueError(
                     "The 'pathway' element containing 'kgml_element' must be given as an argument."
                 )
@@ -1546,14 +1550,14 @@ class XMLOps:
             if value is None:
                 continue
             if str_values:
-                if kgml_element.tag == 'graphics':
-                    if attribute in ('x', 'y', 'width', 'height'):
+                if kgml_element.tag == "graphics":
+                    if attribute in ("x", "y", "width", "height"):
                         value = str(round(value))
-                    elif attribute == 'coords':
-                        value = ','.join([str(round(coord)) for coord in value])
+                    elif attribute == "coords":
+                        value = ",".join([str(round(coord)) for coord in value])
             xml_element.attrib[attribute] = value
 
-        if not hasattr(kgml_element, 'children'):
+        if not hasattr(kgml_element, "children"):
             return xml_element
 
         # Recursively add XML subelements.
@@ -1565,7 +1569,9 @@ class XMLOps:
 
         return xml_element
 
-    def get_indented_str(self, xml_element: ET.Element, tag_indentation: int = 0) -> str:
+    def get_indented_str(
+        self, xml_element: ET.Element, tag_indentation: int = 0
+    ) -> str:
         """
         Convert a KGML XML element to a string with formatting, including indentation, that is
         consistent with reference KGML files.
@@ -1596,14 +1602,14 @@ class XMLOps:
                     value: str
                     # ">" and "<" are encountered in attribute values and are represented by HTML
                     # escape characters in KGML files.
-                    assert '&' not in value
+                    assert "&" not in value
                     v = value.replace(">", "&gt;").replace("<", "&lt;")
                 elif isinstance(value, float):
                     value: float
                     v = str(round(value))
                 elif isinstance(value, tuple):
                     value: Tuple[float]
-                    v = ','.join([str(round(coord)) for coord in value])
+                    v = ",".join([str(round(coord)) for coord in value])
                 else:
                     raise AssertionError(
                         f"The attribute, '{attr}', had a value, '{value}', of unrecognized type, "
@@ -1612,7 +1618,9 @@ class XMLOps:
                 if i == 0:
                     indented_output += f' {attr}="{v}"'
                 else:
-                    attr_indentation = self.attribute_indentations.get((tag, prev_attr, attr))
+                    attr_indentation = self.attribute_indentations.get(
+                        (tag, prev_attr, attr)
+                    )
                     if attr_indentation is None:
                         indented_output += f' {attr}="{v}"'
                     else:
@@ -1626,21 +1634,30 @@ class XMLOps:
             )
 
         if children:
-            indented_output += '>\n'
+            indented_output += ">\n"
             for child in children:
                 indented_output += self.get_indented_str(
-                    child, tag_indentation=tag_indentation + self.subelement_indentation_increment
+                    child,
+                    tag_indentation=tag_indentation
+                    + self.subelement_indentation_increment,
                 )
             # End tag
             indented_output += f'{" " * tag_indentation}</{tag}>\n'
         else:
             # Tags without possible subelements, plus substrate and product, which have possible alt
             # subelement, which is never present in reference files.
-            if tag in ('graphics', 'component', 'subtype', 'substrate', 'product', 'alt'):
+            if tag in (
+                "graphics",
+                "component",
+                "subtype",
+                "substrate",
+                "product",
+                "alt",
+            ):
                 # Self-closing tag
-                indented_output += '/>\n'
+                indented_output += "/>\n"
             else:
-                indented_output += '>\n'
+                indented_output += ">\n"
                 # End tag
                 indented_output += f'{" " * tag_indentation}</{tag}>\n'
 
@@ -1651,6 +1668,7 @@ class XMLOps:
             )
 
         return indented_output
+
 
 class Drawer:
     """
@@ -1680,12 +1698,13 @@ class Drawer:
         of 0.3 allows the color of compound circles in underlying global base maps to bleed through,
         which is not desirable.
     """
+
     def __init__(
         self,
         kegg_dir: str = None,
         overwrite_output: bool = FORCE_OVERWRITE,
         run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
+        progress: terminal.Progress = terminal.Progress(),
     ) -> None:
         """
         Parameters
@@ -1722,7 +1741,7 @@ class Drawer:
         output_filepath: str,
         map_filepath: str = None,
         use_org_map: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Draw a pathway map with KGML data as a PDF file.
@@ -1795,12 +1814,12 @@ class Drawer:
         is_output_file_writable(output_filepath, ok_if_exists=self.overwrite_output)
 
         # These canvas parameters apply to both standard and global/overview maps.
-        if kwargs.get('import_imagemap') is None:
-            kwargs['import_imagemap'] = True
-        if kwargs.get('label_compounds') is None:
-            kwargs['label_compounds'] = False
-        if map_filepath is not None and kwargs.get('fontsize') is None:
-            kwargs['fontsize'] = 9
+        if kwargs.get("import_imagemap") is None:
+            kwargs["import_imagemap"] = True
+        if kwargs.get("label_compounds") is None:
+            kwargs["label_compounds"] = False
+        if map_filepath is not None and kwargs.get("fontsize") is None:
+            kwargs["fontsize"] = 9
 
         if pathway.is_global_map:
             self._draw_global_map(
@@ -1808,7 +1827,7 @@ class Drawer:
                 output_filepath,
                 map_filepath=map_filepath,
                 use_org_map=use_org_map,
-                **kwargs
+                **kwargs,
             )
         elif pathway.is_overview_map:
             self._draw_overview_map(
@@ -1816,7 +1835,7 @@ class Drawer:
                 output_filepath,
                 map_filepath=map_filepath,
                 use_org_map=use_org_map,
-                **kwargs
+                **kwargs,
             )
         else:
             self._draw_standard_map(
@@ -1824,7 +1843,7 @@ class Drawer:
                 output_filepath,
                 map_filepath=map_filepath,
                 use_org_map=use_org_map,
-                **kwargs
+                **kwargs,
             )
 
     def _draw_global_map(
@@ -1833,7 +1852,7 @@ class Drawer:
         output_filepath: str,
         map_filepath: str = None,
         use_org_map: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Draw a global pathway map with KGML data as a PDF file.
@@ -1864,42 +1883,46 @@ class Drawer:
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
         """
-        if kwargs.get('label_orthologs') is None:
-            kwargs['label_orthologs'] = False
-        if kwargs.get('label_reaction_entries') is None:
-            kwargs['label_reaction_entries'] = False
-        if kwargs.get('fontsize') is None:
-            kwargs['fontsize'] = 9
+        if kwargs.get("label_orthologs") is None:
+            kwargs["label_orthologs"] = False
+        if kwargs.get("label_reaction_entries") is None:
+            kwargs["label_reaction_entries"] = False
+        if kwargs.get("fontsize") is None:
+            kwargs["fontsize"] = 9
 
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
 
         if map_filepath is None:
-            if pathway.org == 'ko':
+            if pathway.org == "ko":
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_ko_dir, f'{pathway.org}{pathway.number}.png'
+                    self.kegg_context.png_1x_ko_dir,
+                    f"{pathway.org}{pathway.number}.png",
                 )
-            elif pathway.org == 'ec':
+            elif pathway.org == "ec":
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_ec_dir, f'ec{pathway.number}.png'
+                    self.kegg_context.png_1x_ec_dir, f"ec{pathway.number}.png"
                 )
-            elif pathway.org == 'rn':
+            elif pathway.org == "rn":
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_rn_dir, f'rn{pathway.number}.png'
+                    self.kegg_context.png_1x_rn_dir, f"rn{pathway.number}.png"
                 )
             elif use_org_map:
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_org_dir, f'{pathway.org}{pathway.number}.png'
+                    self.kegg_context.png_1x_org_dir,
+                    f"{pathway.org}{pathway.number}.png",
                 )
             else:
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_ko_dir, f'ko{pathway.number}.png'
+                    self.kegg_context.png_1x_ko_dir, f"ko{pathway.number}.png"
                 )
         else:
             assert not use_org_map
             is_file_exists(map_filepath)
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            kegg.download_org_pathway_image_files(
+                f"{pathway.org}{pathway.number}", self.kegg_dir
+            )
 
         bio_pathway.image = map_filepath
 
@@ -1913,7 +1936,7 @@ class Drawer:
         output_filepath: str,
         map_filepath: str = None,
         use_org_map: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Draw an overview pathway map with KGML data as a PDF file.
@@ -1941,35 +1964,38 @@ class Drawer:
             Valid kwargs are arguments to a biopython.Bio.Graphics.KGML_vis.KGMLCanvas object.
             These control what is displayed on the map from the KGML file.
         """
-        if kwargs.get('label_orthologs') is None:
-            kwargs['label_orthologs'] = False
-        if kwargs.get('label_reaction_entries') is None:
-            kwargs['label_reaction_entries'] = False
+        if kwargs.get("label_orthologs") is None:
+            kwargs["label_orthologs"] = False
+        if kwargs.get("label_reaction_entries") is None:
+            kwargs["label_reaction_entries"] = False
 
         bio_pathway = KGML_parser.read(StringIO(self.xml_ops.get_str(pathway)))
 
         if map_filepath is None:
             if use_org_map:
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_org_dir, f'{pathway.org}{pathway.number}.png'
+                    self.kegg_context.png_1x_org_dir,
+                    f"{pathway.org}{pathway.number}.png",
                 )
-                if kwargs.get('fontsize') is None:
-                    kwargs['fontsize'] = 9
+                if kwargs.get("fontsize") is None:
+                    kwargs["fontsize"] = 9
             else:
                 map_dir = self.kegg_context.png_2x_map_dir
                 map_filepath = os.path.join(
-                    self.kegg_context.png_2x_map_dir, f'map{pathway.number}.png'
+                    self.kegg_context.png_2x_map_dir, f"map{pathway.number}.png"
                 )
-                if kwargs.get('fontsize') is None:
-                    kwargs['fontsize'] = 18
+                if kwargs.get("fontsize") is None:
+                    kwargs["fontsize"] = 18
         else:
             assert not use_org_map
             is_file_exists(map_filepath)
-            if kwargs.get('fontsize') is None:
-                kwargs['fontsize'] = 9
+            if kwargs.get("fontsize") is None:
+                kwargs["fontsize"] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            kegg.download_org_pathway_image_files(
+                f"{pathway.org}{pathway.number}", self.kegg_dir
+            )
 
         bio_pathway.image = map_filepath
 
@@ -1983,7 +2009,7 @@ class Drawer:
         output_filepath: str,
         map_filepath: str = None,
         use_org_map: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Draw a standard (not global/overview) pathway map with KGML data as a PDF file.
@@ -2016,30 +2042,34 @@ class Drawer:
         if map_filepath is None:
             if use_org_map:
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_org_dir, f'{pathway.org}{pathway.number}.png'
+                    self.kegg_context.png_1x_org_dir,
+                    f"{pathway.org}{pathway.number}.png",
                 )
-                if kwargs.get('fontsize') is None:
-                    kwargs['fontsize'] = 9
+                if kwargs.get("fontsize") is None:
+                    kwargs["fontsize"] = 9
             else:
                 map_filepath = os.path.join(
-                    self.kegg_context.png_2x_map_dir, f'map{pathway.number}.png'
+                    self.kegg_context.png_2x_map_dir, f"map{pathway.number}.png"
                 )
-                if kwargs.get('fontsize') is None:
-                    kwargs['fontsize'] = 18
+                if kwargs.get("fontsize") is None:
+                    kwargs["fontsize"] = 18
         else:
             assert not use_org_map
             is_file_exists(map_filepath)
-            if kwargs.get('fontsize') is None:
-                kwargs['fontsize'] = 9
+            if kwargs.get("fontsize") is None:
+                kwargs["fontsize"] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            kegg.download_org_pathway_image_files(
+                f"{pathway.org}{pathway.number}", self.kegg_dir
+            )
 
         bio_pathway.image = map_filepath
 
         canvas = KGMLCanvas(bio_pathway, **kwargs)
         canvas.non_reactant_transparency = self.non_reactant_transparency
         canvas.draw(output_filepath)
+
 
 class Tester:
     """
@@ -2056,6 +2086,7 @@ class Tester:
     progress : anvio.terminal.Progress
         This object prints transient progress information to the terminal.
     """
+
     def __init__(
         self,
         run: terminal.Run = terminal.Run(),
@@ -2118,12 +2149,15 @@ class Tester:
         filepaths: List[str] = []
         for filename in os.listdir(dirpath):
             filepath = os.path.join(dirpath, filename)
-            if not os.path.isfile(filepath) or not os.path.splitext(filepath)[1] == '.xml':
+            if (
+                not os.path.isfile(filepath)
+                or not os.path.splitext(filepath)[1] == ".xml"
+            ):
                 continue
             filepaths.append(filepath)
         self.progress.new(
             f"Testing KGML files in {os.path.dirname(dirpath)}",
-            progress_total_items=len(filepaths)
+            progress_total_items=len(filepaths),
         )
         for filepath in filepaths:
             self.progress.update("...", increment=True)
@@ -2157,7 +2191,7 @@ class Tester:
             xml_str = file.read()
         if xml_str != reconstructed_xml_str:
             for i in range(1, min(len(xml_str), len(reconstructed_xml_str))):
-                if xml_str[: i] == reconstructed_xml_str[: i]:
+                if xml_str[:i] == reconstructed_xml_str[:i]:
                     continue
                 error_message = (
                     "Anvi'o loaded a KGML file as a kgml.Pathway object. It then tried to convert "
@@ -2166,8 +2200,10 @@ class Tester:
                     "detected. First, the file text is displayed, and then the text reconstructed "
                     "from the object is displayed.\n"
                 )
-                error_message += xml_str[max(0, i - buffer): min(i + buffer, len(xml_str))] + "\n"
+                error_message += (
+                    xml_str[max(0, i - buffer) : min(i + buffer, len(xml_str))] + "\n"
+                )
                 error_message += reconstructed_xml_str[
-                    max(0, i - buffer): min(i + buffer, len(reconstructed_xml_str))
+                    max(0, i - buffer) : min(i + buffer, len(reconstructed_xml_str))
                 ]
                 raise AssertionError(error_message)

@@ -29,7 +29,13 @@ class TableForIndels(Table):
         self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(
+            self,
+            self.db_path,
+            utils.get_required_version_for_db(db_path),
+            run=self.run,
+            progress=self.progress,
+        )
 
         self.num_entries = self.get_num_entries()
         self.db_entries = []
@@ -41,14 +47,12 @@ class TableForIndels(Table):
         # `self.db_entries` will be emptied, saving significant memory space:
         self.max_num_entries_in_storage_buffer = 50000
 
-
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         num_entries = database.get_row_counts_from_table(t.indels_table_name)
         database.disconnect()
 
         return num_entries
-
 
     def append_entry(self, entry):
         """FIXME This needs documentation to explain difference between append and append_entry"""
@@ -59,7 +63,6 @@ class TableForIndels(Table):
             # everytime we are here, the contenst of self.db_entries will be stored in the
             # database
             self.store()
-
 
     def append(self, entry):
         """Append a single entry based on a sequence
@@ -79,16 +82,22 @@ class TableForIndels(Table):
             # database
             self.store()
 
-
     def store(self):
         if not len(self.db_entries):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.indels_table_name, self.db_entries)
+        database._exec_many(
+            """INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+            % t.indels_table_name,
+            self.db_entries,
+        )
         database.disconnect()
 
         if anvio.DEBUG:
-            run.info_single("INDELS: %d entries added to the indels table." % len(self.db_entries), mc="green")
+            run.info_single(
+                "INDELS: %d entries added to the indels table." % len(self.db_entries),
+                mc="green",
+            )
 
         self.db_entries = []

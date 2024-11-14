@@ -9,7 +9,7 @@ migration_scripts = {}
 
 base_path = os.path.dirname(__file__)
 
-for script_full_path in Path(base_path).glob('*/v*_to_v*.py'):
+for script_full_path in Path(base_path).glob("*/v*_to_v*.py"):
     script_full_path = str(script_full_path)
     script_path, script_filename = os.path.split(script_full_path)
 

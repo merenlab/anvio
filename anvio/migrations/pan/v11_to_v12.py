@@ -14,7 +14,7 @@ from anvio.errors import ConfigError
 run = terminal.Run()
 progress = terminal.Progress()
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+current_version, next_version = [x[1:] for x in __name__.split("_to_")]
 
 
 def migrate(db_path):
@@ -25,15 +25,18 @@ def migrate(db_path):
     utils.is_pan_db(db_path)
 
     # make sure the version is accurate
-    pan_db = db.DB(db_path, None, ignore_version = True)
+    pan_db = db.DB(db_path, None, ignore_version=True)
     if str(pan_db.get_version()) != current_version:
-        raise ConfigError("Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version)
+        raise ConfigError(
+            "Version of this pan database is not %s (hence, this script cannot really do anything)."
+            % current_version
+        )
 
     pan_db._exec('ALTER TABLE "item_orders" ADD COLUMN "additional" text')
     pan_db._exec('UPDATE "item_orders" SET "additional" = "{}"')
 
     # set the version
-    pan_db.remove_meta_key_value_pair('version')
+    pan_db.remove_meta_key_value_pair("version")
     pan_db.set_version(next_version)
 
     # now bye for real!
@@ -41,12 +44,21 @@ def migrate(db_path):
 
     progress.end()
 
-    run.info_single('Your pan db is now %s.' % next_version, nl_after=1, nl_before=1, mc='green')
+    run.info_single(
+        "Your pan db is now %s." % next_version, nl_after=1, nl_before=1, mc="green"
+    )
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to upgrade pan database from version %s to version %s' % (current_version, next_version))
-    parser.add_argument('pan_db', metavar = 'PAN_DB', help = "An anvi'o pan database of version %s" % current_version)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="A simple script to upgrade pan database from version %s to version %s"
+        % (current_version, next_version)
+    )
+    parser.add_argument(
+        "pan_db",
+        metavar="PAN_DB",
+        help="An anvi'o pan database of version %s" % current_version,
+    )
     args, unknown = parser.parse_known_args()
 
     try:

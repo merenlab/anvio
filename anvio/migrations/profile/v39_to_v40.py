@@ -9,40 +9,30 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+current_version, next_version = [x[1:] for x in __name__.split("_to_")]
 
-protein_abundances_table_name = 'protein_abundances'
+protein_abundances_table_name = "protein_abundances"
 protein_abundances_table_structure = [
-    'protein_id',
-    'reference_source',
-    'reference_id',
-    'sample_name',
-    'abundance_value'
+    "protein_id",
+    "reference_source",
+    "reference_id",
+    "sample_name",
+    "abundance_value",
 ]
-protein_abundances_table_types = [
-    'numeric',
-    'text',
-    'text',
-    'text',
-    'numeric'
-]
+protein_abundances_table_types = ["numeric", "text", "text", "text", "numeric"]
 
-metabolite_abundances_table_name = 'metabolite_abundances'
+metabolite_abundances_table_name = "metabolite_abundances"
 metabolite_abundances_table_structure = [
-    'reference_source',
-    'reference_id',
-    'sample_name',
-    'abundance_value'
+    "reference_source",
+    "reference_id",
+    "sample_name",
+    "abundance_value",
 ]
-metabolite_abundances_table_types = [
-    'text',
-    'text',
-    'text',
-    'numeric'
-]
+metabolite_abundances_table_types = ["text", "text", "text", "numeric"]
 
 run = terminal.Run()
 progress = terminal.Progress()
+
 
 def migrate(db_path):
     if db_path is None:
@@ -69,16 +59,16 @@ def migrate(db_path):
     profile_db.create_table(
         protein_abundances_table_name,
         protein_abundances_table_structure,
-        protein_abundances_table_types
+        protein_abundances_table_types,
     )
     profile_db.create_table(
         metabolite_abundances_table_name,
         metabolite_abundances_table_structure,
-        metabolite_abundances_table_types
+        metabolite_abundances_table_types,
     )
 
     progress.update("Updating version")
-    profile_db.remove_meta_key_value_pair('version')
+    profile_db.remove_meta_key_value_pair("version")
     profile_db.set_version(next_version)
 
     progress.update("Committing changes")
@@ -91,19 +81,21 @@ def migrate(db_path):
         new empty tables. Now you can run `anvi-import-protein-profile` and \
         `anvi-import-metabolite-profile` to store protein and metabolite abundances across \
         samples.""",
-        nl_after=1, nl_before=1, mc='green'
+        nl_after=1,
+        nl_before=1,
+        mc="green",
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=
-        f"""A simple script to upgrade an anvi'o profile database from version \
+        description=f"""A simple script to upgrade an anvi'o profile database from version \
         {current_version} to version {next_version}"""
     )
     parser.add_argument(
         "profile_db",
         metavar="PROFILE_DB",
-        help=f"An anvi'o profile database of version {current_version}"
+        help=f"An anvi'o profile database of version {current_version}",
     )
     args, unknown = parser.parse_known_args()
 

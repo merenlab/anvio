@@ -30,13 +30,18 @@ class TableForCodonFrequencies(Table):
         self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(
+            self,
+            self.db_path,
+            utils.get_required_version_for_db(db_path),
+            run=self.run,
+            progress=self.progress,
+        )
 
         self.num_entries = self.get_num_entries()
         self.db_entries = []
 
         self.max_num_entries_in_storage_buffer = 15000
-
 
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -45,13 +50,11 @@ class TableForCodonFrequencies(Table):
 
         return num_entries
 
-
     def append_entry(self, entry):
         self.db_entries.append(entry)
 
         if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
             self.store()
-
 
     def append(self, entry):
         """Append a single entry based on a sequence
@@ -70,16 +73,26 @@ class TableForCodonFrequencies(Table):
             # database
             self.store()
 
-
     def store(self):
         if not len(self.db_entries):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_codons_table_name, ','.join(['?'] * len(t.variable_codons_table_structure))), self.db_entries)
+        database._exec_many(
+            """INSERT INTO %s VALUES (%s)"""
+            % (
+                t.variable_codons_table_name,
+                ",".join(["?"] * len(t.variable_codons_table_structure)),
+            ),
+            self.db_entries,
+        )
         database.disconnect()
 
         if anvio.DEBUG:
-            run.info_single("SCVs: %d entries added to the nt variability table." % len(self.db_entries), mc="blue")
+            run.info_single(
+                "SCVs: %d entries added to the nt variability table."
+                % len(self.db_entries),
+                mc="blue",
+            )
 
         self.db_entries = []

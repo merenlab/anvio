@@ -98,7 +98,9 @@ class DBInfo(ABC):
             if dont_raise:
                 return
             else:
-                raise ConfigError(f"The database '{path}' has no 'db_type' row in 'self'")
+                raise ConfigError(
+                    f"The database '{path}' has no 'db_type' row in 'self'"
+                )
 
         if expecting:
             if isinstance(expecting, list):
@@ -110,39 +112,55 @@ class DBInfo(ABC):
 
             for e in expecting:
                 if e not in dbinfo_classes:
-                    raise ConfigError(f"You are expecting a DB with db_type '{e}', which is not one of the "
-                                      f"possible db_types: {list(dbinfo_classes.keys())}")
+                    raise ConfigError(
+                        f"You are expecting a DB with db_type '{e}', which is not one of the "
+                        f"possible db_types: {list(dbinfo_classes.keys())}"
+                    )
 
         if expecting is not None and db_type not in expecting:
             if dont_raise:
                 return
             if len(expecting) == 1:
-                raise ConfigError(f"The database at '{path}' is a {db_type} database but you passed it as a '{expecting[0]}' database :/")
+                raise ConfigError(
+                    f"The database at '{path}' is a {db_type} database but you passed it as a '{expecting[0]}' database :/"
+                )
             else:
-                raise ConfigError(f"The database at '{path}' is a {db_type} database but your parameters claim that it is of type "
-                                  f"either {' or '.join(expecting)} :/")
+                raise ConfigError(
+                    f"The database at '{path}' is a {db_type} database but your parameters claim that it is of type "
+                    f"either {' or '.join(expecting)} :/"
+                )
 
         if db_type in dbinfo_classes:
             # This is the most important line in this method:
             # Return the respective class that __init__ should be called for
             return super().__new__(dbinfo_classes[db_type])
 
-        raise NotImplementedError(f"Database type `{db_type}` at `{path}` has no entry in dbinfo_classes")
-
+        raise NotImplementedError(
+            f"Database type `{db_type}` at `{path}` has no entry in dbinfo_classes"
+        )
 
     def __init__(self, path):
         if self.db_type is None:
-            raise NotImplementedError(f"{self.__class__} must set a `db_type` attribute")
+            raise NotImplementedError(
+                f"{self.__class__} must set a `db_type` attribute"
+            )
         if self.hash_name is None:
-            raise NotImplementedError(f"{self.__class__} must set a `hash_name` attribute")
+            raise NotImplementedError(
+                f"{self.__class__} must set a `hash_name` attribute"
+            )
 
         self.path = path
         self.current_version = versions_for_db_types[self.db_type]
 
-
     def __str__(self):
-        return json.dumps([f"{attr}: {self.__getattribute__(attr)}" for attr in dir(self) if not callable(getattr(self, attr)) and not attr.startswith("_")], indent=2)
-
+        return json.dumps(
+            [
+                f"{attr}: {self.__getattribute__(attr)}"
+                for attr in dir(self)
+                if not callable(getattr(self, attr)) and not attr.startswith("_")
+            ],
+            indent=2,
+        )
 
     @staticmethod
     def is_db(path, dont_raise=False):
@@ -171,11 +189,13 @@ class DBInfo(ABC):
             If the file is not an anvi'o database and `dont_raise` is `False`.
         """
         if not path:
-            raise ConfigError("A low-level function was expecting a database path, but got `None`. A programmer "
-                              "needs to look into this :/ Meanwhile, please check your command line parameters. "
-                              "Most likely you need to declare a database path, but you do not. You can see the "
-                              "entire traceback if you include the flag `--debug` in your command, which may "
-                              "help you figure out where did things start going wrong.")
+            raise ConfigError(
+                "A low-level function was expecting a database path, but got `None`. A programmer "
+                "needs to look into this :/ Meanwhile, please check your command line parameters. "
+                "Most likely you need to declare a database path, but you do not. You can see the "
+                "entire traceback if you include the flag `--debug` in your command, which may "
+                "help you figure out where did things start going wrong."
+            )
 
         if not os.path.exists(path):
             raise ConfigError(f"There is nothing at '{path}' :/")
@@ -185,16 +205,17 @@ class DBInfo(ABC):
 
         try:
             with DB(path, None, ignore_version=True) as database:
-                if 'self' not in database.get_table_names():
+                if "self" not in database.get_table_names():
                     return False
         except Exception as e:
             if dont_raise:
                 return False
             else:
-                raise ConfigError(f"Someone downstream doesn't like your so called database, '{path}'. They say "
-                                  f"\"{e}\". Awkward :(")
+                raise ConfigError(
+                    f"Someone downstream doesn't like your so called database, '{path}'. They say "
+                    f'"{e}". Awkward :('
+                )
         return True
-
 
     @staticmethod
     def get_type(path):
@@ -209,8 +230,7 @@ class DBInfo(ABC):
             The type of the database.
         """
         with DB(path, None, ignore_version=True) as database:
-            return database.get_meta_value('db_type', return_none_if_not_in_table=True)
-
+            return database.get_meta_value("db_type", return_none_if_not_in_table=True)
 
     @property
     def variant(self):
@@ -222,7 +242,9 @@ class DBInfo(ABC):
             The variant of the database
         """
         with self.load_db() as database:
-            return database.get_meta_value('db_variant', return_none_if_not_in_table=True)
+            return database.get_meta_value(
+                "db_variant", return_none_if_not_in_table=True
+            )
 
     @property
     def hash(self):
@@ -234,8 +256,9 @@ class DBInfo(ABC):
             The hash of the database
         """
         with self.load_db() as database:
-            return database.get_meta_value(self.hash_name, return_none_if_not_in_table=True)
-
+            return database.get_meta_value(
+                self.hash_name, return_none_if_not_in_table=True
+            )
 
     @property
     def version(self):
@@ -247,8 +270,7 @@ class DBInfo(ABC):
             The version of the database
         """
         with self.load_db() as database:
-            return database.get_meta_value('version', return_none_if_not_in_table=True)
-
+            return database.get_meta_value("version", return_none_if_not_in_table=True)
 
     @property
     def project_name(self):
@@ -260,8 +282,9 @@ class DBInfo(ABC):
             The project name of the database
         """
         with self.load_db() as database:
-            return database.get_meta_value('project_name', return_none_if_not_in_table=True)
-
+            return database.get_meta_value(
+                "project_name", return_none_if_not_in_table=True
+            )
 
     def load_db(self):
         """Load the database
@@ -273,7 +296,6 @@ class DBInfo(ABC):
         """
         return DB(self.path, None, ignore_version=True)
 
-
     def get_self_table(self):
         """Get the 'self' table of the database
 
@@ -283,8 +305,8 @@ class DBInfo(ABC):
             The 'self' table of the database
         """
         with DB(self.path, None, ignore_version=True) as database:
-            return dict(database.get_table_as_list_of_tuples('self'))
-    
+            return dict(database.get_table_as_list_of_tuples("self"))
+
     def get_functional_annotation_sources(self):
         """Get the functional annotation sources of the database
 
@@ -296,96 +318,115 @@ class DBInfo(ABC):
         """
         if self.functional_annotation_sources_name:
             with self.load_db() as database:
-                return database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True).split(',')
+                return database.get_meta_value(
+                    self.functional_annotation_sources_name,
+                    return_none_if_not_in_table=True,
+                ).split(",")
         else:
             return None
 
 
 class ContigsDBInfo(DBInfo):
     """A class to keep track of contigs databases"""
-    db_type = 'contigs'
-    hash_name = 'contigs_db_hash'
-    functional_annotation_sources_name = 'gene_function_sources'
+
+    db_type = "contigs"
+    hash_name = "contigs_db_hash"
+    functional_annotation_sources_name = "gene_function_sources"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class ProfileDBInfo(DBInfo):
     """A class to keep track of profile databases"""
-    db_type = 'profile'
-    hash_name = 'contigs_db_hash'
+
+    db_type = "profile"
+    hash_name = "contigs_db_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
-
 
     @property
     def blank(self):
         """Check if the database is blank"""
         with self.load_db() as database:
-            return True if database.get_meta_value('blank') == 1 else False
-
+            return True if database.get_meta_value("blank") == 1 else False
 
     @property
     def merged(self):
         """Check if the database is merged"""
         with self.load_db() as database:
-            return True if database.get_meta_value('merged') == 1 else False
+            return True if database.get_meta_value("merged") == 1 else False
 
 
 class GenesDBInfo(DBInfo):
     """A class to keep track of genes databases"""
-    db_type = 'genes'
-    hash_name = 'contigs_db_hash'
+
+    db_type = "genes"
+    hash_name = "contigs_db_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class AuxiliaryDBInfo(DBInfo):
     """A class to keep track of auxiliary databases"""
-    db_type = 'auxiliary data for coverages'
-    hash_name = 'contigs_db_hash'
+
+    db_type = "auxiliary data for coverages"
+    hash_name = "contigs_db_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class StructureDBInfo(DBInfo):
     """A class to keep track of structure databases"""
-    db_type = 'structure'
-    hash_name = 'contigs_db_hash'
+
+    db_type = "structure"
+    hash_name = "contigs_db_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class GenomeStorageDBInfo(DBInfo):
     """A class to keep track of genome storage databases"""
-    db_type = 'genomestorage'
-    hash_name = 'hash'
-    functional_annotation_sources_name = 'gene_function_sources'
+
+    db_type = "genomestorage"
+    hash_name = "hash"
+    functional_annotation_sources_name = "gene_function_sources"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class PanDBInfo(DBInfo):
     """A class to keep track of pan databases"""
-    db_type = 'pan'
-    hash_name = 'genomes_storage_hash'
+
+    db_type = "pan"
+    hash_name = "genomes_storage_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class TRNADBInfo(DBInfo):
     """A class to keep track of trnaseq databases"""
-    db_type = 'trnaseq'
-    hash_name = 'trnaseq_db_hash'
+
+    db_type = "trnaseq"
+    hash_name = "trnaseq_db_hash"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class ModulesDBInfo(DBInfo):
     """A class to keep track of modules databases"""
-    db_type = 'modules'
-    hash_name = 'hash'
-    functional_annotation_sources_name = 'annotation_sources'
+
+    db_type = "modules"
+    hash_name = "hash"
+    functional_annotation_sources_name = "annotation_sources"
+
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
@@ -420,7 +461,14 @@ class FindAnvioDBs(object):
         The Progress object to use for displaying the progress of the search.
     """
 
-    def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, depth=3, run=Run(), progress=Progress()):
+    def __init__(
+        self,
+        search_path=".",
+        max_files_and_dirs_to_process=50000,
+        depth=3,
+        run=Run(),
+        progress=Progress(),
+    ):
         self.run = run
         self.progress = progress
 
@@ -443,10 +491,11 @@ class FindAnvioDBs(object):
 
         # sort by level, so we know what is closest to the search_path root directory
         for db_type in self.anvio_dbs:
-            self.anvio_dbs[db_type] = sorted(self.anvio_dbs[db_type], key=lambda d: d.level)
+            self.anvio_dbs[db_type] = sorted(
+                self.anvio_dbs[db_type], key=lambda d: d.level
+            )
 
         self.anvio_dbs_found = True
-
 
     def listdir(self, path):
         """Yield the full path of each file in the specified directory.
@@ -465,7 +514,6 @@ class FindAnvioDBs(object):
         for filename in os.listdir(path):
             yield os.path.join(path, filename)
 
-
     def walk(self):
         """Walk through the directory to find anvi'o databases.
 
@@ -474,7 +522,7 @@ class FindAnvioDBs(object):
         tuple : (file_path, level)
             The file path of an anvi'o database and its level in the directory hierarchy.
         """
-        self.progress.new('Searching files and directories')
+        self.progress.new("Searching files and directories")
 
         total_file_and_directory_names = 0
 
@@ -484,12 +532,12 @@ class FindAnvioDBs(object):
             total_file_and_directory_names += len(filenames)
             self.progress.update(f"processing {total_file_and_directory_names} ...")
 
-            for filename in [f for f in filenames if f.endswith('.db')]:
+            for filename in [f for f in filenames if f.endswith(".db")]:
                 yield (filename, 1)
         else:
             top_pathlen = len(self.search_path) + len(os.path.sep)
             for dirpath, dirnames, filenames in os.walk(self.search_path):
-                total_file_and_directory_names += (len(filenames) + len(dirnames))
+                total_file_and_directory_names += len(filenames) + len(dirnames)
 
                 if total_file_and_directory_names > self.max_files_and_dirs_to_process:
                     self.progress.end()
@@ -501,21 +549,21 @@ class FindAnvioDBs(object):
                 if self.depth and dirlevel >= self.depth - 1:
                     dirnames[:] = []
                 else:
-                    for filename in [f for f in filenames if f.endswith('.db')]:
+                    for filename in [f for f in filenames if f.endswith(".db")]:
                         file_path = os.path.join(dirpath, filename)
-                        yield (file_path, file_path.count('/'))
+                        yield (file_path, file_path.count("/"))
 
         self.progress.end()
 
 
 dbinfo_classes = {
-    'contigs': ContigsDBInfo,
-    'profile': ProfileDBInfo,
-    'auxiliary data for coverages': AuxiliaryDBInfo,
-    'genes': GenesDBInfo,
-    'structure': StructureDBInfo,
-    'genomestorage': GenomeStorageDBInfo,
-    'pan': PanDBInfo,
-    'trnaseq': TRNADBInfo,
-    'modules': ModulesDBInfo,
+    "contigs": ContigsDBInfo,
+    "profile": ProfileDBInfo,
+    "auxiliary data for coverages": AuxiliaryDBInfo,
+    "genes": GenesDBInfo,
+    "structure": StructureDBInfo,
+    "genomestorage": GenomeStorageDBInfo,
+    "pan": PanDBInfo,
+    "trnaseq": TRNADBInfo,
+    "modules": ModulesDBInfo,
 }

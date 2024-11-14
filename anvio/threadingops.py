@@ -44,7 +44,7 @@ class State(UserDict):
         if isinstance(key, str):
             super().__setitem__(key, value)
         else:
-            raise ValueError(f'key must be str.  Got {type(key).__name__}.')
+            raise ValueError(f"key must be str.  Got {type(key).__name__}.")
 
 
 # Todo: add type hints to this.
@@ -55,7 +55,9 @@ class AnviThread(Thread):
     command, you may want to retry it if the return value is > 0, (i.e., indicating failure).
     """
 
-    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+    def __init__(
+        self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None
+    ):
 
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
 
@@ -137,13 +139,14 @@ class ThreadedCommandRunner(abc.ABC):
     - `logger`: a `anvio.terminal.Logger`.  Let's the commands access anvio's nice logging.
     """
 
-    def __init__(self,
-                 input_file_path,
-                 collated_output_file_paths,
-                 log_file_path,
-                 number_of_splits,
-                 logger,
-                 ):
+    def __init__(
+        self,
+        input_file_path,
+        collated_output_file_paths,
+        log_file_path,
+        number_of_splits,
+        logger,
+    ):
         """In addition to the named parameters, the following instance variables are also initialized to empty values:
 
         - threads
@@ -175,13 +178,17 @@ class ThreadedCommandRunner(abc.ABC):
         # Here comes what looks like a clever hack, but is really just python dictionary merging.
         # See https://www.python.org/dev/peps/pep-0448/.  We use the {} literal instead of dict() in case one of the
         # later functions needs to override the value in one of the earlier.
-        state = State({**self._split_input_file(),
-                       **self._set_output_file_split_paths(),
-                       **self._make_commands(),
-                       **self._run_commands(),
-                       **self._collate_output_files(),
-                       **self._remove_input_file_splits(),
-                       **self._remove_output_file_splits()})
+        state = State(
+            {
+                **self._split_input_file(),
+                **self._set_output_file_split_paths(),
+                **self._make_commands(),
+                **self._run_commands(),
+                **self._collate_output_files(),
+                **self._remove_input_file_splits(),
+                **self._remove_output_file_splits(),
+            }
+        )
 
         return state
 
@@ -214,7 +221,9 @@ class ThreadedCommandRunner(abc.ABC):
         if return_value < 0 or return_value > 0:
             # Technically, utils.run_command will return ConfigError if the return code was < 0, but just do this
             # sanity check here as well to be sure.
-            return CommandError(f"Failed to run '{command}'.  Exit code: {return_value}")
+            return CommandError(
+                f"Failed to run '{command}'.  Exit code: {return_value}"
+            )
         else:
             return return_value
 
@@ -246,7 +255,9 @@ class ThreadedCommandRunner(abc.ABC):
         self.collated_output_file_paths, unless you want to override everything.
         """
         for which, path in self.collated_output_file_paths.items():
-            paths = ['.'.join([path, f'split_{i}']) for i in range(self.number_of_splits)]
+            paths = [
+                ".".join([path, f"split_{i}"]) for i in range(self.number_of_splits)
+            ]
             self.output_file_split_paths[which] = paths
 
         return State(output_file_split_paths=self.output_file_split_paths)
@@ -275,11 +286,13 @@ class ThreadedCommandRunner(abc.ABC):
         intermediate_log_file_paths = []
         for index, command in enumerate(self.commands):
             # Each thread will get its own logfile so we don't have to worry about locking on the main logfile.
-            this_log_file_path = '.'.join([self.log_file_path, f'thread-{index}'])
+            this_log_file_path = ".".join([self.log_file_path, f"thread-{index}"])
             intermediate_log_file_paths.append(this_log_file_path)
 
             # Spawn a new thread and start it.
-            thread = AnviThread(target=self._command_runner, args=(command, this_log_file_path))
+            thread = AnviThread(
+                target=self._command_runner, args=(command, this_log_file_path)
+            )
             thread.start()
             self.threads.append(thread)
 
@@ -290,7 +303,11 @@ class ThreadedCommandRunner(abc.ABC):
         self._check_threads_for_errors()
 
         # Todo pretty sure this will overwrite logfile.  Is this behavior what we really want?
-        anvio.utils.concatenate_files(self.log_file_path, intermediate_log_file_paths, remove_concatenated_files=True)
+        anvio.utils.concatenate_files(
+            self.log_file_path,
+            intermediate_log_file_paths,
+            remove_concatenated_files=True,
+        )
 
         return State(threads=self.threads)
 
@@ -355,31 +372,39 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         """
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        required_args = ['input_file_path', 'collated_output_file_paths', 'number_of_splits', 'log_file_path',
-                         'installed_version', 'parser', 'prodigal_single_mode']
+        required_args = [
+            "input_file_path",
+            "collated_output_file_paths",
+            "number_of_splits",
+            "log_file_path",
+            "installed_version",
+            "parser",
+            "prodigal_single_mode",
+        ]
 
         # Check that the required arguments are present.
         for arg in required_args:
             if A(arg) is None:
                 raise KeyError(f"'{arg}' is a required argument")
 
-        super().__init__(input_file_path=A('input_file_path'),
-                         collated_output_file_paths=A('collated_output_file_paths'),
-                         number_of_splits=A('number_of_splits'),
-                         log_file_path=A('log_file_path'),
-                         logger=A('logger'))
+        super().__init__(
+            input_file_path=A("input_file_path"),
+            collated_output_file_paths=A("collated_output_file_paths"),
+            number_of_splits=A("number_of_splits"),
+            log_file_path=A("log_file_path"),
+            logger=A("logger"),
+        )
 
-        self.prodigal_single_mode = A('prodigal_single_mode')
-        self.installed_version = A('installed_version')
-        self.parser = A('parser')
+        self.prodigal_single_mode = A("prodigal_single_mode")
+        self.installed_version = A("installed_version")
+        self.parser = A("parser")
 
         # if it's an int we need to cast to str
-        translation_table = A('translation_table')
+        translation_table = A("translation_table")
         if isinstance(translation_table, int):
             translation_table = str(translation_table)
 
         self.translation_table = translation_table
-
 
     # Implement the abstract methods
     #
@@ -395,13 +420,14 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         """
         # Todo: probably should move this check into the constructor.
         if self.number_of_splits <= 0:
-            ValueError(f'number_of_splits muts be > 0.  Got {self.number_of_splits}')
+            ValueError(f"number_of_splits muts be > 0.  Got {self.number_of_splits}")
 
         # Todo are there errors to catch here?
-        self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
+        self.input_file_splits = utils.split_fasta(
+            self.input_file_path, parts=self.number_of_splits, shuffle=True
+        )
 
         return State(input_file_splits=self.input_file_splits)
-
 
     def _make_commands(self):
         """Make commands and store them in `self.commands`.
@@ -416,28 +442,41 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         # Todo: This should probably be done in the constructor of the abstract superclass.
         # Sanity check.
         if len(self.output_file_split_paths) == 0:
-            raise ValueError('Did you forget to initialize `set_output_file_split_paths`?')
+            raise ValueError(
+                "Did you forget to initialize `set_output_file_split_paths`?"
+            )
 
         # Check that the proper keyword arguments are given.
-        for key in ['peptide_path', 'gff_path']:
+        for key in ["peptide_path", "gff_path"]:
             if key not in self.output_file_split_paths:
-                raise ValueError(f"self.output_file_split_paths should have the key '{key}', but it is missing.")
+                raise ValueError(
+                    f"self.output_file_split_paths should have the key '{key}', but it is missing."
+                )
 
-            if not len(self.input_file_splits) == len(self.output_file_split_paths[key]):
-                raise ConfigError("The number input files do not match to the number of files expected :/")
+            if not len(self.input_file_splits) == len(
+                self.output_file_split_paths[key]
+            ):
+                raise ConfigError(
+                    "The number input files do not match to the number of files expected :/"
+                )
 
         for i in range(len(self.input_file_splits)):
-            command = ['prodigal',
-                       '-m', # <- this one is to treat runs of N as masked sequences and not to build genes across them.
-                             #    see a longer discussion here: https://github.com/merenlab/anvio/issues/1641
-                       '-i', self.input_file_splits[i],
-                       '-o', self.output_file_split_paths['gff_path'][i],
-                       '-a', self.output_file_split_paths['peptide_path'][i]]
+            command = [
+                "prodigal",
+                "-m",  # <- this one is to treat runs of N as masked sequences and not to build genes across them.
+                #    see a longer discussion here: https://github.com/merenlab/anvio/issues/1641
+                "-i",
+                self.input_file_splits[i],
+                "-o",
+                self.output_file_split_paths["gff_path"][i],
+                "-a",
+                self.output_file_split_paths["peptide_path"][i],
+            ]
 
             # Use either custom translation table or 'meta' mode.
             if self.translation_table:
                 # Translation tables and meta mode cannot be used together.
-                command.extend(['-g', self.translation_table])
+                command.extend(["-g", self.translation_table])
                 if self.logger:
                     self.logger.run.warning(
                         "Prodigal translation table is set to '%s' (whatever you did has worked so far, but "
@@ -445,7 +484,8 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                         "parameter). This means we will not use prodigal in the metagenomics mode, due to this"
                         "issue: https://github.com/hyattpd/Prodigal/issues/19. If that issue is closed, and "
                         "you are reading this message, then please contact an anvi'o developer."
-                        % str(self.translation_table))
+                        % str(self.translation_table)
+                    )
             else:
                 if self.prodigal_single_mode:
                     # the user explicitly requested to not use the `-p meta` flag to run
@@ -454,7 +494,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                     pass
                 else:
                     # Use 'meta' mode if no translation tables are given.
-                    command.extend(['-p', 'meta'])
+                    command.extend(["-p", "meta"])
 
             self.commands.append(command)
 
@@ -469,19 +509,25 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
         # todo check this in the constructor
         # Check that the proper keyword arguments are given.
-        for key in ['peptide_path', 'gff_path']:
+        for key in ["peptide_path", "gff_path"]:
             if key not in self.output_file_split_paths:
                 ValueError(f"kwargs should have the key '{key}', but it is missing.")
 
-        peptide_paths = self.output_file_split_paths['peptide_path']
-        gff_paths = self.output_file_split_paths['gff_path']
+        peptide_paths = self.output_file_split_paths["peptide_path"]
+        gff_paths = self.output_file_split_paths["gff_path"]
 
-        gene_calls_dict, amino_acid_sequences_dict = self._process_peptide_files(peptide_paths)
+        gene_calls_dict, amino_acid_sequences_dict = self._process_peptide_files(
+            peptide_paths
+        )
 
         self._process_gff_files(gff_paths)
 
-        return State({'gene_calls_dict': gene_calls_dict,
-                      'amino_acid_sequences_dict': amino_acid_sequences_dict})
+        return State(
+            {
+                "gene_calls_dict": gene_calls_dict,
+                "amino_acid_sequences_dict": amino_acid_sequences_dict,
+            }
+        )
 
     # Helper methods
     #
@@ -493,7 +539,9 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
         # Set up data storage.
         # Todo: These are keyed with ints, so idk why they aren't lists.  Maybe used as a dict later in the code?
-        gene_calls_dict = {}  # each entry must contain {'contig', 'start', stop, 'direction', 'partial'} items.
+        gene_calls_dict = (
+            {}
+        )  # each entry must contain {'contig', 'start', stop, 'direction', 'partial'} items.
         amino_acid_sequences_dict = {}
 
         for peptide_path in peptide_paths:
@@ -501,10 +549,13 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                 if self.logger:
                     self.logger.progress.end()
 
-                raise ConfigError("Something went wrong with prodigal, and it failed to generate the "
-                                  "expected output ('%s') :/ Fortunately, this log file should tell you what "
-                                  "might be the problem: '%s'. Please do not forget to include this "
-                                  "file if you were to ask for help." % (peptide_path, self.log_file_path))
+                raise ConfigError(
+                    "Something went wrong with prodigal, and it failed to generate the "
+                    "expected output ('%s') :/ Fortunately, this log file should tell you what "
+                    "might be the problem: '%s'. Please do not forget to include this "
+                    "file if you were to ask for help."
+                    % (peptide_path, self.log_file_path)
+                )
 
             # Some splits may not actually have gene calls.  Skip them.
             if filesnpaths.is_file_empty(peptide_path):
@@ -515,7 +566,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
             while next(fasta):
                 gene_calls_dict[hit_id] = self.parser(fasta.id)
-                amino_acid_sequences_dict[hit_id] = fasta.seq.replace('*', '')
+                amino_acid_sequences_dict[hit_id] = fasta.seq.replace("*", "")
                 hit_id += 1
 
             fasta.close()
@@ -527,13 +578,15 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         # If no genes were predicted across all output files, warn the user.
         if len(amino_acid_sequences_dict) == 0:
             if self.logger:
-                self.logger.run.info('Result',
-                                     f'Prodigal ({self.installed_version}) has identified no genes :/',
-                                     nl_after=1,
-                                     mc="red")
+                self.logger.run.info(
+                    "Result",
+                    f"Prodigal ({self.installed_version}) has identified no genes :/",
+                    nl_after=1,
+                    mc="red",
+                )
         else:  # Write out the final gene file
-            assert 'peptide_path' in self.collated_output_file_paths
-            with open(self.collated_output_file_paths['peptide_path'], 'w') as f:
+            assert "peptide_path" in self.collated_output_file_paths
+            with open(self.collated_output_file_paths["peptide_path"], "w") as f:
                 for hit_id, sequence in amino_acid_sequences_dict.items():
                     f.write(f">{hit_id}\n{sequence}\n")
 
@@ -547,7 +600,11 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         threads will start renumbering sequences from 1 in each subfile.  If the gff file itself is to be used, you MUST
         deal with this issue first!  See: https://github.com/merenlab/anvio/pull/1437#discussion_r440514864.
         """
-        assert self.collated_output_file_paths['gff_path']
+        assert self.collated_output_file_paths["gff_path"]
 
         # This function also checks if the files exist.
-        utils.concatenate_files(self.collated_output_file_paths['gff_path'], gff_paths, remove_concatenated_files=True)
+        utils.concatenate_files(
+            self.collated_output_file_paths["gff_path"],
+            gff_paths,
+            remove_concatenated_files=True,
+        )

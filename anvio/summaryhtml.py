@@ -16,27 +16,26 @@ from anvio.errors import ConfigError
 # get django imported
 try:
     from django.conf import settings
+
     absolute = os.path.join(os.path.dirname(os.path.realpath(__file__)))
-    template_dir = os.path.join(absolute, 'data/static/template')
-    html_content_dir = os.path.join(absolute, 'data/static/content')
-    local_settings = {
-        'DEBUG': True,
-        'TEMPLATE_DEBUG': True,
-        'DEFAULT_CHARSET': 'utf-8'
-    }
+    template_dir = os.path.join(absolute, "data/static/template")
+    html_content_dir = os.path.join(absolute, "data/static/content")
+    local_settings = {"DEBUG": True, "TEMPLATE_DEBUG": True, "DEFAULT_CHARSET": "utf-8"}
 
     try:
-        local_settings.update({
-            'TEMPLATES': [
-                {
-                    'BACKEND': 'django.template.backends.django.DjangoTemplates',
-                    'DIRS': (template_dir,),
-                    'APP_DIRS': False,
-                }
-            ]
-        })
+        local_settings.update(
+            {
+                "TEMPLATES": [
+                    {
+                        "BACKEND": "django.template.backends.django.DjangoTemplates",
+                        "DIRS": (template_dir,),
+                        "APP_DIRS": False,
+                    }
+                ]
+            }
+        )
     except ImportError:
-        local_settings.update({'TEMPLATE_DIRS': (template_dir,)})
+        local_settings.update({"TEMPLATE_DIRS": (template_dir,)})
 
     try:
         import django
@@ -46,9 +45,11 @@ try:
     from django.template.loader import render_to_string
     from django.template.defaultfilters import register
 except ImportError:
-    raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
+    raise ConfigError(
+        "You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output."
+    )
 
-# It seems this really wants to be here in the global context :/ 
+# It seems this really wants to be here in the global context :/
 settings.configure(**local_settings)
 django.setup()
 
@@ -73,134 +74,165 @@ class SummaryHTMLOutput:
         self.progress = p
         self.summary_dict = summary_dict
 
-        self.summary_type = self.summary_dict['meta']['summary_type']
+        self.summary_type = self.summary_dict["meta"]["summary_type"]
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index', 'inversions']:
+        if self.summary_type not in [
+            "profile",
+            "pan",
+            "saav",
+            "vignette",
+            "artifact",
+            "program",
+            "workflow",
+            "programs_and_artifacts_index",
+            "inversions",
+        ]:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
-
     def generate(self, quick=False):
-        self.progress.new('Generating the output')
-        self.progress.update('Copying static files')
+        self.progress.new("Generating the output")
+        self.progress.update("Copying static files")
         self.copy_files()
 
-        self.progress.update('Rendering')
+        self.progress.update("Rendering")
         rendered = self.render(quick)
 
-        self.progress.update('Writing')
-        index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
-        open(index_html, 'wb').write(rendered.encode('utf-8'))
+        self.progress.update("Writing")
+        index_html = os.path.join(
+            self.summary_dict["meta"]["output_directory"], "index.html"
+        )
+        open(index_html, "wb").write(rendered.encode("utf-8"))
 
         self.progress.end()
 
-        self.run.info('HTML Output', index_html, nl_before=1, nl_after=1, mc='green')
+        self.run.info("HTML Output", index_html, nl_before=1, nl_after=1, mc="green")
 
         return index_html
 
-
     def copy_files(self):
-        self.progress.update('...')
-        destination_dir = os.path.join(self.summary_dict['meta']['output_directory'], '.html')
-        shutil.copytree(html_content_dir, destination_dir, ignore=shutil.ignore_patterns('.git*'))
-
+        self.progress.update("...")
+        destination_dir = os.path.join(
+            self.summary_dict["meta"]["output_directory"], ".html"
+        )
+        shutil.copytree(
+            html_content_dir, destination_dir, ignore=shutil.ignore_patterns(".git*")
+        )
 
     def render(self, quick=False):
-        if self.summary_type == 'saav':
-                rendered = render_to_string('saavs-index.tmpl', self.summary_dict)
-        elif self.summary_type == 'pan':
-            rendered = render_to_string('pan-index.tmpl', self.summary_dict)
-        elif self.summary_type == 'profile':
+        if self.summary_type == "saav":
+            rendered = render_to_string("saavs-index.tmpl", self.summary_dict)
+        elif self.summary_type == "pan":
+            rendered = render_to_string("pan-index.tmpl", self.summary_dict)
+        elif self.summary_type == "profile":
             if quick:
-                rendered = render_to_string('profile-index-mini.tmpl', self.summary_dict)
+                rendered = render_to_string(
+                    "profile-index-mini.tmpl", self.summary_dict
+                )
             else:
-                rendered = render_to_string('profile-index.tmpl', self.summary_dict)
-        elif self.summary_type == 'vignette':
-            rendered = render_to_string('vignette.tmpl', self.summary_dict)
-        elif self.summary_type == 'artifact':
-            rendered = render_to_string('artifact.tmpl', self.summary_dict)
-        elif self.summary_type == 'program':
-            rendered = render_to_string('program.tmpl', self.summary_dict)
-        elif self.summary_type == 'workflow':
-            rendered = render_to_string('workflow.tmpl', self.summary_dict)
-        elif self.summary_type == 'programs_and_artifacts_index':
-            rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
-        elif self.summary_type == 'inversions':
-            rendered = render_to_string('inversions.tmpl', self.summary_dict)
+                rendered = render_to_string("profile-index.tmpl", self.summary_dict)
+        elif self.summary_type == "vignette":
+            rendered = render_to_string("vignette.tmpl", self.summary_dict)
+        elif self.summary_type == "artifact":
+            rendered = render_to_string("artifact.tmpl", self.summary_dict)
+        elif self.summary_type == "program":
+            rendered = render_to_string("program.tmpl", self.summary_dict)
+        elif self.summary_type == "workflow":
+            rendered = render_to_string("workflow.tmpl", self.summary_dict)
+        elif self.summary_type == "programs_and_artifacts_index":
+            rendered = render_to_string(
+                "programs_and_artifacts_index.tmpl", self.summary_dict
+            )
+        elif self.summary_type == "inversions":
+            rendered = render_to_string("inversions.tmpl", self.summary_dict)
         else:
             raise ConfigError("You cray...")
 
         return rendered
 
-@register.filter(name='get_first_line')
+
+@register.filter(name="get_first_line")
 def get_first_line(string):
-    return string.split('\n')[0]
+    return string.split("\n")[0]
 
-@register.filter(name='get_first_sentence')
+
+@register.filter(name="get_first_sentence")
 def get_first_sentence(string):
-    return string.split('.')[0]
+    return string.split(".")[0]
 
-@register.filter(name='lookup')
+
+@register.filter(name="lookup")
 def lookup(d, index):
     if index in d:
         return d[index]
-    return ''
+    return ""
 
-@register.filter(name='humanize')
+
+@register.filter(name="humanize")
 def humanize(s):
-    return s.replace('_', ' ')
+    return s.replace("_", " ")
 
-@register.filter(name='monospace')
+
+@register.filter(name="monospace")
 def monospace(s):
     return f'<span style="font-family: monospace;">{s}</span>'
 
-@register.filter(name='sumvals')
+
+@register.filter(name="sumvals")
 def sumvals(d):
     return sum(d.values())
 
-@register.filter(name='even_odd')
+
+@register.filter(name="even_odd")
 def even_odd(d):
     return int(d) % 2
 
-@register.filter(name='humanize_f')
+
+@register.filter(name="humanize_f")
 def humanize_f(n):
     if isinstance(n, str):
         return n
 
     return "%.2f" % n
 
-@register.filter(name='humanize_n')
+
+@register.filter(name="humanize_n")
 def humanize_n(n):
     if isinstance(n, str):
         return n
 
-    for unit in ['', ' Kb', ' Mb']:
+    for unit in ["", " Kb", " Mb"]:
         if abs(n) < 1000.0:
             return "%3.2f%s" % (n, unit)
         n /= 1000.0
-    return "%.2f%s" % (n, 'Gb')
+    return "%.2f%s" % (n, "Gb")
 
-@register.filter(name='pretty')
+
+@register.filter(name="pretty")
 def pretty(n):
     if not n:
-        return 'None'
+        return "None"
     try:
         return pp(int(n))
     except ValueError:
         return n
 
-@register.filter(name='convert_to_json')
+
+@register.filter(name="convert_to_json")
 def convert_to_json(obj):
     return json.dumps(obj)
 
-@register.filter(name='base64_encode')
+
+@register.filter(name="base64_encode")
 def base64_encode(data):
     return base64.b64encode(data)
 
-@register.filter(name='zlib_encode')
+
+@register.filter(name="zlib_encode")
 def zlib_encode(data):
     return zlib.compress(data.encode("utf-8"))
 
-@register.filter(name='pretty_join')
+
+@register.filter(name="pretty_join")
 def pretty_join(data, and_or="and"):
     d = [str(item) for item in data]
 
@@ -209,4 +241,3 @@ def pretty_join(data, and_or="and"):
     else:
         all_but_last = ", ".join(d[:-1])
         return f"{all_but_last}, {and_or} {d[-1]}"
-

@@ -28,7 +28,7 @@ def rev_comp(seq):
 
 
 class KMers:
-    def __init__(self, k=4, alphabet='ATCG', consider_rev_comps=True):
+    def __init__(self, k=4, alphabet="ATCG", consider_rev_comps=True):
         self.kmers = {}
         self.alphabet = alphabet
         self.consider_rev_comps = consider_rev_comps
@@ -42,7 +42,7 @@ class KMers:
         kmers = set()
 
         for item in itertools.product(*arg):
-            kmer = ''.join(item)
+            kmer = "".join(item)
             if self.consider_rev_comps:
                 if rev_comp(kmer) not in kmers:
                     kmers.add(kmer)
@@ -50,7 +50,6 @@ class KMers:
                 kmers.add(kmer)
 
         self.kmers[k] = kmers
-
 
     def get_kmer_frequency(self, sequence, dist_metric_safe=False):
         k = self.k
@@ -66,7 +65,7 @@ class KMers:
 
         frequencies = Counter({})
         for i in range(0, len(sequence) - (k - 1)):
-            kmer = sequence[i:i + k]
+            kmer = sequence[i : i + k]
 
             if self.consider_rev_comps:
                 if kmer in kmers:

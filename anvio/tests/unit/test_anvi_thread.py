@@ -19,7 +19,7 @@ __email__ = "moorer@udel.edu"
 
 
 def run_script_in_thread(runner, script):
-    args = (['python', '-c', script],)
+    args = (["python", "-c", script],)
     thread = AnviThread(target=runner, args=args)
     thread.start()
     thread.join()
@@ -47,5 +47,6 @@ class AnviThreadSavesReturnCodesTestCase(unittest.TestCase):
 
         self.assertEqual(thread.target_return_value, self.failing_exit_code)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

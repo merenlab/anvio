@@ -12,7 +12,7 @@ from anvio.errors import ConfigError
 run = terminal.Run()
 progress = terminal.Progress()
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+current_version, next_version = [x[1:] for x in __name__.split("_to_")]
 
 
 def migrate(db_path):
@@ -32,17 +32,17 @@ def migrate(db_path):
     progress.update("Updating the self table with two variables if not already there")
 
     threshold_added = False
-    if 'reaction_network_consensus_threshold' not in pan_db_info.get_self_table():
-        pan_db.set_meta_value('reaction_network_consensus_threshold', None)
+    if "reaction_network_consensus_threshold" not in pan_db_info.get_self_table():
+        pan_db.set_meta_value("reaction_network_consensus_threshold", None)
         threshold_added = True
 
     discard_ties_added = False
-    if 'reaction_network_discard_ties' not in pan_db_info.get_self_table():
-        pan_db.set_meta_value('reaction_network_discard_ties', None)
+    if "reaction_network_discard_ties" not in pan_db_info.get_self_table():
+        pan_db.set_meta_value("reaction_network_discard_ties", None)
         discard_ties_added = True
 
     progress.update("Updating version")
-    pan_db.remove_meta_key_value_pair('version')
+    pan_db.remove_meta_key_value_pair("version")
     pan_db.set_version(next_version)
 
     progress.update("Committing changes")
@@ -79,11 +79,19 @@ def migrate(db_path):
             "anything in the database besides the version number."
         )
     message = f"Done! Your pan database is now version 21. This wasn't a biggie. {change_message}"
-    run.info_single(message, nl_after=1, nl_before=1, mc='green')
+    run.info_single(message, nl_after=1, nl_before=1, mc="green")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to upgrade the pan database from version %s to version %s' % (current_version, next_version))
-    parser.add_argument('pan_db', metavar = 'PAN_DB', help = "An anvi'o pan database of version %s" % current_version)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="A simple script to upgrade the pan database from version %s to version %s"
+        % (current_version, next_version)
+    )
+    parser.add_argument(
+        "pan_db",
+        metavar="PAN_DB",
+        help="An anvi'o pan database of version %s" % current_version,
+    )
     args, unknown = parser.parse_known_args()
 
     try:

@@ -32,22 +32,27 @@ class KMerTablesForContigsAndSplits:
         self.kmer_dict = {}
         self.db_entries = []
 
-        self.kmers_table_structure = ['contig'] + self.kmers
-        self.kmers_table_types = ['text'] + ['numeric'] * len(self.kmers)
-
+        self.kmers_table_structure = ["contig"] + self.kmers
+        self.kmers_table_types = ["text"] + ["numeric"] * len(self.kmers)
 
     def get_kmer_freq(self, sequence):
         return self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
 
-
     def append(self, seq_id, sequence, kmer_freq=None):
         if not kmer_freq:
-            kmer_freq = self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
+            kmer_freq = self.kmers_class.get_kmer_frequency(
+                sequence, dist_metric_safe=True
+            )
 
         db_entry = tuple([seq_id] + [kmer_freq[kmer] for kmer in self.kmers])
         self.db_entries.append(db_entry)
 
-
     def store(self, db):
-        db.create_table(self.table_name, self.kmers_table_structure, self.kmers_table_types)
-        db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
+        db.create_table(
+            self.table_name, self.kmers_table_structure, self.kmers_table_types
+        )
+        db._exec_many(
+            """INSERT INTO %s VALUES (%s)"""
+            % (self.table_name, (",".join(["?"] * len(self.kmers_table_structure)))),
+            self.db_entries,
+        )

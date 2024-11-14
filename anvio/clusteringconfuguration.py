@@ -32,24 +32,64 @@ __status__ = "Development"
 
 
 config_template = {
-    'general': {
-                'name': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
-                'output_file': {'mandatory': False, 'test': lambda x: filesnpaths.is_output_file_writable(x)},
-                'num_components': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
-                                   'required': "an integer value between 1 and 256"},
-                'distance': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
-                'linkage': {'mandatory': False, 'test': lambda x: len(x.split()) == 1, 'required': 'a single-word string'},
-                'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
+    "general": {
+        "name": {
+            "mandatory": False,
+            "test": lambda x: len(x.split()) == 1,
+            "required": "a single-word string",
+        },
+        "output_file": {
+            "mandatory": False,
+            "test": lambda x: filesnpaths.is_output_file_writable(x),
+        },
+        "num_components": {
+            "mandatory": False,
+            "test": lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
+            "required": "an integer value between 1 and 256",
+        },
+        "distance": {
+            "mandatory": False,
+            "test": lambda x: len(x.split()) == 1,
+            "required": "a single-word string",
+        },
+        "linkage": {
+            "mandatory": False,
+            "test": lambda x: len(x.split()) == 1,
+            "required": "a single-word string",
+        },
+        "seed": {
+            "mandatory": False,
+            "test": lambda x: RepresentsInt(x),
+            "required": "an integer",
+        },
     },
-    'matrix': {
-                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix', 'view'], 'required': 'matrix, view, or dataframe'},
-                'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 0,
-                            'required': 'one or more comma-separated column names'},
-                'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
-                          'required': "an integer value between 1 and 256."},
-                'normalize': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-                'log': {'mandatory': False, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-               },
+    "matrix": {
+        "table_form": {
+            "mandatory": False,
+            "test": lambda x: x in ["dataframe", "matrix", "view"],
+            "required": "matrix, view, or dataframe",
+        },
+        "columns_to_use": {
+            "mandatory": False,
+            "test": lambda x: len(x.strip().replace(" ", "").split(",")) > 0,
+            "required": "one or more comma-separated column names",
+        },
+        "ratio": {
+            "mandatory": False,
+            "test": lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
+            "required": "an integer value between 1 and 256.",
+        },
+        "normalize": {
+            "mandatory": False,
+            "test": lambda x: x in ["True", "False"],
+            "required": "True or False",
+        },
+        "log": {
+            "mandatory": False,
+            "test": lambda x: x in ["True", "False"],
+            "required": "True or False",
+        },
+    },
 }
 
 
@@ -60,6 +100,7 @@ def RepresentsInt(s):
     except ValueError:
         return False
 
+
 def NameIsOK(n):
     try:
         check_sample_id(n)
@@ -69,7 +110,15 @@ def NameIsOK(n):
 
 
 class ClusteringConfiguration:
-    def __init__(self, config_file_path, input_directory=None, db_paths={}, row_ids_of_interest=[], r=run, p=progress):
+    def __init__(
+        self,
+        config_file_path,
+        input_directory=None,
+        db_paths={},
+        row_ids_of_interest=[],
+        r=run,
+        p=progress,
+    ):
         self.run = r
         self.progress = p
 
@@ -102,19 +151,25 @@ class ClusteringConfiguration:
         # and sanity check.
         self.sanity_check(config)
 
-        if self.get_option(config, 'general', 'output_file', str):
-            self.output_file_name = self.get_option(config, 'general', 'output_file', str)
-            self.output_file_path = os.path.join(self.input_directory, self.output_file_name)
+        if self.get_option(config, "general", "output_file", str):
+            self.output_file_name = self.get_option(
+                config, "general", "output_file", str
+            )
+            self.output_file_path = os.path.join(
+                self.input_directory, self.output_file_name
+            )
         else:
             self.output_file_name = None
             self.output_file_path = None
 
-        self.name = self.get_option(config, 'general', 'name', str) or filesnpaths.get_name_from_file_path(self.config_file_path)
-        self.distance = self.get_option(config, 'general', 'distance', str)
-        self.linkage = self.get_option(config, 'general', 'linkage', str)
+        self.name = self.get_option(
+            config, "general", "name", str
+        ) or filesnpaths.get_name_from_file_path(self.config_file_path)
+        self.distance = self.get_option(config, "general", "distance", str)
+        self.linkage = self.get_option(config, "general", "linkage", str)
 
-        self.num_components = self.get_option(config, 'general', 'num_components', int)
-        self.seed = self.get_option(config, 'general', 'seed', int)
+        self.num_components = self.get_option(config, "general", "num_components", int)
+        self.seed = self.get_option(config, "general", "seed", int)
         self.master = None
 
         self.matrices_dict = {}
@@ -125,27 +180,59 @@ class ClusteringConfiguration:
             self.matrices.append(alias)
 
             m = {}
-            columns_to_use = self.get_option(config, section, 'columns_to_use', str)
-            table_form = self.get_option(config, section, 'table_form', str)
-            m['alias'] = alias
-            m['matrix'] = matrix
-            m['table_form'] = table_form
-            m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
-            m['ratio'] = self.get_option(config, section, 'ratio', int)
-            m['path'] = self.matrix_paths[alias]
-            m['normalize'] = False if self.get_option(config, section, 'normalize', str) == 'False' else True
-            m['log'] = True if self.get_option(config, section, 'log', str) == 'True' else False
+            columns_to_use = self.get_option(config, section, "columns_to_use", str)
+            table_form = self.get_option(config, section, "table_form", str)
+            m["alias"] = alias
+            m["matrix"] = matrix
+            m["table_form"] = table_form
+            m["columns_to_use"] = (
+                [c.strip() for c in columns_to_use.split(",")]
+                if columns_to_use
+                else None
+            )
+            m["ratio"] = self.get_option(config, section, "ratio", int)
+            m["path"] = self.matrix_paths[alias]
+            m["normalize"] = (
+                False
+                if self.get_option(config, section, "normalize", str) == "False"
+                else True
+            )
+            m["log"] = (
+                True
+                if self.get_option(config, section, "log", str) == "True"
+                else False
+            )
 
             # next two variables are necessary to follow the order of vectors
-            m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(file_path=m['path'],
-                                                                                        cols_to_return=m['columns_to_use'],
-                                                                                        rows_to_return=self.row_ids_of_interest)
+            m["id_to_sample"], m["sample_to_id"], m["cols"], m["vectors"] = get_vectors(
+                file_path=m["path"],
+                cols_to_return=m["columns_to_use"],
+                rows_to_return=self.row_ids_of_interest,
+            )
             self.matrices_dict[alias] = m
 
         # make sure all matrices have identical rows:
-        if len(set([list(m['id_to_sample'].values()).__str__() for m in list(self.matrices_dict.values())])) > 1:
-            master_rows, master_matrix = sorted([(len(self.matrices_dict[m]['id_to_sample']), list(self.matrices_dict[m]['id_to_sample'].values()), m)\
-                                                            for m in self.matrices_dict])[0][1:]
+        if (
+            len(
+                set(
+                    [
+                        list(m["id_to_sample"].values()).__str__()
+                        for m in list(self.matrices_dict.values())
+                    ]
+                )
+            )
+            > 1
+        ):
+            master_rows, master_matrix = sorted(
+                [
+                    (
+                        len(self.matrices_dict[m]["id_to_sample"]),
+                        list(self.matrices_dict[m]["id_to_sample"].values()),
+                        m,
+                    )
+                    for m in self.matrices_dict
+                ]
+            )[0][1:]
             self.master = master_matrix
             self.master_rows = master_rows
             # the smallest matrix is 'master_matrix', and the rows it has is master_rows. so every other matrix
@@ -154,37 +241,45 @@ class ClusteringConfiguration:
                 m = self.matrices_dict[matrix]
 
                 # get reduced set of vectors from rows that match `master_rows`:
-                m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
+                m["id_to_sample"], m["sample_to_id"], m["cols"], m["vectors"] = (
+                    get_vectors(m["path"], m["columns_to_use"], master_rows)
+                )
 
-                if len(m['vectors']) != len(master_rows):
-                    raise ConfigError('The content of rows differed between input matrices. So I tried to '
-                                       'match all other matrices to the matrix with the smallest number of '
-                                       'rows (which was "%s"). However, not all other matrices contained '
-                                       'the small set of rows.' % (master_matrix))
+                if len(m["vectors"]) != len(master_rows):
+                    raise ConfigError(
+                        "The content of rows differed between input matrices. So I tried to "
+                        "match all other matrices to the matrix with the smallest number of "
+                        'rows (which was "%s"). However, not all other matrices contained '
+                        "the small set of rows." % (master_matrix)
+                    )
         else:
-            self.master_rows = sorted(self.matrices_dict[self.matrices[0]]['sample_to_id'].keys())
+            self.master_rows = sorted(
+                self.matrices_dict[self.matrices[0]]["sample_to_id"].keys()
+            )
 
         self.num_matrices = len(self.matrices)
         self.multiple_matrices = self.num_matrices > 1
 
-
     def print_summary(self, r=run):
-        r.info_single('Summary of the config file:', mc='green', nl_before=2)
-        r.warning('', header='General')
-        r.info('Input directory', self.input_directory)
-        r.info('Number of components', self.num_components)
-        r.info('Seed', self.seed)
-        r.info('Output file', self.output_file_name)
+        r.info_single("Summary of the config file:", mc="green", nl_before=2)
+        r.warning("", header="General")
+        r.info("Input directory", self.input_directory)
+        r.info("Number of components", self.num_components)
+        r.info("Seed", self.seed)
+        r.info("Output file", self.output_file_name)
         for alias in self.matrices:
             m = self.matrices_dict[alias]
-            r.warning('', header='%s (%s) %s' % (alias, m['alias'], '[MASTER]' if alias == self.master else ''))
-            r.info('Ratio', m['ratio'])
-            r.info('Normalize', m['normalize'])
-            r.info('Log', m['log'])
-            r.info('Columns to use', m['columns_to_use'] or 'ALL')
-            r.info('Num Columns', len(m['cols']))
-            r.info('Num Rows', len(m['vectors']))
-
+            r.warning(
+                "",
+                header="%s (%s) %s"
+                % (alias, m["alias"], "[MASTER]" if alias == self.master else ""),
+            )
+            r.info("Ratio", m["ratio"])
+            r.info("Normalize", m["normalize"])
+            r.info("Log", m["log"])
+            r.info("Columns to use", m["columns_to_use"] or "ALL")
+            r.info("Num Columns", len(m["cols"]))
+            r.info("Num Rows", len(m["vectors"]))
 
     def get_option(self, config, section, option, cast):
         try:
@@ -192,29 +287,41 @@ class ClusteringConfiguration:
         except configparser.NoOptionError:
             return None
 
-
     def get_other_sections(self, config):
-        return [s for s in config.sections() if s != 'general']
-
+        return [s for s in config.sections() if s != "general"]
 
     def check_section(self, config, section, template_class):
         """`section` is the actual section name in the config file, `template_class`
-            corresponds to what type of section it is..."""
+        corresponds to what type of section it is..."""
         for option, value in config.items(section):
             if option not in list(config_template[template_class].keys()):
-                raise ConfigError('Unknown option, "%s", under section "%s".' % (option, section))
-            if 'test' in config_template[template_class][option] and not config_template[template_class][option]['test'](value):
-                if 'required' in config_template[template_class][option]:
-                    r = config_template[template_class][option]['required']
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s". '
-                                       'What is expected is %s.' % (value, option, section, r))
+                raise ConfigError(
+                    'Unknown option, "%s", under section "%s".' % (option, section)
+                )
+            if "test" in config_template[template_class][
+                option
+            ] and not config_template[template_class][option]["test"](value):
+                if "required" in config_template[template_class][option]:
+                    r = config_template[template_class][option]["required"]
+                    raise ConfigError(
+                        'Unexpected value ("%s") for option "%s", under section "%s". '
+                        "What is expected is %s." % (value, option, section, r)
+                    )
                 else:
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
+                    raise ConfigError(
+                        'Unexpected value ("%s") for option "%s", under section "%s".'
+                        % (value, option, section)
+                    )
 
         for option in config_template[template_class]:
-            if 'mandatory' in config_template[template_class][option] and config_template[template_class][option]['mandatory'] and not config.has_option(section, option):
-                raise ConfigError('Missing mandatory option for section "%s": %s' % (section, option))
-
+            if (
+                "mandatory" in config_template[template_class][option]
+                and config_template[template_class][option]["mandatory"]
+                and not config.has_option(section, option)
+            ):
+                raise ConfigError(
+                    'Missing mandatory option for section "%s": %s' % (section, option)
+                )
 
     def set_default_paths(self, config):
         sections = self.get_other_sections(config)
@@ -224,10 +331,11 @@ class ClusteringConfiguration:
             try:
                 alias, matrix = section.split()
             except:
-                raise ConfigError('Each section must have "alias" and "matrix" fields separated by '
-                                   'a white space.')
+                raise ConfigError(
+                    'Each section must have "alias" and "matrix" fields separated by '
+                    "a white space."
+                )
             self.matrix_paths[alias] = os.path.join(self.input_directory, matrix)
-
 
     def check_for_db_requests(self, config):
         sections = self.get_other_sections(config)
@@ -235,35 +343,49 @@ class ClusteringConfiguration:
         for section in sections:
             alias, matrix = section.split()
 
-            if matrix.find('::') > -1:
-                if matrix.startswith('!'):
-                    database, table = matrix.split('::')
+            if matrix.find("::") > -1:
+                if matrix.startswith("!"):
+                    database, table = matrix.split("::")
                     database = database[1:]
 
                     if database not in self.db_paths:
-                        raise ConfigError(f"Ehem. Anvi'o could not recover the actual path of the database (!{database}) referenced in the config file, "
-                                          f"because the database paths variable sent from the client does not have an entry for it :( There are two "
-                                          f"options. One is to get a `db_paths` dictionary sent to this class that contains a key for {database} with "
-                                          f"the full path to the dataase as a value. Or the table '{table}' can be exported to a TAB-delimited matrix "
-                                          f"and declared in the config file. If you are experimenting and got stuck here, we like you. Please send an "
-                                          f"e-mail to the developers.")
+                        raise ConfigError(
+                            f"Ehem. Anvi'o could not recover the actual path of the database (!{database}) referenced in the config file, "
+                            f"because the database paths variable sent from the client does not have an entry for it :( There are two "
+                            f"options. One is to get a `db_paths` dictionary sent to this class that contains a key for {database} with "
+                            f"the full path to the dataase as a value. Or the table '{table}' can be exported to a TAB-delimited matrix "
+                            f"and declared in the config file. If you are experimenting and got stuck here, we like you. Please send an "
+                            f"e-mail to the developers."
+                        )
 
                     database_path = self.db_paths[database]
                 else:
-                    database, table = matrix.split('::')
-                    database_path = os.path.abspath(self.db_paths[database]) if database in self.db_paths else os.path.abspath(database)
+                    database, table = matrix.split("::")
+                    database_path = (
+                        os.path.abspath(self.db_paths[database])
+                        if database in self.db_paths
+                        else os.path.abspath(database)
+                    )
 
                     # if its not there, let's try one more thing
                     if not os.path.exists(database_path):
-                        database_path = os.path.abspath(os.path.join(self.input_directory, database))
+                        database_path = os.path.abspath(
+                            os.path.join(self.input_directory, database)
+                        )
 
                 if not os.path.exists(database_path):
-                    raise ConfigError("The database you requested (%s) is not where it was supposed to be ('%s') :/" % (database, database_path))
+                    raise ConfigError(
+                        "The database you requested (%s) is not where it was supposed to be ('%s') :/"
+                        % (database, database_path)
+                    )
 
                 dbc = db.DB(database_path, None, ignore_version=True)
 
                 if not table in dbc.get_table_names():
-                    raise ConfigError('The table you requested (%s) does not seem to be in %s :/' % (table, database))
+                    raise ConfigError(
+                        "The table you requested (%s) does not seem to be in %s :/"
+                        % (table, database)
+                    )
 
                 # here we know we are working with a database table that we have access to. however, in anvi'o database
                 # tables in two forms: dataframe form, and matrix form. in dataframe form, we have key/value pairs rather
@@ -271,56 +393,75 @@ class ClusteringConfiguration:
                 # matrix the clustering module can work with, the former requires extra attention. so here we need to first
                 # figure out whether which form the table is in. why this even became necessary? taking a look at this issue
                 # may help: https://github.com/merenlab/anvio/issues/662
-                table_form = self.get_option(config, section, 'table_form', str)
+                table_form = self.get_option(config, section, "table_form", str)
 
-                if table_form == 'view':
-                    table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
+                if table_form == "view":
+                    table_rows, _ = dbc.get_view_data(
+                        table, split_names_of_interest=self.row_ids_of_interest
+                    )
                 else:
                     if self.row_ids_of_interest:
-                        if table_form == 'dataframe':
-                            raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
-                                              "refernced from a clustering recipe is in dataframe form :(")
+                        if table_form == "dataframe":
+                            raise ConfigError(
+                                "Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
+                                "refernced from a clustering recipe is in dataframe form :("
+                            )
                         column_name = dbc.get_table_structure(table)[0]
-                        where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
-                        table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                        where_clause = """%s IN (%s)""" % (
+                            column_name,
+                            ",".join(['"%s"' % _ for _ in self.row_ids_of_interest]),
+                        )
+                        table_rows = dbc.get_some_rows_from_table(
+                            table, where_clause=where_clause
+                        )
                     else:
                         table_rows = dbc.get_all_rows_from_table(table)
 
                 if not len(table_rows):
-                    raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This "
-                                       "is not good. Here is the section that is not working for you: '%s' :/" \
-                                                                % (table, section))
+                    raise ConfigError(
+                        "It seems the table '%s' in the database it was requested from is empty. This "
+                        "is not good. Here is the section that is not working for you: '%s' :/"
+                        % (table, section)
+                    )
 
                 tmp_file_path = filesnpaths.get_temp_file_path()
 
                 # time to differentially store table contents.
-                if table_form == 'dataframe':
-                    args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
+                if table_form == "dataframe":
+                    args = argparse.Namespace(
+                        pan_or_profile_db=database_path, table_name=table
+                    )
                     table = TableForItemAdditionalData(args)
                     table_keys_list, table_data_dict = table.get()
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
-                elif table_form == 'view':
+                elif table_form == "view":
                     store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
                 else:
                     table_structure = dbc.get_table_structure(table)
-                    columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
-                    store_array(table_rows, tmp_file_path, table_structure, exclude_columns=columns_to_exclude)
+                    columns_to_exclude = [
+                        c for c in ["entry_id", "sample_id"] if c in table_structure
+                    ]
+                    store_array(
+                        table_rows,
+                        tmp_file_path,
+                        table_structure,
+                        exclude_columns=columns_to_exclude,
+                    )
 
                 self.matrix_paths[alias] = tmp_file_path
 
                 dbc.disconnect()
 
-
     def sanity_check(self, config):
         filesnpaths.is_file_exists(self.input_directory)
 
-        if 'general' not in config.sections():
+        if "general" not in config.sections():
             raise ConfigError("[general] section is mandatory.")
 
         if len(config.sections()) < 2:
             raise ConfigError("Config file must contain at least one matrix section.")
 
-        self.check_section(config, 'general', 'general')
+        self.check_section(config, "general", "general")
 
         sections = self.get_other_sections(config)
 
@@ -328,26 +469,46 @@ class ClusteringConfiguration:
             alias, matrix = section.split()
 
             if not os.path.exists(self.matrix_paths[alias]):
-                raise ConfigError('The matrix file "%s" you mentioned in %s has not been found in the '
-                                   'input directory :/' % (matrix, os.path.basename(self.config_file_path)))
+                raise ConfigError(
+                    'The matrix file "%s" you mentioned in %s has not been found in the '
+                    "input directory :/"
+                    % (matrix, os.path.basename(self.config_file_path))
+                )
 
-            self.check_section(config, section, 'matrix')
+            self.check_section(config, section, "matrix")
 
             # it is not very elegant to do this here, but carrying this test in the template was going to
             # cause a lot of uncalled for complexity (or reporting was going to be very vague):
-            columns_to_use_str = self.get_option(config, section, 'columns_to_use', str)
-            columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
-            if columns_to_use and not cols_present(columns_to_use, self.matrix_paths[alias]):
-                raise ConfigError('One or more of the columns declared for "%s" in the config file '
-                                   'seem(s) to be missing in the matrix :/' % (matrix))
-
+            columns_to_use_str = self.get_option(config, section, "columns_to_use", str)
+            columns_to_use = (
+                [c.strip() for c in columns_to_use_str.split(",")]
+                if columns_to_use_str
+                else None
+            )
+            if columns_to_use and not cols_present(
+                columns_to_use, self.matrix_paths[alias]
+            ):
+                raise ConfigError(
+                    'One or more of the columns declared for "%s" in the config file '
+                    "seem(s) to be missing in the matrix :/" % (matrix)
+                )
 
         # 'ratio' must be defined either for all, or for none of the matrices
-        with_ratio = len([True for section in sections if self.get_option(config, section, 'ratio', int)])
+        with_ratio = len(
+            [
+                True
+                for section in sections
+                if self.get_option(config, section, "ratio", int)
+            ]
+        )
         if with_ratio and with_ratio != len(sections):
-            raise ConfigError('Ratio value must be defined either for all, or none of the matrices. In your '
-                               'configuration only %d of %d matrices have ratio values defined. Either remove '
-                               'all, or complete the remaining one%s.' % (with_ratio, len(sections),
-                                                                          's' if (len(sections) - with_ratio) > 1 else ''))
-
-
+            raise ConfigError(
+                "Ratio value must be defined either for all, or none of the matrices. In your "
+                "configuration only %d of %d matrices have ratio values defined. Either remove "
+                "all, or complete the remaining one%s."
+                % (
+                    with_ratio,
+                    len(sections),
+                    "s" if (len(sections) - with_ratio) > 1 else "",
+                )
+            )

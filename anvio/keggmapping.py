@@ -46,23 +46,21 @@ __status__ = "Development"
 # The colors of qualitative and repeating colormaps are sampled in order, whereas other colormaps,
 # including sequential colormaps, are sampled evenly.
 qualitative_colormaps: List[str] = [
-    'Pastel1',
-    'Pastel2',
-    'Paired',
-    'Accent',
-    'Dark2',
-    'Set1',
-    'Set2',
-    'Set3',
-    'tab10',
-    'tab20',
-    'tab20b',
-    'tab20c'
+    "Pastel1",
+    "Pastel2",
+    "Paired",
+    "Accent",
+    "Dark2",
+    "Set1",
+    "Set2",
+    "Set3",
+    "tab10",
+    "tab20",
+    "tab20b",
+    "tab20c",
 ]
-repeating_colormaps: List[str] = [
-    'flag',
-    'prism'
-]
+repeating_colormaps: List[str] = ["flag", "prism"]
+
 
 class Mapper:
     """
@@ -117,6 +115,7 @@ class Mapper:
         'Bio.Graphics.KGML_vis.KGMLCanvas' have the effect of obscuring underlying drawings of
         compound structures in the base map image.
     """
+
     def __init__(
         self,
         kegg_dir: str = None,
@@ -125,7 +124,7 @@ class Mapper:
         categorize_files: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress(),
-        quiet: bool = QUIET
+        quiet: bool = QUIET,
     ) -> None:
         """
         Parameters
@@ -169,7 +168,7 @@ class Mapper:
 
         available_pathway_numbers: List[str] = []
         for row in pd.read_csv(
-            self.kegg_context.kegg_map_image_kgml_file, sep='\t', index_col=0
+            self.kegg_context.kegg_map_image_kgml_file, sep="\t", index_col=0
         ).itertuples():
             if row.KO + row.EC + row.RN == 0:
                 continue
@@ -178,7 +177,7 @@ class Mapper:
 
         pathway_names: Dict[str, str] = {}
         for pathway_number, pathway_name in pd.read_csv(
-            self.kegg_context.kegg_pathway_list_file, sep='\t', header=None
+            self.kegg_context.kegg_pathway_list_file, sep="\t", header=None
         ).itertuples(index=False):
             pathway_names[pathway_number[3:]] = pathway_name
         self.pathway_names = pathway_names
@@ -195,7 +194,9 @@ class Mapper:
 
         self.name_files = name_files
         self.categorize_files = categorize_files
-        self.pathway_categorization = self._categorize_pathways() if categorize_files else None
+        self.pathway_categorization = (
+            self._categorize_pathways() if categorize_files else None
+        )
         self.overwrite_output = overwrite_output
         self.run = run
         self.progress = progress
@@ -206,8 +207,8 @@ class Mapper:
         contigs_db: str,
         output_dir: str,
         pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        color_hexcode: str = "#2ca02c",
+        draw_maps_lacking_kos: bool = False,
     ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting KOs present in the contigs database.
@@ -252,10 +253,7 @@ class Mapper:
 
         cdb = ContigsDatabase(contigs_db)
         ko_ids = cdb.db.get_single_column_from_table(
-            'gene_functions',
-            'accession',
-            unique=True,
-            where_clause='source = "KOfam"'
+            "gene_functions", "accession", unique=True, where_clause='source = "KOfam"'
         )
         self.progress.end()
 
@@ -264,7 +262,7 @@ class Mapper:
             output_dir,
             pathway_numbers=pathway_numbers,
             color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            draw_maps_lacking_kos=draw_maps_lacking_kos,
         )
         count = sum(drawn.values()) if drawn else 0
         self.run.info("Number of maps drawn", count)
@@ -277,8 +275,8 @@ class Mapper:
         genome_name: str,
         output_dir: str,
         pathway_numbers: Iterable[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        color_hexcode: str = "#2ca02c",
+        draw_maps_lacking_kos: bool = False,
     ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting KOs present in the genome.
@@ -327,15 +325,15 @@ class Mapper:
         gsdb = GenomeStorage(
             genomes_storage_db,
             genome_names_to_focus=[genome_name],
-            function_annotation_sources=['KOfam'],
+            function_annotation_sources=["KOfam"],
             run=terminal.Run(verbose=False),
-            progress=terminal.Progress(verbose=False)
+            progress=terminal.Progress(verbose=False),
         )
         ko_ids = gsdb.db.get_single_column_from_table(
-            'gene_function_calls',
-            'accession',
+            "gene_function_calls",
+            "accession",
             unique=True,
-            where_clause=f'genome_name = "{genome_name}" AND source = "KOfam"'
+            where_clause=f'genome_name = "{genome_name}" AND source = "KOfam"',
         )
         self.progress.end()
 
@@ -344,7 +342,7 @@ class Mapper:
             output_dir,
             pathway_numbers=pathway_numbers,
             color_hexcode=color_hexcode,
-            draw_maps_lacking_kos=draw_maps_lacking_kos
+            draw_maps_lacking_kos=draw_maps_lacking_kos,
         )
         count = sum(drawn.values()) if drawn else 0
         self.run.info("Number of maps drawn", count)
@@ -362,14 +360,14 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        colormap_scheme: Literal["by_count", "by_membership"] = None,
         reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
-        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        color_hexcode: str = "#2ca02c",
+        group_colormap: Union[str, mcolors.Colormap] = "plasma_r",
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
-    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        draw_maps_lacking_kos: bool = False,
+    ) -> Dict[Literal["unified", "individual", "grid"], Dict]:
         """
         Draw pathway maps, highlighting KOs across contigs databases (representing, for example,
         genomes or metagenomes) or groups of databases (representing, for example, taxonomic
@@ -575,7 +573,7 @@ class Mapper:
         for contigs_db in contigs_dbs:
             contigs_db_info = dbinfo.ContigsDBInfo(contigs_db)
             self_table = contigs_db_info.get_self_table()
-            project_name = self_table['project_name']
+            project_name = self_table["project_name"]
             assert project_name not in project_name_contigs_db
             project_name_contigs_db[project_name] = contigs_db
             contigs_db_project_name[contigs_db] = project_name
@@ -583,9 +581,8 @@ class Mapper:
         self.progress.end()
 
         # Load groups.
-        if (
-            (groups_txt is None and group_threshold is not None) or
-            (groups_txt is not None and group_threshold is None)
+        if (groups_txt is None and group_threshold is not None) or (
+            groups_txt is not None and group_threshold is None
         ):
             raise ConfigError(
                 "To group contigs databases, arguments to both 'groups_txt' and 'group_threshold' "
@@ -612,7 +609,8 @@ class Mapper:
             # Check that groups include all contigs databases. Relate groups and project names.
             if groups_txt is not None:
                 source_abspath_group = {
-                    os.path.abspath(source): group for source, group in source_group.items()
+                    os.path.abspath(source): group
+                    for source, group in source_group.items()
                 }
                 ungrouped_contigs_dbs: List[str] = []
                 for contigs_db in contigs_dbs:
@@ -631,7 +629,9 @@ class Mapper:
                     project_name_group[project_name] = group
 
                 if ungrouped_contigs_dbs:
-                    message = ', '.join([f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs])
+                    message = ", ".join(
+                        [f"'{contigs_db}'" for contigs_db in ungrouped_contigs_dbs]
+                    )
                     raise ConfigError(
                         "The following 'contigs_dbs' were not found in the groups provided by "
                         f"'groups_txt': {message}"
@@ -639,13 +639,15 @@ class Mapper:
 
             # Report contigs databases in 'groups_txt' that are not among the input databases.
             missing_sources: List[str] = []
-            contigs_db_abspaths = [os.path.abspath(contigs_db) for contigs_db in contigs_dbs]
+            contigs_db_abspaths = [
+                os.path.abspath(contigs_db) for contigs_db in contigs_dbs
+            ]
             for source in source_group:
                 source_abspath = os.path.abspath(source)
                 if source_abspath not in contigs_db_abspaths:
                     missing_sources.append(source)
             if missing_sources:
-                message = ', '.join([f"'{source}'" for source in missing_sources])
+                message = ", ".join([f"'{source}'" for source in missing_sources])
                 self.run.warning(
                     "The following contigs databases were grouped in 'groups_txt' but are not "
                     f"found among input 'contigs_dbs', and so will not factor into maps: {message}"
@@ -660,7 +662,9 @@ class Mapper:
                     if project_name not in project_name_contigs_db:
                         unrecognized_project_names.append(project_name)
                 if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
+                    message = ", ".join(
+                        [f"'{name}'" for name in unrecognized_project_names]
+                    )
                     raise ConfigError(
                         "Individual maps were requested for a subset of contigs databases, but the "
                         "following project names were not recognized as corresponding to any of "
@@ -672,7 +676,7 @@ class Mapper:
                     if group not in group_sources:
                         unrecognized_groups.append(group)
                 if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    message = ", ".join([f"'{group}'" for group in unrecognized_groups])
                     raise ConfigError(
                         "Individual maps were requested for a subset of contigs database groups, "
                         "but the following group names were not among those provided in "
@@ -688,7 +692,9 @@ class Mapper:
                     if project_name not in project_name_contigs_db:
                         unrecognized_project_names.append(project_name)
                 if unrecognized_project_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_project_names])
+                    message = ", ".join(
+                        [f"'{name}'" for name in unrecognized_project_names]
+                    )
                     raise ConfigError(
                         "Individual maps in grids were requested for a subset of contigs "
                         "databases, but the following project names were not recognized as "
@@ -700,7 +706,7 @@ class Mapper:
                     if group not in group_sources:
                         unrecognized_groups.append(group)
                 if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    message = ", ".join([f"'{group}'" for group in unrecognized_groups])
                     raise ConfigError(
                         "Individual maps in grids were requested for a subset of contigs database "
                         "groups, but the following group names were not among those provided in "
@@ -713,30 +719,30 @@ class Mapper:
         # Set the colormap scheme.
         ignore_groups = False
         if colormap is False:
-            scheme = 'static'
+            scheme = "static"
             if groups_txt is not None:
                 ignore_groups = True
         else:
             if colormap_scheme is None:
                 if len(categories) < 4:
-                    scheme = 'by_membership'
+                    scheme = "by_membership"
                 else:
-                    scheme = 'by_count'
-            elif colormap_scheme == 'by_count':
-                scheme = 'by_count'
-            elif colormap_scheme == 'by_membership':
-                scheme = 'by_membership'
+                    scheme = "by_count"
+            elif colormap_scheme == "by_count":
+                scheme = "by_count"
+            elif colormap_scheme == "by_membership":
+                scheme = "by_membership"
             else:
                 raise AssertionError
 
         # Set the colormap.
         if colormap is True:
-            if scheme == 'by_count':
-                cmap = plt.colormaps['plasma_r']
+            if scheme == "by_count":
+                cmap = plt.colormaps["plasma_r"]
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_membership':
-                cmap = plt.colormaps['tab10']
+            elif scheme == "by_membership":
+                cmap = plt.colormaps["tab10"]
                 if colormap_limits is None:
                     colormap_limits = (0.0, 1.0)
             else:
@@ -759,26 +765,29 @@ class Mapper:
             sampling = None
         else:
             if cmap.name in qualitative_colormaps + repeating_colormaps:
-                sampling = 'in_order'
+                sampling = "in_order"
             else:
-                sampling = 'even'
+                sampling = "even"
 
         # Trim the colormap.
-        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
+        if (
+            cmap is not None
+            and colormap_limits is not None
+            and colormap_limits != (0.0, 1.0)
+        ):
             lower_limit = colormap_limits[0]
             upper_limit = colormap_limits[1]
             assert 0.0 <= lower_limit <= upper_limit <= 1.0
             cmap = mcolors.LinearSegmentedColormap.from_list(
-                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
+                f"trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})",
+                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N))),
             )
 
         # Set and trim the colormap for individual group maps.
         group_cmap = None
         poor_colormap = False
-        if (
-            groups_txt is not None and
-            (draw_individual_files is not False or draw_grid is not False)
+        if groups_txt is not None and (
+            draw_individual_files is not False or draw_grid is not False
         ):
             if isinstance(group_colormap, str):
                 group_cmap = plt.colormaps[group_colormap]
@@ -795,10 +804,13 @@ class Mapper:
                 upper_limit = group_colormap_limits[1]
                 assert 0.0 <= lower_limit <= upper_limit <= 1.0
                 group_cmap = mcolors.LinearSegmentedColormap.from_list(
-                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                    group_cmap(range(
-                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
-                    ))
+                    f"trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})",
+                    group_cmap(
+                        range(
+                            int(lower_limit * group_cmap.N),
+                            math.ceil(upper_limit * group_cmap.N),
+                        )
+                    ),
                 )
 
         self.progress.end()
@@ -826,10 +838,10 @@ class Mapper:
         for project_name, contigs_db in project_name_contigs_db.items():
             cdb = ContigsDatabase(contigs_db)
             for ko_id in cdb.db.get_single_column_from_table(
-                'gene_functions',
-                'accession',
+                "gene_functions",
+                "accession",
                 unique=True,
-                where_clause='source = "KOfam"'
+                where_clause='source = "KOfam"',
             ):
                 try:
                     ko_project_names[ko_id].append(project_name)
@@ -839,51 +851,57 @@ class Mapper:
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, "kos", patterns=pathway_numbers)
 
-        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+        filesnpaths.gen_output_directory(
+            output_dir, progress=self.progress, run=self.run
+        )
 
-        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
-            'unified': {},
-            'individual': {},
-            'grid': {}
+        drawn: Dict[Literal["unified", "individual", "grid"], Dict] = {
+            "unified": {},
+            "individual": {},
+            "grid": {},
         }
 
-        self.progress.new("Drawing 'unified' map incorporating data from all contigs databases")
+        self.progress.new(
+            "Drawing 'unified' map incorporating data from all contigs databases"
+        )
 
         exceeds_colors: Tuple[int, int] = None
-        if scheme == 'static':
+        if scheme == "static":
             # Draw unified maps of all contigs databases with static reaction colors.
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
-                if color_hexcode == 'original':
-                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
-                        pathway_number,
-                        ko_project_names,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                if color_hexcode == "original":
+                    drawn["unified"][pathway_number] = (
+                        self._draw_map_kos_original_color(
+                            pathway_number,
+                            ko_project_names,
+                            output_dir,
+                            draw_map_lacking_kos=draw_maps_lacking_kos,
+                        )
                     )
                 else:
-                    drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
+                    drawn["unified"][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
                         ko_project_names,
                         color_hexcode,
                         output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                        draw_map_lacking_kos=draw_maps_lacking_kos,
                     )
         else:
             # Draw unified maps with dynamic coloring by membership in contigs databases or groups.
             assert cmap is not None
             color_priority: Dict[str, float] = {}
-            if scheme == 'by_count':
+            if scheme == "by_count":
                 # Sample the colormap for colors representing each possible number of contigs
                 # databases or groups. Lower color values correspond to fewer databases/groups.
-                if sampling == 'in_order':
+                if sampling == "in_order":
                     if len(categories) == 1:
                         sample_points = range(1, 2)
                     else:
                         sample_points = range(len(categories))
-                elif sampling == 'even':
+                elif sampling == "even":
                     if len(categories) == 1:
                         sample_points = np.linspace(1, 1, 1)
                     else:
@@ -896,11 +914,15 @@ class Mapper:
 
                 for sample_point in sample_points:
                     if reverse_overlay:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            1 - sample_point
+                        )
                     else:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            sample_point
+                        )
                 category_combos = None
-            elif scheme == 'by_membership':
+            elif scheme == "by_membership":
                 # Sample the colormap for colors representing the different contigs databases or
                 # groups and their combinations. Lower color values correspond to fewer
                 # databases/groups.
@@ -911,11 +933,13 @@ class Mapper:
                             combinations(project_name_contigs_db, category_count)
                         )
                     else:
-                        category_combos += list(combinations(categories, category_count))
+                        category_combos += list(
+                            combinations(categories, category_count)
+                        )
 
-                if sampling == 'in_order':
+                if sampling == "in_order":
                     sample_points = range(len(category_combos))
-                elif sampling == 'even':
+                elif sampling == "even":
                     sample_points = np.linspace(0, 1, len(category_combos))
                 else:
                     raise AssertionError
@@ -925,37 +949,35 @@ class Mapper:
 
                 for sample_point in sample_points:
                     if reverse_overlay:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = 1 - sample_point / cmap.N
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            1 - sample_point / cmap.N
+                        )
                     else:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = (sample_point + 1) / cmap.N
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            sample_point + 1
+                        ) / cmap.N
             else:
                 raise AssertionError
 
             # Draw a colorbar in a separate file.
             _draw_colorbar = self.colorbar_drawer.draw
-            if scheme == 'by_count':
+            if scheme == "by_count":
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
                     color_labels=range(1, len(categories) + 1),
-                    label='database count' if groups_txt is None else 'group count'
+                    label="database count" if groups_txt is None else "group count",
                 )
-            elif scheme == 'by_membership':
+            elif scheme == "by_membership":
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
-                    color_labels=[', '.join(combo) for combo in category_combos],
-                    label='databases' if groups_txt is None else 'groups'
+                    color_labels=[", ".join(combo) for combo in category_combos],
+                    label="databases" if groups_txt is None else "groups",
                 )
-            _draw_colorbar(
-                color_priority, os.path.join(output_dir, 'colorbar.pdf')
-            )
+            _draw_colorbar(color_priority, os.path.join(output_dir, "colorbar.pdf"))
 
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
-                drawn['unified'][pathway_number] = self._draw_map_kos_membership(
+                drawn["unified"][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
                     ko_project_names,
                     color_priority,
@@ -963,7 +985,7 @@ class Mapper:
                     category_combos=category_combos,
                     group_sources=None if groups_txt is None else group_project_names,
                     group_threshold=None if groups_txt is None else group_threshold,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_kos=draw_maps_lacking_kos,
                 )
 
         self.progress.end()
@@ -976,7 +998,7 @@ class Mapper:
 
         if draw_individual_files is False and draw_grid is False:
             # Our work here is done.
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            count = sum(drawn["unified"].values()) if drawn["unified"] else 0
             self.run.info("Number of maps drawn", count)
 
             return drawn
@@ -993,7 +1015,8 @@ class Mapper:
             draw_files_categories = draw_individual_files
         seen = set()
         draw_files_categories = [
-            category for category in list(draw_files_categories)
+            category
+            for category in list(draw_files_categories)
             if not (category in seen or seen.add(category))
         ]
 
@@ -1009,13 +1032,15 @@ class Mapper:
             draw_grid_categories = draw_grid
         seen = set()
         draw_grid_categories = [
-            category for category in list(draw_grid_categories)
+            category
+            for category in list(draw_grid_categories)
             if not (category in seen or seen.add(category))
         ]
 
         seen = set()
         draw_categories = [
-            category for category in draw_files_categories + draw_grid_categories
+            category
+            for category in draw_files_categories + draw_grid_categories
             if not (category in seen or seen.add(category))
         ]
 
@@ -1065,7 +1090,7 @@ class Mapper:
                     if group_reverse_overlay:
                         inner_color_priority[
                             mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = 1 - sample_point
+                        ] = (1 - sample_point)
                     else:
                         inner_color_priority[
                             mcolors.rgb2hex(group_cmap(sample_point))
@@ -1081,12 +1106,12 @@ class Mapper:
                 self.progress = terminal.Progress(verbose=False)
                 run = self.run
                 self.run = terminal.Run(verbose=False)
-                drawn['individual'][project_name] = self.map_contigs_database_kos(
+                drawn["individual"][project_name] = self.map_contigs_database_kos(
                     project_name_contigs_db[project_name],
                     os.path.join(output_dir, project_name),
                     pathway_numbers=pathway_numbers,
                     color_hexcode=color_hexcode,
-                    draw_maps_lacking_kos=draw_maps_lacking_kos
+                    draw_maps_lacking_kos=draw_maps_lacking_kos,
                 )
                 self.progress = progress
                 self.run = run
@@ -1107,9 +1132,9 @@ class Mapper:
 
                 self.colorbar_drawer.draw(
                     group_color_priority[group],
-                    os.path.join(output_dir, group, 'colorbar.pdf'),
+                    os.path.join(output_dir, group, "colorbar.pdf"),
                     color_labels=range(1, len(group_sources[group]) + 1),
-                    label='database count'
+                    label="database count",
                 )
 
                 drawn_group: Dict[str, bool] = {}
@@ -1119,9 +1144,9 @@ class Mapper:
                         group_ko_project_names[group],
                         group_color_priority[group],
                         group_output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                        draw_map_lacking_kos=draw_maps_lacking_kos,
                     )
-                drawn['individual'][group] = drawn_group
+                drawn["individual"][group] = drawn_group
 
                 self.progress = progress
                 self.run = run
@@ -1134,17 +1159,21 @@ class Mapper:
             else:
                 category_message = "groups"
 
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            count = sum(drawn["unified"].values()) if drawn["unified"] else 0
             self.run.info(
                 f"Number of 'unified' maps drawn incorporating data from all {category_message}",
-                count
+                count,
             )
 
-            if not drawn['individual']:
+            if not drawn["individual"]:
                 count = 0
             else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+                count = sum(
+                    [sum(d.values()) if d else 0 for d in drawn["individual"].values()]
+                )
+            self.run.info(
+                f"Number of maps drawn for individual {category_message}", count
+            )
 
             return drawn
 
@@ -1158,7 +1187,7 @@ class Mapper:
             group_sources=group_sources,
             group_color_priority=group_color_priority,
             check_maps_lacking_kos=not draw_maps_lacking_kos,
-            source_type='contigs database'
+            source_type="contigs database",
         )
 
         # Our work here is done.
@@ -1167,19 +1196,24 @@ class Mapper:
         else:
             category_message = "groups"
 
-        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+        count = sum(drawn["unified"].values()) if drawn["unified"] else 0
         self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
+            f"Number of 'unified' maps drawn incorporating data from all {category_message}",
+            count,
         )
 
         if draw_individual_files:
-            if not drawn['individual']:
+            if not drawn["individual"]:
                 count = 0
             else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+                count = sum(
+                    [sum(d.values()) if d else 0 for d in drawn["individual"].values()]
+                )
+            self.run.info(
+                f"Number of maps drawn for individual {category_message}", count
+            )
 
-        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
+        count = sum(drawn["grid"].values()) if drawn["grid"] else 0
         self.run.info("Number of map grids drawn", count)
 
         return drawn
@@ -1198,14 +1232,14 @@ class Mapper:
         draw_grid: Union[Iterable[str], bool] = False,
         colormap: Union[bool, str, mcolors.Colormap] = True,
         colormap_limits: Tuple[float, float] = None,
-        colormap_scheme: Literal['by_count', 'by_membership'] = None,
+        colormap_scheme: Literal["by_count", "by_membership"] = None,
         reverse_overlay: bool = False,
-        color_hexcode: str = '#2ca02c',
-        group_colormap: Union[str, mcolors.Colormap] = 'plasma_r',
+        color_hexcode: str = "#2ca02c",
+        group_colormap: Union[str, mcolors.Colormap] = "plasma_r",
         group_colormap_limits: Tuple[float, float] = (0.1, 0.9),
         group_reverse_overlay: bool = False,
-        draw_maps_lacking_kos: bool = False
-    ) -> Dict[Literal['unified', 'individual', 'grid'], Dict]:
+        draw_maps_lacking_kos: bool = False,
+    ) -> Dict[Literal["unified", "individual", "grid"], Dict]:
         """
         Draw pathway maps, highlighting consensus KOs of gene clusters across genomes or groups
         of genomes (representing, for example, taxa or geographical groups).
@@ -1419,12 +1453,12 @@ class Mapper:
         # Load pan database metadata.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
-        all_genome_names: List[str] = self_table['external_genome_names'].split(',')
+        all_genome_names: List[str] = self_table["external_genome_names"].split(",")
 
         # Parameterize how consensus KOs are found.
         use_network_consensus_threshold = False
         if consensus_threshold is None:
-            consensus_threshold = self_table['reaction_network_consensus_threshold']
+            consensus_threshold = self_table["reaction_network_consensus_threshold"]
             if consensus_threshold is not None:
                 consensus_threshold = float(consensus_threshold)
                 assert 0 <= consensus_threshold <= 1
@@ -1432,7 +1466,7 @@ class Mapper:
 
         use_network_discard_ties = False
         if discard_ties is None:
-            discard_ties = self_table['reaction_network_discard_ties']
+            discard_ties = self_table["reaction_network_discard_ties"]
             if discard_ties is None:
                 discard_ties = False
             else:
@@ -1458,9 +1492,8 @@ class Mapper:
             )
 
         # Load groups.
-        if (
-            (groups_txt is None and group_threshold is not None) or
-            (groups_txt is not None and group_threshold is None)
+        if (groups_txt is None and group_threshold is not None) or (
+            groups_txt is not None and group_threshold is None
         ):
             raise ConfigError(
                 "To group genomes, arguments to both 'groups_txt' and 'group_threshold' must be "
@@ -1503,7 +1536,9 @@ class Mapper:
                     genome_group[genome_name] = group
 
                 if ungrouped_genomes:
-                    message = ', '.join([f"'{genome_name}'" for genome_name in ungrouped_genomes])
+                    message = ", ".join(
+                        [f"'{genome_name}'" for genome_name in ungrouped_genomes]
+                    )
                     raise ConfigError(
                         "The following 'pan_db' genomes were not found in the groups provided by "
                         f"'groups_txt': {message}"
@@ -1515,7 +1550,7 @@ class Mapper:
                 if source not in all_genome_names:
                     missing_sources.append(source)
             if missing_sources:
-                message = ', '.join([f"'{source}'" for source in missing_sources])
+                message = ", ".join([f"'{source}'" for source in missing_sources])
                 self.run.warning(
                     "The following genomes were grouped in 'groups_txt' but are not found among "
                     f"'pan_db' genomes, and so will not factor into maps: {message}"
@@ -1530,7 +1565,9 @@ class Mapper:
                     if genome_name not in all_genome_names:
                         unrecognized_genome_names.append(genome_name)
                 if unrecognized_genome_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
+                    message = ", ".join(
+                        [f"'{name}'" for name in unrecognized_genome_names]
+                    )
                     raise ConfigError(
                         "Individual maps were requested for a subset of genomes, but the following "
                         "genome names were not recognized as corresponding to any of those in the "
@@ -1542,7 +1579,7 @@ class Mapper:
                     if group not in group_sources:
                         unrecognized_groups.append(group)
                 if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    message = ", ".join([f"'{group}'" for group in unrecognized_groups])
                     raise ConfigError(
                         "Individual maps were requested for a subset of genome groups, but the "
                         "following group names were not among those provided in 'groups_txt': "
@@ -1558,7 +1595,9 @@ class Mapper:
                     if genome_name not in all_genome_names:
                         unrecognized_genome_names.append(genome_name)
                 if unrecognized_genome_names:
-                    message = ', '.join([f"'{name}'" for name in unrecognized_genome_names])
+                    message = ", ".join(
+                        [f"'{name}'" for name in unrecognized_genome_names]
+                    )
                     raise ConfigError(
                         "Individual maps in grids were requested for a subset of genomes, but the "
                         "following genome names were not recognized as corresponding to any of "
@@ -1570,7 +1609,7 @@ class Mapper:
                     if group not in group_sources:
                         unrecognized_groups.append(group)
                 if unrecognized_groups:
-                    message = ', '.join([f"'{group}'" for group in unrecognized_groups])
+                    message = ", ".join([f"'{group}'" for group in unrecognized_groups])
                     raise ConfigError(
                         "Individual maps in grids were requested for a subset of genome groups, "
                         "but the following group names were not among those provided in "
@@ -1583,30 +1622,30 @@ class Mapper:
         # Set the colormap scheme.
         ignore_groups = False
         if colormap is False:
-            scheme = 'static'
+            scheme = "static"
             if groups_txt is not None:
                 ignore_groups = True
         else:
             if colormap_scheme is None:
                 if len(categories) < 4:
-                    scheme = 'by_membership'
+                    scheme = "by_membership"
                 else:
-                    scheme = 'by_count'
-            elif colormap_scheme == 'by_count':
-                scheme = 'by_count'
-            elif colormap_scheme == 'by_membership':
-                scheme = 'by_membership'
+                    scheme = "by_count"
+            elif colormap_scheme == "by_count":
+                scheme = "by_count"
+            elif colormap_scheme == "by_membership":
+                scheme = "by_membership"
             else:
                 raise AssertionError
 
         # Set the colormap.
         if colormap is True:
-            if scheme == 'by_count':
-                cmap = plt.colormaps['plasma_r']
+            if scheme == "by_count":
+                cmap = plt.colormaps["plasma_r"]
                 if colormap_limits is None:
                     colormap_limits = (0.1, 0.9)
-            elif scheme == 'by_membership':
-                cmap = plt.colormaps['tab10']
+            elif scheme == "by_membership":
+                cmap = plt.colormaps["tab10"]
                 if colormap_limits is None:
                     colormap_limits = (0.0, 1.0)
             else:
@@ -1629,26 +1668,29 @@ class Mapper:
             sampling = None
         else:
             if cmap.name in qualitative_colormaps + repeating_colormaps:
-                sampling = 'in_order'
+                sampling = "in_order"
             else:
-                sampling = 'even'
+                sampling = "even"
 
         # Trim the colormap.
-        if cmap is not None and colormap_limits is not None and colormap_limits != (0.0, 1.0):
+        if (
+            cmap is not None
+            and colormap_limits is not None
+            and colormap_limits != (0.0, 1.0)
+        ):
             lower_limit = colormap_limits[0]
             upper_limit = colormap_limits[1]
             assert 0.0 <= lower_limit <= upper_limit <= 1.0
             cmap = mcolors.LinearSegmentedColormap.from_list(
-                f'trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N)))
+                f"trunc({cmap.name},{lower_limit:.2f},{upper_limit:.2f})",
+                cmap(range(int(lower_limit * cmap.N), math.ceil(upper_limit * cmap.N))),
             )
 
         # Set and trim the colormap for individual group maps.
         group_cmap = None
         poor_colormap = False
-        if (
-            groups_txt is not None and
-            (draw_individual_files is not False or draw_grid is not False)
+        if groups_txt is not None and (
+            draw_individual_files is not False or draw_grid is not False
         ):
             if isinstance(group_colormap, str):
                 group_cmap = plt.colormaps[group_colormap]
@@ -1665,10 +1707,13 @@ class Mapper:
                 upper_limit = group_colormap_limits[1]
                 assert 0.0 <= lower_limit <= upper_limit <= 1.0
                 group_cmap = mcolors.LinearSegmentedColormap.from_list(
-                    f'trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})',
-                    group_cmap(range(
-                        int(lower_limit * group_cmap.N), math.ceil(upper_limit * group_cmap.N)
-                    ))
+                    f"trunc({group_cmap.name},{lower_limit:.2f},{upper_limit:.2f})",
+                    group_cmap(
+                        range(
+                            int(lower_limit * group_cmap.N),
+                            math.ceil(upper_limit * group_cmap.N),
+                        )
+                    ),
                 )
 
         self.progress.end()
@@ -1705,17 +1750,22 @@ class Mapper:
         pan_super.init_gene_clusters_functions()
         pan_super.init_gene_clusters_functions_summary_dict()
         gene_clusters: Dict[str, Dict[str, List[int]]] = pan_super.gene_clusters
-        gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
+        gene_clusters_functions_summary_dict: Dict = (
+            pan_super.gene_clusters_functions_summary_dict
+        )
         self.progress = progress
         self.run = run
 
         # Find clusters with consensus KO annotations.
         consensus_cluster_kos: Dict[str, str] = {}
-        for cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
-            gene_cluster_ko_data = gene_cluster_functions_data['KOfam']
-            if gene_cluster_ko_data == {'function': None, 'accession': None}:
+        for (
+            cluster_id,
+            gene_cluster_functions_data,
+        ) in gene_clusters_functions_summary_dict.items():
+            gene_cluster_ko_data = gene_cluster_functions_data["KOfam"]
+            if gene_cluster_ko_data == {"function": None, "accession": None}:
                 continue
-            consensus_cluster_kos[cluster_id] = gene_cluster_ko_data['accession']
+            consensus_cluster_kos[cluster_id] = gene_cluster_ko_data["accession"]
         unique_consensus_kos: Set[str] = set(consensus_cluster_kos.values())
 
         # More than one gene cluster can be represented by the same consensus KO. Find which
@@ -1740,51 +1790,55 @@ class Mapper:
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, "kos", patterns=pathway_numbers)
 
-        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+        filesnpaths.gen_output_directory(
+            output_dir, progress=self.progress, run=self.run
+        )
 
-        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict] = {
-            'unified': {},
-            'individual': {},
-            'grid': {}
+        drawn: Dict[Literal["unified", "individual", "grid"], Dict] = {
+            "unified": {},
+            "individual": {},
+            "grid": {},
         }
 
         self.progress.new("Drawing 'unified' map incorporating data from all genomes")
 
         exceeds_colors: Tuple[int, int] = None
-        if scheme == 'static':
+        if scheme == "static":
             # Draw unified maps of all genomes with static reaction colors.
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
-                if color_hexcode == 'original':
-                    drawn['unified'][pathway_number] = self._draw_map_kos_original_color(
-                        pathway_number,
-                        unique_consensus_kos,
-                        output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                if color_hexcode == "original":
+                    drawn["unified"][pathway_number] = (
+                        self._draw_map_kos_original_color(
+                            pathway_number,
+                            unique_consensus_kos,
+                            output_dir,
+                            draw_map_lacking_kos=draw_maps_lacking_kos,
+                        )
                     )
                 else:
-                    drawn['unified'][pathway_number] = self._draw_map_kos_single_color(
+                    drawn["unified"][pathway_number] = self._draw_map_kos_single_color(
                         pathway_number,
                         unique_consensus_kos,
                         color_hexcode,
                         output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                        draw_map_lacking_kos=draw_maps_lacking_kos,
                     )
         else:
             # Draw unified maps with dynamic coloring by membership in genomes or groups.
             assert cmap is not None
             color_priority: Dict[str, float] = {}
-            if scheme == 'by_count':
+            if scheme == "by_count":
                 # Sample the colormap for colors representing each possible number of genomes or
                 # groups. Lower color values correspond to fewer genomes/groups.
-                if sampling == 'in_order':
+                if sampling == "in_order":
                     if len(categories) == 1:
                         sample_points = range(1, 2)
                     else:
                         sample_points = range(len(categories))
-                elif sampling == 'even':
+                elif sampling == "even":
                     if len(categories) == 1:
                         sample_points = np.linspace(1, 1, 1)
                     else:
@@ -1797,11 +1851,15 @@ class Mapper:
 
                 for sample_point in sample_points:
                     if reverse_overlay:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = 1 - sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            1 - sample_point
+                        )
                     else:
-                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = sample_point
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            sample_point
+                        )
                 category_combos = None
-            elif scheme == 'by_membership':
+            elif scheme == "by_membership":
                 # Sample the colormap for colors representing the different genomes or groups and
                 # their combinations. Lower color values correspond to fewer genomes/groups.
                 category_combos = []
@@ -1811,11 +1869,13 @@ class Mapper:
                             combinations(all_genome_names, category_count)
                         )
                     else:
-                        category_combos += list(combinations(categories, category_count))
+                        category_combos += list(
+                            combinations(categories, category_count)
+                        )
 
-                if sampling == 'in_order':
+                if sampling == "in_order":
                     sample_points = range(len(category_combos))
-                elif sampling == 'even':
+                elif sampling == "even":
                     sample_points = np.linspace(0, 1, len(category_combos))
                 else:
                     raise AssertionError
@@ -1825,37 +1885,35 @@ class Mapper:
 
                 for sample_point in sample_points:
                     if reverse_overlay:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = 1 - sample_point / cmap.N
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            1 - sample_point / cmap.N
+                        )
                     else:
-                        color_priority[
-                            mcolors.rgb2hex(cmap(sample_point))
-                        ] = (sample_point + 1) / cmap.N
+                        color_priority[mcolors.rgb2hex(cmap(sample_point))] = (
+                            sample_point + 1
+                        ) / cmap.N
             else:
                 raise AssertionError
 
             # Draw a colorbar in a separate file.
             _draw_colorbar = self.colorbar_drawer.draw
-            if scheme == 'by_count':
+            if scheme == "by_count":
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
                     color_labels=range(1, len(categories) + 1),
-                    label='genome count' if groups_txt is None else 'group count'
+                    label="genome count" if groups_txt is None else "group count",
                 )
-            elif scheme == 'by_membership':
+            elif scheme == "by_membership":
                 _draw_colorbar = functools.partial(
                     _draw_colorbar,
-                    color_labels=[', '.join(combo) for combo in category_combos],
-                    label='genomes' if groups_txt is None else 'groups'
+                    color_labels=[", ".join(combo) for combo in category_combos],
+                    label="genomes" if groups_txt is None else "groups",
                 )
-            _draw_colorbar(
-                color_priority, os.path.join(output_dir, 'colorbar.pdf')
-            )
+            _draw_colorbar(color_priority, os.path.join(output_dir, "colorbar.pdf"))
 
             for pathway_number in pathway_numbers:
                 self.progress.update(pathway_number)
-                drawn['unified'][pathway_number] = self._draw_map_kos_membership(
+                drawn["unified"][pathway_number] = self._draw_map_kos_membership(
                     pathway_number,
                     consensus_ko_genomes,
                     color_priority,
@@ -1863,7 +1921,7 @@ class Mapper:
                     category_combos=category_combos,
                     group_sources=None if groups_txt is None else group_genomes,
                     group_threshold=None if groups_txt is None else group_threshold,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_kos=draw_maps_lacking_kos,
                 )
 
         self.progress.end()
@@ -1876,7 +1934,7 @@ class Mapper:
 
         if draw_individual_files is False and draw_grid is False:
             # Our work here is done.
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            count = sum(drawn["unified"].values()) if drawn["unified"] else 0
             self.run.info("Number of maps drawn", count)
 
             return drawn
@@ -1893,7 +1951,8 @@ class Mapper:
             draw_files_categories = draw_individual_files
         seen = set()
         draw_files_categories = [
-            category for category in list(draw_files_categories)
+            category
+            for category in list(draw_files_categories)
             if not (category in seen or seen.add(category))
         ]
 
@@ -1909,13 +1968,15 @@ class Mapper:
             draw_grid_categories = draw_grid
         seen = set()
         draw_grid_categories = [
-            category for category in list(draw_grid_categories)
+            category
+            for category in list(draw_grid_categories)
             if not (category in seen or seen.add(category))
         ]
 
         seen = set()
         draw_categories = [
-            category for category in draw_files_categories + draw_grid_categories
+            category
+            for category in draw_files_categories + draw_grid_categories
             if not (category in seen or seen.add(category))
         ]
 
@@ -1937,7 +1998,9 @@ class Mapper:
                         # Use 'inner_' to distinguish from variable 'consensus_ko_genomes'.
                         inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
                     except KeyError:
-                        group_consensus_ko_genomes[group] = inner_consensus_ko_genomes = {}
+                        group_consensus_ko_genomes[group] = (
+                            inner_consensus_ko_genomes
+                        ) = {}
                     try:
                         inner_genome_names = inner_consensus_ko_genomes[ko_id]
                     except KeyError:
@@ -1967,7 +2030,7 @@ class Mapper:
                     if group_reverse_overlay:
                         inner_color_priority[
                             mcolors.rgb2hex(group_cmap(sample_point))
-                        ] = 1 - sample_point
+                        ] = (1 - sample_point)
                     else:
                         inner_color_priority[
                             mcolors.rgb2hex(group_cmap(sample_point))
@@ -1992,20 +2055,24 @@ class Mapper:
 
                 for pathway_number in pathway_numbers:
                     ko_ids = genome_consensus_kos[genome_name]
-                    if color_hexcode == 'original':
-                        drawn_category[pathway_number] = self._draw_map_kos_original_color(
-                            pathway_number,
-                            ko_ids,
-                            os.path.join(output_dir, genome_name),
-                            draw_map_lacking_kos=draw_maps_lacking_kos
+                    if color_hexcode == "original":
+                        drawn_category[pathway_number] = (
+                            self._draw_map_kos_original_color(
+                                pathway_number,
+                                ko_ids,
+                                os.path.join(output_dir, genome_name),
+                                draw_map_lacking_kos=draw_maps_lacking_kos,
+                            )
                         )
                     else:
-                        drawn_category[pathway_number] = self._draw_map_kos_single_color(
-                            pathway_number,
-                            ko_ids,
-                            color_hexcode,
-                            os.path.join(output_dir, genome_name),
-                            draw_map_lacking_kos=draw_maps_lacking_kos
+                        drawn_category[pathway_number] = (
+                            self._draw_map_kos_single_color(
+                                pathway_number,
+                                ko_ids,
+                                color_hexcode,
+                                os.path.join(output_dir, genome_name),
+                                draw_map_lacking_kos=draw_maps_lacking_kos,
+                            )
                         )
 
                 self.progress = progress
@@ -2027,9 +2094,9 @@ class Mapper:
 
                 self.colorbar_drawer.draw(
                     group_color_priority[group],
-                    os.path.join(output_dir, group, 'colorbar.pdf'),
+                    os.path.join(output_dir, group, "colorbar.pdf"),
                     color_labels=range(1, len(group_genomes[group]) + 1),
-                    label='genome count'
+                    label="genome count",
                 )
 
                 inner_consensus_ko_genomes = group_consensus_ko_genomes[group]
@@ -2040,13 +2107,13 @@ class Mapper:
                         inner_consensus_ko_genomes,
                         inner_color_priority,
                         group_output_dir,
-                        draw_map_lacking_kos=draw_maps_lacking_kos
+                        draw_map_lacking_kos=draw_maps_lacking_kos,
                     )
 
                 self.progress = progress
                 self.run = run
                 self.progress.end()
-            drawn['individual'][category] = drawn_category
+            drawn["individual"][category] = drawn_category
 
         if draw_grid == False:
             # Our work here is done.
@@ -2055,17 +2122,21 @@ class Mapper:
             else:
                 category_message = "groups"
 
-            count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+            count = sum(drawn["unified"].values()) if drawn["unified"] else 0
             self.run.info(
                 f"Number of 'unified' maps drawn incorporating data from all {category_message}",
-                count
+                count,
             )
 
-            if not drawn['individual']:
+            if not drawn["individual"]:
                 count = 0
             else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+                count = sum(
+                    [sum(d.values()) if d else 0 for d in drawn["individual"].values()]
+                )
+            self.run.info(
+                f"Number of maps drawn for individual {category_message}", count
+            )
 
             return drawn
 
@@ -2079,7 +2150,7 @@ class Mapper:
             group_sources=group_genomes,
             group_color_priority=group_color_priority,
             check_maps_lacking_kos=not draw_maps_lacking_kos,
-            source_type='pangenome'
+            source_type="pangenome",
         )
 
         # Our work here is done.
@@ -2088,19 +2159,24 @@ class Mapper:
         else:
             category_message = "groups"
 
-        count = sum(drawn['unified'].values()) if drawn['unified'] else 0
+        count = sum(drawn["unified"].values()) if drawn["unified"] else 0
         self.run.info(
-            f"Number of 'unified' maps drawn incorporating data from all {category_message}", count
+            f"Number of 'unified' maps drawn incorporating data from all {category_message}",
+            count,
         )
 
         if draw_individual_files:
-            if not drawn['individual']:
+            if not drawn["individual"]:
                 count = 0
             else:
-                count = sum([sum(d.values()) if d else 0 for d in drawn['individual'].values()])
-            self.run.info(f"Number of maps drawn for individual {category_message}", count)
+                count = sum(
+                    [sum(d.values()) if d else 0 for d in drawn["individual"].values()]
+                )
+            self.run.info(
+                f"Number of maps drawn for individual {category_message}", count
+            )
 
-        count = sum(drawn['grid'].values()) if drawn['grid'] else 0
+        count = sum(drawn["grid"].values()) if drawn["grid"] else 0
         self.run.info("Number of map grids drawn", count)
 
         return drawn
@@ -2110,8 +2186,8 @@ class Mapper:
         ko_ids: Iterable[str],
         output_dir: str,
         pathway_numbers: List[str] = None,
-        color_hexcode: str = '#2ca02c',
-        draw_maps_lacking_kos: bool = False
+        color_hexcode: str = "#2ca02c",
+        draw_maps_lacking_kos: bool = False,
     ) -> Dict[str, bool]:
         """
         Draw pathway maps, highlighting reactions containing select KOs in either a single color
@@ -2150,21 +2226,23 @@ class Mapper:
             False.
         """
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, "kos", patterns=pathway_numbers)
 
-        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+        filesnpaths.gen_output_directory(
+            output_dir, progress=self.progress, run=self.run
+        )
 
         # Draw maps.
         self.progress.new("Drawing map")
         drawn: Dict[str, bool] = {}
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            if color_hexcode == 'original':
+            if color_hexcode == "original":
                 drawn[pathway_number] = self._draw_map_kos_original_color(
                     pathway_number,
                     ko_ids,
                     output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_kos=draw_maps_lacking_kos,
                 )
             else:
                 drawn[pathway_number] = self._draw_map_kos_single_color(
@@ -2172,7 +2250,7 @@ class Mapper:
                     ko_ids,
                     color_hexcode,
                     output_dir,
-                    draw_map_lacking_kos=draw_maps_lacking_kos
+                    draw_map_lacking_kos=draw_maps_lacking_kos,
                 )
         self.progress.end()
 
@@ -2193,7 +2271,9 @@ class Mapper:
                 f"There was no file at the following expected contigs database path: '{contigs_db}'"
             )
 
-        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+        contigs_db_info = dbinfo.ContigsDBInfo(
+            contigs_db, dont_raise=True, expecting="contigs"
+        )
         if contigs_db_info is None:
             raise ConfigError(
                 "The file at the following expected contigs database path is not a contigs "
@@ -2210,8 +2290,8 @@ class Mapper:
         contigs_db : str
             File path to a contigs database.
         """
-        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
-        if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+        contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting="contigs")
+        if "KOfam" not in contigs_db_info.get_functional_annotation_sources():
             raise ConfigError(
                 f"The contigs database, '{contigs_db}', was never annotated with KOs. This can be "
                 "rectified by running `anvi-run-kegg-kofams` on the database."
@@ -2234,7 +2314,7 @@ class Mapper:
             )
 
         gsdb_info = dbinfo.GenomeStorageDBInfo(
-            genomes_storage_db, dont_raise=True, expecting='genomestorage'
+            genomes_storage_db, dont_raise=True, expecting="genomestorage"
         )
         if gsdb_info is None:
             raise ConfigError(
@@ -2252,8 +2332,10 @@ class Mapper:
         genomes_storage_db : str
             File path to a genomes storage database.
         """
-        gsdb_info = dbinfo.GenomeStorageDBInfo(genomes_storage_db, expecting='genomestorage')
-        if 'KOfam' not in gsdb_info.get_functional_annotation_sources():
+        gsdb_info = dbinfo.GenomeStorageDBInfo(
+            genomes_storage_db, expecting="genomestorage"
+        )
+        if "KOfam" not in gsdb_info.get_functional_annotation_sources():
             raise ConfigError(
                 f"The genomes storage database, '{genomes_storage_db}', was never annotated with "
                 "KOs. The genomes storage should be remade with annotated genomes, which can be "
@@ -2278,20 +2360,22 @@ class Mapper:
             if invalid_paths:
                 continue
 
-            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, dont_raise=True, expecting='contigs')
+            contigs_db_info = dbinfo.ContigsDBInfo(
+                contigs_db, dont_raise=True, expecting="contigs"
+            )
             if contigs_db_info is None:
                 invalid_filetypes.append(contigs_db)
             if invalid_filetypes:
                 continue
 
         if invalid_paths:
-            paths = ', '.join([f'{path}' for path in invalid_paths])
+            paths = ", ".join([f"{path}" for path in invalid_paths])
             raise ConfigError(
                 f"There were no files at the following expected contigs database paths: {paths}"
             )
 
         if invalid_filetypes:
-            paths = ', '.join([f'{path}' for path in invalid_filetypes])
+            paths = ", ".join([f"{path}" for path in invalid_filetypes])
             raise ConfigError(
                 "The files at the following expected contigs database paths are not contigs "
                 f"databases: {paths}"
@@ -2301,14 +2385,14 @@ class Mapper:
     def _check_contigs_dbs_ko_annotation(contigs_dbs: Iterable[str]) -> None:
         unannotated: List[str] = []
         for contigs_db in contigs_dbs:
-            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting='contigs')
-            if 'KOfam' not in contigs_db_info.get_functional_annotation_sources():
+            contigs_db_info = dbinfo.ContigsDBInfo(contigs_db, expecting="contigs")
+            if "KOfam" not in contigs_db_info.get_functional_annotation_sources():
                 unannotated.append(contigs_db)
             if unannotated:
                 continue
 
         if unannotated:
-            paths = ', '.join([f'{path}' for path in unannotated])
+            paths = ", ".join([f"{path}" for path in unannotated])
             raise ConfigError(
                 "The following contigs databases were never annotated with KOs, but this can be "
                 f"rectified by running `anvi-run-kegg-kofams` on them: {paths}"
@@ -2329,14 +2413,16 @@ class Mapper:
                 f"There was no file at the following expected pan database path: '{pan_db}'"
             )
 
-        pan_db_info = dbinfo.PanDBInfo(pan_db, dont_raise=True, expecting='pan')
+        pan_db_info = dbinfo.PanDBInfo(pan_db, dont_raise=True, expecting="pan")
         if pan_db_info is None:
             raise ConfigError(
                 "The file at the following expected pan database path is not a pan database: "
                 f"'{pan_db}'"
             )
 
-    def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
+    def _find_maps(
+        self, output_dir: str, prefix: str, patterns: List[str] = None
+    ) -> List[str]:
         """
         Find the numeric IDs of maps to draw given the file prefix, checking that the map can be
         drawn in the target output direcotry.
@@ -2364,7 +2450,7 @@ class Mapper:
                 if pathway_number not in self.pathway_categorization:
                     missing_pathway_numbers.append(pathway_number)
             if missing_pathway_numbers:
-                message = ', '.join(f"'{p}'" for p in missing_pathway_numbers)
+                message = ", ".join(f"'{p}'" for p in missing_pathway_numbers)
                 raise AssertionError(
                     "The KEGG BRITE hierarchy of pathway maps, 'br08901', did not contain all of "
                     "the pathway numbers requested to be drawn. This prevents output files from "
@@ -2377,8 +2463,10 @@ class Mapper:
 
         if not self.overwrite_output:
             for pathway_number in pathway_numbers:
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                out_basename = f'{prefix}_{pathway_number}{pathway_name}.pdf'
+                pathway_name = (
+                    f"_{self._name_pathway(pathway_number)}" if self.name_files else ""
+                )
+                out_basename = f"{prefix}_{pathway_number}{pathway_name}.pdf"
                 if self.pathway_categorization is None:
                     out_path = os.path.join(output_dir, out_basename)
                 else:
@@ -2418,7 +2506,8 @@ class Mapper:
         # Maintain the order of pathway numbers recovered from patterns.
         seen = set()
         return [
-            pathway_number for pathway_number in pathway_numbers
+            pathway_number
+            for pathway_number in pathway_numbers
             if not (pathway_number in seen or seen.add(pathway_number))
         ]
 
@@ -2428,7 +2517,7 @@ class Mapper:
         ko_ids: Iterable[str],
         color_hexcode: str,
         output_dir: str,
-        draw_map_lacking_kos: bool = False
+        draw_map_lacking_kos: bool = False,
     ) -> bool:
         """
         Draw a pathway map, highlighting reactions containing select KOs in a single color.
@@ -2471,28 +2560,28 @@ class Mapper:
         # elements, change the 'fgcolor' attribute to a nonsense value of '0' to ensure that the
         # elements with the prioritized color can be distinguished from other elements. Also, in
         # overview and standard maps, widen lines from the base map default of 1.0.
-        all_entries = pathway.get_entries(entry_type='ortholog')
+        all_entries = pathway.get_entries(entry_type="ortholog")
         select_uuids = [entry.uuid for entry in select_entries]
         for entry in all_entries:
             if entry.uuid in select_uuids:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.children["graphics"]:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
-                        assert graphics.type == 'line'
+                        assert graphics.type == "line"
                         graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
+                        graphics.bgcolor = "#FFFFFF"
                     elif pathway.is_overview_map:
-                        assert graphics.type == 'line'
+                        assert graphics.type == "line"
                         graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
+                        graphics.bgcolor = "#FFFFFF"
                         graphics.width = 5.0
                     else:
-                        if graphics.type == 'rectangle':
-                            graphics.fgcolor = '#000000'
+                        if graphics.type == "rectangle":
+                            graphics.fgcolor = "#000000"
                             graphics.bgcolor = color_hexcode
-                        elif graphics.type == 'line':
+                        elif graphics.type == "line":
                             graphics.fgcolor = color_hexcode
-                            graphics.bgcolor = '#FFFFFF'
+                            graphics.bgcolor = "#FFFFFF"
                             graphics.width = 5.0
                         else:
                             raise AssertionError(
@@ -2501,33 +2590,33 @@ class Mapper:
                                 f"'{graphics.type}'."
                             )
             else:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.children["graphics"]:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                    graphics.fgcolor = '0'
+                    graphics.fgcolor = "0"
 
         # Set the color priority so that the colored reactions are prioritized for display on top.
         # Recolor "unprioritized" reactions to a background color. In global and overview maps,
         # recolor circles to reflect the colors of prioritized reactions involving the compounds.
         color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {}
         if pathway.is_global_map:
-            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
-            recolor_unprioritized_entries = 'g'
-            color_associated_compounds = 'high'
+            color_priority["ortholog"] = {"line": {(color_hexcode, "#FFFFFF"): 1.0}}
+            recolor_unprioritized_entries = "g"
+            color_associated_compounds = "high"
         elif pathway.is_overview_map:
-            color_priority['ortholog'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
-            recolor_unprioritized_entries = 'w'
-            color_associated_compounds = 'high'
+            color_priority["ortholog"] = {"line": {(color_hexcode, "#FFFFFF"): 1.0}}
+            recolor_unprioritized_entries = "w"
+            color_associated_compounds = "high"
         else:
-            color_priority['ortholog'] = {
-                'rectangle': {('#000000', color_hexcode): 1.0},
-                'line': {(color_hexcode, '#FFFFFF'): 1.0}
+            color_priority["ortholog"] = {
+                "rectangle": {("#000000", color_hexcode): 1.0},
+                "line": {(color_hexcode, "#FFFFFF"): 1.0},
             }
-            recolor_unprioritized_entries = 'w'
+            recolor_unprioritized_entries = "w"
             color_associated_compounds = None
         pathway.set_color_priority(
             color_priority,
             recolor_unprioritized_entries=recolor_unprioritized_entries,
-            color_associated_compounds=color_associated_compounds
+            color_associated_compounds=color_associated_compounds,
         )
 
         self._draw_map(pathway, output_dir)
@@ -2539,7 +2628,7 @@ class Mapper:
         pathway_number: str,
         ko_ids: Iterable[str],
         output_dir: str,
-        draw_map_lacking_kos: bool = False
+        draw_map_lacking_kos: bool = False,
     ) -> bool:
         """
         Draw a pathway map, highlighting reactions containing select KOs in the color or colors
@@ -2578,25 +2667,25 @@ class Mapper:
         # elements, change the 'fgcolor' attribute to a nonsense value to ensure that the elements
         # with prioritized colors can be distinguished from other elements. Also, in overview and
         # standard maps, widen lines from the base map default of 1.0.
-        all_entries = pathway.get_entries(entry_type='ortholog')
+        all_entries = pathway.get_entries(entry_type="ortholog")
         select_uuids = [entry.uuid for entry in select_entries]
         prioritized_colors: Dict[str, List[Tuple[str, str]]] = {}
         for entry in all_entries:
             if entry.uuid in select_uuids:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.children["graphics"]:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
-                        assert graphics.type == 'line'
-                        graphics.bgcolor = '#FFFFFF'
+                        assert graphics.type == "line"
+                        graphics.bgcolor = "#FFFFFF"
                     elif pathway.is_overview_map:
-                        assert graphics.type == 'line'
-                        graphics.bgcolor = '#FFFFFF'
+                        assert graphics.type == "line"
+                        graphics.bgcolor = "#FFFFFF"
                         graphics.width = 5.0
                     else:
-                        if graphics.type == 'rectangle':
-                            graphics.fgcolor = '#000000'
-                        elif graphics.type == 'line':
-                            graphics.bgcolor = '#FFFFFF'
+                        if graphics.type == "rectangle":
+                            graphics.fgcolor = "#000000"
+                        elif graphics.type == "line":
+                            graphics.bgcolor = "#FFFFFF"
                             graphics.width = 5.0
                         else:
                             raise AssertionError(
@@ -2605,46 +2694,59 @@ class Mapper:
                                 f"'{graphics.type}'."
                             )
                     try:
-                        graphics_type_prioritized_colors = prioritized_colors[graphics.type]
+                        graphics_type_prioritized_colors = prioritized_colors[
+                            graphics.type
+                        ]
                     except:
-                        prioritized_colors[graphics.type] = graphics_type_prioritized_colors = []
-                    graphics_type_prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
+                        prioritized_colors[graphics.type] = (
+                            graphics_type_prioritized_colors
+                        ) = []
+                    graphics_type_prioritized_colors.append(
+                        (graphics.fgcolor, graphics.bgcolor)
+                    )
             else:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.children["graphics"]:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                    graphics.fgcolor = '0'
+                    graphics.fgcolor = "0"
 
         # By default, global maps but not overview and standard maps display reaction graphics in
         # more than one color. Give higher priority to reaction entries that are encountered later
         # (occur further down in the KGML file), and would thus be rendered above earlier reactions.
-        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {'ortholog': {}}
-        for graphics_type, graphics_type_prioritized_colors in prioritized_colors.items():
+        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {
+            "ortholog": {}
+        }
+        for (
+            graphics_type,
+            graphics_type_prioritized_colors,
+        ) in prioritized_colors.items():
             seen = set()
             unique_prioritized_colors = [
-                colors for colors in graphics_type_prioritized_colors
+                colors
+                for colors in graphics_type_prioritized_colors
                 if not (colors in seen or seen.add(colors))
             ]
-            priorities = np.linspace(0, 1, len(unique_prioritized_colors) + 1)[1: ]
+            priorities = np.linspace(0, 1, len(unique_prioritized_colors) + 1)[1:]
             graphics_type_color_priority = {
-                colors: priority for colors, priority in zip(unique_prioritized_colors, priorities)
+                colors: priority
+                for colors, priority in zip(unique_prioritized_colors, priorities)
             }
-            color_priority['ortholog'][graphics_type] = graphics_type_color_priority
+            color_priority["ortholog"][graphics_type] = graphics_type_color_priority
 
         # Recolor "unprioritized" reactions to a background color. In global and overview maps,
         # recolor circles to reflect the colors of prioritized reactions involving the compounds.
         if pathway.is_global_map:
-            recolor_unprioritized_entries = 'g'
-            color_associated_compounds = 'high'
+            recolor_unprioritized_entries = "g"
+            color_associated_compounds = "high"
         elif pathway.is_overview_map:
-            recolor_unprioritized_entries = 'w'
-            color_associated_compounds = 'high'
+            recolor_unprioritized_entries = "w"
+            color_associated_compounds = "high"
         else:
-            recolor_unprioritized_entries = 'w'
+            recolor_unprioritized_entries = "w"
             color_associated_compounds = None
         pathway.set_color_priority(
             color_priority,
             recolor_unprioritized_entries=recolor_unprioritized_entries,
-            color_associated_compounds=color_associated_compounds
+            color_associated_compounds=color_associated_compounds,
         )
 
         self._draw_map(pathway, output_dir)
@@ -2660,7 +2762,7 @@ class Mapper:
         category_combos: List[Tuple[str]] = None,
         group_sources: Dict[str, List[str]] = None,
         group_threshold: float = None,
-        draw_map_lacking_kos: bool = False
+        draw_map_lacking_kos: bool = False,
     ) -> bool:
         """
         Draw a pathway map, coloring reactions by their membership via KOs in data sources (e.g.,
@@ -2733,8 +2835,8 @@ class Mapper:
             of the select KOs and 'draw_map_lacking_kos' was False.
         """
         assert not (
-            (group_sources is None and group_threshold is not None) or
-            (group_threshold is None and group_sources is not None)
+            (group_sources is None and group_threshold is not None)
+            or (group_threshold is None and group_sources is not None)
         )
 
         pathway = self._get_pathway(pathway_number)
@@ -2752,7 +2854,7 @@ class Mapper:
             """Get data sources associated with the ortholog Entry via KOs."""
             sources = []
             for kegg_name in entry.name.split():
-                split_kegg_name = kegg_name.split(':')
+                split_kegg_name = kegg_name.split(":")
                 kegg_id = split_kegg_name[1]
                 try:
                     sources += ko_membership[kegg_id]
@@ -2816,24 +2918,24 @@ class Mapper:
             else:
                 combo = combo_lookup[tuple(sorted(categories))]
                 color_hexcode = color_hexcodes[category_combos.index(combo)]
-            for uuid in entry.children['graphics']:
+            for uuid in entry.children["graphics"]:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if pathway.is_global_map:
-                    assert graphics.type == 'line'
+                    assert graphics.type == "line"
                     graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
+                    graphics.bgcolor = "#FFFFFF"
                 elif pathway.is_overview_map:
-                    assert graphics.type == 'line'
+                    assert graphics.type == "line"
                     graphics.fgcolor = color_hexcode
-                    graphics.bgcolor = '#FFFFFF'
+                    graphics.bgcolor = "#FFFFFF"
                     graphics.width = 5.0
                 else:
-                    if graphics.type == 'rectangle':
-                        graphics.fgcolor = '#000000'
+                    if graphics.type == "rectangle":
+                        graphics.fgcolor = "#000000"
                         graphics.bgcolor = color_hexcode
-                    elif graphics.type == 'line':
+                    elif graphics.type == "line":
                         graphics.fgcolor = color_hexcode
-                        graphics.bgcolor = '#FFFFFF'
+                        graphics.bgcolor = "#FFFFFF"
                         graphics.width = 5.0
                     else:
                         raise AssertionError(
@@ -2846,32 +2948,31 @@ class Mapper:
         # circles to reflect the colors of prioritized reactions involving the compounds.
         ortholog_color_priority: Dict[str, Dict[Tuple[str, str], float]] = {}
         if pathway.is_global_map:
-            ortholog_color_priority['line'] = line_color_priority = {}
+            ortholog_color_priority["line"] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
+                line_color_priority[(color_hexcode, "#FFFFFF")] = priority
             pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='g',
-                color_associated_compounds='high'
+                {"ortholog": ortholog_color_priority},
+                recolor_unprioritized_entries="g",
+                color_associated_compounds="high",
             )
         elif pathway.is_overview_map:
-            ortholog_color_priority['line'] = line_color_priority = {}
+            ortholog_color_priority["line"] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
+                line_color_priority[(color_hexcode, "#FFFFFF")] = priority
             pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='w',
-                color_associated_compounds='high'
+                {"ortholog": ortholog_color_priority},
+                recolor_unprioritized_entries="w",
+                color_associated_compounds="high",
             )
         else:
-            ortholog_color_priority['rectangle'] = rectangle_color_priority = {}
-            ortholog_color_priority['line'] = line_color_priority = {}
+            ortholog_color_priority["rectangle"] = rectangle_color_priority = {}
+            ortholog_color_priority["line"] = line_color_priority = {}
             for color_hexcode, priority in color_priority.items():
-                rectangle_color_priority[('#000000', color_hexcode)] = priority
-                line_color_priority[(color_hexcode, '#FFFFFF')] = priority
+                rectangle_color_priority[("#000000", color_hexcode)] = priority
+                line_color_priority[(color_hexcode, "#FFFFFF")] = priority
             pathway.set_color_priority(
-                {'ortholog': ortholog_color_priority},
-                recolor_unprioritized_entries='w'
+                {"ortholog": ortholog_color_priority}, recolor_unprioritized_entries="w"
             )
 
         self._draw_map(pathway, output_dir)
@@ -2891,14 +2992,18 @@ class Mapper:
             Path to the output directory in which the pathway map PDF file is drawn. The directory
             is created if it does not exist.
         """
-        pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
-        out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
+        pathway_name = (
+            f"_{self._name_pathway(pathway.number)}" if self.name_files else ""
+        )
+        out_basename = f"kos_{pathway.number}{pathway_name}.pdf"
 
         if self.pathway_categorization is None:
             out_dir = output_dir
             out_path = os.path.join(output_dir, out_basename)
         else:
-            out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway.number])
+            out_dir = os.path.join(
+                output_dir, *self.pathway_categorization[pathway.number]
+            )
             out_path = os.path.join(out_dir, out_basename)
         os.makedirs(out_dir, exist_ok=True)
 
@@ -2922,7 +3027,7 @@ class Mapper:
         map_path : str
             Map file path to be symlinked.
         """
-        symlink_dir = os.path.join(output_dir, 'symlink')
+        symlink_dir = os.path.join(output_dir, "symlink")
         os.makedirs(symlink_dir, exist_ok=True)
         map_basename = os.path.basename(map_path)
         symlink_path = os.path.join(symlink_dir, map_basename)
@@ -2937,11 +3042,11 @@ class Mapper:
         draw_grid_categories: List[str],
         draw_files_categories: List[str],
         output_dir: str,
-        drawn: Dict[Literal['unified', 'individual', 'grid'], Dict],
+        drawn: Dict[Literal["unified", "individual", "grid"], Dict],
         group_sources: Dict[str, List[str]] = None,
         group_color_priority: Dict[str, Dict[str, float]] = None,
         check_maps_lacking_kos: bool = True,
-        source_type: str = 'unknown'
+        source_type: str = "unknown",
     ) -> None:
         """
         Make map grids from arbitrary categories of data sources or groups of data sources, where
@@ -2999,7 +3104,7 @@ class Mapper:
             # Make a new dictionary with outer keys being pathway numbers, inner dictionaries
             # indicating which maps were drawn per category (e.g., database, pan genome, or group).
             drawn_pathway_number: Dict[str, Dict[str, bool]] = {}
-            for category, drawn_category in drawn['individual'].items():
+            for category, drawn_category in drawn["individual"].items():
                 for pathway_number, drawn_map in drawn_category.items():
                     try:
                         drawn_pathway_number[pathway_number][category] = drawn_map
@@ -3016,8 +3121,10 @@ class Mapper:
                 if set(drawn_category.values()) != set([True, False]):
                     continue
 
-                pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-                pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+                pathway_name = (
+                    f"_{self._name_pathway(pathway_number)}" if self.name_files else ""
+                )
+                pathway_basename = f"kos_{pathway_number}{pathway_name}.pdf"
                 for category, drawn_map in drawn_category.items():
                     if drawn_map:
                         continue
@@ -3032,58 +3139,70 @@ class Mapper:
                         out_path = os.path.join(out_dir, pathway_basename)
                     else:
                         out_path = os.path.join(
-                            out_dir, *self.pathway_categorization[pathway_number], pathway_basename
+                            out_dir,
+                            *self.pathway_categorization[pathway_number],
+                            pathway_basename,
                         )
                     paths_to_remove.append(out_path)
                     if self.categorize_files:
-                        paths_to_remove.append(os.path.join(out_dir, 'symlink', pathway_basename))
+                        paths_to_remove.append(
+                            os.path.join(out_dir, "symlink", pathway_basename)
+                        )
 
             self.progress = progress
             self.run = run
 
         # Draw map grids.
-        grid_dir = os.path.join(output_dir, 'grid')
+        grid_dir = os.path.join(output_dir, "grid")
         filesnpaths.gen_output_directory(grid_dir, progress=self.progress, run=self.run)
 
         if group_sources is not None:
             # Draw colorbars for each group.
-            if source_type == 'pangenome':
-                label = 'genome count'
-            elif source_type == 'contigs database':
-                label = 'database count'
+            if source_type == "pangenome":
+                label = "genome count"
+            elif source_type == "contigs database":
+                label = "database count"
             else:
-                label = 'source count'
+                label = "source count"
             for group in draw_categories:
                 self.colorbar_drawer.draw(
                     group_color_priority[group],
-                    os.path.join(grid_dir, f'colorbar_{group}.pdf'),
+                    os.path.join(grid_dir, f"colorbar_{group}.pdf"),
                     color_labels=range(1, len(group_sources[group]) + 1),
-                    label=label
+                    label=label,
                 )
 
         for pathway_number in pathway_numbers:
             self.progress.update(pathway_number)
-            pathway_name = f'_{self._name_pathway(pathway_number)}' if self.name_files else ''
-            pathway_basename = f'kos_{pathway_number}{pathway_name}.pdf'
+            pathway_name = (
+                f"_{self._name_pathway(pathway_number)}" if self.name_files else ""
+            )
+            pathway_basename = f"kos_{pathway_number}{pathway_name}.pdf"
             if self.pathway_categorization is None:
                 unified_map_path = os.path.join(output_dir, pathway_basename)
             else:
-                out_dir = os.path.join(output_dir, *self.pathway_categorization[pathway_number])
+                out_dir = os.path.join(
+                    output_dir, *self.pathway_categorization[pathway_number]
+                )
                 unified_map_path = os.path.join(out_dir, pathway_basename)
             if not os.path.exists(unified_map_path):
                 continue
             in_paths = [unified_map_path]
-            if source_type == 'pangenome':
-                labels = ['pangenome']
+            if source_type == "pangenome":
+                labels = ["pangenome"]
             else:
-                labels = ['all']
+                labels = ["all"]
 
             for category in draw_grid_categories:
                 if self.pathway_categorization is None:
-                    individual_map_path = os.path.join(output_dir, category, pathway_basename)
+                    individual_map_path = os.path.join(
+                        output_dir, category, pathway_basename
+                    )
                 else:
                     out_dir = os.path.join(
-                        output_dir, category, *self.pathway_categorization[pathway_number]
+                        output_dir,
+                        category,
+                        *self.pathway_categorization[pathway_number],
                     )
                     individual_map_path = os.path.join(out_dir, pathway_basename)
                 if not os.path.exists(individual_map_path):
@@ -3094,13 +3213,15 @@ class Mapper:
                 if self.pathway_categorization is None:
                     out_path = os.path.join(grid_dir, pathway_basename)
                 else:
-                    out_dir = os.path.join(grid_dir, *self.pathway_categorization[pathway_number])
+                    out_dir = os.path.join(
+                        grid_dir, *self.pathway_categorization[pathway_number]
+                    )
                     os.makedirs(out_dir, exist_ok=True)
                     out_path = os.path.join(out_dir, pathway_basename)
                 self.grid_drawer.draw(in_paths, out_path, labels=labels)
                 if self.pathway_categorization is not None:
                     self._symlink_map(grid_dir, out_path)
-                drawn['grid'][pathway_number] = True
+                drawn["grid"][pathway_number] = True
 
         self.progress.end()
 
@@ -3109,7 +3230,7 @@ class Mapper:
             os.remove(path)
         for category in set(draw_categories).difference(set(draw_files_categories)):
             shutil.rmtree(os.path.join(output_dir, category))
-            drawn['individual'].pop(category)
+            drawn["individual"].pop(category)
 
         # If map files were categorized in a subdirectory structure, remove subdirectories that no
         # longer contain files.
@@ -3117,7 +3238,9 @@ class Mapper:
             return
         for category in draw_files_categories:
             category_dir = os.path.join(output_dir, category)
-            for dir_path, subdir_names, filenames in os.walk(category_dir, topdown=False):
+            for dir_path, subdir_names, filenames in os.walk(
+                category_dir, topdown=False
+            ):
                 if dir_path != category_dir and not os.listdir(dir_path):
                     os.rmdir(dir_path)
 
@@ -3148,11 +3271,11 @@ class Mapper:
         # all reaction arrows that are not annotated by KO ID. Select the KGML file accordingly.
         if is_global_map:
             kgml_path = os.path.join(
-                self.kegg_context.kgml_1x_ko_dir, f'ko{pathway_number}.xml'
+                self.kegg_context.kgml_1x_ko_dir, f"ko{pathway_number}.xml"
             )
         else:
             kgml_path = os.path.join(
-                self.kegg_context.kgml_2x_ko_dir, f'ko{pathway_number}.xml'
+                self.kegg_context.kgml_2x_ko_dir, f"ko{pathway_number}.xml"
             )
         pathway = self.xml_ops.load(kgml_path)
         if self.ignore_compound_rectangles:
@@ -3187,9 +3310,9 @@ class Mapper:
                 f"'{self.kegg_context.kegg_pathway_list_file}'."
             )
 
-        altered = re.sub(r'[^a-zA-Z0-9()\[\]\{\}]', '_', pathway_name)
-        altered = re.sub(r'_+', '_', altered)
-        altered = altered.strip('_')
+        altered = re.sub(r"[^a-zA-Z0-9()\[\]\{\}]", "_", pathway_name)
+        altered = re.sub(r"_+", "_", altered)
+        altered = altered.strip("_")
 
         return altered
 
@@ -3215,9 +3338,17 @@ class Mapper:
 
         assert len(set(pathway_categorizations)) == len(pathway_categorizations)
 
-        if sum(set(
-            [len(categorizations) for categorizations in pathway_categorizations.values()]
-        )) != 1:
+        if (
+            sum(
+                set(
+                    [
+                        len(categorizations)
+                        for categorizations in pathway_categorizations.values()
+                    ]
+                )
+            )
+            != 1
+        ):
             raise AssertionError(
                 "The KEGG BRITE hierarchy of pathway maps, 'br08901', did not meet the expectation "
                 "that each pathway be categorized in exactly one place in the hierarchy. This "
@@ -3234,13 +3365,13 @@ class Mapper:
             assert pathway_number not in pathway_categorization
 
             categorization = categorizations[0]
-            assert categorization[0] == 'br08901'
+            assert categorization[0] == "br08901"
 
             altered_categorization: list[str] = []
             for category in categorization[1:]:
-                altered = re.sub(r'[^a-zA-Z0-9()\[\]\{\}]', '_', category)
-                altered = re.sub(r'_+', '_', altered)
-                altered = altered.strip('_')
+                altered = re.sub(r"[^a-zA-Z0-9()\[\]\{\}]", "_", category)
+                altered = re.sub(r"_+", "_", altered)
+                altered = altered.strip("_")
                 altered_categorization.append(altered)
 
             pathway_categorization[pathway_number] = altered_categorization
@@ -3267,15 +3398,16 @@ class Mapper:
             Count of zeroed out Graphics.
         """
         rectangle_count = 0
-        for compound_entry in pathway.get_entries(entry_type='compound'):
+        for compound_entry in pathway.get_entries(entry_type="compound"):
             compound_rectangle_uuids: List[str] = []
-            for uuid in compound_entry.children['graphics']:
+            for uuid in compound_entry.children["graphics"]:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
-                if graphics.type == 'rectangle':
+                if graphics.type == "rectangle":
                     graphics.width = 0.0
                     graphics.height = 0.0
                     rectangle_count += 1
         return rectangle_count
+
 
 class ColorbarDrawer:
     """
@@ -3306,6 +3438,7 @@ class ColorbarDrawer:
     labelpad : int
         Spacing of colorbar label from tick labels in points.
     """
+
     def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
         """
         Parameters
@@ -3316,7 +3449,7 @@ class ColorbarDrawer:
         self.overwrite_output = overwrite_output
 
         self.figsize: Tuple[int, int] = (1, 6)
-        self.orientation: Literal['horizontal', 'vertical'] = 'vertical'
+        self.orientation: Literal["horizontal", "vertical"] = "vertical"
         self.tick_fontsize: Union[int, None] = None
         self.label_rotation: int = None
         self.label_fontsize: int = 24
@@ -3327,7 +3460,7 @@ class ColorbarDrawer:
         colors: Iterable,
         out_path: str,
         color_labels: Iterable[str] = None,
-        label: str = None
+        label: str = None,
     ) -> None:
         """
         Save a standalone colorbar to a file.
@@ -3353,12 +3486,14 @@ class ColorbarDrawer:
         fig, ax = plt.subplots(figsize=self.figsize)
 
         cmap = mcolors.ListedColormap(colors)
-        norm = mcolors.BoundaryNorm(boundaries=range(len(colors) + 1), ncolors=len(colors))
+        norm = mcolors.BoundaryNorm(
+            boundaries=range(len(colors) + 1), ncolors=len(colors)
+        )
 
         cb = plt.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=ax,
-            orientation=self.orientation
+            orientation=self.orientation,
         )
 
         # Don't show tick marks.
@@ -3369,13 +3504,15 @@ class ColorbarDrawer:
                 # Calculate appropriate font size of tick labels based on color segment height.
                 length_in_data_coords = 1 / len(colors)
                 origin_in_points = ax.transData.transform((0, 0))
-                if self.orientation == 'vertical':
+                if self.orientation == "vertical":
                     size_value = height_in_points = (
-                        ax.transData.transform((0, length_in_data_coords)) - origin_in_points
+                        ax.transData.transform((0, length_in_data_coords))
+                        - origin_in_points
                     )[1]
-                elif self.orientation == 'horizontal':
+                elif self.orientation == "horizontal":
                     size_value = width_in_points = (
-                        ax.transData.transform((length_in_data_coords, 0)) - origin_in_points
+                        ax.transData.transform((length_in_data_coords, 0))
+                        - origin_in_points
                     )[0]
                 else:
                     raise AssertionError
@@ -3391,9 +3528,9 @@ class ColorbarDrawer:
 
         if label:
             if self.label_rotation is None:
-                if self.orientation == 'vertical':
+                if self.orientation == "vertical":
                     label_rotation = 270
-                elif self.orientation == 'horizontal':
+                elif self.orientation == "horizontal":
                     label_rotation = 0
                 else:
                     raise AssertionError
@@ -3403,12 +3540,15 @@ class ColorbarDrawer:
                 label,
                 rotation=label_rotation,
                 labelpad=self.labelpad,
-                fontsize=self.label_fontsize
+                fontsize=self.label_fontsize,
             )
 
-        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
-        plt.savefig(out_path, format='pdf', bbox_inches='tight')
+        filesnpaths.is_output_file_writable(
+            out_path, ok_if_exists=self.overwrite_output
+        )
+        plt.savefig(out_path, format="pdf", bbox_inches="tight")
         plt.close()
+
 
 class PDFGridDrawer:
     """
@@ -3433,6 +3573,7 @@ class PDFGridDrawer:
         Alternatively, provide a float on (0.0, 1.0] for the proportion of the minimum margin to use
         as the font size.
     """
+
     def __init__(self, overwrite_output: bool = FORCE_OVERWRITE) -> None:
         """
         Parameters
@@ -3447,10 +3588,7 @@ class PDFGridDrawer:
         self.label_fontsize_scale: float = 0.8
 
     def draw(
-        self,
-        in_paths: Iterable[str],
-        out_path: str,
-        labels: Iterable[str] = None
+        self, in_paths: Iterable[str], out_path: str, labels: Iterable[str] = None
     ) -> None:
         """
         Write a PDF containing a grid of input PDF images.
@@ -3476,7 +3614,7 @@ class PDFGridDrawer:
             pdf_doc = fitz.open(in_paths[0])
             page = pdf_doc.load_page(0)
             first_input_aspect_ratio = page.rect.width / page.rect.height
-            paper_format = 'letter-L' if first_input_aspect_ratio > 1 else 'letter'
+            paper_format = "letter-L" if first_input_aspect_ratio > 1 else "letter"
         else:
             paper_format = self.paper_format
 
@@ -3538,5 +3676,7 @@ class PDFGridDrawer:
                 label_y = draw_y
                 output_page.insert_text((label_x, label_y), label, fontsize=fontsize)
 
-        filesnpaths.is_output_file_writable(out_path, ok_if_exists=self.overwrite_output)
+        filesnpaths.is_output_file_writable(
+            out_path, ok_if_exists=self.overwrite_output
+        )
         output_doc.save(out_path)

@@ -29,12 +29,12 @@ pp = terminal.pretty_print
 class TableForGeneClusters(Table):
     """A class to populate gene clusters table in a given pan db.
 
-      Here is an example:
+    Here is an example:
 
-        >>> table = TableForGeneClusters(db_path)
-        >>> for ...:
-        >>>     table.add({'gene_caller_id': gene_caller_id, 'gene_cluster_id': gene_cluster_id, 'genome_name': genome_name})
-        >>> table.store()
+      >>> table = TableForGeneClusters(db_path)
+      >>> for ...:
+      >>>     table.add({'gene_caller_id': gene_caller_id, 'gene_cluster_id': gene_cluster_id, 'genome_name': genome_name})
+      >>> table.store()
     """
 
     def __init__(self, db_path, run=run, progress=progress):
@@ -49,10 +49,10 @@ class TableForGeneClusters(Table):
 
         self.entries = []
 
-
     def add(self, entry_dict):
-        self.entries.append([entry_dict[key] for key in t.pan_gene_clusters_table_structure])
-
+        self.entries.append(
+            [entry_dict[key] for key in t.pan_gene_clusters_table_structure]
+        )
 
     def store(self):
         self.delete_contents_of_table(t.pan_gene_clusters_table_name, warning=False)
@@ -60,7 +60,8 @@ class TableForGeneClusters(Table):
         db_entries = [tuple(entry) for entry in self.entries]
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
+        database._exec_many(
+            """INSERT INTO %s VALUES (?,?,?,?)""" % t.pan_gene_clusters_table_name,
+            db_entries,
+        )
         database.disconnect()
-
-

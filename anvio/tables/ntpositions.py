@@ -27,14 +27,19 @@ class TableForNtPositions(object):
     def __init__(self, run=run, progress=progress):
         self.run = run
         self.progress = progress
-        self.numpy_data_type = 'uint8'
+        self.numpy_data_type = "uint8"
         self.db_entries = []
 
-
     def append(self, contig_name, position_info_list):
-        position_info_blob = utils.convert_numpy_array_to_binary_blob(numpy.array(position_info_list, dtype=self.numpy_data_type))
-        self.db_entries.append((contig_name, position_info_blob, ))
-
+        position_info_blob = utils.convert_numpy_array_to_binary_blob(
+            numpy.array(position_info_list, dtype=self.numpy_data_type)
+        )
+        self.db_entries.append(
+            (
+                contig_name,
+                position_info_blob,
+            )
+        )
 
     def store(self, db):
         db.insert_many(t.nt_position_info_table_name, entries=self.db_entries)

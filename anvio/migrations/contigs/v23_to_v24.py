@@ -13,17 +13,38 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.reactionnetwork import ModelSEEDDatabase
 
-current_version, next_version = [x[1:] for x in __name__.split('_to_')]
+current_version, next_version = [x[1:] for x in __name__.split("_to_")]
 
-reaction_network_kegg_table_name      = 'reaction_network_kegg'
-reaction_network_kegg_table_structure = ['kegg_id', 'name', 'modules', 'pathways', 'brite_categorization']
-reaction_network_kegg_table_types     = [ 'text'  , 'text',  'text'  ,   'text'  ,         'text'        ]
+reaction_network_kegg_table_name = "reaction_network_kegg"
+reaction_network_kegg_table_structure = [
+    "kegg_id",
+    "name",
+    "modules",
+    "pathways",
+    "brite_categorization",
+]
+reaction_network_kegg_table_types = ["text", "text", "text", "text", "text"]
 
-reaction_network_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge' , 'smiles']
-reaction_network_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric',  'text' ]
+reaction_network_metabolites_table_structure = [
+    "modelseed_compound_id",
+    "modelseed_compound_name",
+    "kegg_aliases",
+    "formula",
+    "charge",
+    "smiles",
+]
+reaction_network_metabolites_table_types = [
+    "text",
+    "text",
+    "text",
+    "text",
+    "numeric",
+    "text",
+]
 
 run = terminal.Run()
 progress = terminal.Progress()
+
 
 def migrate(db_path):
     if db_path is None:
@@ -49,7 +70,7 @@ def migrate(db_path):
     contigs_db.create_table(
         reaction_network_kegg_table_name,
         reaction_network_kegg_table_structure,
-        reaction_network_kegg_table_types
+        reaction_network_kegg_table_types,
     )
     progress.end()
 
@@ -59,25 +80,31 @@ def migrate(db_path):
     progress.update("...")
     # To be on the safe side, remove any tables with the new names that may already exist.
     try:
-        contigs_db.drop_table('reaction_network_reactions')
-        contigs_db.drop_table('reaction_network_metabolites')
+        contigs_db.drop_table("reaction_network_reactions")
+        contigs_db.drop_table("reaction_network_metabolites")
     except:
         pass
 
-    contigs_db._exec('ALTER TABLE gene_function_reactions RENAME TO reaction_network_reactions')
-    contigs_db._exec('ALTER TABLE gene_function_metabolites RENAME TO reaction_network_metabolites')
+    contigs_db._exec(
+        "ALTER TABLE gene_function_reactions RENAME TO reaction_network_reactions"
+    )
+    contigs_db._exec(
+        "ALTER TABLE gene_function_metabolites RENAME TO reaction_network_metabolites"
+    )
     progress.end()
 
     progress.new("Updating version")
     progress.update("...")
-    contigs_db.remove_meta_key_value_pair('version')
+    contigs_db.remove_meta_key_value_pair("version")
     contigs_db.set_version(next_version)
 
     contigs_db.disconnect()
     progress.end()
 
     if added_smiles_strings:
-        smiles_message = "SMILES string structural data was added to the existing reaction network."
+        smiles_message = (
+            "SMILES string structural data was added to the existing reaction network."
+        )
     else:
         smiles_message = (
             "A new column for storage of SMILES string structural data was added to the "
@@ -89,7 +116,8 @@ def migrate(db_path):
         "portability and reproducibility. The two existing tables for storing reaction networks "
         f"have been renamed for the sake of clarity. {smiles_message} "
     )
-    run.info_single(message, nl_after=1, nl_before=1, mc='green')
+    run.info_single(message, nl_after=1, nl_before=1, mc="green")
+
 
 def add_smiles_column(contigs_db: db.DB) -> bool:
     """
@@ -111,33 +139,36 @@ def add_smiles_column(contigs_db: db.DB) -> bool:
     progress.new("Adding metabolite SMILES string column")
     progress.update("...")
 
-    contigs_db._exec('ALTER TABLE gene_function_metabolites ADD smiles text')
+    contigs_db._exec("ALTER TABLE gene_function_metabolites ADD smiles text")
 
     if not modelseed_db_available:
         progress.end()
         return False
 
-    metabolites_table = contigs_db.get_table_as_dataframe('gene_function_metabolites')
+    metabolites_table = contigs_db.get_table_as_dataframe("gene_function_metabolites")
     modelseed_table = ModelSEEDDatabase().compounds_table
     smiles_strings = []
     for row in metabolites_table.itertuples():
-        smiles = modelseed_table.loc[row.modelseed_compound_id]['smiles']
+        smiles = modelseed_table.loc[row.modelseed_compound_id]["smiles"]
         if pd.isna(smiles):
-            smiles_strings.append('')
+            smiles_strings.append("")
         else:
             smiles_strings.append(smiles)
-    metabolites_table['smiles'] = smiles_strings
+    metabolites_table["smiles"] = smiles_strings
 
-    contigs_db.drop_table('gene_function_metabolites')
+    contigs_db.drop_table("gene_function_metabolites")
     contigs_db.create_table(
-        'gene_function_metabolites',
+        "gene_function_metabolites",
         reaction_network_metabolites_table_structure,
-        reaction_network_metabolites_table_types
+        reaction_network_metabolites_table_types,
     )
-    contigs_db.insert_rows_from_dataframe('gene_function_metabolites', metabolites_table)
+    contigs_db.insert_rows_from_dataframe(
+        "gene_function_metabolites", metabolites_table
+    )
     progress.end()
 
     return True
+
 
 def check_modelseed_database(contigs_db: db.DB) -> bool:
     """
@@ -155,12 +186,14 @@ def check_modelseed_database(contigs_db: db.DB) -> bool:
         True if the contigs database contains a reaction network constructed with a ModelSEED
         database installed at the default anvi'o location.
     """
-    network_sha: str = contigs_db.get_meta_value('reaction_network_modelseed_database_sha')
+    network_sha: str = contigs_db.get_meta_value(
+        "reaction_network_modelseed_database_sha"
+    )
     if not network_sha:
         return False
 
-    sha_txt_path = os.path.join(ModelSEEDDatabase.default_dir, 'sha.txt')
-    compounds_db_path = os.path.join(ModelSEEDDatabase.default_dir, 'compounds.tsv')
+    sha_txt_path = os.path.join(ModelSEEDDatabase.default_dir, "sha.txt")
+    compounds_db_path = os.path.join(ModelSEEDDatabase.default_dir, "compounds.tsv")
     if not os.path.isfile(sha_txt_path) or not os.path.isfile(compounds_db_path):
         run.warning(
             "A ModelSEED Biochemistry database was not found to be set up in the default anvi'o "
@@ -187,9 +220,17 @@ def check_modelseed_database(contigs_db: db.DB) -> bool:
 
     return True
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to upgrade CONTIGS.db from version %s to version %s' % (current_version, next_version))
-    parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database at version %s' % current_version)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="A simple script to upgrade CONTIGS.db from version %s to version %s"
+        % (current_version, next_version)
+    )
+    parser.add_argument(
+        "contigs_db",
+        metavar="CONTIGS_DB",
+        help="Contigs database at version %s" % current_version,
+    )
     args, unknown = parser.parse_known_args()
 
     try:

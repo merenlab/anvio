@@ -26,12 +26,12 @@ class FastTree:
     def __init__(self, run=run):
         self.run = run
         self.progress = progress
-        self.command = ['FastTree']
+        self.command = ["FastTree"]
 
-        utils.is_program_exists('FastTree')
+        utils.is_program_exists("FastTree")
 
     def run_command(self, input_file_path, output_file_path):
-        input_file = open(input_file_path, 'rb')
+        input_file = open(input_file_path, "rb")
 
         fasttree = Popen(self.command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         output = fasttree.communicate(input=input_file.read())
@@ -50,7 +50,7 @@ class FastTree:
                     warning = ""
             elif line.startswith("      "):
                 pass
-            elif 'seconds' in line:
+            elif "seconds" in line:
                 pass
             else:
                 line = line.split(":")
@@ -60,8 +60,14 @@ class FastTree:
                     run.info("Info", ":".join(line))
 
         if filesnpaths.is_proper_newick(output_stdout):
-            output_file = open(output_file_path, 'w')
-            output_file.write(output_stdout + '\n')
+            output_file = open(output_file_path, "w")
+            output_file.write(output_stdout + "\n")
             output_file.close()
 
-            run.info('FastTree output newick file', output_file_path, mc='green', nl_before=1, nl_after=1)
+            run.info(
+                "FastTree output newick file",
+                output_file_path,
+                mc="green",
+                nl_before=1,
+                nl_after=1,
+            )

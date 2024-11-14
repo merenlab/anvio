@@ -32,10 +32,14 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-G = lambda d: [p for p in glob.glob(os.path.join(d, 'anvi-*')) if utils.is_program_exists(p, dont_raise=True)]
+G = lambda d: [
+    p
+    for p in glob.glob(os.path.join(d, "anvi-*"))
+    if utils.is_program_exists(p, dont_raise=True)
+]
 M = lambda m: [x for x in G(os.path.dirname(utils.is_program_exists(m)))]
 S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
-J = lambda x: '\n'.join(x) if x else ''
+J = lambda x: "\n".join(x) if x else ""
 
 
 run = terminal.Run()
@@ -45,7 +49,7 @@ progress = terminal.Progress()
 def get_until_blank(output):
     section = []
     while 1:
-        if output[0] == '':
+        if output[0] == "":
             break
         else:
             section.append(output.pop(0))
@@ -54,9 +58,9 @@ def get_until_blank(output):
 
 
 def get_meta_information_from_file(file_path, meta_tag):
-    all_lines = [l.strip() for l in open(file_path, 'r').readlines()]
+    all_lines = [l.strip() for l in open(file_path, "r").readlines()]
 
-    meta_tag_content = ''
+    meta_tag_content = ""
 
     while 1:
         if not len(all_lines):
@@ -71,32 +75,34 @@ def get_meta_information_from_file(file_path, meta_tag):
 
     while 1:
         line = all_lines.pop(0)
-        if line == '' or line.startswith('__'):
+        if line == "" or line.startswith("__"):
             break
         else:
             meta_tag_content += line
 
     if meta_tag_content:
-        return eval(meta_tag_content.split('=')[1].strip())
+        return eval(meta_tag_content.split("=")[1].strip())
     else:
         return []
 
 
 def get_param_set(output):
-    if output[0] in ['optional arguments:', 'positional arguments:']:
+    if output[0] in ["optional arguments:", "positional arguments:"]:
         section = output.pop(0)
-        desc = ''
-        _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
+        desc = ""
+        _params = J(
+            [p for p in get_until_blank(output) if not p.startswith("  -h, --help")]
+        )
     else:
         output.pop(0)
         section = output.pop(0)
 
-        if section.startswith('━'):
+        if section.startswith("━"):
             return None, None, None
 
-        if output[0].startswith('  -'):
+        if output[0].startswith("  -"):
             # no description, goes into params immediately (someone did a crappy job)
-            desc = ''
+            desc = ""
         else:
             desc = get_until_blank(output)
             output.pop(0)
@@ -111,7 +117,7 @@ def skip_until_usage(output):
         if not len(output):
             return
 
-        if output[0].startswith('usage:'):
+        if output[0].startswith("usage:"):
             return
 
         output.pop(0)
@@ -123,12 +129,14 @@ def parse_help_output(output):
     if not len(output):
         raise ConfigError("This is not the help menu output we are looking for.")
 
-    if not output[0].startswith('usage:'):
-        raise ConfigError("This output does not seem to have the proper usage statement.")
+    if not output[0].startswith("usage:"):
+        raise ConfigError(
+            "This output does not seem to have the proper usage statement."
+        )
 
     usage = J([l for l in get_until_blank(output)])
 
-    if output.pop(0) != '':
+    if output.pop(0) != "":
         raise ConfigError("This output is missing the description start marker.")
 
     params = {}
@@ -141,13 +149,12 @@ def parse_help_output(output):
         if section == None:
             break
 
-        if _params == '':
+        if _params == "":
             pass
         else:
-            params[section] = {'description': J(desc),
-                               'params': _params}
+            params[section] = {"description": J(desc), "params": _params}
 
-    return usage,  params, output
+    return usage, params, output
 
 
 class AnvioPrograms(AnvioAuthors):
@@ -163,39 +170,58 @@ class AnvioPrograms(AnvioAuthors):
         AnvioAuthors.__init__(self, r=self.run, p=self.progress)
 
         try:
-            self.main_program_filepaths = M('anvi-interactive')
-            self.script_filepaths = S('anvi-script-gen-programs-vignette')
+            self.main_program_filepaths = M("anvi-interactive")
+            self.script_filepaths = S("anvi-script-gen-programs-vignette")
 
-            self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
-            self.all_program_names = [os.path.basename(p) for p in self.all_program_filepaths]
+            self.all_program_filepaths = sorted(
+                list(set(self.main_program_filepaths + self.script_filepaths))
+            )
+            self.all_program_names = [
+                os.path.basename(p) for p in self.all_program_filepaths
+            ]
         except:
-            raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of "
-                              "the fundamental programs, or your configuration is broken :/")
+            raise ConfigError(
+                "Something is wrong. Either your installation or anvi'o setup on this computer is missing some of "
+                "the fundamental programs, or your configuration is broken :/"
+            )
 
         if not len(self.main_program_filepaths) or not len(self.script_filepaths):
-            raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
+            raise ConfigError(
+                "Somethings fishy is happening. This script is unable to find things that want to be found :("
+            )
 
         self.run.info("Main anvi'o programs found", len(self.main_program_filepaths))
         self.run.info("Anvi'o ad hoc scripts found", len(self.script_filepaths))
 
         if self.program_names_to_focus:
-            self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
+            self.program_names_to_focus = [
+                p.strip() for p in self.program_names_to_focus.split(",")
+            ]
             self.run.info("Program names to focus", len(self.program_names_to_focus))
 
-            self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
+            self.all_program_filepaths = [
+                p
+                for p in self.all_program_filepaths
+                if os.path.basename(p) in self.program_names_to_focus
+            ]
 
             if not len(self.all_program_filepaths):
-                raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names. "
-                                  "Probably there is a typo or something :/")
+                raise ConfigError(
+                    "No anvi'o programs left to analyze after changing the focus to your list of program names. "
+                    "Probably there is a typo or something :/"
+                )
 
-
-    def init_programs(self, okay_if_no_meta=False, always_include_those_with_docs=True, quiet=False):
+    def init_programs(
+        self, okay_if_no_meta=False, always_include_those_with_docs=True, quiet=False
+    ):
         """Initializes the `self.programs` dictionary."""
 
         num_all_programs = len(self.all_program_filepaths)
 
         self.programs = {}
-        self.progress.new('Characterizing program', progress_total_items=num_all_programs)
+        self.progress.new(
+            "Characterizing program", progress_total_items=num_all_programs
+        )
 
         programs_with_usage_info = set([])
         programs_without_usage_info = set([])
@@ -207,24 +233,34 @@ class AnvioPrograms(AnvioAuthors):
 
             program = Program(program_filepath, r=self.run, p=self.progress)
 
-            program_usage_information_path = os.path.join(anvio.DOCS_PATH, 'programs/%s.md' % (program.name))
+            program_usage_information_path = os.path.join(
+                anvio.DOCS_PATH, "programs/%s.md" % (program.name)
+            )
 
-            if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
+            if (
+                program.meta_info["provides"]["value"]
+                or program.meta_info["requires"]["value"]
+            ):
                 programs_with_provides_requires_info.add(program.name)
             else:
                 programs_without_provides_requires_info.add(program.name)
 
             # learn about the usage statement of the program if you have access to reading
             # markdown reader function:
-            if hasattr(self, 'read_anvio_markdown'):
+            if hasattr(self, "read_anvio_markdown"):
                 if os.path.exists(program_usage_information_path):
-                    program.usage = self.read_anvio_markdown(program_usage_information_path)
+                    program.usage = self.read_anvio_markdown(
+                        program_usage_information_path
+                    )
                     programs_with_usage_info.add(program.name)
                 else:
                     programs_without_usage_info.add(program.name)
 
             keep_program = True
-            if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']):
+            if not (
+                program.meta_info["provides"]["value"]
+                or program.meta_info["requires"]["value"]
+            ):
                 # if we are here, it means the program is missing both provides AND requires statements.
                 # If the user hasn't set `okay_if_no_meta=True`, we're going to get rid of them, and
                 # will NOT include them in `self.programs`
@@ -234,7 +270,10 @@ class AnvioPrograms(AnvioAuthors):
                 # BUT, there are programs that have no provides/requires statements, such as anvi-self-test,
                 # but have a usage statement under docs already, we may want to keep them in the list
                 # regardless. so here we test that:
-                if program.name in programs_with_usage_info and always_include_those_with_docs:
+                if (
+                    program.name in programs_with_usage_info
+                    and always_include_those_with_docs
+                ):
                     keep_program = True
 
             if keep_program:
@@ -251,9 +290,15 @@ class AnvioPrograms(AnvioAuthors):
         self.progress.end()
 
         # here we will go through each program, and see if there are any with no author information
-        programs_with_no_authors = [p for p in self.programs if not len(self.programs[p].meta_info['authors']['value'])]
+        programs_with_no_authors = [
+            p
+            for p in self.programs
+            if not len(self.programs[p].meta_info["authors"]["value"])
+        ]
         if len(programs_with_no_authors) and anvio.DEBUG:
-            self.run.warning(f"The following programs have no `__authors__` tag: {', '.join(programs_with_no_authors)}.")
+            self.run.warning(
+                f"The following programs have no `__authors__` tag: {', '.join(programs_with_no_authors)}."
+            )
 
         # here we will go through each program, and see if there are any with authors that
         # are not described in the AUTHORS.yaml file:
@@ -261,7 +306,7 @@ class AnvioPrograms(AnvioAuthors):
         unknown_authors = set([])
         known_authors_in_programs = set([])
         for program in self.programs:
-            for author in self.programs[program].meta_info['authors']['value']:
+            for author in self.programs[program].meta_info["authors"]["value"]:
                 if author not in self.authors:
                     programs_with_unknown_authors.add(program)
                     unknown_authors.add(author)
@@ -269,31 +314,43 @@ class AnvioPrograms(AnvioAuthors):
                     known_authors_in_programs.add(author)
 
         if len(programs_with_unknown_authors):
-            raise ConfigError(f"The following programs have authors who are not defined in the authors YAML file "
-                              f"({', '.join(unknown_authors)}) -- every author listed in anvi'o programs must have "
-                              f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
+            raise ConfigError(
+                f"The following programs have authors who are not defined in the authors YAML file "
+                f"({', '.join(unknown_authors)}) -- every author listed in anvi'o programs must have "
+                f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}."
+            )
 
         # report missing provides/requires information
-        self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
-                             "statements :/ This may be normal for some programs, but here is the "
-                             "complete list of those that are missing __provides__ and __requires__ "
-                             "tags in their code in case you see something you can complete: '%s'." % \
-                                        (len(self.all_program_filepaths),
-                                         len(programs_without_provides_requires_info),
-                                         ', '.join(programs_without_provides_requires_info)),
-                             nl_after=1, nl_before=1)
+        self.run.info_single(
+            "Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
+            "statements :/ This may be normal for some programs, but here is the "
+            "complete list of those that are missing __provides__ and __requires__ "
+            "tags in their code in case you see something you can complete: '%s'."
+            % (
+                len(self.all_program_filepaths),
+                len(programs_without_provides_requires_info),
+                ", ".join(programs_without_provides_requires_info),
+            ),
+            nl_after=1,
+            nl_before=1,
+        )
 
         # report missing provides/requires information
-        self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
-                             "help by adding usage information for programs by creating markdown "
-                             "formatted files under the directory '%s'. Please see examples in anvi'o "
-                             "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
-                             "Here is a complete list of programs that are missing usage statements: %s " % \
-                                        (len(self.all_program_filepaths),
-                                         len(programs_without_provides_requires_info),
-                                         anvio.DOCS_PATH,
-                                         ', '.join(programs_without_provides_requires_info)),
-                             nl_after=1, nl_before=1)
+        self.run.info_single(
+            "Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
+            "help by adding usage information for programs by creating markdown "
+            "formatted files under the directory '%s'. Please see examples in anvi'o "
+            "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
+            "Here is a complete list of programs that are missing usage statements: %s "
+            % (
+                len(self.all_program_filepaths),
+                len(programs_without_provides_requires_info),
+                anvio.DOCS_PATH,
+                ", ".join(programs_without_provides_requires_info),
+            ),
+            nl_after=1,
+            nl_before=1,
+        )
 
 
 class Program:
@@ -306,63 +363,46 @@ class Program:
         self.usage = None
 
         self.meta_info = {
-            'requires': {
-                'object_name': '__requires__',
-                'null_object': []
+            "requires": {"object_name": "__requires__", "null_object": []},
+            "provides": {"object_name": "__provides__", "null_object": []},
+            "tags": {"object_name": "__tags__", "null_object": []},
+            "resources": {"object_name": "__resources__", "null_object": []},
+            "authors": {"object_name": "__authors__", "null_object": []},
+            "anvio_workflows": {
+                "object_name": "__anvio_workflows__",
+                "null_object": [],
             },
-            'provides': {
-                'object_name': '__provides__',
-                'null_object': []
-            },
-            'tags': {
-                'object_name': '__tags__',
-                'null_object': []
-            },
-            'resources': {
-                'object_name': '__resources__',
-                'null_object': []
-            },
-            'authors': {
-                'object_name': '__authors__',
-                'null_object': []
-            },
-            'anvio_workflows': {
-                'object_name': '__anvio_workflows__',
-                'null_object': []
-            },
-            'description': {
-                'object_name': '__description__',
-                'null_object': ''
-            },
+            "description": {"object_name": "__description__", "null_object": ""},
         }
 
         self.module = self.load_as_module(self.program_path)
         self.get_meta_info()
 
-
     def get_meta_info(self):
         for info_type in self.meta_info.keys():
             try:
-                info = getattr(self.module, self.meta_info[info_type]['object_name'])
+                info = getattr(self.module, self.meta_info[info_type]["object_name"])
             except AttributeError:
-                info = self.meta_info[info_type]['null_object']
+                info = self.meta_info[info_type]["null_object"]
 
-            if info_type == 'requires' or info_type == 'provides':
+            if info_type == "requires" or info_type == "provides":
                 # these info_types have their items cast as Artifact types
                 info = [Artifact(artifact_name) for artifact_name in info]
 
             if type(info) == str:
-                if 'read_as_is' in self.meta_info[info_type] and self.meta_info[info_type]['read_as_is']:
+                if (
+                    "read_as_is" in self.meta_info[info_type]
+                    and self.meta_info[info_type]["read_as_is"]
+                ):
                     info = info
                 else:
-                    info = info.replace('\n', ' ')
+                    info = info.replace("\n", " ")
 
             # Lower case the github usernames
             if info_type == "authors":
                 info = [a.lower() for a in info]
 
-            self.meta_info[info_type]['value'] = info
-
+            self.meta_info[info_type]["value"] = info
 
     def load_as_module(self, path):
         """
@@ -374,10 +414,9 @@ class Program:
         https://stackoverflow.com/questions/2601047/import-a-python-module-without-the-py-extension/56090741#56090741
         """
         try:
-            module_name = os.path.basename(path).replace('-', '_')
+            module_name = os.path.basename(path).replace("-", "_")
             spec = importlib.util.spec_from_loader(
-                module_name,
-                importlib.machinery.SourceFileLoader(module_name, path)
+                module_name, importlib.machinery.SourceFileLoader(module_name, path)
             )
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
@@ -386,14 +425,12 @@ class Program:
         except:
             return None
 
-
     def __str__(self):
-        self.run.warning(None, header='%s' % self.name, lc='green')
+        self.run.warning(None, header="%s" % self.name, lc="green")
         for info_type in self.meta_info:
-            self.run.info(info_type, self.meta_info[info_type]['value'])
+            self.run.info(info_type, self.meta_info[info_type]["value"])
 
-        return ''
-
+        return ""
 
     def __repr__(self):
         return "PROG::%s" % self.name
@@ -405,23 +442,25 @@ class Artifact:
     def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             progress.reset()
-            raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
-                              "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
-                              "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
-                              "`anvio/docs/__init__.py` (which is also easy to fix). Please consider also adding a description of "
-                              "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
+            raise ConfigError(
+                "Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
+                "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
+                "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
+                "`anvio/docs/__init__.py` (which is also easy to fix). Please consider also adding a description of "
+                "this artifact under anvio/docs/artifacts while you are at it :)"
+                % artifact_id
+            )
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
         self.id = artifact_id
-        self.name = artifact['name']
-        self.type = artifact['type']
-        self.provided_by_anvio = artifact['provided_by_anvio']
-        self.provided_by_user = artifact['provided_by_user']
+        self.name = artifact["name"]
+        self.type = artifact["type"]
+        self.provided_by_anvio = artifact["provided_by_anvio"]
+        self.provided_by_user = artifact["provided_by_user"]
 
         # attributes set by the context master
         self.single = single
         self.optional = optional
-
 
     def __repr__(self):
         return "ARTIFACT::%s" % self.id
@@ -437,17 +476,26 @@ class AnvioWorkflows:
 
         self.workflows = {}
 
-        if not hasattr(self, 'programs') or not hasattr(self, 'artifacts_info') or not hasattr(self, 'authors'):
-            raise ConfigError("AnvioWorkflows class is upset. You need to treat this class as a base class, and initialize "
-                              "it from within another class that has already initialized AnvioPrograms, AnvioArtifacts, AND"
-                              "AnvioAuthors classes. If this is confusing, take a look at the AnvioDocs class.")
+        if (
+            not hasattr(self, "programs")
+            or not hasattr(self, "artifacts_info")
+            or not hasattr(self, "authors")
+        ):
+            raise ConfigError(
+                "AnvioWorkflows class is upset. You need to treat this class as a base class, and initialize "
+                "it from within another class that has already initialized AnvioPrograms, AnvioArtifacts, AND"
+                "AnvioAuthors classes. If this is confusing, take a look at the AnvioDocs class."
+            )
 
         if not len(self.programs):
-            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.programs` variable :/")
+            raise ConfigError(
+                "AnvioWorkflows is being initialized with a blank `self.programs` variable :/"
+            )
 
         if not len(self.artifacts_info):
-            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.artifacts_info` variable :/")
-
+            raise ConfigError(
+                "AnvioWorkflows is being initialized with a blank `self.artifacts_info` variable :/"
+            )
 
     def init_workflows(self):
         """Learn all about anvi'o workflows and initiate the class.
@@ -458,9 +506,17 @@ class AnvioWorkflows:
             Running this function will fill in the dictionary `self.workflows`
         """
 
-        self.workflows= {}
+        self.workflows = {}
 
-        expected_keys = ['authors', 'artifacts_produced', 'artifacts_accepted', 'anvio_workflows_inherited', 'third_party_programs_used', 'one_sentence_summary', 'one_paragraph_summary']
+        expected_keys = [
+            "authors",
+            "artifacts_produced",
+            "artifacts_accepted",
+            "anvio_workflows_inherited",
+            "third_party_programs_used",
+            "one_sentence_summary",
+            "one_paragraph_summary",
+        ]
 
         workflows_without_descriptions = set([])
 
@@ -469,96 +525,148 @@ class AnvioWorkflows:
 
             for key in expected_keys:
                 if key not in self.workflows[workflow]:
-                    raise ConfigError(f"Every workflow must contain the keys \"{', '.join(expected_keys)}\". But "
-                                      f"it is not the case for the workflow '{workflow}' :(")
+                    raise ConfigError(
+                        f"Every workflow must contain the keys \"{', '.join(expected_keys)}\". But "
+                        f"it is not the case for the workflow '{workflow}' :("
+                    )
 
-            self.workflows[workflow]['name'] = workflow
-            self.workflows[workflow]['anvio_programs_used'] = []
+            self.workflows[workflow]["name"] = workflow
+            self.workflows[workflow]["anvio_programs_used"] = []
 
             # a workflow description includes the list of third party programs that are
             # optionally used from whithin the workflow. here we will sanity check that
             # they all have descriptions in `THIRD_PARTY_PROGRAMS`
             # dictionary.
-            for purpose, program_names in self.workflows[workflow]['third_party_programs_used']:
+            for purpose, program_names in self.workflows[workflow][
+                "third_party_programs_used"
+            ]:
                 for program_name in program_names:
                     if program_name not in THIRD_PARTY_PROGRAMS:
-                        raise ConfigError(f"The workflow {workflow} lists the program '{program_name}' in its "
-                                          f"description for third-party programs that are used from within, "
-                                          f"however, there is no entry for this program in the variable "
-                                          f"'THIRD_PARTY_PROGRAMS' in the file "
-                                          f"'anvio/docs/__init__.py'. Please add a necessary description for "
-                                          f"this program into that dict, and try this again.")
+                        raise ConfigError(
+                            f"The workflow {workflow} lists the program '{program_name}' in its "
+                            f"description for third-party programs that are used from within, "
+                            f"however, there is no entry for this program in the variable "
+                            f"'THIRD_PARTY_PROGRAMS' in the file "
+                            f"'anvio/docs/__init__.py'. Please add a necessary description for "
+                            f"this program into that dict, and try this again."
+                        )
 
             # learn about the description of the workflow
-            workflow_description_path = os.path.join(anvio.DOCS_PATH, 'workflows/%s.md' % (workflow))
+            workflow_description_path = os.path.join(
+                anvio.DOCS_PATH, "workflows/%s.md" % (workflow)
+            )
             if os.path.exists(workflow_description_path):
-                self.workflows[workflow]['description'] = self.read_anvio_markdown(workflow_description_path)
+                self.workflows[workflow]["description"] = self.read_anvio_markdown(
+                    workflow_description_path
+                )
             else:
                 workflows_without_descriptions.add(workflow)
 
             # add anvi'o programs used by the workflow
             for program in self.programs.values():
-                    if workflow in [a for a in program.meta_info['anvio_workflows']['value']]:
-                        self.workflows[workflow]['anvio_programs_used'].append(program.name)
+                if workflow in [
+                    a for a in program.meta_info["anvio_workflows"]["value"]
+                ]:
+                    self.workflows[workflow]["anvio_programs_used"].append(program.name)
 
             # make sure 'workflow-config' artifact is not included in 'artifacts_accepted'
-            if 'workflow-config' in self.workflows[workflow]['artifacts_accepted']:
-                raise ConfigError(f"The 'artifacts_accepted' description for the workflow '{workflow}' includes "
-                                  f"`workflow-config`, but this artifact is automatically added to each workflow "
-                                  f"on-the-fly, thus, it shouldn't be listed in the workflow description :/ Sorry!")
+            if "workflow-config" in self.workflows[workflow]["artifacts_accepted"]:
+                raise ConfigError(
+                    f"The 'artifacts_accepted' description for the workflow '{workflow}' includes "
+                    f"`workflow-config`, but this artifact is automatically added to each workflow "
+                    f"on-the-fly, thus, it shouldn't be listed in the workflow description :/ Sorry!"
+                )
 
             # every workflow should accept the artifact `workflow-config` by default, so add it here:
-            self.workflows[workflow]['artifacts_accepted'] = ['workflow-config'] + self.workflows[workflow]['artifacts_accepted']
+            self.workflows[workflow]["artifacts_accepted"] = [
+                "workflow-config"
+            ] + self.workflows[workflow]["artifacts_accepted"]
 
             # sanity check artifacts accepted:
-            for artifact_name in self.workflows[workflow]['artifacts_accepted']:
+            for artifact_name in self.workflows[workflow]["artifacts_accepted"]:
                 if artifact_name not in self.artifacts_info:
-                    raise ConfigError(f"The artifact '{artifact_name}' that is listed as one of the artifacts the workflow "
-                                      f"{workflow} accepts does not seem to be an artifact anvi'o knows about :/ If this is "
-                                      f"a new artifact for workflow, please first describe it in the dictionary `ANVIO_ARTIFACTS` "
-                                      f"in anvio/docs/__init__.py")
+                    raise ConfigError(
+                        f"The artifact '{artifact_name}' that is listed as one of the artifacts the workflow "
+                        f"{workflow} accepts does not seem to be an artifact anvi'o knows about :/ If this is "
+                        f"a new artifact for workflow, please first describe it in the dictionary `ANVIO_ARTIFACTS` "
+                        f"in anvio/docs/__init__.py"
+                    )
 
         # sanity check of author names
         author_names_appear_in_workflows = set([])
-        [author_names_appear_in_workflows.update(w['authors']) for w in self.workflows.values()]
-        author_names_missing_in_authors_file = [a for a in author_names_appear_in_workflows if a not in self.authors]
+        [
+            author_names_appear_in_workflows.update(w["authors"])
+            for w in self.workflows.values()
+        ]
+        author_names_missing_in_authors_file = [
+            a for a in author_names_appear_in_workflows if a not in self.authors
+        ]
         if len(author_names_missing_in_authors_file):
             self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
-            self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')
-            self.run.info("Author names anvi'o does not know about", ', '.join(author_names_missing_in_authors_file), mc='red')
-            raise ConfigError("Some author names in anvi'o workflows defined under `anvio/docs/__init__.py` do not "
-                              "appear in the DEVELOPERS.yaml file. If there is no typo here, please update the "
-                              "contents of the DEVELOPERS.yaml file with the GitHub username of the developer you "
-                              "wish to associate with a workflow. The problematic authors are shown above.")
+            self.run.info(
+                "Author names anvi'o knows about", ", ".join(self.authors), mc="green"
+            )
+            self.run.info(
+                "Author names anvi'o does not know about",
+                ", ".join(author_names_missing_in_authors_file),
+                mc="red",
+            )
+            raise ConfigError(
+                "Some author names in anvi'o workflows defined under `anvio/docs/__init__.py` do not "
+                "appear in the DEVELOPERS.yaml file. If there is no typo here, please update the "
+                "contents of the DEVELOPERS.yaml file with the GitHub username of the developer you "
+                "wish to associate with a workflow. The problematic authors are shown above."
+            )
 
         # make sure every workflow has at least one author
         workflows_missing_authors = set([])
-        [workflows_missing_authors.add(w) for w in self.workflows if not len(self.workflows[w]['authors'])]
+        [
+            workflows_missing_authors.add(w)
+            for w in self.workflows
+            if not len(self.workflows[w]["authors"])
+        ]
         if len(workflows_missing_authors):
-            raise ConfigError(f"One or more workflows defined under `anvio/docs/__init__.py` do not have "
-                              f"any authors. Every workflow must have at least one :/ Here is the list of those that "
-                              f"are missing any authors: {', '.join(workflows_missing_authors)}")
+            raise ConfigError(
+                f"One or more workflows defined under `anvio/docs/__init__.py` do not have "
+                f"any authors. Every workflow must have at least one :/ Here is the list of those that "
+                f"are missing any authors: {', '.join(workflows_missing_authors)}"
+            )
 
         # note the workflows that are missing descriptions.
         if len(workflows_without_descriptions):
-            self.run.info_single("Of %d workflows found, %d did not contain any DESCRIPTION. If you would like to "
-                                 "see examples and add new descriptions, please see the directory '%s'. Here is the "
-                                 "full list of workflows that are not yet explained: %s." \
-                                        % (len(ANVIO_WORKFLOWS),
-                                           len(workflows_without_descriptions),
-                                           anvio.DOCS_PATH,
-                                           ', '.join(workflows_without_descriptions)), nl_after=1, nl_before=1)
+            self.run.info_single(
+                "Of %d workflows found, %d did not contain any DESCRIPTION. If you would like to "
+                "see examples and add new descriptions, please see the directory '%s'. Here is the "
+                "full list of workflows that are not yet explained: %s."
+                % (
+                    len(ANVIO_WORKFLOWS),
+                    len(workflows_without_descriptions),
+                    anvio.DOCS_PATH,
+                    ", ".join(workflows_without_descriptions),
+                ),
+                nl_after=1,
+                nl_before=1,
+            )
 
         # makes ure every workflow mentioned in programs in fact are explained
         # as a workflow
         workflows_mentioned_in_programs = set([])
-        [workflows_mentioned_in_programs.update(p.meta_info['anvio_workflows']['value']) for p in self.programs.values()]
-        unknown_workflows_mentioned_in_programs = [w for w in workflows_mentioned_in_programs if w not in self.workflows]
+        [
+            workflows_mentioned_in_programs.update(
+                p.meta_info["anvio_workflows"]["value"]
+            )
+            for p in self.programs.values()
+        ]
+        unknown_workflows_mentioned_in_programs = [
+            w for w in workflows_mentioned_in_programs if w not in self.workflows
+        ]
         if len(unknown_workflows_mentioned_in_programs):
-            raise ConfigError(f"Some anvi'o programs include `__anvio_workflows__` tags with workflow names anvi'o "
-                              f"dees not recognize :/ Here is the missing workflow names so you can either fix some "
-                              f"typos, or add entries for these workflows in `anvio/docs/__init.py__`: "
-                              f"{', '.join(unknown_workflows_mentioned_in_programs)}")
+            raise ConfigError(
+                f"Some anvi'o programs include `__anvio_workflows__` tags with workflow names anvi'o "
+                f"dees not recognize :/ Here is the missing workflow names so you can either fix some "
+                f"typos, or add entries for these workflows in `anvio/docs/__init.py__`: "
+                f"{', '.join(unknown_workflows_mentioned_in_programs)}"
+            )
 
 
 class AnvioArtifacts:
@@ -572,14 +680,17 @@ class AnvioArtifacts:
         self.artifacts_info = {}
         self.artifact_types = {}
 
-        if not hasattr(self, 'programs'):
-            raise ConfigError("AnvioArtifacts class is upset. You need to treat this class as a base class, and initialize "
-                              "it from within another class that has already initialized AnvioPrograms class. If this is "
-                              "confusing, take a look at the AnvioDocs class.")
+        if not hasattr(self, "programs"):
+            raise ConfigError(
+                "AnvioArtifacts class is upset. You need to treat this class as a base class, and initialize "
+                "it from within another class that has already initialized AnvioPrograms class. If this is "
+                "confusing, take a look at the AnvioDocs class."
+            )
 
         if not len(self.programs):
-            raise ConfigError("AnvioArtifacts is initialized with a blank `self.programs` variable. HOW CUTE.")
-
+            raise ConfigError(
+                "AnvioArtifacts is initialized with a blank `self.programs` variable. HOW CUTE."
+            )
 
     def init_artifacts(self):
         """Generate `required_by` and `provided_by` statements.
@@ -594,26 +705,35 @@ class AnvioArtifacts:
         artifacts_without_descriptions = set([])
 
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
+            self.artifacts_info[artifact] = {
+                "required_by": [],
+                "provided_by": [],
+                "description": None,
+                "type": ANVIO_ARTIFACTS[artifact]["type"],
+            }
 
             # learn about the description of the artifact
-            artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
+            artifact_description_path = os.path.join(
+                anvio.DOCS_PATH, "artifacts/%s.md" % (artifact)
+            )
             if os.path.exists(artifact_description_path):
-                self.artifacts_info[artifact]['description'] = self.read_anvio_markdown(artifact_description_path)
+                self.artifacts_info[artifact]["description"] = self.read_anvio_markdown(
+                    artifact_description_path
+                )
                 artifacts_with_descriptions.add(artifact)
             else:
                 artifacts_without_descriptions.add(artifact)
 
             # learn about what provides or requires this artifact
             for program in self.programs.values():
-                if artifact in [a.id for a in program.meta_info['requires']['value']]:
-                    self.artifacts_info[artifact]['required_by'].append(program.name)
+                if artifact in [a.id for a in program.meta_info["requires"]["value"]]:
+                    self.artifacts_info[artifact]["required_by"].append(program.name)
 
-                if artifact in [a.id for a in program.meta_info['provides']['value']]:
-                    self.artifacts_info[artifact]['provided_by'].append(program.name)
+                if artifact in [a.id for a in program.meta_info["provides"]["value"]]:
+                    self.artifacts_info[artifact]["provided_by"].append(program.name)
 
             # register artifact type
-            artifact_type = self.artifacts_info[artifact]['type']
+            artifact_type = self.artifacts_info[artifact]["type"]
 
             if artifact_type not in self.artifact_types:
                 self.artifact_types[artifact_type] = []
@@ -621,13 +741,19 @@ class AnvioArtifacts:
             self.artifact_types[artifact_type].append(artifact)
 
         if len(artifacts_without_descriptions):
-            self.run.info_single("Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
-                                 "see examples and add new descriptions, please see the directory '%s'. Here is the "
-                                 "full list of artifacts that are not yet explained: %s." \
-                                        % (len(ANVIO_ARTIFACTS),
-                                           len(artifacts_without_descriptions),
-                                           anvio.DOCS_PATH,
-                                           ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
+            self.run.info_single(
+                "Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
+                "see examples and add new descriptions, please see the directory '%s'. Here is the "
+                "full list of artifacts that are not yet explained: %s."
+                % (
+                    len(ANVIO_ARTIFACTS),
+                    len(artifacts_without_descriptions),
+                    anvio.DOCS_PATH,
+                    ", ".join(artifacts_without_descriptions),
+                ),
+                nl_after=1,
+                nl_before=1,
+            )
 
 
 class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
@@ -646,18 +772,32 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.progress = p
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
+        self.output_directory_path = A("output_dir") or "ANVIO-HELP"
 
         if not os.path.exists(anvio.DOCS_PATH):
-            raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
+            raise ConfigError(
+                "The anvi'o docs path is not where it should be :/ Something funny is going on."
+            )
 
-        filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
+        filesnpaths.gen_output_directory(
+            self.output_directory_path, delete_if_exists=True, dont_warn=True
+        )
 
-        self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
-        self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
-        self.workflows_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'workflows'))
+        self.artifacts_output_dir = filesnpaths.gen_output_directory(
+            os.path.join(self.output_directory_path, "artifacts")
+        )
+        self.programs_output_dir = filesnpaths.gen_output_directory(
+            os.path.join(self.output_directory_path, "programs")
+        )
+        self.workflows_output_dir = filesnpaths.gen_output_directory(
+            os.path.join(self.output_directory_path, "workflows")
+        )
 
-        self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
+        self.version_short_identifier = (
+            "m"
+            if anvio.anvio_version_for_help_docs == "main"
+            else anvio.anvio_version_for_help_docs
+        )
         self.base_url = os.path.join("/help", anvio.anvio_version_for_help_docs)
         self.anvio_markdown_variables_conversion_dict = {}
 
@@ -671,32 +811,50 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.init_workflows()
 
         if not len(self.programs):
-            raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
-                              "`self.programs` dictionary seems to be empty :/")
+            raise ConfigError(
+                "AnvioDocs is asked ot process the usage statements of some programs, but the "
+                "`self.programs` dictionary seems to be empty :/"
+            )
 
-        self.images_source_directory = os.path.join(os.path.dirname(anvio.__file__), 'docs/images/png')
+        self.images_source_directory = os.path.join(
+            os.path.dirname(anvio.__file__), "docs/images/png"
+        )
 
         self.sanity_check()
-
 
     def sanity_check(self):
         """Quick sanity checks to ensure things are working"""
 
         if not os.path.exists(self.images_source_directory):
-            raise ConfigError("AnvioDocs speaking: the images source directory does not seem to be "
-                              "where it should have been :/")
+            raise ConfigError(
+                "AnvioDocs speaking: the images source directory does not seem to be "
+                "where it should have been :/"
+            )
 
         # make sure each artifact type has an icon
-        A_PNG = lambda x: os.path.exists(os.path.join(self.images_source_directory, 'icons', ANVIO_ARTIFACTS[x]['type'] + '.png'))
-        missing_images_for_artifact_types = [ANVIO_ARTIFACTS[artifact]['type'] for artifact in self.artifacts_info if not A_PNG(artifact)]
+        A_PNG = lambda x: os.path.exists(
+            os.path.join(
+                self.images_source_directory,
+                "icons",
+                ANVIO_ARTIFACTS[x]["type"] + ".png",
+            )
+        )
+        missing_images_for_artifact_types = [
+            ANVIO_ARTIFACTS[artifact]["type"]
+            for artifact in self.artifacts_info
+            if not A_PNG(artifact)
+        ]
         if len(missing_images_for_artifact_types):
-            raise ConfigError("Some artifacts do not have matching images. If you just added a new artifact type, you "
-                              "also need to add a corresponding PNG icon for the type under the directory '%s'. See "
-                              "examples in that directory, and if they are not enough, get in touch with a developer. "
-                              "Regardless. These are the artifact types missing images: %s." \
-                                                                % (os.path.join(self.images_source_directory, 'icons'),
-                                                                   ', '.join(missing_images_for_artifact_types)))
-
+            raise ConfigError(
+                "Some artifacts do not have matching images. If you just added a new artifact type, you "
+                "also need to add a corresponding PNG icon for the type under the directory '%s'. See "
+                "examples in that directory, and if they are not enough, get in touch with a developer. "
+                "Regardless. These are the artifact types missing images: %s."
+                % (
+                    os.path.join(self.images_source_directory, "icons"),
+                    ", ".join(missing_images_for_artifact_types),
+                )
+            )
 
     def generate(self):
         self.copy_images()
@@ -709,25 +867,38 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         self.generate_index_page()
 
-
     def copy_images(self):
         """Copies images from the codebase to the output directory"""
 
-        utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
+        utils.shutil.copytree(
+            self.images_source_directory,
+            os.path.join(self.output_directory_path, "images"),
+        )
 
-        os.makedirs(os.path.join(self.output_directory_path, 'images/authors'))
+        os.makedirs(os.path.join(self.output_directory_path, "images/authors"))
 
         for author in self.authors:
-            utils.shutil.copy(self.authors[author]['avatar'], os.path.join(self.output_directory_path, 'images/authors', os.path.basename(self.authors[author]['avatar'])))
-
+            utils.shutil.copy(
+                self.authors[author]["avatar"],
+                os.path.join(
+                    self.output_directory_path,
+                    "images/authors",
+                    os.path.basename(self.authors[author]["avatar"]),
+                ),
+            )
 
     def init_anvio_markdown_variables_conversion_dict(self):
         for program_name in self.all_program_names:
-            self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-p">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
+            self.anvio_markdown_variables_conversion_dict[program_name] = (
+                """<span class="artifact-p">[%s](%s/programs/%s)</span>"""
+                % (program_name, self.base_url, program_name)
+            )
 
         for artifact_name in ANVIO_ARTIFACTS:
-            self.anvio_markdown_variables_conversion_dict[artifact_name] = """<span class="artifact-n">[%s](%s/artifacts/%s)</span>""" % (artifact_name, self.base_url, artifact_name)
-
+            self.anvio_markdown_variables_conversion_dict[artifact_name] = (
+                """<span class="artifact-n">[%s](%s/artifacts/%s)</span>"""
+                % (artifact_name, self.base_url, artifact_name)
+            )
 
     def read_anvio_markdown(self, file_path):
         """Reads markdown descriptions filling in anvi'o variables.
@@ -744,47 +915,74 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         # this is quite a big deal thing to do here:
         try:
-            markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
+            markdown_content = (
+                markdown_content % self.anvio_markdown_variables_conversion_dict
+            )
         except KeyError as e:
             self.progress.end()
-            raise ConfigError("One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
-                              "a new artifact, you can add it to the file `anvio/docs/__init__.py`. After which everything "
-                              "should work. But please also remember to update provides / requires statements of programs "
-                              "for everything to be linked together." % (e, file_path))
+            raise ConfigError(
+                "One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
+                "a new artifact, you can add it to the file `anvio/docs/__init__.py`. After which everything "
+                "should work. But please also remember to update provides / requires statements of programs "
+                "for everything to be linked together." % (e, file_path)
+            )
         except Exception as e:
             self.progress.end()
-            additional_info = ("If you're stumped by that message, here are some common errors and their solutions: "
-                               "(1) 'unsupported format character' could mean that one of your tags specified with "
-                               "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
-                               "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
-                               "This must be replaced with '85%% similar'.")
-            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'. %s" % (file_path, e, additional_info))
+            additional_info = (
+                "If you're stumped by that message, here are some common errors and their solutions: "
+                "(1) 'unsupported format character' could mean that one of your tags specified with "
+                "'%(tag)s' did not have the appended 's'. (2) 'not enough arguments for format string' "
+                "could mean that your document has a '%' sign used in natural language, i.e. '85% similar'. "
+                "This must be replaced with '85%% similar'."
+            )
+            raise ConfigError(
+                "Something went wrong while working with '%s' :/ This is what we know: '%s'. %s"
+                % (file_path, e, additional_info)
+            )
 
         # now we have replaced anvi'o variables with markdown links, it is time to replace
         # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
         # time to visualize these and replace -- characters with en dash.
-        markdwon_lines = markdown_content.split('\n')
-        line_nums_for_codestart_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestart }}"]
-        line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
+        markdwon_lines = markdown_content.split("\n")
+        line_nums_for_codestart_tags = [
+            i
+            for i in range(0, len(markdwon_lines))
+            if markdwon_lines[i].strip() == "{{ codestart }}"
+        ]
+        line_nums_for_codestop_tags = [
+            i
+            for i in range(0, len(markdwon_lines))
+            if markdwon_lines[i].strip() == "{{ codestop }}"
+        ]
 
         if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
-            raise ConfigError("In %s, the number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/" % file_path)
+            raise ConfigError(
+                "In %s, the number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/"
+                % file_path
+            )
 
-
-        for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
+        for line_start, line_end in list(
+            zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)
+        ):
             for line_num in range(line_start + 1, line_end):
-                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;").replace("*", "&#42;").replace("==", "&#61;&#61;")
+                markdwon_lines[line_num] = (
+                    markdwon_lines[line_num]
+                    .replace("-", "&#45;")
+                    .replace("*", "&#42;")
+                    .replace("==", "&#61;&#61;")
+                )
 
         # all lines are processed: merge them back into a single text:
-        markdown_content = '\n'.join(markdwon_lines)
+        markdown_content = "\n".join(markdwon_lines)
 
         # now we have a proper markdown, it is time to remove anvi'o {{ codestart }} and {{ codestop }} blocks.
-        markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
+        markdown_content = markdown_content.replace(
+            """{{ codestart }}""", """<div class="codeblock" markdown="1">"""
+        )
         markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
 
         # return it like a pro.
         return markdown_content
-
 
     def get_program_requires_provides_dict(self, prefix="../../"):
         d = {}
@@ -793,56 +991,87 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d[program_name] = {}
 
             program = self.programs[program_name]
-            d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
-            d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
-            d[program_name]['anvio_workflows'] = [(w, '%sworkflows/%s' % (prefix, w)) for w in program.meta_info['anvio_workflows']['value']]
+            d[program_name]["requires"] = [
+                (r.id, "%sartifacts/%s" % (prefix, r.id))
+                for r in program.meta_info["requires"]["value"]
+            ]
+            d[program_name]["provides"] = [
+                (r.id, "%sartifacts/%s" % (prefix, r.id))
+                for r in program.meta_info["provides"]["value"]
+            ]
+            d[program_name]["anvio_workflows"] = [
+                (w, "%sworkflows/%s" % (prefix, w))
+                for w in program.meta_info["anvio_workflows"]["value"]
+            ]
 
         return d
 
-
     def get_workflow_produced_artifacts_list(self, workflow_name, prefix="../../"):
-        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_produced']]
-
+        return [
+            (r, "%sartifacts/%s" % (prefix, r))
+            for r in self.workflows[workflow_name]["artifacts_produced"]
+        ]
 
     def get_workflow_accepted_artifacts_list(self, workflow_name, prefix="../../"):
-        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_accepted']]
-
+        return [
+            (r, "%sartifacts/%s" % (prefix, r))
+            for r in self.workflows[workflow_name]["artifacts_accepted"]
+        ]
 
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
-        self.progress.new("Rendering artifact pages", progress_total_items=len(ANVIO_ARTIFACTS))
-        self.progress.update('...')
+        self.progress.new(
+            "Rendering artifact pages", progress_total_items=len(ANVIO_ARTIFACTS)
+        )
+        self.progress.update("...")
 
         for artifact in ANVIO_ARTIFACTS:
             self.progress.update(f"'{artifact}' ...", increment=True)
 
-            d = {'artifact': ANVIO_ARTIFACTS[artifact],
-                 'meta': {'summary_type': 'artifact',
-                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
-                          'version_short_identifier': self.version_short_identifier}
-                }
+            d = {
+                "artifact": ANVIO_ARTIFACTS[artifact],
+                "meta": {
+                    "summary_type": "artifact",
+                    "version": "\n".join(
+                        ["|%s|%s|" % (t[0], t[1]) for t in anvio.get_version_tuples()]
+                    ),
+                    "date": utils.get_date(),
+                    "version_short_identifier": self.version_short_identifier,
+                },
+            }
 
-            d['artifact']['name'] = artifact
-            d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
-            d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
-            d['artifact']['description'] = self.artifacts_info[artifact]['description']
-            d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
+            d["artifact"]["name"] = artifact
+            d["artifact"]["required_by"] = [
+                (r, "../../programs/%s" % r)
+                for r in self.artifacts_info[artifact]["required_by"]
+            ]
+            d["artifact"]["provided_by"] = [
+                (r, "../../programs/%s" % r)
+                for r in self.artifacts_info[artifact]["provided_by"]
+            ]
+            d["artifact"]["description"] = self.artifacts_info[artifact]["description"]
+            d["artifact"]["icon"] = (
+                "../../images/icons/%s.png" % ANVIO_ARTIFACTS[artifact]["type"]
+            )
 
             if anvio.DEBUG:
                 self.progress.reset()
-                run.warning(None, 'THE OUTPUT DICT')
+                run.warning(None, "THE OUTPUT DICT")
                 import json
+
                 print(json.dumps(d, indent=2))
 
             self.progress.update(f"'{artifact}' ... rendering ...", increment=False)
-            artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact))
-            output_file_path = os.path.join(artifact_output_dir, 'index.md')
-            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+            artifact_output_dir = filesnpaths.gen_output_directory(
+                os.path.join(self.artifacts_output_dir, artifact)
+            )
+            output_file_path = os.path.join(artifact_output_dir, "index.md")
+            open(output_file_path, "w").write(
+                SummaryHTMLOutput(d, r=run, p=progress).render()
+            )
 
         self.progress.end()
-
 
     def get_HTML_formatted_authors_data(self, authors):
         """for a given program, returns HTML-formatted authors data"""
@@ -850,26 +1079,25 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         d = ""
 
         for author in authors:
-            d += '''<div class="anvio-person"><div class="anvio-person-info">'''
-            d += f'''<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
-            d += '''<div class="anvio-person-info-box">'''
-            d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><span class="anvio-person-name">{self.authors[author]['name']}</span></a>'''
-            d += '''<div class="anvio-person-social-box">'''
+            d += """<div class="anvio-person"><div class="anvio-person-info">"""
+            d += f"""<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>"""
+            d += """<div class="anvio-person-info-box">"""
+            d += f"""<a href="/people/{self.authors[author]['github']}" target="_blank"><span class="anvio-person-name">{self.authors[author]['name']}</span></a>"""
+            d += """<div class="anvio-person-social-box">"""
 
-            if 'web' in self.authors[author]:
-                d += f'''<a href="{self.authors[author]['web']}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'''
+            if "web" in self.authors[author]:
+                d += f"""<a href="{self.authors[author]['web']}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>"""
 
-            d += f'''<a href="mailto:{self.authors[author]['email']}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'''
+            d += f"""<a href="mailto:{self.authors[author]['email']}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>"""
 
-            if 'twitter' in self.authors[author]:
-                d += f'''<a href="http://twitter.com/{self.authors[author]['twitter']}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'''
+            if "twitter" in self.authors[author]:
+                d += f"""<a href="http://twitter.com/{self.authors[author]['twitter']}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>"""
 
-            d += f'''<a href="http://github.com/{self.authors[author]['github']}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'''
+            d += f"""<a href="http://github.com/{self.authors[author]['github']}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>"""
 
-            d += '''</div></div></div></div>\n\n'''
+            d += """</div></div></div></div>\n\n"""
 
         return d
-
 
     def get_HTML_formatted_authors_data_mini(self, authors):
         """for a given list of authors, returns a tiny version of the HTML-formatted authors data"""
@@ -877,69 +1105,93 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         d = ""
 
         for author in authors:
-            d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
-            d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
-            d += '''</div></div>\n'''
+            d += """<div class="anvio-person-mini"><div class="anvio-person-photo-mini">"""
+            d += f"""<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>"""
+            d += """</div></div>\n"""
 
         return d
-
 
     def get_HTML_formatted_third_party_programs(self, workflow_name):
         """Get a template-friendly list of third-party programs used from within a workflow"""
 
         d = []
 
-        for purpose, program_names in self.workflows[workflow_name]['third_party_programs_used']:
+        for purpose, program_names in self.workflows[workflow_name][
+            "third_party_programs_used"
+        ]:
             for program_name in program_names:
-                d.append(f'''<a href="{THIRD_PARTY_PROGRAMS[program_name]['link']}" target="_blank">{program_name}</a> ({purpose})''')
+                d.append(
+                    f"""<a href="{THIRD_PARTY_PROGRAMS[program_name]['link']}" target="_blank">{program_name}</a> ({purpose})"""
+                )
 
         return d
-
 
     def generate_pages_for_workflows(self):
         """Generate static pages for anvi'o workflows in the output directory"""
 
-        self.progress.new("Rendering workflow pages", progress_total_items=len(self.workflows))
-        self.progress.update('...')
+        self.progress.new(
+            "Rendering workflow pages", progress_total_items=len(self.workflows)
+        )
+        self.progress.update("...")
 
         for workflow_name in self.workflows:
             self.progress.update(f"'{workflow_name}' ...", increment=True)
 
-            d = {'workflow': self.workflows[workflow_name],
-                 'meta': {'summary_type': 'workflow',
-                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
-                          'version_short_identifier': self.version_short_identifier}
-                 }
+            d = {
+                "workflow": self.workflows[workflow_name],
+                "meta": {
+                    "summary_type": "workflow",
+                    "version": "\n".join(
+                        ["|%s|%s|" % (t[0], t[1]) for t in anvio.get_version_tuples()]
+                    ),
+                    "date": utils.get_date(),
+                    "version_short_identifier": self.version_short_identifier,
+                },
+            }
 
-            d['workflow']['artifacts_produced'] = self.get_workflow_produced_artifacts_list(workflow_name)
-            d['workflow']['artifacts_accepted'] = self.get_workflow_accepted_artifacts_list(workflow_name)
-            d['workflow']['third_party_programs_used'] = self.get_HTML_formatted_third_party_programs(workflow_name)
-            d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
+            d["workflow"]["artifacts_produced"] = (
+                self.get_workflow_produced_artifacts_list(workflow_name)
+            )
+            d["workflow"]["artifacts_accepted"] = (
+                self.get_workflow_accepted_artifacts_list(workflow_name)
+            )
+            d["workflow"]["third_party_programs_used"] = (
+                self.get_HTML_formatted_third_party_programs(workflow_name)
+            )
+            d["workflow"]["authors"] = self.get_HTML_formatted_authors_data(
+                d["workflow"]["authors"]
+            )
 
             # also add information regarding the artifacts
-            d['artifacts'] = self.artifacts_info
+            d["artifacts"] = self.artifacts_info
 
             if anvio.DEBUG:
                 self.progress.reset()
-                run.warning(None, 'THE WORKFLOW OUTPUT DICT')
+                run.warning(None, "THE WORKFLOW OUTPUT DICT")
                 import json
+
                 print(json.dumps(d, indent=2))
 
-            self.progress.update(f"'{workflow_name}' ... rendering ...", increment=False)
-            workflow_output_dir = filesnpaths.gen_output_directory(os.path.join(self.workflows_output_dir, workflow_name))
-            output_file_path = os.path.join(workflow_output_dir, 'index.md')
-            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+            self.progress.update(
+                f"'{workflow_name}' ... rendering ...", increment=False
+            )
+            workflow_output_dir = filesnpaths.gen_output_directory(
+                os.path.join(self.workflows_output_dir, workflow_name)
+            )
+            output_file_path = os.path.join(workflow_output_dir, "index.md")
+            open(output_file_path, "w").write(
+                SummaryHTMLOutput(d, r=run, p=progress).render()
+            )
 
         self.progress.end()
-
-
 
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
-        self.progress.new("Rendering program pages", progress_total_items=len(self.programs))
-        self.progress.update('...')
+        self.progress.new(
+            "Rendering program pages", progress_total_items=len(self.programs)
+        )
+        self.progress.update("...")
 
         program_provides_requires_dict = self.get_program_requires_provides_dict()
 
@@ -947,79 +1199,125 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             self.progress.update(f"'{program_name}' ...", increment=True)
 
             program = self.programs[program_name]
-            d = {'program': {},
-                 'meta': {'summary_type': 'program',
-                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
-                          'version_short_identifier': self.version_short_identifier}
-                }
+            d = {
+                "program": {},
+                "meta": {
+                    "summary_type": "program",
+                    "version": "\n".join(
+                        ["|%s|%s|" % (t[0], t[1]) for t in anvio.get_version_tuples()]
+                    ),
+                    "date": utils.get_date(),
+                    "version_short_identifier": self.version_short_identifier,
+                },
+            }
 
-            d['program']['name'] = program_name
-            d['program']['usage'] = program.usage
-            d['program']['description'] = program.meta_info['description']['value']
-            d['program']['resources'] = program.meta_info['resources']['value']
-            d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
-            d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
-            d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
-            d['program']['authors'] = self.get_HTML_formatted_authors_data(program.meta_info['authors']['value'])
-            d['artifacts'] = self.artifacts_info
-            d['workflows'] = self.workflows
+            d["program"]["name"] = program_name
+            d["program"]["usage"] = program.usage
+            d["program"]["description"] = program.meta_info["description"]["value"]
+            d["program"]["resources"] = program.meta_info["resources"]["value"]
+            d["program"]["requires"] = program_provides_requires_dict[program_name][
+                "requires"
+            ]
+            d["program"]["provides"] = program_provides_requires_dict[program_name][
+                "provides"
+            ]
+            d["program"]["icon"] = "../../images/icons/%s.png" % "PROGRAM"
+            d["program"]["authors"] = self.get_HTML_formatted_authors_data(
+                program.meta_info["authors"]["value"]
+            )
+            d["artifacts"] = self.artifacts_info
+            d["workflows"] = self.workflows
 
             if anvio.DEBUG:
                 self.progress.reset()
-                run.warning(None, 'THE OUTPUT DICT')
+                run.warning(None, "THE OUTPUT DICT")
                 import json
+
                 print(json.dumps(d, indent=2))
 
             self.progress.update(f"'{program_name}' ... rendering ...", increment=False)
-            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
-            output_file_path = os.path.join(program_output_dir, 'index.md')
-            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+            program_output_dir = filesnpaths.gen_output_directory(
+                os.path.join(self.programs_output_dir, program_name)
+            )
+            output_file_path = os.path.join(program_output_dir, "index.md")
+            open(output_file_path, "w").write(
+                SummaryHTMLOutput(d, r=run, p=progress).render()
+            )
 
             # create the program network, too
-            self.progress.update(f"'{program_name}' ... rendering ... network json ...", increment=False)
-            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
-            program_network = ProgramsNetwork(argparse.Namespace(output_file=os.path.join(program_output_dir, "network.json"), program_names_to_focus=program_name), r=terminal.Run(verbose=False))
+            self.progress.update(
+                f"'{program_name}' ... rendering ... network json ...", increment=False
+            )
+            program_output_dir = filesnpaths.gen_output_directory(
+                os.path.join(self.programs_output_dir, program_name)
+            )
+            program_network = ProgramsNetwork(
+                argparse.Namespace(
+                    output_file=os.path.join(program_output_dir, "network.json"),
+                    program_names_to_focus=program_name,
+                ),
+                r=terminal.Run(verbose=False),
+            )
             program_network.generate()
 
         self.progress.end()
-
 
     def generate_index_page(self):
         """Generates the index page for help where all programs and artifacts are listed"""
 
         self.progress.new("Index page")
-        self.progress.update('...')
+        self.progress.update("...")
 
         # let's add the 'path' for each artifact to simplify
         # access from the template:
         for artifact in self.artifacts_info:
-            self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
+            self.artifacts_info[artifact]["path"] = f"artifacts/{artifact}"
 
         # quick update of the author information in workflows so they contain nice HTML
         # code instad of a list of author names
         for workflow in self.workflows:
-            self.workflows[workflow]['authors'] = self.get_HTML_formatted_authors_data_mini(ANVIO_WORKFLOWS[workflow]['authors'])
+            self.workflows[workflow]["authors"] = (
+                self.get_HTML_formatted_authors_data_mini(
+                    ANVIO_WORKFLOWS[workflow]["authors"]
+                )
+            )
 
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
-        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p].meta_info['authors']['value'])) for p in self.programs],
-             'workflows': self.workflows,
-             'artifacts': self.artifacts_info,
-             'artifact_types': self.artifact_types,
-             'meta': {'summary_type': 'programs_and_artifacts_index',
-                      'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
-                      'date': utils.get_date()}
-            }
+        d = {
+            "programs": [
+                (
+                    p,
+                    "programs/%s" % p,
+                    self.programs[p].meta_info["description"]["value"],
+                    self.get_HTML_formatted_authors_data_mini(
+                        self.programs[p].meta_info["authors"]["value"]
+                    ),
+                )
+                for p in self.programs
+            ],
+            "workflows": self.workflows,
+            "artifacts": self.artifacts_info,
+            "artifact_types": self.artifact_types,
+            "meta": {
+                "summary_type": "programs_and_artifacts_index",
+                "version": "%s (%s)" % (anvio.anvio_version, anvio.anvio_codename),
+                "date": utils.get_date(),
+            },
+        }
 
-        d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
+        d["program_provides_requires"] = self.get_program_requires_provides_dict(
+            prefix=""
+        )
 
-        self.progress.update('Rendering...')
-        output_file_path = os.path.join(self.output_directory_path, 'index.md')
+        self.progress.update("Rendering...")
+        output_file_path = os.path.join(self.output_directory_path, "index.md")
 
-        self.progress.update('Writing...')
-        open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+        self.progress.update("Writing...")
+        open(output_file_path, "w").write(
+            SummaryHTMLOutput(d, r=run, p=progress).render()
+        )
 
         self.progress.end()
 
@@ -1031,17 +1329,15 @@ class ProgramsNetwork(AnvioPrograms):
         self.progress = p
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.output_file_path = A("output_file") or 'NETWORK.json'
+        self.output_file_path = A("output_file") or "NETWORK.json"
 
         filesnpaths.is_output_file_writable(self.output_file_path)
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
 
-
     def generate(self):
         self.init_programs()
         self.report_network()
-
 
     def report_network(self, program_name=None):
         """Reports an association network for anvi'o programs and artifacs
@@ -1055,7 +1351,10 @@ class ProgramsNetwork(AnvioPrograms):
         artifacts_seen = Counter({})
         all_artifacts = []
         for program in self.programs.values():
-            for artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
+            for artifact in (
+                program.meta_info["provides"]["value"]
+                + program.meta_info["requires"]["value"]
+            ):
                 artifacts_seen[artifact.id] += 1
                 if not artifact.id in artifact_names_seen:
                     all_artifacts.append(artifact)
@@ -1064,11 +1363,20 @@ class ProgramsNetwork(AnvioPrograms):
         programs_seen = Counter({})
         for artifact in all_artifacts:
             for program in self.programs.values():
-                for program_artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
+                for program_artifact in (
+                    program.meta_info["provides"]["value"]
+                    + program.meta_info["requires"]["value"]
+                ):
                     if artifact.name == program_artifact.name:
                         programs_seen[program.name] += 1
 
-        network_dict = {"graph": [], "nodes": [], "links": [], "directed": False, "multigraph": False}
+        network_dict = {
+            "graph": [],
+            "nodes": [],
+            "links": [],
+            "directed": False,
+            "multigraph": False,
+        }
 
         node_indices = {}
 
@@ -1076,39 +1384,57 @@ class ProgramsNetwork(AnvioPrograms):
         types_seen = set(["PROGRAM"])
         for artifact in all_artifacts:
             types_seen.add(artifact.type)
-            network_dict["nodes"].append({"size": artifacts_seen[artifact.id],
-                                          "score": 0.5 if artifact.provided_by_anvio else 1,
-                                          "color": '#00AA00' if artifact.provided_by_anvio else "#AA0000",
-                                          "id": artifact.id,
-                                          "name": artifact.name,
-                                          "provided_by_anvio": True if artifact.provided_by_anvio else False,
-                                          "type": artifact.type})
+            network_dict["nodes"].append(
+                {
+                    "size": artifacts_seen[artifact.id],
+                    "score": 0.5 if artifact.provided_by_anvio else 1,
+                    "color": "#00AA00" if artifact.provided_by_anvio else "#AA0000",
+                    "id": artifact.id,
+                    "name": artifact.name,
+                    "provided_by_anvio": True if artifact.provided_by_anvio else False,
+                    "type": artifact.type,
+                }
+            )
             node_indices[artifact.id] = index
             index += 1
 
         for program in self.programs.values():
-            network_dict["nodes"].append({"size": programs_seen[program.name],
-                                          "score": 0.1,
-                                          "color": "#AAAA00",
-                                          "id": program.name,
-                                          "name": program.name,
-                                          "type": "PROGRAM"})
+            network_dict["nodes"].append(
+                {
+                    "size": programs_seen[program.name],
+                    "score": 0.1,
+                    "color": "#AAAA00",
+                    "id": program.name,
+                    "name": program.name,
+                    "type": "PROGRAM",
+                }
+            )
             node_indices[program.name] = index
             index += 1
 
         for artifact in all_artifacts:
             for program in self.programs.values():
-                for artifact_provided in program.meta_info['provides']['value']:
+                for artifact_provided in program.meta_info["provides"]["value"]:
                     if artifact_provided.id == artifact.id:
-                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact.id]})
-                for artifact_needed in program.meta_info['requires']['value']:
+                        network_dict["links"].append(
+                            {
+                                "source": node_indices[program.name],
+                                "target": node_indices[artifact.id],
+                            }
+                        )
+                for artifact_needed in program.meta_info["requires"]["value"]:
                     if artifact_needed.id == artifact.id:
-                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact.id]})
+                        network_dict["links"].append(
+                            {
+                                "target": node_indices[program.name],
+                                "source": node_indices[artifact.id],
+                            }
+                        )
 
-        open(self.output_file_path, 'w').write(json.dumps(network_dict, indent=2))
+        open(self.output_file_path, "w").write(json.dumps(network_dict, indent=2))
 
-        self.run.info('JSON description of network', self.output_file_path)
-        self.run.info('Artifacts seen', ', '.join(sorted(list(types_seen))))
+        self.run.info("JSON description of network", self.output_file_path)
+        self.run.info("Artifacts seen", ", ".join(sorted(list(types_seen))))
 
 
 class ProgramsVignette(AnvioPrograms):
@@ -1117,16 +1443,15 @@ class ProgramsVignette(AnvioPrograms):
         self.run = r
         self.progress = p
 
-        self.programs_to_skip = ['anvi-script-gen-programs-vignette']
+        self.programs_to_skip = ["anvi-script-gen-programs-vignette"]
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A("output_file")
 
-
     def generate(self):
-        self.init_programs(okay_if_no_meta = True, quiet = True)
+        self.init_programs(okay_if_no_meta=True, quiet=True)
 
         d = {}
         log_file = filesnpaths.get_temp_file_path()
@@ -1134,52 +1459,69 @@ class ProgramsVignette(AnvioPrograms):
             program = self.programs[program_name]
 
             if program_name in self.programs_to_skip:
-                run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program.name))
+                run.warning(
+                    "Someone doesn't want %s to be in the output :/ Fine. Skipping."
+                    % (program.name)
+                )
 
-            progress.new('Bleep bloop')
-            progress.update('%s (%d of %d)' % (program_name, i+1, len(self.programs)))
+            progress.new("Bleep bloop")
+            progress.update("%s (%d of %d)" % (program_name, i + 1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
+            output = utils.run_command_STDIN(
+                "%s --help --quiet" % (program.program_path), log_file, ""
+            ).split("\n")
 
             if anvio.DEBUG:
-                    usage, params, output = parse_help_output(output)
+                usage, params, output = parse_help_output(output)
             else:
                 try:
                     usage, params, output = parse_help_output(output)
                 except Exception as e:
                     progress.end()
-                    run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next. "
-                                "For the curious, this was the error message: '%s'" % (program.name, str(e).strip()))
+                    run.warning(
+                        "The program '%s' does not seem to have the expected help menu output. Skipping to the next. "
+                        "For the curious, this was the error message: '%s'"
+                        % (program.name, str(e).strip())
+                    )
                     continue
 
-            d[program.name] = {'usage': usage,
-                               'description': program.meta_info['description']['value'],
-                               'params': params,
-                               'tags': program.meta_info['tags']['value'],
-                               'resources': program.meta_info['resources']['value']}
+            d[program.name] = {
+                "usage": usage,
+                "description": program.meta_info["description"]["value"],
+                "params": params,
+                "tags": program.meta_info["tags"]["value"],
+                "resources": program.meta_info["resources"]["value"],
+            }
 
             progress.end()
 
         os.remove(log_file)
 
         # generate output
-        program_names = sorted([p for p in d if not p.startswith('anvi-script-')])
-        script_names = sorted([p for p in d if p.startswith('anvi-script-')])
-        vignette = {'vignette': d,
-                    'program_names': program_names,
-                    'script_names': script_names,
-                    'all_names': program_names + script_names,
-                    'meta': {'summary_type': 'vignette',
-                             'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                             'date': utils.get_date()}}
+        program_names = sorted([p for p in d if not p.startswith("anvi-script-")])
+        script_names = sorted([p for p in d if p.startswith("anvi-script-")])
+        vignette = {
+            "vignette": d,
+            "program_names": program_names,
+            "script_names": script_names,
+            "all_names": program_names + script_names,
+            "meta": {
+                "summary_type": "vignette",
+                "version": "\n".join(
+                    ["|%s|%s|" % (t[0], t[1]) for t in anvio.get_version_tuples()]
+                ),
+                "date": utils.get_date(),
+            },
+        }
 
         if anvio.DEBUG:
-            run.warning(None, 'THE OUTPUT DICT')
+            run.warning(None, "THE OUTPUT DICT")
             import json
+
             print(json.dumps(d, indent=2))
 
-        open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
+        open(self.output_file_path, "w").write(
+            SummaryHTMLOutput(vignette, r=run, p=progress).render()
+        )
 
-        run.info('Output file', os.path.abspath(self.output_file_path))
-
-
+        run.info("Output file", os.path.abspath(self.output_file_path))
