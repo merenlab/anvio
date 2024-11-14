@@ -50,7 +50,6 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.serverAPI import AnviServerAPI
 from anvio.errors import RefineError, ConfigError
 from anvio.tables.miscdata import TableForLayerOrders
-from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.collections import TablesForCollections
 
 
@@ -1426,31 +1425,14 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1})
 
 
-    def fetch_additional_data(self):
-        """Fetch GC Accessory Data from TableForItemAdditionalData"""
-        if self.additional_gc_data is None:
-            try:
-                progress = terminal.Progress()
-                self.additional_gc_data = TableForItemAdditionalData(self.interactive.args, p=progress).get()
-            except Exception as e:
-                self.additional_gc_data = None
-                raise RuntimeError(f'Error fetching additional data: {str(e)}')
-
     def get_additional_gc_data(self, gc_id, gc_key):
         try:
-            self.fetch_additional_data()
-            gene_cluster_data = None
-            if self.additional_gc_data and len(self.additional_gc_data) > 1:
-                gene_cluster_data = self.additional_gc_data[1].get(gc_id, {}).get(gc_key, None)
-            if gene_cluster_data is None:
-                raise ValueError("Gene cluster data is None.")
-        except (KeyError, TypeError, ValueError, RuntimeError) as e:
-            return json.dumps({'status': 1, 'message': f'Error retrieving data: {str(e)}'})
-
-        try:
-            return json.dumps({'gene_cluster_data': gene_cluster_data, 'status': 0})
-        except Exception as e:
-            return json.dumps({'status': 1, 'message': f'Error serializing response: {str(e)}'})
+            return json.dumps({
+                'status': 0,
+                'gene_cluster_data': self.interactive.items_additional_data_dict[gc_id][gc_key]
+            })
+        except:
+            return json.dumps({'status': 1})
 
     def reroot_tree(self):
         # Get the Newick tree string from the form data
