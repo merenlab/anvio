@@ -93,6 +93,7 @@ class Pangenome(object):
         self.pan_mode = A('pan_mode') or 'sequence'
         self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
+        self.de_novo_gene_clusters_dict = None
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
@@ -613,35 +614,11 @@ class Pangenome(object):
         psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
         
         self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
-        item_additional_data_keys.extend([
-            'num_gene_clusters_in_psgc', 
-            'num_genes_in_psgc',
-            'gene_types!core', 
-            'gene_types!singleton', 
-            'gene_types!else'
-        ])
+        item_additional_data_keys.extend([ 'num_gene_clusters_in_psgc', 'num_genes_in_psgc', 'gene_types!core', 'gene_types!singleton', 'gene_types!else' ])
 
 
     def count_gene_clusters_per_psgc(self):
-        """Count the number of gene clusters in each PSGC.
-        
-        Counts how many gene clusters belong to each PSGC using gc_psgc_associations.
-
-        Example:
-            self.gc_psgc_associations = [
-                ('GC_00001', 'PSGC_00001'),
-                ('GC_00002', 'PSGC_00001'),
-                ('GC_00003', 'PSGC_00002'),
-                ('GC_00004', 'PSGC_00002'),
-                ('GC_00005', 'PSGC_00002')
-            ]
-
-            Returns:
-                {
-                    'PSGC_00001': 2,  # contains 2 gene clusters
-                    'PSGC_00002': 3   # contains 3 gene clusters
-                }
-        """        
+        """Count the number of gene clusters in each PSGC."""        
         psgc_gc_counts = {}
         for gc_name, psgc_name in self.gc_psgc_associations:
             if psgc_name:
@@ -650,82 +627,90 @@ class Pangenome(object):
 
 
     def count_genes_per_psgc(self, gene_clusters_dict):
-        """Count the total number of genes in each PSGC.
+        """Count the total number of genes in each PSGC."""
+        psgc_gene_counts = {}
         
-        For each PSGC, counts the total number of genes it contains.
+        for gc_name, genes in gene_clusters_dict.items():
+            if gc_name.startswith('PSGC'):
+                psgc_gene_counts[gc_name] = len(genes)
+                
+        return psgc_gene_counts
 
-        Example:
-            gene_clusters_dict = {
-                'PSGC_00001': [
-                    {'gene_1': ...},
-                    {'gene_2': ...},
-                    {'gene_3': ...}
-                ],
-                'PSGC_00002': [
-                    {'gene_4': ...},
-                    {'gene_5': ...}
-                ]
-            }
-
-            Returns:
-                {
-                    'PSGC_00001': 3,  # contains 3 genes
-                    'PSGC_00002': 2   # contains 2 genes
-                }
-        """
-        return {gc: len(genes) for gc, genes in gene_clusters_dict.items() 
-                if gc.startswith('PSGC')}
 
     def classify_gene_types(self, gene_clusters_dict):
-        """Classify genes as core, singleton, or other.
+        """Classify original gene clusters as core, singleton, or other."""
 
-            Example: 
-                self.view_data['PSGC_00001'] = {
-                        'genome1': 1,
-                        'genome2': 1,
-                        'genome3': 1,
-                        'genome4': 1,
-                        'genome5': 1
-                        }
+        self.run.warning(None, header="GENE TYPE CLASSIFICATION", lc="green")
 
-            # genomes_in_gc would be 5 (all genomes have it)
-            # gene_count would be 5 (total genes)
-            # It would be classified as 'core' because all genomes have it
-        """
+        de_novo_gc_types = {}
+        psgc_count = 0
+        psgcs_with_genes = 0
 
-        for gene_cluster in self.view_data:
-            if gene_cluster.startswith('PSGC'):
-                genomes_in_gc = sum(1 for genome in self.view_data[gene_cluster].values() if genome > 0)
-                gene_count = sum(self.view_data[gene_cluster].values())
-                
-                if genomes_in_gc == len(self.genomes):
-                    self.additional_view_data[gene_cluster].update({
-                        'gene_types!core': gene_count,
-                        'gene_types!singleton': 0,
-                        'gene_types!else': 0
-                    })
-                elif genomes_in_gc == 1:
-                    self.additional_view_data[gene_cluster].update({
-                        'gene_types!core': 0,
-                        'gene_types!singleton': gene_count,
-                        'gene_types!else': 0
-                    })
+        for gc_name in self.de_novo_gene_clusters_dict:
+            genomes_with_hits = set()
+            for gene_entry in self.de_novo_gene_clusters_dict[gc_name]:
+                genomes_with_hits.add(gene_entry['genome_name'])
+
+            if len(genomes_with_hits) == len(self.genomes):
+                de_novo_gc_types[gc_name] = 'core'
+            elif len(genomes_with_hits) == 1:
+                de_novo_gc_types[gc_name] = 'singleton'
+            else:
+                de_novo_gc_types[gc_name] = 'other'
+
+        gc_type_counts = {'core': 0, 'singleton': 0, 'other': 0}
+        for gc_type in de_novo_gc_types.values():
+            gc_type_counts[gc_type] += 1
+
+        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "
+                                            f"Singleton: {gc_type_counts['singleton']}, "
+                                            f"Other: {gc_type_counts['other']}")
+
+        for psgc_name in gene_clusters_dict:
+            if psgc_name.startswith('PSGC'):
+                self.additional_view_data[psgc_name].update({ 'gene_types!core': 0, 'gene_types!singleton': 0, 'gene_types!else': 0 })
+
+        for psgc_name in gene_clusters_dict:
+            if not psgc_name.startswith('PSGC'):
+                continue
+
+            psgc_count += 1
+
+            de_novo_gcs = []
+            for gc, psgc in self.gc_psgc_associations:
+                if psgc == psgc_name and gc in de_novo_gc_types:
+                    de_novo_gcs.append(gc)
+
+            if not de_novo_gcs:
+                continue
+
+            core_genes = 0
+            singleton_genes = 0
+            other_genes = 0
+
+            for gc in de_novo_gcs:
+                gc_type = de_novo_gc_types[gc]
+                gene_count = len(self.de_novo_gene_clusters_dict[gc])
+
+                if gc_type == 'core':
+                    core_genes += gene_count
+                elif gc_type == 'singleton':
+                    singleton_genes += gene_count
                 else:
-                    self.additional_view_data[gene_cluster].update({
-                        'gene_types!core': 0,
-                        'gene_types!singleton': 0,
-                        'gene_types!else': gene_count
-                    })
+                    other_genes += gene_count
+
+            if core_genes > 0 or singleton_genes > 0 or other_genes > 0:
+                psgcs_with_genes += 1
+                self.additional_view_data[psgc_name].update({'gene_types!core': core_genes, 'gene_types!singleton': singleton_genes, 'gene_types!else': other_genes })
+
+        self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
 
 
     def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
         """Add all PSGC layers to the view data."""
         for gene_cluster in self.view_data:
             if gene_cluster.startswith('PSGC'):
-                self.additional_view_data[gene_cluster].update({
-                    'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0),
-                    'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0)
-                })
+                self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0), 'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0) })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
@@ -1215,18 +1200,18 @@ class Pangenome(object):
         """Function to compute gene clusters de novo"""
 
         # get de novo gene clusters first to reduce search space for structure
-        de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()
+        self.de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()  # Store as class variable
 
         # next, we will align non-singleton gene clusters to make sure we have all the information
         # we need to be able to pick an appropriate representative for each gene cluster.
         skip_alignments = self.skip_alignments
         self.skip_alignments = False
-        de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(de_novo_gene_clusters_dict)
+        self.de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(self.de_novo_gene_clusters_dict)
         self.skip_alignments = skip_alignments
 
         # now the `de_novo_gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
         # representative sequences
-        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(de_novo_gene_clusters_dict)
+        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(self.de_novo_gene_clusters_dict)
 
         # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
         # with foldseek
@@ -1246,7 +1231,7 @@ class Pangenome(object):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, de_novo_gene_clusters_dict)
+        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, self.de_novo_gene_clusters_dict)
 
         # invoke the garbage collector to clean up some mess
         del mcl_clusters
