@@ -668,7 +668,7 @@ class Pangenome(object):
 
         for psgc_name in gene_clusters_dict:
             if psgc_name.startswith('PSGC'):
-                self.additional_view_data[psgc_name].update({ 'gene_types!core': 0, 'gene_types!singleton': 0, 'gene_types!accessory': 0 })
+                self.additional_view_data[psgc_name].update({ 'psgc_composition!core': 0, 'psgc_composition!singleton': 0, 'psgc_composition!accessory': 0 })
 
         for psgc_name in gene_clusters_dict:
             if not psgc_name.startswith('PSGC'):
