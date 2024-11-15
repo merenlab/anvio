@@ -614,7 +614,7 @@ class Pangenome(object):
         psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
         
         self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
-        item_additional_data_keys.extend([ 'num_gene_clusters_in_psgc', 'num_genes_in_psgc', 'gene_types!core', 'gene_types!singleton', 'gene_types!else' ])
+        item_additional_data_keys.extend([ 'num_gene_clusters_in_psgc', 'num_genes_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton', 'psgc_composition!accessory' ])
 
 
     def count_gene_clusters_per_psgc(self):
@@ -656,19 +656,19 @@ class Pangenome(object):
             elif len(genomes_with_hits) == 1:
                 de_novo_gc_types[gc_name] = 'singleton'
             else:
-                de_novo_gc_types[gc_name] = 'other'
+                de_novo_gc_types[gc_name] = 'accessory'
 
-        gc_type_counts = {'core': 0, 'singleton': 0, 'other': 0}
+        gc_type_counts = {'core': 0, 'singleton': 0, 'accessory': 0}
         for gc_type in de_novo_gc_types.values():
             gc_type_counts[gc_type] += 1
 
         self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "
                                             f"Singleton: {gc_type_counts['singleton']}, "
-                                            f"Other: {gc_type_counts['other']}")
+                                            f"Accessory: {gc_type_counts['accessory']}")
 
         for psgc_name in gene_clusters_dict:
             if psgc_name.startswith('PSGC'):
-                self.additional_view_data[psgc_name].update({ 'gene_types!core': 0, 'gene_types!singleton': 0, 'gene_types!else': 0 })
+                self.additional_view_data[psgc_name].update({ 'gene_types!core': 0, 'gene_types!singleton': 0, 'gene_types!accessory': 0 })
 
         for psgc_name in gene_clusters_dict:
             if not psgc_name.startswith('PSGC'):
@@ -686,7 +686,7 @@ class Pangenome(object):
 
             core_genes = 0
             singleton_genes = 0
-            other_genes = 0
+            accessory_genes = 0
 
             for gc in de_novo_gcs:
                 gc_type = de_novo_gc_types[gc]
@@ -697,11 +697,11 @@ class Pangenome(object):
                 elif gc_type == 'singleton':
                     singleton_genes += gene_count
                 else:
-                    other_genes += gene_count
+                    accessory_genes += gene_count
 
-            if core_genes > 0 or singleton_genes > 0 or other_genes > 0:
+            if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
                 psgcs_with_genes += 1
-                self.additional_view_data[psgc_name].update({'gene_types!core': core_genes, 'gene_types!singleton': singleton_genes, 'gene_types!else': other_genes })
+                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes, 'psgc_composition!singleton': singleton_genes, 'psgc_composition!accessory': accessory_genes })
 
         self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
 

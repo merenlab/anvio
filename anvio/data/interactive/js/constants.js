@@ -536,13 +536,13 @@ var named_layers = {
     },
     'num_gene_clusters_in_psgc': {
         'height': 180,
-        'color': '#002e4f',
+        'color': '#ffa60d',
         'norm': 'none',
         'pretty_name': 'Num gene clusters in PSGC',
     },
     'num_genes_in_psgc': {
         'height': 180,
-        'color': '#002e4f',
+        'color': '#ffa60d',
         'norm': 'none',
         'pretty_name': 'Num genes in PSGC',
     },
@@ -568,7 +568,7 @@ var named_layers = {
         'pretty_name': 'Gene Types',
         'type': 'bar'
     },
-    'gene_types!else': {
+    'gene_types!accessory': {
         'height': 200,
         'color': '#440000',
         'norm': 'none',
