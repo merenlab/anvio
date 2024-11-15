@@ -631,8 +631,7 @@ class Pangenome(object):
         psgc_gene_counts = {}
         
         for gc_name, genes in gene_clusters_dict.items():
-            if gc_name.startswith('PSGC'):
-                psgc_gene_counts[gc_name] = len(genes)
+            psgc_gene_counts[gc_name] = len(genes)
                 
         return psgc_gene_counts
 
@@ -667,22 +666,15 @@ class Pangenome(object):
                                             f"Accessory: {gc_type_counts['accessory']}")
 
         for psgc_name in gene_clusters_dict:
-            if psgc_name.startswith('PSGC'):
-                self.additional_view_data[psgc_name].update({ 'psgc_composition!core': 0, 'psgc_composition!singleton': 0, 'psgc_composition!accessory': 0 })
+            self.additional_view_data[psgc_name].update({ 'psgc_composition!core': 0, 'psgc_composition!singleton': 0, 'psgc_composition!accessory': 0 })
 
         for psgc_name in gene_clusters_dict:
-            if not psgc_name.startswith('PSGC'):
-                continue
-
             psgc_count += 1
 
             de_novo_gcs = []
             for gc, psgc in self.gc_psgc_associations:
                 if psgc == psgc_name and gc in de_novo_gc_types:
                     de_novo_gcs.append(gc)
-
-            if not de_novo_gcs:
-                continue
 
             core_genes = 0
             singleton_genes = 0
@@ -709,8 +701,7 @@ class Pangenome(object):
     def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
         """Add all PSGC layers to the view data."""
         for gene_cluster in self.view_data:
-            if gene_cluster.startswith('PSGC'):
-                self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0), 'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0) })
+            self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0), 'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0) })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
