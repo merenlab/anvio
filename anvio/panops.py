@@ -599,7 +599,7 @@ class Pangenome(object):
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
         return gene_clusters_dict
-        return gene_clusters_dict
+
 
     def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
         """Add PSGC-related layers to the additional view data.
@@ -620,6 +620,7 @@ class Pangenome(object):
             'gene_types!singleton', 
             'gene_types!else'
         ])
+
 
     def count_gene_clusters_per_psgc(self):
         """Count the number of gene clusters in each PSGC.
@@ -646,6 +647,7 @@ class Pangenome(object):
             if psgc_name:
                 psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
         return psgc_gc_counts
+
 
     def count_genes_per_psgc(self, gene_clusters_dict):
         """Count the total number of genes in each PSGC.
@@ -714,6 +716,7 @@ class Pangenome(object):
                         'gene_types!singleton': 0,
                         'gene_types!else': gene_count
                     })
+
 
     def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
         """Add all PSGC layers to the view data."""
