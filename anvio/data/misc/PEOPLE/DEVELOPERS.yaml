@@ -46,10 +46,18 @@
   avatar: FlorianTrigodet.jpg
   bio: "Microbiologist using advanced computational strategies to make sense of the microbial ecology of complex habitats."
   affiliations:
-    - title: Post-doctoral Scientist
-      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+    - title: Senior Scientist
+      inst: Alfred Wegener Institute for Polar and Marine Research
+      inst_link: https://awi.de
+      current: true
+    - title: Senior Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
       inst_link: https://hifmb.de
       current: true
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: false
     - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
