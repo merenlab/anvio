@@ -171,6 +171,8 @@ class Pangenome(object):
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
+        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
+
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=self.pan_mode)
 
         # know thyself.
