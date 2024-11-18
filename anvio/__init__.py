@@ -3686,12 +3686,11 @@ D = {
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
     ),
     'pan-mode': (
-            ['--pan-mode', '-M'],
-            {'default': None,
-             'metavar': 'CHOICE',
-             'choices': constants.choice_of_pangenome,
+            ['--pan-mode'],
+            {'default': constants.pangenome_mode_default,
+             'choices': constants.pangenome_modes_available,
              'type': str,
-             'help': 'Use this flag to set pan-mode to structure or sequence.'}
+             'help': f"Computation mode for the pangenome. Default mode is '{constants.pangenome_mode_default}'."}
     ),
    'prostt5-data-dir': (
             ['--prostt5-data-dir'],

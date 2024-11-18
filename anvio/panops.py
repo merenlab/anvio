@@ -90,7 +90,7 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
-        self.pan_mode = A('pan_mode') or 'sequence'
+        self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
         self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
         self.de_novo_gene_clusters_dict = None
@@ -119,6 +119,10 @@ class Pangenome(object):
 
         # we don't know what we are about
         self.description = None
+
+        # quick accession variables to mode
+        self.STRUCTURE_MODE = False if self.pan_mode == constants.pangenome_mode_default else True
+        self.SEQUENCE_MODE = not self.STRUCTURE_MODE
 
 
     def load_genomes(self):
@@ -226,7 +230,10 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
-        if self.pan_mode == 'structure' and self.user_defined_gene_clusters:
+        if self.pan_mode not in constants.pangenome_modes_available:
+            raise ConfigError(f"The pangenome mode '{self.pan_mode}' is not something anvi'o recognizes :/ Something is wrong here.")
+
+        if self.STRUCTURE_MODE and self.user_defined_gene_clusters:
             raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode --structure` and `gene_clusters_txt` at the same time."
                                 "When `structure` is active, please skip setting `gene_clusters_txt`.")
 
@@ -259,12 +266,12 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
-        if self.pan_mode == "sequence" or self.user_defined_gene_clusters:
-            self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
-        elif self.pan_mode == "structure":
+        if self.STRUCTURE_MODE:
             self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
+        elif self.SEQUENCE_MODE or self.user_defined_gene_clusters:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
         else:
-            raise ConfigError("Something is wrong")
+            raise ConfigError("Anvi'o is confused since it ended up somewhere that doesn't exist :(")
 
         if self.foldseek_search_results_output_file:
             filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
@@ -581,7 +588,7 @@ class Pangenome(object):
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
 
         # If we're in structure mode, add information about PSGCs
-        if self.pan_mode == 'structure':
+        if self.STRUCTURE_MODE:
             self.add_psgc_layers(gene_clusters_dict, item_additional_data_keys)
 
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
@@ -600,7 +607,7 @@ class Pangenome(object):
 
     def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
         """Add PSGC-related layers to the additional view data.
-        
+
         Args:
             gene_clusters_dict: Dictionary containing gene cluster information
             item_additional_data_keys: List to store the names of additional data keys
@@ -608,13 +615,13 @@ class Pangenome(object):
         psgc_gc_counts = self.count_gene_clusters_per_psgc()
         psgc_gene_counts = self.count_genes_per_psgc(gene_clusters_dict)
         psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
-        
+
         self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
         item_additional_data_keys.extend([ 'num_gene_clusters_in_psgc', 'num_genes_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton', 'psgc_composition!accessory' ])
 
 
     def count_gene_clusters_per_psgc(self):
-        """Count the number of gene clusters in each PSGC."""        
+        """Count the number of gene clusters in each PSGC."""
         psgc_gc_counts = {}
         for gc_name, psgc_name in self.gc_psgc_associations:
             if psgc_name:
@@ -625,10 +632,10 @@ class Pangenome(object):
     def count_genes_per_psgc(self, gene_clusters_dict):
         """Count the total number of genes in each PSGC."""
         psgc_gene_counts = {}
-        
+
         for gc_name, genes in gene_clusters_dict.items():
             psgc_gene_counts[gc_name] = len(genes)
-                
+
         return psgc_gene_counts
 
 
@@ -1312,7 +1319,7 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
-        elif self.pan_mode == "structure":
+        elif self.STRUCTURE_MODE:
             gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
             gene_clusters_dict = self.get_sequence_based_gene_clusters()
