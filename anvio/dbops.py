@@ -4250,6 +4250,11 @@ class PanDatabase:
         self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
         self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
 
+        # these are the ones only necessary when the db_variant is structure-informed
+        if db_variant == constants.PAN_STRUCTURE_MODE:
+            self.db.create_table(t.pan_gc_psgc_associations_table_name, t.pan_gc_psgc_associations_table_structure, t.pan_gc_psgc_associations_table_types)
+            self.db.create_table(t.pan_gc_tracker_table_name, t.pan_gc_tracker_table_structure, t.pan_gc_tracker_table_types)
+
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
