@@ -32,14 +32,22 @@ essential_data_fields_for_anvio_profiles = ['std_coverage',
 # and other purposes
 IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
 
+# MODELLER / PDF file paths
 default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
 
+# Interacdome data path
 default_interacdome_data_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Interacdome')
 
+# ProstT5 data files
 default_prostt5_weight_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PROSTT5/weights')
-choice_of_pangenome = ["structure", "sequence"]
+
+# Pangenome mode trackers
+PAN_STRUCTURE_MODE = 'structure-informed'
+PAN_SEQUENCE_MODE = 'sequence-based'
+pangenome_modes_available = [PAN_SEQUENCE_MODE, PAN_STRUCTURE_MODE]
+pangenome_mode_default = PAN_SEQUENCE_MODE
 
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
