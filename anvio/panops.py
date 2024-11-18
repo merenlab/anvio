@@ -101,10 +101,6 @@ class Pangenome(object):
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
 
-        if self.pan_mode == 'structure':
-            self.skip_alignments = True
-            self.skip_homogeneity = True
-
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default
         self.distance = A('distance') or constants.distance_metric_default
