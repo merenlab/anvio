@@ -172,7 +172,7 @@ class Pangenome(object):
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
-        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=self.pan_mode)
 
         # know thyself.
         self.args.pan_db = self.pan_db_path

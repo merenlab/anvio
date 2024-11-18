@@ -4195,8 +4195,9 @@ class PanDatabase:
     """To create an empty pan database, and/or access to one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True):
         self.db = None
-        self.db_path = db_path
         self.db_type = 'pan'
+        self.db_variant = None
+        self.db_path = db_path
 
         self.run = run
         self.progress = progress
@@ -4229,22 +4230,22 @@ class PanDatabase:
         self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
         self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
         self.genomes = self.internal_genomes + self.external_genomes
+        self.db_variant = self.meta['db_variant']
 
         # open the database
         self.db = db.DB(self.db_path, anvio.__pan__version__)
 
-        self.run.info('Pan database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-        self.run.info('Genomes', '%d found' % len(self.genomes), quiet=self.quiet)
+        self.run.info(f'Pan database ({self.db_variant})', f'An existing database, {self.db_path}, has been initiated.', quiet=self.quiet)
+        self.run.info('Genomes', f'{len(self.genomes)} found', quiet=self.quiet)
 
 
-    def touch(self):
+    def touch(self, db_variant=constants.pangenome_mode_default):
         is_db_ok_to_create(self.db_path, self.db_type)
 
         self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
-        self.db.create_table(t.pan_gc_psgc_associations_table_name, t.pan_gc_psgc_associations_table_structure, t.pan_gc_psgc_associations_table_types)
         self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
         self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
         self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
@@ -4265,8 +4266,8 @@ class PanDatabase:
         return self.db
 
 
-    def create(self, meta_values={}):
-        self.touch()
+    def create(self, meta_values={}, db_variant=constants.pangenome_mode_default):
+        self.touch(db_variant=db_variant)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -4275,10 +4276,11 @@ class PanDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'pan')
+        self.db.set_meta_value('db_variant', db_variant)
 
         self.disconnect()
 
-        self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info(f'Pan database ({db_variant})', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):
