@@ -907,6 +907,23 @@ class Pangenome(object):
         self.run.info('Args', (str(self.args)), quiet=True)
 
 
+    def populate_gene_cluster_tracker_table(self, gene_clusters_dict):
+        self.progress.new('Storing de novo gene clusters for future references')
+        self.progress.update('...')
+
+        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, gc_tracker_table=True, run=self.run, progress=self.progress)
+
+        num_genes_in_gene_clusters = 0
+        for gene_cluster_name in gene_clusters_dict:
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                table_for_gene_clusters.add(gene_entry)
+                num_genes_in_gene_clusters += 1
+
+        self.progress.end()
+
+        table_for_gene_clusters.store()
+
+
     def store_gene_clusters(self, gene_clusters_dict):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
@@ -1196,6 +1213,11 @@ class Pangenome(object):
 
         # get de novo gene clusters first to reduce search space for structure
         self.de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()  # Store as class variable
+
+        # store gene clusters dict into the db. this one is the de novo gene cluster dictionary,
+        # not the structure one yet. but this dict will give access to the details of how de novo gene
+        # clusters distributed across genomes in conjunction with the gc_psgc_associations table
+        self.populate_gene_cluster_tracker_table(self.de_novo_gene_clusters_dict)
 
         # next, we will align non-singleton gene clusters to make sure we have all the information
         # we need to be able to pick an appropriate representative for each gene cluster.
