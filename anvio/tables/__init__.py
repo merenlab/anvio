@@ -46,7 +46,11 @@ pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
 pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
-pan_gc_psgc_associations_table_name      = 'gc_psgc_associations'
+pan_gc_tracker_table_name           = 'gc_tracker' # the purpose of this table is to keep track of the sequence-based GCs in structure mode
+pan_gc_tracker_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
+pan_gc_tracker_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
+
+pan_gc_psgc_associations_table_name      = 'gc_psgc_associations' # which sequence-based GCs ended up in which PSGCs
 pan_gc_psgc_associations_table_structure = ['gene_cluster_id', 'protein_structure_informed_gene_cluster_id']
 pan_gc_psgc_associations_table_types     = [     'str'       ,                    'str'                    ]
 
@@ -411,6 +415,7 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  pan_gc_tracker_table_name: True,
                                   pan_gc_psgc_associations_table_name: False, # the first entry is always the de novo gene cluster name, which should be unique
                                   'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
                                   pan_reaction_network_reactions_table_name: False,
