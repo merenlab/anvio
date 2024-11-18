@@ -359,7 +359,7 @@ class Pangenome(object):
         if self.use_ncbi_blast:
             return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
         else:
-            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict) 
+            return self.run_diamond(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
 
 
     def run_mcl(self, mcl_input_file_path):
