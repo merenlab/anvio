@@ -32,6 +32,8 @@ var total;
 
 var state;
 var gene_cluster_data;
+var psgc_data = null;
+var mode = null;
 
 
 function loadAll() {
@@ -148,6 +150,15 @@ async function createDisplay(display_table){
     var svg = document.getElementById('svg');
     var table = document.getElementById('gc-acc-main');
 
+    try {
+        psgc_data =await loadPSGCData(gene_cluster_data.gene_cluster_name);
+        if (psgc_data) {
+            mode = 'structure';
+        }
+    } catch (error) {
+        console.error('Error loading PSGC data:', error);
+    }
+
     // clear content
     while (svg.firstChild) {
         svg.removeChild(svg.firstChild);
@@ -259,6 +270,37 @@ async function createDisplay(display_table){
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
 
+                if (mode === 'structure') {
+                    let gc_id = '';
+                    
+                    if (psgc_data) {
+                        for (var psgc_id in psgc_data) {
+                            for (var _gc_id in psgc_data[psgc_id]) {
+                                var genes = psgc_data[psgc_id][_gc_id].genes || [];
+                                var matchingGene = genes.find(gene => {
+                                    return gene.gene_callers_id === caller_id;
+                                });
+                                if (matchingGene) {
+                                    gc_id = _gc_id;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    console.log('Creating text element with gc_id:', gc_id);
+                    var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', 0);
+                    text.setAttribute('y', sub_y_cord);
+                    text.setAttribute('font-size', sequence_font_size);
+                    text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
+                    text.setAttribute('class', 'callerTitle gcName');
+                    text.setAttribute('gc-caller-id', gc_id);
+                    text.setAttribute('genome-name', layer);
+                    text.setAttribute('data-toggle', 'popover');
+                    text.appendChild(document.createTextNode(gc_id));
+                    fragment.appendChild(text);
+                }
+
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
@@ -343,7 +385,12 @@ function calculateLayout() {
         };
     });
 
-    $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+    if (mode === 'structure') {
+        $('.gcName').attr('x', max_genome_title_width + (HORIZONTAL_PADDING * 5));
+        $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 6));
+    } else{
+        $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+    }
 
     var max_sequence_width = 0;
     $('.sequence').each(function(i, d) {
@@ -380,4 +427,55 @@ function scrollTableRight() {
         left: 100,
         behavior: 'smooth'
     });
+}
+
+async function loadPSGCData(psgc_name) {
+    try {        
+        var response = await $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_psgc_data/' + psgc_name
+        });
+
+        if (typeof response === 'string') {
+            response = JSON.parse(response);
+        }
+
+        if (response.status === 0 && response.data) {
+            psgc_response = response.data;
+            
+            for (const psgc_id in response.data) {
+                for (const gc_id in response.data[psgc_id]) {
+                    const gcData = response.data[psgc_id][gc_id];
+                    
+                    if (gcData && Array.isArray(gcData.genes)) {
+                        gcData.genes.forEach(gene => {
+                            var sequence_obj = {
+                                gene_cluster_id: gc_id,
+                                gene_callers_id: gene.gene_callers_id,
+                                genome_name: gene.genome_name,
+                                sequence: gene.sequence
+                            };
+                            get_gc_functions_table_html(gc_id);
+                        });
+                    }
+                }
+            }
+            return psgc_response;
+        } else {
+            console.error('Error response:', response.message);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error in loadPSGCData:', error);
+    }
+}
+
+function get_gc_functions_table_html(gc_id) {
+    return `
+        <div>
+            <h4>Gene Cluster Information</h4>
+            <p>GC ID: ${'gc_id'}</p>
+        </div>
+    `;
 }
