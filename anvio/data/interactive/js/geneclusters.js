@@ -276,7 +276,8 @@ async function createDisplay(display_table){
                     if (psgc_data) {
                         for (var psgc_id in psgc_data) {
                             for (var _gc_id in psgc_data[psgc_id]) {
-                                var genes = psgc_data[psgc_id][_gc_id].genes || [];
+                                var genes = [];
+                                genes = psgc_data[psgc_id][_gc_id].genes;
                                 var matchingGene = genes.find(gene => {
                                     return gene.gene_callers_id === caller_id;
                                 });
@@ -287,7 +288,7 @@ async function createDisplay(display_table){
                             }
                         }
                     }
-                    console.log('Creating text element with gc_id:', gc_id);
+
                     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.setAttribute('x', 0);
                     text.setAttribute('y', sub_y_cord);
