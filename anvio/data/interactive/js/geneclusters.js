@@ -35,7 +35,6 @@ var gene_cluster_data;
 var psgc_data = null;
 var mode = null;
 
-
 function loadAll() {
     $.ajaxPrefilter(function(options) {
         if (request_prefix) {
@@ -298,6 +297,13 @@ async function createDisplay(display_table){
                     text.setAttribute('gc-caller-id', gc_id);
                     text.setAttribute('genome-name', layer);
                     text.setAttribute('data-toggle', 'popover');
+                    text.onclick = function(event) {
+                        var obj = event.target;
+                        if (!obj.getAttribute('data-content')) {
+                            obj.setAttribute('data-content', get_gene_functions_table_html_for_structure(psgc_data) + '');
+                        }
+                    };
+
                     text.appendChild(document.createTextNode(gc_id));
                     fragment.appendChild(text);
                 }
@@ -443,26 +449,7 @@ async function loadPSGCData(psgc_name) {
         }
 
         if (response.status === 0 && response.data) {
-            psgc_response = response.data;
-            
-            for (const psgc_id in response.data) {
-                for (const gc_id in response.data[psgc_id]) {
-                    const gcData = response.data[psgc_id][gc_id];
-                    
-                    if (gcData && Array.isArray(gcData.genes)) {
-                        gcData.genes.forEach(gene => {
-                            var sequence_obj = {
-                                gene_cluster_id: gc_id,
-                                gene_callers_id: gene.gene_callers_id,
-                                genome_name: gene.genome_name,
-                                sequence: gene.sequence
-                            };
-                            get_gc_functions_table_html(gc_id);
-                        });
-                    }
-                }
-            }
-            return psgc_response;
+            return response.data;
         } else {
             console.error('Error response:', response.message);
             return null;
@@ -472,11 +459,45 @@ async function loadPSGCData(psgc_name) {
     }
 }
 
-function get_gc_functions_table_html(gc_id) {
-    return `
-        <div>
-            <h4>Gene Cluster Information</h4>
-            <p>GC ID: ${'gc_id'}</p>
-        </div>
-    `;
+function get_gene_functions_table_html_for_structure(psgc_data) {
+    for (const psgc_id in psgc_data) {
+        for (const gc_id in psgc_data[psgc_id]) {
+            const gcData = psgc_data[psgc_id][gc_id];
+            
+            if (gcData) {
+                let functions_table_html = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+                
+                functions_table_html += '<h2>Gene Cluster Information</h2>';
+                functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
+                functions_table_html += '<tr><th>Gene Cluster ID</th><td>' + gc_id + '</td></tr>';
+                functions_table_html += '</table>';
+
+                functions_table_html += '<h3>Genes in this cluster</h3>';
+                functions_table_html += '<div style="max-height: 400px; overflow-y: auto;">';
+                functions_table_html += '<table class="table table-striped" style="width: 100%;">';
+                functions_table_html += '<thead><tr>' +
+                    '<th>Gene Caller ID</th>' +
+                    '<th>Genome Name</th>' +
+                    '<th>Sequence</th>' +
+                    '</tr></thead>';
+                functions_table_html += '<tbody>';
+                
+                gcData.genes.forEach(gene => {
+                    functions_table_html += '<tr>' +
+                        '<td>' + gene.gene_callers_id + '</td>' +
+                        '<td>' + gene.genome_name + '</td>' +
+                        '<td><div style="max-width: 200px; overflow-x: auto;"><code>' + 
+                            gene.sequence + '</code></div></td>' +
+                        '</tr>';
+                });
+                
+                functions_table_html += '</tbody></table>';
+                functions_table_html += '</div>';
+
+                return functions_table_html;
+            }
+        }
+    }
+
+    return '<p>No gene information available</p>';
 }
