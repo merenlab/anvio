@@ -486,7 +486,7 @@ function get_gene_functions_table_html_for_structure(psgc_data) {
                     functions_table_html += '<tr>' +
                         '<td>' + gene.gene_callers_id + '</td>' +
                         '<td>' + gene.genome_name + '</td>' +
-                        '<td><div style="max-width: 200px; overflow-x: auto;"><code>' + 
+                        '<td><div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><code>' + 
                             gene.sequence + '</code></div></td>' +
                         '</tr>';
                 });
