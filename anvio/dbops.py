@@ -2250,9 +2250,14 @@ class PanSuperclass(object):
 
         gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
 
+        gene_entries = {}
         for entry in gc_tracker_data.values():
-            gene_caller_id = entry['gene_caller_id'] 
-            self.gc_tracker[gene_caller_id] = {'gene_cluster_id': entry['gene_cluster_id'],'genome_name': entry['genome_name'],'alignment_summary': entry['alignment_summary']}
+            gene_caller_id = entry['gene_caller_id']
+            if gene_caller_id not in gene_entries:
+                gene_entries[gene_caller_id] = []
+            gene_entries[gene_caller_id].append({'gene_cluster_id': entry['gene_cluster_id'],'genome_name': entry['genome_name'],'alignment_summary': entry['alignment_summary']})
+
+        self.gc_tracker = gene_entries
 
         pan_db.disconnect()
 
