@@ -7816,7 +7816,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if skipped_mods:
                 skipped_list = ", ".join(skipped_mods)
                 self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
-                                 "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
+                                 "output matrices for them. If you used the `--only-complete` flag, its possible these modules "
+                                 "were eliminated from the output due to having completeness scores below the threshold (in "
+                                 "which case you could just remove `--only-complete` from your command and everything should "
+                                 "work fine). Otherwise, maybe you made a typo? Or put an extra comma in somewhere?")
 
             if mods_defined_by_mods:
                 skipped_list = ", ".join(mods_defined_by_mods)
