@@ -1526,6 +1526,9 @@ class PanSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
+        self.gc_tracker = {}
+        self.gc_psgc_associations = {}
+
         # the following two are initialized via `init_items_additional_data()` and use information
         # stored in item additional data tables in the pan database
         self.items_additional_data_dict = None
@@ -2229,6 +2232,47 @@ class PanSuperclass(object):
         self.functions_initialized = True
 
         self.progress.end()
+
+
+    def init_gc_tracker(self):
+        """Initializes the gc_tracker dictionary from the pan database.
+        
+        The structure of the dictionary is:
+        {
+            gene_caller_id: {
+                'gene_cluster_id': str,
+                'genome_name': str,
+                'alignment_summary': str
+            }
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
+
+        for entry in gc_tracker_data.values():
+            gene_caller_id = entry['gene_caller_id'] 
+            self.gc_tracker[gene_caller_id] = {'gene_cluster_id': entry['gene_cluster_id'],'genome_name': entry['genome_name'],'alignment_summary': entry['alignment_summary']}
+
+        pan_db.disconnect()
+
+
+    def init_gc_psgc_associations(self):
+        """Initializes the gc_psgc_associations dictionary from the pan database.
+        
+        The structure of the dictionary is:
+        {
+            gene_cluster_id: protein_structure_informed_gene_cluster_id
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+
+        for gc_id, entry in associations_data.items():
+            self.gc_psgc_associations[gc_id] = entry['protein_structure_informed_gene_cluster_id']
+
+        pan_db.disconnect()
 
 
     def init_items_additional_data(self):
