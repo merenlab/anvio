@@ -2473,9 +2473,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
                            "doesn't have the item 'sequence' in it.")
 
     list_of_codons = []
-    for codon_order in codon_order_to_nt_positions:
-        nt_positions = codon_order_to_nt_positions[codon_order]
-
+    for nt_positions in codon_order_to_nt_positions.values():
         # here we cut it from the contig sequence
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
