@@ -196,6 +196,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
+        self.route('/data/get_psgc_data/<psgc_name>',          callback=self.get_psgc_data)
 
 
     def run_application(self, ip, port):
@@ -1433,6 +1434,43 @@ class BottleApplication(Bottle):
             })
         except:
             return json.dumps({'status': 1})
+
+
+    def get_psgc_data(self, psgc_name):
+        """Gets PSGC data for the inspection page"""
+
+        try:
+            psgc_data = {
+                psgc_name: []
+            }
+
+            associated_gcs = []
+            for gc_id, psgc_id in self.interactive.gc_psgc_associations.items():
+                if psgc_id == psgc_name:
+                    associated_gcs.append(gc_id)
+            
+            for gene_id, gene_entries in self.interactive.gc_tracker.items():
+                for gene_data in gene_entries:
+                    gc_id = gene_data['gene_cluster_id']
+
+                    # Skip if this gene's cluster is not associated with our PSGC
+                    # Its important to do this before we add the gene info to psgc_data
+                    if gc_id not in associated_gcs:
+                        continue
+
+                    gene_info = {
+                        'gene_callers_id': gene_id,
+                        'gene_cluster_id': gc_id,
+                        'genome_name': gene_data['genome_name'],
+                        'alignment_summary': gene_data['alignment_summary']
+                    }
+                    psgc_data[psgc_name].append(gene_info)
+
+            return json.dumps({'status': 0, 'data': psgc_data})
+
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f"Error getting PSGC data: {str(e)}"})
+
 
     def reroot_tree(self):
         # Get the Newick tree string from the form data
