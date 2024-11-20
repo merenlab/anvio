@@ -3718,25 +3718,15 @@ D = {
         ),
     'exclude-amino-acids': (
             ['--exclude-amino-acids'],
-            {'nargs': '+',
+            {'nargs': '*',
              'metavar': 'AMINO ACID',
              'help': "Remove codons for the given amino acids from the analysis (use three-letter codes, e.g., "
                      "Ala and STP for stop codons). If `--synonymous`, the default behavior in the absence of "
                      "this option is equivalent to '--exclude-amino-acids STP Met Trp'; for stop, Met, and "
                      "Trp codons to still be excluded if `--exclude-amino-acids` is used, they must be "
-                     "explicitly provided in the argument."}
-        ),
-    'dont-report-amino-acids': (
-            ['--dont-report-amino-acids'],
-            {'nargs': '+',
-             'metavar': 'AMINO ACID',
-             'help': "Exclude codon columns for the given amino acids from the output table."}
-        ),
-    'report-amino-acids': (
-            ['--report-amino-acids'],
-            {'nargs': '+',
-             'metavar': 'AMINO ACID',
-             'help': "Only codon columns for the given amino acids are included in the output table."}
+                     "explicitly provided in the argument. For stop, Met, and Trp codons to be included "
+                     "with all other amino acids in a `--synonymous` analysis, use `--exclude-amino-acids` "
+                     "as a flag without any arguments."}
         ),
     'exclude-codons': (
             ['--exclude-codons'],
@@ -3751,18 +3741,6 @@ D = {
              'metavar': 'CODON',
              'help': "Only include given codons in the analysis. Regular expression can be used, e.g., "
                      "\"[GT]..\" to only consider codons starting with a G or T."}
-        ),
-    'dont-report-codons': (
-            ['--dont-report-codons'],
-            {'nargs': '+',
-             'metavar': 'CODON',
-             'help': "Exclude columns for the given codons from the output table."}
-        ),
-    'report-codons': (
-            ['--report-codons'],
-            {'nargs': '+',
-             'metavar': 'CODON',
-             'help': "Only columns for the given codons are included in the output table."}
         ),
     'function-min-codons': (
             ['--function-min-codons'],
@@ -3800,34 +3778,39 @@ D = {
             ['--return-amino-acids'],
             {'default': False,
              'action': 'store_true',
-             'help': "Return frequencies of the sets of codons encoding the same amino acid."}
+             'help': "Return cumulative frequencies of the sets of codons encoding the same amino acid."}
         ),
     'encodings-txt': (
             ['--encodings-txt'],
             {'help': "Changes to the standard genetic code can be provided in this tab-delimited file of "
                      "two columns. Each entry in the first column is a codon and each entry in the second "
                      "column is the three-letter code for the decoded amino acid. For example, to recode "
-                     "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
-                     "the same row of the second. Stop/termination codons are abbreviated 'STP'. This "
-                     "option affects per-amino acid and synonymous codon output (when using "
-                     "`--return-amino-acids` or `--synonymous`)."}
+                     "the stop codon, TGA, as Trp, a row would contain 'TGA' and 'Trp'. Stop codons are "
+                     "abbreviated 'STP'."}
         ),
     'sum': (
             ['--sum'],
             {'default': False,
              'action': 'store_true',
              'help': "Sum frequencies across genes, returning a single row for each genome. When functions "
-                     "or function sources are selected, genes are subsetted to those annotated with the "
+                     "or function sources are selected, genes are filtered to those annotated with the "
                      "requested functions or annotated by the requested sources."}
         ),
     'average': (
             ['--average'],
             {'default': False,
              'action': 'store_true',
-             'help': "Average frequencies across genes in the genome, returning a single row for each "
-                     "genome. When functions or function sources are selected, genes are subsetted to "
-                     "those annotated with the requested functions or annotated by the requested sources."}
+             'help': "Return average codon relative frequencies across genes in each function. Only valid "
+                     "with `--relative`/`--synonymous` and `--function-sources`/`--select-functions-txt`."}
         ),
+    'standard-deviation': (
+            ['--standard-deviation'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Return standard deviations of codon relative frequencies across genes in each "
+                     "function. Only valid with `--relative`/`--synonymous` and "
+                     "`--function-sources`/`--select-function-sources`."}
+    ),
     'function-sources': (
             ['--function-sources'],
             {'nargs': '*',
