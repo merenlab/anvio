@@ -1432,11 +1432,11 @@ class AggregateFunctions:
             self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
 
 
-    def report_functions_per_group_stats(self, output_file_path, quiet=False):
+    def report_functions_per_group_stats(self, output_file_path, skip_functions_in_all_groups=False, quiet=False):
         """A function to summarize functional occurrence for groups of genomes.
 
-        Please note that this function will not report functions that are associated
-        with ALL groups.
+        Please note that this function will report all functions. Using `skip_functions_in_all_groups` will NOT report
+        functions that are associated with ALL groups.
         """
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -1460,8 +1460,9 @@ class AggregateFunctions:
             # learn which groups are associated with this function
             associated_groups = [g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]]
 
-            # if the function is associated with all groups, simply skip that entry
-            if len(associated_groups) == num_groups:
+            # if the function is associated with all groups, and if the user for some reason asking for us to
+            # skip those functions associated with all groups, simply skip that entry
+            if skip_functions_in_all_groups and len(associated_groups) == num_groups:
                 num_skipped += 1
                 continue
 
@@ -1479,18 +1480,13 @@ class AggregateFunctions:
                 else:
                     d[key_hash][f"p_{group_name}"] = 0
 
-        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s associated with all groups and SKIPPED", num_skipped)
-        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s in final occurrence table", len(d))
-
-        if not len(d):
-            raise ConfigError("Something weird is happening here :( It seems every single function across your genomes "
-                              "is associated with all groups you have defined. There is nothing much anvi'o can work with "
-                              "here. If you think this is a mistake, please let us know.")
+        if skip_functions_in_all_groups:
+            self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s associated with all groups and SKIPPED", num_skipped)
+        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s reported", len(d))
 
         if len(d) < 2:
-            raise ConfigError("Oh, dear. It seems only one function is differentially present across the genome "
-                              "groups you have defined. There is nothing much anvi'o can work with "
-                              "here. If you think this is a mistake, please let us know.")
+            raise ConfigError("Oh, dear. The number of functions in the function per-group stats dictionary is less than two :/ "
+                              "Something must have gone wrong somewhere. But anvi'o is Jon Snow and not oh I know.")
 
         static_column_names = ['key', 'function', 'accession', 'associated_groups']
         dynamic_column_names = []
