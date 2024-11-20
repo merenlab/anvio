@@ -1,7 +1,6 @@
+#!/usr/bin/env python
 # -*- coding: utf-8
-# pylint: disable=line-too-long
-"""Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
-
+"""Module for codon usage analyses at the levels of genes, groups of genes, and genomes."""
 
 import copy
 import inspect
@@ -9,129 +8,283 @@ import argparse
 import numpy as np
 import pandas as pd
 
+from abc import ABC
+from copy import deepcopy
 from functools import partial
 from collections import Counter
+from __future__ import annotations
+from typing import Iterable, Union
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
+from anvio import __version__ as VERSION
 from anvio.dbops import ContigsSuperclass
+from anvio.ccollections import GetSplitNamesInBins
 from anvio.genomedescriptions import GenomeDescriptions
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
-__version__ = anvio.__version__
+__version__ = VERSION
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
-
-run = terminal.Run()
-progress = terminal.Progress()
-run_quiet = terminal.Run(verbose=False)
+# run = terminal.Run()
+# progress = terminal.Progress()
+# run_quiet = terminal.Run(verbose=False)
 
 pp = terminal.pretty_print
 
-default_codon_amino_acid_dict = {
-    codon: amino_acid for codon, amino_acid in constants.codon_to_AA.items()}
-
-# CAI is the Codon Adaptation Index of Sharp and Li (1987).
-# Delta is from Ran and Higgs (2012, Eq. 6).
-cub_metrics = ['cai', 'delta']
-# The following CUB metrics rely upon comparison to a set of reference genes.
-reference_dependent_cub_metrics = ['cai', 'delta']
-
-# For CUB, remove single-codon amino acids (which do not affect CUB) and stop codons.
-single_codon_amino_acids = ['Met', 'Trp']
-ignored_cub_amino_acids = ['Met', 'Trp', 'STP']
-
-# By default, genes annotated as ribosomal proteins by KEGG KOfams/BRITE are used as the CUB
-# reference.
-default_reference_function_source = 'KEGG_BRITE'
-default_reference_function_accessions = []
-default_reference_function_names = ['Ribosome>>>Ribosomal proteins']
-
-default_query_min_analyzed_codons = 100
-default_reference_exclude_amino_acid_count = 10
-default_reference_min_analyzed_codons = 100
-
-
-class SingleGenomeCodonUsage(object):
+class GeneticCode:
     """
-    This object processes codon usage data for a single genome.
+    A genetic code relating codons to amino acids.
 
-    Manipulate the raw data using the methods, `get_frequencies` and `get_codon_usage_bias`.
+    Attributes
+    ==========
+    codon_amino_acid : dict[str, str]
+        Mapping of codon key to amino acid value, including stop codons for "STP".
+
+    amino_acid_codons : dict[str, list[str]]
+        Mapping of amino acid key to codon values, including stop codons for "STP".
+
+    nonstop_codon_amino_acid : dict[str, str]
+        Mapping of codon key to amino acid value, excluding stop codons for "STP".
+
+    nonstop_amino_acid_codons : dict[str, list[str]]
+        Mapping of amino acid key to codon values, excluding stop codons for "STP".
+
+    synonymous_codon_amino_acid : dict[str, str]
+        Mapping of degenerate codon key to amino acid value, excluding stop codons for "STP".
+
+    synonymous_amino_acid_codons : dict[str, list[str]]
+        Mapping of degenerate amino acid key to codon values, excluding stop codons for "STP".
+
+    run : anvio.terminal.Run, anvio.terminal.Run()
+        Prints run information to the terminal.
     """
+    standard_code: dict[str, str] = {codon: aa for codon, aa in constants.codon_to_AA.items()}
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, code: dict[str, str] = None, run: terminal.Run = terminal.Run()) -> None:
+        """
+        Parameters
+        ==========
+        code : dict[str, str]
+            Maps codon keys to three-letter amino acid values ("STP" for stop codons). If None, the
+            standard genetic code is used.
+        """
+        self.run = run
+        self.set(code)
+
+    def set(self, code: dict[str, str] = None) -> None:
+        """
+        Set the genetic code.
+
+        Parameters
+        ==========
+        code : dict[str, str], None
+            Maps codon keys to three-letter amino acid values ("STP" for stop codons). If None, the
+            standard genetic code is used.
+        """
+        if code is None:
+            self.codon_amino_acid = self.standard_code
+        else:
+            self.codon_amino_acid = code
+            self.check()
+            if self.codon_amino_acid != self.standard_code:
+                self.run.info_single("Using a nonstandard genetic code for the genome")
+
+        self.amino_acid_codons: dict[str, list[str]] = {}
+        for codon, aa in self.codon_amino_acid.items():
+            try:
+                self.amino_acid_codons[aa].append(codon)
+            except KeyError:
+                self.amino_acid_codons[aa] = [codon]
+
+        self.nonstop_codon_amino_acid: dict[str, str] = {}
+        self.nonstop_amino_acid_codon: dict[str, list[str]] = {}
+        for codon, aa in self.codon_amino_acid.items():
+            if aa == 'STP':
+                continue
+            self.nonstop_codon_amino_acid[codon] = aa
+            try:
+                self.nonstop_amino_acid_codon[aa].append(codon)
+            except KeyError:
+                self.nonstop_amino_acid_codon[aa] = [codon]
+
+        self.synonymous_codon_amino_acid: dict[str, str] = {}
+        self.synonymous_amino_acid_codons: dict[str, list[str]] = {}
+        for aa, codons in self.nonstop_amino_acid_codon.items():
+            if len(codons) == 1:
+                continue
+            for codon in codons:
+                self.synonymous_codon_amino_acid[codon] = aa
+            self.synonymous_amino_acid_codons[aa] = codons.copy()
+
+    def check(self) -> None:
+        """
+        Check that recognized codons and three-letter amino acid codes are used in the dictionary
+        mapping codon to amino acid, raising an exception if untrue.
+        """
+        unrecognized_codons = []
+        unrecognized_amino_acids = []
+        for codon, amino_acid in self.codon_amino_acid.items():
+            if codon not in constants.codons:
+                unrecognized_codons.append(codon)
+            if amino_acid not in constants.amino_acids:
+                unrecognized_amino_acids.append(amino_acid)
+
+        if unrecognized_codons:
+            unrecognized_codon_message = (
+                "The following codons in the genetic code are not recognized: "
+                f"{', '.join(unrecognized_codons)}."
+            )
+        else:
+            unrecognized_codon_message = ""
+
+        if unrecognized_amino_acids:
+            unrecognized_amino_acid_message = (
+                "The following amino acids in the genetic code are not recognized: "
+                f"{', '.join(unrecognized_amino_acids)}. These should be three-letter codes and "
+                "\"STP\" for stop codons."
+            )
+            if unrecognized_codon_message:
+                unrecognized_amino_acid_message = " " + unrecognized_amino_acid_message
+        else:
+            unrecognized_amino_acid_message = ""
+
+        if unrecognized_codon_message or unrecognized_amino_acid_message:
+            raise ConfigError(f"{unrecognized_codon_message}{unrecognized_amino_acid_message}")
+
+    def modify(self, encodings: dict[str, str] = None, encodings_txt: str = None) -> None:
+        """
+        Modify the genetic code.
+
+        Parameters
+        ==========
+        encodings : dict[str, str]
+            Mapping of codon key to amino acid value. These are the changes made in the set genetic
+            code.
+
+        encodings_txt : str
+            Path to a tab-delimited file with information like that passed to the 'encodings'
+            option. The file should have no header, codons in the first column, and amino acids in
+            the second column.
+        """
+        if encodings is None and encodings_txt is None:
+            raise ConfigError("Either 'encodings' or 'encodings_txt' must be provided.")
+        if encodings is not None and encodings_txt is not None:
+            raise ConfigError("Provide either 'encodings' or 'encodings_txt', not both.")
+
+        new_code = self.codon_amino_acid.copy()
+
+        if encodings is not None:
+            new_code.update(encodings)
+            self.set(new_code)
+            return
+
+        filesnpaths.is_file_tab_delimited(encodings_txt)
+        encodings_df = pd.read_csv(encodings_txt, sep='\t', header=None)
+        new_code.update(dict(zip(encodings_df.iloc[:, 0], encodings_df.iloc[:, 1])))
+        self.set(new_code)
+
+class CodonUsage(ABC):
+    """
+    Superclass of objects that process codon usage data for a single genome or multiple genomes.
+
+    Attributes
+    ==========
+    args : argparse.Namespace
+        Attributes are populated from arguments.
+
+    run : anvio.terminal.Run, anvio.terminal.Run()
+        Prints run information to the terminal.
+
+    progress : anvio.terminal.Progress, anvio.terminal.Progress()
+        Prints transient progress information to the terminal.
+
+    function_sources : Union[list[str], None]
+        Defines the gene annotation function sources to be made available from input databases for
+        codon usage calculations, including as functions for CUB reference compositions. This can be
+        a list of sources, e.g., ['KOfam', 'COG14_FUNCTION']. An empty list for
+        'self.args.function_sources' causes all database annotation sources to be included. A value
+        of None precludes functions from being analyzed.
+    """
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()) -> None:
         self.args = args
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-
-        self.contigs_db_path = A('contigs_db')
-
-        self.profile_db_path = A('profile_db')
-        self.collection_name = A('collection_name')
-        self.bin_id = A('bin_id')
-
-        self.function_sources = A('function_sources')
+        self._A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         self.run = run
         self.progress = progress
 
-        self._set_genetic_code()
-        self._load_contigs_db_data()
-        self._make_gene_codon_frequency_table()
+        self.genetic_code = GeneticCode()
+        encodings_txt = self._A('codon_to_amino_acid')
+        if encodings_txt is not None:
+            self.genetic_code.modify(encodings_txt=encodings_txt)
 
+        self.function_sources = self._A('function_sources')
 
-    def _set_genetic_code(self):
-        """Record decoding properties of the genome as object attributes.
+class SingleGenomeCodonUsage(CodonUsage):
+    """
+    Codon usage data for a single genome stored in a contigs database.
 
-        The dict, `args.codon_to_amino_acid`, should have keys that are codons and values that are
-        three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is None, the
-        standard genetic code is used."""
-        if self.args.codon_to_amino_acid is None:
-            self.codon_amino_acid_dict = default_codon_amino_acid_dict
-        else:
-            check_genetic_code(self.args.codon_to_amino_acid)
-            self.codon_amino_acid_dict = self.args.codon_to_amino_acid
-            if self.codon_amino_acid_dict != default_codon_amino_acid_dict:
-                self.run.info_single("Using a nonstandard genetic code for the genome")
+    Attributes
+    ==========
+    contigs_db : str
+        File path to a contigs database containing gene sequences.
 
-        self.amino_acid_codons_dict = {}
-        for codon, amino_acid in self.codon_amino_acid_dict.items():
-            try:
-                self.amino_acid_codons_dict[amino_acid].append(codon)
-            except KeyError:
-                self.amino_acid_codons_dict[amino_acid] = [codon]
+    profile_db : str, None
+        File path to a profile database associated with the contigs database, to be used with
+        'collection_name' and 'bin_id'.
 
-        self.nonstop_amino_acid_codons_dict = {
-            amino_acid: codons for amino_acid, codons in
-            self.amino_acid_codons_dict.items() if amino_acid != 'STP'}
+    collection_name : str, None
+        Name of the bin collection in the profile database, to be used with 'profile_db' and
+        'bin_id'.
 
-        # Ignore codons with "N" nucleotide which anvi'o records as None.
-        self.ignored_cub_codons = [None]
-        for amino_acid in ignored_cub_amino_acids:
-            self.ignored_cub_codons += self.amino_acid_codons_dict[amino_acid]
+    bin_id : str, None
+        Bin name representing an internal genome in the contigs database, to be used with
+        'profile_db' and 'collection_name'.
 
-        self.synonymous_nonstop_amino_acid_codons_dict = {
-            amino_acid: codons for amino_acid, codons in self.nonstop_amino_acid_codons_dict.items()
-            if amino_acid not in ignored_cub_amino_acids}
+    contig_sequences_dict : dict[str, str]
+        Mapping of contig name to contig nucleotide sequence from contigs database.
 
+    genes_in_contigs_dict : dict[str, list]
+        Mapping of gene caller ID to rows of the 'genes_in_contigs' table of the contigs database.
+
+    gene_caller_ids : list[str]
+        List of gene caller IDs in the contigs database.
+
+    gene_function_df : pandas.core.frame.DataFrame
+        Gene functional annotations for select function sources from the contigs database.
+    """
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        super().__init__(args, run, progress)
+
+        self.contigs_db = self._A('contigs_db')
+
+        self.profile_db_path = self._A('profile_db')
+        self.collection_name = self._A('collection_name')
+        self.bin_id = self._A('bin_id')
+
+        if self.contigs_db is not None:
+            self._load_contigs_db_data()
+
+        self.statistics = CodonStatistics(self, self.run, self.progress)
 
     def _load_contigs_db_data(self):
         """Load gene data from the contigs database."""
-        utils.is_contigs_db(self.contigs_db_path)
+        utils.is_contigs_db(self.contigs_db)
 
-        if self.profile_db_path or self.collection_name or self.bin_id:
+        args = deepcopy(self.args)
+        if self.profile_db or self.collection_name or self.bin_id:
             # Initialize the contigs superclass from the splits of the internal genome bin.
-            self.args.split_names_of_interest = \
-                ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
-        contigs_super = ContigsSuperclass(self.args, r=run_quiet)
+            args.split_names_of_interest = GetSplitNamesInBins(args).get_split_names_only()
+        contigs_super = ContigsSuperclass(args, r=terminal.Run(verbose=False))
         contigs_super.init_contig_sequences()
         self.contig_sequences_dict = contigs_super.contig_sequences
 
@@ -146,10 +299,11 @@ class SingleGenomeCodonUsage(object):
                 self.run.warning(
                     "The value of `args.function_sources` is an empty list, indicating that all "
                     "function sources in the genome should by loaded. However, the contigs "
-                    "database has not been annotated by any sources :/")
+                    "database has not been annotated by any sources."
+                )
         gene_function_rows = []
-        for gene_caller_id, annotation_dict in contigs_super.gene_function_calls_dict.items():
-            for annotation_source, annotation in annotation_dict.items():
+        for gcid, annotation_dict in contigs_super.gene_function_calls_dict.items():
+            for source, annotation in annotation_dict.items():
                 if annotation is None:
                     continue
 
@@ -161,87 +315,2656 @@ class SingleGenomeCodonUsage(object):
                     # The function accession and name entries contain the same number of '!!!'
                     # separators.
                     for accession, name in zip(accessions, names):
-                        if annotation_source == 'KEGG_BRITE':
+                        if source == 'KEGG_BRITE':
                             # Include every possible depth of categorization.
                             hierarchy_accession = accession
                             categorization = name
                             split_categories = categorization.split('>>>')
                             for depth in range(1, len(split_categories) + 1):
+                                depth_categorization = '>>>'.join(split_categories[: depth])
                                 gene_function_rows.append(
-                                    [annotation_source,
-                                     hierarchy_accession,
-                                     '>>>'.join(split_categories[: depth]),
-                                     gene_caller_id])
+                                    [source, hierarchy_accession, depth_categorization, gcid]
+                                )
                         else:
-                            gene_function_rows.append(
-                                [annotation_source, accession, name, gene_caller_id])
-                else:
-                    # The function accession and name entries do not contain the same number of
-                    # '!!!' separators. In COG20_PATHWAY, there can be multiple accessions
-                    # corresponding to the same function name.
-                    if annotation_source == 'KEGG_BRITE':
-                        # Include every possible depth of categorization.
-                        hierarchy_accession = accession
-                        categorization = name
-                        split_categories = categorization.split('>>>')
-                        for depth in range(1, len(split_categories) + 1):
-                            gene_function_rows.append(
-                                [annotation_source,
-                                 hierarchy_accession,
-                                 '>>>'.join(split_categories[: depth]),
-                                 gene_caller_id])
-                    else:
+                            gene_function_rows.append([source, accession, name, gcid])
+                    continue
+
+                # The function accession and name entries do not contain the same number of '!!!'
+                # separators. In 'COG20_PATHWAY', there can be multiple accessions corresponding to
+                # the same function name.
+                if source == 'KEGG_BRITE':
+                    # Include every possible depth of categorization.
+                    hierarchy_accession = accession
+                    categorization = name
+                    split_categories = categorization.split('>>>')
+                    for depth in range(1, len(split_categories) + 1):
+                        depth_categorization = '>>>'.join(split_categories[: depth])
                         gene_function_rows.append(
-                            [annotation_source, accession, name, gene_caller_id])
+                            [source, hierarchy_accession, depth_categorization, gcid]
+                        )
+                else:
+                    gene_function_rows.append([source, accession, name, gcid])
         self.gene_function_df = pd.DataFrame(
-            gene_function_rows, columns=['source', 'accession', 'name', 'gene_caller_id'])
+            gene_function_rows, columns=['source', 'accession', 'name', 'gene_caller_id']
+        )
 
+class CodonStatistics:
+    """
+    Calculates codon statistics from sequences.
 
-    def _make_gene_codon_frequency_table(self):
-        """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
+    Attributes
+    ==========
+    genomic_context : SingleGenomeCodonUsage, None
+        Contains genomic sequence data loaded from a contigs database.
 
-        self.progress.new("Fetching codon frequency data")
+    function_sources : list[str], []
+        Select genes with functional annotation sources in the list, e.g., ['KOfam'] or ['KOfam',
+        'COG20_FUNCTION']. If the list contains items, the first four columns of returned
+        statistical tables contain, respectively, function annotation sources, function accessions,
+        function names, and gene caller IDs. There is a row for each gene/function combination in
+        the table, and each row for the same gene contains the same frequency values. When
+        'KEGG_BRITE' is in the list, in the absence of the 'function_names' parameter narrowing the
+        scope of the inquiry, all possible depths of each BRITE hierarchy in the data are returned,
+        e.g., 'Ribosome>>>Ribosomal proteins' and the more general 'Ribosome' would each have rows
+        in the output table.
+
+    return_functions : bool, False
+        If True, returned statistical tables contain function rather than gene results in each row.
+        If False, per-gene results can still be returned while still considering functions with the
+        'function_sources' parameter, which facilitates analysis of variability within functions.
+
+    return_amino_acids : bool, False
+        If True, returned frequency table columns are decoded amino acids (plus "STP") rather than
+        codons. Synonymous codon frequencies are summed to produce the amino acid frequencies.
+
+    gene_caller_ids : list[str], []
+        Genes with the given IDs are selected for analysis. This parameter can be used alongside
+        'function_accessions' and 'function_names'.
+
+    function_accessions : dict[str, list[str]], None
+        Genes annotated with the given function accessions are selected for analysis. The dictionary
+        keys are function annotation sources (e.g., 'KOfam', 'COG20_FUNCTION') and values are lists
+        of function accessions. This parameter can be used alongside 'gene_caller_ids' and
+        'function_names'. Note that 'KEGG_BRITE' accessions are not invididual function accessions
+        but overarching hierarchy accessions that include many functions.
+
+    function_names : dict[str, list[str]], None
+        Genes annotated with the given function names are selected for analysis. The dictionary keys
+        are function annotation sources (e.g., 'KOfam', 'COG20_FUNCTION') and values are lists of
+        function names. This parameter can be used alongside 'gene_caller_ids' and
+        'function_accessions'. If 'KEGG_BRITE' is used as a source, names (categorizations) should
+        be given to an arbitrary level of the hierarchy, like ['Ribosome>>>Ribosomal proteins',
+        'Transcription machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase'].
+
+    expect_functions : bool, False
+        If True, an error will be raised in getting statistical tables if any given
+        'function_accessions' or 'function_names' values are not annotated in the input genome.
+
+    relative : bool, False
+        If True, return frequency tables containing relative rather than absolute codon frequencies.
+
+    synonymous : bool, False
+        If True, return frequency tables containing relative frequencies among synonymous codons
+        decoding each amino acid plus "STP".
+
+    sum_genes : bool, False
+        If True, return frequency tables containing a single row per genome of codon frequencies
+        summed across genes. Normalization to relative/synonymous values occurs after summing
+        absolute frequencies. 'function_sources' are ignored with this option using 'auto_adjust',
+        as frequencies are summed irrespective of function groups. 'return_functions' ignores this
+        option using 'auto_adjust', by definition summing frequencies among genes in each function.
+
+    average_genes_in_function : bool, False
+        If True, return average frequencies of genes in each function. 'relative' or 'synonymous'
+        must be True when using this option, as the average only operates on relative frequencies so
+        that genes are normalized for length. 'auto_adjust' causes 'return_functions' to be treated
+        as True, returning a table of averages per function.
+
+    std_genes_in_function : bool, False
+        If True, return standard deviations of gene frequencies in each function. 'relative' or
+        'synonymous' must be True when using this option, as the standard deviation only operates on
+        relative frequencies so that genes are normalized for length. 'auto_adjust' causes
+        'return_funcitons' to be treated as True, returning a table of standard deviations per
+        function.
+
+    gene_min_codons : int, 0
+        Ignore genes with fewer than this number of codons in analyses.
+
+    function_min_codons : int, 0
+        Ignore gene/function pairs when the function has fewer than this number of codons in
+        analyses. Genes are filtered by codon count before functions, so the total length of
+        remaining genes annotated by the function is considered.
+
+    min_codon_filter : str, 'both'
+        This parameter arises from the ambiguity of analytical filters that remove genes and
+        functions by number of codons ('gene_min_filters' and 'function_min_codons') in relation to
+        the filters that drop codons ('drop_codons', 'drop_amino_acids', 'sequence_min_amino_acids',
+        and `pansequence_min_amino_acids`). Genes (and functions) can be filtered by their full
+        length by providing the value, 'length', e.g., genes shorter than 300 codons are ignored.
+        They can also be filtered by the number of codons remaining after dropping codons by
+        providing the value, 'remaining'. Applying the codon length filter followed by dropping
+        codons can result in genes and functions with fewer codons than the length threshold -- thus
+        'remaining' is a filter option in addition to 'length' to ensure that total codon
+        frequencies in the output always meet the minimum codon threshold. 'both' is needed as an
+        option in addition to 'remaining' so dynamic codon filtering by 'sequence_min_amino_acids'
+        and 'pansequence_min_amino_acids' operates on genes that passed the first length filter.
+
+    drop_codons : list[str], []
+        Remove codons from analyses. CAUTION: Note how this affects the calculation of relative
+        frequencies using 'relative' and 'synonymous' attributes, normalizing to the summed
+        frequency of retained codons. In synonymous calculations, retained codons in an amino acid
+        set are considered, causing affected synonymous codon relative frequencies to deviate from
+        the expected meaning.
+
+    unreported_codons : list[str], []
+        Remove columns for select codons from returned frequency tables.
+
+    drop_amino_acids : list[str], []
+        Remove codons that decode the given amino acids from analyses. Specify three-letter codes,
+        e.g., 'Ala' and 'STP' for stop codons. If 'synonymous' is True, the 'drop_amino_acids'
+        default becomes the non-degenerate amino acids ('Met' and 'Trp' in the standard genetic
+        code) plus 'STP' in setup.
+
+    unreported_amino_acids : list[str], []
+        Remove columns for codons encoding select amino acids, or columns for select amino acids
+        themselves using 'return_amino_acids', from returned frequency tables.
+
+    sequence_min_codons : int, 0
+        Replace codon values with NaN in returned frequency tables if the codon has a count less
+        than this number in a row. For example, if the attribute is 3, and a gene has 2 AAT codons,
+        then a row for this gene in the output table will have a missing value in the AAT column.
+
+    sequence_min_amino_acids : int, 0
+        Replace codon values with NaN in returned frequency tables if the set of codons for an amino
+        acid has a count less than this number in a row. This option works the same with
+        'return_amino_acids', but for amino acid values. For example, if the attribute is 5, and a
+        gene has 4 codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output
+        table will have missing values in Asn columns.
+
+    pansequence_min_codons : int, (0, 0.0)
+        This tuple must have two items. The first is a positive integer representing a minimum
+        number of codons -- 'min_codons' -- and the second is a float in the range [0.0, 1.0]
+        representing a fraction of genes -- 'min_gene_fraction'. Remove codons from the analysis
+        that are less numerous than 'min_codons' in a 'min_gene_fraction' of genes. For example, if
+        'min_codons' is 3 and 'min_gene_fraction' is 0.9, then if there are <3 codons for a codon in
+        ≥90% of genes, then columns for these codons are dropped. CAUTION: Note how this affects the
+        calculation of relative frequencies using 'relative' and 'synonymous' attributes,
+        normalizing to the summed frequency of retained codons, not all codons. In synonymous
+        calculations, retained codons in an amino acid set are considered, causing affected
+        synonymous codon relative frequencies to deviate from the expected meaning.
+
+    pansequence_min_amino_acids : tuple, (0, 0.0)
+        This tuple must have two items. The first is a positive integer representing a minimum
+        number of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a float in
+        the range [0.0, 1.0] representing a fraction of genes -- 'min_gene_fraction'. Remove codons
+        from the analysis for amino acids (and 'STP') that are less numerous than 'min_amino_acids'
+        in a 'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and
+        'min_gene_fraction' is 0.9, then if there are <5 codons for an amino acid/'STP' in ≥90% of
+        genes, then the columns for these codons are dropped. CAUTION: Note how this affects the
+        calculation of relative frequencies using the 'relative' attribute, normalizing to the
+        summed frequency of retained codons, not all codons.
+
+    label_amino_acids : bool, False
+        If True, include the amino acid for each codon in the column header of returned frequency
+        tables, i.e., 'LysAAA' instead of 'AAA'.
+
+    infinity_to_zero : bool, False
+        If True, replace NA (empty) values in returned statistical tables with 0.0. NA occurs if
+        'synonymous' is True and all codons for an amino acid are absent in a gene or function,
+        resulting in 0/0, reported as NA. Use with caution, for NA and 0.0 mean different things and
+        this will skew downstream analyses of synonymous relative frequencies, such as codon usage
+        bias.
+
+    auto_adjust : bool, True
+        If True, adjust the values of certain attributes given the values of other attributes in
+        option setup. For example, if 'synonymous' is True, then 'relative' should also be True. If
+        'relative' is False, then with auto adjustment turned on, 'relative' is changed to True
+        during setup, and with auto adjustment turned off, an error is thrown.
+
+    available_min_codon_filters : tuple[str]
+        Available filters for filtering sequences by minimum number of codons if codons are also
+        screened out.
+    """
+    available_min_codon_filters = ('length', 'remaining', 'both')
+
+    def __init__(
+        self,
+        genomic_context: SingleGenomeCodonUsage = None,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
+        self.run = run
+        self.progress = progress
+
+        self.genomic_context = genomic_context
+
+        if self.genomic_context is None:
+            self.gene_codon_frequency_df = None
+            self.function_sources = []
+            self.noncoding_gene_count = 0
+            args = argparse.Namespace()
+        else:
+            self.set_codon_frequencies_from_genome()
+            if self.genomic_context.function_sources is None:
+                self.function_sources = []
+            else:
+                self.function_sources = self.genomic_context.function_sources
+            args = genomic_context.args
+
+        A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
+
+        self.relative: bool = A('relative', False)
+        self.synonymous: bool = A('synonymous', False)
+        self.return_amino_acids: bool = A('return_amino_acids', False)
+        self.label_amino_acids: bool = A('header_amino_acids', False)
+        self.infinity_to_zero: bool = A('infinity_to_zero', False)
+
+        self.unreported_codons: list[str] = A('unreported_codons', [])
+        self.unreported_amino_acids: list[str] = A('unreported_amino_acids', [])
+        self.sequence_min_codons: int = A('sequence_min_codons', 0)
+        self.sequence_min_amino_acids: int = A('sequence_min_amino_acids', 0)
+
+        self.gene_caller_ids: list[int] = A('gene_caller_ids', [])
+        self.function_accessions: dict[str, list[str]] = A('function_accessions_dict', {})
+        self.function_names: dict[str, list[str]] = A('function_names_dict', {})
+        self.expect_functions: bool = A('expect_functions', False)
+        self.return_functions: bool = A('return_functions', False)
+
+        self.sum_genes: bool = A('sum', False)
+        self.average_genes_in_function: bool = A('average', False)
+        self.std_genes_in_function: bool = A('standard_deviation', False)
+
+        self.gene_min_codons: int = A('gene_min_codons', 0)
+        self.function_min_codons: int = A('function_min_codons', 0)
+        self.min_codon_filter: str = A('min_codon_filter', 'both')
+        self.drop_codons: list[str] = A('exclude_codons', [])
+        self.drop_amino_acids: list[str] = A('exclude_amino_acids', [])
+        self.pansequence_min_codons: tuple[int, float] = A('pansequence_min_codons', (0, 0.0))
+        self.pansequence_min_amino_acids: tuple[int, float] = A(
+            'pansequence_min_amino_acids', (0, 0.0)
+        )
+
+        self.auto_adjust_options = A('auto_adjust_options', True)
+        self.set_up_options()
+
+    def set_codon_frequencies_from_genome(self) -> None:
+        """
+        Set the raw codon frequency table from genomic data.
+        """
+        self.progress.new("Fetching genomic codon frequency data")
         self.progress.update("...")
 
-        gene_codon_frequencies = []
-        skipped_noncoding_gene_caller_ids = []
-        coding_gene_caller_ids = []
-        for gene_caller_id in self.gene_caller_ids:
+        gene_codon_freqs = []
+        skipped_noncoding_gcids = []
+        coding_gcids = []
+        for gcid in self.gene_caller_ids:
             # `gene_call` is a dictionary.
-            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            gene_call: dict = self.genomic_context.genes_in_contigs_dict[gcid]
 
             if gene_call['call_type'] != constants.gene_call_types['CODING']:
-                skipped_noncoding_gene_caller_ids.append(gene_caller_id)
+                skipped_noncoding_gcids.append(gcid)
                 continue
 
-            coding_gene_caller_ids.append(gene_caller_id)
+            coding_gcids.append(gcid)
 
-            gene_codon_frequencies.append(Counter(utils.get_list_of_codons_for_gene_call(
-                gene_call, self.contig_sequences_dict)))
+            gene_codon_freqs.append(Counter(utils.get_list_of_codons_for_gene_call(
+                gene_call, self.genomic_context.contig_sequences_dict
+            )))
 
-        gene_codon_frequency_df = pd.DataFrame.from_records(gene_codon_frequencies)
+        gene_codon_freq_df = pd.DataFrame.from_records(gene_codon_freqs)
 
-        observed_codons = gene_codon_frequency_df.columns.tolist()
+        observed_codons = gene_codon_freq_df.columns.tolist()
         for codon in constants.codon_to_AA:
             if codon not in observed_codons:
-                gene_codon_frequency_df[codon] = 0
+                gene_codon_freq_df[codon] = 0
 
         # Drop any column named NaN for unknown codons.
-        gene_codon_frequency_df = gene_codon_frequency_df[constants.codon_to_AA]
+        gene_codon_freq_df = gene_codon_freq_df[constants.codon_to_AA]
 
-        gene_codon_frequency_df = gene_codon_frequency_df.fillna(0)
-        gene_codon_frequency_df = gene_codon_frequency_df[sorted(gene_codon_frequency_df.columns)]
-        gene_codon_frequency_df.index = coding_gene_caller_ids
-        gene_codon_frequency_df.index.name = 'gene_caller_id'
-        self.gene_codon_frequency_df = gene_codon_frequency_df
+        gene_codon_freq_df = gene_codon_freq_df.fillna(0)
+        gene_codon_freq_df = gene_codon_freq_df[sorted(gene_codon_freq_df.columns)]
+        gene_codon_freq_df.index = coding_gcids
+        gene_codon_freq_df.index.name = 'gene_caller_id'
+        self.gene_codon_frequency_df = gene_codon_freq_df
 
         self.progress.end()
 
-        self.noncoding_gene_count = len(skipped_noncoding_gene_caller_ids)
+        self.noncoding_gene_count = len(skipped_noncoding_gcids)
         if self.noncoding_gene_count:
             self.run.warning(
                 f"{pp(self.noncoding_gene_count)} of {pp(len(self.gene_caller_ids))} genes were "
-                "non-coding and not added to the codon frequency table.")
+                "non-coding and not added to the codon frequency table."
+            )
+
+    def set_up_options(self) -> dict:
+        """
+        Set up attributes used in methods returning statistical tables.
+
+        Returns
+        =======
+        dict
+            This dictionary is always empty is 'self.auto_adjust' is False. If that attribute is
+            True, keys are the names of attributes that have been automatically adjusted, and values
+            are the original values before adjustment.
+        """
+        original_values = {}
+        # Hold off from setting new attribute values until the end.
+        new_values = {}
+
+        if self.synonymous and not self.relative:
+            if self.auto_adjust_options:
+                original_values['relative'] = self.relative
+                new_values['relative'] = True
+            else:
+                raise ConfigError("'relative' cannot be False if 'synonymous' is True.")
+
+        if self.synonymous and self.return_amino_acids:
+            if self.auto_adjust_options:
+                original_values['return_amino_acids'] = self.return_amino_acids
+                new_values['return_amino_acids'] = False
+            else:
+                raise ConfigError(
+                    "'return_amino_acids' and 'synonymous' cannot both be True, as "
+                    "'return_amino_acids' reports amino acid frequencies and 'synonymous' reports "
+                    "codon frequencies."
+                )
+
+        try:
+            return_amino_acids = new_values['return_amino_acids']
+        except KeyError:
+            return_amino_acids = self.return_amino_acids
+
+        if return_amino_acids and self.label_amino_acids:
+            if self.auto_adjust_options:
+                original_values['label_amino_acids'] = self.label_amino_acids
+                new_values['label_amino_acids'] = False
+            else:
+                raise ConfigError(
+                    "'return_amino_acids' and 'label_amino-acids' cannot both be True, as "
+                    "'return_amino_acids' reports columns with amino acid headers, and "
+                    "'label_amino_acids' adds amino acid labels to codon headers."
+                )
+
+        if return_amino_acids and self.unreported_codons:
+            if self.auto_adjust_options:
+                original_values['unreported_codons'] = self.unreported_codons
+                new_values['unreported_codons'] = []
+            else:
+                raise ConfigError(
+                    "'unreported_codons' does not work with 'return_amino_acids' being True, as "
+                    "'return_amino_acids' reports columns per amino acid, and 'unreported_codons' "
+                    "drops codon columns."
+                )
+
+        new_values['gene_subsetting'] = bool(
+            self.gene_caller_ids or self.function_accessions or self.function_names
+        )
+
+        if self.expect_functions and not (self.function_accessions or self.function_names):
+            if self.auto_adjust_options:
+                original_values['expect_functions'] = self.expect_functions
+                new_values['expect_functions'] = False
+            else:
+                raise ConfigError(
+                    "'expect_functions' cannot be True in the absence of 'function_accessions' or "
+                    "'function_names'."
+                )
+
+        if self.sum_genes + self.average_genes_in_function + self.std_genes_in_function > 1:
+            raise ConfigError(
+                "'sum_genes', 'average_genes_in_function', and 'std_genes_in_function' are "
+                "mutually exclusive options for calculating aggregate statistics. Only one can be "
+                "True at a time."
+            )
+
+        if self.sum_genes and self.function_sources:
+            if self.auto_adjust_options:
+                original_values['function_sources'] = self.function_sources
+                new_values['function_sources'] = []
+            else:
+                raise ConfigError(
+                    "'sum_genes' does not work with 'function_sources', as frequencies are summed "
+                    "across genes in a genome, irrespective of function groups."
+                )
+
+        if (self.average_genes_in_function or self.std_genes_in_function) and not self.relative:
+            raise ConfigError(
+                "'average_genes_in_function' and 'std_genes_in_function' must be used with "
+                "'relative' or 'synonymous' relative codon frequencies so that genes in a function "
+                "are normalized for length."
+            )
+
+        if (
+            (self.average_genes_in_function or self.std_genes_in_function)
+            and not self.return_functions
+        ):
+            if self.auto_adjust_options:
+                original_values['return_functions'] = self.return_functions
+                new_values['return_functions'] = True
+            else:
+                raise ConfigError(
+                    "'average_genes_in_function' and 'std_genes_in_function' must be used with "
+                    "'return_functions', since these aggregate statistics are calculated among "
+                    "genes of a functional annotation, returning a per-function table."
+                )
+
+        if self.min_codon_filter not in self.available_min_codon_filters:
+            message = ', '.join([f"'{filter}'" for filter in self.available_min_codon_filters])
+            raise ConfigError(f"The value of 'min_codon_filter' must be one of {message}.")
+
+        if self.min_codon_filter == 'length':
+            new_values['filter_gene_length'] = bool(self.gene_min_codons)
+            new_values['filter_function_length'] = bool(self.function_min_codons)
+            new_values['filter_gene_remaining_codons'] = False
+            new_values['filter_function_remaining_codons'] = False
+        elif self.min_codon_filter == 'remaining':
+            new_values['filter_gene_length'] = False
+            new_values['filter_function_length'] = False
+            new_values['filter_gene_remaining_codons'] = bool(self.gene_min_codons)
+            new_values['filter_function_remaining_codons'] = bool(self.function_min_codons)
+        elif self.min_codon_filter == 'both':
+            new_values['filter_gene_length'] = bool(self.gene_min_codons)
+            new_values['filter_function_length'] = bool(self.function_min_codons)
+            new_values['filter_gene_remaining_codons'] = bool(self.gene_min_codons)
+            new_values['filter_function_remaining_codons'] = bool(self.function_min_codons)
+
+        for attr_name in ('drop_codons', 'unreported_codons'):
+            if not hasattr(self, attr_name):
+                continue
+            value = getattr(self, attr_name)
+            codons = list(self.genomic_context.genetic_code.codon_amino_acid)
+            unrecognized_codons = []
+            for codon in value:
+                if codon not in codons:
+                    unrecognized_codons.append(codon)
+            if unrecognized_codons:
+                message = ', '.join([f"'{codon}'" for codon in unrecognized_codons])
+                raise ConfigError(
+                    f"The following codons in '{attr_name}' are not recognized: {message}"
+                )
+
+        if self.synonymous and not self.drop_amino_acids:
+            aas = list(self.genomic_context.genetic_code.amino_acid_codons)
+            degenerate_aas = list(self.genomic_context.genetic_code.synonymous_amino_acid_codons)
+            new_values['drop_amino_acids'] = list(set(aas).difference(set(degenerate_aas)))
+            check_aa_attrs = ('unreported_amino_acids', )
+        else:
+            check_aa_attrs = ('drop_amino_acids', 'unreported_amino_acids')
+
+        for attr_name in check_aa_attrs:
+            if not hasattr(self, attr_name):
+                continue
+            value = getattr(self, attr_name)
+            aas = list(self.genomic_context.genetic_code.amino_acid_codons)
+            unrecognized_aas = []
+            for aa in value:
+                if aa not in aas:
+                    unrecognized_aas.append(aa)
+            if unrecognized_aas:
+                message = ', '.join([f"'{aa}'" for aa in unrecognized_aas])
+                raise ConfigError(
+                    f"The following amino acids in '{attr_name}' are not recognized: {message}"
+                )
+
+        if (
+            type(self.pansequence_min_codons[0]) != int or
+            self.pansequence_min_codons[0] < 0 or
+            type(self.pansequence_min_codons[1]) != float or
+            not (0 < self.pansequence_min_codons[1] <= 1)
+        ):
+            raise ConfigError(
+                "The value of 'pansequence_min_codons' must be a tuple with two items: the first a "
+                "positive int and the second a float between 0.0 and 1.0, inclusive."
+            )
+
+        if (
+            type(self.pansequence_min_amino_acids[0]) != int or
+            self.pansequence_min_amino_acids[0] < 0 or
+            type(self.pansequence_min_amino_acids[1]) != float or
+            not (0 < self.pansequence_min_amino_acids[1] <= 1)
+        ):
+            raise ConfigError(
+                "The value of 'pansequence_min_amino_acids' must be a tuple with two items: the "
+                "first a positive int and the second a float between 0.0 and 1.0, inclusive."
+            )
+
+        for attr_name, new_value in new_values.items():
+            setattr(self, attr_name, new_value)
+
+        return original_values
+
+    def _reset_attributes(method) -> function:
+        """
+        Decorator to reset auto-adjusted and temporary attributes after getting statistical output.
+        """
+        def wrapper(*args, **kwargs):
+            output = method(*args, **kwargs)
+
+            self: CodonStatistics = args[0]
+
+            # Reset auto-adjusted attributes.
+            if self.auto_adjust_options:
+                for attr_name, value in self._original_values.items():
+                    setattr(self, attr_name, value)
+                delattr(self, '_original_values')
+
+            # Delete temporary attributes.
+            for attr_name in (
+                '_dropped_codons_panseq_min_codons',
+                '_dropped_codons_panseq_min_aas'
+            ):
+                if hasattr(self, attr_name):
+                    delattr(self, attr_name)
+
+            return output
+
+        return wrapper
+
+    @_reset_attributes
+    def get_frequencies(self, skip_setup: bool = False) -> pd.DataFrame:
+        """
+        Get a codon frequency table, applying any filters defined in attributes.
+
+        Attributes that filter genes and codons are applied to the raw gene codon frequency table
+        in the following order.
+            drop genes on codon length ->
+            drop gene/function pairs on the total length of remaining genes defining the function ->
+            drop codons for select amino acids ->
+            dynamically drop codons of rarer amino acids ->
+            drop genes on remaining codon frequency ->
+            drop gene/function pairs on the codon sum of remaining genes defining the function
+
+        Parameters
+        ==========
+        skip_setup : bool, False
+            Skip the setup of filter attributes, which includes attribute cross-checks.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Codon frequency table.
+        """
+        if not skip_setup:
+            self._original_values = self.set_up_options()
+
+        gene_codon_freq_df = self.select_genes()
+
+        if self.function_sources == self.genomic_context.function_sources:
+            gene_function_df = self.genomic_context.gene_function_df
+        elif self.function_sources:
+            gene_function_df = self.genomic_context.gene_function_df.set_index('source').loc[
+                self.function_sources
+            ].reset_index()
+        else:
+            gene_function_df = None
+
+        if self.function_sources and self.gene_subsetting:
+            gene_function_df = gene_function_df.set_index('gene_caller_id')
+            gene_function_df = gene_function_df.loc[
+                gene_function_df.index.intersection(gene_codon_freq_df.index)
+            ].reset_index()
+
+        if self.gene_subsetting:
+            self.run.info_single(
+                f"{pp(len(gene_codon_freq_df))} of "
+                f"{pp(len(self.genomic_context.gene_caller_ids) - self.noncoding_gene_count)} CDS "
+                "selected from the genome"
+            )
+        else:
+            self.run.info_single(f"{pp(len(gene_codon_freq_df))} CDS in the genome")
+
+        self._func_cols = ['source', 'accession', 'name']
+        self._gene_codon_freq_df, self._gene_func_codon_freq_df = (
+            self._filter_gene_functions_codons(gene_codon_freq_df, gene_function_df)
+        )
+
+        output_df = None
+        while output_df is None:
+            for method in (
+                self._get_gene_table,
+                self._get_sum_table,
+                self._get_function_table,
+                self._get_average_table,
+                self._get_standard_deviation_table
+            ):
+                output_df = method()
+
+        # Delete temporary attributes set in this method.
+        for attr_name in ('_func_cols', '_gene_codon_freq_df', '_gene_func_codon_freq_df'):
+            delattr(self, attr_name)
+
+        if output_df is not None:
+            return output_df
+
+        # # Get outputs with consideration of functions.
+        # output_df = self._get_nonaggregate_function_table(gene_func_codon_freq_df)
+        # if output_df is not None:
+        #     return output_df
+
+        # # Remove duplicate occurrences of genes before summing or averaging frequencies of all genes
+        # # in the function source. A gene can have different annotations, e.g., different KOfam
+        # # assignments. In KEGG BRITE, a gene can be in nested categories and different hierarchies.
+        # gene_func_codon_freq_df = gene_func_codon_freq_df.reset_index().groupby('source').apply(
+        #     lambda source_df: source_df.drop_duplicates(subset='gene_caller_id', ignore_index=True)
+        # ).set_index(['source', 'accession', 'name', 'gene_caller_id'])
+
+        # for method in (
+        #     self._get_sum_function_table,
+        #     self._get_average_codon_function_table,
+        #     self._get_average_amino_acid_function_table
+        # ):
+        #     output_df = method(gene_func_codon_freq_df)
+        #     if output_df is not None:
+        #         return output_df
+
+        raise ConfigError(
+            "This point should not be reached at the end of the 'get_frequencies' method. Please "
+            "contact the developers. Here at the ends of the earth you get to hear a top secret "
+            "mnemonic for the rare earth elements. \"Scandalous Yiddish language centers praise "
+            "Ned's promise of small European garden tubs. Dinosaurs hobble erotically thrumming "
+            "yellow lutes.\" (scandium Sc, yttrium Y, lanthanum La, cerium Ce, praseodymium Pr, "
+            "neodymium Nd, promethium Pm, samarium Sm, europium Eu, gadolinium Gd, terbium Tb, "
+            "dysprosium Dy, holmium Ho, erbium Er, thulium Tm, ytterbium Yb, lutetium Lu) Credit "
+            "for this lanthanide series mnemonic goes to Martyn Poliakoff: "
+            "https://www.youtube.com/watch?v=Q21clW0s0B8&ab_channel=PeriodicVideos"
+        )
+
+    def select_genes(self) -> pd.DataFrame:
+        """
+        Select genes in the gene frequency table given a list of IDs and/or functions of interest.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Table of gene codon frequencies maintaining rows for select genes.
+        """
+        if not (self.gene_caller_ids or self.function_accessions or self.function_names):
+            return self.gene_codon_frequency_df
+
+        select_gcids = []
+
+        unrecognized_gcids = []
+        for gcid in self.gene_caller_ids:
+            if gcid not in self.gene_caller_ids:
+                unrecognized_gcids.append(gcid)
+                continue
+            select_gcids.append(gcid)
+        if unrecognized_gcids:
+            raise ConfigError(
+                "The following requested gene caller IDs were not found in the genome: "
+                f"{unrecognized_gcids}"
+            )
+
+        index_keys = []
+        unrecognized_sources = []
+        for source, accessions in self.function_accessions.items():
+            if source == 'KEGG_BRITE':
+                self.run.warning(
+                    "KEGG BRITE accessions stored in anvi'o databases are for hierarchies as a "
+                    "whole, not categories of the hierarchy. Most hierarchies do not have category "
+                    "accessions. So all genes classified in the selected hierarchies are being "
+                    "analyzed."
+                )
+            if source not in self.function_sources:
+                unrecognized_sources.append(source)
+            for accession in accessions:
+                index_keys.append((source, accession))
+
+        if unrecognized_sources:
+            raise ConfigError(
+                "The following annotation sources in 'function_accessions' were not found to have "
+                f"annotated the genome: {unrecognized_sources}"
+            )
+
+        gene_function_df = self.genomic_context.gene_function_df.set_index(['source', 'accession'])
+        if self.expect_functions:
+            index_keys = set(index_keys)
+            all_keys = set(gene_function_df.index)
+            missing_keys = index_keys.difference(all_keys)
+
+            if missing_keys:
+                missing_key_dict = {}
+                for missing_key in missing_keys:
+                    try:
+                        missing_key_dict[missing_key[0]].append(missing_key[1])
+                    except KeyError:
+                        missing_key_dict[missing_key[0]] = [missing_key[1]]
+                missing_key_message = ''
+                for source, missing_accessions in missing_key_dict.items():
+                    missing_key_message += source + ': ' + ', '.join(missing_accessions) + '; '
+                missing_key_message = missing_key_message[: -2]
+                if missing_keys:
+                    raise ConfigError(
+                        "The following requested function accessions are missing from the genome: "
+                        f"{missing_key_message}"
+                    )
+        else:
+            index_keys = gene_function_df.index.intersection(index_keys)
+        select_gcids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+
+        index_keys = []
+        unrecognized_sources = []
+        for source, names in self.function_names.items():
+            if source not in self.function_sources:
+                unrecognized_sources.append(source)
+            for name in names:
+                index_keys.append((source, name))
+
+        if unrecognized_sources:
+            raise ConfigError(
+                "The following annotation sources in 'function_names' were not found to have "
+                f"annotated the genome: {unrecognized_sources}"
+            )
+
+        gene_function_df = self.genomic_context.gene_function_df.set_index(['source', 'name'])
+        if self.expect_functions:
+            index_keys = set(index_keys)
+            all_keys = set(gene_function_df.index)
+            missing_keys = index_keys.difference(all_keys)
+
+            if missing_keys:
+                missing_key_dict = {}
+                for missing_key in missing_keys:
+                    try:
+                        missing_key_dict[missing_key[0]].append(missing_key[1])
+                    except KeyError:
+                        missing_key_dict[missing_key[0]] = [missing_key[1]]
+                missing_key_message = ''
+                for source, missing_names in missing_key_dict.items():
+                    missing_key_message += source + ': ' + ', '.join(missing_names) + '; '
+                missing_key_message = missing_key_message[: -2]
+                if missing_keys:
+                    raise ConfigError(
+                        "The following requested function names are missing from the genome: "
+                        f"{missing_key_message}"
+                    )
+        else:
+            index_keys = gene_function_df.index.intersection(index_keys)
+        select_gcids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+
+        filtered_df = self.gene_codon_frequency_df.loc[set(select_gcids)]
+        return filtered_df
+
+    def _filter_gene_functions_codons(
+        self,
+        gene_codon_freq_df: pd.DataFrame,
+        gene_function_df: pd.DataFrame
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Filter codons, and genes and functions by codon count.
+
+        Parameters
+        ==========
+        gene_codon_freq_df : pandas.core.Frame.DataFrame
+            Table of gene codon frequencies.
+
+        gene_function_df : pandas.core.Frame.DataFrame
+            Table of gene functional annotations.
+
+        Returns
+        =======
+        tuple[pandas.core.Frame.DataFrame, pandas.core.Frame.DataFrame]
+            Filtered tables of gene codon frequencies and gene functional annotations, respectively.
+        """
+        # Filter genes by length.
+        gene_codon_freq_df = self._get_frequency_table(
+            gene_codon_freq_df,
+            min_codons=self.gene_min_codons,
+            filter_input_codon_count=self.filter_gene_length
+        )
+
+        # Drop certain codon columns from the gene codon frequency table. Filter genes by total
+        # codons remaining.
+        gene_codon_freq_df = self._get_frequency_table(
+            gene_codon_freq_df,
+            drop_codons=self.drop_codons,
+            drop_amino_acids=self.drop_amino_acids,
+            pansequence_min_codons=self.pansequence_min_codons,
+            pansequence_min_amino_acids=self.pansequence_min_amino_acids,
+            min_codons=self.gene_min_codons,
+            filter_output_codon_count=self.filter_gene_remaining_codons
+        )
+
+        if self.function_sources and (
+            (
+                self.drop_codons or
+                self.drop_amino_acids or
+                self.pansequence_min_codons or
+                self.pansequence_min_amino_acids
+            ) and
+            (self.function_min_codons and self.filter_function_remaining_codons)
+        ):
+            # Filter functions by total codons remaining. Gene/function pairs with fewer than the
+            # required number of codons in the function are removed.
+            gene_func_codon_freq_df = gene_function_df.merge(
+                gene_codon_freq_df, how='inner', on='gene_caller_id'
+            )
+            gene_func_codon_freq_df = gene_func_codon_freq_df.set_index(
+                self._func_cols + ['gene_caller_id']
+            )
+            if self.filter_function_remaining_codons:
+                gene_func_codon_freq_df = gene_func_codon_freq_df.groupby(self._func_cols).filter(
+                    lambda func_df: func_df.sum(axis=1).sum() >= self.function_min_codons
+                )
+        elif self.function_sources:
+            # Filter functions by the total length of their genes. Gene/function pairs with fewer
+            # than the required number of codons in the function are removed.
+            gene_func_codon_freq_df = gene_function_df.merge(
+                gene_codon_freq_df, how='inner', on='gene_caller_id'
+            )
+            gene_func_codon_freq_df = gene_func_codon_freq_df.set_index(
+                self._func_cols + ['gene_caller_id']
+            )
+            if self.filter_function_length:
+                gene_func_codon_freq_df = gene_func_codon_freq_df.groupby(self._func_cols).filter(
+                    lambda func_df: func_df.sum(axis=1).sum() >= self.function_min_codons
+                )
+
+            gene_func_codon_freq_df = self._get_frequency_table(
+                gene_func_codon_freq_df,
+                drop_codons=self.drop_codons,
+                drop_amino_acids=self.drop_amino_acids,
+                pansequence_min_codons=self.pansequence_min_codons,
+                pansequence_min_amino_acids=self.pansequence_min_amino_acids
+            )
+        else:
+            gene_func_codon_freq_df = None
+
+        if self.gene_min_codons:
+            self.run.info_single(
+                f"{pp(len(gene_codon_freq_df))} CDS remaining after codon count filters"
+            )
+
+        if self._dropped_codons_panseq_min_codons:
+            if self.gene_min_codons and self.min_codon_filter != 'remaining':
+                min_gene_length_message = '≥' + pp(str(self.gene_min_codons)) + ' codon'
+            else:
+                min_gene_length_message = ''
+            self.run.warning(
+                "The following codons were dropped as they did not meet the threshold of "
+                f"{pp(self.pansequence_min_amino_acids[0])} codons in "
+                f"{self.pansequence_min_amino_acids[1] * 100}% of {min_gene_length_message} "
+                f"CDS: {', '.join(sorted(self._dropped_codons_panseq_min_aas))}"
+            )
+
+        if self._dropped_codons_panseq_min_aas:
+            if self.gene_min_codons and self.min_codon_filter != 'remaining':
+                min_gene_length_message = '≥' + pp(str(self.gene_min_codons)) + ' codon'
+            else:
+                min_gene_length_message = ''
+            self.run.warning(
+                "Codons for the following amino acids were dropped as they did not meet the "
+                f"threshold of {pp(self.pansequence_min_amino_acids[0])} codons in "
+                f"{self.pansequence_min_amino_acids[1] * 100}% of {min_gene_length_message} "
+                f"CDS: {', '.join(sorted(self._dropped_codons_panseq_min_aas))}"
+            )
+
+        return gene_codon_freq_df, gene_func_codon_freq_df
+
+    def _get_gene_table(self) -> pd.DataFrame:
+        """
+        Get a gene-level output table with no consideration of functions.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of gene codon frequencies, which can be raw or normalized, and can be
+            consolidated at the level of amino acids.
+        """
+        if self.function_sources or self.sum_genes:
+            return
+
+        get_table = lambda method: method(
+            self._gene_codon_freq_df,
+            sequence_min_codons=self.sequence_min_codons,
+            sequence_min_amino_acids=self.sequence_min_amino_acids,
+            unreported_codons=self.unreported_codons,
+            unreported_amino_acids=self.unreported_amino_acids,
+            output_amino_acids=self.return_amino_acids,
+            label_amino_acids=self.label_amino_acids,
+            replace_na=self.infinity_to_zero
+        )
+
+        # Absolute frequencies
+        if not self.relative:
+            return get_table(self._get_frequency_table)
+
+        # Relative frequencies
+        if self.relative and not self.synonymous:
+            return get_table(self._get_relative_frequency_table)
+
+        # Synonymous relative frequencies
+        if not self.return_amino_acids and self.relative and self.synonymous:
+            return get_table(self._get_synonymous_codon_relative_frequency_table)
+
+    def _get_sum_table(self) -> pd.DataFrame:
+        """
+        Get an output table summed across genes in the genome.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of frequencies summed across genes. Frequencies can be raw or normalized,
+            and can be consolidated at the level of amino acids.
+        """
+        if self.function_sources or not self.sum_genes:
+            return
+
+        # Absolute codon frequencies
+        if not self.relative and not self.return_amino_acids:
+            return self._get_frequency_table(
+                self._get_summed_frequency_table(self._gene_codon_freq_df),
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids
+            )
+
+        # Absolute amino acid-level codon frequencies
+        if not self.relative and self.return_amino_acids:
+            return self._get_frequency_table(
+                self._get_summed_frequency_table(self._gene_codon_freq_df),
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                unreported_amino_acids=self.unreported_amino_acids,
+                output_amino_acids=self.return_amino_acids
+            )
+
+        # Relative codon frequencies
+        if self.relative and not self.synonymous and not self.return_amino_acids:
+            return self._get_summed_relative_frequency_table(
+                self._gene_codon_freq_df,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids
+            )
+
+        # Relative amino acid-level codon frequencies
+        if self.relative and not self.synonymous and self.return_amino_acids:
+            return self._get_summed_relative_frequency_table(
+                self._gene_codon_freq_df,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                unreported_amino_acids=self.unreported_amino_acids,
+                output_amino_acids=self.return_amino_acids
+            )
+
+        # Synonymous relative frequencies
+        if self.synonymous and self.relative:
+            return self._get_summed_synonymous_codon_relative_frequency_table(
+                self._gene_codon_freq_df,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids,
+                replace_na=self.infinity_to_zero
+            )
+
+    # def _get_average_codon_gene_table(self, gene_codon_freq_df: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     Get an output table of codon results averaged across genes.
+
+    #     Parameters
+    #     ==========
+    #     gene_codon_freq_df : pandas.core.Frame.DataFrame
+    #         Table of gene codon frequencies.
+
+    #     Returns
+    #     =======
+    #     pandas.core.Frame.DataFrame
+    #         Filtered table of codon frequencies averaged across genes. Frequencies can be raw or
+    #         normalized.
+    #     """
+    #     # Absolute frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         not self.relative and
+    #         not self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         return self._get_frequency_table(
+    #             self._get_average_frequency_table(gene_codon_freq_df),
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Relative frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         self.relative and
+    #         not self.synonymous and
+    #         not self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         return self._get_average_relative_frequency_table(
+    #             gene_codon_freq_df,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Synonymous relative frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         self.relative and
+    #         self.synonymous and
+    #         not self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         return self._get_average_synonymous_codon_relative_frequency_table(
+    #             gene_codon_freq_df,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids,
+    #             replace_na=self.infinity_to_zero
+    #         )
+
+    # def _get_average_amino_acid_function_table(
+    #     self,
+    #     gene_func_codon_freq_df: pd.DataFrame,
+    # ) -> pd.DataFrame:
+    #     """
+    #     Get an output table of amino acid results averaged across genes in each function source.
+    #     Gene amino acid frequencies are first calculated from codon frequencies before averaging
+    #     across genes.
+
+    #     Parameters
+    #     ==========
+    #     gene_func_codon_freq_df : pandas.core.Frame.DataFrame
+    #         Table of gene codon frequencies. Functional annotation information is included for each
+    #         gene. There is a separate row per gene annotation with the same codon data.
+
+    #     Returns
+    #     =======
+    #     pandas.core.Frame.DataFrame
+    #         Filtered table of amino acid-level frequencies averaged across genes in each function
+    #         source. Frequencies can be raw or normalized.
+    #     """
+    #     # Absolute frequencies
+    #     if (
+    #         self.return_amino_acids and
+    #         not self.relative and
+    #         self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(
+    #             self._get_average_frequency_table
+    #         ).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids
+    #         )
+
+    #     # Relative frequencies
+    #     if (
+    #         self.return_amino_acids and
+    #         self.relative and
+    #         self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         method = partial(
+    #             self._get_average_relative_frequency_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids
+    #         )
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(method).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids
+    #         )
+
+    # def _get_average_amino_acid_gene_table(self, gene_codon_freq_df: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     Get an output table of amino acid results averaged across genes. Gene amino acid frequencies
+    #     are first calculated from codon frequencies before averaging across genes.
+
+    #     Parameters
+    #     ==========
+    #     gene_codon_freq_df : pandas.core.Frame.DataFrame
+    #         Table of gene codon frequencies.
+
+    #     Returns
+    #     =======
+    #     pandas.core.Frame.DataFrame
+    #         Filtered table of amino acid-level frequencies averaged across genes. Frequencies can be
+    #         raw or normalized.
+    #     """
+    #     # Absolute frequencies
+    #     if (
+    #         self.return_amino_acids and
+    #         not self.relative and
+    #         not self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         return self._get_frequency_table(
+    #             self._get_average_frequency_table(gene_codon_freq_df),
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids
+    #         )
+
+    #     # Relative frequencies
+    #     if (
+    #         self.return_amino_acids and
+    #         self.relative and
+    #         not self.synonymous and
+    #         not self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         return self._get_average_relative_frequency_table(
+    #             gene_codon_freq_df,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids
+    #         )
+
+    def _get_function_table(self) -> pd.DataFrame:
+        """
+        Get a function-level output table summing genes.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of gene codon frequencies with separate rows per gene-functional
+            annotation. Frequencies can be raw or normalized, and can be consolidated at the level
+            of amino acids.
+        """
+        if (
+            not self.function_sources or
+            self.average_genes_in_function or
+            self.std_genes_in_function
+        ):
+            return
+
+        if self.return_functions:
+            input_table = self._gene_func_codon_freq_df.groupby(self._func_cols).sum()
+        else:
+            input_table = self._gene_func_codon_freq_df.sort_values(self._func_cols)
+
+        get_table = lambda method: method(
+            input_table,
+            sequence_min_codons=self.sequence_min_codons,
+            sequence_min_amino_acids=self.sequence_min_amino_acids,
+            unreported_codons=self.unreported_codons,
+            unreported_amino_acids=self.unreported_amino_acids,
+            label_amino_acids=self.label_amino_acids
+        )
+
+        # Absolute codon frequencies
+        if not self.relative and not self.return_amino_acids:
+            return get_table(self._get_frequency_table)
+
+        # Relative codon frequencies
+        if self.relative and not self.synonymous and not self.return_amino_acids:
+            return get_table(self._get_relative_frequency_table)
+
+        get_table = lambda method: method(
+            input_table,
+            sequence_min_amino_acids=self.sequence_min_amino_acids,
+            unreported_amino_acids=self.unreported_amino_acids,
+            output_amino_acids=self.return_amino_acids
+        )
+
+        # Absolute amino acid-level codon frequencies
+        if not self.relative and self.return_amino_acids:
+            return get_table(self._get_frequency_table)
+
+        # Relative amino acid-level codon frequencies
+        if self.relative and not self.synonymous and self.return_amino_acids:
+            return get_table(self._get_relative_frequency_table)
+
+        get_table = lambda method: method(
+            input_table,
+            sequence_min_codons=self.sequence_min_codons,
+            sequence_min_amino_acids=self.sequence_min_amino_acids,
+            unreported_codons=self.unreported_codons,
+            unreported_amino_acids=self.unreported_amino_acids,
+            label_amino_acids=self.label_amino_acids,
+            replace_na=self.infinity_to_zero
+        )
+
+        # Synonymous relative frequencies
+        if self.synonymous and self.relative:
+            return get_table(self._get_synonymous_codon_relative_frequency_table)
+
+    # def _get_sum_function_table(self, gene_func_codon_freq_df: pd.DataFrame) -> pd.DataFrame:
+    #     """
+    #     Get an output table summed across genes in each function source.
+
+    #     Parameters
+    #     ==========
+    #     gene_func_codon_freq_df : pandas.core.Frame.DataFrame
+    #         Table of gene codon frequencies. Functional annotation information is included for each
+    #         gene. There is a separate row per gene annotation with the same codon data.
+
+    #     Returns
+    #     =======
+    #     pandas.core.Frame.DataFrame
+    #         Filtered table of codon frequencies summed across genes in each function source, raw or
+    #         normalized.
+    #     """
+    #     # Absolute frequencies
+    #     if (
+    #         not self.relative and
+    #         self.function_sources and
+    #         self.sum_genes
+    #     ):
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(
+    #             self._get_summed_frequency_table
+    #         ).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Relative frequencies
+    #     if (
+    #         self.relative and
+    #         not self.synonymous and
+    #         self.function_sources and
+    #         self.sum_genes
+    #     ):
+    #         method = partial(
+    #             self._get_summed_relative_frequency_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids
+    #         )
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(method).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             output_amino_acids=self.return_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Synonymous relative frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         self.relative and
+    #         self.synonymous and
+    #         self.function_sources and
+    #         self.sum_genes
+    #     ):
+    #         method = partial(
+    #             self._get_summed_synonymous_codon_relative_frequency_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids
+    #         )
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(method).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids,
+    #             replace_na=self.infinity_to_zero
+    #         )
+
+    def _get_average_table(self) -> pd.DataFrame:
+        """
+        Get an output table of the average frequencies of genes in functions.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of normalized codon frequency averages among genes in functions.
+            Frequencies must be relative to avoid aggregating absolute codon counts from genes of
+            different lengths. Frequencies can be consolidated at the level of amino acids.
+        """
+        if not self.average_genes_in_function or not self.function_sources or not self.relative:
+            return
+
+        input_table = self._gene_func_codon_freq_df.sort_values(self._func_cols)
+
+        # Relative codon frequencies
+        if not self.synonymous and not self.return_amino_acids:
+            method = partial(
+                self._get_average_relative_frequency_table,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids
+            )
+
+        # Relative amino acid-level codon frequencies
+        if not self.synonymous and self.return_amino_acids:
+            method = partial(
+                self._get_average_relative_frequency_table,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                output_amino_acids=self.return_amino_acids
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_amino_acids=self.unreported_amino_acids
+            )
+
+        # Synonymous relative frequencies
+        if self.synonymous:
+            method = partial(
+                self._get_average_synonymous_codon_relative_frequency_table,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids,
+                replace_na=self.infinity_to_zero
+            )
+
+    def _get_standard_deviation_table(self) -> pd.DataFrame:
+        """
+        Get an output table of the standard deviation of genes in functions.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of normalized codon frequency standard deviations among genes in
+            functions. Frequencies must be relative (including synonymous) to avoid aggregating
+            absolute codon counts from genes of different lengths. Frequencies can be consolidated
+            at the level of amino acids.
+        """
+        if not self.std_genes_in_function or not self.function_sources or not self.relative:
+            return
+
+        input_table = self._gene_func_codon_freq_df.sort_values(self._func_cols)
+
+        # Relative codon frequencies
+        if not self.synonymous and not self.return_amino_acids:
+            method = partial(
+                self._get_standard_deviation_relative_frequency_table,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids
+            )
+
+        # Relative amino acid-level codon frequencies
+        if not self.synonymous and self.return_amino_acids:
+            method = partial(
+                self._get_standard_deviation_relative_frequency_table,
+                sequence_min_amino_acids=self.sequence_min_amino_acids,
+                output_amino_acids=self.return_amino_acids
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_amino_acids=self.unreported_amino_acids
+            )
+
+        # Synonymous relative frequencies
+        if not self.return_amino_acids and self.relative and self.synonymous:
+            method = partial(
+                self._get_standard_deviation_synonymous_codon_relative_frequency_table,
+                sequence_min_codons=self.sequence_min_codons,
+                sequence_min_amino_acids=self.sequence_min_amino_acids
+            )
+            return self._get_frequency_table(
+                input_table.groupby(self._func_cols).apply(method).droplevel(1),
+                unreported_codons=self.unreported_codons,
+                unreported_amino_acids=self.unreported_amino_acids,
+                label_amino_acids=self.label_amino_acids,
+                replace_na=self.infinity_to_zero
+            )
+
+    # def _get_average_codon_function_table(
+    #     self,
+    #     gene_func_codon_freq_df: pd.DataFrame
+    # ) -> pd.DataFrame:
+    #     """
+    #     Get an output table of codon results averaged across genes in each function source.
+
+    #     Parameters
+    #     ==========
+    #     gene_func_codon_freq_df : pandas.core.Frame.DataFrame
+    #         Table of gene codon frequencies. Functional annotation information is included for each
+    #         gene. There is a separate row per gene annotation with the same codon data.
+
+    #     Returns
+    #     =======
+    #     pandas.core.Frame.DataFrame
+    #         Filtered table of codon frequencies averaged across genes in each function source.
+    #         Frequencies can be raw or normalized.
+    #     """
+    #     # Absolute frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         not self.relative and
+    #         self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(
+    #             self._get_average_frequency_table
+    #         ).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Relative frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         self.relative and
+    #         not self.synonymous and
+    #         self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         method = partial(
+    #             self._get_average_relative_frequency_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids
+    #         )
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(method).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids
+    #         )
+
+    #     # Synonymous relative frequencies
+    #     if (
+    #         not self.return_amino_acids and
+    #         self.relative and
+    #         self.synonymous and
+    #         self.function_sources and
+    #         self.average_genes_in_function
+    #     ):
+    #         method = partial(
+    #             self._get_average_synonymous_codon_relative_frequency_table,
+    #             sequence_min_codons=self.sequence_min_codons,
+    #             sequence_min_amino_acids=self.sequence_min_amino_acids
+    #         )
+    #         input_table = gene_func_codon_freq_df.groupby('source').apply(method).droplevel(1)
+    #         return self._get_frequency_table(
+    #             input_table,
+    #             unreported_codons=self.unreported_codons,
+    #             unreported_amino_acids=self.unreported_amino_acids,
+    #             label_amino_acids=self.label_amino_acids,
+    #             replace_na=self.infinity_to_zero
+    #         )
+
+    def _filter_input_codon_count(method) -> function:
+        """
+        Decorator to discard rows in the input frequency table with fewer than the minimum number of
+        codons/amino acids.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            freq_df: pd.DataFrame = args[1]
+            try:
+                filter_input_codon_count: bool = kwargs['filter_input_codon_count']
+                min_codons: int = kwargs['min_codons']
+            except KeyError:
+                filter_input_codon_count = False
+                min_codons = 0
+            if filter_input_codon_count and min_codons:
+                freq_df = freq_df[freq_df.sum(axis=1) >= min_codons]
+            return method(args[0], freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _drop_codon_columns(method) -> function:
+        """Decorator to discard codon columns from the input frequency table."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                drop_codons: list[str] = kwargs['drop_codons']
+            except KeyError:
+                drop_codons: list[str] = []
+            if drop_codons:
+                codon_freq_df = codon_freq_df.drop(drop_codons, axis=1, errors='ignore')
+                if len(codon_freq_df.columns) == 0:
+                    codon_freq_df = codon_freq_df.drop(codon_freq_df.index)
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _drop_amino_acid_codon_columns(method) -> function:
+        """Decorator to discard codon columns by amino acid from the input frequency table."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                drop_aas: list[str] = kwargs['drop_amino_acids']
+            except KeyError:
+                drop_aas: list[str] = []
+            if drop_aas:
+                drop_codons: list[str] = []
+                self: CodonStatistics = args[0]
+                aa_codons = self.genomic_context.genetic_code.amino_acid_codons
+                for aa in drop_aas:
+                    drop_codons += aa_codons[aa]
+                codon_freq_df = codon_freq_df.drop(drop_codons, axis=1, errors='ignore')
+                if len(codon_freq_df.columns) == 0:
+                    codon_freq_df = codon_freq_df.drop(codon_freq_df.index)
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _filter_pansequence_codon_count(method) -> function:
+        """
+        Decorator to drop codons from the input frequency table based on the frequency of the codon
+        across rows.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                panseq_min_codons: tuple[int, float] = kwargs['pansequence_min_codons']
+            except KeyError:
+                panseq_min_codons = (0, 0.0)
+            min_codon_count = panseq_min_codons[0]
+            min_row_fraction = panseq_min_codons[1]
+            if min_codon_count > 0 and 0.0 < min_row_fraction <= 1.0:
+                row_count = len(codon_freq_df)
+                drop_codons: list[str] = []
+                self: CodonStatistics = args[0]
+                for codon in self.genomic_context.genetic_code.codon_amino_acid:
+                    if codon not in codon_freq_df.columns:
+                        continue
+                    filtered_row_count = sum(codon_freq_df[codon] >= min_codon_count)
+                    if filtered_row_count / row_count < min_row_fraction:
+                        drop_codons += codon
+                codon_freq_df = codon_freq_df.drop(drop_codons, axis=1)
+                self._dropped_codons_panseq_min_codons = drop_codons
+                if len(codon_freq_df.columns) == 0:
+                    codon_freq_df = codon_freq_df.drop(codon_freq_df.index)
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _filter_pansequence_synonymous_codon_count(method) -> function:
+        """
+        Decorator to drop synonymous codons encoding an amino acid from the input frequency table
+        based on the frequency of the amino acid across rows.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                panseq_min_aas: tuple[int, float] = kwargs['pansequence_min_amino_acids']
+            except KeyError:
+                panseq_min_aas = (0, 0.0)
+            min_codon_count = panseq_min_aas[0]
+            min_row_fraction = panseq_min_aas[1]
+            if min_codon_count > 0 and 0.0 < min_row_fraction <= 1.0:
+                row_count = len(codon_freq_df)
+                drop_codons: list[str] = []
+                self: CodonStatistics = args[0]
+                synonymous_aa_codons = (
+                    self.genomic_context.genetic_code.synonymous_amino_acid_codons
+                )
+                for codons in synonymous_aa_codons.values():
+                    present_codons = [c for c in codons if c in codon_freq_df.columns]
+                    synonymous_freq_df = codon_freq_df[present_codons]
+                    if len(synonymous_freq_df.columns) == 0:
+                        continue
+                    filtered_row_count = sum(synonymous_freq_df.sum(axis=1) >= min_codon_count)
+                    if filtered_row_count / row_count < min_row_fraction:
+                        drop_codons += codons
+                codon_freq_df = codon_freq_df.drop(drop_codons, axis=1)
+                self._dropped_codons_panseq_min_aas = drop_codons
+                if len(codon_freq_df.columns) == 0:
+                    codon_freq_df = codon_freq_df.drop(codon_freq_df.index)
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _filter_sequence_codon_count(
+        self,
+        codon_freq_df: pd.DataFrame,
+        seq_min_codons: int = 0
+    ) -> pd.DataFrame:
+        """
+        Replace data with NaN for codons from the frequency table based on their count in the row.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item codon frequencies.
+
+        seq_min_codons : int, 0
+            Minimum codon count in the row for the codon value to be retained.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Table of item codon frequencies with NaN replacements.
+        """
+        if seq_min_codons == 0:
+            return codon_freq_df
+        filtered_df = codon_freq_df[codon_freq_df >= seq_min_codons]
+        return filtered_df
+
+    def _filter_sequence_codon_count_wrapper(method) -> function:
+        """
+        Decorator to replace data with NaN for codons from the frequency table based on their count
+        in the row.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            self: CodonStatistics = args[0]
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                seq_min_codons: int = kwargs['sequence_min_codons']
+            except KeyError:
+                seq_min_codons = 0
+            if seq_min_codons > 0:
+                codon_freq_df = self._filter_sequence_codon_count(
+                    codon_freq_df, seq_min_codons=seq_min_codons
+                )
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _filter_sequence_synonymous_codon_count(
+        self,
+        codon_freq_df: pd.DataFrame,
+        seq_min_aas: int = 0
+    ) -> pd.DataFrame:
+        """
+        Replace data with NaN for synonymous codons encoding an amino acid from the frequency table
+        based on the summed frequency of the synonymous codons in each row.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item codon frequencies.
+
+        seq_min_aas : int, 0
+            Minimum codon count for the amino acid in the row for codon values to be retained.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Table of item codon frequencies with NaN replacements.
+        """
+        if seq_min_aas == 0:
+            return codon_freq_df
+        mask_df = pd.DataFrame()
+        synonymous_aa_codons = self.genomic_context.genetic_code.synonymous_amino_acid_codons
+        for codons in synonymous_aa_codons.values():
+            present_codons = [c for c in codons if c in codon_freq_df.columns]
+            synonymous_freq_df = codon_freq_df[present_codons]
+            if len(synonymous_freq_df.columns) == 0:
+                continue
+            codon_mask_series = synonymous_freq_df.sum(axis=1) >= seq_min_aas
+            aa_mask_df = pd.DataFrame(index=codon_mask_series.index)
+            for codon in codons:
+                aa_mask_df[codon] = codon_mask_series
+            mask_df = pd.concat([mask_df, aa_mask_df], axis=1)
+        filtered_df = codon_freq_df[mask_df]
+        return filtered_df
+
+    def _filter_sequence_synonymous_codon_count_wrapper(method) -> function:
+        """
+        Decorator to replace data with NaN for synonymous codons encoding an amino acid from the
+        frequency table based on the summed frequency of the synonymous codons in each row.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            self: CodonStatistics = args[0]
+            codon_freq_df: pd.DataFrame = args[1]
+            try:
+                seq_min_aas: int = kwargs['sequence_min_amino_acids']
+            except KeyError:
+                seq_min_aas = 0
+            if seq_min_aas > 0:
+                codon_freq_df = self._filter_sequence_synonymous_codon_count(
+                    codon_freq_df, seq_min_aas=seq_min_aas
+                )
+            return method(args[0], codon_freq_df, *args[2: ], **kwargs)
+        return wrapper
+
+    def _filter_output_codons(method) -> function:
+        """Decorator to drop output columns for select codons."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = method(*args, **kwargs)
+            try:
+                unreported_codons: list[str] = kwargs['unreported_codons']
+            except KeyError:
+                unreported_codons: list[str] = []
+            if unreported_codons:
+                codon_freq_df = codon_freq_df.drop(unreported_codons, axis=1, errors='ignore')
+            return codon_freq_df
+        return wrapper
+
+    def _filter_output_amino_acid_codons(method) -> function:
+        """Decorator to drop output columns for synonymous codons encoding select amino acids."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = method(*args, **kwargs)
+            try:
+                unreported_aas: list[str] = kwargs['unreported_amino_acids']
+            except KeyError:
+                unreported_aas: list[str] = []
+            if unreported_aas:
+                self: CodonStatistics = args[0]
+                aa_codons = self.genomic_context.genetic_code.amino_acid_codons
+                for aa in unreported_aas:
+                    codons = aa_codons[aa]
+                    codon_freq_df = codon_freq_df.drop(codons, axis=1, errors='ignore')
+            return codon_freq_df
+        return wrapper
+
+    def _output_amino_acids(method) -> function:
+        """Decorator to output columns of amino acid rather than codon frequencies."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df: pd.DataFrame = method(*args, **kwargs)
+            try:
+                output_aas: bool = kwargs['output_amino_acids']
+            except KeyError:
+                output_aas = False
+            if output_aas:
+                aa_df = pd.DataFrame(index=codon_freq_df.index)
+                self: CodonStatistics = args[0]
+                aa_codons = self.genomic_context.genetic_code.amino_acid_codons
+                for aa, codons in aa_codons.items():
+                    present_codons = [c for c in codons if c in codon_freq_df.columns]
+                    select_codon_df = codon_freq_df[present_codons]
+                    if len(select_codon_df.columns) == 0:
+                        continue
+                    aa_df[aa] = select_codon_df[codons].sum(axis=1, skipna=False)
+                    return aa_df
+            return codon_freq_df
+        return wrapper
+
+    def _add_amino_acid_to_header(method) -> function:
+        """Decorator to add amino acid to codon column header."""
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df = method(*args, **kwargs)
+            try:
+                label_amino_acids: bool = kwargs['label_amino_acids']
+            except KeyError:
+                label_amino_acids = False
+            if label_amino_acids:
+                self: CodonStatistics = args[0]
+                codon_aa = self.genomic_context.genetic_code.codon_amino_acid
+                try:
+                    codon_freq_df.columns = [codon_aa[c] + c for c in codon_freq_df.columns]
+                except KeyError:
+                    raise ConfigError(
+                        "The columns in what should be a table of codon data are not recognized as "
+                        "codons. This is the header that is present: "
+                        f"{', '.join(list(codon_freq_df.columns))}"
+                    )
+                codon_freq_df = codon_freq_df[sorted(codon_freq_df.columns)]
+            return codon_freq_df
+        return wrapper
+
+    def _replace_na(method) -> function:
+        """
+        Decorator to replace NA with 0.0 in the output frequency table. This should only occur in
+        synonymous relative frequency output, in which missing amino acids yield NA (not inf, though
+        this is as a consequence of 0/0).
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df = method(*args, **kwargs)
+            try:
+                replace_na = kwargs['replace_na']
+            except KeyError:
+                replace_na = False
+            if replace_na:
+                codon_freq_df = codon_freq_df.fillna(0)
+            return codon_freq_df
+        return wrapper
+
+    def _filter_output_codon_count(method) -> function:
+        """
+        Decorator to discard rows in the output frequency table with fewer than the minimum number
+        of codons/amino acids.
+        """
+        def wrapper(*args, **kwargs) -> pd.DataFrame:
+            codon_freq_df = method(*args, **kwargs)
+            try:
+                filter_output_codon_count: bool = kwargs['filter_output_codon_count']
+                min_codons: int = kwargs['min_codons']
+            except KeyError:
+                filter_output_codon_count = False
+            if filter_output_codon_count:
+                codon_freq_df = codon_freq_df[codon_freq_df.sum(axis=1) >= min_codons]
+            return codon_freq_df
+        return wrapper
+
+    # The order of decorators should not be changed. (Only '@_output_amino_acids' and
+    # '@_add_amino_acid_to_header', which are mutually exclusive operations, are interchangeable.)
+    @_filter_input_codon_count
+    @_drop_codon_columns
+    @_drop_amino_acid_codon_columns
+    @_filter_pansequence_codon_count
+    @_filter_pansequence_synonymous_codon_count
+    @_filter_sequence_synonymous_codon_count_wrapper
+    @_filter_output_codons
+    @_filter_output_amino_acid_codons
+    @_output_amino_acids
+    @_add_amino_acid_to_header
+    @_filter_output_codon_count
+    def _get_frequency_table(self, codon_freq_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Get a table of raw codon frequencies.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of item raw codon frequencies.
+        """
+        return codon_freq_df
+
+    # Commented decorators mean that they can theoretically be used and uncommented but are not
+    # because they are not needed in the 'self.get_frequencies' client.
+    # @_filter_input_codon_count
+    # @_drop_codon_columns
+    # @_drop_amino_acid_codon_columns
+    # @_filter_pansequence_codon_count
+    # @_filter_pansequence_synonymous_codon_count
+    @_filter_output_codons
+    @_filter_output_amino_acid_codons
+    @_output_amino_acids
+    @_add_amino_acid_to_header
+    # @_filter_output_codon_count
+    def _get_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of relative codon frequencies.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of item relative codon frequencies.
+        """
+        if 'sequence_min_codons' in kwargs:
+            min_codon_mask_df = self._filter_sequence_codon_count(
+                codon_freq_df, kwargs['sequence_min_codons']
+            ).notna()
+        else:
+            min_codon_mask_df = None
+
+        if 'sequence_min_amino_acids' in kwargs:
+            min_aa_mask_df = self._filter_sequence_synonymous_codon_count(
+                codon_freq_df, kwargs['sequence_min_amino_acids']
+            ).notna()
+        else:
+            min_aa_mask_df = None
+
+        if 'sequence_min_codons' in kwargs and 'sequence_min_amino_acids' in kwargs:
+            mask_df = min_codon_mask_df | min_aa_mask_df
+        elif 'sequence_min_codons' in kwargs:
+            mask_df = min_codon_mask_df
+        elif 'sequence_min_amino_acids' in kwargs:
+            mask_df = min_aa_mask_df
+        else:
+            mask_df = None
+
+        codon_rel_freq_df = codon_freq_df.div(codon_freq_df.sum(axis=1), axis=0)
+        drop_index = codon_rel_freq_df[codon_rel_freq_df.isna().all(axis=1)].index
+        if mask_df is not None:
+            codon_rel_freq_df = codon_rel_freq_df[mask_df]
+        # Drop rows with zero frequency.
+        codon_rel_freq_df = codon_rel_freq_df.drop(drop_index)
+        return codon_rel_freq_df
+
+    # @_filter_input_codon_count
+    # @_drop_codon_columns
+    # @_drop_amino_acid_codon_columns
+    # @_filter_pansequence_codon_count
+    # @_filter_pansequence_synonymous_codon_count
+    @_filter_output_codons
+    @_filter_output_amino_acid_codons
+    @_add_amino_acid_to_header
+    @_replace_na
+    # @_filter_output_codon_count
+    def _get_synonymous_codon_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of codon relative frequencies in relation to the set of codons encoding the same
+        amino acid (or stop codons). If one or more codons in a synonymous set are absent as columns
+        in the input table, synonymous relative frequency is calculated for the remaining codons in
+        the set.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of item synonymous relative codon frequencies.
+        """
+        if 'sequence_min_codons' in kwargs:
+            min_codon_mask_df = self._filter_sequence_codon_count(
+                codon_freq_df, kwargs['sequence_min_codons']
+            ).notna()
+        else:
+            min_codon_mask_df = None
+
+        if 'sequence_min_amino_acids' in kwargs:
+            min_aa_mask_df = self._filter_sequence_synonymous_codon_count(
+                codon_freq_df, kwargs['sequence_min_amino_acids']
+            ).notna()
+        else:
+            min_aa_mask_df = None
+
+        if 'sequence_min_codons' in kwargs and 'sequence_min_amino_acids' in kwargs:
+            mask_df = min_codon_mask_df | min_aa_mask_df
+        elif 'sequence_min_codons' in kwargs:
+            mask_df = min_codon_mask_df
+        elif 'sequence_min_amino_acids' in kwargs:
+            mask_df = min_aa_mask_df
+        else:
+            mask_df = None
+
+        synonymous_freq_df = pd.DataFrame()
+        for codons in constants.AA_to_codons.values():
+            present_codons = [c for c in codons if c in codon_freq_df.columns]
+            aa_codon_freq_df = codon_freq_df[present_codons]
+            if len(aa_codon_freq_df.columns) == 0:
+                continue
+            synonymous_freq_df[present_codons] = aa_codon_freq_df.div(
+                aa_codon_freq_df.sum(axis=1), axis=0
+            )
+        drop_index = synonymous_freq_df[synonymous_freq_df.isna().all(axis=1)].index
+        if mask_df is not None:
+            synonymous_freq_df = synonymous_freq_df[mask_df]
+        synonymous_freq_df = synonymous_freq_df.drop(drop_index)
+        return synonymous_freq_df
+
+    # @_filter_input_codon_count
+    # @_drop_codon_columns
+    # @_drop_amino_acid_codon_columns
+    # @_filter_pansequence_codon_count
+    # @_filter_pansequence_synonymous_codon_count
+    # @_filter_sequence_synonymous_codon_count_wrapper
+    # @_filter_output_codons
+    # @_filter_output_amino_acid_codons
+    # @_output_amino_acids
+    # @_add_amino_acid_to_header
+    # @_filter_output_codon_count
+    def _get_summed_frequency_table(self, codon_freq_df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        """
+        Get a table of codon frequencies summed across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of raw codon frequencies summed across items.
+        """
+        summed_freq_series = codon_freq_df.sum()
+        summed_freq_df = summed_freq_series.to_frame('all').T.rename_axis('gene_caller_id')
+        return summed_freq_df
+
+    def _get_summed_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of relative codon frequencies summed across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of relative codon frequencies summed across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+
+        summed_freq_df = self._get_summed_frequency_table(codon_freq_df, **first_kwargs)
+        summed_rel_freq_df = self._get_rel_freq_table(summed_freq_df, **second_kwargs)
+        return summed_rel_freq_df
+
+    def _get_summed_synonymous_codon_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of relative synonymous codon frequencies summed across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of relative codon frequencies summed across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids',
+                'replace_na'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+
+        summed_codon_freq_df = self._get_summed_frequency_table(codon_freq_df, **first_kwargs)
+        summed_synonymous_freq_df = self._get_synonymous_codon_relative_frequency_table(
+            summed_codon_freq_df, **second_kwargs
+        )
+        return summed_synonymous_freq_df
+
+    # @_filter_output_codons
+    # @_filter_output_amino_acid_codons
+    # @_output_amino_acids
+    # @_add_amino_acid_to_header
+    # @_filter_output_codon_count
+    def _get_average_frequency_table(
+        self,
+        freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of average frequencies across items.
+
+        Parameters
+        ==========
+        freq_df : pandas.core.Frame.DataFrame
+            Table of item raw frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of frequencies averaged across items.
+        """
+        avg_freq_series = freq_df.mean()
+        avg_freq_df = avg_freq_series.to_frame('all').T.rename_axis('gene_caller_id')
+        return avg_freq_df
+
+    def _get_average_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of relative frequencies averaged across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of relative frequencies averaged across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+        rel_freq_df = self._get_relative_frequency_table(codon_freq_df, **first_kwargs)
+        avg_rel_freq_df = self._get_average_frequency_table(rel_freq_df, **second_kwargs)
+        return avg_rel_freq_df
+
+    def _get_average_synonymous_codon_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of relative synonymous codon frequencies averaged across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of relative synonymous codon frequencies averaged across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids',
+                'replace_na'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+        synonymous_freq_df = self._get_synonymous_codon_relative_frequency_table(
+            codon_freq_df, **first_kwargs
+        )
+        avg_synonymous_freq_df = self._get_average_frequency_table(
+            synonymous_freq_df, **second_kwargs
+        )
+        return avg_synonymous_freq_df
+
+    # @_filter_output_codons
+    # @_filter_output_amino_acid_codons
+    # @_output_amino_acids
+    # @_add_amino_acid_to_header
+    # @_filter_output_codon_count
+    def _get_standard_deviation_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of the standard deviations of frequencies across items.
+
+        Parameters
+        ==========
+        freq_df : pandas.core.Frame.DataFrame
+            Table of item raw frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of the standard deviations of frequencies across items.
+        """
+        std_freq_series = freq_df.std()
+        std_freq_df = std_freq_series.to_frame('all').T.rename_axis('gene_caller_id')
+        return std_freq_df
+
+    def _get_standard_deviation_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of the standard deviations of relative frequencies across items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of the standard deviations of relative frequencies across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+        rel_freq_df = self._get_relative_frequency_table(codon_freq_df, **first_kwargs)
+        std_rel_freq_df = self._get_standard_deviation_frequency_table(rel_freq_df, **second_kwargs)
+        return std_rel_freq_df
+
+    def _get_standard_deviation_synonymous_codon_relative_frequency_table(
+        self,
+        codon_freq_df: pd.DataFrame,
+        **kwargs
+    ) -> pd.DataFrame:
+        """
+        Get a table of the standard deviations of relative synonymous codon frequencies across
+        items.
+
+        Parameters
+        ==========
+        codon_freq_df : pandas.core.Frame.DataFrame
+            Table of item raw codon frequencies.
+
+        Returns
+        =======
+        pandas.core.Frame.DataFrame
+            Filtered table of the standard deviations of synonymous codon frequencies across items.
+        """
+        first_kwargs = {}
+        second_kwargs = {}
+        for key, value in kwargs.items():
+            if key in [
+                'sequence_min_codons',
+                'sequence_min_amino_acids',
+                'unreported_codons',
+                'unreported_amino_acids',
+                'label_amino_acids',
+                'replace_na'
+            ]:
+                second_kwargs[key] = value
+            else:
+                first_kwargs[key] = value
+        synonymous_freq_df = self._get_synonymous_codon_relative_frequency_table(
+            codon_freq_df, **first_kwargs
+        )
+        std_synonymous_freq_df = self._get_standard_deviation_frequency_table(
+            synonymous_freq_df, **second_kwargs
+        )
+        return std_synonymous_freq_df
+
+    def get_codon_usage_bias(self, skip_setup: bool = False) -> dict[str, pd.DataFrame]:
+        """
+        Get codon usage bias (CUB) tables of genes or functions.
+        """
+        pass
+
+# class SingleGenomeCodonUsage(CodonUsage):
+#     """
+#     Processes codon usage data from a single genome.
+
+#     Attributes
+#     ==========
+
+#     """
+#     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+#         super().__init__(args, run, progress)
+
+#         self.contigs_db = self._A('contigs_db')
+
+#         self.profile_db_path = self._A('profile_db')
+#         self.collection_name = self._A('collection_name')
+#         self.bin_id = self._A('bin_id')
+
+#         if self.contigs_db is not None:
+#             self._load_contigs_db_data()
+
+#         self.codon_statistics = CodonStatistics(self, self.run, self.progress)
+
+#     def _load_contigs_db_data(self):
+#         """Load gene data from the contigs database."""
+#         utils.is_contigs_db(self.contigs_db)
+
+#         args = deepcopy(self.args)
+#         if self.profile_db or self.collection_name or self.bin_id:
+#             # Initialize the contigs superclass from the splits of the internal genome bin.
+#             args.split_names_of_interest = GetSplitNamesInBins(args).get_split_names_only()
+#         contigs_super = ContigsSuperclass(args, r=terminal.Run(verbose=False))
+#         contigs_super.init_contig_sequences()
+#         self.contig_sequences_dict = contigs_super.contig_sequences
+
+#         self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
+#         self.gene_caller_ids = list(set(self.genes_in_contigs_dict))
+
+#         # Organize functional annotations into a table.
+#         contigs_super.init_functions(requested_sources=self.function_sources)
+#         if self.function_sources == []:
+#             self.function_sources = sorted(contigs_super.gene_function_call_sources)
+#             if not self.function_sources:
+#                 self.run.warning(
+#                     "The value of `args.function_sources` is an empty list, indicating that all "
+#                     "function sources in the genome should by loaded. However, the contigs "
+#                     "database has not been annotated by any sources."
+#                 )
+#         gene_function_rows = []
+#         for gcid, annotation_dict in contigs_super.gene_function_calls_dict.items():
+#             for source, annotation in annotation_dict.items():
+#                 if annotation is None:
+#                     continue
+
+#                 accession = annotation[0]
+#                 name = annotation[1]
+#                 accessions = accession.split('!!!')
+#                 names = name.split('!!!')
+#                 if len(accessions) == len(names):
+#                     # The function accession and name entries contain the same number of '!!!'
+#                     # separators.
+#                     for accession, name in zip(accessions, names):
+#                         if source == 'KEGG_BRITE':
+#                             # Include every possible depth of categorization.
+#                             hierarchy_accession = accession
+#                             categorization = name
+#                             split_categories = categorization.split('>>>')
+#                             for depth in range(1, len(split_categories) + 1):
+#                                 depth_categorization = '>>>'.join(split_categories[: depth])
+#                                 gene_function_rows.append(
+#                                     [source, hierarchy_accession, depth_categorization, gcid]
+#                                 )
+#                         else:
+#                             gene_function_rows.append([source, accession, name, gcid])
+#                     continue
+
+#                 # The function accession and name entries do not contain the same number of '!!!'
+#                 # separators. In 'COG20_PATHWAY', there can be multiple accessions corresponding to
+#                 # the same function name.
+#                 if source == 'KEGG_BRITE':
+#                     # Include every possible depth of categorization.
+#                     hierarchy_accession = accession
+#                     categorization = name
+#                     split_categories = categorization.split('>>>')
+#                     for depth in range(1, len(split_categories) + 1):
+#                         depth_categorization = '>>>'.join(split_categories[: depth])
+#                         gene_function_rows.append(
+#                             [source, hierarchy_accession, depth_categorization, gcid]
+#                         )
+#                 else:
+#                     gene_function_rows.append([source, accession, name, gcid])
+#         self.gene_function_df = pd.DataFrame(
+#             gene_function_rows, columns=['source', 'accession', 'name', 'gene_caller_id']
+#         )
+
+class CUBDefaults:
+    """
+
+    Attributes
+    ==========
+    metrics : tuple[str], ('cai', 'delta')
+        Available CUB metrics. CAI is the Codon Adaptation Index of Sharp and Li
+        (1987). Delta is from Ran and Higgs (2012, Eq. 6).
+
+    reference_dependent_metrics : tuple[str], ('cai', 'delta')
+        Available CUB metrics that rely upon comparison to a set of reference genes.
+
+    reference_function_source : str, 'KEGG_BRITE'
+
+    reference_function_accessions : list[str], []
+
+    reference_function_names : list[str], ['Ribosome>>>Ribosomal proteins']
+        Genes annotated by ribosomal protein KOs are used as the CUB reference.
+
+    query_min_analyzed_codons : int, 100
+        Minimum gene/function codon count to improve CUB statistical significance.
+
+    reference_exclude_amino_acid_count : int, 10
+        Minimum reference amino acid codon count to improve CUB statistical significance.
+
+    reference_min_analyzed_codons : int, 100
+        Minimum reference codon count to improve CUB statistical significance.
+
+    genetic_code : GeneticCode, GeneticCode()
+        Certain CUB defaults depend on the genetic code.
+
+    ignored_codons : list[str]
+        Codons ignored by default because they encode stop or are the only codon for an amino acid.
+    """
+    metrics: tuple[str] = ('cai', 'delta')
+    reference_dependent_metrics: tuple[str] = ('cai', 'delta')
+
+    reference_function_source: str = 'KEGG_BRITE'
+    reference_function_accessions: list[str] = []
+    reference_function_names: list[str] = ['Ribosome>>>Ribosomal proteins']
+
+    # Minimum codon counts improve the statistical power of CUB.
+    query_min_analyzed_codons: int = 100
+    reference_exclude_amino_acid_count: int = 10
+    reference_min_analyzed_codons: int = 100
+
+    def __init__(self, genetic_code: GeneticCode = GeneticCode()) -> None:
+        """
+        Parameters
+        ==========
+        genetic_code : GeneticCode, GeneticCode()
+            Certain CUB defaults depend on the genetic code, the standard code if not given.
+        """
+        self.genetic_code = genetic_code
+        # Anvi'o records codons with an "N" nucleotide as None.
+        self.ignored_codons = [None]
+        for aa, codons in genetic_code.amino_acid_codons:
+            if aa == 'STP' or len(codons) == 1:
+                self.ignored_codons += codons
+
+
+
+class SingleGenomeCodonUsage1(CodonUsage):
+    """
+    Processes codon usage data for a single genome.
+
+    Attributes
+    ==========
+    contigs_db : str
+        File path to a contigs database containing gene sequences.
+
+    profile_db : str, None
+        File path to a profile database associated with the contigs database, to be used with
+        'collection_name' and 'bin_id'.
+
+    collection_name : str, None
+        Name of the bin collection in the profile database, to be used with 'profile_db' and
+        'bin_id'.
+
+    bin_id : str, None
+        Bin name representing an internal genome in the contigs database, to be used with
+        'profile_db' and 'collection_name'.
+    """
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        super().__init__(args, run, progress)
+
+        self.contigs_db = self._A('contigs_db')
+
+        self.profile_db_path = self._A('profile_db')
+        self.collection_name = self._A('collection_name')
+        self.bin_id = self._A('bin_id')
+
+        self._load_contigs_db_data()
+        self.codon_statistics = CodonStatistics(self, self.run, self.progress)
+
+    # def _set_genetic_code(self):
+    #     """
+    #     Set decoding properties of the genome as attributes.
+
+    #     The dict, `args.codon_to_amino_acid`, should have keys that are codons and values that are
+    #     three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is
+    #     None, the standard genetic code is used.
+    #     """
+    #     if self.args.codon_to_amino_acid is None:
+    #         self.codon_amino_acid_dict = standard_code
+    #     else:
+    #         check_genetic_code(self.args.codon_to_amino_acid)
+    #         self.codon_amino_acid_dict = self.args.codon_to_amino_acid
+    #         if self.codon_amino_acid_dict != standard_code:
+    #             self.run.info_single("Using a nonstandard genetic code for the genome")
+
+    #     self.amino_acid_codons_dict = {}
+    #     for codon, amino_acid in self.codon_amino_acid_dict.items():
+    #         try:
+    #             self.amino_acid_codons_dict[amino_acid].append(codon)
+    #         except KeyError:
+    #             self.amino_acid_codons_dict[amino_acid] = [codon]
+
+    #     self.nonstop_amino_acid_codons_dict = {
+    #         amino_acid: codons for amino_acid, codons in
+    #         self.amino_acid_codons_dict.items() if amino_acid != 'STP'}
+
+    #     # Ignore codons with "N" nucleotide which anvi'o records as None.
+    #     self.ignored_cub_codons = [None]
+    #     for amino_acid in ignored_cub_amino_acids:
+    #         self.ignored_cub_codons += self.amino_acid_codons_dict[amino_acid]
+
+    #     self.synonymous_nonstop_amino_acid_codons_dict = {
+    #         amino_acid: codons for amino_acid, codons in self.nonstop_amino_acid_codons_dict.items()
+    #         if amino_acid not in ignored_cub_amino_acids}
+
+
+    def _load_contigs_db_data(self):
+        """Load gene data from the contigs database."""
+        utils.is_contigs_db(self.contigs_db)
+
+        args = deepcopy(self.args)
+        if self.profile_db or self.collection_name or self.bin_id:
+            # Initialize the contigs superclass from the splits of the internal genome bin.
+            args.split_names_of_interest = GetSplitNamesInBins(args).get_split_names_only()
+        contigs_super = ContigsSuperclass(args, r=terminal.Run(verbose=False))
+        contigs_super.init_contig_sequences()
+        self.contig_sequences_dict = contigs_super.contig_sequences
+
+        self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
+        self.gene_caller_ids = list(set(self.genes_in_contigs_dict))
+
+        # Organize functional annotations into a table.
+        contigs_super.init_functions(requested_sources=self.function_sources)
+        if self.function_sources == []:
+            self.function_sources = sorted(contigs_super.gene_function_call_sources)
+            if not self.function_sources:
+                self.run.warning(
+                    "The value of `args.function_sources` is an empty list, indicating that all "
+                    "function sources in the genome should by loaded. However, the contigs "
+                    "database has not been annotated by any sources."
+                )
+        gene_function_rows = []
+        for gcid, annotation_dict in contigs_super.gene_function_calls_dict.items():
+            for source, annotation in annotation_dict.items():
+                if annotation is None:
+                    continue
+
+                accession = annotation[0]
+                name = annotation[1]
+                accessions = accession.split('!!!')
+                names = name.split('!!!')
+                if len(accessions) == len(names):
+                    # The function accession and name entries contain the same number of '!!!'
+                    # separators.
+                    for accession, name in zip(accessions, names):
+                        if source == 'KEGG_BRITE':
+                            # Include every possible depth of categorization.
+                            hierarchy_accession = accession
+                            categorization = name
+                            split_categories = categorization.split('>>>')
+                            for depth in range(1, len(split_categories) + 1):
+                                depth_categorization = '>>>'.join(split_categories[: depth])
+                                gene_function_rows.append(
+                                    [source, hierarchy_accession, depth_categorization, gcid]
+                                )
+                        else:
+                            gene_function_rows.append([source, accession, name, gcid])
+                    continue
+
+                # The function accession and name entries do not contain the same number of '!!!'
+                # separators. In 'COG20_PATHWAY', there can be multiple accessions corresponding to
+                # the same function name.
+                if source == 'KEGG_BRITE':
+                    # Include every possible depth of categorization.
+                    hierarchy_accession = accession
+                    categorization = name
+                    split_categories = categorization.split('>>>')
+                    for depth in range(1, len(split_categories) + 1):
+                        depth_categorization = '>>>'.join(split_categories[: depth])
+                        gene_function_rows.append(
+                            [source, hierarchy_accession, depth_categorization, gcid]
+                        )
+                else:
+                    gene_function_rows.append([source, accession, name, gcid])
+        self.gene_function_df = pd.DataFrame(
+            gene_function_rows, columns=['source', 'accession', 'name', 'gene_caller_id']
+        )
+
+
+    # def _make_gene_codon_frequency_table(self):
+    #     """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
+
+    #     self.progress.new("Fetching codon frequency data")
+    #     self.progress.update("...")
+
+    #     gene_codon_frequencies = []
+    #     skipped_noncoding_gene_caller_ids = []
+    #     coding_gene_caller_ids = []
+    #     for gene_caller_id in self.gene_caller_ids:
+    #         # `gene_call` is a dictionary.
+    #         gene_call = self.genes_in_contigs_dict[gene_caller_id]
+
+    #         if gene_call['call_type'] != constants.gene_call_types['CODING']:
+    #             skipped_noncoding_gene_caller_ids.append(gene_caller_id)
+    #             continue
+
+    #         coding_gene_caller_ids.append(gene_caller_id)
+
+    #         gene_codon_frequencies.append(Counter(utils.get_list_of_codons_for_gene_call(
+    #             gene_call, self.contig_sequences_dict)))
+
+    #     gene_codon_frequency_df = pd.DataFrame.from_records(gene_codon_frequencies)
+
+    #     observed_codons = gene_codon_frequency_df.columns.tolist()
+    #     for codon in constants.codon_to_AA:
+    #         if codon not in observed_codons:
+    #             gene_codon_frequency_df[codon] = 0
+
+    #     # Drop any column named NaN for unknown codons.
+    #     gene_codon_frequency_df = gene_codon_frequency_df[constants.codon_to_AA]
+
+    #     gene_codon_frequency_df = gene_codon_frequency_df.fillna(0)
+    #     gene_codon_frequency_df = gene_codon_frequency_df[sorted(gene_codon_frequency_df.columns)]
+    #     gene_codon_frequency_df.index = coding_gene_caller_ids
+    #     gene_codon_frequency_df.index.name = 'gene_caller_id'
+    #     self.gene_codon_frequency_df = gene_codon_frequency_df
+
+    #     self.progress.end()
+
+    #     self.noncoding_gene_count = len(skipped_noncoding_gene_caller_ids)
+    #     if self.noncoding_gene_count:
+    #         self.run.warning(
+    #             f"{pp(self.noncoding_gene_count)} of {pp(len(self.gene_caller_ids))} genes were "
+    #             "non-coding and not added to the codon frequency table.")
 
 
     def get_frequencies(self,
@@ -259,7 +2982,10 @@ class SingleGenomeCodonUsage(object):
                         gene_min_codons=0,
                         function_min_codons=0,
                         min_codon_filter='both',
+                        drop_codons: Iterable[str] = None,
+                        unreported_codons=None,
                         drop_amino_acids=None,
+                        unreported_amino_acids=None,
                         sequence_min_amino_acids=0,
                         pansequence_min_amino_acids=(0, 1.0),
                         label_amino_acids=False,
@@ -284,17 +3010,21 @@ class SingleGenomeCodonUsage(object):
             `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
             hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
             general 'Ribosome' would each have rows in the output table. By default None.
+
         return_functions : bool, optional
             If True (default False), output frequency tables contain function rather than gene
             results in each row. Returning per-gene results when also considering functions by using
             `--from-function-sources` facilitates analysis of per-gene variability within functions.
+
         return_amino_acids : bool, optional
             If True (default False), output frequency table columns are decoded amino acids (plus
             STP) rather than codons. Synonymous codon frequencies are summed to produce the amino
             acid frequencies.
+
         gene_caller_ids : iterable, optional
             Genes with the given IDs are selected for analysis. This parameter can be used alongside
             `function_accessions` and `function_names`. By default None.
+
         function_accessions : dict, optional
             Genes annotated with the given function accessions are selected for analysis. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
@@ -302,6 +3032,7 @@ class SingleGenomeCodonUsage(object):
             parameter can be used alongside `gene_caller_ids` and `function_names`.  Note that
             'KEGG_BRITE' does not use individual function accessions but overarching hierarchy
             accessions that include multiple functions. By default None.
+
         function_names : dict, optional
             Genes annotated with the given function names are selected for analysis. The argument
             must be a dict keyed by function annotation source (e.g., 'KOfam', 'COG20_FUNCTION',
@@ -310,19 +3041,24 @@ class SingleGenomeCodonUsage(object):
             level of the hierarchy, such as ['Ribosome>>>Ribosomal proteins', 'Transcription
             machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. This parameter can be
             used alongside `gene_caller_ids` and `function_accessions`. By default None.
+
         expect_functions : bool, optional
             If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
+
         relative : bool, optional
             If True (default False), return relative rather than absolute codon frequencies.
+
         synonymous : bool, optional
             If True (default False), return codon relative frequencies among synonymous codons
             decoding each amino acid (plus stop).
+
         sum_genes : bool, optional
             If True (default False), sum codon frequencies of genes, returning a one-row DataFrame
             of the summed frequencies. If `from_function_sources` is used, then genes are limited to
             those with the specified functional annotations. Relative/synonymous frequencies are
             calculated after summing absolute frequencies.
+
         average_genes : bool, optional
             If True (default False), average codon frequencies of genes, returning a one-row
             DataFrame of the averaged frequencies. If `from_function_sources` is used, then genes
@@ -343,10 +3079,12 @@ class SingleGenomeCodonUsage(object):
 
         gene_min_codons : int, optional
             Ignore genes with fewer than this number of codons. By default 0.
+
         function_min_codons : int, optional
             Ignore gene/function pairs when the function has fewer than this number of codons. Genes
             are filtered by codon count before functions, so the total length of remaining genes
             annotated by the function is considered. By default 0.
+
         min_codon_filter : {"length", "remaining", "both"}, optional
             This argument arises from the ambiguity of filters that remove genes and functions by
             number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to the
@@ -360,15 +3098,20 @@ class SingleGenomeCodonUsage(object):
             codon threshold. 'both' is needed as an option in addition to 'remaining' so dynamic
             codon filtering by `--exclude-amino-acid-count/fraction` operates on genes that passed
             the first length filter.
+
+        drop_codons : iterable, None
+
         drop_amino_acids : iterable, optional
             Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, and
             STP for stop codons). If `synonymous` is True, the `drop_amino_acids` default rather
             than being None is STP plus amino acids encoded by a single codon (Met, Trp).
+
         sequence_min_amino_acids : int, optional
             Remove from the output rows codons for amino acids (and STP), or amino acids themselves,
             that are less numerous than `sequence_min_amino_acids`. For example, if the argument is
             5, and a gene has 4 codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in
             the output table will have missing values in Asn columns. By default 0.
+
         pansequence_min_amino_acids : tuple, optional
             This tuple must have two items. The first is an int >0 representing a minimum number of
             codons encoding an amino acid -- 'min_amino_acids' -- and the second is a float in the
@@ -377,9 +3120,11 @@ class SingleGenomeCodonUsage(object):
             'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and
             'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for amino acid/STP in
             ≥90% of genes, then the columns for these codons are dropped. By default (0, 1.0).
+
         label_amino_acids : bool, optional
             If True (default False), include the amino acid for each codon in the column header of
             the output, i.e., LysAAA instead of AAA.
+
         infinity_to_zero : bool, optional
             If True (default False), replace NA (empty) values in output with 0.0. NA occurs if
             `synonymous` is True and all codons for an amino acid are absent in a gene or function,
@@ -450,7 +3195,7 @@ class SingleGenomeCodonUsage(object):
         # Check compatability of `return_amino_acids` with other arguments.
         if return_amino_acids and synonymous:
             raise ConfigError("The argument `synonymous` should only be True when "
-                              "`return_amino_acids` is also True, as `synonymous` returns "
+                              "`return_amino_acids` is False, as `synonymous` returns "
                               "synonymous codon relative frequencies.")
         if return_amino_acids and label_amino_acids:
             # Don't bother raising an exception.
@@ -1753,16 +4498,16 @@ class SingleGenomeCodonUsage(object):
     def _establish_cub_metrics(self, metrics):
         """Establishes CUB metrics for `get_codon_usage_bias`."""
         if metrics is None:
-            metrics = cub_metrics
+            metrics = available_cub_metrics
         else:
             for metric in metrics:
                 unrecognized_metrics = []
-                if metric not in cub_metrics:
+                if metric not in available_cub_metrics:
                     unrecognized_metrics.append(metric)
                 if unrecognized_metrics:
                     raise ConfigError("The following CUB metrics are not recognized: "
                                       f"{', '.join(unrecognized_metrics)}. Here are the available "
-                                      f"CUB metrics: {', '.join(cub_metrics)}")
+                                      f"CUB metrics: {', '.join(available_cub_metrics)}")
         return metrics
 
 
@@ -2147,7 +4892,7 @@ class SingleGenomeCodonUsage(object):
         return delta_df
 
 
-class MultiGenomeCodonUsage(object):
+class MultiGenomeCodonUsage(CodonUsage):
     """This object processes codon usage data from multiple internal and/or external genomes."""
 
     def __init__(self, args, run=run, progress=progress):
@@ -2157,13 +4902,9 @@ class MultiGenomeCodonUsage(object):
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
 
-        self.function_sources = A('function_sources')
         self.use_shared_function_sources = A('shared_function_sources')
 
         self.preload_genomes = A('preload-genomes') or False
-
-        self.run = run
-        self.progress = progress
 
         descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
         descriptions.load_genomes_descriptions(init=False)
@@ -2334,7 +5075,7 @@ class MultiGenomeCodonUsage(object):
 def get_custom_encodings(encodings_txt):
     """Modify the standard genetic code given user input, as used in the scripts,
     `anvi-get-codon-frequencies` and `anvi-get-codon-usage-bias`."""
-    codon_amino_acid_dict = copy.deepcopy(default_codon_amino_acid_dict)
+    codon_amino_acid_dict = copy.deepcopy(standard_code)
 
     if not encodings_txt:
         return codon_amino_acid_dict
