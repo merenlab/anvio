@@ -271,19 +271,16 @@ async function createDisplay(display_table){
 
                 if (mode === 'structure') {
                     let gc_id = '';
-                    
+
                     if (psgc_data) {
                         for (var psgc_id in psgc_data) {
-                            for (var _gc_id in psgc_data[psgc_id]) {
-                                var genes = [];
-                                genes = psgc_data[psgc_id][_gc_id].genes;
-                                var matchingGene = genes.find(gene => {
-                                    return gene.gene_callers_id === caller_id;
-                                });
-                                if (matchingGene) {
-                                    gc_id = _gc_id;
-                                    break;
-                                }
+                            var matchingGene = psgc_data[psgc_id].find(gene => 
+                                gene.gene_callers_id === caller_id
+                            );
+
+                            if (matchingGene) {
+                                gc_id = matchingGene.gene_cluster_id;
+                                break;
                             }
                         }
                     }
@@ -300,7 +297,7 @@ async function createDisplay(display_table){
                     text.onclick = function(event) {
                         var obj = event.target;
                         if (!obj.getAttribute('data-content')) {
-                            obj.setAttribute('data-content', get_gene_functions_table_html_for_structure(psgc_data) + '');
+                            obj.setAttribute('data-content', get_gene_functions_table_html_for_structure(psgc_data, gc_id) + '');
                         }
                     };
 
@@ -459,43 +456,43 @@ async function loadPSGCData(psgc_name) {
     }
 }
 
-function get_gene_functions_table_html_for_structure(psgc_data) {
+function get_gene_functions_table_html_for_structure(psgc_data, selected_gc_id) {
     for (const psgc_id in psgc_data) {
-        for (const gc_id in psgc_data[psgc_id]) {
-            const gcData = psgc_data[psgc_id][gc_id];
-            
-            if (gcData) {
-                let functions_table_html = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
-                
-                functions_table_html += '<h2>Gene Cluster Information</h2>';
-                functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
-                functions_table_html += '<tr><th>Gene Cluster ID</th><td>' + gc_id + '</td></tr>';
-                functions_table_html += '</table>';
+        var genes = psgc_data[psgc_id].filter(gene => 
+            gene.gene_cluster_id === selected_gc_id
+        );
 
-                functions_table_html += '<h3>Genes in this cluster</h3>';
-                functions_table_html += '<div style="max-height: 400px; overflow-y: auto;">';
-                functions_table_html += '<table class="table table-striped" style="width: 100%;">';
-                functions_table_html += '<thead><tr>' +
-                    '<th>Gene Caller ID</th>' +
-                    '<th>Genome Name</th>' +
-                    '<th>Sequence</th>' +
-                    '</tr></thead>';
-                functions_table_html += '<tbody>';
-                
-                gcData.genes.forEach(gene => {
-                    functions_table_html += '<tr>' +
-                        '<td>' + gene.gene_callers_id + '</td>' +
-                        '<td>' + gene.genome_name + '</td>' +
-                        '<td><div style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><code>' + 
-                            gene.sequence + '</code></div></td>' +
-                        '</tr>';
-                });
-                
-                functions_table_html += '</tbody></table>';
-                functions_table_html += '</div>';
+        if (genes && genes.length > 0) {
+            let functions_table_html = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
 
-                return functions_table_html;
-            }
+            functions_table_html += '<h2>Gene Cluster Information</h2>';
+            functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
+            functions_table_html += '<tr><th>Gene Cluster ID</th><td>' + selected_gc_id + '</td></tr>';
+            functions_table_html += '</table>';
+
+            functions_table_html += '<h3>Genes in this cluster</h3>';
+            functions_table_html += '<div style="max-height: 400px; overflow-y: auto;">';
+            functions_table_html += '<table class="table table-striped" style="width: 100%;">';
+            functions_table_html += '<thead><tr>' +
+                '<th>Gene Caller ID</th>' +
+                '<th>Genome Name</th>' +
+                '<th>Alignment Summary</th>' +
+                '</tr></thead>';
+            functions_table_html += '<tbody>';
+
+            genes.forEach(gene => {
+                functions_table_html += '<tr>' +
+                    '<td>' + gene.gene_callers_id + '</td>' +
+                    '<td>' + gene.genome_name + '</td>' +
+                    '<td><div style="max-width: 200px; overflow-x: auto;"><code>' + 
+                        (gene.alignment_summary || 'No alignment data') + '</code></div></td>' +
+                    '</tr>';
+            });
+
+            functions_table_html += '</tbody></table>';
+            functions_table_html += '</div>';
+
+            return functions_table_html;
         }
     }
 
