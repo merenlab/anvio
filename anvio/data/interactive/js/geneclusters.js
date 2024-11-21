@@ -382,29 +382,42 @@ function calculateLayout() {
     $('.callerTitle').attr('x', max_genome_title_width + (HORIZONTAL_PADDING * 2));
 
     var max_caller_width = 0;
-    $('.callerTitle').each(function(i, d) {
+    $('.callerTitle:not(.gcName)').each(function(i, d) {
         dwidth = d.getBBox().width;
         if (dwidth > max_caller_width) {
             max_caller_width = dwidth;
         };
     });
 
+    var max_gc_name_width = 0;
+    var sequence_start_x;
+
     if (mode === 'structure') {
-        $('.gcName').attr('x', max_genome_title_width + (HORIZONTAL_PADDING * 5));
-        $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 6));
-    } else{
-        $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+        $('.gcName').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+        $('.gcName').each(function(i, d) {
+            dwidth = d.getBBox().width;
+            if (dwidth > max_gc_name_width) {
+                max_gc_name_width = dwidth;
+            };
+        });
+        sequence_start_x = max_genome_title_width + max_caller_width + max_gc_name_width + (HORIZONTAL_PADDING * 4);
+        $('.sequence').attr('x', sequence_start_x);
+    } else {
+        sequence_start_x = max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3);
+        $('.sequence').attr('x', sequence_start_x);
     }
 
-    var max_sequence_width = 0;
-    $('.sequence').each(function(i, d) {
-        dwidth = d.getBBox().width;
-        if (dwidth > max_sequence_width) {
-            max_sequence_width = dwidth;
-        };
-    });
+    var wrap_length = parseInt($('#wrap_length').val());
+    var font_size = parseInt($('#font_size').val());
 
-    $('.sequenceBackground').attr('width', max_caller_width + max_sequence_width + (HORIZONTAL_PADDING * 3));
+    var max_sequence_width = wrap_length * (font_size * 0.6);
+
+    var total_width = max_caller_width + max_sequence_width;
+    if (mode === 'structure') {
+        total_width += max_gc_name_width + HORIZONTAL_PADDING;
+    }
+
+    $('.sequenceBackground').attr('width', total_width + (HORIZONTAL_PADDING * 3));
 
     bbox = svg.getBBox();
     svg.setAttribute('width', bbox.width);
