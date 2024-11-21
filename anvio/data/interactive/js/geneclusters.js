@@ -111,7 +111,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
         });
         if (response['status'] === 0) {
             var newThHeader = $('<th>').text(gc_key_short);
-            var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
+            var newThData = $('<th>').text(gc_key === 'num_genes_in_gene_cluster' || gc_key === 'num_genomes_gene_cluster_has_hits' ? Math.round(response.gene_cluster_data): (response.gene_cluster_data).toFixed(2));
 
             var gc_title_list = {
                 combined_homogeneity_index: "Combined Homogeneity Index",
