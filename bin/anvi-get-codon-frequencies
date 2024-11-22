@@ -157,9 +157,6 @@ def main(args: argparse.Namespace) -> None:
             "operate on relative frequencies so that genes are normalized for length."
         )
 
-    # Determine encodings.
-    args.codon_to_amino_acid = codonusage.get_custom_encodings(args.encodings_txt)
-
     # Determine codons to explicitly exclude from the analysis. Codons to exclude are the complement
     # of codons to include.
     if args.include_codons and args.exclude_codons:
@@ -293,7 +290,25 @@ def main(args: argparse.Namespace) -> None:
     #         label_amino_acids=args.header_amino_acids,
     #         infinity_to_zero=args.infinity_to_zero)
 
-    # # Write output tables.
+    # Write output tables.
+    if args.gene_table_output:
+        frequency_df.to_csv(args.gene_table_output, sep='\t')
+    elif args.function_table_output:
+        frequency_df.to_csv(args.function_table_output, sep='\t')
+    else:
+        raise ConfigError("Neither gene nor function table output was specified.")
+
+    if args.sum:
+        run.info("Gene sum output", args.gene_table_output)
+    elif args.average:
+        run.info("Within-function gene average output", args.function_table_output)
+    elif args.standard_deviation:
+        run.info("Within-function gene standard deviation output", args.function_table_output)
+    elif args.gene_table_output:
+        run.info("Gene table output", args.gene_table_output)
+    elif args.function_table_output:
+        run.info("Function table output", args.function_table_output)
+
     # if args.sum or args.average:
     #     if args.gene_table_output:
     #         table_output = args.gene_table_output
@@ -310,7 +325,6 @@ def main(args: argparse.Namespace) -> None:
     # else:
     #     frequency_df.to_csv(args.gene_table_output, sep='\t')
     #     run.info("Gene table output", args.gene_table_output)
-
 
 def parse_select_functions_table(
     args: argparse.Namespace,
@@ -438,9 +452,10 @@ if __name__ == '__main__':
     groupC.add_argument(
         '--infinity-to-zero', default=False, action='store_true', help=(
             "Replace NaN (empty) values in output with 0.0. NaN occurs with `--synonymous` when "
-            "all codons for an amino acid are absent in a gene or function, resulting in 0/0. Use "
-            "with caution, for NaN and 0.0 mean different things and this will skew downstream "
-            "analyses of synonymous relative frequencies, such as codon usage bias."
+            "all codons for an amino acid are absent in a gene or function, resulting in 0/0. It "
+            "also occurs with `--report-min-codons` and `--report-min-amino-acids`. Use with "
+            "caution, for NaN and 0.0 mean different things and this will skew downstream analyses "
+            "of synonymous relative frequencies, such as codon usage bias."
         )
     )
     groupC.add_argument(
@@ -505,9 +520,9 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('include-codons'), **anvio.K('include-codons'))
     groupF.add_argument(*anvio.A('exclude-amino-acids'), **anvio.K('exclude-amino-acids'))
     groupF.add_argument(*anvio.A('include-amino-acids'), **anvio.K('include-amino-acids'))
-    groupF.add_argument(*anvio.A('sequence-min-codons'), **anvio.K('sequence-min-codons'))
+    groupF.add_argument(*anvio.A('report-min-codons'), **anvio.K('report-min-codons'))
+    groupF.add_argument(*anvio.A('report-min-amino-acids'), **anvio.K('report-min-amino-acids'))
     groupF.add_argument(*anvio.A('pansequence-min-codons'), **anvio.K('pansequence-min-codons'))
-    groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
     groupF.add_argument(
         *anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids')
     )
