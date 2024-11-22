@@ -3676,16 +3676,27 @@ D = {
              'default': 'both',
              'help': "This argument arises from the ambiguity of filters that remove genes and functions "
                      "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
-                     "filters that drop codons (`--exclude/include-amino-acids` and "
-                     "`--pansequence-min-amino-acids`). Genes (and functions) can be filtered by "
+                     "filters that drop codons (`--exclude/include-codons`, `--exclude/include-amino-acids`, and "
+                     "`--pansequence-min-codons/amino-acids`). Genes (and functions) can be filtered by "
                      "their full length, e.g., genes shorter than 300 codons are ignored. They can also be "
                      "filtered by the number of codons remaining after dropping codons. The codon length "
                      "filter followed by dropping codons can result in genes and functions with fewer "
                      "codons than the original codon threshold -- thus the option of both 'length' and "
                      "'remaining' filters to ensure that total codon frequencies in the output always "
                      "meet the minimum codon threshold. 'both' is needed as an option in addition to "
-                     "'remaining' so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
+                     "'remaining' so dynamic codon filtering by `--pansequence-min-codons/amino-acids` operates "
                      "on genes that passed the first length filter."}
+    ),
+    'pansequence-min-codons': (
+            ['--pansequence-min-codons'],
+            {'nargs': 2,
+             'default': [0, 1.0],
+             'help': "The first value of the argument is a positive integer representing a minimum number "
+                     "of codons -- 'min_codons' -- and the second is a number between 0 and 1 representing "
+                     "a fraction of genes -- 'min_gene_fraction'. Remove codons that are less numerous "
+                     "than 'min_codons' in a 'min_gene_fraction' of genes. For example, if 'min_codons' "
+                     "is 3 and 'min_gene_fraction' is 0.9, then if there are fewer than 3 of a codon in "
+                     "≥90%% of genes, then the columns for these codons are dropped."}
     ),
     'pansequence-min-amino-acids': (
             ['--pansequence-min-amino-acids'],
@@ -3741,6 +3752,22 @@ D = {
              'metavar': 'CODON',
              'help': "Only include given codons in the analysis. Regular expression can be used, e.g., "
                      "\"[GT]..\" to only consider codons starting with a G or T."}
+        ),
+    'report-min-codons': (
+            ['--report-min-codons'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Replace values for codons with fewer than this number in each gene or function row "
+                     "of the output table with NaN (or 0 with `--infinity-to-zero`)."}
+        ),
+    'report-min-amino-acids': (
+            ['--report-min-amino-acids'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Replace values for amino acids with fewer than this number in each gene or function "
+                     "row of the output table with NaN (or 0 with `--infinity-to-zero`)."}
         ),
     'function-min-codons': (
             ['--function-min-codons'],
