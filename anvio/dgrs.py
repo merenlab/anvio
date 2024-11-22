@@ -604,10 +604,12 @@ class DGR_Finder:
                         query_mismatch_counts = {char: 0 for char in all_possible_characters}
                         subject_mismatch_counts = {char: 0 for char in all_possible_characters}
 
-                        chars_to_skip = [self.skip_dashes, self.skip_Ns]
+                        chars_to_skip = []
 
                         if self.skip_Ns:
                             chars_to_skip.append('N')
+                        if self.skip_dashes:
+                            chars_to_skip.append('-')
                         for idx in range(len(qseq)):
                             if qseq[idx] in chars_to_skip:
                                 continue
