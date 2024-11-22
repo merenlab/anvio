@@ -78,6 +78,7 @@ class DGR_Finder:
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
         self.samples_txt = A('samples_txt')
         self.whole_primer_length = A('whole_primer_length') or 65
+        self.initial_primer_length = A('initial_primer_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
 
@@ -118,9 +119,10 @@ class DGR_Finder:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
         #computing variability profiling for every VR in every DGR by searching through raw reads?
         if not self.skip_compute_DGR_variability_profiling:
+            self.run.info('Variable Region Primer Length', self.whole_primer_length)
             self.run.info('Samples.txt', self.samples_txt)
             #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
-            self.run.info('Variable Region Primer Base Length', self.variable_region_primer_base_length)
+            self.run.info('Initial Primer Base', self.initial_primer_length)
 
 
 
@@ -1867,8 +1869,8 @@ class DGR_Finder:
                 TR_frame = vr_data['TR_frame']
 
                 #CHECK if VR sequence is not at the start of a contig so you can get the initial primer sequence
-                if vr_data['VR_start_position'] >= self.variable_region_primer_base_length:
-                    vr_primer_region_start = vr_data['VR_start_position'] - self.variable_region_primer_base_length
+                if vr_data['VR_start_position'] >= self.initial_primer_length:
+                    vr_primer_region_start = vr_data['VR_start_position'] - self.initial_primer_length
                     vr_primer_region_end = (vr_data['VR_start_position'] -1)
                 else:
                     #this will take the start of the contig to create a shorter initial primer length
@@ -2192,8 +2194,8 @@ class DGR_Finder:
                         # Filter SNVs within the primer region for the current VR
                         primer_snvs = sample_snvs[
                             (sample_snvs['split_name'].apply(lambda x: x.split('_split')[0]) == vr_contig) &
-                            (sample_snvs['pos_in_contig'] >= vr_start) &
-                            (sample_snvs['pos_in_contig'] < vr_end)
+                            (sample_snvs['pos_in_contig'] >= vr_start - self.initial_primer_length) &
+                            (sample_snvs['pos_in_contig'] < vr_end + 1)
                         ]
 
                         dgr_vr_key = f'{dgr_id}_{vr_key}'
@@ -2206,7 +2208,7 @@ class DGR_Finder:
 
                             # Vectorized operation to find consensus SNVs and update the primer sequence
                             consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
-                            positions_in_primer = vr_start - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
+                            positions_in_primer = (vr_start - self.initial_primer_length) - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
 
                             for position, consensus_base in zip(positions_in_primer, consensus_snvs):
                                 if consensus_base and 0 <= position < len(new_primer_sequence):
