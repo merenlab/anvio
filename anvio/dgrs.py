@@ -961,6 +961,9 @@ class DGR_Finder:
         =======
 
         """
+        if len(self.DGRs_found_dict) == 0:
+            return
+
         self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
 
         # initiate a dictionary for the gene where we find VR
@@ -1234,8 +1237,12 @@ class DGR_Finder:
         else:
             dgrs_dict = self.DGRs_found_dict
 
+        if len(dgrs_dict) == 0:
+            return
+
         self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
         self.run.info_single('\n')
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
@@ -1433,6 +1440,9 @@ class DGR_Finder:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
+
+        if len(dgrs_dict) == 0:
+            return
 
         # we know when we are not wanted
         if self.skip_recovering_genomic_context:
