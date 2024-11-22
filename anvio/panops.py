@@ -943,14 +943,16 @@ class Pangenome(object):
         self.progress.new('Storing gc <-> psgc associations in the database')
         self.progress.update('...')
 
-        table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
+        if self.STRUCTURE_MODE:
+            # if we are in structure mode, we also need to update the `TableForPSGCGCAssociations`
+            table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
 
-        for gc_name, psgc_name in self.gc_psgc_associations:
-            table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
+            for gc_name, psgc_name in self.gc_psgc_associations:
+                table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
 
-        self.progress.end()
+            self.progress.end()
 
-        table_for_gc_psgc_associations.store()
+            table_for_gc_psgc_associations.store()
 
 
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
