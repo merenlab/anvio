@@ -2287,7 +2287,6 @@ class DGR_Finder:
         #create directory for Primer matches
         primer_folder= os.path.join(self.output_directory, "PRIMER_MATCHES")
 
-
         # put all the sample names in our input queue
         for sample_name in sample_names:
             input_queue.put(sample_name)
@@ -2339,8 +2338,6 @@ class DGR_Finder:
         # always double-tap?
         for worker in workers:
             worker.terminate()
-
-        print(f'FINAL PRIMERS DICT AFTER PROCESSING', primers_dict)
 
         ######################
         # END MULTITHREADING #
@@ -2607,12 +2604,14 @@ class DGR_Finder:
         self.get_blast_results()
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
+        #TODO: change metagenomics contigs to collections mode
         if self.metagenomics_contigs_mode:
             self.run.info_single("Running metagenomics mode")
+            print('\n')
             self.collections_mode()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.")
-            self.run.info_single('\n')
+            print('\n')
             self.parameter_output_sheet()
 
         if self.fasta_file_path:
@@ -2620,8 +2619,10 @@ class DGR_Finder:
 
         else:
             self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
+            print('\n')
             self.get_gene_info()
             self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
+            print('\n')
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
             self.recover_genomic_context_surrounding_dgrs()
