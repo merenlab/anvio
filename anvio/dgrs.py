@@ -2303,7 +2303,10 @@ class DGR_Finder:
                                                 primers_dict,
                                                 primer_folder),
 
-                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
+                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet,
+                                                    'use_sample_primers': use_sample_primers,  # Pass flag based on `self.skip_primer_variability`
+                                                    'sample_primers_dict': self.sample_primers_dict if use_sample_primers else None,  # Pass only if needed
+                                                }))
             workers.append(worker)
             worker.start()
 
