@@ -72,7 +72,7 @@ class DGR_Finder:
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
         self.parameter_outputs = A('parameter_output')
         self.just_do_it = A('just_do_it')
-        self.metagenomics_contigs_mode = A('metagenomics_contigs_mode')
+        self.collections_mode = A('collections_mode')
         self.collections_given = A('collection_name')
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
@@ -95,8 +95,8 @@ class DGR_Finder:
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
-        self.run.info('Metagenomics Contigs Mode', self.metagenomics_contigs_mode)
-        if self.metagenomics_contigs_mode:
+        self.run.info('Metagenomics Contigs Mode', self.collections_mode)
+        if self.collections_mode:
             self.run.info('Collection(s) Provided', (self.collections_given))
         self.run.info('Output Directory', self.output_directory)
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
@@ -169,7 +169,7 @@ class DGR_Finder:
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
-        #if  self.metagenomics_contigs_mode:
+        #if  self.collections_mode:
             #if self.collections_provided not in self.collections_provided_in_profile:
                 #raise ConfigError(f"You requested this collection was searched through: {self.collections_provided} in these collections {self.collections_provided_in_profile} "
                                         #f"that are in your {self.profile_db_path}. The collections you give 'anvi-report-dgrs' need to be in your "
@@ -1232,7 +1232,7 @@ class DGR_Finder:
 
         """
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
@@ -1355,7 +1355,7 @@ class DGR_Finder:
         """
         output_directory_path = self.output_directory
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
             self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
             if not os.path.exists(self.collections_dir):
@@ -1436,7 +1436,7 @@ class DGR_Finder:
         # in which we will store the genomic context that surrounds dgrs for downstream fun
         self.genomic_context_surrounding_dgrs = {}
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
@@ -1677,7 +1677,7 @@ class DGR_Finder:
             self.run.warning("No genomic context data available to report on any of the DGRs :(")
             return
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
@@ -2377,8 +2377,8 @@ class DGR_Finder:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'dgrs',
-                                'num_dgrs': len(self.dgrs_in_collections) if self.metagenomics_contigs_mode else len(self.DGRs_found_dict),
-                                #'num_samples': len(self.profile_db_paths) if self.metagenomics_contigs_mode else len(self.collections_given),
+                                'num_dgrs': len(self.dgrs_in_collections) if self.collections_mode else len(self.DGRs_found_dict),
+                                #'num_samples': len(self.profile_db_paths) if self.collections_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 # if no function source, it says 'the contigs.db' because it fits with the message
@@ -2392,7 +2392,7 @@ class DGR_Finder:
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
@@ -2609,7 +2609,7 @@ class DGR_Finder:
                 ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
                 ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
                 ("Discovery mode", self.discovery_mode if self.discovery_mode else "FALSE"),
-                ("Metagenomics Contigs Mode", self.metagenomics_contigs_mode if self.metagenomics_contigs_mode else "FALSE"),
+                ("Collections Mode", self.collections_mode if self.collections_mode else "FALSE"),
                 ("Output Directory", self.output_directory if self.output_directory else "default")
             ]
 
@@ -2623,8 +2623,7 @@ class DGR_Finder:
         self.get_blast_results()
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
-        #TODO: change metagenomics contigs to collections mode
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             self.run.info_single("Running metagenomics mode")
             print('\n')
             self.collections_mode()
