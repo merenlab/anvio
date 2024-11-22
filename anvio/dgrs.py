@@ -1755,6 +1755,7 @@ class DGR_Finder:
 
 
     # Function to get the consensus base
+    @staticmethod
     def get_consensus_base(row):
         for nucleotide in nucleotides:
             if row[nucleotide] > 0.5:  # Assuming a threshold for consensus, adjust as necessary
