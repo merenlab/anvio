@@ -152,9 +152,9 @@ if __name__ == '__main__':
                     "file that points to raw FASTQ reads you have used to generate your merged PROFILE.db. "
                     "Truly mind boggling stuff.")
     groupI.add_argument(*anvio.A('samples-txt'), **anvio.K('samples-txt'))
-    groupI.add_argument('--variable-region-primer-base-length', default=15, type=int, help="Calculating variable region ratios "
+    groupI.add_argument('--whole-primer-length', default = 65,type=int, help="Calculating variable region ratios "
                     "requires anvi'o to 'design' an in silico primer, based on the variable region "
-                    "and the upstream/downstream genomic context to search for short reads in raw sequencing data"
+                    "and the upstream/downstream genomic context to search for short reads in raw sequencing data "
                     "to find the ratio of DGR activity per sample. This variable controls the length of a sequence "
                     "used to build this primer to search for short reads. The longer it is, the more specific "
                     "the primers will be to survey short reads. But if it is too long, "

@@ -77,7 +77,7 @@ class DGR_Finder:
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
         self.samples_txt = A('samples_txt')
-        self.variable_region_primer_base_length = A('variable_region_primer_base_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
+        self.whole_primer_length = A('whole_primer_length') or 65
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
 
@@ -2260,10 +2260,9 @@ class DGR_Finder:
                     primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer']
 
                     # Ensure the primer sequence does not exceed the desired length
-                    if len(primers_dict[primer_key]['primer_sequence']) > 71:
-                        self.chosen_primer_length = 65
-                        print(f"The primer for {dgr_id} {vr_id} is above the desired length. Trimming to {self.chosen_primer_length}.")
-                        primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.chosen_primer_length]
+                    if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
+                        print(f"The primer for {sample_name} {dgr_id} {vr_id} is above the desired length. Trimming to {self.whole_primer_length}.")
+                        primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.whole_primer_length]
 
             # Output the final primers dictionary
             print(f"Updated sample primers dictionary: {self.sample_primers_dict}")
