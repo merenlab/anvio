@@ -1764,7 +1764,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -1778,6 +1778,10 @@ class DGR_Finder:
             A fasta file containing the reverse reads used to create the merged PROFILE.db
         Samples.txt : txt file
             Contains sample information and the path to both of the read files
+        Sample_primers_dict : dict, optional
+            Dictionary of sample-specific primers.
+        Use_sample_primers : bool, optional
+            Whether to use sample-specific primers.
 
         Returns
         =======
@@ -1791,6 +1795,12 @@ class DGR_Finder:
                 print('Sample is none, loop will be broken.')
                 break
 
+            print(f"Processing sample: {sample_name}")
+            #Extract sample-specific primers if the flag is set
+            if use_sample_primers and sample_primers_dict:
+                primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
+            else:
+                primers_for_sample = primers_dict
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
 
             # setup the args object
