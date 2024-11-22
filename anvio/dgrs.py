@@ -1343,7 +1343,7 @@ class DGR_Finder:
             self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
             if not os.path.exists(self.collections_dir):
                 os.makedirs(self.collections_dir)
-            output_path_dgrs = os.path.join(self.collections_dir, f"{self.output_directory}_DGRs_found_with_collections_mode.csv")
+            output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found_with_collections_mode.csv")
             headers = [
                 "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
                 "VR_start_position", "VR_end_position", "VR_bin", "VR_frame",
