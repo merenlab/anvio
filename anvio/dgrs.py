@@ -2177,7 +2177,7 @@ class DGR_Finder:
             # Iterate over the samples
             for sample_name in sample_names:
                 if sample_name not in sample_names_in_snv_table:
-                    self.run.warning(f"Sample {sample_name} is missing from the SNV table, skipping.")
+                    self.run.warning(f"Sample {sample_name} is missing from the SNV table, skipping this sample.")
                     continue  # Skip this sample if it's not in the SNV table
 
                 # Filter SNVs for the current sample
@@ -2200,38 +2200,38 @@ class DGR_Finder:
 
                         dgr_vr_key = f'{dgr_id}_{vr_key}'
                         original_primer_key = f'{dgr_id}_{vr_key}_Primer'
+                        if dgr_vr_key not in self.sample_primers_dict:
+                                self.sample_primers_dict[dgr_vr_key] = {}
 
+                        print(primers_dict[original_primer_key])
+                        print(primers_dict)
                         if not primer_snvs.empty:
                             # Get the original primer sequence
-                            original_initial_primer_sequence = primers_dict[original_primer_key]['initial_primer_sequence']
-                            new_primer_sequence = list(original_initial_primer_sequence)
+                            original_primer_sequence = (primers_dict[original_primer_key]['initial_primer_sequence'] + primers_dict[original_primer_key]['vr_anchor_primer'])
+                            new_primer_sequence = list(original_primer_sequence)
 
                             # Vectorized operation to find consensus SNVs and update the primer sequence
                             consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
                             positions_in_primer = (vr_start - self.initial_primer_length) - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
 
                             for position, consensus_base in zip(positions_in_primer, consensus_snvs):
-                                if consensus_base and 0 <= position < len(new_primer_sequence):
+                                if consensus_base and 0 <= position and position < len(new_primer_sequence):
                                     new_primer_sequence[position] = consensus_base
 
                             # Update the sample-specific primers dictionary with the new primer sequence
-                            if dgr_vr_key not in self.sample_primers_dict:
-                                self.sample_primers_dict[dgr_vr_key] = {}
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': ''.join(new_primer_sequence),
                                 'used_original_primer': False,
                             }
 
-                            print(f"Updated sample {sample_name} primer for DGR {dgr_id} VR {vr_key}: {''.join(new_primer_sequence)}")
+                            print(f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_primer_sequence)}")
                         else:
                             # Use the original primer sequence since no SNVs were found
-                            if dgr_vr_key not in self.sample_primers_dict:
-                                self.sample_primers_dict[dgr_vr_key] = {}
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': primers_dict[original_primer_key]['initial_primer_sequence'],
                                 'used_original_primer': True,  # Flag to indicate no SNVs were used
                             }
-                            self.run.warning(f"No valid SNVs for primer region in sample {sample_name}, skipping sample consensus.")
+                            self.run.warning(f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, skipping sample consensus.")
                             continue
 
                 print(f"Finished updating primers for sample {sample_name}. Sample-specific primers dict: {self.sample_primers_dict}")
