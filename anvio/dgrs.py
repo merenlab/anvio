@@ -961,6 +961,8 @@ class DGR_Finder:
         =======
 
         """
+        self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
+
         # initiate a dictionary for the gene where we find VR
         self.vr_gene_info = {}
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
@@ -1232,6 +1234,8 @@ class DGR_Finder:
         else:
             dgrs_dict = self.DGRs_found_dict
 
+        self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
+        self.run.info_single('\n')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
@@ -1660,7 +1664,7 @@ class DGR_Finder:
             return
 
         if not len(self.genomic_context_surrounding_dgrs):
-            print("No genomic context data available to report")
+            self.run.warning("No genomic context data available to report on any of the DGRs :(")
             return
 
         if self.metagenomics_contigs_mode:
@@ -2623,11 +2627,7 @@ class DGR_Finder:
             return
 
         else:
-            self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
-            print('\n')
             self.get_gene_info()
-            self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
-            print('\n')
             self.get_hmm_info()
             self.create_found_tr_vr_csv()
             self.recover_genomic_context_surrounding_dgrs()
