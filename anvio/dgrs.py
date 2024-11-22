@@ -213,7 +213,11 @@ class DGR_Finder:
         if html_files_exist:
             raise ConfigError("Files with .html suffix exist in the directory. Please delete before carrying on. (later this will delete them for you)")
 
-        if not self.skip_compute_DGR_variability_profiling:
+        if not self.skip_compute_DGR_variability_profiling and not self.samples_txt:
+            raise ConfigError("No samples.txt declared and no skip-compute-DGR-variability-profiling flag used. Either use the skip flag or "
+                            "instruct anvi'o where to find the samples.txt that you want to profile are.")
+
+        if not self.skip_compute_DGR_variability_profiling and self.samples_txt:
             self.samples_txt_dict = utils.get_samples_txt_file_as_dict(self.samples_txt)
             self.raw_r1_r2_reads_are_present = False
             self.raw_r1_r2_reads_are_present = all('r1' in v and 'r2' in v and isinstance(v['r1'], str) and isinstance(v['r2'], str) and v['r1'] and v['r2'] for v in self.samples_txt_dict.values())
