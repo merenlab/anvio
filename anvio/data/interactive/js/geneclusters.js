@@ -151,8 +151,10 @@ async function createDisplay(display_table){
 
     try {
         psgc_data =await loadPSGCData(gene_cluster_data.gene_cluster_name);
+        
         if (psgc_data) {
             mode = 'structure';
+            gc_type_in_psgc = await loadGCTypeInPSGCData(gene_cluster_data.gene_cluster_name);
         }
     } catch (error) {
         console.error('Error loading PSGC data:', error);
@@ -285,6 +287,22 @@ async function createDisplay(display_table){
                         }
                     }
 
+                    // Get the type indicator [A] || [C] || [S] if type data is available
+                    let type_indicator = '';
+                    if (gc_type_in_psgc) {
+                        for (let psgc_id in gc_type_in_psgc) {
+                            if (gc_type_in_psgc[psgc_id][gc_id]) {
+                                const type = gc_type_in_psgc[psgc_id][gc_id];
+
+                                if (type === 'core') type_indicator = 'C';
+                                else if (type === 'accessory') type_indicator = 'A';
+                                else if (type === 'singleton') type_indicator = 'S';
+
+                                break;
+                            }
+                        }
+                    }
+
                     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                     text.setAttribute('x', 0);
                     text.setAttribute('y', sub_y_cord);
@@ -301,7 +319,7 @@ async function createDisplay(display_table){
                         }
                     };
 
-                    text.appendChild(document.createTextNode(gc_id));
+                    text.appendChild(document.createTextNode(gc_id + (type_indicator ? ' [' + type_indicator + ']' : '')));
                     fragment.appendChild(text);
                 }
 
@@ -466,6 +484,26 @@ async function loadPSGCData(psgc_name) {
         }
     } catch (error) {
         console.error('Error in loadPSGCData:', error);
+    }
+}
+
+async function loadGCTypeInPSGCData(psgc_name) {
+    try {
+        const response = await $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_psgc_type_data/' + psgc_name
+        });
+
+        if (response.status === 0 && response.data) {
+            return response.data;
+        } else {
+            console.error('Error response from type data:', response.message);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error in loadPSGCTypeData:', error);
+        return null;
     }
 }
 
