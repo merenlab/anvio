@@ -535,10 +535,22 @@ function get_gene_functions_table_html_for_structure(psgc_data, selected_gc_id) 
         if (genes && genes.length > 0) {
             let functions_table_html = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
 
+            let gc_type = 'Unknown';
+            if (gc_type_in_psgc) {
+                for (let psgc_id in gc_type_in_psgc) {
+                    if (gc_type_in_psgc[psgc_id][selected_gc_id]) {
+                        gc_type = gc_type_in_psgc[psgc_id][selected_gc_id].charAt(0).toUpperCase() + gc_type_in_psgc[psgc_id][selected_gc_id].slice(1);
+                        break;
+                    }
+                }
+            }
+
             functions_table_html += '<h2>Gene Cluster Information</h2>';
             functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
-            functions_table_html += '<tr><th>Gene Cluster ID</th><td>' + selected_gc_id + '</td></tr>';
-            functions_table_html += '</table>';
+            functions_table_html += '<tbody>';
+            functions_table_html += '<tr><th style="text-align: center;">Gene Cluster ID</th><td>' + selected_gc_id + '</td></tr>';
+            functions_table_html += '<tr><th style="text-align: center;">Gene Cluster Type</th><td>' + gc_type + '</td></tr>';
+            functions_table_html += '</tbody></table>';
 
             functions_table_html += '<h3>Genes in this cluster</h3>';
             functions_table_html += '<div style="max-height: 400px; overflow-y: auto;">';
