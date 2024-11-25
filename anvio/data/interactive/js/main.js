@@ -1334,13 +1334,13 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr class="sortable">' +
+            var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
