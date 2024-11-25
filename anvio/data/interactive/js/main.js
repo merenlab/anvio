@@ -89,8 +89,12 @@ var request_prefix = getParameterByName('request_prefix');
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
+    var svgElement = document.getElementById('svg');
+    
+    if (svgElement) {
+        VIEWER_WIDTH = svgElement.clientWidth || (svgElement.width && svgElement.width.baseVal.value) || 0;
+        VIEWER_HEIGHT = svgElement.clientHeight || (svgElement.height && svgElement.height.baseVal.value) || 0;
+    }
 });
 
 $(document).ready(function() {
