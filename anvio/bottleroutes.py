@@ -197,6 +197,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
         self.route('/data/get_psgc_data/<psgc_name>',          callback=self.get_psgc_data)
+        self.route('/data/get_psgc_type_data/<psgc_name>',    callback=self.get_psgc_type_data)
 
 
     def run_application(self, ip, port):
@@ -1470,6 +1471,18 @@ class BottleApplication(Bottle):
 
         except Exception as e:
             return json.dumps({'status': 1, 'message': f"Error getting PSGC data: {str(e)}"})
+
+
+    def get_psgc_type_data(self, psgc_name):
+        """Gets GC type classification data for PSGC (core/singleton/accessory)"""
+        try:
+            gc_types = {}
+            if psgc_name in self.interactive.items_additional_data_dict:
+                gc_types = json.loads(self.interactive.items_additional_data_dict[psgc_name].get('gc_types', '{}'))
+            
+            return json.dumps({'status': 0, 'data': {psgc_name: gc_types}})
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': f"Error getting PSGC type data: {str(e)}"})
 
 
     def reroot_tree(self):
