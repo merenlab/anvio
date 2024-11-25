@@ -289,14 +289,24 @@ async function createDisplay(display_table){
 
                     // Get the type indicator [A] || [C] || [S] if type data is available
                     let type_indicator = '';
+                    let type_class = '';
                     if (gc_type_in_psgc) {
                         for (let psgc_id in gc_type_in_psgc) {
                             if (gc_type_in_psgc[psgc_id][gc_id]) {
                                 const type = gc_type_in_psgc[psgc_id][gc_id];
 
-                                if (type === 'core') type_indicator = 'C';
-                                else if (type === 'accessory') type_indicator = 'A';
-                                else if (type === 'singleton') type_indicator = 'S';
+                                if (type === 'core') {
+                                    type_indicator = 'C';
+                                    type_class = 'type-core';
+                                }
+                                else if (type === 'accessory') {
+                                    type_indicator = 'A';
+                                    type_class = 'type-accessory';
+                                }
+                                else if (type === 'singleton') {
+                                    type_indicator = 'S';
+                                    type_class = 'type-singleton';
+                                }
 
                                 break;
                             }
@@ -319,7 +329,17 @@ async function createDisplay(display_table){
                         }
                     };
 
-                    text.appendChild(document.createTextNode(gc_id + (type_indicator ? ' [' + type_indicator + ']' : '')));
+                    text.appendChild(document.createTextNode(gc_id));
+                    
+                    if (type_indicator) {
+                        var typeSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                        typeSpan.setAttribute('class', type_class);
+                        typeSpan.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: text;');
+                        typeSpan.setAttribute('dy', '0');
+                        typeSpan.appendChild(document.createTextNode(' [' + type_indicator + ']'));
+                        text.appendChild(typeSpan);
+                    }
+                    
                     fragment.appendChild(text);
                 }
 
