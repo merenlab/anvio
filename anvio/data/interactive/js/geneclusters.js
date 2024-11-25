@@ -330,7 +330,7 @@ async function createDisplay(display_table){
                     };
 
                     text.appendChild(document.createTextNode(gc_id));
-                    
+
                     if (type_indicator) {
                         var typeSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                         typeSpan.setAttribute('class', type_class);
@@ -339,7 +339,6 @@ async function createDisplay(display_table){
                         typeSpan.appendChild(document.createTextNode(' [' + type_indicator + ']'));
                         text.appendChild(typeSpan);
                     }
-                    
                     fragment.appendChild(text);
                 }
 
