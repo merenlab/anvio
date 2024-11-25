@@ -618,7 +618,14 @@ class Pangenome(object):
         psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
 
         self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
-        item_additional_data_keys.extend([ 'num_gene_clusters_in_psgc', 'num_genes_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton', 'psgc_composition!accessory' ])
+        item_additional_data_keys.extend([
+            'num_gene_clusters_in_psgc',
+            'num_genes_in_psgc',
+            'psgc_composition!core',
+            'psgc_composition!singleton',
+            'psgc_composition!accessory',
+            'gc_types'
+        ])
 
 
     def count_gene_clusters_per_psgc(self):
@@ -665,20 +672,20 @@ class Pangenome(object):
         for gc_type in de_novo_gc_types.values():
             gc_type_counts[gc_type] += 1
 
-        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "
-                                            f"Singleton: {gc_type_counts['singleton']}, "
-                                            f"Accessory: {gc_type_counts['accessory']}")
-
         for psgc_name in gene_clusters_dict:
-            self.additional_view_data[psgc_name].update({ 'psgc_composition!core': 0, 'psgc_composition!singleton': 0, 'psgc_composition!accessory': 0 })
+            self.additional_view_data[psgc_name].update({'psgc_composition!core': 0,'psgc_composition!singleton': 0,'psgc_composition!accessory': 0,'gc_types': '{}'})
 
         for psgc_name in gene_clusters_dict:
             psgc_count += 1
 
+            gc_types_dict = {}
             de_novo_gcs = []
             for gc, psgc in self.gc_psgc_associations:
                 if psgc == psgc_name and gc in de_novo_gc_types:
                     de_novo_gcs.append(gc)
+                    gc_types_dict[gc] = de_novo_gc_types[gc]
+
+            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
 
             core_genes = 0
             singleton_genes = 0
@@ -697,9 +704,10 @@ class Pangenome(object):
 
             if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
                 psgcs_with_genes += 1
-                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes, 'psgc_composition!singleton': singleton_genes, 'psgc_composition!accessory': accessory_genes })
+                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes,'psgc_composition!singleton': singleton_genes,'psgc_composition!accessory': accessory_genes})
 
         self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
+        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "f"Singleton: {gc_type_counts['singleton']}, "f"Accessory: {gc_type_counts['accessory']}")
 
 
     def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
