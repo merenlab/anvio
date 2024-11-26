@@ -210,7 +210,7 @@ function showSearchResult() {
         var col1 = search_results[i]['split'];
         var col2 = search_results[i]['value'];
 
-        rows = rows + `<tr><td data-value="${ col1 }""><a href='#' class='no-link' onclick='highlightSplit("${ col1 }");'>${col1}</a></td><td data-value="${ col2 }">${ col2 }</td></tr>`;
+        rows = rows + `<tr><td style="min-width:110px;" data-value="${ col1 }""><a href='#' class='no-link' onclick='highlightSplit("${ col1 }");'>${col1}</a></td><td data-value="${ col2 }">${ col2 }</td></tr>`;
     }
     $("#tbody_search_body").html(rows);
 }
