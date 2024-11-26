@@ -62,6 +62,9 @@ def main(args):
         if not args.contigs_db:
             raise ConfigError("You must provide a contigs database when you summarize anvi'o profiles. True story.")
 
+        # set this global arg so that all functional annotations are reflected in the summary output
+        anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = True
+
         summary = summarizer.ProfileSummarizer(args)
     else:
         raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this "
