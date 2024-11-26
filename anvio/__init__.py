@@ -74,6 +74,9 @@ DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
+# global args that we can set internally as needed
+RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = False  # set to True if you want all functional annotations from a given annotation source
+                                                        # instead of the best hit per gene
 
 # if the user wants to use a non-default tmp directory, we set it here
 if '--tmp-dir' in sys.argv:
