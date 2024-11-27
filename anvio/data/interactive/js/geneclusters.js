@@ -280,10 +280,8 @@ async function createDisplay(display_table){
                                 gene.gene_callers_id === caller_id
                             );
 
-                            if (matchingGene) {
-                                gc_id = matchingGene.gene_cluster_id;
-                                break;
-                            }
+                            gc_id = matchingGene.gene_cluster_id;
+                            break;
                         }
                     }
 
@@ -292,24 +290,22 @@ async function createDisplay(display_table){
                     let type_class = '';
                     if (gc_type_in_psgc) {
                         for (let psgc_id in gc_type_in_psgc) {
-                            if (gc_type_in_psgc[psgc_id][gc_id]) {
-                                const type = gc_type_in_psgc[psgc_id][gc_id];
+                            const type = gc_type_in_psgc[psgc_id][gc_id];
 
-                                if (type === 'core') {
-                                    type_indicator = 'C';
-                                    type_class = 'type-core';
-                                }
-                                else if (type === 'accessory') {
-                                    type_indicator = 'A';
-                                    type_class = 'type-accessory';
-                                }
-                                else if (type === 'singleton') {
-                                    type_indicator = 'S';
-                                    type_class = 'type-singleton';
-                                }
-
-                                break;
+                            if (type === 'core') {
+                                type_indicator = 'C';
+                                type_class = 'type-core';
                             }
+                            else if (type === 'accessory') {
+                                type_indicator = 'A';
+                                type_class = 'type-accessory';
+                            }
+                            else if (type === 'singleton') {
+                                type_indicator = 'S';
+                                type_class = 'type-singleton';
+                            }
+
+                            break;
                         }
                     }
 
