@@ -685,8 +685,6 @@ class Pangenome(object):
                     de_novo_gcs.append(gc)
                     gc_types_dict[gc] = de_novo_gc_types[gc]
 
-            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
-
             core_genes = 0
             singleton_genes = 0
             accessory_genes = 0
@@ -701,6 +699,12 @@ class Pangenome(object):
                     singleton_genes += gene_count
                 else:
                     accessory_genes += gene_count
+
+            gc_types_dict['core_genes'] = core_genes
+            gc_types_dict['singleton_genes'] = singleton_genes
+            gc_types_dict['accessory_genes'] = accessory_genes
+
+            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
 
             if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
                 psgcs_with_genes += 1
