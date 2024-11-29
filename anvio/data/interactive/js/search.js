@@ -48,7 +48,7 @@ function searchContigs()
 
         switch (operator) {
             case '0': // exact match
-                matchFound = (cellValue === svalue.trim());
+                matchFound = (cellValue == svalue.trim());
                 break;
             case '1': // not equal
                 matchFound = (cellValue != svalue.trim());
