@@ -9812,6 +9812,7 @@ class KeggModuleEnrichment(KeggContext):
         self.output_file_path = A('output_file')
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
         self.use_stepwise_completeness = A('use_stepwise_completeness')
+        self.qlambda = A('qlambda')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -10071,6 +10072,7 @@ class KeggModuleEnrichment(KeggContext):
         # run the enrichment analysis
         enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
                                                                  self.output_file_path,
+                                                                 qlambda=self.qlambda,
                                                                  run=self.run,
                                                                  progress=self.progress)
 
