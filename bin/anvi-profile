@@ -77,6 +77,7 @@ if __name__ == '__main__':
                             'Ignore any reads with a percent identity to the reference less '
                             'than this number, e.g. 95. If not provided, all reads in the BAM '
                             'file will be used (and things will run faster).', 'default': None}))
+    groupJ.add_argument(*anvio.A('track-secondary-alignments'), **anvio.K('track-secondary-alignments'))
     groupJ.add_argument(*anvio.A('fetch-filter'), **anvio.K('fetch-filter'))
 
     #############################################################################################################################
@@ -109,7 +110,7 @@ if __name__ == '__main__':
                              default is "%(default)s".'}))
 
     #############################################################################################################################
-    groupM = parser.add_argument_group('OUTPUT CONTROL', 'Assert your dominance over output dsetinations.')
+    groupM = parser.add_argument_group('OUTPUT CONTROL', 'Assert your dominance over output destinations.')
     #############################################################################################################################
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
