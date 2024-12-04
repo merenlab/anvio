@@ -71,7 +71,7 @@ if __name__ == '__main__':
                                 "of genomes will be excluded."), type=int)
 
     groupE = parser.add_argument_group('GENES', "By default, anvi'o will look for genes in contigs databases that are identified "
-                                "by `prodigal`. But if you have generated your contigs databse with external gene calls, or have "
+                                "by `pyrodigal-gv`. But if you have generated your contigs databse with external gene calls, or have "
                                 "otherwise used another gene caller than the default, you can explicitly ask anvi'o to use that "
                                 "one to recover your genes.")
     groupE.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
