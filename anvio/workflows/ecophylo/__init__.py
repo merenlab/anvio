@@ -98,6 +98,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
             'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8},
+            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
