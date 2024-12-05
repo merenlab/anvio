@@ -8,6 +8,9 @@ In the [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-
 
 The ecophylo workflow can leverage any [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) that models amino acid sequences. If the user chooses an [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) for a [single-copy core gene](https://anvio.org/vocabulary/#single-copy-core-gene-scg), such as ribosomal protein, the workflow will yield multi-domain taxonomic profiles of metagenomes *de facto*.
 
+{:.notice}
+If you have never run an anvi'o snakemake workflow, please checkout the [anvi'o snakemake workflow tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/). This is where you can learn the basics of how anvi'o leverages Snakemake to process data. In fact, the EcoPhylo workflow uses the anvi'o metagenomics workflow to profile protein families across metagenomes.
+
 ## Required input
 
 The minimum requirements of the ecophylo workflow are the following:
@@ -21,6 +24,65 @@ anvi-run-workflow -w ecophylo \
 
 - %(hmm-list)s: This file designates which HMM should be used to extract the target gene from your %(contigs-db)s. Please note that the ecophylo workflow can only process one gene family at a time i.e. %(hmm-list)s can only contain one HMM. If you would like to process multiple gene families from the same input assemblies then you will need to re-run the workflow with a separate %(hmm-list)s.
 - %(metagenomes)s and/or %(external-genomes)s: These files hold the assemblies where you are looking for the target gene. Genomes in %(external-genomes)s can be reference genomes, [SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), and/or [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag).
+
+## A tour of the output directory structure
+
+Here is a basic look at the directory structure after successfully running the workflow:
+
+```bash
+$ tree ECOPHYLO_WORKFLOW -L 1
+ECOPHYLO_WORKFLOW_survey_SCGs_surface_ocean_S8_50_cov_mode
+├── 00_LOGS
+├── 01_REFERENCE_PROTEIN_DATA
+├── 02_NR_FASTAS
+├── 03_MSA
+├── 04_SEQUENCE_STATS
+├── 05_TREES
+├── 06_MISC_DATA
+├── METAGENOMICS_WORKFLOW
+```
+
+Let's dive into some key intermediate files that may help you get more out of the workflow!
+
+`01_REFERENCE_PROTEIN_DATA/` 
+
+- `ASSEMBLY-PROTEIN-external_gene_calls.tsv`: anvi'o gene-calls table
+- `ASSEMBLY-PROTEIN-external_gene_calls_renamed.tsv`: anvi'o gene-calls table renamed and subsetted for target protein
+- `ASSEMBLY-PROTEIN-hmm_hits.faa` and `ASSEMBLY-PROTEIN-hmm_hits.fna`: contains the target protein sequences are outputs of %(anvi-get-sequences-for-hmm-hits)s
+- `ASSEMBLY-PROTEIN-hmm_hits_renamed.faa` and `ASSEMBLY-PROTEIN-hmm_hits_renamed.fna`:
+- `ASSEMBLY-PROTEIN-orfs.fna`
+- `ASSEMBLY-PROTEIN-reformat_report_AA.txt` and `ASSEMBLY-PROTEIN-reformat_report_nt.txt`
+- `ASSEMBLY-dom-hmmsearch/`: this directory contains all the homologs extract from your input assemblies (genomes and/or metagenomic assembles). Here are some key files:
+  - `hmm.domtable` contains the raw output the domain hits table from `hmmsearch` run by %(anvi-run-hmms)s
+  - `hmm_hits.txt` is the hmm-hits table stored in the associated contigsdb
+  - `hmm_hits_filtered.txt` is the filtered version `hmm_hits.txt` based on user-defined parameters
+
+
+`02_NR_FASTAS/`
+
+This directory contains all the clustering information from the workflow. Here are some key files: 
+
+- `PROTEIN-all.faa` and `PROTEIN-all.fna` contains ALL the amino acid and nucleotide sequences that made it past the initial filtering steps and will be clustered
+
+`03_MSA/`
+
+`04_SEQUENCE_STATS/`
+
+`05_TREES/`
+
+`06_MISC_DATA/`
+
+`METAGENOMICS_WORKFLOW/`
+
+### Visualize the output
+
+To visualize the output of the EcoPhylo workflow, run %(anvi-interactive)s on the %(contigs-db)s and %(profile-db)s located in the `METAGENOMICS_WORKFLOW` directory.
+
+{{ codestart }}
+PROTEIN=""
+anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
+                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db
+{{ codestop }}
 
 ## Quality control and processing of hmm-hits
 
@@ -75,6 +137,15 @@ What is below is the default settings in the ecophylo %(workflow-config)s file.
 }
 ```
 
+### FIXME: discussing MUSCLE alignment and manual curation
+- MUSCLE parameters: link to [documentation](https://www.drive5.com/muscle/muscle.html)
+- Ecophylo default so it's fast
+- Manual curation might be necessary, check the length distribution of the gene family
+    - you can use min-gene-coverage to automatically filter out outliers BUT be careful because their could be novel biology you are removing
+    - problems are probably caused by gene calling
+    - 
+
+
 ### discovery-mode: ALL open-reading frames
 
 However, maybe you're a risk taker, a maverick explorer of metagenomes. Complete or partial you accept all genes and their potential tree bending shortcomings! In this case, set `--filter-out-partial-gene-calls false` in the %(workflow-config)s.
@@ -105,6 +176,9 @@ Simultaneously exploring complete and partial ORFs will increase the distributio
 ```
 
 Now that you have fine tuned the gene family input into the ecophylo workflow, it's time to decide what output best fits your science question at hand.
+
+{:.notice}
+It's common that not all genomes or metagenomes will have the gene family of interest either due to it not being detect by the input HMM or filtered out during the QC steps. Please check this log file for %(contigs-db)s that did not contain your gene family of interest: `00_LOGS/contigDBs_with_no_hmm_hit_*.log`
 
 ## tree-mode: Insights into the evolutionary patterns of target genes
 
