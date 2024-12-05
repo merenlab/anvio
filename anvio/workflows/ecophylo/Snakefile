@@ -37,7 +37,7 @@ rule ECOPHYLO_WORKFLOW_target_rule:
 
 
 def get_hmm_threads(wildcards):
-    """This function conditionly selects threads for anvi-run-hmms based on 
+    """This function conditionally selects threads for anvi-run-hmms based on 
     if a contigs-db is a metagenome or not.
     
     Parameters
@@ -191,11 +191,11 @@ rule filter_hmm_hits_by_model_coverage:
         hmm_dir = os.path.join(M.hmm_dict[wildcards.hmm]['path'])
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.hmm}-dom-hmmsearch", "hmm.domtable")
-        fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}")
-        if not os.path.exists(fasta_output_dir):
-            os.mkdir(fasta_output_dir)
-        faa = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm}-hmm_hits.faa")
-        fna = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm}-hmm_hits.fna")
+        # fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}")
+        # if not os.path.exists(fasta_output_dir):
+        #     os.mkdir(fasta_output_dir)
+        # faa = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm}-hmm_hits.faa")
+        # fna = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm}-hmm_hits.fna")
 
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
         # if we don't have any then we can skippp all dis
@@ -252,9 +252,9 @@ rule process_hmm_hits:
     threads: M.T('process_hmm_hits')
     run:
         contigs_db = os.path.join(M.contigs_db_name_path_dict[wildcards.sample_name])
-        hmm_dir = os.path.join(M.hmm_dict[wildcards.hmm]['path'])
+        # hmm_dir = os.path.join(M.hmm_dict[wildcards.hmm]['path'])
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.hmm}-dom-hmmsearch", "hmm.domtable")
+        # domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.hmm}-dom-hmmsearch", "hmm.domtable")
         fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}")
         if not os.path.exists(fasta_output_dir):
             os.mkdir(fasta_output_dir)
