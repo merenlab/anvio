@@ -515,7 +515,8 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
                                    {params.mmseqs_tmp} \
                                    --threads {threads} \
                                    --min-seq-id {min_seq_id} \
-                                   --cov-mode {params.cov_mode} {params.additional_params} >> {log} 2>&1")
+                                   --cov-mode {params.cov_mode} \
+                                   {params.additional_params} >> {log} 2>&1")
 
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
