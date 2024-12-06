@@ -79,7 +79,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--min-model-coverage', '--min-gene-coverage', '--filter-out-partial-gene-calls', 'additional_params']
-        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode']
+        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode', 'additional_params']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
@@ -97,12 +97,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8},
+            'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
             'cat_external_gene_calls_file': {'threads': 2},
-            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, '--cov-mode': 0, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97], 'AA_mode': False},
+            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.97, '--cov-mode': 1, 'clustering_threshold_for_OTUs': [0.99, 0.98], 'AA_mode': False},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
             'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
@@ -260,17 +260,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.AA_mode = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'AA_mode'])
 
         if self.samples_txt_file:
-            filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-
-            try:
-                # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-                self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-            except IndexError as e:
-                raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
-                                  f"This is what we know: {self.samples_txt_file}")
-            if 'sample' not in list(self.samples_information.columns):
-                raise ConfigError(f"Looks like your samples_txt file, {self.samples_txt_file}, is not properly formatted. "
-                                  f"We are not sure what's wrong, but we can't find a column with title 'sample'.")
+            self.sanity_check_samples_txt()
 
             self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
 
@@ -471,3 +461,55 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                         raise ConfigError("EcoPhylo can only work with one gene at a time in a hmm directory (at the moment)")
                     if hmm != gene[0]:
                         raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
+
+    def sanity_check_samples_txt(self):
+        """This function will sanity check the samples.txt file. 
+        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the 
+        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit 
+        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is 
+        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo 
+        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus, 
+        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is 
+        not exited pre-maturely.
+       
+        FIXME: This is a temporary solution and should moved into a utils so it can be shared by all anvio workflows.
+
+        PARAMETERS
+        ==========
+        self.samples_txt_file : str
+            Path to samples.txt file
+        """
+        filesnpaths.is_file_exists(self.samples_txt_file)
+        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
+        
+        samples_txt_web_string = "Please read more about the samples.txt file here: https://anvio.org/help/main/artifacts/samples-txt/"
+        try:
+            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+        except AttributeError as e:
+            raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
+                              f"This is what we know: {self.samples_txt_file}\n samples_txt_web_string")
+        
+        if 'sample' not in list(self.samples_information.columns):
+            raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
+                              f"We are not sure what's wrong, but we can't find a column with title 'sample'.{samples_txt_web_string}")
+
+        if len(self.samples_information.index) < 2:
+            raise ConfigError(f"The EcoPhylo workflow uses the metagenomics workflow in references mode. "
+                              f"This means anvi'o needs at least 2 metagenomes in your samples.txt: {self.samples_txt_file} THANKS! {samples_txt_web_string}")
+
+        if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
+            raise ConfigError(f"Names of samples in your samples_txt file must be unique. "
+                              f"It looks like some names appear twice in your file: {self.samples_txt_file}")
+
+        if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
+            raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
+                              f"We are not sure what's wrong, but we expected to find columns with "
+                              f"titles 'r1' and 'r2' and we did not find such columns. {samples_txt_web_string}")
+
+        fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
+
+        for s in fastq_file_names:
+            if not s.endswith('.fastq') and not s.endswith('.fastq.gz'):
+                raise ConfigError(f"anvi'o found that some files in your samples.txt file do not end with either '.fastq' "
+                                  f"or '.fastq.gz'. This is what the downstream processes had to say: '{s}'. "
+                                  f"This makes anvi'o suspicious, double-check columns in your samples.txt: {self.samples_txt_file}. {samples_txt_web_string}")
