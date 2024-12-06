@@ -346,19 +346,21 @@ async function createDisplay(display_table){
                 text.setAttribute('class', 'sequence');
 
                 _sequence = sequence.substr(offset, sequence_wrap);
+                var fragmentForTspans = document.createDocumentFragment();
                 for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
-                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                    var index = _letter_index+offset;
+                    var index = _letter_index + offset;
                     var num = order[caller_id];
                     var acid = _sequence[_letter_index];
                     var dict = coded_positions[index][num];
+
+                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     tspan.setAttribute('fill', dict[acid]);
                     tspan.style.fontWeight = 'bold';
-                    tspan.appendChild(document.createTextNode(acid));
                     tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
-                    text.appendChild(tspan);
+                    tspan.appendChild(document.createTextNode(acid));
+                    fragmentForTspans.appendChild(tspan);
                 }
-
+                text.appendChild(fragmentForTspans);
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
