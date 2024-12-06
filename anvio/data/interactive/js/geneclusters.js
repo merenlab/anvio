@@ -214,12 +214,10 @@ async function createDisplay(display_table){
     }
     var coded_positions = determineColor(all_positions);
 
-    while (true)
-    {
-        ignoreTable = true;
+    // Ensure this loop is only called once
+    if (!window.hasRunLayerLoop) {
         var fragment = document.createDocumentFragment();
-        for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
-        {
+        for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++) {
             var layer = state['layer-order'][layer_id];
 
             if (state['layers'][layer]['height'] == 0)
@@ -248,7 +246,7 @@ async function createDisplay(display_table){
             fragment.appendChild(text);
 
             sub_y_cord = y_cord + 5;
-	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+            gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
                 sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
@@ -357,7 +355,7 @@ async function createDisplay(display_table){
                     tspan.setAttribute('fill', dict[acid]);
                     tspan.style.fontWeight = 'bold';
                     tspan.appendChild(document.createTextNode(acid));
-		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
+                    tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
                     text.appendChild(tspan);
                 }
 
@@ -365,19 +363,12 @@ async function createDisplay(display_table){
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
 
-                if (offset < sequence.length) {
-                    ignoreTable = false;
-                }
             });
 
             y_cord = y_cord + parseFloat(rect.getAttribute('height')) + 5;
 
         }
-        if (ignoreTable) {
-            break;
-        } else {
-            svg.appendChild(fragment);
-        }
+        svg.appendChild(fragment);
         offset += sequence_wrap;
         y_cord = y_cord + 15;
     }
