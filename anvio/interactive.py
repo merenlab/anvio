@@ -1232,6 +1232,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         PanSuperclass.__init__(self, self.args)
 
+        # Check if this is a structure-informed pan database
+        if utils.get_db_variant(self.pan_db_path) == 'structure-informed':
+            self.progress.new("Initializing structure-informed pan data")
+            self.progress.update('...')
+            
+            self.init_gc_tracker()
+            self.init_gc_psgc_associations()
+            
+            self.progress.end()
+
         self.init_gene_clusters()
 
         if not self.skip_init_functions:

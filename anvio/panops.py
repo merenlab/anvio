@@ -34,10 +34,11 @@ from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
+from anvio.drivers.foldseek import Foldseek
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.geneclusters import TableForGeneClusters, TableForPSGCGCAssociations
 from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -89,6 +90,11 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
+        self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
+        self.prostt5_data_dir = A('prostt5_data_dir')
+        self.foldseek_search_results_output_file = A('foldseek_search_results')
+        self.de_novo_gene_clusters_dict = None
+
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
 
@@ -108,8 +114,15 @@ class Pangenome(object):
         self.additional_view_data = {}
         self.aligner = None
 
+        # this is to fill a table that will only be relevant in structure mode.
+        self.gc_psgc_associations = []
+
         # we don't know what we are about
         self.description = None
+
+        # quick accession variables to mode
+        self.STRUCTURE_MODE = False if self.pan_mode == constants.pangenome_mode_default else True
+        self.SEQUENCE_MODE = not self.STRUCTURE_MODE
 
 
     def load_genomes(self):
@@ -158,7 +171,9 @@ class Pangenome(object):
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
-        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
+        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
+
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=self.pan_mode)
 
         # know thyself.
         self.args.pan_db = self.pan_db_path
@@ -216,6 +231,13 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
+        if self.pan_mode not in constants.pangenome_modes_available:
+            raise ConfigError(f"The pangenome mode '{self.pan_mode}' is not something anvi'o recognizes :/ Something is wrong here.")
+
+        if self.STRUCTURE_MODE and self.user_defined_gene_clusters:
+            raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode --structure` and `gene_clusters_txt` at the same time."
+                                "When `structure` is active, please skip setting `gene_clusters_txt`.")
+
         if self.user_defined_gene_clusters:
             filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
 
@@ -245,7 +267,15 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
-        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        if self.STRUCTURE_MODE:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
+        elif self.SEQUENCE_MODE or self.user_defined_gene_clusters:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        else:
+            raise ConfigError("Anvi'o is confused since it ended up somewhere that doesn't exist :(")
+
+        if self.foldseek_search_results_output_file:
+            filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
 
 
     def process_additional_params(self):
@@ -309,7 +339,23 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+    def run_foldseek(self, fasta_path):
+        """ Running Foldseek """
+        fs = Foldseek(query_fasta=fasta_path,
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads,
+                      weight_dir=self.prostt5_data_dir,
+                      overwrite_output_destinations=self.overwrite_output_destinations)
+
+        # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
+
+        fs.process(self.output_dir)
+
+        return fs.get_foldseek_results()
+
+
+    def run_search_de_novo(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
         if self.use_ncbi_blast:
             return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
         else:
@@ -541,6 +587,11 @@ class Pangenome(object):
 
         item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
+
+        # If we're in structure mode, add information about PSGCs
+        if self.STRUCTURE_MODE:
+            self.add_psgc_layers(gene_clusters_dict, item_additional_data_keys)
+
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
         #                                                                                   /
@@ -553,6 +604,125 @@ class Pangenome(object):
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
         return gene_clusters_dict
+
+
+    def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
+        """Add PSGC-related layers to the additional view data.
+
+        Args:
+            gene_clusters_dict: Dictionary containing gene cluster information
+            item_additional_data_keys: List to store the names of additional data keys
+        """
+        psgc_gc_counts = self.count_gene_clusters_per_psgc()
+        psgc_gene_counts = self.count_genes_per_psgc(gene_clusters_dict)
+        psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
+
+        self.add_layers_to_view(psgc_gc_counts, psgc_gene_counts, psgc_gc_types)
+        item_additional_data_keys.extend([
+            'num_gene_clusters_in_psgc',
+            'num_genes_in_psgc',
+            'psgc_composition!core',
+            'psgc_composition!singleton',
+            'psgc_composition!accessory',
+            'gc_types'
+        ])
+
+
+    def count_gene_clusters_per_psgc(self):
+        """Count the number of gene clusters in each PSGC."""
+        psgc_gc_counts = {}
+        for gc_name, psgc_name in self.gc_psgc_associations:
+            if psgc_name:
+                psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
+        return psgc_gc_counts
+
+
+    def count_genes_per_psgc(self, gene_clusters_dict):
+        """Count the total number of genes in each PSGC."""
+        psgc_gene_counts = {}
+
+        for gc_name, genes in gene_clusters_dict.items():
+            psgc_gene_counts[gc_name] = len(genes)
+
+        return psgc_gene_counts
+
+
+    def classify_gene_types(self, gene_clusters_dict):
+        """Classify original gene clusters as core, singleton, or other."""
+
+        self.run.warning(None, header="GENE TYPE CLASSIFICATION", lc="green")
+
+        de_novo_gc_types = {}
+        psgc_count = 0
+        psgcs_with_genes = 0
+
+        for gc_name in self.de_novo_gene_clusters_dict:
+            genomes_with_hits = set()
+            for gene_entry in self.de_novo_gene_clusters_dict[gc_name]:
+                genomes_with_hits.add(gene_entry['genome_name'])
+
+            if len(genomes_with_hits) == len(self.genomes):
+                de_novo_gc_types[gc_name] = 'core'
+            elif len(genomes_with_hits) == 1:
+                de_novo_gc_types[gc_name] = 'singleton'
+            else:
+                de_novo_gc_types[gc_name] = 'accessory'
+
+        gc_type_counts = {'core': 0, 'singleton': 0, 'accessory': 0}
+        for gc_type in de_novo_gc_types.values():
+            gc_type_counts[gc_type] += 1
+
+        for psgc_name in gene_clusters_dict:
+            self.additional_view_data[psgc_name].update({'psgc_composition!core': 0,'psgc_composition!singleton': 0,'psgc_composition!accessory': 0,'gc_types': '{}'})
+
+        for psgc_name in gene_clusters_dict:
+            psgc_count += 1
+
+            gc_types_dict = {}
+            de_novo_gcs = []
+            for gc, psgc in self.gc_psgc_associations:
+                if psgc == psgc_name and gc in de_novo_gc_types:
+                    de_novo_gcs.append(gc)
+                    gc_types_dict[gc] = de_novo_gc_types[gc]
+
+            core_genes = 0
+            singleton_genes = 0
+            accessory_genes = 0
+
+            for gc in de_novo_gcs:
+                gc_type = de_novo_gc_types[gc]
+                gene_count = len(self.de_novo_gene_clusters_dict[gc])
+
+                if gc_type == 'core':
+                    core_genes += gene_count
+                elif gc_type == 'singleton':
+                    singleton_genes += gene_count
+                else:
+                    accessory_genes += gene_count
+
+            # necessarry for gc_types search functionality, If they are 0 we shouldn't see them in the search result.
+            # If you not happy with the code you can update gc_types_dict["something-not-include-core|accessory|singleton"] :)
+            if core_genes > 0:
+                gc_types_dict['total_core_genes'] = core_genes
+            if singleton_genes > 0:
+                gc_types_dict['total_singleton_genes'] = singleton_genes
+            if accessory_genes > 0:
+                gc_types_dict['total_accessory_genes'] = accessory_genes
+
+            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
+
+            if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
+                psgcs_with_genes += 1
+                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes,'psgc_composition!singleton': singleton_genes,'psgc_composition!accessory': accessory_genes})
+
+        self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
+        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "f"Singleton: {gc_type_counts['singleton']}, "f"Accessory: {gc_type_counts['accessory']}")
+
+
+    def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
+        """Add all PSGC layers to the view data."""
+        for gene_cluster in self.view_data:
+            self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0), 'num_genes_in_psgc': psgc_gene_counts.get(gene_cluster, 0) })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
@@ -754,6 +924,23 @@ class Pangenome(object):
         self.run.info('Args', (str(self.args)), quiet=True)
 
 
+    def populate_gene_cluster_tracker_table(self, gene_clusters_dict):
+        self.progress.new('Storing de novo gene clusters for future references')
+        self.progress.update('...')
+
+        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, gc_tracker_table=True, run=self.run, progress=self.progress)
+
+        num_genes_in_gene_clusters = 0
+        for gene_cluster_name in gene_clusters_dict:
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                table_for_gene_clusters.add(gene_entry)
+                num_genes_in_gene_clusters += 1
+
+        self.progress.end()
+
+        table_for_gene_clusters.store()
+
+
     def store_gene_clusters(self, gene_clusters_dict):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
@@ -770,13 +957,93 @@ class Pangenome(object):
 
         table_for_gene_clusters.store()
 
+        self.progress.new('Storing gc <-> psgc associations in the database')
+        self.progress.update('...')
+
+        if self.STRUCTURE_MODE:
+            # if we are in structure mode, we also need to update the `TableForPSGCGCAssociations`
+            table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
+
+            for gc_name, psgc_name in self.gc_psgc_associations:
+                table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
+
+            self.progress.end()
+
+            table_for_gc_psgc_associations.store()
+
+
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
         pan_db.db.set_meta_value('num_gene_clusters', len(gene_clusters_dict))
         pan_db.db.set_meta_value('num_genes_in_gene_clusters', num_genes_in_gene_clusters)
         pan_db.disconnect()
 
 
-    def gen_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+    def gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters, gene_clusters_de_novo, name_prefix="PSGC"):
+        """Turn MCL clusters from structure search into a gene clusters dict
+
+        The only difference between this function and `gen_de_novo_gene_clusters_dict_from_mcl_clusters` is that
+        the latter takes in de novo gene clusters, where hashes must be replaced with actual genome names. In
+        contrast, this function takes clusters of gene clusters, which must be turned into a dictionary where
+        gene clusters resolved back to individual genes they had originally.
+        """
+
+        # we will build the following dictionary here from the MCL results and de novo gene clusters
+        protein_structure_informed_gene_clusters_dict = {}
+
+        counter = 0
+        for gene_cluster_group in mcl_clusters.values():
+            counter += 1
+            psgc_name = f"{name_prefix}_{counter:08d}"
+
+            protein_structure_informed_gene_clusters_dict[psgc_name] = []
+
+            # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
+            for gc_name in gene_cluster_group:
+
+                # as we are now going through de novo gene clusters that are represented in protein structure-informed
+                # clusters, we will update our talbe to track psgc <-> gc associations table
+                self.gc_psgc_associations.append((gc_name, psgc_name))
+
+                # go through every gene entry in de novo clusters
+                for gene_entry in gene_clusters_de_novo[gc_name]:
+                    protein_structure_informed_gene_clusters_dict[psgc_name].append({
+                        'gene_caller_id': int(gene_entry['gene_caller_id']),
+                        'gene_cluster_id': psgc_name,
+                        'genome_name': gene_entry['genome_name'],
+                        'alignment_summary': gene_entry.get('alignment_summary', '')
+                    })
+
+        # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
+        # table for downsteram steps. as we went through psgcs and matched gcs that were contained in
+        # them with the de novo gcs, we don't know if there are any de novo gcs that did not end up in
+        # any of the psgcs. this is an extremely unlikely scenario, but those are the kinds of things
+        # we are here for. so we will go t
+        known_gcs = set(list(gene_clusters_de_novo.keys()))
+        gcs_found_in_psgcs = set([tpl[0] for tpl in self.gc_psgc_associations])
+        gcs_not_reprsented_in_psgcs = known_gcs.difference(gcs_found_in_psgcs)
+        if gcs_not_reprsented_in_psgcs:
+            self.run.warning(f"Anvi'o noticed something unexpected, and she wants you to know about it. It seems "
+                             f"{pp(len(gcs_not_reprsented_in_psgcs))} of {pp(len(known_gcs))} gene clusters anvi'o "
+                             f"computed based on their amino acid sequences somehow were lost when protein "
+                             f"structure-informed gene clusters were computed from their representatives. We are "
+                             f"not sure under what circumstances this can happen. If you are seeing this error "
+                             f"message, you can help us implement more functionality in this class to debug it "
+                             f"properly. Here is the list of de novo gene clusters that were lost along the way: "
+                             f"{', '.join(gcs_not_reprsented_in_psgcs)}")
+
+            for gc_name in gcs_not_reprsented_in_psgcs:
+                self.gc_psgc_associations.append((gc_name, None))
+
+        self.run.warning(f"Hi! Anvi'o just finished calculating your protein structure-informed gene clusters dictionary "
+                         f"that consolidated {pp(len(known_gcs))} gene clusters (that were generated based on the good ol' "
+                         f"amino acid sequence homology considerations) into {pp(len(protein_structure_informed_gene_clusters_dict))} "
+                         f"protein structure-informed gene clusters. We keep our fingers crossed that something will not "
+                         f"explode after this.", header="🎉 GCs TO PSGCs IS WORKING 🎉", lc='green')
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def gen_de_novo_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
         self.progress.new('Generating the gene clusters dictionary from raw MCL clusters')
         self.progress.update('...')
 
@@ -931,8 +1198,85 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def get_gene_clusters_de_novo(self):
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
+        """A very simple way to select representatives per GC based on minimum number of gaps and max length"""
+
+        representative_sequences = {}
+
+        # here we will do three things. first, get the aa sequence for each gene in de novo gene clusters,
+        # and then reover restored alignments, and build a new dictionary that will containa single
+        # representative sequence for each gene cluster
+        for gc_name in gene_clusters_dict:
+            sequence_info = []
+            for gc_info in gene_clusters_dict[gc_name]:
+                # recover key data
+                genome_name = gc_info['genome_name']
+                gene_caller_id = gc_info['gene_caller_id']
+                alignment_summary = gc_info['alignment_summary']
+
+                # recover restored alignment for sequence
+                sequence = utils.restore_alignment(self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence'], alignment_summary)
+                sequence_info.append((sequence.count('-'), len(sequence), sequence))
+
+            # sort based on minimum number of gaps and maximum length
+            representative_sequence = sorted(sequence_info, key=lambda x:(x[0], -x[1]))[0][2]
+
+            # store the representative sequence
+            representative_sequences[gc_name] = {'sequence': representative_sequence}
+
+        return representative_sequences
+
+
+    def get_structure_informed_gene_clusters(self):
         """Function to compute gene clusters de novo"""
+
+        # get de novo gene clusters first to reduce search space for structure
+        self.de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()  # Store as class variable
+
+        # store gene clusters dict into the db. this one is the de novo gene cluster dictionary,
+        # not the structure one yet. but this dict will give access to the details of how de novo gene
+        # clusters distributed across genomes in conjunction with the gc_psgc_associations table
+        self.populate_gene_cluster_tracker_table(self.de_novo_gene_clusters_dict)
+
+        # next, we will align non-singleton gene clusters to make sure we have all the information
+        # we need to be able to pick an appropriate representative for each gene cluster.
+        skip_alignments = self.skip_alignments
+        self.skip_alignments = False
+        self.de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(self.de_novo_gene_clusters_dict)
+        self.skip_alignments = skip_alignments
+
+        # now the `de_novo_gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
+        # representative sequences
+        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(self.de_novo_gene_clusters_dict)
+
+        # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
+        # with foldseek
+        gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
+        with open(gene_cluster_representatives_FASTA_path, 'w') as output:
+            for gc_name in gene_cluster_representatives:
+                output.write(f">{gc_name}\n{gene_cluster_representatives[gc_name]['sequence']}\n")
+
+        # get foldseek search results (please NOTE that if there is a user-provided search output, we utilize that here)
+        if not self.foldseek_search_results_output_file:
+            self.foldseek_search_results_output_file = self.run_foldseek(gene_cluster_representatives_FASTA_path)
+
+        # generate MCL input from filtered foldseek_result
+        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file)
+
+        # get clusters from MCL
+        mcl_clusters = self.run_mcl(mcl_input_file_path)
+
+        # we have the raw gene clusters dict, but we need to re-format it for following steps
+        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, self.de_novo_gene_clusters_dict)
+
+        # invoke the garbage collector to clean up some mess
+        del mcl_clusters
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def get_sequence_based_gene_clusters(self):
+        """Function to compute gene clusters de novo based on amino acid sequences"""
 
         # get all amino acid sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
@@ -947,7 +1291,7 @@ class Pangenome(object):
         self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
         # run search
-        blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
+        blastall_results = self.run_search_de_novo(unique_aas_FASTA_path, unique_aas_names_dict)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
@@ -956,7 +1300,7 @@ class Pangenome(object):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
+        gene_clusters_dict = self.gen_de_novo_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
         return gene_clusters_dict
@@ -1017,8 +1361,10 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+        elif self.STRUCTURE_MODE:
+            gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
-            gene_clusters_dict = self.get_gene_clusters_de_novo()
+            gene_clusters_dict = self.get_sequence_based_gene_clusters()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)

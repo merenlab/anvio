@@ -1,4 +1,5 @@
 @import url('normalize.css');
+@import url('variable.css');
 
 #chart-container {
     width: 1200px;
@@ -225,6 +226,18 @@ td {
     margin-bottom: 0;
     padding-top: 10px;
     padding-bottom: 10px;
+}
+
+.type-core {
+    fill: var(--success-600);
+}
+
+.type-accessory {
+    fill: var(--warning-600);
+}
+
+.type-singleton {
+    fill: var(--info-600);
 }
 
 @media (min-width: 768px) {
