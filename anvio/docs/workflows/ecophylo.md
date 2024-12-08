@@ -108,9 +108,7 @@ This directory contains miscellaneous data created from the flow to help you int
   - genomic_seq_in_cluster: YES/NO a sequence that originate from an input genome is in the cluster
   - cluster_size: number of sequences in mmseqs cluster
 
-These files are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
-- `PROTEIN_scg_taxonomy_data.tsv`: 
-- `PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt`: 
+`PROTEIN_scg_taxonomy_data.tsv` and `PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt` are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
 
 `METAGENOMICS_WORKFLOW/`
 
