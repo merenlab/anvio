@@ -83,11 +83,12 @@ This directory contains all the intermediate files from multiple sequences align
 This directory contains information regarding the number of sequences filtered at various steps of the workflow.
 
 `PROTEIN_stats.tsv`: tracks number of sequences filtered at different steps of the workflow. Here are definitions for each rule:
-    - `combine_sequence_data`: total number of sequences before clustering
-    - `cluster_X_percent_sim_mmseqs`: number of cluster representative sequences
-    - `remove_sequences_with_X_percent_gaps`: number of sequences left after filtering during MSA
-    - `99_percent`: number of clusters after clustering at 99%% nucleotide similarity
-    - `98_percent`: number of clusters after clustering at 98%% nucleotide similarity
+
+ - `combine_sequence_data`: total number of sequences before clustering
+ - `cluster_X_percent_sim_mmseqs`: number of cluster representative sequences
+ - `remove_sequences_with_X_percent_gaps`: number of sequences left after filtering during MSA
+ - `99_percent`: number of clusters after clustering at 99%% nucleotide similarity
+ - `98_percent`: number of clusters after clustering at 98%% nucleotide similarity
 
 `05_TREES/`
 
@@ -263,17 +264,6 @@ Be sure to change the `--min-seq-id` of the `cluster_X_percent_sim_mmseqs` rule 
 
 ### Visualize the output
 
-To visualize the output of [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments), run %(anvi-interactive)s on the %(contigs-db)s and %(profile-db)s located in the `METAGENOMICS_WORKFLOW` directory.
-
-```bash
-PROTEIN=""
-anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
-                 --manual
-```
-
-Just want a quick look at the tree without read recruitment results?
-
 ```bash
 PROTEIN=""
 anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
@@ -304,11 +294,23 @@ To initialize [profile-mode](#profile-mode-insights-into-the-ecological-and-evol
 
 To visualize the output of [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments), run %(anvi-interactive)s on the %(contigs-db)s and %(profile-db)s located in the `METAGENOMICS_WORKFLOW` directory.
 
-{{ codestart }}
+```bash
 PROTEIN=""
 anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db
-{{ codestop }}
+                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
+                 --manual
+```
+
+
+Just want a quick look at the tree without read recruitment results?
+
+```bash
+PROTEIN=""
+anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
+                 -p 05_TREES/"${PROTEIN}"/"${PROTEIN}"-PROFILE.db \
+                 --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa \
+                 --manual 
+```
 
 ## Manual curation of the ecophylo phylogeny
 
