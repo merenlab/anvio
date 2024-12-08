@@ -370,7 +370,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             
             else:
                 # PROFILE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm}_state_imported_profile.done")
                 target_files.append(target_file)
 
                 target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
@@ -509,6 +509,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
 
         for s in fastq_file_names:
+            filesnpaths.is_file_exists(s)
             if not s.endswith('.fastq') and not s.endswith('.fastq.gz'):
                 raise ConfigError(f"anvi'o found that some files in your samples.txt file do not end with either '.fastq' "
                                   f"or '.fastq.gz'. This is what the downstream processes had to say: '{s}'. "
