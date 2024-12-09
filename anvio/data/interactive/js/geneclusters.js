@@ -246,7 +246,13 @@ async function createDisplay(display_table){
             text.appendChild(document.createTextNode(layer));
             fragment.appendChild(text);
 
-            sub_y_cord = y_cord + 5;
+            if (navigator.userAgent.indexOf("Firefox") !== -1) {
+                // Firefox uses a different baseline for text
+                sub_y_cord = y_cord + (sequence_font_size * 1.5);
+            } else {
+                sub_y_cord = y_cord + 5;
+            }
+
             gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
                 sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
