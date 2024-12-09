@@ -534,6 +534,51 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': '_',
     },
+    'num_gene_clusters_in_psgc': {
+        'height': 180,
+        'color': '#ffa60d',
+        'norm': 'none',
+        'pretty_name': 'Num gene clusters in PSGC',
+    },
+    'num_genes_in_psgc': {
+        'height': 180,
+        'color': '#ffa60d',
+        'norm': 'none',
+        'pretty_name': 'Num genes in PSGC',
+    },
+    'gene_types!core': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!singleton': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!accessory': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    }
 };
 
 named_category_colors = {
