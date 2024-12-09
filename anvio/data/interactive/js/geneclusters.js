@@ -341,27 +341,22 @@ async function createDisplay(display_table){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family',"monospace");
+                text.setAttribute('font-family', "monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
 
                 _sequence = sequence.substr(offset, sequence_wrap);
-                var fragmentForTspans = document.createDocumentFragment();
-                for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
+                var tspanContent = '';
+                for (var _letter_index = 0; _letter_index < _sequence.length; _letter_index++) {
                     var index = _letter_index + offset;
                     var num = order[caller_id];
                     var acid = _sequence[_letter_index];
                     var dict = coded_positions[index][num];
 
-                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                    tspan.setAttribute('fill', dict[acid]);
-                    tspan.style.fontWeight = 'bold';
-                    tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
-                    tspan.appendChild(document.createTextNode(acid));
-                    fragmentForTspans.appendChild(tspan);
+                    tspanContent += `<tspan fill="${dict[acid]}" style="alignment-baseline:text-before-edge;">${acid}</tspan>`;
                 }
-                text.appendChild(fragmentForTspans);
+                text.innerHTML = tspanContent;
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
