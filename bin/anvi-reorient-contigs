@@ -112,6 +112,7 @@ def main(args):
     progress.new("BLAST")
     for fasta_file in input_fasta_files:
         blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
+        num_contigs, length = get_num_contigs_and_genome_length(fasta_file)
 
         if fasta_file != reference_fasta:
             # run BLAST
@@ -123,8 +124,10 @@ def main(args):
             qresult = SearchIO.read(blast_result_file, 'blast-xml')
             fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
 
+            hits = 0
             with open(fasta_file, "w+") as output_handle:
                 for contig in qresult:
+
                     original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
 
                     original_record_sequence = original_record.seq
@@ -141,11 +144,14 @@ def main(args):
                         pass
 
                     if reoriented_record_sequence:
+                        hits += 1
                         reoriented_record = SeqRecord(reoriented_record_sequence, id=original_record.id, name=original_record.name, description=original_record.description)
                         SeqIO.write(reoriented_record, output_handle, "fasta")
                     else:
                         progress.reset()
                         run.info_single(f"No output possible, the FASTA files do not align :(")
+
+            run.info_single(f"{hits} out of {num_contigs} for fasta {fasta_file}")
 
     progress.end()
 

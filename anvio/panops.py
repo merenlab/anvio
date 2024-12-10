@@ -1514,7 +1514,7 @@ class Pangraph():
             for genome in self.gene_synteny_data_dict.keys():
                 for contig in self.gene_synteny_data_dict[genome].keys():
                     genome_gc_order = [self.gene_synteny_data_dict[genome][contig][gene_call]["gene_cluster_name"] for gene_call in self.gene_synteny_data_dict[genome][contig].keys()]
-
+                
                     if self.k == 0:
                         if genome not in genome_gc_order_values:
                             genome_gc_order_values[genome] = {contig: genome_gc_order}
@@ -1659,7 +1659,6 @@ class Pangraph():
 
         self.run.info_single("Done")
 
-
     def add_node_to_graph(self, gene_cluster, name, info):
 
         if not self.initial_graph.has_node(gene_cluster):
@@ -1677,16 +1676,16 @@ class Pangraph():
             self.initial_graph.nodes[gene_cluster]['genome'].update(info)
 
 
-    def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info):
+    def add_edge_to_graph(self, gene_cluster_i, gene_cluster_j, info, weight_add=0):
 
         if self.priority_genome in info.keys():
-            weight_add = 100
-        elif gene_cluster_i in self.single_copy_core and gene_cluster_j in self.single_copy_core:
-            weight_add = 2
-        elif gene_cluster_i in self.single_copy_core or gene_cluster_j in self.single_copy_core:
-            weight_add = 1
+            weight_add += 100
+        # elif gene_cluster_i in self.single_copy_core and gene_cluster_j in self.single_copy_core:
+        #     weight_add += 2
+        # elif gene_cluster_i in self.single_copy_core or gene_cluster_j in self.single_copy_core:
+        #     weight_add += 1
         else:
-            weight_add = 0
+            weight_add += 0
 
         draw = {genome: {'gene_call': -1} for genome in info.keys()}
 
@@ -1706,6 +1705,14 @@ class Pangraph():
 
     def build_graph(self):
 
+        factor = 1.0 / 2
+        decisison_making = {}
+
+        # Unfortunately this part here is very arbitiary but necessary. Find better way later!
+        for genome in self.genomes_names:
+            decisison_making[genome] = factor
+            factor /= 2
+
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
         for genome in self.gene_synteny_data_dict.keys():
@@ -1719,14 +1726,18 @@ class Pangraph():
                     gene_cluster_pairs = map(tuple, zip(gene_cluster_kmer, gene_cluster_kmer[1:]))
                     first_pair = next(gene_cluster_pairs)
 
+                    weight_add = 0 #decisison_making[genome]
+
                     self.add_node_to_graph(first_pair[0][0], first_pair[0][1], first_pair[0][2])
                     self.add_node_to_graph(first_pair[1][0], first_pair[1][1], first_pair[1][2])
-                    self.add_edge_to_graph(first_pair[0][0], first_pair[1][0], first_pair[1][2])
+                    self.add_edge_to_graph(first_pair[0][0], first_pair[1][0], first_pair[1][2], weight_add)
 
                     for gene_cluster_pair in gene_cluster_pairs:
 
+                        weight_add = 0 #decisison_making[genome]
+
                         self.add_node_to_graph(gene_cluster_pair[1][0], gene_cluster_pair[1][1], gene_cluster_pair[1][2])
-                        self.add_edge_to_graph(gene_cluster_pair[0][0], gene_cluster_pair[1][0], gene_cluster_pair[1][2])
+                        self.add_edge_to_graph(gene_cluster_pair[0][0], gene_cluster_pair[1][0], gene_cluster_pair[1][2], weight_add)
 
                 else:
                     self.add_node_to_graph(gene_cluster_kmer[0][0], gene_cluster_kmer[0][1], gene_cluster_kmer[0][2])
@@ -2586,7 +2597,6 @@ class Pangraph():
                     value_list = []
 
                     for genome in data['genome'].keys():
-
                         contig = data['genome'][genome]['contig']
                         genecall = data['genome'][genome]['gene_call']
 
@@ -2599,7 +2609,6 @@ class Pangraph():
                     layer_max[layer_name] = layer_max[layer_name] if layer_max[layer_name] > value_sum else value_sum
 
         for layer_name in layer_names:
-
             self.data_table_dict[layer_name] = {
                 'max': layer_max[layer_name],
                 'min': 0
@@ -2609,7 +2618,6 @@ class Pangraph():
 
 
     def add_additional_gc_layer_values(self):
-
         self.run.warning(None, header="Appending layer values from external gc data", lc="green")
 
         df = pd.read_csv(self.gc_additional_data)
@@ -2639,22 +2647,20 @@ class Pangraph():
     def walk_one_step(self, G, current, nodes_position_dict, visited):
         successors = [successor for successor in G.successors(current) if successor not in visited]
         predecessors = [predecessor for predecessor in G.predecessors(current) if predecessor not in visited]
-
         current_position_x, current_position_y = nodes_position_dict[current]
         
         if len(successors) > 0:
-            
             nodes_position = [(nodes_position_dict[successor][0] - current_position_x, successor) for successor in successors]
             successor_position, successor = sorted(nodes_position)[0]
-            
-            successor_position_x, successor_position_y = nodes_position_dict[successor]        
+            successor_position_x, successor_position_y = nodes_position_dict[successor] 
+       
             return(successor_position_x, successor_position_y, successor)
 
         elif len(predecessors) > 0:
             nodes_position = [(current_position_x - nodes_position_dict[predecessor][0], predecessor) for predecessor in predecessors]
-            predecessor_position, predecessor = sorted(nodes_position, reverse=True)[0]
-            
+            predecessor_position, predecessor = sorted(nodes_position, reverse=True)[0]            
             predecessor_position_x, predecessor_position_y = nodes_position_dict[predecessor]
+
             return(predecessor_position_x, predecessor_position_y, predecessor)
 
         else:
