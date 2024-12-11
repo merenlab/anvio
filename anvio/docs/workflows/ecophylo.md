@@ -374,7 +374,7 @@ anvi-split -C curated \
 
 **Step 4.** Add the string "_split_00001" to each tree leaf to import it back into the interface
 
-{{ codestart }}
+```r
 packages <- c("tidyverse", "ape", "phytools", "glue")
 suppressMessages(lapply(packages, library, character.only = TRUE))
 
@@ -400,7 +400,7 @@ add_split_string_to_tree <- function(IN_PATH, OUT_PATH) {
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 add_split_string_to_tree(IN_PATH = glue("{PROTEIN}_trimmed_filtered_FastTree.nwk"),
                          OUT_PATH = glue("{PROTEIN}_trimmed_filtered_FastTree_ed.nwk"))
-{{ codestop }}
+```
 
 **Step 5.** Revisualize the subsetted tree
 
