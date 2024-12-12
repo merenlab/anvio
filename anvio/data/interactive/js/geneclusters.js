@@ -281,7 +281,7 @@ async function createDisplay(display_table){
                 if (mode === 'structure') {
                     let gc_id = '';
 
-                    if (psgc_data) {
+                    if (psgc_data && psgc_data.length > 0) {
                         for (var psgc_id in psgc_data) {
                             var matchingGene = psgc_data[psgc_id].find(gene => 
                                 gene.gene_callers_id === caller_id
