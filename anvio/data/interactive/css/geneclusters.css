@@ -240,6 +240,28 @@ td {
     fill: var(--info-600);
 }
 
+#display-search-controls {
+    padding: 12px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: #f5f5f5;
+    border-radius: 9px;
+    margin-bottom: 17px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.btn-link:hover {
+    color: var(--warning-600);
+}
+
 @media (min-width: 768px) {
     .gc-container {
         padding: 0 2rem;
