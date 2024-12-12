@@ -10,6 +10,7 @@
         <meta name="google" value="notranslate">
         <link rel="stylesheet" type="text/css" href="css/loading.css" />
         <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
+        <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
         <link rel="stylesheet" type="text/css" href="css/geneclusters.css" />
         <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
@@ -48,10 +49,30 @@
                           <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
                           <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
                           <input type="button" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
+                          <input type="button" value="Search" onclick="$('#display-search-controls').toggle();" />
                 </div>
 
                 <div class="d-flex justify-content-center">
                     <div class="col-6" id="display-conservation-controls" style="display: none"></div>
+                </div>
+                <div class="d-flex justify-content-center align-items-center">
+                    <div class="col-2" id="display-search-controls" style="display: none">
+                        <div class="d-flex justify-content-center">
+                            <div class="d-flex">
+                                <div class="d-flex mr-3">
+                                    <span type="button" class="btn btn-link" data-toggle="modal" data-target="#infoModal" data-help="info">
+                                        <span class="bi bi-info-circle" aria-hidden="true"></span>
+                                    </span>
+                                </div>
+                                <div class="d-flex mr-3">
+                                    <input type="text" class="form-control d-flex" id="search-gc" value="" placeholder="Genome Name" size="15" onchange="searchGC(); "/>
+                                </div>
+                                <div class="d-flex">
+                                    <button type="button" class="btn btn-outline-primary btn-md" value="Search" onclick="searchGC();" data-help="search"><span class="bi bi-search" aria-hidden="true"> Search </span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="display-gcc-acc" class="d-flex justify-content-center">
                     <div id="display-gcc-inner-div">
@@ -80,5 +101,30 @@
                 $('#' + id).val(Math.max(1,parseInt($('#' + id).val()) + delta));
             }
         </script>
+
+        <!-- Searc GC Modal -->
+        <div class="modal fade" id="infoModal" tabindex="-1" role="dialog" aria-labelledby="infoModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="infoModalLabel">Genome Search</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>To use the genome search, you can enter one or more genome names separated by commas. For example:</p>
+                        <ul>
+                            <li>Single entry: <code>GENOME_NAME1</code></li>
+                            <li>Multiple entries: <code>GENOME_NAME1, GENOME_NAME2</code></li>
+                        </ul>
+                        <p>This allows you to search for specific genomes in the dataset.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
 </html>
