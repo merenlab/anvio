@@ -602,6 +602,9 @@ class ContigsSuperclass(object):
         If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
 
         Afterwards, it sets self.gene_function_calls_initiated to True.
+
+        Note: the global argument RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE affects the behavior of this function. If False, we get 
+        the best hit per gene (lowest e-value) for a given annotation source. If True, we get all hits.
         """
         if not self.contigs_db_path:
             return
@@ -643,13 +646,21 @@ class ContigsSuperclass(object):
             if gene_callers_id not in self.gene_function_calls_dict:
                 self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
 
-            if self.gene_function_calls_dict[gene_callers_id][source] and e_value:
-                if self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
-                    # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
-                    # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
-                    continue
-
             entry = (accession, '%s' % (function if function else 'unknown'), e_value)
+
+            if self.gene_function_calls_dict[gene_callers_id][source]:
+                if anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE:
+                    previous_entry_acc, previous_entry_func, previous_entry_evalue = self.gene_function_calls_dict[gene_callers_id][source]
+                    combined_acc = f"{previous_entry_acc}!!!{accession}"
+                    combined_func = f"{previous_entry_func}!!!{entry[1]}"
+                    combined_evalue = f"{previous_entry_evalue}!!!{e_value}"
+                    entry = (combined_acc, combined_func, combined_evalue)
+                else:
+                    if e_value and self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
+                        # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
+                        # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
+                        continue
+
             self.gene_function_calls_dict[gene_callers_id][source] = entry
 
         contigs_db.disconnect()

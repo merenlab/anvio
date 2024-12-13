@@ -29,22 +29,6 @@ function searchContigs()
     search_column = (column == 0) ? 'Item Name' : layerdata[0][column];
     var operator = $('#searchOperator').val();
 
-    if (operator < 6)
-    {
-        var operator_text = $('#searchOperator option:selected').text();
-
-        // logical operator
-        var _pre = "layerdata[";
-        var _post = "][" + column + "] " + operator_text + " \"" + svalue.trim() + "\"";
-
-    }
-    else if (operator == 6)
-    {
-        // contains
-        var _pre = "layerdata[";
-        var _post = "][" + column + "].toString().toLowerCase().indexOf(\"" + svalue + "\".toLowerCase()) != -1";
-    }
-
     var _len = layerdata.length;
     var _counter = 0;
     search_results = [];
@@ -56,8 +40,40 @@ function searchContigs()
         if (layerdata[row][column]==null)
             continue;
 
-        if (eval(_pre + row + _post)){
-            search_results.push({'split': layerdata[row][0], 'value': layerdata[row][column]});
+        var cellValue = layerdata[row][column];
+        var matchFound = false;
+
+        var numericCellValue = parseFloat(cellValue);
+        var numericSValue = parseFloat(svalue);
+
+        switch (operator) {
+            case '0': // exact match
+                matchFound = (cellValue == svalue.trim());
+                break;
+            case '1': // not equal
+                matchFound = (cellValue != svalue.trim());
+                break;
+            case '2': // greater than
+                matchFound = (numericCellValue > numericSValue);
+                break;
+            case '3': // less than
+                matchFound = (numericCellValue < numericSValue);
+                break;
+            case '4': // greater than or equal
+                matchFound = (numericCellValue >= numericSValue);
+                break;
+            case '5': // less than or equal
+                matchFound = (numericCellValue <= numericSValue);
+                break;
+            case '6': // contains
+                matchFound = cellValue.toString().toLowerCase().indexOf(svalue.toLowerCase()) !== -1;
+                break;
+            default:
+                break;
+        }
+
+        if (matchFound) {
+            search_results.push({'split': layerdata[row][0], 'value': cellValue});
             _counter++;
         }
     }
