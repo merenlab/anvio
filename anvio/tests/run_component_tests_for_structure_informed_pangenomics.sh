@@ -123,16 +123,9 @@ INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-STRUCTURE-PAN.db -s default-state.json -n default
 anvi-import-state -p TEST/ANOTHER_TEST-PAN.db -s default-state.json -n default
 
-INFO "Displaying the initial pangenome analysis results"
+INFO "Displaying the initial structure informed pangenome analysis results"
 anvi-display-pan -p TEST/TEST-STRUCTURE-PAN.db \
                  -g TEST-GENOMES.db \
-                 --title "A mock pangenome analysis" \
-                 --no-progress \
-                 $dry_run_controller
-
-INFO "Displaying the second pangenome analysis results"
-anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db \
-                 -g TEST-GENOMES.db \
-                 --title "A mock pangenome analysis (with --min-occurrence 2)" \
+                 --title "A mock structure informed pangenome analysis" \
                  --no-progress \
                  $dry_run_controller
