@@ -578,3 +578,214 @@ HOME_DIR="ECOPHYLO_WORKFLOW"
 PROTEIN="Ribosomal_S11" # Replace with name of protein from hmm_list.txt
 rm -rf "${HOME_DIR}"/METAGENOMICS_WORKFLOW/
 ```
+
+
+## Info for developers
+
+### Ecophylo data generation sandbox
+
+Here is how to make an *in silico* dataset of genomes and metagenomes from the [Infant gut dataset](https://merenlab.org/tutorials/infant-gut/) to test and further develop the ecophylo workflow. This test dataset contains the Infant gut metagenomic co-assembly, MAGs generated from that co-assembly, and isolate genomes. 
+
+#### 1. Get ORFs from Infant Gut Dataset
+
+The goal here is to simulate a small metagenomic dataset by subsetting contigs that contain proteins of interest.
+
+Here we will download the [Infant Gut Dataset](https://merenlab.org/tutorials/infant-gut/#downloading-the-pre-packaged-infant-gut-dataset) and make `contigs-dbs` for a couple of the MAGs.
+```bash
+# Download and unzip Infant Gut Dataset
+cd INFANT-GUT-TUTORIAL
+
+mkdir 00_FASTAS
+
+anvi-import-collection additional-files/collections/merens.txt \
+                       --bins-info additional-files/collections/merens-info.txt \
+                       -p PROFILE.db \
+                       -c CONTIGS.db \
+                       -C default
+
+anvi-summarize -p PROFILE.db \
+               -c CONTIGS.db \
+               -C default \
+               -o SUMMARY
+
+anvi-gen-contigs-database -f SUMMARY/bin_by_bin/E_facealis/E_facealis-contigs.fa --num-threads 3 --output-db-path SUMMARY/bin_by_bin/E_facealis/E_facealis_MAG.db
+anvi-gen-contigs-database -f SUMMARY/bin_by_bin/S_aureus/S_aureus-contigs.fa --num-threads 3 --output-db-path SUMMARY/bin_by_bin/S_aureus/S_aureus_MAG.db
+```
+
+Next, subset contigs that contain the proteins Ribosomal_L16 and Ribosomal_S11 from the co-assembly and some isolate genomes. If you want to test other proteins, make sure to annotate all the assemblies with the protein of interest then add it to the `test_proteins.txt`.
+```bash
+# Extract all sequences annotated with the Bacteria_71 HMM collection from the infant gut co-assembly contigs-db
+mkdir 00_FASTA
+anvi-get-sequences-for-hmm-hits --contigs-db CONTIGS.db --hmm-sources Bacteria_71 --output-file 00_FASTAS/infant_gut_tutorial_Bacteria_71.fna
+
+# Makes list of proteins of interest
+echo -e "Ribosomal_S11\nRibosomal_L16" > 00_FASTAS/test_proteins.txt 
+
+# Get contig names that contain proteins of interest
+grep ">" infant_gut_tutorial_Bacteria_71.fna | grep -f 00_FASTAS/test_proteins.txt | sed 's|contig:|\t|' | cut -f 2 | sed 's/|gene_callers_id:/\t/' | cut -f 1 | sort -u > 00_FASTAS/my_favorite_contigs.txt
+
+# Extract contigs
+anvi-export-contigs -c CONTIGS.db \
+                    -o 00_FASTAS/infant_gut_tutorial_Bacteria_71_contigs.fa \
+                    --contigs-of-interest 00_FASTAS/my_favorite_contigs.txt
+
+# Extract all sequences annotated with the Bacteria_71 HMM collection from isolate genomes
+CONTIGS_PATH="additional-files/pangenomics/external-genomes/"
+for genome in Enterococcus_faecalis_6240 Enterococcus_faecium_6589; do
+    genome_name=$(basename $genome .db)
+    echo "Processing $genome_name..."
+    anvi-get-sequences-for-hmm-hits \
+        --contigs-db "${CONTIGS_PATH}/${genome}.db" \
+        --hmm-sources Bacteria_71 \
+        --output-file 00_FASTAS/${genome_name}_Bacteria_71.fna
+
+    grep ">" 00_FASTAS/${genome_name}_Bacteria_71.fna \
+        | grep -f 00_FASTAS/test_proteins.txt \
+        | sed -e 's|contig:|\t|' -e 's/|gene_callers_id:/\t/' \
+        | cut -f1 | sort -u > 00_FASTAS/my_favorite_contigs_${genome_name}.txt
+
+    anvi-export-contigs \
+        -c "${CONTIGS_PATH}/${genome}.db" \
+        -o 00_FASTAS/${genome_name}_Bacteria_71_contigs.fa \
+        --contigs-of-interest 00_FASTAS/my_favorite_contigs_${genome_name}.txt
+done
+
+# cat subsetted genome contigs to one file
+CONTIGS_PATH="additional-files/pangenomics/external-genomes/"
+touch 00_FASTAS/external_genomes_contigs.fa
+for genome in Enterococcus_faecalis_6240 Enterococcus_faecium_6589;
+do
+    cat 00_FASTAS/"${genome}"_Bacteria_71_contigs.fa >> 00_FASTAS/external_genomes_contigs.fa
+done
+```
+
+#### 2. Use `gen-paired-end-reads` to simulate metagenomes
+
+Here we will make *in silico* metagenomes from the subsetted contigs. You can read more about the program `gen-paired-end-reads` [here](https://github.com/merenlab/reads-for-assembly).
+
+Make `.ini`` files
+```bash
+# Infant Gut co-assembly: 0%% error rate
+cat <<EOF > infant_gut_tutorial_Bacteria_71.ini
+[general]
+output_sample_name = 00_FASTAS/infant_gut_tutorial_Bacteria_71_simulated_metagenomes
+insert_size = 10
+insert_size_std = 5
+short_read_length = 100
+error_rate = 0
+
+[00_FASTAS/infant_gut_tutorial_Bacteria_71_contigs.fa]
+coverage = 55
+EOF
+
+# Infant Gut co-assembly: 1%% error rate
+cat <<EOF > infant_gut_tutorial_Bacteria_71_01.ini
+[general]
+output_sample_name = 00_FASTAS/infant_gut_tutorial_Bacteria_71_simulated_metagenomes_01
+insert_size = 10
+insert_size_std = 5
+short_read_length = 100
+error_rate = 0.01
+
+[00_FASTAS/infant_gut_tutorial_Bacteria_71_contigs.fa]
+coverage = 35
+EOF
+
+# external-genomes.txt: 1%% error rates
+cat <<EOF > external_genomes_Bacteria_71_01.ini
+[general]
+output_sample_name = 00_FASTAS/external_genomes_Bacteria_71_simulated_metagenomes_01
+insert_size = 10
+insert_size_std = 5
+short_read_length = 100
+error_rate = 0.01
+
+[00_FASTAS/external_genomes_contigs.fa]
+coverage = 45
+EOF
+```
+
+Now we will run `gen-paired-end-reads` to simulate metagenomes.
+
+```bash
+~/github/reads-for-assembly/gen-paired-end-reads infant_gut_tutorial_Bacteria_71.ini
+~/github/reads-for-assembly/gen-paired-end-reads infant_gut_tutorial_Bacteria_71_01.ini
+~/github/reads-for-assembly/gen-paired-end-reads external_genomes_Bacteria_71_01.ini
+```
+
+*OPTIONAL STEP* Confirm read recruitment
+inspiration here: anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/00_RUN.sh
+
+```bash
+# generate a bowtie2 reference database
+bowtie2-build fasta.fa fasta_name
+
+# map short reads
+bowtie2 -x fasta_name \
+      -1 R1.fastq \
+      -2 R2.fastq \
+      -S sample.sam \
+      --threads 4
+
+samtools view -F 4 -bS sample.sam -o sample-RAW.bam
+```
+
+#### 3. Prepare input files for the ecophylo workflow
+
+Make `samples.txt`:
+
+```bash
+echo -e "sample\tr1\tr2" > samples.txt
+for fasta in 00_FASTAS/*-R1.fastq; do
+    FASTA_NAME=$(basename "$fasta" "-R1.fastq")
+    FASTA_DIR=$(dirname "$fasta")
+    echo -e "${FASTA_NAME}\t${FASTA_DIR}/${FASTA_NAME}-R1.fastq\t${FASTA_DIR}/${FASTA_NAME}-R2.fastq" >> samples.txt
+done
+```
+
+Make `external-genomes.txt`:
+
+```bash
+echo -e "name\tcontigs_db_path" > external-genomes.txt
+echo -e "E_facealis_MAG\tSUMMARY/bin_by_bin/E_facealis/E_facealis_MAG.db" >> external-genomes.txt
+echo -e "S_aureus_MAG\tSUMMARY/bin_by_bin/S_aureus/S_aureus_MAG.db" >> external-genomes.txt
+echo -e "Enterococcus_faecalis_6240\tadditional-files/pangenomics/external-genomes/Enterococcus_faecalis_6240.db" >> external-genomes.txt
+echo -e "Enterococcus_faecium_6589\tadditional-files/pangenomics/external-genomes/Enterococcus_faecium_6589.db" >> external-genomes.txt
+```
+
+Make `metagenomes.txt`:
+
+```bash
+echo -e "name\tcontigs_db_path" > metagenomes.txt
+echo -e "co_assembly\tCONTIGS.db" >> metagenomes.txt
+```
+
+Make `hmm_hits.txt`:
+
+```bash
+# Internal `anvi-estimate-scg-taxonomy` compatible
+echo -e "name\tsource\tpath" > hmm_hits_internal_RP_L16.txt
+echo -e "Ribosomal_L16\tBacteria_71\tINTERNAL" >> hmm_hits_internal_RP_L16.txt
+
+# Internal and NOT `anvi-estimate-scg-taxonomy` compatible
+echo -e "name\tsource\tpath" > hmm_hits_internal_RP_S11.txt
+echo -e "Ribosomal_S11\tBacteria_71\tINTERNAL" >> hmm_hits_internal_RP_S11.txt
+```
+
+#### 4. Test EcoPhylo workflow
+
+```bash
+anvi-run-workflow -w ecophylo --get-default-config default-config.json
+
+# make config files for each protein of interest
+sed 's|hmm_list.txt|hmm_hits_internal_RP_L16.txt|' default-config.json > config_RP_L16.json
+sed 's|hmm_list.txt|hmm_hits_internal_RP_S11.txt|' default-config.json > config_RP_S11.json
+
+# Run
+anvi-run-workflow -w ecophylo -c config_RP_L16.json
+anvi-run-workflow -w ecophylo -c config_RP_S11.json
+
+# Visualize
+anvi-interactive -c 03_CONTIGS/Ribosomal_L16-contigs.db -p 06_MERGED/Ribosomal_L16/PROFILE.db
+anvi-interactive -c 03_CONTIGS/Ribosomal_S11-contigs.db -p 06_MERGED/Ribosomal_S11/PROFILE.db
+```
