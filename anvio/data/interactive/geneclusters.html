@@ -41,34 +41,40 @@
 
             <section class="main">
                 <div id="display-controls">
-                    Wrap: <input type="text" id="wrap_length" value="1042" size="5" onchange="createDisplay(); "/>
-                          <input type="button" value="-" onclick="increaseVal('wrap_length', -5); createDisplay();" />
-                          <input type="button" value="+" onclick="increaseVal('wrap_length', 5); createDisplay();" />
-                          <span style="display: inline-block; width: 20px;">&nbsp;</span>
-                    Font Size: <input type="text" id="font_size" value="12" size="5" onchange="createDisplay(); "/>
-                          <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
-                          <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
-                          <input type="button" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
-                          <input type="button" value="Search" onclick="$('#display-search-controls').toggle();" />
+                    <span class="display-text">Wrap:</span>
+                    <input type="text"  class="btn btn-outline-secondary btn-sm" id="wrap_length" value="1042" size="4" onchange="createDisplay(); "/>
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="-" onclick="increaseVal('wrap_length', -5); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="+" onclick="increaseVal('wrap_length', 5); createDisplay();" />
+                    <span style="display: inline-block; width: 20px;">&nbsp;</span>
+                    <span class="display-text">Font Size:</span>  
+                    <input type="text" class="btn btn-outline-secondary btn-sm" id="font_size" value="12" size="2" onchange="createDisplay(); "/>
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="Filter" onclick="$('#display-search-controls').toggle();" />
                 </div>
 
                 <div class="d-flex justify-content-center">
                     <div class="col-6" id="display-conservation-controls" style="display: none"></div>
                 </div>
                 <div class="d-flex justify-content-center align-items-center">
-                    <div class="col-2" id="display-search-controls" style="display: none">
+                    <div class="col-4" id="display-search-controls" style="display: none">
                         <div class="d-flex justify-content-center">
                             <div class="d-flex">
-                                <div class="d-flex mr-3">
+                                <div class="d-flex justify-content-center align-items-center mr-3">
                                     <span type="button" class="btn btn-link" data-toggle="modal" data-target="#infoModal" data-help="info">
-                                        <span class="bi bi-info-circle" aria-hidden="true"></span>
+                                        <span id="info-icon" class="bi bi-info-circle" aria-hidden="true"></span>
                                     </span>
                                 </div>
-                                <div class="d-flex mr-3">
-                                    <input type="text" class="form-control d-flex" id="search-gc" value="" placeholder="Genome Name" size="15" onchange="searchGC(); "/>
-                                </div>
                                 <div class="d-flex">
-                                    <button type="button" class="btn btn-outline-primary btn-md" value="Search" onclick="searchGC();" data-help="search"><span class="bi bi-search" aria-hidden="true"> Search </span></button>
+                                    <div class="input-group">
+                                        <span class="input-group-text" style="cursor: pointer;" onclick="searchGC();">
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"></path>
+                                          </svg>
+                                        </span>
+                                        <input type="text" id="search-gc" class="form-control d-flex" placeholder="Filter Genomes" onchange="searchGC(); "/>
+                                    </div>
                                 </div>
                             </div>
                         </div>
