@@ -34,7 +34,7 @@ var state;
 var gene_cluster_data;
 var psgc_data = null;
 var mode = null;
-var search_gc = [];
+var filter_genome = [];
 
 function loadAll() {
     $.ajaxPrefilter(function(options) {
@@ -225,7 +225,7 @@ async function createDisplay(display_table){
             if (state['layers'][layer]['height'] == 0)
                 continue;
 
-            if (gene_cluster_data.genomes.indexOf(layer) === -1 || (search_gc.length > 0 && !search_gc.includes(layer) && !search_gc.some(term => layer.includes(term)))) {
+            if (gene_cluster_data.genomes.indexOf(layer) === -1 || (filter_genome.length > 0 && !filter_genome.includes(layer) && !filter_genome.some(term => layer.includes(term)))) {
                 continue;
             }
 
@@ -572,8 +572,8 @@ function get_gene_functions_table_html_for_structure(psgc_data, selected_gc_id) 
     return '<p>No gene information available</p>';
 }
 
-function searchGC() {
-    const input = $('#search-gc').val();
-    search_gc = input.split(',').map(item => item.trim()).filter(item => item);
+function filterGenome() {
+    const input = $('#filter-genome').val();
+    filter_genome = input.split(',').map(item => item.trim()).filter(item => item);
     createDisplay(false);
 }
