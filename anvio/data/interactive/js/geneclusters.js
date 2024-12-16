@@ -281,14 +281,16 @@ async function createDisplay(display_table){
                 if (mode === 'structure') {
                     let gc_id = '';
 
-                    if (psgc_data && psgc_data.length > 0) {
+                    if (psgc_data && Object.keys(psgc_data).length > 0) {
                         for (var psgc_id in psgc_data) {
                             var matchingGene = psgc_data[psgc_id].find(gene => 
                                 gene.gene_callers_id === caller_id
                             );
 
-                            gc_id = matchingGene.gene_cluster_id;
-                            break;
+                            if (matchingGene) {
+                                gc_id = matchingGene.gene_cluster_id;
+                                break;
+                            }
                         }
                     }
 
