@@ -225,7 +225,7 @@ async function createDisplay(display_table){
             if (state['layers'][layer]['height'] == 0)
                 continue;
 
-            if (gene_cluster_data.genomes.indexOf(layer) === -1 || (search_gc.length > 0 && !search_gc.includes(layer))) {
+            if (gene_cluster_data.genomes.indexOf(layer) === -1 || (search_gc.length > 0 && !search_gc.includes(layer) && !search_gc.some(term => layer.includes(term)))) {
                 continue;
             }
 
