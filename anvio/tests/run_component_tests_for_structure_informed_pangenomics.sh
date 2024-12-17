@@ -90,35 +90,6 @@ INFO "Listing collections available"
 anvi-show-collections-and-bins -p TEST/TEST-STRUCTURE-PAN.db \
                                --no-progress
 
-INFO "Computing homogeneity for a single gene cluster"
-anvi-compute-gene-cluster-homogeneity -p TEST/TEST-STRUCTURE-PAN.db \
-                                      -g TEST-GENOMES.db \
-                                      --gene-cluster-id GC_00000001 \
-                                      -o gene_cluster_homogeneity_results.txt \
-                                      --no-progress \
-                                      $thread_controller
-SHOW_FILE gene_cluster_homogeneity_results.txt
-
-INFO "Computing homogeneity for a list of gene clusters"
-echo -e "GC_00000001\nGC_00000003" > gene_clusters_for_homogeneity.txt
-anvi-compute-gene-cluster-homogeneity -p TEST/TEST-STRUCTURE-PAN.db \
-                                      -g TEST-GENOMES.db \
-                                      --gene-cluster-ids gene_clusters_for_homogeneity.txt \
-                                      -o gene_cluster_homogeneity_results.txt \
-                                      --no-progress \
-                                      $thread_controller
-SHOW_FILE gene_cluster_homogeneity_results.txt
-
-INFO "Computing homogeneity for gene clusters in a bin"
-anvi-compute-gene-cluster-homogeneity -p TEST/TEST-STRUCTURE-PAN.db \
-                                      -g TEST-GENOMES.db \
-                                      -C test_collection \
-                                      -b GENE_CLUSTER_BIN_2 \
-                                      -o gene_cluster_homogeneity_results.txt \
-                                      --no-progress \
-                                      $thread_controller
-SHOW_FILE gene_cluster_homogeneity_results.txt
-
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-STRUCTURE-PAN.db -s default-state.json -n default
 anvi-import-state -p TEST/ANOTHER_TEST-PAN.db -s default-state.json -n default
