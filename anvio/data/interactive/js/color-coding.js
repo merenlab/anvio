@@ -251,41 +251,41 @@ function color(positions, aa){
         case "F":
         case "W":
         case "V":
-              x = "#133E87"; // blue
+              x = "BLUE";
               break;
         case "R":
         case "K":
-              x = "#FA4032"; // red
+              x = "RED";
               break;
         case "N":
         case "Q":
         case "S":
         case "T":
-              x = "#399918"; // green
+              x = "GREEN";
               break;
         case "E":
         case "D":
-              x = "#B206B0"; // magenta
+              x = "MAGENTA";
               break;
         case "G":
-            x = "#F26B0F"; // orange
+            x = "ORANGE";
               break;
         case "H":
         case "Y":
-              x = "#37AFE1"; // dark turquoise
+              x = "DARKTURQUOISE";
               break;
         case "P":
-            x = "#FFB200"; // yellow
+            x = "YELLOW";
               break;
         case "C":
                 check: {
                 for (acid in positions){
                     if (positions[acid] != "C"){
-                        x = "#133E87"; // blue
+                        x = "BLUE";
                         break check;
                       }
                   }
-                x = "#FF76CE"; // hot pink
+                x = "HOTPINK";
               }
               break;
         default: x = null;
