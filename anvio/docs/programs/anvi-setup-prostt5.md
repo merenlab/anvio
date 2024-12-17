@@ -1,5 +1,5 @@
 
-This program, like other anvi-setup commands, prepares your environment by downloading and configuring the ProstT5 model required for %(anvi-pan-genome --mode structure)s. ProstT5 is essential for Foldseek to perform efficient and accurate searches for protein structural similarities. You only need to run this setup once.
+This program, like other anvi-setup commands, prepares your environment by downloading and configuring the ProstT5 model required for %(anvi-pan-genome --pan-mode structure-informed)s. ProstT5 is essential for Foldseek to perform efficient and accurate searches for protein structural similarities. You only need to run this setup once.
 
 By executing this command, the necessary ProstT5 model weights will be downloaded and stored in the %(foldseek-model-data)s artifact, ensuring that Foldseek can function optimally in your anvi'o workflows.
 
