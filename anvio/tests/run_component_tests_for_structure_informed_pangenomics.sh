@@ -50,14 +50,10 @@ anvi-compute-functional-enrichment-in-pan -p TEST/TEST-STRUCTURE-PAN.db \
 SHOW_FILE functions-enrichment.txt
 SHOW_FILE functional-occurence.txt
 
-INFO "Exporting concatenated amino acid sequences for some SCG gene clusters for phylogenomics"
-anvi-get-sequences-for-gene-clusters -p TEST/TEST-STRUCTURE-PAN.db \
-                                     -g TEST-GENOMES.db \
-                                     -C collection_for_phylogenomics \
-                                     -b SCGs \
-                                     -o SOME_VARIABLE_SCGs.fa \
-                                     --concatenate-gene-clusters \
-                                     --no-progress
+INFO "Importing collections of gene clusters"
+anvi-import-collection -p TEST/TEST-STRUCTURE-PAN.db \
+                       -C test_collection example-protein-structure-informed-gene-clusters-collection.txt \
+                       --no-progress
 
 INFO "Summarizing the pan, using the test collection (in quick mode)"
 anvi-summarize -p TEST/TEST-STRUCTURE-PAN.db \
