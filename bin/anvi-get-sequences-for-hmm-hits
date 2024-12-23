@@ -177,6 +177,22 @@ def main(args):
     run.info('Sources', f"{', '.join(hmm_sources)}")
     run.info('Hits', '%d HMM hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
+    # if user requested AA sequences, let's check if all or some of them are empty
+    if args.get_aa_sequences:
+        hits_with_empty_aa_seqs = [h for h in hmm_sequences_dict if not hmm_sequences_dict[h]['sequence']]
+        if hits_with_empty_aa_seqs:
+            if len(hits_with_empty_aa_seqs) == len(hmm_sequences_dict):
+                raise ConfigError("You requested amino acid sequences with the `--get-aa-sequences`, but none of the "
+                                  "genes for your requested HMM source(s) have AA sequences associated with them. This often "
+                                  "happens with ribosomal RNA genes, for example. Basically, the only way to get sequences for "
+                                  "these HMM hits is to get rid of the `--get-aa-sequences` flag.")
+            else:
+                gene_names = [hmm_sequences_dict[h]['gene_name'] for h in hits_with_empty_aa_seqs]
+                gene_names_str = ", ".join(gene_names)
+                run.warning(f"Some of the HMM hits you requested do not have amino acid sequences associated with them. "
+                            f"Their entries in the output FASTA file will be empty. Here are the gene names of each hit "
+                            f"that is missing an AA sequence: {gene_names_str}")
+
     # keep track of bins removed from the analysis results due to various filters:
     bins_removed_for_any_reason = set([])
 

@@ -437,7 +437,7 @@ class CoverageStats:
         if coverage.size < 4:
             self.mean_Q2Q3 = self.mean
         else:
-            sorted_c = sorted(coverage)
+            sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
             self.mean_Q2Q3 = np.mean(Q2Q3)
