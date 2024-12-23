@@ -4236,10 +4236,13 @@ def get_all_item_names_from_the_database(db_path, run=run):
     all_items = set([])
 
     database = db.DB(db_path, get_required_version_for_db(db_path))
-    db_type = database.get_meta_value('db_type')
+
+    db_type, db_variant = get_db_type_and_variant(db_path)
 
     if db_type == 'profile':
-        if is_blank_profile(db_path):
+        if db_variant == 'codon-frequencies':
+            all_items = set(database.get_single_column_from_table('codon_frequencies_view', 'item'))
+        elif is_blank_profile(db_path):
             run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track "
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")
