@@ -250,7 +250,7 @@ Drawer.prototype.generate_tooltips = function() {
                 let stack_names = layerdata[0][pindex].split('!')[1].split(';');
                 let stack_items = layerdata[index][pindex].split(';');
                 let layer_title = layerdata[0][pindex];
-                message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
+                message = '<td>' + getPrettyName(layer_title.split('!')[0]) + '</td><td><table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j];
                     message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][bar_name]}"></div>${bar_name}</td><td>${stack_items[j]}</td></tr>`;
@@ -262,7 +262,7 @@ Drawer.prototype.generate_tooltips = function() {
             else
             {
                 var layer_title = layerdata[0][pindex];
-                title.push('<td>' + layer_title + '</td><td>' + layerdata[index][pindex] + '</td>');
+                title.push('<td>' + getPrettyName(layer_title) + '</td><td>' + layerdata[index][pindex] + '</td>');
             }
         }
 

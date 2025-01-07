@@ -578,6 +578,10 @@ var named_layers = {
         'min_disabled': false,
         'pretty_name': 'Gene Types',
         'type': 'bar'
+    },
+    'psgc_composition': {
+        'type': 'bar',
+        'pretty_name': 'GCs in PSCG'
     }
 };
 
@@ -622,6 +626,12 @@ pretty_names = {
 };
 
 function getPrettyLayerTitle(layer_title) {
+    if (layer_title.indexOf('!') > -1 )
+    {
+        layer_title = layer_title.split('!')[0];
+    }
+
+
     if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
         layer_title = named_layers[layer_title]['pretty_name'];
     } else if(layer_title.substring(0, 5) == "hmmx_") {
@@ -630,11 +640,6 @@ function getPrettyLayerTitle(layer_title) {
         layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
     } else {
         layer_title = layer_title.replace(/_/g, " ");
-    }
-
-    if (layer_title.indexOf('!') > -1 )
-    {
-        layer_title = layer_title.split('!')[0];
     }
 
     return layer_title;
