@@ -25,10 +25,10 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-dark navbar-expand-lg fixed-top bg-dark" role="navigation">
+    <nav class="navbar navbar-expand-lg fixed-top" role="navigation">
         <div class="container">
-            <a class="navbar-brand" href="#" style="width: 50px;">        
-                <img class="img-fluid img-left"src=".html/pics/logo-simple.png" alt="">
+            <a class="navbar-brand" href="#" style="width: 50px;">
+                <img class="img-fluid img-left"src=".html/pics/logo.png" alt="">
             </a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
@@ -57,83 +57,90 @@
             <!-- /.navbar-collapse -->
     </nav>
 
-    <div class="container mt-5 pt-5">
-        <div class="alert alert-primary d-flex mt-3" role="alert">
-            <i class="d-flex align-items-center mr-3 text-primary bi bi-info-circle" style="font-size: 3em;"></i>
-            <div class="text-secondary">
-                The <b class="text-primary">{{ meta|lookup:"num_bins"|pretty }}</b> gene cluster 'bins' that were sotred in the anvi'o pan database for '<b class="text-primary">{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
-                under the collection name "<b class="text-primary">{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b class="text-primary">{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
-                gene clusters with <b class="text-primary">{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes that were identified in <b class="text-primary">{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+    <section>
+        <div class="container mt-3" style="margin-top: 100px !important;">
+            <div class="card" id="quick_summary_panel">
+                <div class="card-header">
+                    <h1 class="card-title">Quick Summary</h1>
+                </div>
+
+                <div class="card-body">
+                    This page gives access to the summary of the anvi'o pangenome with the project name '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>', which included a collection called "<b>{{ meta|lookup:"collection_name"|humanize }}</b>"
+                    with <b>{{ meta|lookup:"num_bins"|pretty }}</b>{% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %} protein structure-informed{% endif %} gene cluster bins. The pangenome included <b>{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
+                    {% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %} protein structure-informed{% endif %} gene clusters{% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %}, or <b>PSGCs</b>, {% endif %}that described
+                    <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes from <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+                </div>
             </div>
         </div>
-    </div>
-
+    </section>
 
     <section>
         <div class="container mt-3">
             <div class="card">
                 <div class="card-header">
-                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
+                    <h1 class="card-title">Basics</h1>
                 </div>
 
                 <div id="collapse-basics" class="show collapse in">
                     <div class="card-body text-secondary">
-                        Here are some of the details about the pan database, and genomes storage.
+                        Here are some of the details about the <a href="https://anvio.org/help/main/artifacts/pan-db/">pan-db</a> and <a href="https://anvio.org/help/main/artifacts/genomes-storage-db/">genomes-storage-db</a>.<br /><br />
+
+                        {% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %}
+                        Please note that this is a <b>protein structure-informed</b> pangenome, where the gene clusters are formed based on strucutral homology between individual genes, rather than their smimlarities
+                        at the level of amino acid sequences. For more on this, please see the documentation on <a href="https://anvio.org/help/main/programs/anvi-pan-genome/">anvi-pan-genome</a>
+                        {% else %}
+                        Please note that this is a conventional pangenome where gene clusters are formed based on <b>amino acid seqeunce homology</b>. It is also possible to compute a structure pangenome with anvi'o where gene clusters
+                        are formed based on homology information gathered from predicted protein strcutures. For more on this, please see the documentation on <a href="https://anvio.org/help/main/programs/anvi-pan-genome/">anvi-pan-genome</a>.
+                        {% endif %}
                     </div>
 
-                    <div class="row">
-                        {% if not meta|lookup:"pan"|lookup:"blank" %}
-                        <div class="col-lg-6 col-md-6 col-sm-6">
-                        <div class="card" style="margin-left:10px;">
-                                <div class="card-header">
-                                    Pan DB for <b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b> w/ {{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }} samples.
-                                </div>
-                                <div class="card-body">
-                                    <table class="table table-striped">
-                                        <thead id="tblHead_basics_profile">
-                                            <tr>
-                                                <th>Key</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for entry in basics_pretty|lookup:"pan" %}
-                                            <tr>
-                                                <td>{{ entry.0 }}</td>
-                                                <td>{{ entry.1 }}</td>
-                                            </tr>
-                                        {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
+                    {% if not meta|lookup:"pan"|lookup:"blank" %}
+                    <div class="card" style="margin:20px;">
+                    <div class="card-header">
+                        <h4>Pan database</h4>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <thead id="tblHead_basics_profile">
+                                <tr>
+                                    <th style="width: 50%">Key</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in basics_pretty|lookup:"pan" %}
+                                <tr>
+                                    <td>{{ entry.0 }}</td>
+                                    <td>{{ entry.1 }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    </div>
+                    {% endif %}
 
-                        <div class="col-lg-6 col-md-6 col-sm-6">
-                            <div class="card" style="margin-right:10px;">
-                                <div class="card-header">
-                                    Genomes storage
-                                </div>
-                                <div class="card-body">
-                                    <table class="table table-striped">
-                                        <thead id="tblHead_basics_contigs">
-                                            <tr>
-                                                <th>Key</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for entry in basics_pretty|lookup:"genomes" %}
-                                            <tr>
-                                                <td>{{ entry.0 }}</td>
-                                                <td>{{ entry.1 }}</td>
-                                            </tr>
-                                        {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    <div class="card" style="margin:20px;">
+                        <div class="card-header">
+                            <h4>Genomes storage database</h4>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead id="tblHead_basics_contigs">
+                                    <tr>
+                                        <th style="width: 50%">Key</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in basics_pretty|lookup:"genomes" %}
+                                    <tr>
+                                        <td>{{ entry.0 }}</td>
+                                        <td>{{ entry.1 }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -146,7 +153,7 @@
 
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="bins_panel">
+            <div class="card" id="bins_panel">
                 <div class="card-header">
                     <h1 class="card-title">Summary files for gene clusters</h1>
                 </div>
@@ -171,7 +178,7 @@
     <!-- MISC DATA PANEL -->
     <section>
         <div class="container mt-3">
-            <div class="card border-info" id="misc_data_panel">
+            <div class="card" id="misc_data_panel">
                 <div class="card-header">
                     <h1 class="card-title">Misc Data</h1>
                 </div>
@@ -207,7 +214,7 @@
 
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/popper.min.js"></script>
-    
+
     <!-- Bootstrap Core JavaScript -->
     <script src=".html/js/bootstrap.min.js"></script>
 
