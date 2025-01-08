@@ -559,7 +559,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # Convert to DataFrames
         gc_tracker_dataframe = pd.DataFrame.from_dict(gc_tracker_data, orient='index')
-        gc_psgc_associations_dataframe = pd.DataFrame.from_dict(gc_psgc_associations_data, orient='index')
+        gc_psgc_associations_dataframe = pd.DataFrame(gc_psgc_associations_data)
 
         if 'structure-pan' not in self.summary['basics_pretty']:
             self.summary['basics_pretty']['structure-pan'] = {}
