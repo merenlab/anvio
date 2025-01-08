@@ -152,6 +152,73 @@
 
 
     <section>
+        {% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %}
+        <div class="container mt-3">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">GC Tracker Data</h1>
+                </div>
+                <div class="card-body">
+                    <div id="gc-tracker-container" class="gc-tracker-content">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    {% for column in basics_pretty|lookup:"structure-pan"|lookup:"gc_tracker"|lookup:"columns" %}
+                                        <th>{{ column }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in basics_pretty|lookup:"structure-pan"|lookup:"gc_tracker"|lookup:"data" %}
+                                    <tr>
+                                        {% for item in row %}
+                                            <td>{{ item }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="toggle-button" class="btn btn-primary" onclick="toggleContent()">Show More</button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+    
+    <section>
+        {% if meta|lookup:"pan"|lookup:"db_variant" == "structure-informed" %}
+        <div class="container mt-3">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">GC PSGC Associations</h1>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped table-responsive">
+                        <thead>
+                            <tr>
+                                {% for column in basics_pretty|lookup:"structure-pan"|lookup:"gc_psgc_associations"|lookup:"columns" %}
+                                    <th>{{ column }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in basics_pretty|lookup:"structure-pan"|lookup:"gc_psgc_associations"|lookup:"data" %}
+                                <tr>
+                                    {% for item in row %}
+                                        <td>{{ item }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section>
         <div class="container mt-3">
             <div class="card" id="bins_panel">
                 <div class="card-header">
@@ -226,6 +293,30 @@
     $(document).ready(function() {
         $("body").tooltip({ selector: '[data-toggle=tooltip]' });
     });
+
+    function toggleContent() {
+        const container = document.getElementById('gc-tracker-container');
+        const button = document.getElementById('toggle-button');
+        
+        if (container.classList.contains('expanded')) {
+            container.classList.remove('expanded');
+            button.textContent = 'Show More';
+        } else {
+            container.classList.add('expanded');
+            button.textContent = 'Show Less';
+        }
+    }
 </script>
+<style>
+    .gc-tracker-content {
+        max-height: 200px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .gc-tracker-content.expanded {
+        max-height: none;
+    }
+    </style>
 </body>
 </html>
