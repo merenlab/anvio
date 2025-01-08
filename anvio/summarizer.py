@@ -264,6 +264,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
+        self.summary = {}
+        self.summary['basics_pretty'] = {}
+
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
         """
@@ -534,6 +537,49 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         return functional_occurrence_summary_data_frame
 
 
+    def get_structure_informed_summary(self):
+        """Retrieve and process structure-informed summary data."""
+
+        from anvio.dbops import PanDatabase
+        pan_db = PanDatabase(self.pan_db_path)
+
+        # Check the db_variant if its structure-informed
+        db_variant_info = pan_db.db.get_table_as_dict('self')
+        db_variant = db_variant_info.get('db_variant', {}).get('value', None)
+        expected_variant = 'structure-informed'
+
+        self.run.info("DB Variant", db_variant)
+
+        if db_variant != expected_variant:
+            return
+
+        # Retrieve data from tables
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
+        gc_psgc_associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+
+        # Convert to DataFrames
+        gc_tracker_dataframe = pd.DataFrame.from_dict(gc_tracker_data, orient='index')
+        gc_psgc_associations_dataframe = pd.DataFrame.from_dict(gc_psgc_associations_data, orient='index')
+
+        gc_tracker_summary = {'Number of Entries': len(gc_tracker_dataframe),'Columns': list(gc_tracker_dataframe.columns)}
+
+        gc_psgc_associations_summary = {'Number of Entries': len(gc_psgc_associations_dataframe),'Columns': list(gc_psgc_associations_dataframe.columns)}
+
+        if 'structure-pan' not in self.summary['basics_pretty']:
+            self.summary['basics_pretty']['structure-pan'] = {}
+
+        # Add summaries to self.summary['basics_pretty']
+        self.summary['basics_pretty']['structure-pan']['gc_tracker'] = [
+            ('Number of Entries', gc_tracker_summary['Number of Entries']),
+            ('Columns', ', '.join(gc_tracker_summary['Columns']))
+        ]
+
+        self.summary['basics_pretty']['structure-pan']['gc_psgc_associations'] = [
+            ('Number of Entries', gc_psgc_associations_summary['Number of Entries']),
+            ('Columns', ', '.join(gc_psgc_associations_summary['Columns']))
+        ]
+
+
     def process(self):
         # let bin names known to all
         bin_ids = list(self.collection_profile.keys())
@@ -581,6 +627,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             ('Functional annotation', 'Available' if len(self.gene_clusters_function_sources) else 'Not available :/'),
                             ('Functional annotation sources', '--' if not len(self.gene_clusters_function_sources) else ', '.join(self.gene_clusters_function_sources))],
         }
+
+        self.get_structure_informed_summary()
 
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
