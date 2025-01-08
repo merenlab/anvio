@@ -561,23 +561,19 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         gc_tracker_dataframe = pd.DataFrame.from_dict(gc_tracker_data, orient='index')
         gc_psgc_associations_dataframe = pd.DataFrame.from_dict(gc_psgc_associations_data, orient='index')
 
-        gc_tracker_summary = {'Number of Entries': len(gc_tracker_dataframe),'Columns': list(gc_tracker_dataframe.columns)}
-
-        gc_psgc_associations_summary = {'Number of Entries': len(gc_psgc_associations_dataframe),'Columns': list(gc_psgc_associations_dataframe.columns)}
-
         if 'structure-pan' not in self.summary['basics_pretty']:
             self.summary['basics_pretty']['structure-pan'] = {}
 
         # Add summaries to self.summary['basics_pretty']
-        self.summary['basics_pretty']['structure-pan']['gc_tracker'] = [
-            ('Number of Entries', gc_tracker_summary['Number of Entries']),
-            ('Columns', ', '.join(gc_tracker_summary['Columns']))
-        ]
+        self.summary['basics_pretty']['structure-pan']['gc_tracker'] = {
+            'columns': gc_tracker_dataframe.columns.tolist(),
+            'data': gc_tracker_dataframe.values.tolist()
+        }
 
-        self.summary['basics_pretty']['structure-pan']['gc_psgc_associations'] = [
-            ('Number of Entries', gc_psgc_associations_summary['Number of Entries']),
-            ('Columns', ', '.join(gc_psgc_associations_summary['Columns']))
-        ]
+        self.summary['basics_pretty']['structure-pan']['gc_psgc_associations'] = {
+            'columns': gc_psgc_associations_dataframe.columns.tolist(),
+            'data': gc_psgc_associations_dataframe.values.tolist()
+        }
 
 
     def process(self):
