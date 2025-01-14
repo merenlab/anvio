@@ -128,8 +128,8 @@ The following tables demonstrate how to use options to get various results. Thes
 | [Only include codons with C or G at all positions in output](#select-codons-and-amino-acids-in-output) | `--report-codons [CG][CG][CG]` |
 | [Don't report stop codons and single-codon amino acids in output](#select-codons-and-amino-acids-in-output) | `--dont-report-amino-acids STP Met Trp` |
 | [Only report codons encoding certain amino acids in output](#select-codons-and-amino-acids-in-output) | `--report-amino-acids Leu Ile` |
-| [Replace codons with counts <3 in the gene or function with NaN](#mask-rarer-codons-and-amino-acids-in-output) | `--sequence-min-codons 3` |
-| [Replace codons for amino acids with <5 codons in the gene or function with NaN](#mask-rarer-codons-and-amino-acids-in-output) | `--sequence-min-amino-acids 5` |
+| [Replace codons with counts <3 in the gene or function with NaN](#mask-rarer-codons-and-amino-acids-in-output) | `--report-min-codons 3` |
+| [Replace codons for amino acids with <5 codons in the gene or function with NaN](#mask-rarer-codons-and-amino-acids-in-output) | `--report-min-amino-acids 5` |
 
 ## Option details
 
@@ -276,11 +276,11 @@ The output table has columns for amino acids rather than codons with `--return-a
 
 #### Mask rarer codons and amino acids in output
 
-`--sequence-min-codons` and `--sequence-min-amino-acids` can be useful for screening statistically significant data.
+`--report-min-codons` and `--report-min-amino-acids` can be useful for screening statistically significant data.
 
-`--sequence-min-codons` replaces values for rarer codons within each gene or function row with NaN ([or 0](#replace-nan-with-zero-in-output) using `--infinity-to-zero`). For example, codons with <3 codons in a gene or function are discarded in the table with `--sequence-min-codons 3`.
+`--report-min-codons` replaces values for rarer codons within each gene or function row with NaN ([or 0](#replace-nan-with-zero-in-output) using `--infinity-to-zero`). For example, codons with <3 codons in a gene or function are discarded in the table with `--report-min-codons 3`.
 
-`--sequence-min-amino-acids` replaces values for rarer amino acids within each gene or function row with NaN ([or 0](#replace-nan-with-zero-in-output) with `--infinity-to-zero`). For example, amino acids with <5 codons in a gene or function are discarded in the table with `--sequence-min-amino-acids 5`.
+`--report-min-amino-acids` replaces values for rarer amino acids within each gene or function row with NaN ([or 0](#replace-nan-with-zero-in-output) with `--infinity-to-zero`). For example, amino acids with <5 codons in a gene or function are discarded in the table with `--report-min-amino-acids 5`.
 
 ### Replace NaN with 0 in output
 
