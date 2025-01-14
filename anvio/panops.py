@@ -1716,7 +1716,7 @@ class Pangraph():
         self.run.warning(None, header="Building directed gene cluster graph G", lc="green")
 
         for genome in self.gene_synteny_data_dict.keys():
-
+            num_nodes = 0
             for contig in self.gene_synteny_data_dict[genome].keys():
                 gene_cluster_kmer = []
                 for gene_call in self.gene_synteny_data_dict[genome][contig].keys():
@@ -1726,21 +1726,25 @@ class Pangraph():
                     gene_cluster_pairs = map(tuple, zip(gene_cluster_kmer, gene_cluster_kmer[1:]))
                     first_pair = next(gene_cluster_pairs)
 
-                    weight_add = 0 #decisison_making[genome]
+                    weight_add = decisison_making[genome]
 
                     self.add_node_to_graph(first_pair[0][0], first_pair[0][1], first_pair[0][2])
                     self.add_node_to_graph(first_pair[1][0], first_pair[1][1], first_pair[1][2])
                     self.add_edge_to_graph(first_pair[0][0], first_pair[1][0], first_pair[1][2], weight_add)
+                    num_nodes += 2
 
                     for gene_cluster_pair in gene_cluster_pairs:
 
-                        weight_add = 0 #decisison_making[genome]
+                        weight_add = decisison_making[genome]
 
                         self.add_node_to_graph(gene_cluster_pair[1][0], gene_cluster_pair[1][1], gene_cluster_pair[1][2])
                         self.add_edge_to_graph(gene_cluster_pair[0][0], gene_cluster_pair[1][0], gene_cluster_pair[1][2], weight_add)
-
+                        num_nodes += 1
                 else:
                     self.add_node_to_graph(gene_cluster_kmer[0][0], gene_cluster_kmer[0][1], gene_cluster_kmer[0][2])
+                    num_nodes += 1
+                
+            self.run.info_single(f"Adding {pp(num_nodes)} nodes of {genome} to G")
 
         self.run.info_single(f"Adding {pp(len(self.initial_graph.nodes()))} nodes and {pp(len(self.initial_graph.edges()))} edges to G")
 
@@ -1791,13 +1795,15 @@ class Pangraph():
         if not nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
             self.run.info_single('No maximum aborescence. Entering fallback mode.')
             edmonds_sub_graph = max(nx.weakly_connected_components(self.edmonds_graph), key=len)
+            
+            self.run.info_single(f'{len(self.edmonds_graph.nodes())-len(edmonds_sub_graph)} nodes removed to capture synteny.')
             self.edmonds_graph = nx.DiGraph(self.edmonds_graph.subgraph(edmonds_sub_graph))
             self.pangenome_graph = nx.DiGraph(self.pangenome_graph.subgraph(edmonds_sub_graph))
+            
             if nx.algorithms.tree.recognition.is_arborescence(self.edmonds_graph):
                 self.run.info_single('Found aborescence.')
 
                 #TODO calculate number of missing edges
-                self.run.info_single(f'{len(self.edmonds_graph.nodes())-len(edmonds_sub_graph)} nodes removed to capture synteny.')
                 self.run.info_single('Be warned the quality of the pangraph might have suffered.')
                 self.run.info_single('Proceed.')
             else:
