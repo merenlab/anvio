@@ -718,7 +718,7 @@ class Pangenome(object):
         self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "f"Singleton: {gc_type_counts['singleton']}, "f"Accessory: {gc_type_counts['accessory']}")
 
 
-    def add_layers_to_view(self, psgc_gc_counts, psgc_gene_counts, psgc_gc_types):
+    def add_layers_to_view(self, psgc_gc_counts):
         """Add all PSGC layers to the view data."""
         for gene_cluster in self.view_data:
             self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0) })
