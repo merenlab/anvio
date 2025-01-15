@@ -614,8 +614,6 @@ class Pangenome(object):
             item_additional_data_keys: List to store the names of additional data keys
         """
         psgc_gc_counts = self.count_gene_clusters_per_psgc()
-        psgc_gene_counts = self.count_genes_per_psgc(gene_clusters_dict)
-        psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
 
         self.add_layers_to_view(psgc_gc_counts)
         item_additional_data_keys.extend([
