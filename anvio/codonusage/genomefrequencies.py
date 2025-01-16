@@ -22,6 +22,9 @@ class GenomeCodonFrequencies:
 
     The codon frequency table can be automatically set up from a genomic context.
 
+    Without a genomic context, the codon frequency table can be provided manually, which can be
+    useful, for example, in handling codon frequencies of arbitrary sequences.
+
     Attributes
     ==========
     genomic_context : anvio.codonusage.genomiccontext.GenomicContext, None
