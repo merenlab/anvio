@@ -3841,7 +3841,7 @@ D = {
     'function-sources': (
             ['--function-sources'],
             {'nargs': '*',
-             'help': "Return frequencies for functions annotated by these sources, e.g., 'KOfam', "
+             'help': "Return codon frequencies for functions annotated by these sources, e.g., 'KOfam', "
                      "'KEGG_BRITE', 'COG20_FUNCTION'. When used with certain other options, such as "
                      "`--sum`, rather than returning statistics for each function, analyzed genes are "
                      "subsetted to those annotated by the provided sources. If `--function-sources` is "
