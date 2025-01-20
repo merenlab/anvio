@@ -394,7 +394,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
 
                 <p style="margin: 20px; font-style: italic;">Please note that this is just a quick view of the functions associated with your gene clusters. A much more appropriate way to summarize this information and more is to use the program <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">anvi-summarize</a>, and inspect the resulting TAB-delimited output file</p>
 
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-x:hidden;">
                     ` + content + `
                 </div>
 
