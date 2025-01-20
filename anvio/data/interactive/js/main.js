@@ -1990,6 +1990,58 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
+function getGCInPSGCInformation(gene_cluster_name) {
+    return $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_psgc_type_data/' + gene_cluster_name
+    }).then(function(psgc_response) {
+        if (psgc_response && psgc_response.data) {
+            console.log(psgc_response.data);
+            return psgc_response.data;
+        } else {
+            console.log("Wrong response for GC in PSGC")
+        }
+    });
+}
+
+
+function formatGenericData(data) {
+    let formattedString = `
+        <div class="row">
+            <div class="col-12">
+                <table class="table table-striped psgc-table">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>PSGC ID</th>
+                            <th>Gene Cluster</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+    for (const [psgcId, value] of Object.entries(data)) {
+        if (typeof value === 'object' && value !== null) {
+            for (const [geneClusterId, type] of Object.entries(value)) {
+                formattedString += `
+                    <tr>
+                        <td>${psgcId}</td>
+                        <td>${geneClusterId}</td>
+                        <td>${type}</td>
+                    </tr>`;
+            }
+        }
+    }
+
+    formattedString += `
+            </tbody>
+        </table>
+        </div>
+    </div>`;
+    
+    return formattedString;
+}
+
 function showGeneClusterDetails(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -2014,17 +2066,19 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                 return;
             }
 
-            let content = `<table class="table table-striped">
-                           <thead class="thead-light">
-                           <tr>
-                             <th>Gene cluster</th>
-                             <th>Source</th>
-                             <th>Accession</th>
-                             <th>Function</th>
-                           </tr>
-                           </thead>
-
-                           <tbody>`;
+            let content = `
+                <div class="row">
+                    <div class="col-12">
+                        <table class="table table-striped gene-cluster-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Gene cluster</th>
+                                    <th>Source</th>
+                                    <th>Accession</th>
+                                    <th>Function</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
 
             // building the table for each gene cluster
             Object.keys(response['functions']).map(function(gene_cluster_name) {
@@ -2034,33 +2088,55 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                 Object.keys(response['sources']).map(function(index) {
                     let function_source = response['sources'][index];
 
-                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source)
-                    function_string = getPrettyFunctionsString(d[function_source]['function'])
-
+                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source);
+                    function_string = getPrettyFunctionsString(d[function_source]['function']);
 
                     if (index == 0) {
                         content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${  Object.keys(response['sources']).length }"><b>${ gene_cluster_name }</b></td>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
+                                    <td>${function_source}</td>
+                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${accession_string}">
+                                        ${accession_string}
+                                    </td>
+                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${function_string}">
+                                        ${function_string}
+                                    </td>
                                     </tr>`;
                     } else {
                         content += `<tr>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td>${function_source}</td>
+                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${accession_string}">
+                                        ${accession_string}
+                                    </td>
+                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${function_string}">
+                                        ${function_string}
+                                    </td>
                                     </tr>`;
                     }
                 });
             });
 
-        content += `</tbody></table>`
+            content += `</tbody></table>
+                    </div>
+                </div>`;
 
-        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content + '</table>');
+            // Fetch additional PSGC data and append it directly to content
+            let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
+                return getGCInPSGCInformation(gene_cluster_name).then(result => {
+                    if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
+                        content += `<div class="mt-5 mb-5 font-italic">
+                                        Gene Clusters Occur in Protein Structure Informed Gene Clusters
+                                    </div>`;
+                    }
+                    content += formatGenericData(result);
+                });
+            });
+
+            Promise.all(additionalDataPromises).then(() => {
+                showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content);
+            });
         }
     });
-
 }
 
 
