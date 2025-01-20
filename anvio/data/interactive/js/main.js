@@ -2025,9 +2025,9 @@ function formatGenericData(data) {
             for (const [geneClusterId, type] of Object.entries(value)) {
                 formattedString += `
                     <tr>
-                        <td>${psgcId}</td>
-                        <td>${geneClusterId}</td>
-                        <td>${type}</td>
+                        <td class="col-4">${psgcId}</td>
+                        <td class="col-4">${geneClusterId}</td>
+                        <td class="col-4">${type}</td>
                     </tr>`;
             }
         }
@@ -2093,22 +2093,22 @@ function showGeneClusterDetails(bin_id, updateOnly) {
 
                     if (index == 0) {
                         content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
-                                    <td>${function_source}</td>
-                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${accession_string}">
+                                    <td class="col-3" rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
+                                    <td class="col-3">${function_source}</td>
+                                    <td class="col-3" title="${accession_string}">
                                         ${accession_string}
                                     </td>
-                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${function_string}">
+                                    <td class="col-3" title="${function_string}">
                                         ${function_string}
                                     </td>
                                     </tr>`;
                     } else {
                         content += `<tr>
-                                    <td>${function_source}</td>
-                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${accession_string}">
+                                    <td class="col-3">${function_source}</td>
+                                    <td class="col-3" title="${accession_string}">
                                         ${accession_string}
                                     </td>
-                                    <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${function_string}">
+                                    <td class="col-3" title="${function_string}">
                                         ${function_string}
                                     </td>
                                     </tr>`;
