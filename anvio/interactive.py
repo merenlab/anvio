@@ -236,7 +236,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            if self.mode == 'codon-frequencies':
+                if os.path.exists(self.profile_db_path):
+                    raise ConfigError("Sorry, in this mode you have to specify a profile-db path for a profile-db "
+                                  "to be generated, not for one that already exists :(")
+            else:
+                utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
@@ -896,8 +901,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.args.pansequence_min_amino_acids = [int(self.args.pansequence_min_amino_acids[0]),
                                                  float(self.args.pansequence_min_amino_acids[1])]
 
-        # get an instance and start working on real stuff
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(self.args, run=terminal.Run(verbose=False))
+        # get an instance and start working on real stuff but we have to be careful here. here is the
+        # problem: the self.args may contain a profile-db simply because the user wishes to know where
+        # their profile-db will be generated. but then if we pass that ot the SingleGenomeCodonUsage
+        # class, it will assume that the profile-db is a bona fide profile-db that is meant to
+        # contain profile-db data, rather than a path that leads to an empty file. so here we will
+        # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
+        # unexpected outcomes for young padawans.
+        args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
 
         ###################################################################
         # collecting some key data to build our interactive objects
@@ -1012,8 +1024,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.views = {'codon_frequencies_view': {'header': codons_to_display,
                                                  'dict': data_dict}}
 
-        # create a new, empty profile database for manual operations
-        self.profile_db_path = J('profile.db')
+        # create a new, empty profile database for manual operations unless the user has already
+        # passed a path for one
+        self.profile_db_path = self.profile_db_path if self.profile_db_path else J('profile.db')
         profile_db = ProfileDatabase(self.profile_db_path)
         profile_db.create({'db_type': 'profile',
                            'blank': True,
