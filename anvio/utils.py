@@ -872,11 +872,6 @@ def is_all_npm_packages_installed():
         return True
 
 
-def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    columns = get_columns_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in columns]) else True
-
-
 def HTMLColorToRGB(colorstring, scaled=True):
     """ convert #RRGGBB to an (R, G, B) tuple """
     colorstring = colorstring.strip()
