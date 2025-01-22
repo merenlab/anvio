@@ -2,9 +2,7 @@
 # -*- coding: utf-8
 """Get codon or amino acid frequency statistics from genomes, genes, and functions."""
 
-import os
 import sys
-import argparse
 
 import anvio
 import anvio.utils as utils
