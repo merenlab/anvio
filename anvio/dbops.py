@@ -1339,7 +1339,7 @@ class ContigsSuperclass(object):
             else:
                 gene_call['header'] = utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
                 if not simple_headers:
-                    gene_call['header'] += gene_call['header'] + ' ' + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                    gene_call['header'] += ' ' + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
             # adding the updated gene call to our sequences dict.
             sequences_dict[gene_callers_id] = gene_call

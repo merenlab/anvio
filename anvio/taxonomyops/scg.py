@@ -544,7 +544,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
 
     def estimate(self):
-        
         if self.args.metagenomes:
             self.estimate_for_metagenomes()
         elif self.args.external_genomes:
@@ -914,7 +913,11 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         """Generates an output just like TaxonomyEstimatorSingle.store_items_taxonomy_super_dict(), but for multiple inputs."""
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
-        headers = ['name', 'total_scgs', 'supporting_scgs']
+        if self.metagenome_mode:
+            headers = ['name', 'gene_callers_id', 'gene_name']
+        else:
+            headers = ['name', 'total_scgs', 'supporting_scgs']
+
         headers += self.ctx.levels_of_taxonomy
 
         with open(self.output_file_path, 'w') as output:
