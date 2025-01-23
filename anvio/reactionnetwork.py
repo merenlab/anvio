@@ -2454,7 +2454,7 @@ class ReactionNetwork:
                     focus_categorization = categorization[:depth]
                     try:
                         # The supercategory has already been copied.
-                        copied_category = merged_hierarchy_categorizations[focus_categorization]
+                        copied_category = merged_hierarchy_categorizations[focus_categorization][-1]
                         is_focus_category_copied = True
                     except KeyError:
                         is_focus_category_copied = False
