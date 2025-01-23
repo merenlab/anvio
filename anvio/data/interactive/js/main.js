@@ -2129,7 +2129,6 @@ function showGeneClusterDetails(bin_id, updateOnly) {
             // Fetch additional PSGC data and append it directly to content
             let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
                 return getGCInPSGCInformation(gene_cluster_name).then(result => {
-                    debugger;
                     if(mode === 'structure'){
                         if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
                             content += `<div class="mt-5 mb-5 font-italic">
