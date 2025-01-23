@@ -1997,49 +1997,55 @@ function getGCInPSGCInformation(gene_cluster_name) {
         url: '/data/get_psgc_type_data/' + gene_cluster_name
     }).then(function(psgc_response) {
         if (psgc_response && psgc_response.data) {
-            console.log(psgc_response.data);
-            return psgc_response.data;
-        } else {
-            console.log("Wrong response for GC in PSGC")
+            // Check if the response is empty
+            const hasValidData = Object.keys(psgc_response.data).some(key => {
+                return Object.keys(psgc_response.data[key]).length > 0;
+            });
+            if (hasValidData) {
+                mode = 'structure';
+                return psgc_response.data;
+            }
         }
     });
 }
 
 
 function formatGenericData(data) {
-    let formattedString = `
-        <div class="row">
-            <div class="col-12">
-                <table class="table table-striped psgc-table">
-                    <thead class="thead-light">
+    if(mode === 'structure'){
+        let formattedString = `
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-striped psgc-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>PSGC ID</th>
+                                <th>Gene Cluster</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+    
+        for (const [psgcId, value] of Object.entries(data)) {
+            if (typeof value === 'object' && value !== null) {
+                for (const [geneClusterId, type] of Object.entries(value)) {
+                    formattedString += `
                         <tr>
-                            <th>PSGC ID</th>
-                            <th>Gene Cluster</th>
-                            <th>Type</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-    for (const [psgcId, value] of Object.entries(data)) {
-        if (typeof value === 'object' && value !== null) {
-            for (const [geneClusterId, type] of Object.entries(value)) {
-                formattedString += `
-                    <tr>
-                        <td class="col-4">${psgcId}</td>
-                        <td class="col-4">${geneClusterId}</td>
-                        <td class="col-4">${type}</td>
-                    </tr>`;
+                            <td class="col-4">${psgcId}</td>
+                            <td class="col-4">${geneClusterId}</td>
+                            <td class="col-4">${type}</td>
+                        </tr>`;
+                }
             }
         }
-    }
-
-    formattedString += `
-            </tbody>
-        </table>
-        </div>
-    </div>`;
     
-    return formattedString;
+        formattedString += `
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+        
+        return formattedString;
+    }
 }
 
 function showGeneClusterDetails(bin_id, updateOnly) {
@@ -2123,14 +2129,18 @@ function showGeneClusterDetails(bin_id, updateOnly) {
             // Fetch additional PSGC data and append it directly to content
             let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
                 return getGCInPSGCInformation(gene_cluster_name).then(result => {
-                    if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
-                        content += `<div class="mt-5 mb-5 font-italic">
-                                        Gene Clusters Occur in Protein Structure Informed Gene Clusters
-                                    </div>`;
+                    debugger;
+                    if(mode === 'structure'){
+                        if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
+                            content += `<div class="mt-5 mb-5 font-italic">
+                                            Gene Clusters Occur in Protein Structure Informed Gene Clusters
+                                        </div>`;
+                        }
+                        content += formatGenericData(result);
                     }
-                    content += formatGenericData(result);
                 });
             });
+            mode = 'pan';
 
             Promise.all(additionalDataPromises).then(() => {
                 showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content);
