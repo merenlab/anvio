@@ -618,7 +618,7 @@ class Pangenome(object):
 
         self.add_layers_to_view(psgc_gc_counts)
         item_additional_data_keys.extend([
-            'num_gene_clusters_in_psgc',
+            'number_gc_in_psgc',
             'psgc_composition!core',
             'psgc_composition!singleton',
             'psgc_composition!accessory',
@@ -720,7 +720,7 @@ class Pangenome(object):
     def add_layers_to_view(self, psgc_gc_counts):
         """Add all PSGC layers to the view data."""
         for gene_cluster in self.view_data:
-            self.additional_view_data[gene_cluster].update({ 'num_gene_clusters_in_psgc': psgc_gc_counts.get(gene_cluster, 0) })
+            self.additional_view_data[gene_cluster].update({ 'number_gc_in_psgc': psgc_gc_counts.get(gene_cluster, 0) })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
