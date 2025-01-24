@@ -76,24 +76,24 @@ Bins.prototype.NewBin = function(id, binState) {
 
     var template = `<tr bin-id="${id}" class="bin-row">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
-                       <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
+                       <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></div></td>
                        <td data-value="${name}">
                             <input type="text" class="bin-name" oninput="this.value = event.target.value.replaceAll(' ', '_');" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
                         </td>
-                       ${mode != 'pan' ? `
+                       ${mode !== 'pan' && mode !== 'structure' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
                        ` : ''}
-                       ${mode == 'pan' ? `
+                       ${mode === 'pan' || mode === 'structure' ? `
                             <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for quick gene cluster summaries" onClick="showGeneClusterDetails(${id});"></td>
                             <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>
                        ` : `
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
-                            <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
+                            <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id});"></td>
                        `}
                        <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    ${ mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
+                    ${ mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan' || mode === 'structure' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
                     <td style="border-top: 0px;">&nbsp;</td>
                     <td style="border-top: 0px;">&nbsp;</td>
                     <td colspan="6" style="border-top: 0px; padding-top: 0px;">
@@ -470,7 +470,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
     for (let i = 0; i < bin_list.length; i++) {
         let bin_id = bin_list[i];
 
-        if (mode == 'pan') {
+        if (mode === 'pan' || mode === 'structure') {
             let num_gene_clusters = 0;
             let num_gene_calls = 0;
 
