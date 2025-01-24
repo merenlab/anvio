@@ -1679,7 +1679,7 @@ class BottleApplication(Bottle):
 
                         if search == '':
 
-                            print(search, accession, func)
+                            # print(search, accession, func)
                             if search == accession or search == func:
                                 if gene_cluster not in result['gene_clusters']:
                                     result['gene_clusters'] += [gene_cluster]
