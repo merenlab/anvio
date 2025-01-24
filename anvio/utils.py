@@ -674,6 +674,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         A file object ot write (instead of the output file path)
     key_header: string
         The header for the first column ('key' if None)
+    keys_order: list
+        The order in which to write the rows (if None, first order keys will be sorted to get the row order)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
