@@ -2238,7 +2238,7 @@ async function exportSvg(dontDownload) {
                 'color': $('#bin_color_' + bin_id).attr('color'),
             };
 
-            if (mode == 'pan') {
+            if (mode == 'pan' || mode === 'structure') {
                 var geneClustersElement = $(bin).find('.num-gene-clusters');        
                 if (geneClustersElement.length > 0) {
                     _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
