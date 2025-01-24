@@ -2082,7 +2082,7 @@ class DGR_Finder:
             return
         print(f'self.samples_txt_dict:', self.samples_txt_dict)
 
-        if self.metagenomics_contigs_mode:
+        if self.collections_mode:
             dgrs_dict = self.dgrs_in_collections
         else:
             dgrs_dict = self.DGRs_found_dict
