@@ -1843,7 +1843,7 @@ class Inversions:
         if self.target_region_start and self.target_region_end:
             if self.target_region_end <= self.target_region_start:
                 raise ConfigError(f"The end position of the target region you wish to focus on must be larger "
-                                  f"than the start poisition of the same region .. for obvious reasons. But "
+                                  f"than the start position of the same region .. for obvious reasons. But "
                                   f"{pp(self.target_region_end)} is not larger than {pp(self.target_region_start)}.")
 
         if (self.target_region_start and self.target_region_start < 0) or (self.target_region_end and self.target_region_end < 0):
