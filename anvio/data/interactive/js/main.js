@@ -2054,6 +2054,8 @@ function showGeneClusterDetails(bin_id, updateOnly) {
 
     var title = 'Gene clusters in "' + $('#bin_name_' + bin_id).val() + '"';
 
+    var temp_mode = mode;
+
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
 
@@ -2139,7 +2141,8 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                     }
                 });
             });
-            mode = 'pan';
+
+            mode = temp_mode;
 
             Promise.all(additionalDataPromises).then(() => {
                 showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content);
