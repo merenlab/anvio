@@ -7816,7 +7816,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if skipped_mods:
                 skipped_list = ", ".join(skipped_mods)
                 self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
-                                 "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
+                                 "output matrices for them. If you used the `--only-complete` flag, its possible these modules "
+                                 "were eliminated from the output due to having completeness scores below the threshold (in "
+                                 "which case you could just remove `--only-complete` from your command and everything should "
+                                 "work fine). Otherwise, maybe you made a typo? Or put an extra comma in somewhere?")
 
             if mods_defined_by_mods:
                 skipped_list = ", ".join(mods_defined_by_mods)
@@ -9072,8 +9075,15 @@ class ModulesDatabase(KeggContext):
         return ortholog_dict
 
 
-    def get_brite_table_as_hierarchy_dict(self, hierarchy_accessions_of_interest=None, level_cutoff=None, collapse_keys=False, collapse_mixed_branches=True):
-        """Load the BRITE hierarchies table as a dictionary keyed by hierarchy.
+    def get_brite_table_as_hierarchy_dict(
+        self,
+        hierarchy_accessions_of_interest=None,
+        level_cutoff=None,
+        collapse_keys=False,
+        collapse_mixed_branches=True
+    ):
+        """
+        Load the BRITE hierarchies table as a dictionary keyed by hierarchy.
 
         The returned dictionary contains the category structure of the hierarchy and a set of
         orthologs in each categorization.
@@ -9299,22 +9309,25 @@ class ModulesDatabase(KeggContext):
         # find the maximum depth of each hierarchy
         max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
 
-        if level_cutoff == 0 or type(level_cutoff) != int:
+        if level_cutoff is not None and (level_cutoff == 0 or type(level_cutoff) != int):
             raise ConfigError("`level_cutoff` must be a nonzero integer.")
 
         # set the level cutoff for each hierarchy
-        if level_cutoff > 0:
+        if level_cutoff is None:
+            topdown_level_cutoff_dict = max_depth_dict
+        elif level_cutoff > 0:
             topdown_level_cutoff_dict = {hierarchy_accession: min(level_cutoff, max_depth) for hierarchy_accession, max_depth in max_depth_dict.items()}
-        elif level_cutoff < 0:
+        else:
             # find the positive level corresponding to the negative level cutoff for each
             # hierarchy, ensuring that at least one category remains per hierarchy
             topdown_level_cutoff_dict = {hierarchy_accession: max(max_depth + level_cutoff, 1) for hierarchy_accession, max_depth in max_depth_dict.items()}
-        else:
-            topdown_level_cutoff_dict = max_depth_dict
 
         # hierarchy level cutoffs can be affected by collapsing subcategories of mixed categories
         if collapse_mixed_branches:
-            topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(topdown_level_cutoff_dict, dict_from_brite_table)
+            topdown_level_cutoff_dict = self.get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(
+                dict_from_brite_table=dict_from_brite_table,
+                input_depth_dict=topdown_level_cutoff_dict
+            )
 
         # create the per-hierarchy dict
         hierarchy_dict = {}
