@@ -581,7 +581,7 @@ var named_layers = {
     },
     'psgc_composition': {
         'type': 'bar',
-        'pretty_name': 'GCs in PSCG'
+        'pretty_name': 'GCs in PSGC'
     }
 };
 
