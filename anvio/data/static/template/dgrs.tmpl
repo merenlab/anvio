@@ -118,6 +118,15 @@
                     <h4>Genomic context <small class="text-muted">:: What we know about the genes that surround both the Template and Variable Regions.</small></h4>
                     <h4>Template Region (TR)</h4>
 
+                    <!-- TR Information -->
+                        <div style="margin-bottom: 15px;">
+                            {% for dgr, tr in dgr_data.items %}
+                                <p><strong>TR Contig Name:</strong> {{ tr.TR_contig }}</p>
+                                <p><strong>TR Start Position:</strong> {{ tr.TR_start_position }}</p>
+                                <p><strong>TR End Position:</strong> {{ tr.TR_end_position }}</p>
+                            {% endfor %}
+                        </div>
+
                     <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
                         <svg width="1000" height="80">
                             {% if meta.genomic_context_recovered %}
@@ -236,8 +245,16 @@
 
                         <h4>Variable Regions (VR)</h4>
                         {% for vr_key, vr in dgr_data.dgr_data.VRs.items %}
-                            <div class="vr-container" style="margin-top: 25px;">
-                                <h5>VR ID: {{ vr_key }}</h5>
+                                <div class="vr-container" style="margin-top: 25px;">
+                                    <h5>VR ID: {{ vr_key }}</h5>
+
+                                    <!-- Additional VR Information -->
+                                    <div style="margin-bottom: 15px;">
+                                        <p><strong>VR Contig Name</strong> {{ vr.VR_contig }}</p>
+                                        <p><strong>VR Start Position</strong> {{ vr.VR_start_position }} </p>
+                                        <p><strong>VR End Position</strong> {{ vr.VR_end_position }} </p>
+                                    </div>
+
                                 <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
                                     <svg width="1000" height="80">
                                         <!-- Display VR Region -->
