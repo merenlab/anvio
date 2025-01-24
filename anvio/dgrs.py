@@ -587,11 +587,11 @@ class DGR_Finder:
                         qseq = str(hsp.find('Hsp_qseq').text)
                         hseq = str(hsp.find('Hsp_hseq').text)
                         midline = str(hsp.find('Hsp_midline').text)
-                        subject_genome_start_position = min([int(hsp.find('Hsp_hit-from').text), int(hsp.find('Hsp_hit-to').text)])
-                        subject_genome_end_position = max([int(hsp.find('Hsp_hit-from').text), int(hsp.find('Hsp_hit-to').text)])
+                        subject_genome_start_position = min([int(hsp.find('Hsp_hit-from').text)-1, int(hsp.find('Hsp_hit-to').text)])
+                        subject_genome_end_position = max([int(hsp.find('Hsp_hit-from').text)-1, int(hsp.find('Hsp_hit-to').text)])
                         alignment_length = int(hsp.find('Hsp_align-len').text)
-                        query_genome_start_position = query_start_position + min([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
-                        query_genome_end_position = query_start_position + max([int(hsp.find('Hsp_query-from').text), int(hsp.find('Hsp_query-to').text)])
+                        query_genome_start_position = query_start_position + min([int(hsp.find('Hsp_query-from').text)-1, int(hsp.find('Hsp_query-to').text)])
+                        query_genome_end_position = query_start_position + max([int(hsp.find('Hsp_query-from').text)-1, int(hsp.find('Hsp_query-to').text)])
                         query_frame = str(hsp.find('Hsp_query-frame').text)
                         subject_frame = str(hsp.find('Hsp_hit-frame').text)
 
@@ -689,33 +689,33 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_frame'] = VR_frame
 
         # query-subject dependent stuff
-        if TR_is_query:
-            self.DGRs_found_dict[DGR_key]['TR_start_position'] = query_genome_start_position
-            self.DGRs_found_dict[DGR_key]['TR_end_position'] = query_genome_end_position
-            self.DGRs_found_dict[DGR_key]['TR_contig'] = query_contig
-            self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'query'
+        # if TR_is_query:
+        #     self.DGRs_found_dict[DGR_key]['TR_start_position'] = query_genome_start_position
+        #     self.DGRs_found_dict[DGR_key]['TR_end_position'] = query_genome_end_position
+        #     self.DGRs_found_dict[DGR_key]['TR_contig'] = query_contig
+        #     self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'query'
 
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_start_position'] = subject_genome_start_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] = subject_genome_end_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = subject_contig
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'subject'
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_start_position'] = subject_genome_start_position
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] = subject_genome_end_position
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = subject_contig
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'subject'
 
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = query_genome_start_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = query_genome_end_position
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = query_genome_start_position
+        #     self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = query_genome_end_position
 
-        else:
-            self.DGRs_found_dict[DGR_key]['TR_start_position'] = subject_genome_start_position
-            self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
-            self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
-            self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
+        # else:
+        self.DGRs_found_dict[DGR_key]['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
+        self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
 
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_start_position'] = query_genome_start_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] =   query_genome_end_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = query_contig
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'query'
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_start_position'] = query_genome_start_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] =   query_genome_end_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = query_contig
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'query'
 
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
-            self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
 
 
 
@@ -757,27 +757,27 @@ class DGR_Finder:
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_frame'] = TR_frame
 
         # query-subject dependent stuff
-        if TR_is_query:
-            # update TR start and end
-            self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(query_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
-            self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(query_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
+        # if TR_is_query:
+        #     # update TR start and end
+        #     self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(query_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
+        #     self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(query_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
 
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_start_position'] = subject_genome_start_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_end_position'] = subject_genome_end_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_contig'] = subject_contig
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'subject'
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = query_genome_start_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = query_genome_end_position
-        else:
-            self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(subject_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
-            self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(subject_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_start_position'] = subject_genome_start_position
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_end_position'] = subject_genome_end_position
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_contig'] = subject_contig
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'subject'
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = query_genome_start_position
+        #     self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = query_genome_end_position
+        # else:
+        self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(subject_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
+        self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(subject_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
 
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_start_position'] = query_genome_start_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_end_position'] = query_genome_end_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_contig'] = query_contig
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'query'
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = subject_genome_start_position
-            self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_start_position'] = query_genome_start_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_end_position'] = query_genome_end_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_contig'] = query_contig
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'query'
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = subject_genome_end_position
 
 
     def filter_for_TR_VR(self):
