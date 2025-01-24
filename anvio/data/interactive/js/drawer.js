@@ -216,8 +216,20 @@ Drawer.prototype.generate_tooltips = function() {
     {
         var pindex = this.settings['layer-order'][i];
         var layer_title = layerdata[0][pindex];
-        if (layer_title.indexOf('!') > -1)
-            layer_title = layer_title.split('!')[0];
+
+        if (layer_title) {
+            if (layer_title.indexOf('!') > -1) {
+                layer_title = layer_title.split('!')[0];
+            }
+            if (layer_title.indexOf(';') > -1) {
+                console.warn(`Unexpected character ';' found in layer title: ${layer_title}`);
+                layer_title = layer_title.replace(/;/g, '');
+            }
+        } else {
+            console.warn(`Layer title is undefined for index: ${pindex}`);
+            layer_title = 'Unknown';
+        }
+
         empty_tooltip += '<tr><td>' + layer_title + '</td><td>n/a</td></tr>';
     }
 

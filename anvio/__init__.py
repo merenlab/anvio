@@ -74,6 +74,9 @@ DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
+# global args that we can set internally as needed
+RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = False  # set to True if you want all functional annotations from a given annotation source
+                                                        # instead of the best hit per gene
 
 # if the user wants to use a non-default tmp directory, we set it here
 if '--tmp-dir' in sys.argv:
@@ -2550,7 +2553,7 @@ D = {
                 ),
     'defline-format': (
             ['--defline-format'],
-            {'default': '{gene_caller_id}',
+            {'default': None,
              'metavar': "F-STRING",
              'help': "Proivide a defline template for anvi'o to use when generating the FASTA output. The way this "
                      "works is actually quite simple: first you learn about all the options that exist using the "
@@ -2558,8 +2561,9 @@ D = {
                      "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
                      "of curly brackets will be kept as is. For instance, if you would like your defline to have "
                      "the gene caller ID after the contig name in which it occurs, you can use this template: "
-                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. See more "
-                     "examples in online help."}
+                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "See more examples in online help."}
                 ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],

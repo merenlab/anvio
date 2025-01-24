@@ -42,10 +42,16 @@ def main(args):
                           "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection)")
 
     for source in collections.collections_dict:
+        num_contigs = 0
+        for bin_name, split_list in collections.get_collection_dict(source).items():
+            contig_set = set([x.split("_split")[0] for x in split_list])
+            num_contigs += len(contig_set)
+
         run.warning('', header = 'Collection: "%s"' % source, lc = 'green')
         run.info('Collection ID', source)
         run.info('Number of bins', collections.collections_dict[source]['num_bins'])
         run.info('Number of splits described', collections.collections_dict[source]['num_splits'])
+        run.info('Number of contigs described', num_contigs)
         run.info('Bin names', ', '.join(sorted(collections.collections_dict[source]['bin_names'].split(','))), nl_after = 2)
 
 
