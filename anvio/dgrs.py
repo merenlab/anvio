@@ -95,7 +95,7 @@ class DGR_Finder:
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
-        self.run.info('Metagenomics Contigs Mode', self.collections_mode)
+        self.run.info('Collections Mode', self.collections_mode)
         if self.collections_mode:
             self.run.info('Collection(s) Provided', (self.collections_given))
         self.run.info('Output Directory', self.output_directory)
@@ -1120,7 +1120,7 @@ class DGR_Finder:
         return bin_info
 
 
-    def collections_mode(self):
+    def collections_mode_func(self):
             """
             This function is if the user only wants to search for DGRs that are in the same collection. This is known as the metagenomics mode.
             It filters through the dgrs found dictionary so that only the DGRs within the same collection are outputted.
@@ -2632,9 +2632,9 @@ class DGR_Finder:
         self.filter_blastn_for_none_identical()
         self.filter_for_TR_VR()
         if self.collections_mode:
-            self.run.info_single("Running metagenomics mode")
+            self.run.info_single("Running collections mode")
             print('\n')
-            self.collections_mode()
+            self.collections_mode_func()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.")
             print('\n')
