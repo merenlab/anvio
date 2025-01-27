@@ -537,45 +537,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         return functional_occurrence_summary_data_frame
 
 
-    def get_structure_informed_summary(self):
-        """Retrieve and process structure-informed summary data."""
-
-        from anvio.dbops import PanDatabase
-        pan_db = PanDatabase(self.pan_db_path)
-
-        # Check the db_variant if its structure-informed
-        db_variant_info = pan_db.db.get_table_as_dict('self')
-        db_variant = db_variant_info.get('db_variant', {}).get('value', None)
-        expected_variant = 'structure-informed'
-
-        self.run.info("DB Variant", db_variant)
-
-        if db_variant != expected_variant:
-            return
-
-        # Retrieve data from tables
-        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
-        gc_psgc_associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
-
-        # Convert to DataFrames
-        gc_tracker_dataframe = pd.DataFrame.from_dict(gc_tracker_data, orient='index')
-        gc_psgc_associations_dataframe = pd.DataFrame(gc_psgc_associations_data)
-
-        if 'structure-pan' not in self.summary['basics_pretty']:
-            self.summary['basics_pretty']['structure-pan'] = {}
-
-        # Add summaries to self.summary['basics_pretty']
-        self.summary['basics_pretty']['structure-pan']['gc_tracker'] = {
-            'columns': gc_tracker_dataframe.columns.tolist(),
-            'data': gc_tracker_dataframe.values.tolist()
-        }
-
-        self.summary['basics_pretty']['structure-pan']['gc_psgc_associations'] = {
-            'columns': gc_psgc_associations_dataframe.columns.tolist(),
-            'data': gc_psgc_associations_dataframe.values.tolist()
-        }
-
-
     def process(self):
         # let bin names known to all
         bin_ids = list(self.collection_profile.keys())
@@ -623,8 +584,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             ('Functional annotation', 'Available' if len(self.gene_clusters_function_sources) else 'Not available :/'),
                             ('Functional annotation sources', '--' if not len(self.gene_clusters_function_sources) else ', '.join(self.gene_clusters_function_sources))],
         }
-
-        self.get_structure_informed_summary()
 
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
