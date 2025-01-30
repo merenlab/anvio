@@ -103,6 +103,7 @@ if __name__ == '__main__':
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\
                                   file. By default, only dna sequences are reported.")
+    groupC.add_argument(*anvio.A('init-pan-mode'), **anvio.K('init-pan-mode'))
 
     groupD.add_argument(
         *anvio.A('report-DNA-sequences'),
