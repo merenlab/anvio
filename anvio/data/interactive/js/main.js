@@ -89,8 +89,12 @@ var request_prefix = getParameterByName('request_prefix');
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
+    var svgElement = document.getElementById('svg');
+    
+    if (svgElement) {
+        VIEWER_WIDTH = svgElement.clientWidth || (svgElement.width && svgElement.width.baseVal.value) || 0;
+        VIEWER_HEIGHT = svgElement.clientHeight || (svgElement.height && svgElement.height.baseVal.value) || 0;
+    }
 });
 
 $(document).ready(function() {
@@ -1330,13 +1334,13 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr class="sortable">' +
+            var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -1986,11 +1990,71 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
+function getGCInPSGCInformation(gene_cluster_name) {
+    return $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_psgc_type_data/' + gene_cluster_name
+    }).then(function(psgc_response) {
+        if (psgc_response && psgc_response.data) {
+            // Check if the response is empty
+            const hasValidData = Object.keys(psgc_response.data).some(key => {
+                return Object.keys(psgc_response.data[key]).length > 0;
+            });
+            if (hasValidData) {
+                mode = 'structure';
+                return psgc_response.data;
+            }
+        }
+    });
+}
+
+
+function formatGenericData(data) {
+    if(mode === 'structure'){
+        let formattedString = `
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-striped psgc-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>PSGC ID</th>
+                                <th>Gene Cluster</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+    
+        for (const [psgcId, value] of Object.entries(data)) {
+            if (typeof value === 'object' && value !== null) {
+                for (const [geneClusterId, type] of Object.entries(value)) {
+                    formattedString += `
+                        <tr>
+                            <td class="col-4">${psgcId}</td>
+                            <td class="col-4">${geneClusterId}</td>
+                            <td class="col-4">${type}</td>
+                        </tr>`;
+                }
+            }
+        }
+    
+        formattedString += `
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+        
+        return formattedString;
+    }
+}
+
 function showGeneClusterDetails(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
 
     var title = 'Gene clusters in "' + $('#bin_name_' + bin_id).val() + '"';
+
+    var temp_mode = mode;
 
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
@@ -2010,17 +2074,19 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                 return;
             }
 
-            let content = `<table class="table table-striped">
-                           <thead class="thead-light">
-                           <tr>
-                             <th>Gene cluster</th>
-                             <th>Source</th>
-                             <th>Accession</th>
-                             <th>Function</th>
-                           </tr>
-                           </thead>
-
-                           <tbody>`;
+            let content = `
+                <div class="row">
+                    <div class="col-12">
+                        <table class="table table-striped gene-cluster-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Gene cluster</th>
+                                    <th>Source</th>
+                                    <th>Accession</th>
+                                    <th>Function</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
 
             // building the table for each gene cluster
             Object.keys(response['functions']).map(function(gene_cluster_name) {
@@ -2030,33 +2096,59 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                 Object.keys(response['sources']).map(function(index) {
                     let function_source = response['sources'][index];
 
-                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source)
-                    function_string = getPrettyFunctionsString(d[function_source]['function'])
-
+                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source);
+                    function_string = getPrettyFunctionsString(d[function_source]['function']);
 
                     if (index == 0) {
                         content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${  Object.keys(response['sources']).length }"><b>${ gene_cluster_name }</b></td>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td class="col-3" rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
+                                    <td class="col-3">${function_source}</td>
+                                    <td class="col-3" title="${accession_string}">
+                                        ${accession_string}
+                                    </td>
+                                    <td class="col-3" title="${function_string}">
+                                        ${function_string}
+                                    </td>
                                     </tr>`;
                     } else {
                         content += `<tr>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td class="col-3">${function_source}</td>
+                                    <td class="col-3" title="${accession_string}">
+                                        ${accession_string}
+                                    </td>
+                                    <td class="col-3" title="${function_string}">
+                                        ${function_string}
+                                    </td>
                                     </tr>`;
                     }
                 });
             });
 
-        content += `</tbody></table>`
+            content += `</tbody></table>
+                    </div>
+                </div>`;
 
-        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content + '</table>');
+            // Fetch additional PSGC data and append it directly to content
+            let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
+                return getGCInPSGCInformation(gene_cluster_name).then(result => {
+                    if(mode === 'structure'){
+                        if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
+                            content += `<div class="mt-5 mb-5 font-italic">
+                                            Gene Clusters Occur in Protein Structure Informed Gene Clusters
+                                        </div>`;
+                        }
+                        content += formatGenericData(result);
+                    }
+                });
+            });
+
+            mode = temp_mode;
+
+            Promise.all(additionalDataPromises).then(() => {
+                showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content);
+            });
         }
     });
-
 }
 
 
@@ -2146,7 +2238,7 @@ async function exportSvg(dontDownload) {
                 'color': $('#bin_color_' + bin_id).attr('color'),
             };
 
-            if (mode == 'pan') {
+            if (mode == 'pan' || mode === 'structure') {
                 var geneClustersElement = $(bin).find('.num-gene-clusters');        
                 if (geneClustersElement.length > 0) {
                     _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
