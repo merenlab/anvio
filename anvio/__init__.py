@@ -3718,6 +3718,15 @@ D = {
                      "re-running foldseek. This is mostly for debugging purposes and we strongly advice "
                      "you to not use it unless you consider yourself to be a hacker-type."}
         ),
+   'init-pan-mode': (
+            ['--init-pan-mode'],
+            {'default': constants.pangenome_mode_default,
+             'choices': constants.pangenome_modes_available,
+            'type': str,
+            'help': "Specify the structure type to include additional data tables for the Structural Pangenome summary. "
+                     "This option allows you to enhance the analysis by integrating specific structural data, "
+                     "which can provide deeper insights into the pangenomic relationships among the samples."}
+        ),
 }
 
 # two functions that works with the dictionary above.
