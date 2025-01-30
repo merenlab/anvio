@@ -100,6 +100,7 @@ class ArgsTemplateForSummarizerClass:
         self.output_dir = filesnpaths.get_temp_directory_path()
         self.report_aa_seqs_for_gene_calls = False
         self.reformat_contig_names = False
+        self.init_pan_mode = False
 
 
 class SummarizerSuperClass(object):
@@ -264,9 +265,26 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
+        self.STRUCTURE_MODE = False if self.args.init_pan_mode == constants.pangenome_mode_default else True
+
         self.summary = {}
         self.summary['basics_pretty'] = {}
 
+
+    def add_structure_data_tables(self):
+        """Add additional data tables from the pan database and return the data."""
+        from anvio.dbops import PanDatabase
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gc_psgc_associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+
+        # store associations
+        gc_psgc_associations = {}
+        for gene_cluster_id, data in gc_psgc_associations_data.items():
+            protein_structure_id = data['protein_structure_informed_gene_cluster_id']
+            gc_psgc_associations[gene_cluster_id] = protein_structure_id
+
+        return gc_psgc_associations
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
         """
@@ -603,6 +621,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     def generate_gene_clusters_file(self, collection_dict, compress_output=True):
         """Generates the gene summary file"""
 
+        # Add data tables if STRUCTURE_MODE is True
+        if self.STRUCTURE_MODE:
+            gc_psgc_associations_data = self.add_structure_data_tables()
+
         # generate a dict of gene cluster ~ bin id relationships
         gene_cluster_name_to_bin_name= dict(list(zip(self.gene_clusters_in_pan_db_but_not_binned, [None] * len(self.gene_clusters_in_pan_db_but_not_binned))))
         for bin_id in collection_dict:
@@ -616,6 +638,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # standard headers
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
+
+        if self.STRUCTURE_MODE:
+            header.append('gc_psgc_associations')
 
         # extend the header with items additional data keys
         for items_additional_data_key in self.items_additional_data_keys:
@@ -647,6 +672,20 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for genome_name in self.gene_clusters[gene_cluster_name]:
                 for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
+
+                    gc_psgc_associations = {}
+                    expected_psgc = gene_cluster_name
+
+                    # Only include relevant GC IDs for the current PSGC
+                    for gc_id, psgc_id in gc_psgc_associations_data.items():
+                        if psgc_id == expected_psgc:
+                            gc_psgc_associations[gc_id] = psgc_id
+
+                    if self.STRUCTURE_MODE:
+                        associations_string = f"[{', '.join(gc_psgc_associations)}]"
+                        entry.append(associations_string)
+                    else:
+                        entry.append('')
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
