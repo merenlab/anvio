@@ -3687,6 +3687,12 @@ D = {
                      "a comma-separated list. The default stats are 'detection' and "
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
+    ),
+    'report-all-estimates': (
+            ['--report-all-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to report all C/R estimates, from all domains."}
     )
 }
 
