@@ -277,6 +277,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         pan_db = PanDatabase(self.pan_db_path)
 
         gc_psgc_associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
 
         # store associations
         gc_psgc_associations = {}
@@ -284,7 +285,16 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             protein_structure_id = data['protein_structure_informed_gene_cluster_id']
             gc_psgc_associations[gene_cluster_id] = protein_structure_id
 
-        return gc_psgc_associations
+        gc_tracker = []
+        for entry in gc_tracker_data.values():
+            gene_caller_id = entry['gene_caller_id']
+            gene_cluster_id = entry['gene_cluster_id']
+            genome_name = entry['genome_name']
+            alignment_summary = entry['alignment_summary']
+            
+            gc_tracker.append((gene_caller_id, gene_cluster_id, genome_name, alignment_summary))
+
+        return gc_psgc_associations, gc_tracker
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
         """
@@ -623,7 +633,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # Add data tables if STRUCTURE_MODE is True
         if self.STRUCTURE_MODE:
-            gc_psgc_associations_data = self.add_structure_data_tables()
+            gc_psgc_associations_data, gc_tracker_data = self.add_structure_data_tables()
 
         # generate a dict of gene cluster ~ bin id relationships
         gene_cluster_name_to_bin_name= dict(list(zip(self.gene_clusters_in_pan_db_but_not_binned, [None] * len(self.gene_clusters_in_pan_db_but_not_binned))))
@@ -640,7 +650,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
         if self.STRUCTURE_MODE:
-            header.append('gc_psgc_associations')
+            header.append('gc_in_psgc')
+            header.append('gc_tracker')
 
         # extend the header with items additional data keys
         for items_additional_data_key in self.items_additional_data_keys:
@@ -673,19 +684,28 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
 
-                    gc_psgc_associations = {}
-                    expected_psgc = gene_cluster_name
-
-                    # Only include relevant GC IDs for the current PSGC
-                    for gc_id, psgc_id in gc_psgc_associations_data.items():
-                        if psgc_id == expected_psgc:
-                            gc_psgc_associations[gc_id] = psgc_id
-
                     if self.STRUCTURE_MODE:
-                        associations_string = f"[{', '.join(gc_psgc_associations)}]"
+                        gc_ids = []
+                        for gc_id, psgc_id in gc_psgc_associations_data.items():
+                            if psgc_id == gene_cluster_name:
+                                gc_ids.append(gc_id)
+
+                        associations_string = f"[{', '.join(gc_ids)}]"
                         entry.append(associations_string)
+
+                        matching_gc = None
+                        for tracker_entry in gc_tracker_data:
+                            if (int(tracker_entry[0]) == int(gene_caller_id) and 
+                                str(tracker_entry[2]) == str(genome_name)):
+                                matching_gc = tracker_entry[1]
+                                break
+
+                        if matching_gc:
+                            entry.append(matching_gc)
+                        else:
+                            entry.append('')
                     else:
-                        entry.append('')
+                        continue
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
