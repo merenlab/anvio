@@ -482,8 +482,6 @@ function switchUserInterfaceMode(project, title) {
     // hide all mode dependent divs:
     $('.full-mode, .pan-mode, .collection-mode, .manual-mode, .server-mode, .refine-mode').hide();
 
-    console.log("The running mode for the interface: " + mode);
-
     $('.' + mode + '-mode').show();
     $('<b title="This info shows your anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
