@@ -3876,7 +3876,7 @@ class KeggEstimatorArgs():
         definition in this case. However, in case there is an internal '--' within a more complicated definition, this function
         ignores the part of the string that includes it and processes the remainder of the string before re-joining the two parts.
         It is not able to do this for steps with more than one internal '--', which would require multiple splits and joins, so
-        this case results in an error.
+        this case results in an error. Note that when self.exclude_dashed_reactions is True, we instead remove '--' entirely.
 
         PARAMETERS
         ==========
@@ -3889,6 +3889,8 @@ class KeggEstimatorArgs():
             The same string, with nonessential enzyme accessions (if any) removed.
         """
 
+        if step_string == '--' and self.exclude_dashed_reactions:
+            return ""
         if step_string != '--' and '-' in step_string:
             saw_double_dash = False             # a Boolean to indicate if we found '--' within the step definition
             str_prior_to_double_dash = None     # if we find '--', this variable stores the string that occurs prior to and including this '--'
@@ -3900,8 +3902,12 @@ class KeggEstimatorArgs():
                                           "remove_nonessential_enzymes_from_module_step(). This function is not currently able to handle this "
                                           "situation. Please contact a developer and ask them to turn this into a smarter function. :) ")
                     saw_double_dash = True
-                    str_prior_to_double_dash = step_string[:idx+2]
-                    step_string = step_string[idx+2:] # continue processing the remainder of the string
+                    if self.exclude_dashed_reactions: # remove the internal '--' 
+                        str_prior_to_double_dash = step_string[:idx]
+                        step_string = step_string[idx+3:] # also remove the space after it
+                    else:
+                        str_prior_to_double_dash = step_string[:idx+2]
+                        step_string = step_string[idx+2:] # continue processing the remainder of the string
                     continue
                 elif step_string[idx+1] == '(': # group to eliminate
                     parens_index = idx+1
