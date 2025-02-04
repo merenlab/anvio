@@ -5802,8 +5802,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # base cases
             elif '-' in step_string:
-                if step_string == '--': # no KO profile => no copy number
-                    return 0
+                if step_string == '--': # no KO profile => no copy number (unless user wants to ignore these, in which case
+                        return 0        # they were already removed by remove_nonessential_enzymes_from_module_step() above)
                 else: # contains non-essential KO, should never happen because we eliminated them above
                     raise ConfigError(f"Something is very wrong, because the get_step_copy_number() function found a nonessential "
                                       f"enzyme in the step definition {step_string}")
