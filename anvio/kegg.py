@@ -3582,6 +3582,7 @@ class KeggEstimatorArgs():
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_stray_KOs') else False
         self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
+        self.exclude_dashed_reactions = True if A('exclude_dashed_reactions') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
