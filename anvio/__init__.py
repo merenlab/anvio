@@ -2806,6 +2806,15 @@ D = {
                      "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
                      "behavior on until you have seen these errors and are absolutely sure that you do not care."}
                 ),
+    'exclude-dashed-reactions': (
+            ['--exclude-dashed-reactions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sometimes KEGG modules include steps like '--' that don't have an associated enzyme with a KOfam model. "
+                     "By default, we mark these steps as absent in our completeness and copy number calculations. If you'd prefer "
+                     "to ignore these '--' steps entirely (resulting in higher estimates), then use this flag. See "
+                     "https://github.com/merenlab/anvio/issues/2393 for a relevant discussion on this :)"}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
