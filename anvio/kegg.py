@@ -5040,7 +5040,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         # by default, we assume that such steps are not complete
                         has_no_ko_step = True
                         if self.exclude_dashed_reactions:
-                            warning_str = "'--' step was ignored in the completeness calculation"
+                            warning_str = "'--' step was ignored in the calculation"
                             num_nonessential_steps_in_path += 1 # this is to ensure we fix the denominator later
                         else:
                             warning_str = "'--' steps are assumed incomplete"
