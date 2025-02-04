@@ -5037,11 +5037,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # 1) steps without associated enzymes, ie --
                     if atomic_step == "--":
                         # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated enzyme.
-                        # we assume that such steps are not complete
+                        # by default, we assume that such steps are not complete
                         has_no_ko_step = True
-                        warning_str = "'--' steps are assumed incomplete"
+                        if self.exclude_dashed_reactions:
+                            warning_str = "'--' step was ignored in the completeness calculation"
+                            num_nonessential_steps_in_path += 1 # this is to ensure we fix the denominator later
+                        else:
+                            warning_str = "'--' steps are assumed incomplete"
+                            atomic_step_copy_number.append(0)
+
                         meta_dict_for_bin[mnum]["warnings"].add(warning_str)
-                        atomic_step_copy_number.append(0)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
