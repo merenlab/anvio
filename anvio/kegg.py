@@ -4872,17 +4872,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     cur_index += 1
 
                 elif step[cur_index] == "-":
-                    # '--' no associated enzyme case, always False (assumed incomplete)
+                    # '--' no associated enzyme case, by default False (assumed incomplete)
                     if step[cur_index+1] == "-":
-                        step_is_present_condition_statement += "False"
-                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+                        if self.exclude_dashed_reactions: # skip it instead
+                            cur_index += 3 # skip over both '-' AND the following space
+                        else:
+                            step_is_present_condition_statement += "False"
+                            cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
 
                         if anvio.DEBUG:
                             self.run.warning(f"While estimating the stepwise completeness of KEGG module {mnum}, anvi'o saw "
                                              f"'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                             f"associated enzyme. By default, anvi'o is marking this step incomplete. But it may not be, "
-                                             f"and as a result this module might be falsely considered incomplete. So it may be in your "
-                                             f"interest to take a closer look at this individual module.")
+                                             f"associated enzyme. By default, anvi'o marks steps like these incomplete, *unless* "
+                                             f"you are using the flag --exclude-dashed-reactions. But if you aren't using that flag, "
+                                             f"it is possible that this module might be falsely considered incomplete. So it may be in your "
+                                             f"interest to take a closer look at module {mnum}.")
                         if cur_index < len(step) and step[cur_index] != " ":
                             raise ConfigError(f"Serious, serious parsing sadness is happening. We just processed a '--' in "
                                               f"a DEFINITION line for module {mnum} but did not see a space afterwards. Instead, "
