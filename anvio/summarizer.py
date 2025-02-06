@@ -276,14 +276,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         from anvio.dbops import PanDatabase
         pan_db = PanDatabase(self.pan_db_path)
 
-        gc_psgc_associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
         gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
-
-        # store associations
-        gc_psgc_associations = {}
-        for gene_cluster_id, data in gc_psgc_associations_data.items():
-            protein_structure_id = data['protein_structure_informed_gene_cluster_id']
-            gc_psgc_associations[gene_cluster_id] = protein_structure_id
 
         gc_tracker = []
         for entry in gc_tracker_data.values():
@@ -294,7 +287,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             
             gc_tracker.append((gene_caller_id, gene_cluster_id, genome_name, alignment_summary))
 
-        return gc_psgc_associations, gc_tracker
+        return gc_tracker
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
         """
@@ -633,7 +626,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # Add data tables if STRUCTURE_MODE is True
         if self.STRUCTURE_MODE:
-            gc_psgc_associations_data, gc_tracker_data = self.add_structure_data_tables()
+            gc_tracker_data = self.add_structure_data_tables()
 
         # generate a dict of gene cluster ~ bin id relationships
         gene_cluster_name_to_bin_name= dict(list(zip(self.gene_clusters_in_pan_db_but_not_binned, [None] * len(self.gene_clusters_in_pan_db_but_not_binned))))
@@ -650,7 +643,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
         if self.STRUCTURE_MODE:
-            header.append('gc_in_psgc')
             header.append('gc_tracker')
 
         # extend the header with items additional data keys
@@ -685,14 +677,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
 
                     if self.STRUCTURE_MODE:
-                        gc_ids = []
-                        for gc_id, psgc_id in gc_psgc_associations_data.items():
-                            if psgc_id == gene_cluster_name:
-                                gc_ids.append(gc_id)
-
-                        associations_string = f"[{', '.join(gc_ids)}]"
-                        entry.append(associations_string)
-
                         matching_gc = None
                         for tracker_entry in gc_tracker_data:
                             if (int(tracker_entry[0]) == int(gene_caller_id) and 
