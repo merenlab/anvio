@@ -1048,7 +1048,8 @@ class DGR_Finder:
         return self.mismatch_hits
 
 
-    def add_new_DGR(self, DGR_number, TR_is_query, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
+
+    def add_new_DGR(self, DGR_number, TR_is_query, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
                     is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position, subject_contig, midline,
                     percentage_of_mismatches):
         """
@@ -1081,6 +1082,7 @@ class DGR_Finder:
         # TR stuff
         self.DGRs_found_dict[DGR_key]['TR_sequence'] = TR_sequence
         self.DGRs_found_dict[DGR_key]['base'] = base
+        self.DGRs_found_dict[DGR_key]['TR_bin'] = bin
 
         # VR stuff
         self.DGRs_found_dict[DGR_key]['VRs'] = {'VR_001':{}}
@@ -1091,6 +1093,7 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_frame'] = TR_frame
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_frame'] = VR_frame
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_bin'] = bin
 
         # query-subject dependent stuff
         # if TR_is_query:
@@ -1123,7 +1126,7 @@ class DGR_Finder:
 
 
 
-    def update_existing_DGR(self, existing_DGR_key, TR_is_query, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement,
+    def update_existing_DGR(self, existing_DGR_key, TR_is_query, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement,
                             query_genome_start_position, query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position, subject_contig):
         """
         This function is updating the DGRs in the DGRs_found_dict with those DGRs that overlap each other.
@@ -1148,11 +1151,15 @@ class DGR_Finder:
             A dictionary containing the template and variable regions and the corresponding info for those regions
 
         """
+        if existing_DGR_key not in self.DGRs_found_dict:
+            raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
+
         # VR info
         num_VR = len(self.DGRs_found_dict[existing_DGR_key]['VRs']) + 1
         new_VR_key = f'VR_{num_VR:03d}'
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key] = {}
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence'] = VR_sequence
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_bin'] = bin
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_sequence'] = TR_sequence
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['midline'] = midline
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['percentage_of_mismatches'] = percentage_of_mismatches
@@ -1212,23 +1219,34 @@ class DGR_Finder:
 
         #possible DGR dictionary
         self.DGRs_found_dict = {}
-        for sequence_component, hit_data in self.mismatch_hits.items():
-            query_mismatch_counts = hit_data['query_mismatch_counts']
-            subject_mismatch_counts = hit_data['subject_mismatch_counts']
-            position = hit_data['position']
-            subject_genome_start_position = hit_data['subject_genome_start_position']
-            subject_genome_end_position = hit_data['subject_genome_end_position']
-            alignment_length = hit_data['alignment_length']
-            subject_sequence = Seq(hit_data['hit_seq'])
-            original_midline = hit_data['midline']
-            query_sequence = Seq(hit_data['query_seq'])
-            shredded_sequence_name = sequence_component
-            query_genome_start_position = hit_data['query_genome_start_position']
-            query_genome_end_position = hit_data['query_genome_end_position']
-            query_frame = int(hit_data['query_frame'])
-            subject_frame = int(hit_data['subject_frame'])
-            query_contig = hit_data['query_contig']
-            subject_contig = hit_data['subject_contig']
+        if self.collections_mode:
+            hits_item = self.merged_mismatch_hits
+        else:
+            hits_item = self.mismatch_hits
+
+        for sequence_component, hit_list in hits_item.items():
+            # Ensure hit_list is always a list (even in non-collection mode)
+            if not isinstance(hit_list, list):
+                hit_list = [hit_list]  # Wrap non-list items in a list
+
+            for hit_data in hit_list:
+                bin = hit_data['bin']
+                query_mismatch_counts = hit_data['query_mismatch_counts']
+                subject_mismatch_counts = hit_data['subject_mismatch_counts']
+                position = hit_data['position']
+                subject_genome_start_position = hit_data['subject_genome_start_position']
+                subject_genome_end_position = hit_data['subject_genome_end_position']
+                alignment_length = hit_data['alignment_length']
+                subject_sequence = Seq(hit_data['hit_seq'])
+                original_midline = hit_data['midline']
+                query_sequence = Seq(hit_data['query_seq'])
+                shredded_sequence_name = sequence_component
+                query_genome_start_position = hit_data['query_genome_start_position']
+                query_genome_end_position = hit_data['query_genome_end_position']
+                query_frame = int(hit_data['query_frame'])
+                subject_frame = int(hit_data['subject_frame'])
+                query_contig = hit_data['query_contig']
+                subject_contig = hit_data['subject_contig']
 
             # get number of mismatches
             mismatch_length_bp = len(position)
@@ -1269,25 +1287,28 @@ class DGR_Finder:
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
-                            self.add_new_DGR(num_DGR, True, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                            print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                            self.add_new_DGR(num_DGR, True, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
                         else:
                             was_added = False
+                            #print(f"Adding new DGR to self existing {num_DGR} with bin: {bin}")
                             for dgr in self.DGRs_found_dict:
                                 if self.DGRs_found_dict[dgr]['TR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
                                                                                                                 query_genome_end_position,
                                                                                                                 self.DGRs_found_dict[dgr]['TR_start_position'],
                                                                                                                 self.DGRs_found_dict[dgr]['TR_end_position']):
                                     was_added = True
-                                    self.update_existing_DGR(dgr, True, query_frame, VR_sequence, subject_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
+                                    self.update_existing_DGR(dgr, True, bin, query_frame, VR_sequence, subject_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
                                                     query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
                                                     subject_contig)
                                     break
                             if not was_added:
                                 # add new TR and its first VR
+                                print(f"Adding new DGR {num_DGR} with bin: {bin}")
                                 num_DGR += 1
-                                self.add_new_DGR(num_DGR, True, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                self.add_new_DGR(num_DGR, True, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
 
@@ -1323,7 +1344,8 @@ class DGR_Finder:
                                 if not self.DGRs_found_dict:
                                     # add first DGR
                                     num_DGR += 1
-                                    self.add_new_DGR(num_DGR, False, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                    print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                                    self.add_new_DGR(num_DGR, False, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, subject_frame, VR_sequence, query_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
                                 else:
@@ -1335,14 +1357,15 @@ class DGR_Finder:
                                                                                                                         self.DGRs_found_dict[dgr]['TR_end_position']):
                                             was_added = True
                                             #TODO can rename consensus_TR
-                                            self.update_existing_DGR(dgr, False, subject_frame, VR_sequence, query_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
+                                            self.update_existing_DGR(dgr, False, bin, subject_frame, VR_sequence, query_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
                                                     query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
                                                     subject_contig)
                                             break
                                     if not was_added:
                                         # add new TR and its first VR
                                         num_DGR += 1
-                                        self.add_new_DGR(num_DGR, False, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                        print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                                        self.add_new_DGR(num_DGR, False, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, subject_frame, VR_sequence, query_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
 
