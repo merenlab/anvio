@@ -1531,118 +1531,7 @@ class DGR_Finder:
                     ])
         return
 
-    # Function to add bin info if positions fall within bin ranges
-    #TODO: have warning for DGR over two splits that are only in part of a collection. But ok if across 2 splits but both in same bin
-    def add_bin_info(self, start_pos, end_pos, dgr_name, vr_name, bin_ranges_dict):
-        tr_or_vr = 'vr' if vr_name else 'tr'
-        bin_info = None
-        for bin_name, ranges in bin_ranges_dict.items():
-            for (bin_start, bin_end) in ranges:
-                if start_pos >= bin_start and end_pos <= bin_end:
-                    bin_info = bin_name
-                    break
-            if bin_info:
-                break
 
-        return bin_info
-
-
-    def collections_mode_func(self):
-            """
-            This function is if the user only wants to search for DGRs that are in the same collection. This is known as the metagenomics mode.
-            It filters through the dgrs found dictionary so that only the DGRs within the same collection are outputted.
-
-            Parameters
-            ==========
-            DGRs_found_dict : dict
-                A dictionary containing the template and variable regions
-
-            Creates
-            =======
-            DGRs_found_dict : dict
-                A dictionary containing the template and variable regions
-
-            """
-
-            profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            contig_db = dbops.ContigsDatabase(self.contigs_db_path)
-
-            #check that the collections provided are in the collections available in the profile.
-            where_clause = f'''collection_name == "{self.collections_given}"'''
-            self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
-                error_if_no_data=True)
-
-            splits_list = []
-            for key, value in self.split_collections_dict.items():
-                splits_list.append(value['split'])
-
-            #Construct the where_clause for the new SQL query
-            splits_str = ', '.join(f'"{split}"' for split in splits_list)
-            where_clause_splits = f'''split IN ({splits_str})'''
-
-            # Retrieve rows from the splits basic info database using the new where_clause, to get the splits in the given collection
-            self.splits_in_collections_dict = contig_db.db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_splits,
-                error_if_no_data=True)
-
-            # Add bin_name to the final dictionary
-            for split, info in self.splits_in_collections_dict.items():
-                for key, value in self.split_collections_dict.items():
-                    if value['split'] == split:
-                        info['bin_name'] = value['bin_name']
-                        #need to also add in if start or end of split is inside the bin range
-                        break
-
-            from collections import defaultdict
-            #create a dictionary of ranges of all the start and stop positions in a bin.
-            bin_ranges_dict = defaultdict(list)
-
-            for key, value in self.splits_in_collections_dict.items():
-                bin_name = value['bin_name']
-                start = value['start']
-                end = value['end']
-                bin_ranges_dict[bin_name].append((start, end))
-
-            # Sort the ranges within each bin_name (if needed)
-            for bin_name in bin_ranges_dict:
-                bin_ranges_dict[bin_name].sort()
-
-            for dgr_id, dgr_data in self.DGRs_found_dict.items():
-                # Add bin info to TR
-                tr_start, tr_end = dgr_data['TR_start_position'], dgr_data['TR_end_position']
-                dgr_data['TR_bin'] = self.add_bin_info(tr_start, tr_end, dgr_id, None, bin_ranges_dict)
-
-                for vr_id, vr_data in dgr_data['VRs'].items():
-                    # Add bin info to VR
-                    vr_start, vr_end = vr_data['VR_start_position'], vr_data['VR_end_position']
-                    vr_data['VR_bin'] = self.add_bin_info(vr_start, vr_end, dgr_id, vr_id, bin_ranges_dict)
-
-            #Initialize a new dictionary to store filtered DGRs
-            self.dgrs_in_collections = {}
-
-            # Iterate over DGRs_found_dict and filter TR and VR pairs in the same bin
-            for dgr_name, dgr_data in self.DGRs_found_dict.items():
-                tr_bin_info = dgr_data.get('TR_bin')
-                print(f"Processing {dgr_name}: tr_bin_info = {tr_bin_info}")
-
-                if tr_bin_info is None:
-                    continue  # Skip if TR does not have bin info
-
-                filtered_vrs = {}
-                for vr_name, vr_data in dgr_data.get('VRs', {}).items():
-                    vr_bin_info = vr_data.get('VR_bin')
-                    print(f"Checking VR {vr_name} of {dgr_name}: vr_bin_info = {vr_bin_info}")
-                    if vr_bin_info == tr_bin_info:
-                        filtered_vrs[vr_name] = vr_data
-                        print(f"Including VR {vr_name} in {dgr_name} because vr_bin {vr_bin_info} == tr_bin {tr_bin_info}")
-
-                # Add to filtered_dgrs only if there are matching VRs
-                if filtered_vrs:
-                    self.dgrs_in_collections[dgr_name] = {**dgr_data, 'VRs': filtered_vrs}
-
-            profile_db.disconnect()
-            contig_db.disconnect()
-
-            return
 
     def get_hmm_info(self):
         """
@@ -1660,11 +1549,7 @@ class DGR_Finder:
             A csv tabular file containing the template and variable regions
 
         """
-
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-        else:
-            dgrs_dict = self.DGRs_found_dict
+        dgrs_dict = self.DGRs_found_dict
 
         if len(dgrs_dict) == 0:
             return
@@ -1762,8 +1647,6 @@ class DGR_Finder:
                 DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
                 DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
                 DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
-
-
         return
 
 
@@ -1783,33 +1666,18 @@ class DGR_Finder:
 
         """
         output_directory_path = self.output_directory
+        print(self.DGRs_found_dict)
 
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-            self.collections_dir = os.path.join(output_directory_path, "DGRs_found_in_collections")
-            if not os.path.exists(self.collections_dir):
-                os.makedirs(self.collections_dir)
-            output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found_with_collections_mode.csv")
-            headers = [
-                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
-                "VR_start_position", "VR_end_position", "VR_bin", "VR_frame",
-                "VR_reverse_comp_for_primer", "Mismatch %", "TR_contig", "TR_frame",
-                "TR_sequence", "Base", "Reverse Complement", "TR_start_position",
-                "TR_end_position", "TR_bin", "TR_reverse_comp_for_primer", "HMM_source",
-                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
-                "HMM_stop", "HMM_gene_callers_id"
-            ]
-        else:
-            dgrs_dict = self.DGRs_found_dict
-            output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
-            headers = [
-                "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
-                "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
-                "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
-                "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
-                "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
-                "HMM_stop", "HMM_gene_callers_id"
-            ]
+        dgrs_dict = self.DGRs_found_dict
+        output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
+        headers = [
+            "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
+            "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
+            "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
+            "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
+            "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
+            "HMM_stop", "HMM_gene_callers_id"
+        ]
 
         # Check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
@@ -1825,34 +1693,19 @@ class DGR_Finder:
 
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    if dgrs_dict == self.DGRs_found_dict:
-                        # Populate csv_row for DGRs_found.csv format
-                        csv_row = [
-                            dgr, vr, vr_data['VR_contig'], vr_data.get('VR_frame', 'N/A'),
-                            vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
-                            vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'),
-                            vr_data['percentage_of_mismatches'], tr['TR_contig'],
-                            vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
-                            tr['base'], vr_data['TR_reverse_complement'],
-                            vr_data['TR_start_position'], vr_data['TR_end_position'],
-                            tr.get('TR_bin', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
-                            tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
-                            tr["HMM_stop"], tr["HMM_gene_callers_id"]
-                        ]
-                    else:
-                        # Populate csv_row for DGRs_found_with_collections_mode.csv format
-                        csv_row = [
-                            dgr, vr, vr_data['VR_contig'], vr_data.get('VR_strand_direction', 'N/A'),
-                            vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
-                            vr_data['VR_end_position'], vr_data.get('VR_bin', 'N/A'), vr_data['VR_frame'],
-                            vr_data.get('VR_reverse_comp_for_primer', 'FALSE'), vr_data['percentage_of_mismatches'],
-                            tr['TR_contig'], vr_data.get('TR_strand_direction', 'N/A'), vr_data['TR_sequence'],
-                            tr['base'], vr_data['TR_reverse_complement'], vr_data['TR_start_position'],
-                            vr_data['TR_end_position'], tr.get('TR_bin', 'N/A'),
-                            vr_data.get('TR_reverse_comp_for_primer', 'FALSE'), tr['HMM_source'],
-                            tr["distance_to_HMM"], tr["HMM_gene_name"], tr["HMM_direction"],
-                            tr["HMM_start"], tr["HMM_stop"], tr["HMM_gene_callers_id"]
-                        ]
+                    # Populate csv_row for DGRs_found.csv format
+                    csv_row = [
+                        dgr, vr, vr_data['VR_contig'], vr_data.get('VR_frame', 'N/A'),
+                        vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
+                        vr_data['VR_end_position'], vr_data.get('VR_bin'),
+                        vr_data['percentage_of_mismatches'], tr['TR_contig'],
+                        vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
+                        tr['base'], vr_data['TR_reverse_complement'],
+                        vr_data['TR_start_position'], vr_data['TR_end_position'],
+                        tr.get('TR_bin', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
+                        tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
+                        tr["HMM_stop"], tr["HMM_gene_callers_id"]
+                    ]
                     csv_writer.writerow(csv_row)
         return
 
@@ -1864,10 +1717,7 @@ class DGR_Finder:
         # in which we will store the genomic context that surrounds dgrs for downstream fun
         self.genomic_context_surrounding_dgrs = {}
 
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-        else:
-            dgrs_dict = self.DGRs_found_dict
+        dgrs_dict = self.DGRs_found_dict
 
         if len(dgrs_dict) == 0:
             return
@@ -2105,10 +1955,7 @@ class DGR_Finder:
             self.run.warning("No genomic context data available to report on any of the DGRs :(")
             return
 
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-        else:
-            dgrs_dict = self.DGRs_found_dict
+        dgrs_dict = self.DGRs_found_dict
 
         # we are in business
         genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
@@ -2122,8 +1969,6 @@ class DGR_Finder:
             # Create output directory for DGR
             if dgrs_dict == self.DGRs_found_dict:
                 dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
-            elif dgrs_dict == self.dgrs_in_collections:
-                dgr_directory = os.path.join(self.collections_dir, "PER_DGR", dgr_id)
 
             filesnpaths.gen_output_directory(dgr_directory, delete_if_exists=False)
 
@@ -2509,10 +2354,10 @@ class DGR_Finder:
             return
         print(f'self.samples_txt_dict:', self.samples_txt_dict)
 
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-        else:
-            dgrs_dict = self.DGRs_found_dict
+        #if self.collections_mode:
+            #dgrs_dict = self.dgrs_in_collections
+        #else:
+        dgrs_dict = self.DGRs_found_dict
 
         if not len(dgrs_dict):
             self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
@@ -2812,7 +2657,7 @@ class DGR_Finder:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'dgrs',
-                                'num_dgrs': len(self.dgrs_in_collections) if self.collections_mode else len(self.DGRs_found_dict),
+                                'num_dgrs': len(self.DGRs_found_dict), # len(self.dgrs_in_collections) if self.collections_mode else
                                 #'num_samples': len(self.profile_db_paths) if self.collections_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
@@ -2827,10 +2672,10 @@ class DGR_Finder:
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
 
-        if self.collections_mode:
-            dgrs_dict = self.dgrs_in_collections
-        else:
-            dgrs_dict = self.DGRs_found_dict
+        #if self.collections_mode:
+            #dgrs_dict = self.dgrs_in_collections
+        #else:
+        dgrs_dict = self.DGRs_found_dict
 
         for dgr_key, dgr_data in dgrs_dict.items():
             # Assuming dgr_key itself is the dgr_id or a dictionary containing it
@@ -3056,12 +2901,8 @@ class DGR_Finder:
         """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
         self.sanity_check()
         self.get_blast_results()
-        self.filter_blastn_for_none_identical()
+        self.process_blast_results()
         self.filter_for_TR_VR()
-        if self.collections_mode:
-            self.run.info_single("Running collections mode")
-            print('\n')
-            self.collections_mode_func()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.")
             print('\n')
