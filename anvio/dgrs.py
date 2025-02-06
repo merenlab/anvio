@@ -733,6 +733,159 @@ class DGR_Finder:
                     print(sequence.seq)
         return section_sequences
 
+    def process_blast_results(self, max_percent_identity=100):
+        """
+        Process BLAST output depending on whether collections_mode is enabled.
+        If collections_mode is True, process multiple bins separately and merge results.
+        If collections_mode is False, process a single BLAST output normally.
+        :param max_percent_identity: Maximum percentage identity threshold (default 100%).
+        :return: Dictionary of mismatch hits.
+        """
+
+        # If collections_mode is enabled, process multiple bins separately
+        if self.collections_mode:
+            print("\n🔄 Collections mode enabled: Processing multiple bins separately.")
+            self.merged_mismatch_hits = {}  # Store combined results
+
+            tmp_directory_path = self.temp_dir
+
+            for bin_name in self.bin_names_list:
+                print(f"\n🔍 Processing BLAST output for bin: {bin_name}")
+
+                # Reset mismatch hits for each bin
+                self.mismatch_hits = {}
+
+                blast_file = os.path.join(
+                    tmp_directory_path,
+                    f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml"
+                )
+
+                if not os.path.exists(blast_file):
+                    print(f"⚠️ Warning: BLAST output file for {bin_name} not found. Skipping...")
+                    continue
+
+                # Parse XML file for the current bin
+                tree = ET.parse(blast_file)
+                root = tree.getroot()
+
+                # Process mismatches from this bin
+                self._process_single_bin(root, bin_name, max_percent_identity)
+
+                # Merge results into `merged_mismatch_hits`
+                for hit_identity, hit_data in self.mismatch_hits.items():
+                    self.merged_mismatch_hits.setdefault(hit_identity, []).append(hit_data)
+
+            print("\n✅ All bins processed. Final merged mismatch hits summary:")
+            print(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
+            return self.merged_mismatch_hits
+
+        else:
+            print("\n🔄 Collections mode disabled: Processing single BLAST output normally.")
+
+            # Single BLAST output processing
+            self.mismatch_hits = {}
+
+            # Parse the standard BLAST output
+            tree = ET.parse(self.blast_output)
+            root = tree.getroot()
+
+            # Process the BLAST output normally
+            self._process_single_bin(root, bin_name=None, max_percent_identity=max_percent_identity)
+
+            print("\n✅ Single BLAST output processed.")
+            return self.mismatch_hits
+
+
+
+    def _process_single_bin(self, root, bin_name, max_percent_identity):
+        """
+        Process a single bin's BLAST XML data and store mismatch hits.
+        If bin_name is None, it means we're processing a single BLAST output.
+        """
+        for iteration in root.findall(".//Iteration"):
+            for hit in iteration.findall(".//Hit"):
+                for hsp in hit.findall(".//Hsp"):
+                    identical_positions = int(hsp.find('Hsp_identity').text)
+                    alignment_length = int(hsp.find('Hsp_align-len').text)
+                    percentage_identity = (identical_positions / alignment_length) * 100
+
+                    if percentage_identity < max_percent_identity:
+                        section_id = iteration.find('Iteration_query-def').text
+                        hsp_num = hsp.find('Hsp_num').text
+
+                        hit_identity = '_'.join([section_id, f'_BLAST_hsp_is_{hsp_num}'])
+                        pattern = r"start_bp(\d+)_end_bp(\d+)"
+
+                        match = re.search(pattern, section_id)
+                        query_start_position = int(match.group(1))
+                        query_end_position = int(match.group(2))
+
+                        qseq = str(hsp.find('Hsp_qseq').text)
+                        hseq = str(hsp.find('Hsp_hseq').text)
+                        midline = str(hsp.find('Hsp_midline').text)
+
+                        subject_genome_start_position = min(
+                            [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)]
+                        )
+                        subject_genome_end_position = max(
+                            [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)]
+                        )
+                        query_genome_start_position = query_start_position + min(
+                            [int(hsp.find('Hsp_query-from').text) - 1, int(hsp.find('Hsp_query-to').text)]
+                        )
+                        query_genome_end_position = query_start_position + max(
+                            [int(hsp.find('Hsp_query-from').text) - 1, int(hsp.find('Hsp_query-to').text)]
+                        )
+                        query_frame = str(hsp.find('Hsp_query-frame').text)
+                        subject_frame = str(hsp.find('Hsp_hit-frame').text)
+
+                        query_mismatch_positions = []
+                        all_possible_characters = set(qseq + hseq)
+
+                        query_mismatch_counts = {char: 0 for char in all_possible_characters}
+                        subject_mismatch_counts = {char: 0 for char in all_possible_characters}
+
+                        chars_to_skip = []
+                        if self.skip_Ns:
+                            chars_to_skip.append('N')
+                        if self.skip_dashes:
+                            chars_to_skip.append('-')
+
+                        for idx in range(len(qseq)):
+                            if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
+                                continue
+                            if qseq[idx] != hseq[idx]:
+                                query_mismatch_counts[qseq[idx]] += 1
+                                query_mismatch_positions.append(idx)
+                                subject_mismatch_counts[hseq[idx]] += 1
+
+                        query_contig = section_id.split('_section', 1)[0]
+                        subject_contig = hit.find('Hit_def').text
+
+                        self.mismatch_hits[hit_identity] = {
+                            'bin': bin_name if bin_name else "single",
+                            'query_seq': qseq,
+                            'hit_seq': hseq,
+                            'midline': midline,
+                            'query_contig': query_contig,
+                            'subject_contig': subject_contig,
+                            'subject_genome_start_position': subject_genome_start_position,
+                            'subject_genome_end_position': subject_genome_end_position,
+                            'query_mismatch_counts': query_mismatch_counts,
+                            'subject_mismatch_counts': subject_mismatch_counts,
+                            'position': query_mismatch_positions,
+                            'alignment_length': alignment_length,
+                            'query_genome_start_position': query_genome_start_position,
+                            'query_genome_end_position': query_genome_end_position,
+                            'query_frame': query_frame,
+                            'subject_frame': subject_frame
+                        }
+
+        if bin_name:
+            print(f"✅ Finished processing bin: {bin_name}")
+        else:
+            print("✅ Finished processing single BLAST output.")
+
 
     def filter_blastn_for_none_identical(self):
         """
@@ -753,80 +906,126 @@ class DGR_Finder:
         =======
 
         """
-        tree = ET.parse(self.blast_output)
-        root = tree.getroot()
-
         max_percent_identity = 100
         self.mismatch_hits = {}
 
+        if self.collections_mode:
+            # Define the output path for merged XML
+            tmp_directory_path = self.temp_dir
+            merged_blast_file = os.path.join(tmp_directory_path, "merged_blast_results.xml")
+
+            # Create a new root element for the merged XML
+            merged_root = None
+
+            for bin_name in self.bin_names_list:
+                blast_file = os.path.join(tmp_directory_path, f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml")
+
+                if os.path.exists(blast_file):
+                    tree = ET.parse(blast_file)
+                    root = tree.getroot()
+
+                    if merged_root is None:
+                        # Clone the first file's entire structure
+                        merged_root = root
+                    else:
+                        # Find the <BlastOutput_iterations> element and merge its children
+                        merged_iterations = merged_root.find(".//BlastOutput_iterations")
+                        iterations = root.find(".//BlastOutput_iterations")
+
+                        if merged_iterations is not None and iterations is not None:
+                            for iteration in iterations:
+                                merged_iterations.append(iteration)
+
+                    print(f"Added {blast_file} to merged XML.")
+
+            # Save the merged XML
+            if merged_root is not None:
+                merged_tree = ET.ElementTree(merged_root)
+                merged_tree.write(merged_blast_file, encoding="utf-8", xml_declaration=True)
+                print(f"Merged XML written to {merged_blast_file}")
+
+                # Update self.blast_output to use the merged file
+                self.blast_output = merged_blast_file
+                # Reload the merged XML and print summary
+                tree = ET.parse(self.blast_output)
+                root = tree.getroot()
+                print(f"Total queries processed: {len(root.findall('.//Iteration'))}")
+                print(f"✅ Merged XML contains {len(iterations)} Iteration elements (queries).")
+                print(f"📂 Merged XML file saved at: {self.blast_output}")
+            else:
+                print("No valid BLAST files found. Skipping merge.")
+
+        # Now, proceed with the original parsing logic using the merged file
+        tree = ET.parse(self.blast_output)
+        root = tree.getroot()
+
         for iteration in root.findall(".//Iteration"):
+            section_id = iteration.find('Iteration_query-def').text
+            print(f"🔎 Processing query: {section_id}")
             for hit in iteration.findall(".//Hit"):
+                hit_id = hit.find("Hit_def").text
+                print(f"   ↳ Found Hit: {hit_id}")
+                print("-" * 40)  # Just for readability
                 for hsp in hit.findall(".//Hsp"):
-                    # Get the number of identical positions and their alignment length
                     identical_positions = int(hsp.find('Hsp_identity').text)
                     alignment_length = int(hsp.find('Hsp_align-len').text)
-
                     percentage_identity = (identical_positions / alignment_length) * 100
 
-                    # Check if the percentage identity is within the threshold (under 100%)
                     if percentage_identity < max_percent_identity:
-                        #need to write in the objects for the list
                         section_id = iteration.find('Iteration_query-def').text
                         hsp_num = hsp.find('Hsp_num').text
-
+                        print(f"Debug: Processing hit for bin = {bin_name}")
                         hit_identity = '_'.join([section_id, f'_BLAST_hsp_is_{hsp_num}'])
                         pattern = r"start_bp(\d+)_end_bp(\d+)"
 
-                        # Use re.search to find the pattern in the input string
                         match = re.search(pattern, section_id)
-
-                        # Extract the start and end values from the matched groups
-                        query_start_position = int(match.group(1))
-                        query_end_position = int(match.group(2))
-
-                        self.mismatch_hits[hit_identity] = {}
+                        if match:
+                            query_start_position = int(match.group(1))
+                            query_end_position = int(match.group(2))
+                        else:
+                            print(f"Warning: No match found for section_id: {section_id}")
+                            query_start_position, query_end_position = 0, 0
 
                         qseq = str(hsp.find('Hsp_qseq').text)
                         hseq = str(hsp.find('Hsp_hseq').text)
                         midline = str(hsp.find('Hsp_midline').text)
                         subject_genome_start_position = min([int(hsp.find('Hsp_hit-from').text)-1, int(hsp.find('Hsp_hit-to').text)])
                         subject_genome_end_position = max([int(hsp.find('Hsp_hit-from').text)-1, int(hsp.find('Hsp_hit-to').text)])
-                        alignment_length = int(hsp.find('Hsp_align-len').text)
                         query_genome_start_position = query_start_position + min([int(hsp.find('Hsp_query-from').text)-1, int(hsp.find('Hsp_query-to').text)])
                         query_genome_end_position = query_start_position + max([int(hsp.find('Hsp_query-from').text)-1, int(hsp.find('Hsp_query-to').text)])
                         query_frame = str(hsp.find('Hsp_query-frame').text)
                         subject_frame = str(hsp.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
-
-                        # Unique characters that may appear in qseq and hseq
                         all_possible_characters = set(qseq + hseq)
-
-                        # Initialize counts with all possible characters
                         query_mismatch_counts = {char: 0 for char in all_possible_characters}
                         subject_mismatch_counts = {char: 0 for char in all_possible_characters}
-
                         chars_to_skip = []
 
                         if self.skip_Ns:
                             chars_to_skip.append('N')
                         if self.skip_dashes:
                             chars_to_skip.append('-')
+
                         for idx in range(len(qseq)):
-                            if qseq[idx] in chars_to_skip:
-                                continue
-                            if hseq[idx] in chars_to_skip:
+                            if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
                                 continue
                             if qseq[idx] != hseq[idx]:
-                                query_mismatch_counts[qseq[idx]]+=1
+                                query_mismatch_counts[qseq[idx]] += 1
                                 query_mismatch_positions.append(idx)
-                                subject_mismatch_counts[hseq[idx]]+=1
+                                subject_mismatch_counts[hseq[idx]] += 1
 
-                        # get contigs name
                         query_contig = section_id.split('_section', 1)[0]
                         subject_contig = hit.find('Hit_def').text
 
+                        # **FIX: Store mismatches for each bin instead of overwriting**
+                        if hit_identity not in self.mismatch_hits:
+                            self.mismatch_hits[hit_identity] = []
+
+                        print(f"Debug: Processing hit for bin = {bin_name}")
+
                         self.mismatch_hits[hit_identity] = {
+                            'bin': bin_name,
                             'query_seq': qseq,
                             'hit_seq': hseq,
                             'midline': midline,
@@ -842,7 +1041,10 @@ class DGR_Finder:
                             'query_genome_end_position': query_genome_end_position,
                             'query_frame': query_frame,
                             'subject_frame': subject_frame
-                            }
+                        }
+        print("\nBins found in mismatch_hits:")
+        print(set(hit["bin"] for hit_list in self.mismatch_hits.values() for hit in hit_list))
+        print(f"\n self.mismatch_hits = {self.mismatch_hits}")
         return self.mismatch_hits
 
 
