@@ -2651,6 +2651,9 @@ class DGR_Finder:
         or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
         IT DON'T LOOK AT IT. IT MIGHT MAKE YOU CRY
         """
+        if not len(self.DGRs_found_dict):
+            self.run.warning("No DGRs were found so no HTML file will be written :(")
+            return
 
         # in which we will store all the static HTML output related stuff
         self.summary = {}
