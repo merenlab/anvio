@@ -4879,7 +4879,8 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned
 
@@ -4906,11 +4907,18 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
+            if delims == "" and parens_level == 0: 
+                splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
+                last_split_index = i + 1
+        elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character
+            splits.append(d[i])
+            last_split_index = i + 1
 
         # if parentheses become unbalanced, return False to indicate this
         if parens_level < 0:
             return False
-    splits.append(d[last_split_index:len(d)])
+    if last_split_index != len(d):
+        splits.append(d[last_split_index:len(d)])
 
     if return_delims:
         return splits, delim_list
