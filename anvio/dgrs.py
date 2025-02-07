@@ -844,7 +844,6 @@ class DGR_Finder:
                         #test for not quite tandem repeats using pytrf
                         for ssr in pytrf.ATRFinder('name', qseq):
                             if int(ssr.repeat) > 10:
-                                print("we are over 10")
                                 break
 
                         subject_genome_start_position = min(
