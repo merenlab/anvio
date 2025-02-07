@@ -825,9 +825,14 @@ class DGR_Finder:
                         midline = str(hsp.find('Hsp_midline').text)
 
                         #test for not quite tandem repeats using pytrf
+                        has_repeat = False
                         for ssr in pytrf.ATRFinder('name', qseq):
                             if int(ssr.repeat) > 10:
-                                break
+                                has_repeat = True
+
+                        #breakout
+                        if has_repeat:
+                            continue
 
                         subject_genome_start_position = min(
                             [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
