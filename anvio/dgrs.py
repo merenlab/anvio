@@ -1721,7 +1721,7 @@ class DGR_Finder:
         kmer_frequencies = {}
 
         # Create an instance of KMers (ensure you pass any necessary arguments like k)
-        kmer_instance = KMers
+        kmer_instance = KMers (k=4)
 
         for dgr_id, tr_data in self.DGRs_found_dict.items():
             print(f"Processing DGR {dgr_id}")
