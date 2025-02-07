@@ -10,6 +10,7 @@ import shutil
 import argparse
 import copy
 import json
+import pytrf
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -22,8 +23,7 @@ import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import multiprocess as multiprocessing
-#import anvio.ccollections as ccollections
-from anvio.kmers import KMers
+
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
@@ -841,6 +841,12 @@ class DGR_Finder:
                         hseq = str(hsp.find('Hsp_hseq').text)
                         midline = str(hsp.find('Hsp_midline').text)
 
+                        #test for not quite tandem repeats using pytrf
+                        for ssr in pytrf.ATRFinder('name', qseq):
+                            if int(ssr.repeat) > 10:
+                                print("we are over 10")
+                                break
+
                         subject_genome_start_position = min(
                             [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
                         subject_genome_end_position = max(
@@ -1471,60 +1477,6 @@ class DGR_Finder:
                         tr["HMM_stop"], tr["HMM_gene_callers_id"]
                     ]
                     csv_writer.writerow(csv_row)
-        return
-
-
-
-    def get_kmer_freq_of_all_dgrs(self):
-        """
-        Get the kmer frequency for each TR and VRs.
-
-        """
-        from collections import Counter
-        kmer_frequencies = {}
-
-        # Create an instance of KMers (ensure you pass any necessary arguments like k)
-        kmer_instance = KMers (k=4)
-
-        for dgr_id, tr_data in self.DGRs_found_dict.items():
-            print(f"Processing DGR {dgr_id}")
-
-            # Compute k-mer frequency for TR sequence
-            tr_kmer_freq = kmer_instance.get_kmer_frequency(tr_data['TR_sequence'])
-
-            # Use Counter to count the k-mer frequencies for TR sequence
-            tr_kmer_counter = Counter(tr_kmer_freq)
-            # Get the most common k-mer for TR
-            most_common_tr_kmer, most_common_tr_count = tr_kmer_counter.most_common(1)[0]
-
-            # Store TR k-mer frequency and most common k-mer info
-            kmer_frequencies[dgr_id] = {'TR': {'kmer_freq': tr_kmer_freq,
-                                            'most_common_kmer': most_common_tr_kmer,
-                                            'most_common_count': most_common_tr_count},
-                                        'VRs': {}}
-
-            # Compute k-mer frequencies for each VR sequence
-            for vr_id, vr_data in tr_data['VRs'].items():
-                vr_kmer_freq = kmer_instance.get_kmer_frequency(vr_data['VR_sequence'])
-
-                # Use Counter to count the k-mer frequencies for VR sequence
-                vr_kmer_counter = Counter(vr_kmer_freq)
-                # Get the most common k-mer for VR
-                most_common_vr_kmer, most_common_vr_count = vr_kmer_counter.most_common(1)[0]
-
-                # Store VR k-mer frequency and most common k-mer info
-                kmer_frequencies[dgr_id]['VRs'][vr_id] = {'kmer_freq': vr_kmer_freq,
-                                                        'most_common_kmer': most_common_vr_kmer,
-                                                        'most_common_count': most_common_vr_count}
-
-        # Optionally, print the k-mer frequencies with the most common k-mers
-        for dgr_id, dgr_data in kmer_frequencies.items():
-            print(f"DGR {dgr_id}:")
-            print(f"  TR - Most Common K-mer: {dgr_data['TR']['most_common_kmer']} (Count: {dgr_data['TR']['most_common_count']})")
-            for vr_id, vr_data in dgr_data['VRs'].items():
-                print(f"  VR {vr_id} - Most Common K-mer: {vr_data['most_common_kmer']} (Count: {vr_data['most_common_count']})")
-
-            #print(f"kmer frequencies: {kmer_frequencies}")
         return
 
 
@@ -2724,7 +2676,6 @@ class DGR_Finder:
         self.get_blast_results()
         self.process_blast_results()
         self.filter_for_TR_VR()
-        self.get_kmer_freq_of_all_dgrs()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.")
             print('\n')
