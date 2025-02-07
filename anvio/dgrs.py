@@ -240,6 +240,7 @@ class DGR_Finder:
                     raise ConfigError("You asked anvi'o to calculate DGR profiling variability across samples, but your samples-txt "
                                     "does not include raw R1/R2 reads :(")
 
+
     def get_blast_results(self):
         """
         This function runs the BLASTn search, which uses sequences with high SNVs as the query and the contigs.db sequences as the target sequences.
@@ -304,7 +305,6 @@ class DGR_Finder:
                 # Dictionary to store splits by bin_name
                 bin_splits_dict = {}
 
-                print(f"split_collection_dict {self.split_collections_dict}")
                 # Iterate through the entries in self.split_collections_dict
                 for key, value in self.split_collections_dict.items():
                     bin_name = value['bin_name']
@@ -316,21 +316,16 @@ class DGR_Finder:
 
                     # Append the split to the corresponding bin's list
                     bin_splits_dict[bin_name].append(split)
-                    #print(f"bin splits dict {bin_splits_dict}")
                 self.bin_names_list = list(bin_splits_dict.keys())
-                #print(f"self.bin_names_list: {self.bin_names_list}")
 
                 # Now process each bin and create subsets based on the splits list
                 for bin_name, bin_splits_list in bin_splits_dict.items():
-                    #print(f"Bin Name: {bin_name}, Splits List: {bin_splits_list}")
 
                     # Extract the contig names from split names
                     bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-                    #print(bin_contigs)
 
                     # Subset self.contig_sequences using the extracted contig names
                     bin_contig_sequences = {contig: self.contig_sequences[contig] for contig in bin_contigs if contig in self.contig_sequences}
-
 
                     profile_db = dbops.ProfileDatabase(self.profile_db_path)
                     #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
@@ -338,14 +333,11 @@ class DGR_Finder:
                     self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
 
                     self.split_names_unique = bin_splits_list
-                    #print(f"split_names_unique = {self.split_names_unique}")
 
                     profile_db.disconnect()
 
                     # Filter snv_panda by the list of splits associated with this bin
                     self.snv_panda = self.snv_panda_bin[self.snv_panda_bin['split_name'].isin(bin_splits_list)]
-
-                    #print(f"Subset for Bin {bin_name}:")
 
                     sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
@@ -358,7 +350,6 @@ class DGR_Finder:
                     # filter snv_panda for min departure from ref and codon position
                     if self.discovery_mode:
                         self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora!")
-                        print("I am in discovery mode")
                         self.snv_panda = self.snv_panda.loc[self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage]
                     else:
                         self.snv_panda = self.snv_panda.loc[(self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
@@ -413,7 +404,6 @@ class DGR_Finder:
                                 self.all_possible_windows[contig_name].append((window_start, window_end))
 
                     all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
-                    #print("I made it through the splits of the samples")
                     # loop to merge overlaps within a given contig
                     for contig_name, window_list in self.all_possible_windows.items():
                         # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
@@ -446,7 +436,6 @@ class DGR_Finder:
                             merged_windows_in_contig.append(merged_ranges)
 
                         all_merged_snv_windows[contig_name] = merged_windows_in_contig
-                        #print(f"all merged windows: {all_merged_snv_windows}")
 
                     #export contigs_db to fasta file
                     utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path, seq_names_to_export=sorted(list(bin_contig_sequences.keys())))
