@@ -1430,7 +1430,7 @@ class DGR_Finder:
 
         """
         output_directory_path = self.output_directory
-        print(self.DGRs_found_dict)
+        #print(self.DGRs_found_dict)
 
         dgrs_dict = self.DGRs_found_dict
         output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
