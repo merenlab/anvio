@@ -750,13 +750,11 @@ class DGR_Finder:
 
         # If collections_mode is enabled, process multiple bins separately
         if self.collections_mode:
-            #print("\n🔄 Collections mode enabled: Processing multiple bins separately.")
             self.merged_mismatch_hits = {}  # Store combined results
 
             tmp_directory_path = self.temp_dir
 
             for bin_name in self.bin_names_list:
-                #print(f"\n🔍 Processing BLAST output for bin: {bin_name}")
 
                 # Reset mismatch hits for each bin
                 self.mismatch_hits = {}
@@ -767,7 +765,7 @@ class DGR_Finder:
                 )
 
                 if not os.path.exists(blast_file):
-                    print(f"⚠️ Warning: BLAST output file for {bin_name} not found. Skipping...")
+                    self.run.warning(f"Warning: BLAST output file for {bin_name} not found. Skipping...")
                     continue
 
                 # Parse XML file for the current bin
@@ -781,13 +779,10 @@ class DGR_Finder:
                 for hit_identity, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity, []).append(hit_data)
 
-            print("\n✅ All bins processed. Final merged mismatch hits summary:")
-            print(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
+            self.run.info(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
 
         else:
-            print("\n🔄 Collections mode disabled: Processing single BLAST output normally.")
-
             # Single BLAST output processing
             self.mismatch_hits = {}
 
@@ -798,7 +793,6 @@ class DGR_Finder:
             # Process the BLAST output normally
             self.process_single(root, bin_name=None, max_percent_identity=max_percent_identity)
 
-            print("\n✅ Single BLAST output processed.")
             return self.mismatch_hits
 
 
@@ -888,11 +882,6 @@ class DGR_Finder:
                             'subject_frame': subject_frame
                         }
 
-        if bin_name:
-            print(f"✅ Finished processing bin: {bin_name}")
-        else:
-            print("✅ Finished processing single BLAST output.")
-
 
 
     def add_new_DGR(self, DGR_number, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
@@ -923,7 +912,6 @@ class DGR_Finder:
         """
 
         DGR_key = f'DGR_{DGR_number:03d}'
-        #print(f"adding new DGR, {DGR_key}. TR_is_query: {TR_is_query}")
         self.DGRs_found_dict[DGR_key] = {}
         # TR stuff
         self.DGRs_found_dict[DGR_key]['TR_sequence'] = TR_sequence
@@ -1101,7 +1089,7 @@ class DGR_Finder:
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
-                            print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                            self.run.info(f"Adding new DGR {num_DGR} with bin: {bin}")
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
@@ -1120,7 +1108,7 @@ class DGR_Finder:
                                     break
                             if not was_added:
                                 # add new TR and its first VR
-                                print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                                self.run.info(f"Adding new DGR {num_DGR} with bin: {bin}")
                                 num_DGR += 1
                                 self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
