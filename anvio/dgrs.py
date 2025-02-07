@@ -316,17 +316,17 @@ class DGR_Finder:
 
                     # Append the split to the corresponding bin's list
                     bin_splits_dict[bin_name].append(split)
-                    print(f"bin splits dict {bin_splits_dict}")
+                    #print(f"bin splits dict {bin_splits_dict}")
                 self.bin_names_list = list(bin_splits_dict.keys())
-                print(f"self.bin_names_list: {self.bin_names_list}")
+                #print(f"self.bin_names_list: {self.bin_names_list}")
 
                 # Now process each bin and create subsets based on the splits list
                 for bin_name, bin_splits_list in bin_splits_dict.items():
-                    print(f"Bin Name: {bin_name}, Splits List: {bin_splits_list}")
+                    #print(f"Bin Name: {bin_name}, Splits List: {bin_splits_list}")
 
                     # Extract the contig names from split names
                     bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-                    print(bin_contigs)
+                    #print(bin_contigs)
 
                     # Subset self.contig_sequences using the extracted contig names
                     bin_contig_sequences = {contig: self.contig_sequences[contig] for contig in bin_contigs if contig in self.contig_sequences}
@@ -338,14 +338,14 @@ class DGR_Finder:
                     self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
 
                     self.split_names_unique = bin_splits_list
-                    print(f"split_names_unique = {self.split_names_unique}")
+                    #print(f"split_names_unique = {self.split_names_unique}")
 
                     profile_db.disconnect()
 
                     # Filter snv_panda by the list of splits associated with this bin
                     self.snv_panda = self.snv_panda_bin[self.snv_panda_bin['split_name'].isin(bin_splits_list)]
 
-                    print(f"Subset for Bin {bin_name}:")
+                    #print(f"Subset for Bin {bin_name}:")
 
                     sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
@@ -413,7 +413,7 @@ class DGR_Finder:
                                 self.all_possible_windows[contig_name].append((window_start, window_end))
 
                     all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
-                    print("I made it through the splits of the samples")
+                    #print("I made it through the splits of the samples")
                     # loop to merge overlaps within a given contig
                     for contig_name, window_list in self.all_possible_windows.items():
                         # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
@@ -446,7 +446,7 @@ class DGR_Finder:
                             merged_windows_in_contig.append(merged_ranges)
 
                         all_merged_snv_windows[contig_name] = merged_windows_in_contig
-                        print(f"all merged windows: {all_merged_snv_windows}")
+                        #print(f"all merged windows: {all_merged_snv_windows}")
 
                     #export contigs_db to fasta file
                     utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path, seq_names_to_export=sorted(list(bin_contig_sequences.keys())))
