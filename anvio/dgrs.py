@@ -779,7 +779,7 @@ class DGR_Finder:
                 for hit_identity, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity, []).append(hit_data)
 
-            self.run.info(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
+            print(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
 
         else:
@@ -1094,7 +1094,7 @@ class DGR_Finder:
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
-                            self.run.info(f"Adding new DGR {num_DGR} with bin: {bin}")
+                            print(f"Adding new DGR {num_DGR} with bin: {bin}")
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
@@ -1113,7 +1113,7 @@ class DGR_Finder:
                                     break
                             if not was_added:
                                 # add new TR and its first VR
-                                self.run.info(f"Adding new DGR {num_DGR} with bin: {bin}")
+                                print(f"Adding new DGR {num_DGR} with bin: {bin}")
                                 num_DGR += 1
                                 self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
@@ -1417,7 +1417,6 @@ class DGR_Finder:
 
         """
         output_directory_path = self.output_directory
-        #print(self.DGRs_found_dict)
 
         dgrs_dict = self.DGRs_found_dict
         output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
