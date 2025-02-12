@@ -3314,6 +3314,27 @@ D = {
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
                     "pathwise vs stepwise completeness."}
                 ),
+    'use-equivalent-amino-acids': (
+            ['--use-equivalent-amino-acids'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Some amino acid metabolic interactions can be missed because there are different "
+                     "compound IDs in the ModelSEED database for L- and non-stereo-specific versions of amino acids (like "
+                     "'Valine' vs 'L-Valine'. If you choose this option, anvi'o will find these pairs of equivalent amino acid "
+                     "compounds and use them interchangeably for identifying potential interactions. You will get an output file "
+                     "showing you which compounds were considered equivalent, so that you can complain if you don't agree with them."}
+                ),
+     'custom-equivalent-compounds-file': (
+            ['--custom-equivalent-compounds-file'], 
+            {'default': False,
+             'metavar': 'FILE',
+             'required': False, 
+             'help': "If you have your own set of equivalent ModelSEED compound IDs, you can make sure "
+                     "we use them by providing them in a tab-delimited file to this parameter. The file should have at least the following "
+                     "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
+                     "so if you want amino acid equivalents to be used, include them in this file."}
+                ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
