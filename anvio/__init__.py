@@ -671,6 +671,14 @@ D = {
                      "A file name must be provided. To learn more about how the functional occurrence is computed, please "
                      "refer to the tutorial."}
                 ),
+    'qlambda': (
+            ['--qlambda'],
+            {'default': None,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "If you want to set the maximum lambda value for q-value estimation, provide a fraction between "
+                     "0.05 and 1."}
+                ),
     'table': (
             ['--table'],
             {'metavar': 'TABLE_NAME',
