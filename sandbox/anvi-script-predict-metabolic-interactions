@@ -1,0 +1,300 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.reactionnetwork as rn
+
+from anvio.dbops import ContigsDatabase
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
+
+__copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['ivagljiva']
+__requires__ = ['contigs-db'] #TODO: add equivalent-compounds-txt as new artifact
+__provides__ = []
+__description__ = "Predicts metabolic interactions between microbes based on the reaction network"
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+@time_program
+def main(args):
+
+    #input sanity checks
+    if args.contigs_db_1 or args.contigs_db_2:
+        if not args.contigs_db_2 or not args.contigs_db_1:
+            raise ConfigError("You need two contigs databases for this to work.")
+    if args.use_equivalent_amino_acids and args.custom_equivalent_compounds_file:
+        raise ConfigError("You can only provide one of `--use-equivalent-amino-acids` and `--custom-equivalent-compounds-file`. If you "
+                        "want to equate L- and non-stereo-specific amino acid IDs, you should include them in your custom equivalents file. "
+                        "(Pro tip: the easiest way to do that is to run this program once with just `--use-equivalent-amino-acids` to get the "
+                        "AA equivalents file, and modify from there)")
+
+    eq_compounds = {}
+    run.info("Using equivalent L- and non-stereo-specific amino acid compound IDs", args.use_equivalent_amino_acids)
+    if args.use_equivalent_amino_acids:
+        eq_compounds = find_equivalent_amino_acids(args)
+    elif args.custom_equivalent_compounds_file:
+        run.info("Custom equivalent compounds file", args.custom_equivalent_compounds_file)
+        eq_compounds = utils.get_TAB_delimited_file_as_dictionary(args.custom_equivalent_compounds_file, expected_fields=['compound_id','equivalent_id'])
+        # make sure each match is in there twice for easy lookups from either direction
+        pairs_to_add = {}
+        for c, match in eq_compounds.items():
+            c2 = match['equivalent_id']
+            if c2 not in eq_compounds:
+                pairs_to_add[c2] = {'equivalent_id': c}
+            elif eq_compounds[c2]['equivalent_id'] != c:
+                raise ConfigError(f"While parsing your file of custom equivalent compound IDs, we found a pair of equivalents that don't match: "
+                                    f"compound {c} is paired with {c2}, while {c2} is paired with {eq_compounds[c2]['equivalent_id']}. You should probably "
+                                    f"fix that.")
+        if pairs_to_add:
+            eq_compounds.update(pairs_to_add)
+            if anvio.DEBUG:
+                run.warning(f"Found {len(pairs_to_add)} inverse pairs of equivalent compounds that were not in the equivalent compounds file. "
+                                    f"These have been added to the dictionary of equivalent compounds. Here is the set of missing pairs: {pairs_to_add}. ",
+                                    header="DEBUG", lc="yellow")
+
+    constructor = rn.Constructor()
+    run.info("Loading reaction network from database", args.contigs_db_1)
+    net_1 = constructor.load_network(contigs_db=args.contigs_db_1, quiet=True)
+    run.info("Loading reaction network from database", args.contigs_db_2)
+    net_2 = constructor.load_network(contigs_db=args.contigs_db_2, quiet=True) 
+
+    # we need to merge the networks into one and for that we need to arbitrarily increase the gcids in the second network
+    # TODO: move this into the merge function itself, and do it smarter by looking for the max gcid in network 1
+    new_genes = {}
+    for gcid, gene in net_2.genes.items():
+        new_genes[gcid + 10000] = gene
+        new_genes[gcid + 10000].gcid = gcid + 10000 # this changes the original Gene object so it is reflected in old net_2.genes attribute
+    net_2.genes = new_genes
+
+    # keep track of genomes of origin (network 1 will be the base so we annotate shared nodes in there)
+    # TODO: make this a function, and call it from merge function
+    db_names = []
+    for db in [args.contigs_db_1, args.contigs_db_2]:
+        contigs_db = ContigsDatabase(db)
+        db_names.append(contigs_db.meta['project_name'])
+        contigs_db.disconnect()
+    # second genome of origin
+    for id, obj in net_2.genes.items():
+        obj.genomes_of_origin = db_names[1]
+    for id, obj in net_2.kos.items():
+        obj.genomes_of_origin = db_names[1]
+    for id, obj in net_2.metabolites.items():
+        obj.genomes_of_origin = db_names[1]
+    for id, obj in net_2.reactions.items():
+        obj.genomes_of_origin = db_names[1]
+    # first genome of origin
+    for gid, gene in net_1.genes.items():
+        gene.genomes_of_origin = db_names[0]
+    # for anything that is shared (not genes), manually add second genome
+    for id, obj in net_1.kos.items():
+        if id in net_2.kos:
+            obj.genomes_of_origin = ",".join(db_names)
+        else:
+            obj.genomes_of_origin = db_names[0]
+    for id, obj in net_1.metabolites.items():
+        if id in net_2.metabolites:
+            obj.genomes_of_origin = ",".join(db_names)
+        else:
+            obj.genomes_of_origin = db_names[0]
+    for id, obj in net_1.reactions.items():
+        if id in net_2.reactions:
+            obj.genomes_of_origin = ",".join(db_names)
+        else:
+            obj.genomes_of_origin = db_names[0]
+
+    merged = net_1.merge_network(net_2)
+    assert len(merged.genes) == len(net_1.genes) + len(net_2.genes)
+    run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
+
+    # TODO: make this a function of the ReactionNetwork class?
+    def get_reaction_equation(reaction_value):
+        sub_list = []
+        prod_list = []
+        for compound, coeff in zip(reaction_value.compound_ids, reaction_value.coefficients):
+                if compound in net_1.metabolites:
+                    name = net_1.metabolites[compound].modelseed_name
+                else:
+                    name = net_2.metabolites[compound].modelseed_name
+                if coeff < 0:
+                    sub_list.append(f"{coeff*-1} {name}")
+                else:
+                    prod_list.append(f"{coeff} {name}")
+                arrow = " --> "
+                if reaction.reversibility:
+                    arrow = " <-> "
+        return " + ".join(sub_list) + arrow + " + ".join(prod_list)
+
+    # loop over all metabolites
+    potentially_exchanged_compounds = {}
+    unique_compounds = {}
+    num_compounds_to_process = len(merged.metabolites)
+    processed_count=0
+    progress.new('Processing compounds', progress_total_items=num_compounds_to_process)
+    for compound_id in merged.metabolites:
+        compound_name = merged.metabolites[compound_id].modelseed_name
+        if anvio.DEBUG:
+            progress.reset()
+            run.info_single(f"Working on compound {compound_id} ({compound_name})")
+        sub_ids = [compound_id]
+        if compound_id in eq_compounds:
+            sub_ids.append(eq_compounds[compound_id]['equivalent_id'])
+        sub_network = merged.subset_network(metabolites_to_subset=sub_ids)
+
+        genomes_produce = set([])
+        genomes_consume = set([])
+        production_reactions = {g: set([]) for g in db_names}
+        consumption_reactions = {g: set([]) for g in db_names}
+        
+        for rid, reaction in sub_network.reactions.items():
+            # replace all equivalent IDs with the compound ID we are currently working on in the network
+            # TODO: make this a function of the reaction network class?
+            if compound_id in eq_compounds:
+                reaction.compound_ids = [compound_id if x == eq_compounds[compound_id]['equivalent_id'] else x for x in reaction.compound_ids]
+
+            idx = reaction.compound_ids.index(compound_id) 
+            if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
+                if anvio.DEBUG:
+                    run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
+                                    header="DEBUG", lc="yellow")
+                continue
+            # which genomes produce this compound?
+            elif reaction.coefficients[idx] > 0:
+                for g in db_names:
+                    if g in reaction.genomes_of_origin:
+                        genomes_produce.add(g)
+                        production_reactions[g].add(get_reaction_equation(reaction))
+
+            # which genomes utilize this compound?
+            elif reaction.coefficients[idx] < 0:
+                for g in db_names:
+                    if g in reaction.genomes_of_origin:
+                        genomes_consume.add(g)
+                        consumption_reactions[g].add(get_reaction_equation(reaction))
+        
+        # potential interactions:
+        # A: if one produces and other consumes
+        # B: if one produces and both consume
+        # C: if both produce and one consumes? seems less likely even though its the exact opposite of C
+        if len(genomes_produce) == 1 or len(genomes_consume) == 1:
+            # when the same genome produces and/or consumes, compound is unique to one genome
+            if genomes_produce == genomes_consume:
+                unique_compounds[compound_id] = {'compound_name': compound_name, 'genomes': list(genomes_produce)[0],
+                                                    'produced_by': list(genomes_produce)[0], 
+                                                    'consumed_by': list(genomes_consume)[0],
+                                                }
+                for g in db_names:
+
+                    unique_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
+                    unique_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
+            
+            elif len(genomes_produce) == 0 or len(genomes_consume) == 0:
+                unique_compounds[compound_id] = {'compound_name': compound_name, 'genomes': list(genomes_produce.union(genomes_consume))[0],
+                                                    'produced_by': list(genomes_produce)[0] if len(genomes_produce) > 0 else None, 
+                                                    'consumed_by': list(genomes_consume)[0] if len(genomes_consume) > 0 else None,
+                                                }
+                for g in db_names:
+                    unique_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
+                    unique_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
+
+            else: # A B or C applies
+                potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
+                                                                'genomes': ",".join(list(genomes_produce.union(genomes_consume))),
+                                                                'produced_by': ",".join(genomes_produce),
+                                                                'consumed_by': ",".join(genomes_consume),
+                                                                }
+                for g in db_names:
+                    potentially_exchanged_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
+                    potentially_exchanged_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
+        
+        processed_count += 1
+        progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
+        progress.increment(increment_to=processed_count)
+    
+    progress.end()
+    print(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.")        
+    
+    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by'] + [f"production_rxns_{g}" for g in db_names] \
+                                                                                                + [f"consumption_rxns_{g}" for g in db_names]
+    utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
+                key_header='compound_id', none_value="None", headers=output_header)
+    utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
+                key_header='compound_id', none_value="None", headers=output_header)
+
+def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
+    """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
+    
+    Returns a dictionary in which keys are compound IDs matched to their names and the equivalent compound ID. Each match is 
+    in the dictionary twice to enable O(1) lookups with either compound ID.
+
+    Parameters
+    ==========
+    print_to_file : Boolean
+        if True, the dictionary of equivalent compounds will be written to a tab-delimited output file
+    output_file_name : string
+        the name of the output file to print to (if desired)
+    """
+
+    MS_db = rn.ModelSEEDDatabase(modelseed_dir=args.modelseed_data_dir)
+    comps = MS_db.compounds_table.dropna(subset="name")
+
+    aa_list = anvio.constants.amino_acids_long + ["Selenocysteine", "Pyrrolysine"]
+    equivalent_AAs = {}
+    for a in aa_list:
+        eqs = comps[(comps.name == a) | (comps.name == f"L-{a}")]['name']
+        id_list = eqs.index.to_list()
+        if not len(id_list) == 2:
+            if anvio.DEBUG:
+                compound_list = [f"{i} ({comps.loc[i]})" for i in id_list]
+                run.warning(f"While looking for equivalent compound IDs for the amino acid {a}, we didn't find the "
+                            f"expected 2 matching compounds '{a}' and 'L-{a}'. Instead, here is what we found: "
+                            f"{', '.join(compound_list)}. No equivalencies will be stored for this amino acid.", header='DEBUG', lc='yellow')
+            continue
+        equivalent_AAs[id_list[0]] = {'equivalent_id': id_list[1], 'name': eqs.loc[id_list[0]], 'equivalent_name': eqs.loc[id_list[1]]}
+        equivalent_AAs[id_list[1]] = {'equivalent_id': id_list[0], 'name': eqs.loc[id_list[1]], 'equivalent_name': eqs.loc[id_list[0]]}
+
+    if print_to_file:
+        utils.store_dict_as_TAB_delimited_file(equivalent_AAs, output_file_name, key_header='compound_id', 
+                    headers = ['compound_id', 'equivalent_id', 'name', 'equivalent_name'])
+        run.info("File of equivalent amino acid compound IDs", output_file_name)
+
+    return equivalent_AAs
+
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT', "Just give us contigs databases that already had reaction networks generated "
+                                                        "for them via `anvi-reaction-network`, and we will do the rest.")
+    groupA.add_argument('-c1', '--contigs-db-1', required=True, help="Contigs database (generated by `anvi-gen-contigs-database`) for your first genome")
+    groupA.add_argument('-c2', '--contigs-db-2', required=True, help="Contigs database (generated by `anvi-gen-contigs-database`) for your second genome")
+
+    groupB = parser.add_argument_group('OUTPUT', "How do you want to see the results?")
+    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
+
+    groupC = parser.add_argument_group('METABOLISM DATA LOCATION', "What metabolism database(s) do you want to use?")
+    groupC.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
+    groupC.add_argument(*anvio.A('modelseed-data-dir'), **anvio.K('modelseed-data-dir'))
+
+    groupD = parser.add_argument_group('CUSTOMIZATION', "Decisions only you can make.")
+    groupD.add_argument(*anvio.A('use-equivalent-amino-acids'), **anvio.K('use-equivalent-amino-acids'))
+    groupD.add_argument(*anvio.A('custom-equivalent-compounds-file'), **anvio.K('custom-equivalent-compounds-file'))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
