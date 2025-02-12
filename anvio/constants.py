@@ -352,7 +352,15 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
+AA_to_full_name = Counter({'Ala': 'Alanine', 'Arg': 'Arginine', 'Asn': 'Asparagine', 'Asp': 'Aspartate',
+                                    'Cys': 'Cysteine', 'Gln': 'Glutamine', 'Glu': 'Glutamic Acid', 'Gly': 'Glycine',
+                                    'His': 'Histidine', 'Ile': 'Isoleucine', 'Leu': 'Leucine', 'Lys': 'Lysine',
+                                    'Met': 'Methionine', 'Phe': 'Phenylalanine', 'Pro': 'Proline',
+                                    'Ser': 'Serine', 'Thr': 'Threonine', 'Trp': 'Tryptophan', 'Tyr': 'Tyrosine',
+                                    'Val': 'Valine'})
+
 amino_acids = sorted(list(AA_to_single_letter_code.keys()))
+amino_acids_long = sorted(list(AA_to_full_name.values()))
 
 # Standard genetic code (translation table 1 at the following link)
 # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?chapter=cgencodes
