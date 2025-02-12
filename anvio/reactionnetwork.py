@@ -6526,9 +6526,13 @@ class Constructor:
                 "be constructed from gene KO annotations in the database. "
             )
 
-        # Check that the network stored in the contigs database was made from the same set of KO
-        # gene annotations as is in the database.
+        # Check that there is a network stored in the contigs database AND that it was made from the
+        # same set of KO gene annotations as is in the database.
         stored_hash = cdb_db.get_meta_value('reaction_network_ko_annotations_hash')
+        if not stored_hash:
+            raise ConfigError(f"There does not appear to be a reaction network stored in the contigs "
+                              f"database ({contigs_db}). You can create one by running `anvi-reaction-network`.")
+
         gene_ko_hits_table = cdb_db.get_table_as_dataframe(
             'gene_functions',
             where_clause='source = "KOfam"',
