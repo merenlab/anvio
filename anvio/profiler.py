@@ -330,6 +330,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
+        self.track_secondary_alignments = A('track_secondary_alignments')
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
@@ -388,8 +389,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if A('contigs_of_interest'):
             filesnpaths.is_file_exists(args.contigs_of_interest)
-            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
-                                                                           if c.strip() and not c.startswith('#')])
+            self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines() if c.strip() and not c.startswith('#')])
         else:
             self.contig_names_of_interest = set([])
 
@@ -409,7 +409,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
-        # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
+        # this voice in your head telling you that the tinkering with self.run here feels kind of out
         # of place. that voice is right, but the voice doesn't know the struggles of poor souls that
         # had to resort to a solution like this. You see, we don't want to see any run messages from
         # ContigsSuper in profiler output. But when we pass a `run=null_run` to the class, due to
@@ -560,6 +560,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
         self.run.info('Report FULL variability data?', self.report_variability_full)
+        self.run.info('Track secondary alignments?', 'Yes (ouch)' if self.track_secondary_alignments else 'No')
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
                          "consideration anything below that. If you need to kill this an restart your "
@@ -814,6 +815,25 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         utils.check_contig_names(self.contig_names)
 
+        # the user wants secondary alignments to be tracked?
+        if self.track_secondary_alignments:
+            # yes. ok. so here we will do something cray. if the user wishes to track secondary
+            # alignments, it is quite easy to do using `BAMFileObject` class: just call the function
+            # `track_secondary_alignments`, and the information that is necessary for downstream
+            # processes will be stored in a relevant dictionary in the class. But the BAMProfiler
+            # class opens a given BAM file multiple times, and when it is run in multiple threads,
+            # as many times as there are threads. So that means, if the user wishes to track
+            # secondary alignments, the computationally intense steps of calculating that
+            # information will be done many many times. So here we are going to do a trick:
+            # we will ask secondary alignments to be calculated, and we will copy the resulting
+            # dictionary into a separate object so we can pass that to the future instances
+            # of BAMFileObject class below. this way we will optimize both compute time, and
+            # memory for applications that use many many threads.
+            self.bam.track_secondary_alignments(progress=self.progress)
+            self.primary_alignments = copy.deepcopy(self.bam.primary_alignments)
+        else:
+            self.primary_alignments = None
+
         self.run.info('Input BAM', self.input_file_path)
         self.run.info('Output directory path', self.output_directory, display_only=True, nl_after=1)
 
@@ -953,6 +973,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
+        if self.track_secondary_alignments:
+            bam_file.primary_alignments = self.primary_alignments
+            bam_file.secondary_alignments_tracked = True
+
         while True:
             try:
                 index = available_index_queue.get(True)
@@ -1051,6 +1075,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
+
+        if self.track_secondary_alignments:
+            bam_file.primary_alignments = self.primary_alignments
+            bam_file.secondary_alignments_tracked = True
 
         received_contigs = 0
 
