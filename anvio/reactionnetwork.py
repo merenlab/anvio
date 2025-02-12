@@ -6127,7 +6127,7 @@ class ModelSEEDDatabase:
     # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
     compartment_ids = {0: 'c', 1: 'e'}
 
-    def __init__(self, modelseed_dir: str = None, keep_original_rxn_table: bool = False) -> None:
+    def __init__(self, modelseed_dir: str = None) -> None:
         """
         Load and set up reorganized tables of reactions and compounds from the ModelSEED directory
         to facilitate reaction network construction.
@@ -6136,9 +6136,6 @@ class ModelSEEDDatabase:
         ==========
         modelseed_dir : str, None
             Directory of ModelSEED files to use instead of the default.
-        keep_original_rxn_table : bool, False
-            Set to True if you want the unmodified reaction table to be an attribute of this class.
-            If False, the attribute self.original_rxn_table is set to None.
         """
         if modelseed_dir:
             if not os.path.isdir(modelseed_dir):
@@ -6167,9 +6164,6 @@ class ModelSEEDDatabase:
         with open(sha_path) as f:
             self.sha = f.read().strip()
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
-        self.original_rxn_table = None
-        if keep_original_rxn_table:
-            self.original_rxn_table = reactions_table
         self.compounds_table: pd.DataFrame = pd.read_csv(
             compounds_path,
             sep='\t',
