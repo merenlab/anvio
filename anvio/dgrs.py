@@ -1673,7 +1673,7 @@ class DGR_Finder:
 
         contigs_db.disconnect()
         self.progress.end()
-        print('Completed recovering genomic context surrounding the DGRs')
+        self.run.info_single('Completed recovering genomic context surrounding the DGRs')
 
         self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
                     f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
@@ -1682,10 +1682,10 @@ class DGR_Finder:
                     lc="yellow")
 
         if len(trs_with_no_gene_calls_around):
-            print('No gene calls around the following TRs:', trs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "
+            self.run.warning('No gene calls around the following TRs:', trs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "
                             f"{', '.join(trs_with_no_gene_calls_around)}.")
         if len(vrs_with_no_gene_calls_around):
-            print('No gene calls around the following VRs:', vrs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(vrs_with_no_gene_calls_around)}.")
+            self.run.warning('No gene calls around the following VRs:', vrs_with_no_gene_calls_around, "Here is the list in case you would like to track them down: "f"{', '.join(vrs_with_no_gene_calls_around)}.")
 
         if not len(self.genomic_context_surrounding_dgrs):
             self.run.warning(f"Even though the tool went through all {PL('DGR', len(dgrs_dict))} "
