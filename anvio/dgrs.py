@@ -62,7 +62,8 @@ class DGR_Finder:
         self.num_threads = A('num-threads')
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
-        self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr')
+        self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
+        self.min_mismatching_base_types_tr = A('min_mismatching_base_types_tr') or 2
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.min_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
@@ -97,6 +98,7 @@ class DGR_Finder:
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
+        self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_tr)
         self.run.info('Collections Mode', self.collections_mode)
         if self.collections_mode:
             self.run.info('Collection(s) Provided', (self.collections_given))
@@ -171,6 +173,12 @@ class DGR_Finder:
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
+        if self.min_mismatching_base_types_tr >= 5:
+            raise ConfigError('The number of mismatching base types of the sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
+
+        if self.min_mismatching_base_types_vr >= 5:
+            raise ConfigError('The number of mismatching base types of the sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
+
         if self.collections_mode:
             if not self.collections_given:
                 raise ConfigError("You must provide a collection name for collections mode to work. If you want to know about "
@@ -180,12 +188,6 @@ class DGR_Finder:
             # Ensure collections_given is a single string (collection name)
             if not isinstance(self.collections_given, str):
                 raise ValueError("'collection-name' must be a single collection name")
-
-        #if  self.collections_mode:
-            #if self.collections_provided not in self.collections_provided_in_profile:
-                #raise ConfigError(f"You requested this collection was searched through: {self.collections_provided} in these collections {self.collections_provided_in_profile} "
-                                        #f"that are in your {self.profile_db_path}. The collections you give 'anvi-report-dgrs' need to be in your "
-                                        #"profile.db.")
 
         if self.contigs_db_path and self.hmm:
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
@@ -239,6 +241,7 @@ class DGR_Finder:
             if not self.raw_r1_r2_reads_are_present and not self.skip_compute_DGR_variability_profiling:
                     raise ConfigError("You asked anvi'o to calculate DGR profiling variability across samples, but your samples-txt "
                                     "does not include raw R1/R2 reads :(")
+
 
 
     def get_blast_results(self):
@@ -1084,10 +1087,20 @@ class DGR_Finder:
                             base = letter
                             is_reverse_complement = False
 
-                        #to test for VR diversity of base types in the protein sequence
-                        for letter, count in query_mismatch_counts.items():
-                            non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
-                        if not non_zero_bases >= self.min_mismatching_base_types_vr:
+                        #to test for VR diversity of base types in the sequence
+                        # Count the distinct base types in the sequence
+                        vr_unique_bases = set(query_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
+
+                        # Ensure the sequence has at least the required number of distinct base types
+                        if len(vr_unique_bases) <= self.min_mismatching_base_types_vr:
+                            continue
+
+                        #to test for TR diversity of base types in the sequence
+                        # Count the distinct base types in the sequence
+                        tr_unique_bases = set(subject_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
+
+                        # Ensure the sequence has at least the required number of distinct base types
+                        if len(tr_unique_bases) <= self.min_mismatching_base_types_tr:
                             continue
 
                         #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
@@ -2633,7 +2646,8 @@ class DGR_Finder:
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
-                ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "3"),
+                ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "2"),
+                ("Minimum Mismatching Base Types in TR", self.min_mismatching_base_types_tr if self.min_mismatching_base_types_tr else "2"),
                 ("Temporary Directory", self.temp_dir if self.temp_dir else None),
                 ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
