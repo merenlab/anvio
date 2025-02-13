@@ -64,6 +64,7 @@ class DGR_Finder:
         self.percentage_mismatch = A('percentage_mismatch')
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
         self.min_mismatching_base_types_tr = A('min_mismatching_base_types_tr') or 2
+        self.only_a_bases =A('only_a_bases')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.min_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
@@ -98,8 +99,11 @@ class DGR_Finder:
         self.run.info('Discovery mode', self.discovery_mode)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
+        if self.only_a_bases:
+            self,run.info('only A base mismatches', self.only_a_bases)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_tr)
+        self.run.info('Number of imperfect tandem repeats', self.numb_imperfect_tandem_repeats)
         self.run.info('Collections Mode', self.collections_mode)
         if self.collections_mode:
             self.run.info('Collection(s) Provided', (self.collections_given))
@@ -1103,6 +1107,24 @@ class DGR_Finder:
                         # Ensure the sequence has at least the required number of distinct base types
                         if len(tr_unique_bases) <= self.min_mismatching_base_types_tr:
                             continue
+
+                        if self.only_a_bases:
+                            print(subject_mismatch_counts)
+
+                            # Filter out bases with count > 0 before checking
+                            nonzero_mismatch_bases = [base for base, count in subject_mismatch_counts.items() if count > 0]
+
+                            # If reverse complemented, treat 'T' as 'A'
+                            if is_reverse_complement:
+                                all_mismatches_are_A = all(base in ('A', 'T') for base in nonzero_mismatch_bases)
+                            else:
+                                all_mismatches_are_A = all(base == 'A' for base in nonzero_mismatch_bases)
+
+                            print(f"{all_mismatches_are_A}")
+
+                            # Skip if any mismatching base is not valid
+                            if not all_mismatches_are_A:
+                                continue
 
                         #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
