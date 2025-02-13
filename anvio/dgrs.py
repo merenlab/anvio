@@ -84,6 +84,7 @@ class DGR_Finder:
         self.initial_primer_length = A('initial_primer_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
+        self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
 
 
         # performance
@@ -830,7 +831,7 @@ class DGR_Finder:
                         #test for not quite tandem repeats using pytrf
                         has_repeat = False
                         for ssr in pytrf.ATRFinder('name', qseq):
-                            if int(ssr.repeat) > 10:
+                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
                                 has_repeat = True
 
                         #breakout
