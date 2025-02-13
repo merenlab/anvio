@@ -112,6 +112,7 @@ if __name__ == '__main__':
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
 
     groupD = parser.add_argument_group('FILTER BLAST FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
+    groupD.add_argument("--num-imperfect-tandem-repeats", help="Number of imperfect tandem repeats from the BLAST search, this is computed using [pytrf]()", type=int, default=10)
     groupD.add_argument("-m","--percentage-mismatch", help="The percentage of mismatching bases in the template region that are one 'type' of base. Has to be between 0.5 and 1.00. Default = 0.8", type=my_float_range, default=0.8)
     groupD.add_argument("-n","--number-of-mismatches", help="Number of one 'type' of base in the template region that is mismatching to the variable region sequence. Default = 7", type=int, default=7)
     groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2)
