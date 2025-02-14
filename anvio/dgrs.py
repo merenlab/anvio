@@ -63,7 +63,8 @@ class DGR_Finder:
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
-        self.min_mismatching_base_types_tr = A('min_mismatching_base_types_tr') or 2
+        self.min_base_types_vr = A('min_base_types_vr') or 2
+        self.min_base_types_tr = A('min_base_types_tr') or 2
         self.only_a_bases =A('only_a_bases')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.min_dist_bw_snvs = A('distance_between_snv')
@@ -102,7 +103,8 @@ class DGR_Finder:
         if self.only_a_bases:
             self,run.info('only A base mismatches', self.only_a_bases)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
-        self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_tr)
+        self.run.info('Minimum Base Types in VR', self.min_base_types_vr)
+        self.run.info('Minimum Base Types in VR', self.min_base_types_tr)
         self.run.info('Number of imperfect tandem repeats', self.numb_imperfect_tandem_repeats)
         self.run.info('Collections Mode', self.collections_mode)
         if self.collections_mode:
@@ -179,10 +181,13 @@ class DGR_Finder:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
         if self.min_mismatching_base_types_tr >= 5:
-            raise ConfigError('The number of mismatching base types of the sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
+            raise ConfigError('The number of mismatching base types of the VR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
 
-        if self.min_mismatching_base_types_vr >= 5:
-            raise ConfigError('The number of mismatching base types of the sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
+        if self.min_base_types_tr >= 5:
+            raise ConfigError('The number of base types of the TR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
+
+        if self.min_base_types_vr >= 5:
+            raise ConfigError('The number of base types of the VR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
 
         if self.collections_mode:
             if not self.collections_given:
@@ -1092,12 +1097,18 @@ class DGR_Finder:
                             base = letter
                             is_reverse_complement = False
 
+                        #to test for VR diversity of base types in the protein sequence
+                        for letter, count in query_mismatch_counts.items():
+                            non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
+                        if not non_zero_bases >= self.min_mismatching_base_types_vr:
+                            continue
+
                         #to test for VR diversity of base types in the sequence
                         # Count the distinct base types in the sequence
                         vr_unique_bases = set(query_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
 
                         # Ensure the sequence has at least the required number of distinct base types
-                        if len(vr_unique_bases) <= self.min_mismatching_base_types_vr:
+                        if len(vr_unique_bases) <= self.min_base_types_vr:
                             continue
 
                         #to test for TR diversity of base types in the sequence
@@ -1105,7 +1116,7 @@ class DGR_Finder:
                         tr_unique_bases = set(subject_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
 
                         # Ensure the sequence has at least the required number of distinct base types
-                        if len(tr_unique_bases) <= self.min_mismatching_base_types_tr:
+                        if len(tr_unique_bases) <= self.min_base_types_tr:
                             continue
 
                         if self.only_a_bases:
@@ -2677,8 +2688,9 @@ class DGR_Finder:
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
-                ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "2"),
-                ("Minimum Mismatching Base Types in TR", self.min_mismatching_base_types_tr if self.min_mismatching_base_types_tr else "2"),
+                ("Minimum Mismatching Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
+                ("Minimum Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
+                ("Minimum Base Types in TR", self.min_base_types_tr if self.min_base_types_tr else "2"),
                 ("Temporary Directory", self.temp_dir if self.temp_dir else None),
                 ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
