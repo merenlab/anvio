@@ -1460,7 +1460,7 @@ class DGR_Finder:
             "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
             "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
             "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
-            "TR_start_position", "TR_end_position", "TR_bin", "HMM_source",
+            "TR_start_position", "TR_end_position", "TR_bin", "TR_in_gene", "HMM_source",
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
             "HMM_stop", "HMM_gene_callers_id"
         ]
@@ -1488,7 +1488,7 @@ class DGR_Finder:
                         vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
                         tr['base'], vr_data['TR_reverse_complement'],
                         vr_data['TR_start_position'], vr_data['TR_end_position'],
-                        tr.get('TR_bin', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
+                        tr.get('TR_bin', 'N/A'),tr['TR_in_gene'], tr['HMM_source'], tr["distance_to_HMM"],
                         tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
                         tr["HMM_stop"], tr["HMM_gene_callers_id"]
                     ]
@@ -1554,6 +1554,7 @@ class DGR_Finder:
             # Initialize TR context
             tr_context_genes = {}
 
+            is_tr_in_gene = False
 
             if TR_contig_name not in gene_calls_per_TR_contig:
                 where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
@@ -1616,6 +1617,13 @@ class DGR_Finder:
 
                 # Store the gene call in the dictionary using gene_callers_id as the key
                 tr_context_genes[gene_callers_id] = gene_call
+
+                # Check if the TR is inside this gene
+                if TR_start >= gene_call['start'] and TR_end <= gene_call['stop']:
+                    is_tr_in_gene = True
+
+            # After processing all the gene calls for the TR, add the result to dgrs_dict
+            dgrs_dict[dgr_id]['TR_in_gene'] = is_tr_in_gene
 
             self.genomic_context_surrounding_dgrs[dgr_id] = copy.deepcopy(tr_context_genes)
 
@@ -2704,9 +2712,9 @@ class DGR_Finder:
         else:
             self.get_gene_info()
             self.get_hmm_info()
-            self.create_found_tr_vr_csv()
             self.recover_genomic_context_surrounding_dgrs()
             self.report_genomic_context_surrounding_dgrs()
+            self.create_found_tr_vr_csv()
             self.compute_dgr_variability_profiling() # add if statement to this for the metagenomics mode DGRs
             self.process_dgr_data_for_HTML_summary()
         return
