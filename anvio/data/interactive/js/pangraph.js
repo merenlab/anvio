@@ -1,45 +1,116 @@
-// NOTE - From https://stackoverflow.com/questions/1053843/get-the-element-with-the-highest-occurrence-in-an-array
-function modeString(array) {
-  if (array.length == 0) return null;
+//ANCHOR - NODE FUNCTIONS
+async function nodeinfo(e, data, group_dict, mapAS, gene_cluster_id='') {
+  console.log(gene_cluster_id)
+  var id = e.id;
+  var element = document.getElementById(id);
 
-  var modeMap = {},
-    maxEl = array[0],
-    maxCount = 1;
+  if (element.getAttribute('class') == 'group') {
+    gene_cluster_context = id;
 
-  for (var i = 0; i < array.length; i++) {
-    var el = array[i];
-
-    if (modeMap[el] == null) modeMap[el] = 1;
-    else modeMap[el]++;
-
-    if (modeMap[el] > maxCount) {
-      maxEl = el;
-      maxCount = modeMap[el];
-    } else if (modeMap[el] == maxCount && maxCount == 1) {
-      maxEl = el;
-      maxCount = modeMap[el];
-    } else if (modeMap[el] == maxCount) {
-      maxEl += ' & ' + el;
-      maxCount = modeMap[el];
+    if (!gene_cluster_id) {
+      gene_cluster_id = group_dict[id][0]
     }
+  } else {
+    gene_cluster_id = id;
+    gene_cluster_context = null;
   }
-  return [maxEl, Math.round(maxCount/i * 100)];
+
+  $('#InfoModalBody').empty()
+  var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
+  // var closeBtn = $('<div class="row justify-content-end"><i class="btn d-flex col-1 justify-content-end text-danger fs-2x bi bi-x-circle-fill" data-dismiss="modal"></i></div>')
+  // $('#InfoModalBody').append(closeBtn)
+  $('#InfoModalBody').append(bodyinfo)
+
+  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, group_dict, mapAS, add_align=1)
+
+  bodyinfo.append(all_info)
+
+  if (element.getAttribute('class') == 'group') {
+
+    var container = document.querySelector("#InfoModalBody");
+    var elem = container.querySelectorAll('.group_choice');
+    
+    elem.forEach(el => {
+    
+      el.onclick = function(){
+        nodeinfo(e, data, group_dict, mapAS, gene_cluster_id=el.getAttribute("name_id"))
+      }
+    })
+  }
+
+  $('#InfoModal').modal('show');
 }
 
-function get_passed_gene_clusters(searchfunction) {
-  
-  var d = $.ajax({
-    url: "/pangraph/filter",
-    type: "POST",
-    data: JSON.stringify(searchfunction),
-    contentType: "application/json",
-    dataType: "json"
-  })
+async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, group_dict, mapAS, add_align) {
+    // The purpose of this function is to build HTML formatted tables to give access to
+    // the details of a gene cluster. The parameters here are,
+    //
+    //   - `gene_cluster_id`: A singular gene cluster id to be detailed,
+    //   - `gene_cluster_context`: A list of gene cluster ids that occur in the same context
+    //      with `gene_cluster_id` (either they were binned together, or they were in the same
+    //      group of gene clusters).
+    //   - `data`: the primary data object from the JSON input
+    //
+    // If everything goes alright, this function will return a table that can be displayed in
+    // any modal window.
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD CONTEXT
+    // if this is a gene cluster that is a part of a context, then all others are going to be
+    // shown here
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
-  return d
+    var gene_cluster_context_table = get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context, data, group_dict, add_align);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD BASIC INFORMATION TABLE
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    var basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // BUILD FUNCTIONS TABLE
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    var basic_layer_table = get_layer_data(gene_cluster_id, data, add_align);
+
+    var functions_table = await get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
+    ///////////////////////////////////////////////////////////////////////////////////////////
+ 
+    if (add_align == 1) {
+
+      var alignment = {}
+
+      // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
+      for (var genome of Object.keys(data['nodes'][gene_cluster_id]['gene_calls'])) {
+        
+        // if ($('#flex' + genome).prop('checked') == true){
+        
+        var genecall = data['nodes'][gene_cluster_id]['gene_calls'][genome]
+        var name = data['nodes'][gene_cluster_id]['gene_cluster']
+        alignment[genome] = [genecall, name]
+
+        // }
+      }
+      // }
+
+      gene_cluster_sequence_alignments_table = await appendalignment(gene_cluster_id, alignment, mapAS)
+
+      ///////////////////////////////////////////////////////////////////////////////////////////
+      // MERGE ALL AND RETURN
+      ///////////////////////////////////////////////////////////////////////////////////////////
+
+      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table + gene_cluster_sequence_alignments_table
+
+    } else {
+
+      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table
+
+    }
 }
 
-//ANCHOR - Fetch GC consensus functions
 function get_gene_cluster_consensus_functions(gene_cluster_name) {
 
   var func = new Object();
@@ -50,7 +121,13 @@ function get_gene_cluster_consensus_functions(gene_cluster_name) {
     type: "POST",
     data: JSON.stringify(func),
     contentType: "application/json",
-    dataType: "json"
+    dataType: "json",
+    error: function(){
+      console.log('Error while attempting to fetch function.')
+    },
+    success: function(){
+      console.log('Successfully fetched function.')
+    }
   })
 
   return d
@@ -135,7 +212,6 @@ function get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, da
     return basic_info_table;
 }
 
-
 async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) {
     
     if (add_align == 1) {
@@ -178,14 +254,14 @@ async function get_gene_cluter_functions_table(gene_cluster_id, data, add_alig) 
 }
 
 
-function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, data, add_align) {
+function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, data, group_dict, add_align) {
     
     if (gene_cluster_context == null){
         return '';
     } else {
       var group_context = []
-      for (item in data['infos']['groups'][gene_cluster_context]){
-        group_context.push(data['infos']['groups'][gene_cluster_context][item])
+      for (item in group_dict[gene_cluster_context]){
+        group_context.push(group_dict[gene_cluster_context][item])
       }
     }
 
@@ -198,7 +274,7 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
     gene_cluster_context_table += `<div class="gene_cluster_context_items">`;
     for(index in group_context) {
         gene_cluster_id = group_context[index];
-        gene_cluster_name = data['elements']['nodes'][gene_cluster_id]['name']
+        gene_cluster_name = data['nodes'][gene_cluster_id]['gene_cluster']
 
         if (gene_cluster_id == gene_cluster_id_current){
             gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_name + `</span>`;
@@ -212,81 +288,6 @@ function get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_co
 
 }
 
-
-//ANCHOR - Get tables for GC basic info and functions
-async function get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align) {
-    // The purpose of this function is to build HTML formatted tables to give access to
-    // the details of a gene cluster. The parameters here are,
-    //
-    //   - `gene_cluster_id`: A singular gene cluster id to be detailed,
-    //   - `gene_cluster_context`: A list of gene cluster ids that occur in the same context
-    //      with `gene_cluster_id` (either they were binned together, or they were in the same
-    //      group of gene clusters).
-    //   - `data`: the primary data object from the JSON input
-    //
-    // If everything goes alright, this function will return a table that can be displayed in
-    // any modal window.
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // BUILD CONTEXT
-    // if this is a gene cluster that is a part of a context, then all others are going to be
-    // shown here
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    gene_cluster_context_table = get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context, data, add_align);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // BUILD BASIC INFORMATION TABLE
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    basic_info_table = get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, data, add_align);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // BUILD FUNCTIONS TABLE
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    basic_layer_table = get_layer_data(gene_cluster_id, data, add_align);
-
-    functions_table = await get_gene_cluter_functions_table(gene_cluster_id, data, add_align);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
-    ///////////////////////////////////////////////////////////////////////////////////////////
- 
-    if (add_align == 1) {
-
-      var alignment = {}
-
-      // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
-      for (var genome of Object.keys(data['elements']['nodes'][gene_cluster_id]['genome'])) {
-        
-        // if ($('#flex' + genome).prop('checked') == true){
-        
-        var genecall = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['gene_call']
-        var contig = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['contig']
-        var direction = data['elements']['nodes'][gene_cluster_id]['genome'][genome]['direction']
-        var name = data['elements']['nodes'][gene_cluster_id]['name']
-        alignment[genome] = [genecall, contig, direction, name]
-
-        // }
-      }
-      // }
-
-      gene_cluster_sequence_alignments_table = await appendalignment(gene_cluster_id, alignment)
-
-      ///////////////////////////////////////////////////////////////////////////////////////////
-      // MERGE ALL AND RETURN
-      ///////////////////////////////////////////////////////////////////////////////////////////
-
-      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table + gene_cluster_sequence_alignments_table
-
-    } else {
-
-      return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table
-
-    }
-}
-
-//ANCHOR - Fetch GC alignment
 function fetchalignment(alignment) {
 
   var d = $.ajax({
@@ -294,15 +295,20 @@ function fetchalignment(alignment) {
     type: "POST",
     data: JSON.stringify(alignment),
     contentType: "application/json",
-    dataType: "json"
+    dataType: "json",
+    error: function(){
+      console.log('Error while attempting to fetch alignment.')
+    },
+    success: function(){
+      console.log('Successfully fetched alignment.')
+    }
   })
 
   return d
 
 };
 
-//ANCHOR - Append GC alignment
-async function appendalignment(gene_cluster_id, alignment) {
+async function appendalignment(gene_cluster_id, alignment, mapAS) {
     // FIXME: We need to come up with more accurate and explicit function names.
     if (Object.keys(alignment).length == 0) {
         return ''
@@ -313,24 +319,21 @@ async function appendalignment(gene_cluster_id, alignment) {
     alignments_table += `<thead class="thead-dark gc-table-header"><tr>`;
     alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
     alignments_table += `<th scope="col">Gene Call</th>`;
-    alignments_table += `<th scope="col">Contig</th>`;
-    alignments_table += `<th scope="col">Direction</th>`;
     alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
+    console.log(alignment)
 
     var d = await fetchalignment(alignment)
 
     // console.log(d)
 
     for (var [genome, value] of Object.entries(d)) {
-      var colored = value[3].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
+      var colored = value[1].replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, function(matched){return mapAS[matched];});
 
       alignments_table += `<tr>`
       alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
       alignments_table += `<td id="td-value-cell">` + value[0] + `</a></td>`
-      alignments_table += `<td id="td-contig-cell">` + value[1] + `</td>`
-      alignments_table += `<td id="td-direction-cell">` + value[2] + `</a></td>`
       alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored + `</div></td>`
       alignments_table += `</tr>`
     }
@@ -342,125 +345,14 @@ async function appendalignment(gene_cluster_id, alignment) {
     return alignments_table;
 }
 
-//ANCHOR - Color node and add/remove from bin
-function marknode(e, data, binid, bins){
 
-  var bincolor = document.getElementById(binid + 'color').value
-  var id = e.id;
-  var current = ''
 
-  var binkeys = Object.keys(bins)
-    for (var key of binkeys) {
-      if (bins[key].includes(id)) {
-        current = key
-        break;
-    }
-  }
-
-  if ($('#flexsaturation').prop('checked') == true){
-    var saturation = 1
-  } else {
-    var saturation = 0
-  }
-
-  if (e.getAttribute('class') == 'group') {
-
-    var node_color = $('#groups')[0].value;
-    var genome_size = Object.keys(data["infos"]["genomes"]).length;
-
-    var group = data['infos']['groups'][id]
-    var node_name = group[0]
-
-    var node = data['elements']['nodes'][node_name];
-    var genome = Object.keys(node['genome']).length;
-
-  } else if (e.getAttribute('class') == 'node') {
-
-    var node_color = $('#nodes')[0].value;
-    var genome_size = Object.keys(data["infos"]["genomes"]).length;
-
-    var node = data['elements']['nodes'][id];
-    var genome = Object.keys(node['genome']).length;
-
-  }
-
-  if (current === binid) {
-
-    if (saturation == 1){
-      e.setAttribute("fill", lighter_color('#ffffff', node_color, genome / genome_size))
-    } else {
-      e.setAttribute("fill", node_color)
-    }
-    
-    bins[binid] = bins[binid].filter(item => item !== id)
-    $('#' + binid + 'value')[0].value = bins[binid].length
-
-  } else if (current === '') {
-
-    if (saturation == 1){
-      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
-    } else {
-      e.setAttribute("fill", bincolor)
-    }
-
-    bins[binid].push(id)
-    $('#' + binid + 'value')[0].value = bins[binid].length
-
-  } else {
-
-    if (saturation == 1){
-      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
-    } else {
-      e.setAttribute("fill", bincolor)
-    }
-
-    bins[current] = bins[current].filter(item => item !== id)
-    bins[binid].push(id)
-    $('#' + binid + 'value')[0].value = bins[binid].length
-    $('#' + current + 'value')[0].value = bins[current].length
-
-  }
-
-  return bins
-}
-
-// //ANCHOR - Information for the GC
-async function nodeinfo(e, data) {
-  var id = e.id;
-  var element = document.getElementById(id);
-
-  if (element.getAttribute('class') == 'group') {
-    gene_cluster_context = id;
-    gene_cluster_id = data['infos']['groups'][id][0]
-  } else {
-    gene_cluster_id = id;
-    gene_cluster_context = null;
-  }
-
-  $('#InfoModalBody').empty()
-  var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-  // var closeBtn = $('<div class="row justify-content-end"><i class="btn d-flex col-1 justify-content-end text-danger fs-2x bi bi-x-circle-fill" data-dismiss="modal"></i></div>')
-  // $('#InfoModalBody').append(closeBtn)
-  $('#InfoModalBody').append(bodyinfo)
-
-  // console.log(gene_cluster_id, gene_cluster_context)
-
-  var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=1)
-
-  // console.log(all_info)
-
-  bodyinfo.append(all_info)
-
-  $('#InfoModal').modal('show');
-}
-
-//ANCHOR - Degree to rad calculation
+//ANCHOR - SVG FUNCTIONS
 function deg2rad(degrees)
 {
   return degrees * Math.PI/180;
 }
 
-//ANCHOR - General download function
 function downloadBlob(blob, name) {
 
   var blobUrl = URL.createObjectURL(blob);
@@ -490,7 +382,6 @@ function int_to_hex(num) {
     return hex;
 }
 
-//ANCHOR - Function to mix two colors
 function lighter_color(color1, color2, percentage, threshold=0.25) {
 
   // console.log(color1, color2, percentage)
@@ -557,7 +448,6 @@ function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, co
   return(path)
 }
 
-//ANCHOR - Transformation function
 function transform(x, y, theta) {
   var circle_x = y * Math.sin(deg2rad(theta * x))
   var circle_y = y * Math.cos(deg2rad(theta * x))
@@ -736,7 +626,6 @@ function newick_to_order(string, prior = 0) {
   return(result)
 }
 
-//ANCHOR - All in one SVG creation function
 function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, layers_min, layers_max, group_dict) {
 
   // access all the relevant variables from UI
@@ -1012,7 +901,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
   var end = new Date().getTime();
   var time = end - start;
-  console.log('SVG core creation', time, 'ms.')
+  console.log('SVG drawing core', time, 'ms.')
 
   var start = new Date().getTime();
   for(var i in edges) {
@@ -1122,7 +1011,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
                     var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
                     var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
                   }
-                  
+
                   if (linear == 0){
                     var [circle_n_x, circle_n_y] = transform(n_x, n_y_size, theta);
                   } else {
@@ -1164,7 +1053,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   };
   var end = new Date().getTime();
   var time = end - start;
-  console.log('SVG lines drawing', time, 'ms.')
+  console.log('SVG drawing lines', time, 'ms.')
 
   var start = new Date().getTime();
   var global_values = []
@@ -1432,22 +1321,80 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   return svg_core
 }
 
-//ANCHOR - Check node
-async function checknode(searchfunction) {
+function defineVariables(data) {
+  var all_nodes = data['nodes'];
+  var all_edges = data['edges'];
 
-  var keys = Object.keys(searchfunction)  
-  if (keys.length > 0) {
-    var d = await get_passed_gene_clusters(searchfunction)
-    var result = d['gene_clusters']
-  } else {
-    var result = []
+  // var layers = new Set();
+  var layers = data['meta']['layers']
+  var layers_min = new Object();
+  var layers_max = new Object();
+  // var groups = new Set();
+  var global_x = 0;
+  var global_y = 0;
+  var genomes = data['meta']['genome_names']
+  var group_dict = {}
+
+  for(var n in all_nodes) {
+    var node = all_nodes[n];
+    for(var [layer, value] of Object.entries(node["layer"])) {
+      if (layer in layers_min) {
+        layers_min[layer] = value < layers_min[layer] ? value : layers_min[layer]
+      } else {
+        layers_min[layer] = value
+      }
+
+      if (layer in layers_max) {
+        layers_max[layer] = value > layers_max[layer] ? value : layers_max[layer]
+      } else {
+        layers_max[layer] = value
+      }
+
+      // layers.add(layer)
+    }
+
+    var group = node["group"]
+    var x = node["position"][0]
+    var y = node["position"][1]
+    
+    if (group) {
+      if (group in group_dict) {
+        group_dict[group].push(n)
+      } else {
+        group_dict[group] = [n]
+      } 
+    }
+
+    // groups.add(group)
+    global_x = x < global_x ? global_x : x
+    global_y = y < global_y ? global_y : y
+
   }
 
-  return result
+  return [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict]
 }
 
-//ANCHOR - Main function after loading DOM
+//ANCHOR - MAIN
 $(document).ready(function() {
+
+  var mapAS = {
+    'A': '<span style="color: #000000;">A</span>', 'R': '<span style="color: #ff0000;">R</span>',
+    'N': '<span style="color: #000000;">N</span>', 'D': '<span style="color: #000000;">D</span>',
+    'C': '<span style="color: #000000;">C</span>', 'Q': '<span style="color: #000000;">Q</span>',
+    'E': '<span style="color: #000000;">E</span>', 'G': '<span style="color: #ffa500;">G</span>',
+    'H': '<span style="color: #ff0000;">H</span>', 'I': '<span style="color: #00ff00;">I</span>',
+    'L': '<span style="color: #00ff00;">L</span>', 'K': '<span style="color: #ff0000;">K</span>',
+    'M': '<span style="color: #00ff00;">M</span>', 'F': '<span style="color: #00ff00;">F</span>',
+    'P': '<span style="color: #ffa500;">P</span>', 'S': '<span style="color: #ffa500;">S</span>',
+    'T': '<span style="color: #ffa500;">T</span>', 'W': '<span style="color: #00ffff;">W</span>',
+    'Y': '<span style="color: #00ffff;">Y</span>', 'V': '<span style="color: #00ff00;">V</span>',
+    '-': '<span style="color: #000000;">-</span>'
+  };
+  var state = 'default'
+  var functional_annotation_sources_available = [];
+  var bins = {"bin1": []};
+  var binnum = 1;
+  var current_groups = {}
 
   $.ajax({
     url: "/pangraph/get_json",
@@ -1455,141 +1402,16 @@ $(document).ready(function() {
     cache: false,
     contentType: "application/json",
     dataType: "json",
+    error: function(){
+      console.log('Error while attempting to load JSON data.')
+    },
     success: function(data){
+      console.log('Successfully load JSON data.')
 
-      $('#redraw').on('click', function() {
-
-        console.log('Draw SVG.')
-        // var new_data = new Object;
-        // new_data['condtr'] = parseInt($('#condtr')[0].value)
-        // new_data['maxlength'] = parseInt($('#maxlength')[0].value)
-        // new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
-        // new_data['ungroup'] = [parseInt($('#ungroupfrom')[0].value), parseInt($('#ungroupto')[0].value)]
-
-        // $("#genomecolors :input[type='checkbox']").each((index, element) => {
-        //   var genome = $(element).attr('name')
-        //   if ($(element).prop('checked') == true){
-        //     new_data[genome] = 'on'
-        //   } else {
-        //     new_data[genome] = 'off'
-        //   }
-        // })
-
-        // $.ajax({
-        //     url: "/pangraph/settings",
-        //     type: "POST",
-        //     async: false,
-        //     data: JSON.stringify(data),
-        //     contentType: "application/json",
-        //     dataType: "json",
-        //     success: function(){
-        //       $(document).off("click", ".group_choice");
-        //       $(document).off("click", ".binremove");
-        //       $(document).off("click", ".binchoice li a");
-        //       $(document).off("change", ".colorchange");
-        //       $(document).find("*").off();
-        //       // $(document).rerender();
-        //       main()
-        //     }
-        // });
-
-        var body = $('#svgbox')
-        body.empty()
-
-        var svg_core = generate_svg(data, all_nodes, genomes, global_x, global_y, all_edges, layers, layers_min, layers_max, group_dict);
-        
-        body.append(svg_core)
-        body.html(body.html());
-
-        if (typeof window.zoomSVG !== 'undefined') {
-          window.zoomSVG.destroy()
-        }
-        window.zoomSVG = svgPanZoom('#result', {
-          zoomEnabled: true,
-          panEnabled: true,
-          controlIconsEnabled: false,
-          minZoom: 0.1,
-          maxZoom: 100
-        });
-
-        $('#fit').off().on('click', function() {
-          console.log('reset view')
-          window.zoomSVG.resize();
-          window.zoomSVG.fit();
-          window.zoomSVG.center();
-        })
-      })
-
-      //ANCHOR - Main variables
-      var mapAS = {
-        'A': '<span style="color: #000000;">A</span>', 'R': '<span style="color: #ff0000;">R</span>',
-        'N': '<span style="color: #000000;">N</span>', 'D': '<span style="color: #000000;">D</span>',
-        'C': '<span style="color: #000000;">C</span>', 'Q': '<span style="color: #000000;">Q</span>',
-        'E': '<span style="color: #000000;">E</span>', 'G': '<span style="color: #ffa500;">G</span>',
-        'H': '<span style="color: #ff0000;">H</span>', 'I': '<span style="color: #00ff00;">I</span>',
-        'L': '<span style="color: #00ff00;">L</span>', 'K': '<span style="color: #ff0000;">K</span>',
-        'M': '<span style="color: #00ff00;">M</span>', 'F': '<span style="color: #00ff00;">F</span>',
-        'P': '<span style="color: #ffa500;">P</span>', 'S': '<span style="color: #ffa500;">S</span>',
-        'T': '<span style="color: #ffa500;">T</span>', 'W': '<span style="color: #00ffff;">W</span>',
-        'Y': '<span style="color: #00ffff;">Y</span>', 'V': '<span style="color: #00ff00;">V</span>',
-        '-': '<span style="color: #000000;">-</span>'
-      };
-
-      var state = 'default'
-      var functional_annotation_sources_available = [];
-      var bins = {"bin1": []};
-      var binnum = 1;
-      var current_groups = {}
+      //ANCHOR - UI LIKE FUNCTIONS
 
       var start = new Date().getTime();
-      var all_nodes = data['nodes'];
-      var all_edges = data['edges'];
-
-      // var layers = new Set();
-      var layers = data['meta']['layers']
-      var layers_min = new Object();
-      var layers_max = new Object();
-      // var groups = new Set();
-      var global_x = 0;
-      var global_y = 0;
-      var genomes = data['meta']['genomes_names']
-      var group_dict = {}
-    
-      for(var n in all_nodes) {
-        var node = all_nodes[n];
-        for(var [layer, value] of Object.entries(node["layer"])) {
-          if (layer in layers_min) {
-            layers_min[layer] = value < layers_min[layer] ? value : layers_min[layer]
-          } else {
-            layers_min[layer] = value
-          }
-
-          if (layer in layers_max) {
-            layers_max[layer] = value > layers_max[layer] ? value : layers_max[layer]
-          } else {
-            layers_max[layer] = value
-          }
-
-          // layers.add(layer)
-        }
-
-        var group = node["group"]
-        var x = node["position"][0]
-        var y = node["position"][1]
-        
-        if (group) {
-          if (group in group_dict) {
-            group_dict[group].push(n)
-          } else {
-            group_dict[group] = [n]
-          } 
-        }
-
-        // groups.add(group)
-        global_x = x < global_x ? global_x : x
-        global_y = y < global_y ? global_y : y
-
-      }
+      var [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict] = defineVariables(data)
 
       for (var layer of layers) {
     
@@ -1890,42 +1712,13 @@ $(document).ready(function() {
         })
       }
 
-      var end = new Date().getTime();
-      var time = end - start;
-      console.log('Document execution', time, 'ms.')
-
-      //ANCHOR - Main panel response functions
       sortable('#genomecolors', {
         forcePlaceholderSize: true,
         handle: '.user-handle',
         items: 'div'
       });
 
-      $(document).on("click", ".group_choice", async function() {
-
-        // console.log(this)
-
-        var gene_cluster_id = this.getAttribute("name_id");
-        var gene_cluster_context = this.getAttribute("group");
-        var add_align = parseInt(this.getAttribute("context"))
-
-        var body = $(this).parent().parent().parent().parent()
-
-        body.empty()
-        var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-        body.append(bodyinfo)
-
-        // console.log(gene_cluster_id, gene_cluster_context)
-
-        var all_info = await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align)
-
-        // console.log(all_info)
-
-        bodyinfo.append(all_info)
-        // nodeinfo(e.target, data);
-      })
-
-      //ANCHOR - Recolor nodes after redraw
+      //ANCHOR - BINS
       var groups = Object.keys(group_dict);
       for (var binid of Object.keys(bins)) {
         var nodes = bins[binid];
@@ -1966,11 +1759,8 @@ $(document).ready(function() {
         }
       }
 
-      // console.log(bins)
-
       current_groups = group_dict;
 
-      //ANCHOR - Bin dropdown choice function
       $(document).on("click", ".binremove", function() {
 
         var id = $(this).attr('name_id');
@@ -1984,849 +1774,359 @@ $(document).ready(function() {
 
       })
     
-//     // ANCHOR - Add bin
-//     $('#binadd').on('click', function() {
-//         binnum += 1;
+      $('#binadd').on('click', function() {
+        binnum += 1;
     
-//         $('#bingrid').append(
-//             $('<div class="col-12" id="bin' + binnum + '"></div>').append(
-//                 $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
-//                     $('<div class="col-2"></div>').append(
-//                         $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
-//                     )
-//                 ).append(
-//                     $('<div class="col-6"></div>').append(
-//                         $('<input class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
-//                     )
-//                 ).append(
-//                     $('<div class="col-2"></div>').append(
-//                         $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value="0" readonly>')
-//                     )
-//                 ).append(
-//                     $('<div class="d-flex col-2"></div>').append(
-//                         $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
-//                     )
-//                 )
-//             )
-//         );
-    
-//         bins['bin' + binnum] = [];
-//     });
-    
-//     $('#AddBin').on('click', function() {
+        $('#bingrid').append(
+            $('<div class="col-12" id="bin' + binnum + '"></div>').append(
+                $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
+                    )
+                ).append(
+                    $('<div class="col-6"></div>').append(
+                        $('<input class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
+                    )
+                ).append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value="0" readonly>')
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
+                    )
+                )
+            )
+        );
 
-//       var selection = document.querySelector('input[name="binradio"]:checked');
-//       var binid = selection.value;
+        bins['bin' + binnum] = [];
+      });
 
-//       var basics = $('#node_basics_table')
-//       var node = basics[0].getAttribute("gc_context")
-//       var name = document.getElementById(node);
+      $('#AddBin').on('click', function() {
 
-//       bins = marknode(name, data, binid, bins);
+        var selection = document.querySelector('input[name="binradio"]:checked');
+        var binid = selection.value;
 
-//     });
+        var basics = $('#node_basics_table')
+        var node = basics[0].getAttribute("gc_context")
+        var name = document.getElementById(node);
 
-//     //ANCHOR - Remove bin
-//     $('#binremove').on('click', function() {
+        bins = marknode(name, data, binid, bins);
 
-//       var selection = document.querySelector('input[name="binradio"]:checked');
+      });
 
-//       if (selection !== null) {
-//         var binid = selection.value;
+      $('#binremove').on('click', function() {
 
-//         for (var node of bins[binid]) {
-//           var name = document.getElementById(node);
-//           bins = marknode(name, data, binid, bins);
-//         }
+        var selection = document.querySelector('input[name="binradio"]:checked');
 
-//         $("#" + binid).remove();
-//         delete bins[binid]
-//         var nextbin = document.querySelector('input[name="binradio"]')
+        if (selection !== null) {
+          var binid = selection.value;
 
-//         if (nextbin) {
-//           nextbin.checked = true;
-//         } else {
-//           $('#binadd').click();
-//         }
-//       }
-//     })
+          for (var node of bins[binid]) {
+            var name = document.getElementById(node);
+            bins = marknode(name, data, binid, bins);
+          }
 
-//     //ANCHOR - Change bin
-//     $(document).on("change", ".colorchange", function() {
+          $("#" + binid).remove();
+          delete bins[binid]
+          var nextbin = document.querySelector('input[name="binradio"]')
 
-//       var binid = this.name;
-//       var nodes = bins[binid];
+          if (nextbin) {
+            nextbin.checked = true;
+          } else {
+            $('#binadd').click();
+          }
+        }
+      })
 
-//       for (var node of nodes) {
+      //ANCHOR - UTILITIES
 
-//         bins[binid] = bins[binid].filter(item => item !== node);
-//         var name = document.getElementById(node);
-//         bins = marknode(name, data, binid, bins);
+      $('#svgDownload').on('click', function() {
+        var blob = new Blob([$('#svgbox')[0].innerHTML]);
+        var title = data['meta']['project_name']
+        downloadBlob(blob, title + ".svg");
+      });
 
-//       }
-
-//     });
-
-//     $('#binanalyse').on('click', async function() {
-//       var set = {}
-//       var groups = data['infos']['groups']
-//       var groups_keys = Object.keys(groups)
-//       var bin_keys = Object.keys(bins)
-
-//       var selection = 'COG20_FUNCTION'
-//       set['selection'] = selection
-//       // console.log(bins, bin_keys)
-
-//       for (var binid of bin_keys) {
-//         set[binid] = []
-//         for (var id of bins[binid]) {
-//           if (groups_keys.includes(id)) {
-//             for (var item of groups[id]) {
-//               set[binid].push(data['elements']['nodes'][item]['name'])  
-//             }
-//           } else {
-//             set[binid].push(data['elements']['nodes'][id]['name'])
-//           }
-//         }
-//       }
-
-//       $.ajax({
-//         url: "/pangraph/analyse",
-//         type: "POST",
-//         data: JSON.stringify(set),
-//         contentType: "application/json",
-//         dataType: "json",
-//         success: function(result){
-          
-//           $('#BinAnalyseBody').empty();
-//           var bin_analyses_table = ''
-
-//           bin_analyses_table += '<table class="table'
-//           bin_analyses_table += '<tbody><thead class="thead-light"><tr>'
-          
-//           bin_analyses_table += '<th scope="row">' + 'Function' + '</th>'
-//           for (bin_key of bin_keys) {
-//             bin_analyses_table += '<th scope="row">' + bin_key + '</th>'
-//           }
-          
-//           bin_analyses_table += '</tr></thead><tbody>'
-//           bin_analyses_table += '<tbody>'
-
-//           for (func of Object.keys(result)) {
-//             bin_analyses_table += '<tr><td>' + func + '</td>'
-//             for (bin_key of Object.keys(result[func])) {
-//               var value = result[func][bin_key]
-//               if (value == 1) {
-//                 bin_analyses_table += '<td class=td-analysis-cell-1></td>'
-//               } else {
-//                 bin_analyses_table += '<td class=td-analysis-cell-0></td>'
-//               }
-//             }
-//             bin_analyses_table += '</tr>'
-//           }
-
-//           bin_analyses_table += '</tbody></table>'
-
-//           $('#BinAnalyseBody')[0].innerHTML = bin_analyses_table
-
-//           $('#BinAnalyse').modal('show');
-
-//         }
-//       })
-//       // console.log(set)
-//     })
-
-//     //ANCHOR - Info bin
-//     $('#bininfo').on('click', async function() {
-
-//       var selection = document.querySelector('input[name="binradio"]:checked');
-
-//       // if (selection !== null) {
-//       var binid = selection.value;
-//       var appendlist = [];
-
-//       $('#BinModalBody').empty();
-//       for (var id of bins[binid]) {
-//         var element = document.getElementById(id);
-
-//         if (element.getAttribute('class') == 'group') {
-//           gene_cluster_context = id;
-//           gene_cluster_id = data['infos']['groups'][id][0]
-//         } else {
-//           gene_cluster_id = id;
-//           gene_cluster_context = null;
-//         }
-
-//         appendlist.push([gene_cluster_id, gene_cluster_context]);
-
-//       }
-
-//       for (var [gene_cluster_id, gene_cluster_context] of appendlist) {
-
-//         var body = $('<div></div>').append(
-//           $('<div class="card-body overflow-scroll" id="' + gene_cluster_id + 'div"></div>').append(
-//             await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, add_align=0)
-//           )
-//         )
-
-//         if (gene_cluster_context == null) {
-//           var element_id = gene_cluster_id
-//         } else {
-//           var element_id = gene_cluster_context
-//         }
-
-//         $('#BinModalBody').append(
-//           $('<div class="card border mb-3 w-100"></div>').append(
-//             $('<div class="card-header"></div>').append(
-//               $('<div class="d-flex justify-content-end align-items-center"></div>').append(
-//                 $('<button class="btn-close binremove" name_id="' + element_id + '" bin="' + binid + '"></button>')
-//               )
-//             )
-//           ).append(
-//             body
-//           )
-//         )
-
-//         // basic_info = {'Gene Cluster': id, 'Genomes': genomes, 'Position': position}
-//         // body.append(get_gene_cluster_display_tables(id, basic_info, gene_cluster_data))
-//       }
-
-//       $('#BinModal').modal('show');
-//       // }
-//     })
-
-//     $('#InfoDownload').on('click', function() {
-
-//       // Variable to store the final csv data
-//       var csv_data = [];
-//       var basics = $('#node_basics_table')
-//       var title = basics[0].getAttribute("gc_id")
-//       var layers = $('#node_layers_table')
-//       var functions = $('#node_functions_table')
-
-//       var basics_rows = basics[0].getElementsByTagName('tr');
-//       var layers_rows = layers[0].getElementsByTagName('tr');
       
-//       var function_rows = functions[0].getElementsByTagName('tr');
-
-//       for (let i = 0; i < function_rows.length; i++) {
-    
-//           if (i >= basics_rows.length) {
-//             var basics_cols = []
-//             basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
-//             basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
-            
-//             var function_cols = function_rows[i].querySelectorAll('td,th');
-//           } else { 
-//             var basics_cols = []
-//             basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
-//             basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
-            
-//             var function_cols = function_rows[i].querySelectorAll('td,th');
-//           }
-            
-//           let csvrow = [];
-//           for (let j = 0; j < basics_cols.length; j++) {
-    
-//             var info = basics_cols[j].innerHTML
-//             csvrow.push(info);
-//           }
-          
-//           for (let k = 0; k < function_cols.length; k++) {
-    
-//             var info = function_cols[k].innerHTML
-//             csvrow.push(info);
-//           }
-    
-//           // console.log(csvrow)
-
-//           // Combine each column value with comma
-//           csv_data.push(csvrow.join(","));
-//       }
-//       // Combine each row data with new line character
-//       csv_data = csv_data.join('\n');
-    
-//       var blob = new Blob([csv_data]);
-//       // var title = data['infos']['meta']['title']
-//       downloadBlob(blob, title + ".csv");
-//     });
-
-//     $('#AlignmentDownload').on('click', function() {
-
-//       // Variable to store the final csv data
-//       var csv_data = '';
-//       var alignment = $('#node_sequence_alignments_table')
-//       var basics = $('#node_basics_table')
-//       var title = alignment[0].getAttribute("gc_id")
-//       var xpos = basics[0].getAttribute("gc_pos")
-      
-//       var alignment_rows = alignment[0].getElementsByTagName('tr');
-
-//       for (let i = 1; i < alignment_rows.length; i++) {
-    
-//           var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
-    
-//           csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Contig:" + alignment_cols[2].innerHTML + "|Position:" + xpos + "|Direction:" + alignment_cols[3].innerHTML + '\n';
-//           var genome = ''
-          
-//           var alignment_nucs = alignment_cols[4].getElementsByTagName('span');
-//           // console.log(alignment_nucs)
-
-//           for (let k = 0; k < alignment_nucs.length; k++) {
-
-//             genome += alignment_nucs[k].innerHTML
-//           }
-
-//           csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
-//       }
-//       // Combine each row data with new line character
-      
-//       var blob = new Blob([csv_data]);
-//       // var title = data['infos']['meta']['title']
-//       downloadBlob(blob, title + ".fa");
-//     });
-
-//     $('#svgDownload').on('click', function() {
-//       var blob = new Blob([$('#svgbox')[0].innerHTML]);
-//       var title = data['infos']['meta']['title']
-//       downloadBlob(blob, title + ".svg");
-//     });
-
-//     $('#searchadd').on('click', function() {
-
-//       var selection = document.querySelector('input[name="binradio"]:checked')
-//       var binid = selection.value
-
-//       for (var [id, members] of Object.entries(searched)) {
-//         if (!(bins[binid].includes(id))) {
-
-//           var e = document.getElementById(id);
-//           bins = marknode(e, data, binid, bins);
-
-//         }
-//       }
-//     })
-
-//     $('#searchremove').on('click', function() {
-
-//       var selection = document.querySelector('input[name="binradio"]:checked')
-//       var binid = selection.value
-
-//       for (var [id, members] of Object.entries(searched)) {
-//         if ((bins[binid].includes(id))) {
-
-//           var e = document.getElementById(id);
-//           bins = marknode(e, data, binid, bins);
-
-//         }
-//       }
-//     })
-
-//     $('#searcherase').on('click', function() {
-
-//       for (var [id, members] of Object.entries(searched)) {
-//         for (var mem of members) {
-//           var xpos = data['elements']['nodes'][mem]['position']['x_offset']
-//           var e = document.getElementById(xpos);
-//           e.setAttribute("fill", "white")
-//         }
-//       }
-
-//       searched = {};
-//     })
-
-//     $('#searchcolor').on('click', function() {
-
-//       for (var [id, members] of Object.entries(searched)) {
-//         for (var mem of members) {
-//           var xpos = data['elements']['nodes'][mem]['position']['x_offset']
-//           var e = document.getElementById(xpos);
-//           e.setAttribute("fill", "#ff0000")
-//         }
-//       }
-//     })
-
-//     const searchEraseButton = document.getElementById('searcherase');
-//     const searchColorButton = document.getElementById('searchcolor');
-//     const searchAppendBin = document.getElementById('searchadd');
-//     const searchRemoveBin = document.getElementById('searchremove');
-    
-//     var searched = {}
-//     $('#search').on('click', async function() {
-
-//       var searchpos = false
-
-//       //Filter Search
-//       var layers_filter = new Object
-//       var mingenomes = ($("#mingenomes").prop('checked') == true && !isNaN(parseFloat($("#mingenomestext")[0].value))) ? parseFloat($("#mingenomestext")[0].value) : -1
-//       var maxgenomes = ($("#maxgenomes").prop('checked') == true && !isNaN(parseFloat($("#maxgenomestext")[0].value))) ? parseFloat($("#maxgenomestext")[0].value) : -1
-//       var minposition = ($("#minposition").prop('checked') == true && !isNaN(parseFloat($("#minpositiontext")[0].value))) ? parseFloat($("#minpositiontext")[0].value) : -1
-//       var maxposition = ($("#maxposition").prop('checked') == true && !isNaN(parseFloat($("#maxpositiontext")[0].value))) ? parseFloat($("#maxpositiontext")[0].value) : -1
-      
-//       layers_filter['genomes'] = {'min': mingenomes, 'max': maxgenomes}
-//       layers_filter['position'] = {'min': minposition, 'max': maxposition}
-
-//       var layers = Object.keys(data['infos']['layers_data'])
-//       for (var layer_name of layers) {
-
-//         // console.log("#min" + layer_name + "text")
-//         var minlayer = ($("#min" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#min" + layer_name + "text")[0].value))) ? parseFloat($("#min" + layer_name + "text")[0].value) : -1
-//         var maxlayer = ($("#max" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#max" + layer_name + "text")[0].value))) ? parseFloat($("#max" + layer_name + "text")[0].value) : -1
-        
-//         layers_filter[layer_name] = {'min': minlayer, 'max': maxlayer}
-//       }
-
-//       //Expression Search
-//       var expressioncomparison = ''
-//       var expressiondrop = $('#expressiondrop')[0].value
-//       var expressionrel = $('#expressionrel')[0].value
-//       var expressiontext = $('#expressiontext')[0].value
-
-//       // console.log(expressiondrop, expressionrel, expressiontext)
-
-//       if (expressiondrop != "Choose item" && expressionrel != "Choose operator" && expressiontext != '') {
-//         if (expressionrel == '=') {
-//           if (!isNaN(expressiontext)) {
-//             expressioncomparison = '== ' + expressiontext
-//           } else {
-//             expressioncomparison = '== "' + expressiontext + '"'
-//           }
-//         } else if (expressionrel == '\u{2260}') {
-//           if (!isNaN(expressiontext)) {
-//             expressioncomparison = '!= ' + expressiontext
-//           } else {
-//             expressioncomparison = '!= "' + expressiontext + '"'
-//           }
-//         } else if (expressionrel == '\u{2264}' && !isNaN(expressiontext)) {
-//           expressioncomparison = '<= ' + expressiontext
-//         } else if (expressionrel == '\u{2265}' && !isNaN(expressiontext)) {
-//           expressioncomparison = '>= ' + expressiontext
-//         } else if (expressionrel == '\u{003C}' && !isNaN(expressiontext)) {
-//           expressioncomparison = '< ' + expressiontext
-//         } else if (expressionrel == '\u{003E}' && !isNaN(expressiontext)) {
-//           expressioncomparison = '> ' + expressiontext
-//         } else if (expressionrel == '\u{25C2}\u{25AA}\u{25B8}') {
-//           expressioncomparison = '.includes("' + expressiontext + '")'
-//         } else if (expressionrel == '\u{25C2}\u{25AA}') {
-//           expressioncomparison = '.endsWith("' + expressiontext + '")'
-//         } else if (expressionrel == '\u{25AA}\u{25B8}') {
-//           expressioncomparison = '.startsWith("' + expressiontext + '")'
-//         }
-//       } 
-
-//       // console.log(expressioncomparison)
-
-//       //Function Search
-//       var searchfunction = {}
-//       var searchterms = $('#searchFunctionsValue')[0].value.split(",");
-//       for (var source of functional_annotation_sources_available) {
-//         if ($("#flex" + source).prop('checked') == true) {
-//           searchfunction[source] = searchterms
-//         }
-//       }
-
-//       console.log(searchfunction)
-
-//       var layers_positions = {}
-//       for (var layer_name of Object.keys(layers_filter)) {
-        
-//         var minlayer = layers_filter[layer_name]['min']
-//         var maxlayer = layers_filter[layer_name]['max']
-
-//         if (minlayer != -1 || maxlayer != -1 || (minlayer != -1 && maxlayer != -1)) {
-
-//           layers_positions[layer_name] = []
-//           searchpos = true
-//           if (layer_name == 'position') {
-//             var global_x = data["infos"]["meta"]["global_x_offset"] -1;
-//             var layerobjects = new Array(global_x - 1).fill().map((d, i) => i + 1);
-//             // console.log(layerobjects)
-//           } else {
-//             var layerobjects = document.querySelectorAll("." + layer_name)
-//           }
-
-//           for (var o of layerobjects) {
-
-//             var append = true
-            
-//             if (layer_name == 'position') {
-//               var value = o
-//               var result = o
-//             } else {
-//               var value = o.getAttribute("name")
-//               var result = o.getAttribute("xpos")
-//             }
-
-//             if (minlayer != '-1'){
-//               if (eval(value + '<' + minlayer)){
-//                 append = false
-//               }
-//             }
-
-//             if (maxlayer != '-1'){
-//               if (eval(value + '>' + maxlayer)){
-//                 append = false
-//               }
-//             }
-
-//             if (append == true) {
-//               layers_positions[layer_name].push(parseInt(result))
-//             }
-
-//           }
-//         }
-//       }
-
-//       // console.log(layers_positions)
-
-//       var positions = []
-//       var keys = Object.keys(layers_positions)
-
-//       if (keys.length > 0) {
-//         for (var pos of layers_positions[keys[0]]) {
-
-//           if (keys.length > 0) {
-//             var add = true
-//             for (let k = 1; k < keys.length; k++) {
-//               if (!layers_positions[keys[k]].includes(pos)) {
-//                 add = false
-//               }
-//             }
-
-//             if (add == true) {
-//               positions.push(pos)
-//             }
-//           } else {
-//             positions.push(pos)
-//           }
-//         }
-//       }
-        
-//       // console.log(positions)
-
-//       if (expressioncomparison == '' && Object.keys(searchfunction).length == 0 && searchpos == false) {
-//         var message = "Please enter valid search parameters."
-//       } else {
-//         // console.log(expressioncomparison, searchfunction, searchpos)
-
-//         var passed_gcs = await checknode(searchfunction)
-        
-//         var nodes = document.querySelectorAll(".node")
-//         for (var node of nodes) {
-
-//           var id = node.getAttribute("id")
-//           var node = data['elements']['nodes'][id]
-          
-//           if (passed_gcs.includes(node['name'])) {
-//             var append = true
-//           } else {
-//             var append = false
-//           }
-
-//           if (searchpos == true) {
-//             if (!positions.includes(parseInt(node['position']['x_offset']))) {
-//               append = false
-//             }
-//           }
-
-//           if (append == true) {
-//             if (expressiondrop == "Name") {
-//               if (eval('"' + node["name"] + '"' + expressioncomparison)) {
-//                 if (!(id in searched)) {
-//                   searched[id] = [id]
-//                 }
-//               }
-//             } else {
-//               if (!(id in searched)) {
-//                 searched[id] = [id]
-//               }
-//             }
-//           }
-//         }
-
-//         var groups = document.querySelectorAll(".group")
-//         for (var group of groups) {
-//           var groupid = group.getAttribute("id")
-//           var members = data["infos"]["groups"][groupid]
-//           for (var id of members) {
-
-//             node = data['elements']['nodes'][id]
-//             var append = true
-
-//             if (passed_gcs.includes(node['name'])) {
-//               var append = true
-//             } else {
-//               var append = false
-//             }              
-
-//             if (searchpos == true) {
-//               if (!positions.includes(parseInt(node['position']['x_offset']))) {
-//                 append = false
-//               }
-//             }
-  
-//             if (append == true) {
-//               if (expressiondrop == "Name") {
-//                 if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
-
-//                   if (!(groupid in searched)) {
-//                     searched[groupid] = [id]
-//                   } else {
-//                     searched[groupid].push(id)
-//                   }
-//                 }
-//               } else {
-//                 if (!(groupid in searched)) {
-//                   searched[groupid] = [id]
-//                 } else {
-//                   searched[groupid].push(id)
-//                 }
-//               }
-//             }
-//           }
-//         }
-        
-//         var table = $('<div class="form-horizontal"></div>')
-
-//         for (var key of Object.keys(searched)) {
-          
-//           table.append(
-//             $('<div class="col-12"></div>').append(
-//               $('<div class="row align-items-center"></div>').append(
-//                 $('<div class="col-12 mb-1">' + searched[key] + '</td>')
-//               )
-//             )
-//           )
-//         }
-
-//         $('#searchtable').empty()
-//         $('#searchtable').append(
-//           $('<div class="pt-3"></div>').append(
-//             $('<div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter"></div>').append(
-//               table
-//             )
-//           )
-//         )
-
-//         var message = 'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
-
-//         if (Object.keys(searched).length != 0) {
-//           searchEraseButton.disabled = false;
-//           searchColorButton.disabled = false;
-//           searchAppendBin.disabled = false;
-//           searchRemoveBin.disabled = false;
-//         }
-//       }
-
-//       var toastbody = $('#searchtoastbody')
-//       toastbody.empty()
-//       toastbody.append(
-//         message
-//       )
-//       // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
-//       $('#searchtoast').toast('show')
-//     })
-
-//     var nodes = document.querySelectorAll(".node")
-//     var divs = document.querySelectorAll(".node, .group");
-//     for (var el of divs) {
-
-//       if (el.getAttribute("class") == 'group'){
-//         var id = data["infos"]["groups"][el.getAttribute("id")][0]
-//         var name = el.getAttribute("id")
-//       } else {
-//         var id = el.getAttribute("id")
-//         var name = data['elements']['nodes'][el.getAttribute("id")]['name']
-//       }
-
-//       tippy(el, {
-//         content: '<strong>' + name + '</strong>' + '<br />',
-//         allowHTML: true,
-//         onHide(instance) {
-//           if (instance.reference.id.startsWith('GCG_')){
-//             var id = data["infos"]["groups"][instance.reference.id][0]
-//           } else {
-//             var id = instance.reference.id
-//           }
-//           var elements = Object.keys(data['elements']['nodes'][id]['genome'])
-
-//           for (var element of elements) {
-//             $('#number_' + element)[0].innerText = '0';
-//           }
-//         },
-//         onShow(instance) {
-//           if (instance.reference.id.startsWith('GCG_')){
-//             var id = data["infos"]["groups"][instance.reference.id][0]
-//           } else {
-//             var id = instance.reference.id
-//           }
-//           var elements = Object.keys(data['elements']['nodes'][id]['genome'])
-
-//           for (var element of elements) {
-//             $('#number_' + element)[0].innerText = '1';
-//           }
-//         },
-//         arrow: false,
-//         duration: 0,
-//         followCursor: true,
-//         theme: "light",
-//       });
-//     };
-
-//     var isDown = false
-//     var diff = 0
-
-//     var old_xpos = 0
-//     var old_ypos = 0
-
-//     var xpos = 0
-//     var ypos = 0
-
-//     var new_xpos = 0
-//     var new_ypos = 0
-
-//     $("#svgbox").on('mousedown', function(e) {
-//       old_xpos = e.offsetX
-//       old_ypos = e.offsetY
-
-//       xpos = old_xpos
-//       ypos = old_ypos
-
-//       isDown = true
-//       diff = 0
-//     })
-
-//     $("#svgbox").on('mousemove', function(e) {
-//       if (isDown === true) {
-//         new_xpos = e.offsetX
-//         new_ypos = e.offsetY
-
-//         diff += Math.sqrt((new_xpos-xpos)^2+(new_ypos-ypos)^2)
-
-//         if (!e.shiftKey) {
-//           window.zoomSVG.panBy({x: new_xpos-xpos, y: new_ypos-ypos})
-//         }
-
-//         xpos = new_xpos
-//         ypos = new_ypos
-//       }
-//     })
-
-//     $("#svgbox").on('mouseup', function(e) {
-//       if (isDown === true) {
-
-//         var selection = document.querySelector('input[name="binradio"]:checked')
-
-//         isDown = false
-
-//         if (diff < 10) {
-//           if (e.target.getAttribute('class') === 'group' || e.target.getAttribute('class') === 'node') {
-
-//             if (e.shiftKey && selection !== null) {
-
-//               var binid = selection.value
-//               bins = marknode(e.target, data, binid, bins);
-
-//             } else {
-//               //show_node_details_modal(e.target, data);
-//               // console.log(e.target)
-//               nodeinfo(e.target, data);
-//             }
-
-//           } else {
-//           }
-
-//         } else {
-//           if (e.shiftKey && selection !== null) {
-
-//             var binid = selection.value
-
-//             var max_xpos = Math.max(old_xpos, xpos)
-//             var min_xpos = Math.min(old_xpos, xpos)
-
-//             var max_ypos = Math.max(old_ypos, ypos)
-//             var min_ypos = Math.min(old_ypos, ypos)
-
-//             for (var n of nodes) {
-
-//               var bounding = n.getBoundingClientRect();
-//               var left = bounding.left
-//               var right = bounding.right
-//               var bottom = bounding.bottom
-//               var top = bounding.top
-
-//               if (
-//                 min_xpos < left &&
-//                 max_xpos > right &&
-//                 min_ypos < bottom &&
-//                 max_ypos > top
-//                 ) {
-//                 bins = marknode(n, data, binid, bins);
-
-//               }
-//             }
-
-//             var groups = data['infos']['groups']
-//             for(var g in groups) {
-//               // var inside = true;
-//               var group = data['infos']['groups'][g]
-//               for (var k of group) {
-//                 var node = document.getElementById(k);
-
-//                 var bounding = node.getBoundingClientRect();
-//                 var left = bounding.left
-//                 var right = bounding.right
-//                 var bottom = bounding.bottom
-//                 var top = bounding.top
-
-//                 if (
-//                   min_xpos < left &&
-//                   max_xpos > right &&
-//                   min_ypos < bottom &&
-//                   max_ypos > top
-//                   ) {
-//                   var name = document.getElementById(g);
-//                   bins = marknode(name, data, binid, bins);
-//                   break
-//                 }
-//                 // if (
-//                 //   min_xpos < left &&
-//                 //   max_xpos > right &&
-//                 //   min_ypos < bottom &&
-//                 //   max_ypos > top
-//                 //   ) {
-//                 // } else {
-//                 //   inside = false
-//                 // }
-//               }
-
-//               // if (inside === true){
-//               //   var name = document.getElementById(g);
-//               //   bins = marknode(name, data, binid, bins);
-//               // }
-//             }
-//           }
-//         }
-//       }
-//     })
-//     document.body.addEventListener('keydown', function(ev) {
-//       if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
-//       {
-//           // shortcuts should not work if user is entering text to input.
-//           return false;
-//       }
-//       if (ev.keyCode === 83) { // S = 83
-//           $('#toggle-panel-left').trigger('click');
-//       }
-//       if (ev.keyCode === 84) { // T = 84
-//           $('#title-panel').toggle();
-//           $('#toggle-panel-top').toggleClass('invisible visible');
-//       }
-//     });
-//   }})
-
-// }
+      var end = new Date().getTime();
+      var time = end - start;
+      console.log('Document creation', time, 'ms.')
 
     }
   })  
+
+  // ANCHOR - DRAW
+  $('#redraw').on('click', function() {
+
+    var new_data = new Object;
+    new_data['condtr'] = parseInt($('#condtr')[0].value)
+    new_data['maxlength'] = parseInt($('#maxlength')[0].value)
+    new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
+    new_data['ungroup'] = [parseInt($('#ungroupfrom')[0].value), parseInt($('#ungroupto')[0].value)]
+
+    $("#genomecolors :input[type='checkbox']").each((index, element) => {
+      var genome = $(element).attr('name')
+      if ($(element).prop('checked') == true){
+        new_data[genome] = 'on'
+      } else {
+        new_data[genome] = 'off'
+      }
+    })
+
+    $.ajax({
+      url: "/pangraph/settings",
+      type: "POST",
+      async: false,
+      data: JSON.stringify(new_data),
+      contentType: "application/json",
+      dataType: "json",
+      error: function(){
+        console.log('Error while attempting to update JSON data.')
+      },
+      success: function(){
+        console.log('Successfully updated JSON data.')
+      }
+    });
+
+    $.ajax({
+      url: "/pangraph/get_json",
+      type: "POST",
+      cache: false,
+      contentType: "application/json",
+      dataType: "json",
+      error: function(){
+        console.log('Error while attempting to load JSON data.')
+      },
+      success: function(data){
+        console.log('Successfully load JSON data.')
+
+        var body = $('#svgbox')
+        body.empty()
+        body.off()
+
+        var [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict] = defineVariables(data)
+        var groups = Object.keys(group_dict)
+        var svg_core = generate_svg(data, all_nodes, genomes, global_x, global_y, all_edges, layers, layers_min, layers_max, group_dict);
+        
+        body.append(svg_core)
+        body.html(body.html());
+
+        if (typeof window.zoomSVG !== 'undefined') {
+          window.zoomSVG.destroy()
+        }
+        window.zoomSVG = svgPanZoom('#result', {
+          zoomEnabled: true,
+          panEnabled: false,
+          controlIconsEnabled: false,
+          minZoom: 0.1,
+          maxZoom: 100
+        });
+
+        $('#fit').off().on('click', function() {
+          console.log('reset view')
+          window.zoomSVG.resize();
+          window.zoomSVG.fit();
+          window.zoomSVG.center();
+        })
+
+        var nodes = document.querySelectorAll(".node")
+        var divs = document.querySelectorAll(".node, .group");
+        for (var el of divs) {
+
+          if (el.getAttribute("class") == 'group'){
+            var id = group_dict[el.getAttribute("id")][0]
+            var name = el.getAttribute("id")
+          } else {
+            var id = el.getAttribute("id")
+            var name = data['nodes'][el.getAttribute("id")]["gene_cluster"]
+          }
+
+          tippy(el, {
+            content: '<strong>' + name + '</strong>' + '<br />',
+            allowHTML: true,
+            onHide(instance) {
+              if (instance.reference.id.startsWith('GCG_')){
+                var id = group_dict[instance.reference.id][0]
+              } else {
+                var id = instance.reference.id
+              }
+              var elements = Object.keys(data['nodes'][id]['gene_calls'])
+
+              for (var element of elements) {
+                $('#number_' + element)[0].innerText = '0';
+              }
+            },
+            onShow(instance) {
+              if (instance.reference.id.startsWith('GCG_')){
+                var id = group_dict[instance.reference.id][0]
+              } else {
+                var id = instance.reference.id
+              }
+              var elements = Object.keys(data['nodes'][id]['gene_calls'])
+
+              for (var element of elements) {
+                $('#number_' + element)[0].innerText = '1';
+              }
+            },
+            arrow: false,
+            duration: 0,
+            followCursor: true,
+            theme: "light",
+          });
+        };
+
+        var isDown = false
+        var diff = 0
+
+        var old_xpos = 0
+        var old_ypos = 0
+
+        var xpos = 0
+        var ypos = 0
+
+        var new_xpos = 0
+        var new_ypos = 0
+
+        body.on('mousedown', function(e) {
+          old_xpos = e.offsetX
+          old_ypos = e.offsetY
+
+          xpos = old_xpos
+          ypos = old_ypos
+
+          isDown = true
+          diff = 0
+        })
+
+        body.on('mousemove', function(e) {
+          if (isDown === true) {
+            new_xpos = e.offsetX
+            new_ypos = e.offsetY
+
+            diff += Math.sqrt((new_xpos-xpos)^2+(new_ypos-ypos)^2)
+
+            if (!e.shiftKey) {
+              window.zoomSVG.panBy({x: new_xpos-xpos, y: new_ypos-ypos})
+            }
+
+            xpos = new_xpos
+            ypos = new_ypos
+          }
+        })
+
+        body.on('mouseup', function(e) {
+          if (isDown === true) {
+
+            var selection = document.querySelector('input[name="binradio"]:checked')
+
+            isDown = false
+
+            if (diff < 10) {
+              if (e.target.getAttribute('class') === 'group' || e.target.getAttribute('class') === 'node') {
+
+                if (e.shiftKey && selection !== null) {
+
+                  var binid = selection.value
+                  bins = marknode(e.target, data, binid, bins);
+
+                } else {
+                  //show_node_details_modal(e.target, data);
+                  // console.log(e.target)
+                  nodeinfo(e.target, data, group_dict, mapAS);
+                }
+
+              } else {
+              }
+
+            } else {
+              if (e.shiftKey && selection !== null) {
+
+                var binid = selection.value
+
+                var max_xpos = Math.max(old_xpos, xpos)
+                var min_xpos = Math.min(old_xpos, xpos)
+
+                var max_ypos = Math.max(old_ypos, ypos)
+                var min_ypos = Math.min(old_ypos, ypos)
+
+                for (var n of nodes) {
+
+                  var bounding = n.getBoundingClientRect();
+                  var left = bounding.left
+                  var right = bounding.right
+                  var bottom = bounding.bottom
+                  var top = bounding.top
+
+                  if (
+                    min_xpos < left &&
+                    max_xpos > right &&
+                    min_ypos < bottom &&
+                    max_ypos > top
+                    ) {
+                    bins = marknode(n, data, binid, bins);
+
+                  }
+                }
+
+                for(var g in groups) {
+                  // var inside = true;
+                  var group = data['infos']['groups'][g]
+                  for (var k of group) {
+                    var node = document.getElementById(k);
+
+                    var bounding = node.getBoundingClientRect();
+                    var left = bounding.left
+                    var right = bounding.right
+                    var bottom = bounding.bottom
+                    var top = bounding.top
+
+                    if (
+                      min_xpos < left &&
+                      max_xpos > right &&
+                      min_ypos < bottom &&
+                      max_ypos > top
+                      ) {
+                      var name = document.getElementById(g);
+                      bins = marknode(name, data, binid, bins);
+                      break
+                    }
+                    // if (
+                    //   min_xpos < left &&
+                    //   max_xpos > right &&
+                    //   min_ypos < bottom &&
+                    //   max_ypos > top
+                    //   ) {
+                    // } else {
+                    //   inside = false
+                    // }
+                  }
+
+                  // if (inside === true){
+                  //   var name = document.getElementById(g);
+                  //   bins = marknode(name, data, binid, bins);
+                  // }
+                }
+              }
+            }
+          }
+        })
+        document.body.addEventListener('keydown', function(ev) {
+          
+          if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
+          {
+              // shortcuts should not work if user is entering text to input.
+              return false;
+          }
+          if (ev.keyCode === 83) { // S = 83
+              $('#toggle-panel-left').trigger('click');
+          }
+          if (ev.keyCode === 84) { // T = 84
+              $('#title-panel').toggle();
+              $('#toggle-panel-top').toggleClass('invisible visible');
+          }
+        });
+      }
+    })
+  })
+
 });
