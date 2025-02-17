@@ -1,6 +1,6 @@
 //ANCHOR - NODE FUNCTIONS
 async function nodeinfo(e, data, group_dict, mapAS, gene_cluster_id='') {
-  console.log(gene_cluster_id)
+  // console.log(gene_cluster_id)
   var id = e.id;
   var element = document.getElementById(id);
 
@@ -309,7 +309,6 @@ function fetchalignment(alignment) {
 };
 
 async function appendalignment(gene_cluster_id, alignment, mapAS) {
-    // FIXME: We need to come up with more accurate and explicit function names.
     if (Object.keys(alignment).length == 0) {
         return ''
     }
@@ -322,7 +321,7 @@ async function appendalignment(gene_cluster_id, alignment, mapAS) {
     alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
     alignments_table += `</tr></thead><tbody>\n\n`;
 
-    console.log(alignment)
+    // console.log(alignment)
 
     var d = await fetchalignment(alignment)
 
@@ -344,6 +343,143 @@ async function appendalignment(gene_cluster_id, alignment, mapAS) {
     // lol sorry if I screwed these thigns up badly :) IDK what I'm doing :p
     return alignments_table;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//ANCHOR - BIN FUNCTIONS
+function marknode(e, data, binid, bins, genome_size, group_dict){
+
+  var bincolor = document.getElementById(binid + 'color').value
+  var id = e.id;
+  var current = ''
+
+  var binkeys = Object.keys(bins)
+    for (var key of binkeys) {
+      if (bins[key].includes(id)) {
+        current = key
+        break;
+    }
+  }
+
+  var group_color = $('#groups_color')[0].value;
+  var core_color = $('#core_color')[0].value;
+  var paralog_color = $('#paralog_color')[0].value;
+  var singleton_color = $('#singleton_color')[0].value;
+  var accessory_color = $('#accessory_color')[0].value;
+  var rearranged_color = $('#rearranged_color')[0].value;
+  var trna_color = $('#trna_color')[0].value;
+
+  if ($('#flexsaturation').prop('checked') == true){
+    var saturation = 1
+  } else {
+    var saturation = 0
+  }
+
+  if (e.getAttribute('class') == 'group') {
+
+    var node_color = group_color;
+    var group = group_dict[id]
+    var node_name = group[0]
+    var node = data['nodes'][node_name];
+    var genome = Object.keys(node['gene_calls']).length;
+
+  } else if (e.getAttribute('class') == 'node') {
+
+    var node = data['nodes'][id];
+    var node_type = node['type']
+
+    if (node_type == 'core'){
+      var node_color = core_color
+    } else if (node_type == 'rearranged') {
+      var node_color = rearranged_color
+    } else if (node_type == 'accessory') {
+      var node_color = accessory_color
+    } else if (node_type == 'paralog') {
+      var node_color = paralog_color
+    } else if (node_type == 'singleton') {
+      var node_color = singleton_color
+    } else if (node_type == 'trna') {
+      var node_color = trna_color
+    }
+
+    var genome = Object.keys(node['gene_calls']).length;
+
+  }
+
+  if (current === binid) {
+
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', node_color, genome / genome_size))
+    } else {
+      e.setAttribute("fill", node_color)
+    }
+    
+    bins[binid] = bins[binid].filter(item => item !== id)
+    $('#' + binid + 'value')[0].value = bins[binid].length
+
+  } else if (current === '') {
+
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    } else {
+      e.setAttribute("fill", bincolor)
+    }
+
+    bins[binid].push(id)
+    $('#' + binid + 'value')[0].value = bins[binid].length
+
+  } else {
+
+    if (saturation == 1){
+      e.setAttribute("fill", lighter_color('#ffffff', bincolor, genome / genome_size))
+    } else {
+      e.setAttribute("fill", bincolor)
+    }
+
+    bins[current] = bins[current].filter(item => item !== id)
+    bins[binid].push(id)
+    $('#' + binid + 'value')[0].value = bins[binid].length
+    $('#' + current + 'value')[0].value = bins[current].length
+
+  }
+
+  return bins
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1408,7 +1544,7 @@ $(document).ready(function() {
     success: function(data){
       console.log('Successfully load JSON data.')
 
-      //ANCHOR - UI LIKE FUNCTIONS
+      //ANCHOR - UI FUNCTIONS
 
       var start = new Date().getTime();
       var [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict] = defineVariables(data)
@@ -1718,136 +1854,105 @@ $(document).ready(function() {
         items: 'div'
       });
 
-      //ANCHOR - BINS
-      var groups = Object.keys(group_dict);
-      for (var binid of Object.keys(bins)) {
-        var nodes = bins[binid];
-        var updated_nodes = []
-
-        for (var node of nodes) {
-
-          var name = document.getElementById(node);
-
-          if(name) {
-            if (name.getAttribute('class') == 'pseudo') {
-              for(var g in groups) {
-                var group = group_dict[g]
-                if (group.includes(node)) {
-                  if (!updated_nodes.includes(g)){
-                    updated_nodes.push(g)
-                  }
-                }
-              }
-            } else {
-              updated_nodes.push(node)
-            }
-          } else {
-            updated_nodes.push(...current_groups[node])
-          };
-
-        }
-
-        bins[binid] = updated_nodes
-        // console.log(nodes)
-        // console.log(updated_nodes)
-        for (var node of bins[binid]) {
-
-          bins[binid] = bins[binid].filter(item => item !== node);
-          var name = document.getElementById(node);
-          bins = marknode(name, data, binid, bins);
-
-        }
-      }
-
-      current_groups = group_dict;
-
-      $(document).on("click", ".binremove", function() {
-
-        var id = $(this).attr('name_id');
-        var binid = $(this).attr('bin');
-
-        var name = document.getElementById(id);
-        // console.log(name)
-        bins = marknode(name, data, binid, bins);
-
-        $(this).parent().parent().parent().remove();
-
-      })
-    
-      $('#binadd').on('click', function() {
-        binnum += 1;
-    
-        $('#bingrid').append(
-            $('<div class="col-12" id="bin' + binnum + '"></div>').append(
-                $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
-                    $('<div class="col-2"></div>').append(
-                        $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
-                    )
-                ).append(
-                    $('<div class="col-6"></div>').append(
-                        $('<input class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
-                    )
-                ).append(
-                    $('<div class="col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value="0" readonly>')
-                    )
-                ).append(
-                    $('<div class="d-flex col-2"></div>').append(
-                        $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
-                    )
-                )
-            )
-        );
-
-        bins['bin' + binnum] = [];
-      });
-
-      $('#AddBin').on('click', function() {
-
-        var selection = document.querySelector('input[name="binradio"]:checked');
-        var binid = selection.value;
-
-        var basics = $('#node_basics_table')
-        var node = basics[0].getAttribute("gc_context")
-        var name = document.getElementById(node);
-
-        bins = marknode(name, data, binid, bins);
-
-      });
-
-      $('#binremove').on('click', function() {
-
-        var selection = document.querySelector('input[name="binradio"]:checked');
-
-        if (selection !== null) {
-          var binid = selection.value;
-
-          for (var node of bins[binid]) {
-            var name = document.getElementById(node);
-            bins = marknode(name, data, binid, bins);
-          }
-
-          $("#" + binid).remove();
-          delete bins[binid]
-          var nextbin = document.querySelector('input[name="binradio"]')
-
-          if (nextbin) {
-            nextbin.checked = true;
-          } else {
-            $('#binadd').click();
-          }
-        }
-      })
-
-      //ANCHOR - UTILITIES
-
       $('#svgDownload').on('click', function() {
-        var blob = new Blob([$('#svgbox')[0].innerHTML]);
-        var title = data['meta']['project_name']
-        downloadBlob(blob, title + ".svg");
+        // var blob = new Blob([$('#svgbox')[0].innerHTML]);
+        // var title = data['meta']['project_name']
+        // downloadBlob(blob, title + ".svg");
+        console.log(Z)
       });
 
+
+      $('#InfoDownload').on('click', function() {
+
+        // Variable to store the final csv data
+        var csv_data = [];
+        var basics = $('#node_basics_table')
+        var title = basics[0].getAttribute("gc_id")
+        var layers = $('#node_layers_table')
+        var functions = $('#node_functions_table')
+
+        var basics_rows = basics[0].getElementsByTagName('tr');
+        var layers_rows = layers[0].getElementsByTagName('tr');
+        
+        var function_rows = functions[0].getElementsByTagName('tr');
+
+        for (let i = 0; i < function_rows.length; i++) {
       
+            if (i >= basics_rows.length) {
+              var basics_cols = []
+              basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
+              basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
+              
+              var function_cols = function_rows[i].querySelectorAll('td,th');
+            } else { 
+              var basics_cols = []
+              basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
+              basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
+              
+              var function_cols = function_rows[i].querySelectorAll('td,th');
+            }
+              
+            let csvrow = [];
+            for (let j = 0; j < basics_cols.length; j++) {
+      
+              var info = basics_cols[j].innerHTML
+              csvrow.push(info);
+            }
+            
+            for (let k = 0; k < function_cols.length; k++) {
+      
+              var info = function_cols[k].innerHTML
+              csvrow.push(info);
+            }
+      
+            // console.log(csvrow)
+
+            // Combine each column value with comma
+            csv_data.push(csvrow.join(","));
+        }
+        // Combine each row data with new line character
+        csv_data = csv_data.join('\n');
+      
+        var blob = new Blob([csv_data]);
+        // var title = data['infos']['meta']['title']
+        downloadBlob(blob, title + ".csv");
+      });
+
+      $('#AlignmentDownload').on('click', function() {
+
+        // Variable to store the final csv data
+        var csv_data = '';
+        var alignment = $('#node_sequence_alignments_table')
+        var basics = $('#node_basics_table')
+        var title = alignment[0].getAttribute("gc_id")
+        var xpos = basics[0].getAttribute("gc_pos")
+        
+        var alignment_rows = alignment[0].getElementsByTagName('tr');
+
+        for (let i = 1; i < alignment_rows.length; i++) {
+      
+            var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
+      
+            csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Position:" + xpos + '\n';
+            var genome = ''
+            
+            var alignment_nucs = alignment_cols[2].getElementsByTagName('span');
+            // console.log(alignment_nucs)
+
+            for (let k = 0; k < alignment_nucs.length; k++) {
+
+              genome += alignment_nucs[k].innerHTML
+            }
+
+            csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
+        }
+        // Combine each row data with new line character
+        
+        var blob = new Blob([csv_data]);
+        // var title = data['infos']['meta']['title']
+        downloadBlob(blob, title + ".fa");
+      });
+
       var end = new Date().getTime();
       var time = end - start;
       console.log('Document creation', time, 'ms.')
@@ -1855,7 +1960,7 @@ $(document).ready(function() {
     }
   })  
 
-  // ANCHOR - DRAW
+  // ANCHOR - DRAW/REDRAW
   $('#redraw').on('click', function() {
 
     var new_data = new Object;
@@ -1902,12 +2007,12 @@ $(document).ready(function() {
 
         var body = $('#svgbox')
         body.empty()
-        body.off()
 
         var [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict] = defineVariables(data)
         var groups = Object.keys(group_dict)
         var svg_core = generate_svg(data, all_nodes, genomes, global_x, global_y, all_edges, layers, layers_min, layers_max, group_dict);
-        
+        var genome_size = genomes.length
+
         body.append(svg_core)
         body.html(body.html());
 
@@ -1922,14 +2027,14 @@ $(document).ready(function() {
           maxZoom: 100
         });
 
-        $('#fit').off().on('click', function() {
-          console.log('reset view')
+        $('#fit').off('click')
+        $('#fit').on('click', function() {
           window.zoomSVG.resize();
           window.zoomSVG.fit();
           window.zoomSVG.center();
         })
 
-        var nodes = document.querySelectorAll(".node")
+        var gc_nodes = document.querySelectorAll(".node")
         var divs = document.querySelectorAll(".node, .group");
         for (var el of divs) {
 
@@ -1987,6 +2092,7 @@ $(document).ready(function() {
         var new_xpos = 0
         var new_ypos = 0
 
+        body.off('mousedown')
         body.on('mousedown', function(e) {
           old_xpos = e.offsetX
           old_ypos = e.offsetY
@@ -1998,6 +2104,7 @@ $(document).ready(function() {
           diff = 0
         })
 
+        body.off('mousemove')
         body.on('mousemove', function(e) {
           if (isDown === true) {
             new_xpos = e.offsetX
@@ -2014,6 +2121,7 @@ $(document).ready(function() {
           }
         })
 
+        body.off('mouseup')
         body.on('mouseup', function(e) {
           if (isDown === true) {
 
@@ -2027,7 +2135,7 @@ $(document).ready(function() {
                 if (e.shiftKey && selection !== null) {
 
                   var binid = selection.value
-                  bins = marknode(e.target, data, binid, bins);
+                  bins = marknode(e.target, data, binid, bins, genome_size, group_dict);
 
                 } else {
                   //show_node_details_modal(e.target, data);
@@ -2049,7 +2157,7 @@ $(document).ready(function() {
                 var max_ypos = Math.max(old_ypos, ypos)
                 var min_ypos = Math.min(old_ypos, ypos)
 
-                for (var n of nodes) {
+                for (var n of gc_nodes) {
 
                   var bounding = n.getBoundingClientRect();
                   var left = bounding.left
@@ -2063,14 +2171,14 @@ $(document).ready(function() {
                     min_ypos < bottom &&
                     max_ypos > top
                     ) {
-                    bins = marknode(n, data, binid, bins);
+                    bins = marknode(n, data, binid, bins, genome_size, group_dict);
 
                   }
                 }
 
-                for(var g in groups) {
+                for(var g of groups) {
                   // var inside = true;
-                  var group = data['infos']['groups'][g]
+                  var group = group_dict[g]
                   for (var k of group) {
                     var node = document.getElementById(k);
 
@@ -2087,7 +2195,7 @@ $(document).ready(function() {
                       max_ypos > top
                       ) {
                       var name = document.getElementById(g);
-                      bins = marknode(name, data, binid, bins);
+                      bins = marknode(name, data, binid, bins, genome_size, group_dict);
                       break
                     }
                     // if (
@@ -2103,28 +2211,629 @@ $(document).ready(function() {
 
                   // if (inside === true){
                   //   var name = document.getElementById(g);
-                  //   bins = marknode(name, data, binid, bins);
+                  //   bins = marknode(name, data, binid, bins, genome_size, group_dict);
                   // }
                 }
               }
             }
           }
         })
-        document.body.addEventListener('keydown', function(ev) {
-          
-          if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName))
-          {
-              // shortcuts should not work if user is entering text to input.
-              return false;
+
+
+        for (var binid of Object.keys(bins)) {
+          var nodes = bins[binid];
+          var updated_nodes = []
+        
+          for (var node of nodes) {
+        
+            var name = document.getElementById(node);
+        
+            if(name) {
+              if (name.getAttribute('class') == 'pseudo') {
+                for(var g in groups) {
+                  var group = group_dict[g]
+                  if (group.includes(node)) {
+                    if (!updated_nodes.includes(g)){
+                      updated_nodes.push(g)
+                    }
+                  }
+                }
+              } else {
+                updated_nodes.push(node)
+              }
+            } else {
+              updated_nodes.push(...group_dict[node])
+            };
+        
           }
-          if (ev.keyCode === 83) { // S = 83
-              $('#toggle-panel-left').trigger('click');
+        
+          bins[binid] = updated_nodes
+          // console.log(nodes)
+          // console.log(updated_nodes)
+          for (var node of bins[binid]) {
+        
+            bins[binid] = bins[binid].filter(item => item !== node);
+            var name = document.getElementById(node);
+            bins = marknode(name, data, binid, bins, genome_size, group_dict);
+        
           }
-          if (ev.keyCode === 84) { // T = 84
-              $('#title-panel').toggle();
-              $('#toggle-panel-top').toggleClass('invisible visible');
-          }
+        }
+
+
+        for (var binid of Object.keys(bins)) {
+      
+          $('#' + binid + 'color').off("change")
+          $('#' + binid + 'color').on("change", function() {
+
+            var binid = this.name;
+            var nodes = bins[binid];
+      
+            for (var node of nodes) {
+      
+              bins[binid] = bins[binid].filter(item => item !== node);
+              var name = document.getElementById(node);
+              bins = marknode(name, data, binid, bins, genome_size, group_dict);
+      
+            }
+          })
+        }
+
+        $('#AddBin').on('click')
+        $('#AddBin').on('click', function() {
+        
+          var selection = document.querySelector('input[name="binradio"]:checked');
+          var binid = selection.value;
+        
+          var basics = $('#node_basics_table')
+          var node = basics[0].getAttribute("gc_context")
+          var name = document.getElementById(node);
+        
+          bins = marknode(name, data, binid, bins, genome_size, group_dict);
+        
         });
+
+        $('#binadd').off('click')
+        $('#binadd').on('click', function() {
+          binnum += 1;
+          var binid = "bin" + binnum
+        
+          $('#bingrid').append(
+              $('<div class="col-12" id="' + binid + '"></div>').append(
+                  $('<div class="row gy-1 align-items-center" id="row' + binnum + '"></div>').append(
+                      $('<div class="col-2"></div>').append(
+                          $('<input type="radio" name="binradio" id="bin' + binnum + 'radio" value="bin' + binnum + '" checked></input>')
+                      )
+                  ).append(
+                      $('<div class="col-6"></div>').append(
+                          $('<input class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" type="text" id="bin' + binnum + 'text" value="Bin_' + binnum + '"></input>')
+                      )
+                  ).append(
+                      $('<div class="col-2"></div>').append(
+                          $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin' + binnum + 'value" name="condtr" value="0" readonly>')
+                      )
+                  ).append(
+                      $('<div class="d-flex col-2"></div>').append(
+                          $('<input class="form-control form-control-color flex-fill p-0 border-0 colorchange" type="color" name="bin' + binnum + '" id="bin' + binnum + 'color" value="#000000"></input>')
+                      )
+                  )
+              )
+          );
+        
+          $('#' + binid + 'color').on("change", function() {
+
+            var binid = this.name;
+            var nodes = bins[binid];
+      
+            for (var node of nodes) {
+      
+              bins[binid] = bins[binid].filter(item => item !== node);
+              var name = document.getElementById(node);
+              bins = marknode(name, data, binid, bins, genome_size, group_dict);
+      
+            }
+          })
+
+          bins['bin' + binnum] = [];
+        });
+        
+        $('#binremove').off('click')
+        $('#binremove').on('click', function() {
+        
+          var selection = document.querySelector('input[name="binradio"]:checked');
+        
+          if (selection !== null) {
+            var binid = selection.value;
+        
+            for (var node of bins[binid]) {
+              var name = document.getElementById(node);
+              bins = marknode(name, data, binid, bins, genome_size, group_dict);
+            }
+        
+            $("#" + binid).remove();
+            delete bins[binid]
+            var nextbin = document.querySelector('input[name="binradio"]')
+        
+            if (nextbin) {
+              nextbin.checked = true;
+            } else {
+              $('#binadd').click();
+            }
+          }
+        })
+
+        $('#binanalyse').off('click')
+        $('#binanalyse').on('click', async function() {
+          var set = {}
+          var bin_keys = Object.keys(bins)
+
+          var selection = 'COG20_FUNCTION'
+          set['selection'] = selection
+
+          for (var binid of bin_keys) {
+            set[binid] = []
+            for (var id of bins[binid]) {
+              if (Object.keys(group_dict).includes(id)) {
+                for (var item of group_dict[id]) {
+                  set[binid].push(data['nodes'][item]['gene_cluster'])  
+                }
+              } else {
+                set[binid].push(data['nodes'][id]['gene_cluster'])
+              }
+            }
+          }
+
+          $.ajax({
+            url: "/pangraph/analyse",
+            type: "POST",
+            data: JSON.stringify(set),
+            contentType: "application/json",
+            dataType: "json",
+            success: function(result){
+              
+              $('#BinAnalyseBody').empty();
+              var bin_analyses_table = ''
+
+              bin_analyses_table += '<table class="table'
+              bin_analyses_table += '<tbody><thead class="thead-light"><tr>'
+              
+              bin_analyses_table += '<th scope="row">' + 'Function' + '</th>'
+              for (bin_key of bin_keys) {
+                bin_analyses_table += '<th scope="row">' + bin_key + '</th>'
+              }
+              
+              bin_analyses_table += '</tr></thead><tbody>'
+              bin_analyses_table += '<tbody>'
+
+              for (func of Object.keys(result)) {
+                bin_analyses_table += '<tr><td>' + func + '</td>'
+                for (bin_key of Object.keys(result[func])) {
+                  var value = result[func][bin_key]
+                  if (value == 1) {
+                    bin_analyses_table += '<td class=td-analysis-cell-1></td>'
+                  } else {
+                    bin_analyses_table += '<td class=td-analysis-cell-0></td>'
+                  }
+                }
+                bin_analyses_table += '</tr>'
+              }
+
+              bin_analyses_table += '</tbody></table>'
+
+              $('#BinAnalyseBody')[0].innerHTML = bin_analyses_table
+
+              $('#BinAnalyse').modal('show');
+
+            }
+          })
+        })
+
+        $('#bininfo').off('click')
+        $('#bininfo').on('click', async function() {
+
+          var selection = document.querySelector('input[name="binradio"]:checked');
+
+          // if (selection !== null) {
+          var binid = selection.value;
+          var appendlist = [];
+
+          $('#BinModalBody').empty();
+          for (var id of bins[binid]) {
+            var element = document.getElementById(id);
+
+            if (element.getAttribute('class') == 'group') {
+              appendlist.push(...group_dict[id])
+            } else {
+              appendlist.push(id);
+            }
+          }
+
+          for (var gene_cluster_id of appendlist) {
+
+            gene_cluster_context = null
+
+            var body = $('<div></div>').append(
+              $('<div class="card-body overflow-scroll" id="' + gene_cluster_id + 'div"></div>').append(
+                await get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, data, group_dict, mapAS, add_align=0)
+              )
+            )
+            $('#BinModalBody').append(
+              $('<div class="card border mb-3 w-100"></div>').append(
+                body
+              )
+            )
+          }
+          $('#BinModal').modal('show');
+        })
+
+
+        // function get_passed_gene_clusters(searchfunction) {
+  
+        //   var d = $.ajax({
+        //     url: "/pangraph/filter",
+        //     type: "POST",
+        //     data: JSON.stringify(searchfunction),
+        //     contentType: "application/json",
+        //     dataType: "json"
+        //   })
+        
+        //   return d
+        // }
+        
+        // async function checknode(searchfunction) {
+        
+        //     var keys = Object.keys(searchfunction)  
+        //     if (keys.length > 0) {
+        //         var d = await get_passed_gene_clusters(searchfunction)
+        //         var result = d['gene_clusters']
+        //     } else {
+        //         var result = []
+        //     }
+        
+        //     return result
+        // }
+        
+        // $('#searchadd').off('click')
+        // $('#searchadd').on('click', function() {
+        
+        //     var selection = document.querySelector('input[name="binradio"]:checked')
+        //     var binid = selection.value
+        
+        //     for (var [id, members] of Object.entries(searched)) {
+        //     if (!(bins[binid].includes(id))) {
+        
+        //         var e = document.getElementById(id);
+        //         bins = marknode(e, data, binid, bins);
+        
+        //     }
+        //     }
+        // })
+        
+        // $('#searchremove').off('click')
+        // $('#searchremove').on('click', function() {
+        
+        //     var selection = document.querySelector('input[name="binradio"]:checked')
+        //     var binid = selection.value
+        
+        //     for (var [id, members] of Object.entries(searched)) {
+        //     if ((bins[binid].includes(id))) {
+        
+        //         var e = document.getElementById(id);
+        //         bins = marknode(e, data, binid, bins);
+        
+        //     }
+        //     }
+        // })
+        
+        // $('#searcherase').off('click')
+        // $('#searcherase').on('click', function() {
+        
+        //     for (var [id, members] of Object.entries(searched)) {
+        //     for (var mem of members) {
+        //         var xpos = data['elements']['nodes'][mem]['position']['x_offset']
+        //         var e = document.getElementById(xpos);
+        //         e.setAttribute("fill", "white")
+        //     }
+        //     }
+        
+        //     searched = {};
+        // })
+        
+        // $('#searchcolor').off('click')
+        // $('#searchcolor').on('click', function() {
+        
+        //     for (var [id, members] of Object.entries(searched)) {
+        //     for (var mem of members) {
+        //         var xpos = data['elements']['nodes'][mem]['position']['x_offset']
+        //         var e = document.getElementById(xpos);
+        //         e.setAttribute("fill", "#ff0000")
+        //     }
+        //     }
+        // })
+        
+        // const searchEraseButton = document.getElementById('searcherase');
+        // const searchColorButton = document.getElementById('searchcolor');
+        // const searchAppendBin = document.getElementById('searchadd');
+        // const searchRemoveBin = document.getElementById('searchremove');
+        
+        // var searched = {}
+        // $('#search').off('click')
+        // $('#search').on('click', async function() {
+        
+        //     var searchpos = false
+        
+        //     //Filter Search
+        //     var layers_filter = new Object
+        //     var mingenomes = ($("#mingenomes").prop('checked') == true && !isNaN(parseFloat($("#mingenomestext")[0].value))) ? parseFloat($("#mingenomestext")[0].value) : -1
+        //     var maxgenomes = ($("#maxgenomes").prop('checked') == true && !isNaN(parseFloat($("#maxgenomestext")[0].value))) ? parseFloat($("#maxgenomestext")[0].value) : -1
+        //     var minposition = ($("#minposition").prop('checked') == true && !isNaN(parseFloat($("#minpositiontext")[0].value))) ? parseFloat($("#minpositiontext")[0].value) : -1
+        //     var maxposition = ($("#maxposition").prop('checked') == true && !isNaN(parseFloat($("#maxpositiontext")[0].value))) ? parseFloat($("#maxpositiontext")[0].value) : -1
+            
+        //     layers_filter['genomes'] = {'min': mingenomes, 'max': maxgenomes}
+        //     layers_filter['position'] = {'min': minposition, 'max': maxposition}
+        
+        //     var layers = Object.keys(data['infos']['layers_data'])
+        //     for (var layer_name of layers) {
+        
+        //     // console.log("#min" + layer_name + "text")
+        //     var minlayer = ($("#min" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#min" + layer_name + "text")[0].value))) ? parseFloat($("#min" + layer_name + "text")[0].value) : -1
+        //     var maxlayer = ($("#max" + layer_name).prop('checked') == true && !isNaN(parseFloat($("#max" + layer_name + "text")[0].value))) ? parseFloat($("#max" + layer_name + "text")[0].value) : -1
+            
+        //     layers_filter[layer_name] = {'min': minlayer, 'max': maxlayer}
+        //     }
+        
+        //     //Expression Search
+        //     var expressioncomparison = ''
+        //     var expressiondrop = $('#expressiondrop')[0].value
+        //     var expressionrel = $('#expressionrel')[0].value
+        //     var expressiontext = $('#expressiontext')[0].value
+        
+        //     // console.log(expressiondrop, expressionrel, expressiontext)
+        
+        //     if (expressiondrop != "Choose item" && expressionrel != "Choose operator" && expressiontext != '') {
+        //     if (expressionrel == '=') {
+        //         if (!isNaN(expressiontext)) {
+        //         expressioncomparison = '== ' + expressiontext
+        //         } else {
+        //         expressioncomparison = '== "' + expressiontext + '"'
+        //         }
+        //     } else if (expressionrel == '\u{2260}') {
+        //         if (!isNaN(expressiontext)) {
+        //         expressioncomparison = '!= ' + expressiontext
+        //         } else {
+        //         expressioncomparison = '!= "' + expressiontext + '"'
+        //         }
+        //     } else if (expressionrel == '\u{2264}' && !isNaN(expressiontext)) {
+        //         expressioncomparison = '<= ' + expressiontext
+        //     } else if (expressionrel == '\u{2265}' && !isNaN(expressiontext)) {
+        //         expressioncomparison = '>= ' + expressiontext
+        //     } else if (expressionrel == '\u{003C}' && !isNaN(expressiontext)) {
+        //         expressioncomparison = '< ' + expressiontext
+        //     } else if (expressionrel == '\u{003E}' && !isNaN(expressiontext)) {
+        //         expressioncomparison = '> ' + expressiontext
+        //     } else if (expressionrel == '\u{25C2}\u{25AA}\u{25B8}') {
+        //         expressioncomparison = '.includes("' + expressiontext + '")'
+        //     } else if (expressionrel == '\u{25C2}\u{25AA}') {
+        //         expressioncomparison = '.endsWith("' + expressiontext + '")'
+        //     } else if (expressionrel == '\u{25AA}\u{25B8}') {
+        //         expressioncomparison = '.startsWith("' + expressiontext + '")'
+        //     }
+        //     } 
+        
+        //     // console.log(expressioncomparison)
+        
+        //     //Function Search
+        //     var searchfunction = {}
+        //     var searchterms = $('#searchFunctionsValue')[0].value.split(",");
+        //     for (var source of functional_annotation_sources_available) {
+        //     if ($("#flex" + source).prop('checked') == true) {
+        //         searchfunction[source] = searchterms
+        //     }
+        //     }
+        
+        //     console.log(searchfunction)
+        
+        //     var layers_positions = {}
+        //     for (var layer_name of Object.keys(layers_filter)) {
+            
+        //     var minlayer = layers_filter[layer_name]['min']
+        //     var maxlayer = layers_filter[layer_name]['max']
+        
+        //     if (minlayer != -1 || maxlayer != -1 || (minlayer != -1 && maxlayer != -1)) {
+        
+        //         layers_positions[layer_name] = []
+        //         searchpos = true
+        //         if (layer_name == 'position') {
+        //         var global_x = data["infos"]["meta"]["global_x_offset"] -1;
+        //         var layerobjects = new Array(global_x - 1).fill().map((d, i) => i + 1);
+        //         // console.log(layerobjects)
+        //         } else {
+        //         var layerobjects = document.querySelectorAll("." + layer_name)
+        //         }
+        
+        //         for (var o of layerobjects) {
+        
+        //         var append = true
+                
+        //         if (layer_name == 'position') {
+        //             var value = o
+        //             var result = o
+        //         } else {
+        //             var value = o.getAttribute("name")
+        //             var result = o.getAttribute("xpos")
+        //         }
+        
+        //         if (minlayer != '-1'){
+        //             if (eval(value + '<' + minlayer)){
+        //             append = false
+        //             }
+        //         }
+        
+        //         if (maxlayer != '-1'){
+        //             if (eval(value + '>' + maxlayer)){
+        //             append = false
+        //             }
+        //         }
+        
+        //         if (append == true) {
+        //             layers_positions[layer_name].push(parseInt(result))
+        //         }
+        
+        //         }
+        //     }
+        //     }
+        
+        //     // console.log(layers_positions)
+        
+        //     var positions = []
+        //     var keys = Object.keys(layers_positions)
+        
+        //     if (keys.length > 0) {
+        //     for (var pos of layers_positions[keys[0]]) {
+        
+        //         if (keys.length > 0) {
+        //         var add = true
+        //         for (let k = 1; k < keys.length; k++) {
+        //             if (!layers_positions[keys[k]].includes(pos)) {
+        //             add = false
+        //             }
+        //         }
+        
+        //         if (add == true) {
+        //             positions.push(pos)
+        //         }
+        //         } else {
+        //         positions.push(pos)
+        //         }
+        //     }
+        //     }
+            
+        //     // console.log(positions)
+        
+        //     if (expressioncomparison == '' && Object.keys(searchfunction).length == 0 && searchpos == false) {
+        //     var message = "Please enter valid search parameters."
+        //     } else {
+        //     // console.log(expressioncomparison, searchfunction, searchpos)
+        
+        //     var passed_gcs = await checknode(searchfunction)
+            
+        //     var nodes = document.querySelectorAll(".node")
+        //     for (var node of nodes) {
+        
+        //         var id = node.getAttribute("id")
+        //         var node = data['elements']['nodes'][id]
+                
+        //         if (passed_gcs.includes(node['name'])) {
+        //         var append = true
+        //         } else {
+        //         var append = false
+        //         }
+        
+        //         if (searchpos == true) {
+        //         if (!positions.includes(parseInt(node['position']['x_offset']))) {
+        //             append = false
+        //         }
+        //         }
+        
+        //         if (append == true) {
+        //         if (expressiondrop == "Name") {
+        //             if (eval('"' + node["name"] + '"' + expressioncomparison)) {
+        //             if (!(id in searched)) {
+        //                 searched[id] = [id]
+        //             }
+        //             }
+        //         } else {
+        //             if (!(id in searched)) {
+        //             searched[id] = [id]
+        //             }
+        //         }
+        //         }
+        //     }
+        
+        //     var groups = document.querySelectorAll(".group")
+        //     for (var group of groups) {
+        //         var groupid = group.getAttribute("id")
+        //         var members = data["infos"]["groups"][groupid]
+        //         for (var id of members) {
+        
+        //         node = data['elements']['nodes'][id]
+        //         var append = true
+        
+        //         if (passed_gcs.includes(node['name'])) {
+        //             var append = true
+        //         } else {
+        //             var append = false
+        //         }              
+        
+        //         if (searchpos == true) {
+        //             if (!positions.includes(parseInt(node['position']['x_offset']))) {
+        //             append = false
+        //             }
+        //         }
+        
+        //         if (append == true) {
+        //             if (expressiondrop == "Name") {
+        //             if (eval('"' + node["name"] + '"' + expressioncomparison) || eval('"' + group + '"' + expressioncomparison)) {
+        
+        //                 if (!(groupid in searched)) {
+        //                 searched[groupid] = [id]
+        //                 } else {
+        //                 searched[groupid].push(id)
+        //                 }
+        //             }
+        //             } else {
+        //             if (!(groupid in searched)) {
+        //                 searched[groupid] = [id]
+        //             } else {
+        //                 searched[groupid].push(id)
+        //             }
+        //             }
+        //         }
+        //         }
+        //     }
+            
+        //     var table = $('<div class="form-horizontal"></div>')
+        
+        //     for (var key of Object.keys(searched)) {
+                
+        //         table.append(
+        //         $('<div class="col-12"></div>').append(
+        //             $('<div class="row align-items-center"></div>').append(
+        //             $('<div class="col-12 mb-1">' + searched[key] + '</td>')
+        //             )
+        //         )
+        //         )
+        //     }
+        
+        //     $('#searchtable').empty()
+        //     $('#searchtable').append(
+        //         $('<div class="pt-3"></div>').append(
+        //         $('<div class="shadow-box pb-3 pr-3 pl-3 mb-3 rounded search-box-filter"></div>').append(
+        //             table
+        //         )
+        //         )
+        //     )
+        
+        //     var message = 'You have ' + Object.keys(searched).length + ' item(s) in your queue.'
+        
+        //     if (Object.keys(searched).length != 0) {
+        //         searchEraseButton.disabled = false;
+        //         searchColorButton.disabled = false;
+        //         searchAppendBin.disabled = false;
+        //         searchRemoveBin.disabled = false;
+        //     }
+        //     }
+        
+        //     var toastbody = $('#searchtoastbody')
+        //     toastbody.empty()
+        //     toastbody.append(
+        //     message
+        //     )
+        //     // var searchtoast = bootstrap.Toast.getOrCreateInstance($('#searchtoast'))
+        //     $('#searchtoast').toast('show')
+        // })
+        
+        
+
       }
     })
   })
