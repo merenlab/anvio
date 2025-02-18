@@ -37,50 +37,38 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
-    groupA.add_argument(*anvio.A('testing-yaml'), **anvio.K('testing-yaml'))
-    groupA.add_argument(*anvio.A('gene-additional-data'), **anvio.K('gene-additional-data'))
-    groupA.add_argument(*anvio.A('gc-additional-data'), **anvio.K('gc-additional-data'))
-    groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json'))
-    groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
-    groupA.add_argument(*anvio.A('genomes-reverse'), **anvio.K('genomes-reverse'))
+    groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json', {'required': False}))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
                                 "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
-    groupB.add_argument(*anvio.A('output-graphml'), **anvio.K('output-graphml'))
-    groupB.add_argument(*anvio.A('output-pan-graph-json'), **anvio.K('output-pan-graph-json'))
-    groupB.add_argument(*anvio.A('output-testing-yaml'), **anvio.K('output-testing-yaml'))
-    groupB.add_argument(*anvio.A('output-dir-summary'), **anvio.K('output-dir-summary'))
-    groupB.add_argument(*anvio.A('output-dir-graphics'), **anvio.K('output-dir-graphics'))
-    groupB.add_argument(*anvio.A('output-raw-gene-additional-data'), **anvio.K('output-raw-gene-additional-data'))
-    groupB.add_argument(*anvio.A('output-raw-gc-additional-data'), **anvio.K('output-raw-gc-additional-data'))
-
-    groupB.add_argument('--skip-storing-in-pan-db', default=False, action="store_true", help="Do not store the resulting graph into "
-                                "the pan-db.")
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupB.add_argument('--output-pangenome-graph-summary', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-hybrid-genome', default=False, action="store_true", help="Description.")
 
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
-    groupC.add_argument('--max-edge-length-filter', default = -1, type=int, help = "In the final pan graph, edges that connect gene clusters will vary in "
-                                "their length. The longer edges that connect far gene clusters with one another will add additional layers to the final "
-                                "display, reducing the readability of the overall graph structure. This parameter, which is by default set to %(default)d, "
-                                "will remove edges that span across more than %(default)d gene clusters. You can change the thresold to make graph much "
-                                "more accurate (lower values) or much more readable (higher values). We suggest you to start with the default, but "
-                                "explore other options if you are not satisfied. Please keep in mind that pangenomes that contain a very large number of "
-                                "genomic rearrangement events may take a very long time to compute with very small values of this parameter.")
-    groupC.add_argument('--gene-cluster-grouping-threshold', default = 2, type=int, help = "This parameters influences how gene clusters that share "
-                                "perfect synteny (across all genomes that contribute genes) are represented in the final display. With the default value "
-                                "of %(default)d, the final graph will represent as many gene clusters as possible in groups.")
-    groupC.add_argument('--gene-cluster-grouping-compression', default = 0.0, type=float, help = "Description.")
-    groupC.add_argument('--ungrouping-area', default = [-1, -1], type=list, help = "Description.")
-    groupC.add_argument('--priority-genome', default = '', type=str, help = "Description.")
+    groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
+    groupC.add_argument('--load-state', default='default', type=str, help="Description.")
+    groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
+    groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
+    groupC.add_argument('--import-values', default='', type=str, help = "Description.")
+    groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
+
+    groupC.add_argument('--max-edge-length-filter', type=int, help = "Description.")
+    groupC.add_argument('--gene-cluster-grouping-threshold', type=int, help = "Description.")
+    groupC.add_argument('--grouping-compression', type=float, help = "Description.")
 
     args = parser.get_args(parser)
 
     try:
-        graph = panops.Pangraph(args, run, progress)
-        graph.process()
+        graph = panops.PangenomeGraphMaster(args, run, progress)
+        graph.process_pangenome_graph()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
