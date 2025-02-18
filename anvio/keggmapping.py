@@ -167,14 +167,29 @@ class Mapper:
                 "that includes the necessary files for KEGG pathway maps."
             )
 
-        available_pathway_numbers: List[str] = []
+        available_pathway_numbers: Dict[str, List[str]] = {}
+        for org in ('ko', 'ec', 'rn'):
+            available_pathway_numbers[org] = []
         for row in pd.read_csv(
             self.kegg_context.kegg_map_image_kgml_file, sep='\t', index_col=0
         ).itertuples():
-            if row.KO + row.EC + row.RN == 0:
-                continue
-            available_pathway_numbers.append(row.Index[-5:])
+            pathway_number = row.Index[-5:]
+            if row.KO == 1:
+                available_pathway_numbers['ko'].append(pathway_number)
+            if row.EC == 1:
+                available_pathway_numbers['ec'].append(pathway_number)
+            if row.RN == 1:
+                available_pathway_numbers['rn'].append(pathway_number)
         self.available_pathway_numbers = available_pathway_numbers
+
+        # available_pathway_numbers: List[str] = []
+        # for row in pd.read_csv(
+        #     self.kegg_context.kegg_map_image_kgml_file, sep='\t', index_col=0
+        # ).itertuples():
+        #     if row.KO + row.EC + row.RN == 0:
+        #         continue
+        #     available_pathway_numbers.append(row.Index[-5:])
+        # self.available_pathway_numbers = available_pathway_numbers
 
         pathway_names: Dict[str, str] = {}
         for pathway_number, pathway_name in pd.read_csv(
@@ -200,6 +215,154 @@ class Mapper:
         self.run = run
         self.progress = progress
         self.quiet = quiet
+
+    def map_reaction_network_kegg_reactions(
+        self,
+        network: rn.ReactionNetwork,
+        output_dir: str,
+        pathway_numbers: Iterable[str] = None,
+        color_hexcode: str = '#2ca02c'
+    ) -> Dict[str, bool]:
+        kegg_reaction_ids = []
+        for reaction in network.reactions.values():
+            for kegg_reaction_id in reaction.kegg_aliases:
+                kegg_reaction_ids.append(kegg_reaction_id)
+        kegg_reaction_ids = set(kegg_reaction_ids)
+
+        drawn = self._map_kegg_reactions_fixed_colors(
+            kegg_reaction_ids,
+            output_dir,
+            pathway_numbers=pathway_numbers,
+            color_hexcode=color_hexcode
+        )
+        count = sum(drawn.values()) if drawn else 0
+        self.run.info("Number of maps drawn", count)
+
+        return drawn
+
+    def _map_kegg_reactions_fixed_colors(
+        self,
+        kegg_reaction_ids: Iterable[str],
+        output_dir: str,
+        pathway_numbers: List[str] = None,
+        color_hexcode: str = '#2ca02c'
+    ) -> Dict[str, bool]:
+        # Find the numeric IDs of the maps to draw.
+        pathway_numbers = self._find_maps(output_dir, 'rn', 'rns_', patterns=pathway_numbers)
+
+        filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
+
+        # Draw maps.
+        self.progress.new("Drawing map")
+        drawn: Dict[str, bool] = {}
+        for pathway_number in pathway_numbers:
+            self.progress.update(pathway_number)
+            if color_hexcode == 'original':
+                drawn[pathway_number] = self._draw_map_kegg_reactions_original_color(
+                    pathway_number,
+                    kegg_reaction_ids,
+                    output_dir
+                )
+            else:
+                drawn[pathway_number] = self._draw_map_kegg_reactions_single_color(
+                    pathway_number,
+                    kegg_reaction_ids,
+                    color_hexcode,
+                    output_dir
+                )
+        self.progress.end()
+
+        return drawn
+
+    def _draw_map_kegg_reactions_original_color(
+        self,
+        pathway_number: str,
+        kegg_reaction_ids: Iterable[str],
+        output_dir: str
+    ) -> bool:
+        pathway = self._get_pathway(pathway_number, 'rn')
+
+        select_entries = pathway.get_entries(kegg_ids=kegg_reaction_ids)
+        if not select_entries:
+            return False
+
+        # Set "secondary" colors of reaction Graphics elements for select KEGG reaction IDs: white
+        # background color of lines or black foreground text of rectangles. For other Graphics
+        # elements, change the 'fgcolor' attribute to a nonsense value. This ensures that the
+        # elements with prioritized colors can be distinguished from other elements. Also, in
+        # overview and standard maps, widen lines from the base map default of 1.0.
+        all_entries = pathway.get_entries(entry_type='reaction')
+        select_uuids = [entry.uuid for entry in select_entries]
+        prioritized_colors: Dict[str, List[Tuple[str, str]]] = {}
+        for entry in all_entries:
+            if entry.uuid in select_uuids:
+                for uuid in entry.subelements['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    if pathway.is_global_map:
+                        assert graphics.type == 'line'
+                        graphics.bgcolor = '#FFFFFF'
+                    elif pathway.is_overview_map:
+                        assert graphics.type == 'line'
+                        graphics.bgcolor = '#FFFFFF'
+                        graphics.width = 5.0
+                    else:
+                        if graphics.type == 'rectangle':
+                            graphics.fgcolor = '#000000'
+                        elif graphics.type == 'line':
+                            graphics.bgcolor = '#FFFFFF'
+                            graphics.width = 5.0
+                        else:
+                            raise AssertionError(
+                                "Reaction entries are assumed to have Graphics elements of type "
+                                "'rectangle' or 'line', not the encountered type, "
+                                f"'{graphics.type}'."
+                            )
+                    try:
+                        graphics_type_prioritized_colors = prioritized_colors[graphics.type]
+                    except:
+                        prioritized_colors[graphics.type] = graphics_type_prioritized_colors = []
+                    graphics_type_prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
+            else:
+                for uuid in entry.subelements['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    graphics.fgcolor = '0'
+
+        # By default, global maps but not overview and standard maps display reaction graphics in
+        # more than one color. Give higher priority to reaction entries that are encountered later
+        # (occur further down in the KGML file), and would thus be rendered above earlier reactions.
+        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {'reaction': {}}
+        for graphics_type, graphics_type_prioritized_colors in prioritized_colors.items():
+            seen = set()
+            unique_prioritized_colors = [
+                colors for colors in graphics_type_prioritized_colors
+                if not (colors in seen or seen.add(colors))
+            ]
+            priorities = np.linspace(0, 1, len(unique_prioritized_colors) + 1)[1: ]
+            graphics_type_color_priority = {
+                colors: priority for colors, priority in zip(unique_prioritized_colors, priorities)
+            }
+            color_priority['reaction'][graphics_type] = graphics_type_color_priority
+
+        # Recolor "unprioritized" reactions to a background color. In global and overview maps,
+        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
+        if pathway.is_global_map:
+            recolor_unprioritized_entries = 'g'
+            color_associated_compounds = 'high'
+        elif pathway.is_overview_map:
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = 'high'
+        else:
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = None
+        pathway.set_color_priority(
+            color_priority,
+            recolor_unprioritized_entries=recolor_unprioritized_entries,
+            color_associated_compounds=color_associated_compounds
+        )
+
+        self._draw_map(pathway, output_dir, prefix='rns_')
+
+        return True
 
     def map_contigs_database_kos(
         self,
@@ -839,7 +1002,7 @@ class Mapper:
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, 'ko', 'kos', patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
@@ -1740,7 +1903,7 @@ class Mapper:
         self.progress.end()
 
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, 'ko', 'kos', patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
@@ -2150,7 +2313,7 @@ class Mapper:
             False.
         """
         # Find the numeric IDs of the maps to draw.
-        pathway_numbers = self._find_maps(output_dir, 'kos', patterns=pathway_numbers)
+        pathway_numbers = self._find_maps(output_dir, 'ko', 'kos', patterns=pathway_numbers)
 
         filesnpaths.gen_output_directory(output_dir, progress=self.progress, run=self.run)
 
@@ -2336,7 +2499,13 @@ class Mapper:
                 f"'{pan_db}'"
             )
 
-    def _find_maps(self, output_dir: str, prefix: str, patterns: List[str] = None) -> List[str]:
+    def _find_maps(
+        self,
+        output_dir: str,
+        org: str,
+        prefix: str,
+        patterns: List[str] = None
+    ) -> List[str]:
         """
         Find the numeric IDs of maps to draw given the file prefix, checking that the map can be
         drawn in the target output direcotry.
@@ -2346,6 +2515,8 @@ class Mapper:
         output_dir : str
             Path to the output directory in which pathway map PDF files are drawn.
 
+        org : str
+
         prefix : str
             Output filenames are formatted as <prefix>_<pathway_number>.pdf or
             <prefix>_<pathway_number>_<pathway_name>.pdf.
@@ -2354,9 +2525,9 @@ class Mapper:
             Regex patterns of pathway numbers, which are five digits.
         """
         if patterns is None:
-            pathway_numbers = self.available_pathway_numbers
+            pathway_numbers = self.available_pathway_numbers[org]
         else:
-            pathway_numbers = self._get_pathway_numbers_from_patterns(patterns)
+            pathway_numbers = self._get_pathway_numbers_from_patterns(patterns, org)
 
         if self.pathway_categorization is not None:
             missing_pathway_numbers: list[str] = []
@@ -2394,7 +2565,7 @@ class Mapper:
 
         return pathway_numbers
 
-    def _get_pathway_numbers_from_patterns(self, patterns: Iterable[str]) -> List[str]:
+    def _get_pathway_numbers_from_patterns(self, patterns: Iterable[str], org: str) -> List[str]:
         """
         Among pathways available in the KEGG data directory, get those with ID numbers matching the
         given regex patterns.
@@ -2411,7 +2582,7 @@ class Mapper:
         """
         pathway_numbers: List[str] = []
         for pattern in patterns:
-            for available_pathway_number in self.available_pathway_numbers:
+            for available_pathway_number in self.available_pathway_numbers[org]:
                 if re.match(pattern, available_pathway_number):
                     pathway_numbers.append(available_pathway_number)
 
@@ -2421,6 +2592,107 @@ class Mapper:
             pathway_number for pathway_number in pathway_numbers
             if not (pathway_number in seen or seen.add(pathway_number))
         ]
+
+    def _draw_map_kegg_reactions_single_color(
+        self,
+        pathway_number: str,
+        kegg_reaction_ids: Iterable[str],
+        color_hexcode: str,
+        output_dir: str
+    ) -> bool:
+        pathway = self._get_pathway(pathway_number, 'rn')
+
+        select_entries = pathway.get_entries(kegg_ids=kegg_reaction_ids)
+        if not select_entries:
+            return False
+
+        # Set the color of Graphics elements for select KEGG reaction IDs. For other Graphics
+        # elements, change the 'fgcolor' attribute to a nonsense value of '0' to ensure that the
+        # elements with the prioritized color can be distinguished from other elements. Also, in
+        # overview and standard maps, widen lines from the base map default of 1.0.
+        all_entries = pathway.get_entries(entry_type='reaction')
+        select_uuids = [entry.uuid for entry in select_entries]
+        for entry in all_entries:
+            if entry.uuid in select_uuids:
+                for uuid in entry.subelements['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    if pathway.is_global_map:
+                        assert graphics.type == 'line'
+                        graphics.fgcolor = color_hexcode
+                        graphics.bgcolor = '#FFFFFF'
+                    elif pathway.is_overview_map:
+                        assert graphics.type == 'line'
+                        graphics.fgcolor = color_hexcode
+                        graphics.bgcolor = '#FFFFFF'
+                        graphics.width = 5.0
+                    else:
+                        if graphics.type == 'rectangle':
+                            graphics.fgcolor = '#000000'
+                            graphics.bgcolor = color_hexcode
+                        elif graphics.type == 'line':
+                            graphics.fgcolor = color_hexcode
+                            graphics.bgcolor = '#FFFFFF'
+                            graphics.width = 5.0
+                        else:
+                            raise AssertionError(
+                                "KEGG reaction entries are assumed to have Graphics elements of "
+                                "type 'rectangle' or 'line', not the encountered type, "
+                                f"'{graphics.type}'."
+                            )
+            else:
+                for uuid in entry.subelements['graphics']:
+                    graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
+                    graphics.fgcolor = '0'
+
+        # Set the color priority so that the colored reactions are prioritized for display on top.
+        # Recolor "unprioritized" reactions to a background color. In global and overview maps,
+        # recolor circles to reflect the colors of prioritized reactions involving the compounds.
+        color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {}
+        if pathway.is_global_map:
+            color_priority['reaction'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
+            recolor_unprioritized_entries = 'g'
+            color_associated_compounds = 'high'
+        elif pathway.is_overview_map:
+            color_priority['reaction'] = {'line': {(color_hexcode, '#FFFFFF'): 1.0}}
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = 'high'
+        else:
+            color_priority['reaction'] = {
+                'rectangle': {('#000000', color_hexcode): 1.0},
+                'line': {(color_hexcode, '#FFFFFF'): 1.0}
+            }
+            recolor_unprioritized_entries = 'w'
+            color_associated_compounds = None
+        pathway.set_color_priority(
+            color_priority,
+            recolor_unprioritized_entries=recolor_unprioritized_entries,
+            color_associated_compounds=color_associated_compounds
+        )
+
+        i = 0
+        prev_fg_color = '#E0E0E0'
+        for entry_uuid in pathway.subelements['entry']:
+            entry = pathway.uuid_element_lookup[entry_uuid]
+            entry: kgml.Entry
+            if entry.type != 'reaction':
+                continue
+            print(entry.id)
+            print(entry.name)
+            for graphics_uuid in entry.subelements['graphics']:
+                graphics = pathway.uuid_element_lookup[graphics_uuid]
+                graphics: kgml.Graphics
+                print(graphics.fgcolor)
+                print(graphics.bgcolor)
+            if graphics.fgcolor == '#E0E0E0' and prev_fg_color == '#2ca02c':
+                print('hi')
+                raise Exception
+            prev_fg_color = graphics.fgcolor
+            print()
+        raise Exception
+
+        self._draw_map(pathway, output_dir, prefix='rns_')
+
+        return True
 
     def _draw_map_kos_single_color(
         self,
@@ -2461,7 +2733,7 @@ class Mapper:
             True if the map was drawn, False if the map was not drawn because it did not contain any
             of the select KOs and 'draw_map_lacking_kos' was False.
         """
-        pathway = self._get_pathway(pathway_number)
+        pathway = self._get_pathway(pathway_number, 'ko')
 
         select_entries = pathway.get_entries(kegg_ids=ko_ids)
         if not select_entries and not draw_map_lacking_kos:
@@ -2475,7 +2747,7 @@ class Mapper:
         select_uuids = [entry.uuid for entry in select_entries]
         for entry in all_entries:
             if entry.uuid in select_uuids:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.subelements['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
                         assert graphics.type == 'line'
@@ -2501,7 +2773,7 @@ class Mapper:
                                 f"'{graphics.type}'."
                             )
             else:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.subelements['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     graphics.fgcolor = '0'
 
@@ -2530,7 +2802,7 @@ class Mapper:
             color_associated_compounds=color_associated_compounds
         )
 
-        self._draw_map(pathway, output_dir)
+        self._draw_map(pathway, output_dir, prefix='kos_')
 
         return True
 
@@ -2567,23 +2839,23 @@ class Mapper:
             True if the map was drawn, False if the map was not drawn because it did not contain any
             of the select KOs and 'draw_map_lacking_kos' was False.
         """
-        pathway = self._get_pathway(pathway_number)
+        pathway = self._get_pathway(pathway_number, 'ko')
 
         select_entries = pathway.get_entries(kegg_ids=ko_ids)
         if not select_entries and not draw_map_lacking_kos:
             return False
 
-        # Set "secondary" colors of ortholog Graphics elements for reactions containing select KOs:
-        # white background color of lines or black foreground text of rectangles. For other Graphics
-        # elements, change the 'fgcolor' attribute to a nonsense value to ensure that the elements
-        # with prioritized colors can be distinguished from other elements. Also, in overview and
-        # standard maps, widen lines from the base map default of 1.0.
+        # Set "secondary" colors of ortholog Graphics elements for select KOs: white background
+        # color of lines or black foreground text of rectangles. For other Graphics elements, change
+        # the 'fgcolor' attribute to a nonsense value to ensure that the elements with prioritized
+        # colors can be distinguished from other elements. Also, in overview and standard maps,
+        # widen lines from the base map default of 1.0.
         all_entries = pathway.get_entries(entry_type='ortholog')
         select_uuids = [entry.uuid for entry in select_entries]
         prioritized_colors: Dict[str, List[Tuple[str, str]]] = {}
         for entry in all_entries:
             if entry.uuid in select_uuids:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.subelements['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     if pathway.is_global_map:
                         assert graphics.type == 'line'
@@ -2610,7 +2882,7 @@ class Mapper:
                         prioritized_colors[graphics.type] = graphics_type_prioritized_colors = []
                     graphics_type_prioritized_colors.append((graphics.fgcolor, graphics.bgcolor))
             else:
-                for uuid in entry.children['graphics']:
+                for uuid in entry.subelements['graphics']:
                     graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                     graphics.fgcolor = '0'
 
@@ -2647,7 +2919,7 @@ class Mapper:
             color_associated_compounds=color_associated_compounds
         )
 
-        self._draw_map(pathway, output_dir)
+        self._draw_map(pathway, output_dir, prefix='kos_')
 
         return True
 
@@ -2737,7 +3009,7 @@ class Mapper:
             (group_threshold is None and group_sources is not None)
         )
 
-        pathway = self._get_pathway(pathway_number)
+        pathway = self._get_pathway(pathway_number, 'ko')
 
         combo_lookup: Dict[Tuple[str], Tuple[str]] = {}
         if category_combos is not None:
@@ -2816,7 +3088,7 @@ class Mapper:
             else:
                 combo = combo_lookup[tuple(sorted(categories))]
                 color_hexcode = color_hexcodes[category_combos.index(combo)]
-            for uuid in entry.children['graphics']:
+            for uuid in entry.subelements['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if pathway.is_global_map:
                     assert graphics.type == 'line'
@@ -2874,11 +3146,11 @@ class Mapper:
                 recolor_unprioritized_entries='w'
             )
 
-        self._draw_map(pathway, output_dir)
+        self._draw_map(pathway, output_dir, prefix='kos_')
 
         return True
 
-    def _draw_map(self, pathway: kgml.Pathway, output_dir: str) -> None:
+    def _draw_map(self, pathway: kgml.Pathway, output_dir: str, prefix: str = '') -> None:
         """
         Draw a map given the KGML pathway data.
 
@@ -2890,9 +3162,12 @@ class Mapper:
         output_dir : str
             Path to the output directory in which the pathway map PDF file is drawn. The directory
             is created if it does not exist.
+
+        prefix : str
+            File name prefix.
         """
         pathway_name = f'_{self._name_pathway(pathway.number)}' if self.name_files else ''
-        out_basename = f'kos_{pathway.number}{pathway_name}.pdf'
+        out_basename = f'{prefix}{pathway.number}{pathway_name}.pdf'
 
         if self.pathway_categorization is None:
             out_dir = output_dir
@@ -3121,7 +3396,54 @@ class Mapper:
                 if dir_path != category_dir and not os.listdir(dir_path):
                     os.rmdir(dir_path)
 
-    def _get_pathway(self, pathway_number: str) -> kgml.Pathway:
+    def _get_pathway(self, pathway_number: str, org: str) -> kgml.Pathway:
+        """
+        Get a Pathway object for the KGML file used in drawing a pathway map.
+
+        Parameters
+        ==========
+        pathway_number : str
+            Numeric ID of the map to draw.
+
+        Returns
+        =======
+        kgml.Pathway
+            Representation of the KGML file as an object.
+        """
+        # KOs correspond to arrows rather than boxes in global and overview maps.
+        is_global_map = False
+        is_overview_map = False
+        if re.match(kegg.GLOBAL_MAP_ID_PATTERN, pathway_number):
+            is_global_map = True
+        elif re.match(kegg.OVERVIEW_MAP_ID_PATTERN, pathway_number):
+            is_overview_map = True
+
+        # A 1x resolution global image is used as the base of the drawing, whereas a 2x overview or
+        # standard 'map' image is used as the base. The global image grays out all reaction arrows
+        # that are not annotated by KO/EC/RN. Select the KGML file accordingly.
+        if org == 'ko':
+            dir_1x = self.kegg_context.kgml_1x_ko_dir
+            dir_2x = self.kegg_context.kgml_2x_ko_dir
+        elif org == 'ec':
+            dir_1x = self.kegg_context.kgml_1x_ec_dir
+            dir_2x = self.kegg_context.kgml_2x_ec_dir
+        elif org == 'rn':
+            dir_1x = self.kegg_context.kgml_1x_rn_dir
+            dir_2x = self.kegg_context.kgml_2x_rn_dir
+        else:
+            dir_1x = self.kegg_context.kgml_1x_org_dir
+            dir_2x = self.kegg_context.kgml_2x_org_dir
+        if is_global_map:
+            kgml_path = os.path.join(dir_1x, f'{org}{pathway_number}.xml')
+        else:
+            kgml_path = os.path.join(dir_2x, f'{org}{pathway_number}.xml')
+        pathway = self.xml_ops.load(kgml_path)
+        if self.ignore_compound_rectangles:
+            self._zero_out_compound_rectangles(pathway)
+
+        return pathway
+
+    def _get_pathway1(self, pathway_number: str) -> kgml.Pathway:
         """
         Get a Pathway object for the KGML file used in drawing a pathway map.
 
@@ -3269,7 +3591,7 @@ class Mapper:
         rectangle_count = 0
         for compound_entry in pathway.get_entries(entry_type='compound'):
             compound_rectangle_uuids: List[str] = []
-            for uuid in compound_entry.children['graphics']:
+            for uuid in compound_entry.subelements['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if graphics.type == 'rectangle':
                     graphics.width = 0.0
