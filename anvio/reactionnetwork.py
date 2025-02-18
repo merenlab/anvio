@@ -6375,6 +6375,57 @@ class Constructor:
         self.run = run
         self.progress = progress
 
+    def import_json(self, path: str) -> GenomicNetwork:
+        with open(path) as f:
+            model_dict = json.load(f)
+        network = GenomicNetwork(run=self.run, progress=self.progress)
+        modelseed_db = ModelSEEDDatabase()
+
+        reactions_path = os.path.join(modelseed_db.default_dir, 'reactions.tsv')
+        compounds_path = os.path.join(modelseed_db.default_dir, 'compounds.tsv')
+        reactions_table = pd.read_csv(
+            reactions_path, sep='\t', index_col=0, header=0, low_memory=False
+        )
+        compounds_table = pd.read_csv(
+            compounds_path, sep='\t', index_col=0, header=0, low_memory=False
+        )
+        i = 0
+        j = 0
+        for reaction_entry in model_dict['reactions']:
+            try:
+                modelseed_reaction_id_entry = reaction_entry['annotation']['seed.reaction']
+            except KeyError:
+                pass
+            if isinstance(modelseed_reaction_id_entry, str):
+                modelseed_reaction_id_entry = [modelseed_reaction_id_entry]
+            for modelseed_reaction_id in modelseed_reaction_id_entry:
+                modelseed_reaction_series = reactions_table.loc[modelseed_reaction_id]
+                modelseed_reaction_data = modelseed_reaction_series.to_dict()
+                modelseed_reaction_data['id'] = modelseed_reaction_id
+                reaction, metabolites = self._get_modelseed_reaction(
+                    modelseed_reaction_data, compounds_table
+                )
+                network.reactions[modelseed_reaction_id] = reaction
+                if not reaction.kegg_aliases:
+                    print(reaction.modelseed_name)
+                    j += 1
+                for metabolite in metabolites:
+                    network.metabolites[metabolite.modelseed_id] = metabolite
+            i += 1
+        print(i)
+        print(j)
+
+        # This looks for metabolites in the json file that are not loaded into the network.
+        # A test of a KBase model found that only the biomass objective was missing.
+        # for metabolite_entry in model_dict['metabolites']:
+        #     modelseed_compound_id = metabolite_entry['annotation']['seed.compound']
+        #     try:
+        #         network.metabolites[modelseed_compound_id]
+        #     except KeyError:
+        #         print(modelseed_compound_id)
+
+        return network
+
     def load_network(
         self,
         contigs_db: str = None,
