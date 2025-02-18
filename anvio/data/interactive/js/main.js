@@ -804,17 +804,30 @@ function populateColorDicts() {
 }
 
 function buildLegendTables() {
-
+    // Clear existing legend tables first
+    $("#legend_settings").empty();
+    
     legends = [];
-    let toastr_warn_flag = false
-    for (let pindex in categorical_data_colors)
-    {
-        if(Object.keys(categorical_stats[pindex]).length > 20){
-            toastr_warn_flag = true
-            var names = false
+    let toastr_warn_flag = false;
+
+    // Add null checks for categorical data
+    for (let pindex in categorical_data_colors) {
+        // Skip if categorical_stats is undefined or doesn't have this pindex
+        if (!categorical_stats || !categorical_stats[pindex]) {
+            continue;
+        }
+
+        let names;
+        if (Object.keys(categorical_stats[pindex]).length > 20) {
+            toastr_warn_flag = true;
+            names = false;
         } else {
-            var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
-            names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+            names = Object.keys(categorical_stats[pindex]).sort(function(a,b) {
+                return categorical_stats[pindex][b] - categorical_stats[pindex][a];
+            });
+            if (names.indexOf('None') !== -1) {
+                names.push(names.splice(names.indexOf('None'), 1)[0]);
+            }
         }
 
         legends.push({
@@ -827,11 +840,15 @@ function buildLegendTables() {
         });
     }
 
-    for (pindex in stack_bar_colors)
-    {
-        var layer_name = getLayerName(pindex);
-        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-        var pretty_name = getLayerName(pindex);
+    // Add null checks for stack bar colors
+    for (let pindex in stack_bar_colors) {
+        if (!stack_bar_stats || !stack_bar_stats[pindex]) {
+            continue;
+        }
+
+        let layer_name = getLayerName(pindex);
+        let names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        let pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
         legends.push({
@@ -844,10 +861,18 @@ function buildLegendTables() {
         });
     }
 
+    // Add null checks for samples categorical colors
     for (let group in samples_categorical_colors) {
-        for (let sample in samples_categorical_colors[group])
-        {
-            var names = Object.keys(samples_categorical_colors[group][sample]);
+        if (!samples_categorical_stats || !samples_categorical_stats[group]) {
+            continue;
+        }
+
+        for (let sample in samples_categorical_colors[group]) {
+            if (!samples_categorical_stats[group][sample]) {
+                continue;
+            }
+
+            let names = Object.keys(samples_categorical_colors[group][sample]);
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(sample),
@@ -861,11 +886,19 @@ function buildLegendTables() {
         }
     }
 
+    // Add null checks for samples stack bar colors
     for (let group in samples_stack_bar_colors) {
-        for (let sample in samples_stack_bar_colors[group])
-        {
-            var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-            var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+        if (!samples_stack_bar_stats || !samples_stack_bar_stats[group]) {
+            continue;
+        }
+
+        for (let sample in samples_stack_bar_colors[group]) {
+            if (!samples_stack_bar_stats[group][sample]) {
+                continue;
+            }
+
+            let names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            let pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(pretty_name),
@@ -878,10 +911,21 @@ function buildLegendTables() {
             });
         }
     }
-    if(toastr_warn_flag) toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
 
-    for (var i=0; i < legends.length; i++)
-    {
+    // Rest of the function remains the same...
+    if (toastr_warn_flag) {
+        toastr.warning("Some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!");
+    }
+
+    // ... continue with existing code ...
+
+    if(legends.length == 0) {
+        $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
+        return;
+    }
+
+    // Build legend panels
+    for (var i = 0; i < legends.length; i++) {
         var legend = legends[i];
         var template = '<div class="shadow-box mb-3 p-3 rounded"><span class="header">';
 
@@ -976,10 +1020,7 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    if(legends.length == 0){
-        $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
-    }
-
+    // Initialize colorpickers
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
@@ -2938,11 +2979,11 @@ function processState(state_name, state) {
         $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
         $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
     }
-    if (state.hasOwnProperty('support-symbol-color')){
+    if (state.hasOwnProperty('support-font-color')){
         $('#support_font_color').attr('color', state['support-font-color'])
         $('#support_font_color').css('background-color', state['support-font-color'])
     }
-    if (state.hasOwnProperty('second-support-symbol-color')){
+    if (state.hasOwnProperty('second-support-font-color')){
         $('#second_support_font_color').attr('color', state['second-support-font-color'])
         $('#second_support_font_color').css('background-color', state['second-support-font-color'])
     }
@@ -3039,9 +3080,51 @@ function processState(state_name, state) {
 
     populateColorDicts();
 
+    // Update color dictionaries from state before building legend tables
+    if (state.hasOwnProperty('categorical-data-colors')) {
+        for (let key in state['categorical-data-colors']) {
+            categorical_data_colors[key] = state['categorical-data-colors'][key];
+        }
+    }
+    
+    if (state.hasOwnProperty('stack-bar-colors')) {
+        for (let key in state['stack-bar-colors']) {
+            stack_bar_colors[key] = state['stack-bar-colors'][key];
+        }
+    }
+
+    if (state.hasOwnProperty('samples-categorical-colors')) {
+        for (let group in state['samples-categorical-colors']) {
+            samples_categorical_colors[group] = samples_categorical_colors[group] || {};
+            for (let key in state['samples-categorical-colors'][group]) {
+                samples_categorical_colors[group][key] = state['samples-categorical-colors'][group][key];
+            }
+        }
+    }
+
+    if (state.hasOwnProperty('samples-stack-bar-colors')) {
+        for (let group in state['samples-stack-bar-colors']) {
+            samples_stack_bar_colors[group] = samples_stack_bar_colors[group] || {};
+            for (let key in state['samples-stack-bar-colors'][group]) {
+                samples_stack_bar_colors[group][key] = state['samples-stack-bar-colors'][group][key];
+            }
+        }
+    }
+
+    // Update stats if they exist in the state
+    if (state.hasOwnProperty('categorical-stats')) {
+        categorical_stats = state['categorical-stats'];
+    }
+    
+    if (state.hasOwnProperty('stack-bar-stats')) {
+        stack_bar_stats = state['stack-bar-stats'];
+    }
+
+    // Rebuild legend tables to reflect the new colors
+    buildLegendTables();
+
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
-
 }
 
 
