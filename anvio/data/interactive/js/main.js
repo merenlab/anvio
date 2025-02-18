@@ -893,6 +893,9 @@ function buildLegendTables() {
         template += legend['name'] + '</span><div><div style="height:10px;"></div>';
 
         if (!legends[i]['item_names']){
+            const currentColors = categorical_data_colors[legend['key']] || {};
+            const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
+            
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
                 Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
@@ -902,12 +905,12 @@ function buildLegendTables() {
                     <table class="col-md-12 table-spacing table-striped" style="margin-bottom: 10px;">
                         <tr>
                             <td class="col-8 d-flex mr-1" style="white-space: nowrap; width: 160px;"><span class="d-flex align-middle mr-1 mt-2">For</span><input class="form-control" type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-2" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-2" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="${defaultColor}" style="vertical-align: middle; background-color: ${defaultColor}; float: none; "></div> </td>
                             <td class="col-2 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto">For all categories</td>
-                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="${defaultColor}" style="vertical-align: middle; background-color: ${defaultColor}; float: none; "></div></td>
                             <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
                         </tr>
                         <tr>
@@ -984,6 +987,23 @@ function buildLegendTables() {
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
+            
+            // Immediately update the corresponding color in the data structures
+            const legendId = el.id.split('-colorpicker')[0];
+            const legend = legends.find(l => l.name.replaceAll(' ', '-') === legendId);
+            if (legend) {
+                if (legend.source === 'categorical_data_colors') {
+                    categorical_data_colors[legend.key] = categorical_data_colors[legend.key] || {};
+                    categorical_data_colors[legend.key][el.getAttribute('data-category')] = '#' + hex;
+                } else if (legend.source === 'stack_bar_colors') {
+                    stack_bar_colors[legend.key] = stack_bar_colors[legend.key] || {};
+                    stack_bar_colors[legend.key][el.getAttribute('data-category')] = '#' + hex;
+                }
+            }
+            
+            if (!bySetColor && drawer) {
+                drawer.draw();
+            }
         }
     });
 }
