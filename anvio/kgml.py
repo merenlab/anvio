@@ -21,12 +21,13 @@ import numpy as np
 import xml.etree.ElementTree as ET
 
 from io import StringIO
+from copy import deepcopy
 from argparse import Namespace
 from Bio.KEGG.KGML import KGML_parser
 from Bio.Graphics.KGML_vis import KGMLCanvas
 from matplotlib.colors import Colormap, rgb2hex
 
-from typing import Dict, Iterable, List, Literal, Tuple, Union
+from typing import Iterable, Literal, NewType, Union
 
 import anvio.kegg as kegg
 import anvio.terminal as terminal
@@ -51,36 +52,146 @@ class Element:
     Attributes
     ==========
     uuid : str
-        Unique ID, which can be used to look up child elements in a Pathway object.
+        Unique ID assigned by anvi'o, not KEGG. Since Element objects do not directly reference each
+        other, UUIDs are used to record element-subelement relationships.
     """
     # Subclass names are the same as the capitalized tag attribute.
     tag: str
     # Element attributes are required or not, according to the KGML schema.
-    attribute_required: Dict[str, bool]
+    attribute_required: dict[str, bool]
 
     def __init__(self) -> None:
         self.uuid = str(uuid.uuid4())
 
-class Pathway(Element):
+Priority = NewType('Priority', float)
+Priority.__doc__ = "Priorities are used to reorder graphics along the z-axis in pathway maps."
+
+GraphicsColor = NewType('GraphicsColor', tuple[str, str])
+GraphicsColor.__doc__ = "Graphics element foreground and background color hex codes, respectively."
+
+class PathwayColorPriority:
     """
-    A pathway element is the parent of all other elements in a KGML file.
+    Used to reorder graphics in a pathway map by their colors.
+
+    Pathway Entry Graphics colors are assigned Priority values.
 
     Attributes
     ==========
-    subelement_tags : Tuple[str]
-        Possible child element tags.
+    entry_type : dict[str, EntryColorPriority], {}
+        Keys are Entry type strings, any of the possible values of the type attribute of the Entry
+        class, e.g., 'ortholog', 'reaction', 'compound'. Values are EntryColorPriority objects.
+    """
+    def __init__(self) -> None:
+        self.entry_type: dict[str, EntryColorPriority] = {}
+
+class EntryColorPriority:
+    """
+    Used to reorder graphics for an entry type by their colors.
+
+    Entry Graphics colors are assigned Priority values.
+
+    Attributes
+    ==========
+    graphics_type : dict[str, GraphicsColorPriority], {}
+        Keys are Graphics type strings, any of the possible values of the type attribute of the Graphics
+        class, e.g., 'rectangle', 'line'. Values are GraphicsColorPriority objects.
+    """
+    def __init__(self) -> None:
+        self.graphics_type: dict[str, GraphicsColorPriority] = {}
+
+class GraphicsColorPriority:
+    """
+    Used to reorder graphics by their colors.
+
+    Graphics colors (unique combinations of foreground and background colors) are assigned Priority
+    values.
+
+    Attributes
+    ==========
+    color : dict[GraphicsColor, Priority], {}
+        Keys are GraphicsColor tuples. Values are Priority floats: larger numbers indicate higher
+        priority graphics given the foreground and background colors.
+    """
+    def __init__(self) -> None:
+        self.color: dict[GraphicsColor, Priority] = {}
+
+class PathwayUnprioritizedColor:
+    """
+    Used to set colors of unprioritized graphics that are drawn behind prioritized graphics.
+
+    Unprioritized colors are set for each type of Entry Graphics element.
+
+    Attributes
+    ==========
+    entry_type : dict[str, EntryUnprioritizedColor], {}
+        Keys are Entry type strings, any of the possible values of the type attribute of the Entry
+        class, e.g., 'ortholog', 'reaction', 'compound'. Values are EntryUnprioritizedColor objects.
+    """
+    def __init__(self) -> None:
+        self.entry_type: dict[str, EntryUnprioritizedColor] = {}
+
+class EntryUnprioritizedColor:
+    """
+    Used to set colors of unprioritized graphics of an entry type that are drawn behind prioritized
+    graphics.
+
+    Unprioritized colors are set for each type of Graphics element.
+
+    Attributes
+    ==========
+    graphics_type : dict[str, GraphicsColor], {}
+        Keys are Graphics type strings, any of the possible values of the type attribute of the Graphics
+        class, e.g., 'rectangle', 'line'. Values are GraphicsColor tuples.
+    """
+    def __init__(self) -> None:
+        self.graphics_type: dict[str, GraphicsColor] = {}
+
+class PathwayThicknessPriority:
+    """
+    Used to reorder line graphics in a global or overview pathway map by line thickness.
+
+    Line thicknesses are assigned Priority values.
+
+    Attributes
+    ==========
+    width : dict[float, Priority], {}
+        Keys are width floats, which are compared to values of the width attribute of Graphics
+        elements of type 'line'. Values are Priority floats: larger numbers indicate higher priority
+        graphics given the width.
+    """
+    def __init__(self) -> None:
+        self.width: dict[float, Priority] = {}
+
+class Pathway(Element):
+    """
+    The single top-level element in a KGML file.
+
+    Entry subelements representing reactions and compounds, among other items, are shown in maps.
+
+    The order of entries affects the order in which they are drawn, with entries occurring first in
+    the subelements attribute being drawn under entries occurring last. The z-axis position is
+    especially important in global maps, which have numerous crossing reaction lines. Entries can be
+    assigned priorities to control how they are overlaid, with higher-priority entries overlaying
+    lower-priority entries. Priorities can be set from other properties, such as the color of Entry
+    Graphics, which can represent data such as presence/absence, abundances, and fluxes. This class
+    contains methods related to the colors and priorities of entries.
+
+    Attributes
+    ==========
+    subelement_tags : tuple[str]
+        Tags of possible Pathway subelements.
 
     name : str, None
-        KEGG ID of the pathway map.
+        KEGG ID of the pathway map, e.g., 'ko00010', 'ec01100', 'eco00010'.
 
     org : str, None,
-        ko/ec/rn/[org prefix] in ID.
+        ko/ec/rn/[org prefix] in ID, e.g., 'ko', 'ec', 'eco'.
 
     number : str, None
-        Map number in ID.
+        Map number in ID, e.g., '00010', '001100'.
 
     title : str, None
-        Map title.
+        Map title, e.g., 'Glycolysis / Gluconeogenesis', 'Metabolic pathways'.
 
     image : str, None
         URL of map image file.
@@ -97,49 +208,33 @@ class Pathway(Element):
     xml_comment : str, None
         Comment line from file metadata. This is the third line of a reference KGML file.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
 
-    uuid_element_lookup : Dict[str, Element], {}
-        Keys are unique IDs of elements, values are element objects.
+    uuid_element_lookup : dict[str, Element], {}
+        Keys are UUIDs of all elements in the pathway, values are Element objects.
 
-    kegg_id_element_lookup : Dict[str, List[Element]] = {}
-        Keys are KEGG IDs, values are lists of element objects with the ID in the name attribute.
-        An ID is not necessarily unique to an element, and an element can have multiple KEGG IDs.
+    kegg_id_element_lookup : dict[str, list[Element]] = {}
+        Keys are KEGG IDs (e.g., 'K00001', 'R00010'), values are lists of Element objects with the
+        KEGG ID in the name attribute. A KEGG ID is not necessarily unique to an element, and an
+        element can have multiple KEGG IDs.
 
     is_global_map : bool, None
-        True if the pathway map is a global map, as indicated by the map number.
+        True if the pathway map is a global map, as indicated by the map number, rather than a
+        standard or overview map.
 
     is_overview_map : bool, None
-        True if the pathway map is an overview map, as indicated by the map number.
+        True if the pathway map is an overview map, as indicated by the map number, rather than a
+        standard or global map.
 
-    color_priority : Dict[str, Dict[str, Dict[Tuple[str, str], float]]]
-        This defines the order of entry graphics by foreground and background color. Set this
-        attribute with the method, set_color_priority.
+    color_priority : PathwayColorPriority, PathwayColorPriority()
+        Defines the order of Entry Graphics by combination of foreground and background colors. The
+        order is set along with the attribute value using the method, set_priority.
 
-        Outermost dictionary keys are Entry types, any of the possible values of the type attribute
-        of the Entry class, e.g., 'ortholog' and 'compound'. Middle dict keys are Graphics types,
-        any of the possible values of the type attribute of the Graphics class, e.g., 'rectangle'
-        and 'line'. Inner dict keys are length-2 tuples of fgcolor and bgcolor hex codes,
-        respectively. Inner dict values are non-negative numbers indicating the priority of Entry
-        Graphics with the given foreground and background colors: higher numbers indicate higher
-        priority colors.
-
-        The following is an example of a valid color priority dictionary: ortholog entries with a
-        white background (#FFFFFF) take precedence over those with a gray background (#EDEDED).
-        Orthologs may be drawn as rectangles or lines.
-        {
-            'ortholog': {
-                'rectangle': {
-                    ('#000000', '#FFFFFF'): 1.0,
-                    ('#000000', '#EDEDED'): 0.0
-                },
-                'line': {
-                    ('#000000', '#FFFFFF'): 1.0,
-                    ('#000000', '#EDEDED'): 0.0
-                }
-            }
-        }
+    unprioritized_color : PathwayUnprioritizedColor, PathwayUnprioritizedColor()
+        Combinations of foreground and background colors of unprioritized Entry Graphics drawn below
+        prioritized entries. The attribute value is set using the method, set_priority, when a
+        recolor_unprioritized_entries argument is provided.
     """
     tag = 'pathway'
     attribute_required = {
@@ -150,7 +245,7 @@ class Pathway(Element):
         'image': False,
         'link': False
     }
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'entry',
         'relation',
         'reaction'
@@ -169,15 +264,18 @@ class Pathway(Element):
         self.xml_doctype: str = None
         self.xml_comment: str = None
 
-        self.children: Dict[str, List[str]] = {tag: [] for tag in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {tag: [] for tag in self.subelement_tags}
 
-        self.uuid_element_lookup: Dict[str, Element] = {}
-        self.kegg_id_element_lookup: Dict[str, List[Element]] = {}
+        self.uuid_element_lookup: dict[str, Element] = {}
+        self.kegg_id_element_lookup: dict[str, list[Element]] = {}
 
         self._is_global_map: bool = None
         self._is_overview_map: bool = None
 
-        self.color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]] = {}
+        self.color_priority: PathwayColorPriority = PathwayColorPriority()
+        self.unprioritized_color: PathwayUnprioritizedColor = PathwayUnprioritizedColor()
+        self.thickness_priority: PathwayThicknessPriority = PathwayThicknessPriority()
+        self.unprioritized_width: float = None
 
         super().__init__()
 
@@ -193,142 +291,288 @@ class Pathway(Element):
             return None
         return True if re.match(kegg.OVERVIEW_MAP_ID_PATTERN, self.number) else False
 
+    def set_priority(
+        self,
+        new_priority: Union[
+            PathwayColorPriority,
+            PathwayThicknessPriority,
+            tuple[PathwayColorPriority, PathwayThicknessPriority],
+            tuple[PathwayThicknessPriority, PathwayColorPriority]
+        ],
+        recolor_unprioritized_entries: Union[str, PathwayUnprioritizedColor] = None,
+        color_associated_compounds: Literal['high', 'low', 'average'] = None,
+        colormap: Colormap = None,
+        reset_unprioritized_thickness: Union[bool, float] = False
+    ) -> None:
+        """
+        Set the color_priority and/or thickness_priority attributes. Entry elements in the
+        subelements attribute are automatically reordered.
+
+        Regarding color priorities, a single Entry (e.g., representing KOs, ECs, RNs, compounds) can
+        occur multiple times on a map (e.g., as different rectangles or circles), and thus have
+        multiple Graphics elements. It is required here that Graphics elements of the same type
+        (e.g., rectangle type Graphics or line type Graphics) for an Entry must all have the same
+        foreground and background colors if they are to be ordered.
+
+        Thickness priorities apply to line Graphics of reaction-like entries (KO, EC, RN, gene,
+        group) in global and overview pathways; thickness priorities cannot be set for standard
+        pathways.
+
+        Entries with higher priorities are placed last in the subelements attribute and in KGML
+        files, and they are rendered in the foreground of the map. The lowest Priority entries are
+        always those without fg/bg colors defined in the color_priority attribute or line widths
+        defined in the thickness_priority attribute. These entries are placed first in the
+        subelements attribute and KGML files, and they are rendered in the background of the map and
+        thus can be overlaid by higher Priority entries.
+
+        If both color and thickness priorities are set, one takes precedence over the other given
+        the new_priority argument. For example, with color taking precedence over thickness, if an
+        Entry has a lower Priority line width but higher Priority fg/bg colors than another Entry,
+        then the former will be placed before the latter in the subelements attribute and in KGML
+        files, and the former will be rendered above the latter on the map.
+
+        Attributes
+        ==========
+        new_priority : Union[
+            PathwayColorPriority,
+            PathwayThicknessPriority,
+            tuple[PathwayColorPriority, PathwayThicknessPriority],
+            tuple[PathwayThicknessPriority, PathwayColorPriority]
+        ]
+            Priority objects used to set the color_priority and/or thickness_priority attributes.
+            Entry elements in the subelements attribute are reordered accordingly.
+
+            Only global and overview maps can have line entries reordered by thickness. If entries
+            are prioritized by both color and thickness, a tuple is provided as an argument, and the
+            order of the priority objects in the tuple determines which type of priority takes
+            precedence, with the first priority object in the tuple taking precedence over the
+            second.
+
+            Here is what is actually set as color_priority. A deep copy is made of the
+            PathwayColorPriority object. GraphicsColorPriority objects (the innermost entries in the
+            PathwayColorPriority dictionary structure) are reordered by Priority value ascending, so
+            that the lowest Priority colors occur first for each Entry Graphics type. Otherwise, the
+            dictionary structure is not altered: if, for example, 'ortholog' appears before
+            'compound' as a key in PathwayColorPriority, then ortholog entries will occur before
+            compound entries in a KGML file output from the Pathway object, and compound graphics
+            can overlay ortholog graphics in the map drawn from the Pathway object.
+
+            Here is what is actually set as thickness_priority. A deep copy is made of the
+            PathwayThicknessPriority object. The width dictionary attribute of the object is
+            reordered by Priority value ascending, so that the lowest Priority widths occur first.
+
+        recolor_unprioritized_entries : Union[str, PathwayUnprioritizedColor], None
+            Recolor unprioritized entries, either automatically with a string argument, or with a
+            custom dictionary argument for fine-tuning foreground and background colors by Entry
+            type. The valid string arguments for automatic recoloring are 'w' for black and white
+            and 'g' for gray. The unprioritized_color attribute is set given the argument value,
+            either automatically with the string argument or directly from the custom
+            PathwayUnprioritizedColor.
+
+        color_associated_compounds : Literal['high', 'low', 'average'], None
+            Automatically set the background color of compound entries based on the color Priority
+            of reaction-like entries involving the compounds. By default, compounds participating in
+            reactions are circles, and reactions are lines on global/overview maps and boxes or
+            lines on standard maps.
+
+            An argument of 'high' or 'low' sets the compound background color to the bg color of the
+            reaction with the highest or lowest Priority fg/bg color combination.
+
+            'average' sets the bg color to the average bg color of reactions with prioritized
+            colors: unprioritized reactions are not taken into account. 'average' should only be
+            used if Priority values are normalized to the interval [0, 1] and can be converted to a
+            color given by the colormap argument. The average Priority value of the reactions with
+            prioritized colors is mapped to a bg color for compound Entry circle Graphics.
+
+            Automatically colored compound entries are added to the color_priority attribute, and
+            Entry elements in the subelements attribute are reordered accordingly. Compound entries
+            that are already in the color_priority attribute are exempt from recoloring and given
+            higher Priority than automatically recolored compound entries.
+
+        colormap : Colormap, None
+            If 'average' is used as the color_associated_compounds argument, a colormap must be
+            provided to map averaged Priority values on the interval [0, 1] to a background color
+            for compound Entry circle Graphics.
+
+        reset_unprioritized_thickness : Union[bool, float], False
+            If not False, set unprioritized reaction-like Entry line Graphics to a uniform width.
+            With an argument value of True, a width of 6.0 is used for global maps and 1.0 for
+            overview maps. Alternatively, a custom width can be specified with a float value.
+        """
+        # Determine which graphical property takes precedence.
+        if isinstance(new_priority, PathwayColorPriority):
+            precedence = {'color': new_priority}
+        elif isinstance(new_priority, PathwayThicknessPriority):
+            precedence = {'thickness': new_priority}
+        elif isinstance(new_priority, tuple):
+            if (
+                isinstance(new_priority[0], PathwayColorPriority) and
+                isinstance(new_priority[1], PathwayThicknessPriority)
+            ):
+                precedence = {'color': new_priority[0], 'thickness': new_priority[1]}
+            elif (
+                isinstance(new_priority[0], PathwayThicknessPriority) and
+                isinstance(new_priority[1], PathwayColorPriority)
+            ):
+                precedence = {'thickness': new_priority[0], 'color': new_priority[1]}
+            else:
+                raise ConfigError(
+                    "A tuple value of the 'new_priority' argument must be a "
+                    "(<PathwayColorPriority>, <PathwayThicknessPriority>) or a "
+                    "(<PathwayThicknessPriority>, <PathwayColorPriority>)."
+                )
+        else:
+            raise ConfigError(
+                "Valid 'new_priority' argument values are a <PathwayColorPriority>, "
+                "<PathwayThicknessPriority>, (<PathwayColorPriority>, <PathwayThicknessPriority>), "
+                "or (<PathwayThicknessPriority>, <PathwayColorPriority>)."
+            )
+
+        if 'thickness' in precedence:
+            if not (self.is_global_map or self.is_overview_map):
+                raise ConfigError(
+                    "Only global and overview maps can have line entries reordered by thickness."
+                )
+
+        for prioritized_property in reversed(precedence):
+            if prioritized_property == 'color':
+                self.set_color_priority(
+                    precedence['color'],
+                    recolor_unprioritized_entries=recolor_unprioritized_entries,
+                    color_associated_compounds=color_associated_compounds,
+                    colormap=colormap
+                )
+            elif prioritized_property == 'thickness':
+                self.set_thickness_priority(
+                    precedence['thickness'],
+                    reset_unprioritized_thickness=reset_unprioritized_thickness
+                )
+            else:
+                raise AssertionError
+
     def set_color_priority(
         self,
-        new_color_priority: Dict[str, Dict[str, Dict[Tuple[str, str], float]]],
-        recolor_unprioritized_entries: Union[str, Dict[str, Tuple[str, str]]] = False,
+        new_color_priority: PathwayColorPriority,
+        recolor_unprioritized_entries: Union[str, PathwayUnprioritizedColor] = False,
         color_associated_compounds: Literal['high', 'low', 'average'] = None,
         colormap: Colormap = None
     ) -> None:
         """
-        Set the color_priority attribute. Entry elements in the children attribute are automatically
-        reordered.
+        Set the color_priority attribute. Entry elements in the subelements attribute are
+        automatically reordered.
 
-        A single Entry (e.g., representing KOs or compounds) can occur multiple times on a map
-        (e.g., as different rectangles or circles), and thus have multiple Graphics elements. It is
-        required here that Graphics elements of the same type (e.g., rectangle type Graphics or line
-        type Graphics) for an Entry must all have the same foreground and background colors if they
-        are to be ordered.
+        A single Entry (e.g., representing KOs, ECs, KEGG reactions, or compounds) can occur
+        multiple times on a map (e.g., as different rectangles or circles), and thus have multiple
+        Graphics elements. It is required here that Graphics elements of the same type (e.g.,
+        rectangle type Graphics or line type Graphics) for an Entry must all have the same
+        foreground and background colors if they are to be ordered.
 
-        Entries with higher priority fg/bg colors are placed last in the children attribute and in
-        KGML files, and they are rendered in the foreground of the map. The lowest priority entries
-        are always those without fg/bg colors defined in the color_priority attribute; these entries
-        are placed first in the children attribute and KGML files, and they are rendered in the
-        background of the map and thus can be overlaid by higher priority entries.
+        Entries with higher priority fg/bg colors are placed last in the subelements attribute and
+        in KGML files, and they are rendered in the foreground of the map. The lowest priority
+        entries are always those without fg/bg colors defined in the color_priority attribute; these
+        entries are placed first in the subelements attribute and KGML files, and they are rendered
+        in the background of the map and thus can be overlaid by higher priority entries.
 
         Parameters
         ==========
-        new_color_priority : Dict[str, Dict[str, Dict[Tuple[str, str], float]]]
-            This dictionary is the basis of the color_priority attribute.
+        new_color_priority : PathwayColorPriority
+            This dictionary, a PathwayColorPriority object, is used to set the color_priority
+            attribute. Entry elements in the subelements attribute are reordered accordingly.
 
-            It has the same structure as the color_priority attribute. Outermost dict keys are Entry
-            types, any of the possible values of the type attribute of the Entry class, e.g.,
-            'ortholog' and 'compound'. Middle dict keys are Graphics types, any of the possible
-            values of the type attribute of the Graphics class, e.g., 'rectangle' and 'line'. Inner
-            dict keys are length-2 tuples of fgcolor and bgcolor hex codes, respectively. Inner dict
-            values are non-negative numbers indicating the priority of Entry Graphics with the given
-            foreground and background colors: higher numbers indicate higher priority colors.
+            Here is what is actually set as color_priority. A deep copy is made of the argument.
+            GraphicsColorPriority objects (the innermost entries in the PathwayColorPriority
+            dictionary structure) are reordered by Priority value ascending, so that the lowest
+            Priority colors occur first for each Entry Graphics type. Otherwise, the dictionary
+            structure is not altered: if, for example, 'ortholog' appears before 'compound' as a key
+            in PathwayColorPriority, then ortholog entries will occur before compound entries in a
+            KGML file output from the Pathway object, and compound graphics can overlay ortholog
+            graphics in the map drawn from the Pathway object.
 
-            What is actually used to set color_priority is a deep copy of the argument in which
-            fg/bg color combinations (entries in each inner dict) are reordered by priority value
-            ascending, so that the lowest priority colors appear first in each inner dict. The order
-            of Entry and Graphics types (outer and middle dict entries) do not not change: so if,
-            for example, 'ortholog' appears before 'compound' in the outermost dict keys, then
-            ortholog entries will occur before compound entries in the KGML file, and compounds can
-            be drawn over orthologs.
-
-        recolor_unprioritized_entries : Union[str, Dict[str, Dict[str, Tuple[str, str]]]], False
+        recolor_unprioritized_entries : Union[str, PathwayUnprioritizedColor], False
             Recolor unprioritized entries, either automatically with a string argument, or with a
             custom dictionary argument for fine-tuning foreground and background colors by Entry
             type. The valid string arguments for automatic recoloring are 'w' and 'g'.
 
-            It is assumed that global maps contain reaction lines and compound circles, so automatic
-            recoloring is tailored to ortholog Entry line Graphics and compound Entry circle
-            Graphics. 'w' erases unprioritized lines and circles by coloring them entirely white.
-            'g' colors them a light gray (#E0E0E0), consistent with other "unidentified" reactions
-            in the base map.
+            It is assumed that global maps contain lines for reaction-like entries and circles for
+            compounds, so automatic recoloring affects reaction-like Entry line Graphics and
+            compound Entry circle Graphics. 'w' erases unprioritized lines and circles by coloring
+            them entirely white. 'g' colors them a light gray (#E0E0E0), consistent with other
+            "unidentified" reactions in the base map.
 
             It is assumed that overview maps contain reaction lines (drawn as arrows) and compound
             circles. Unlike global maps, 'w' colors unprioritized arrows black, consistent with
             other "unidentified" reactions in the base map. 'w' colors unprioritized circles white
             (with a black border). 'g' colors arrows and circles light gray.
 
-            It is assumed that standard maps contain ortholog boxes or lines and compound circles.
+            It is assumed that standard maps contain reaction boxes or lines and compound circles.
             'w' colors unprioritized boxes white, with black text; lines black; and circles white.
             'g' colors unprioritized boxes light gray, with black text; lines light gray; and
             circles light gray. Compound rectangles are also found in a small number of KGML files
             (see 00121, 00621, 01052, 01054), and it is best if the size of these is set to zero so
-            they don't obscure the chemical structure drawings to which they correspond on maps (see
-            `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
+            that they don't obscure the chemical structure drawings to which they correspond on maps
+            (see `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
 
-            A custom dictionary argument can be used to set fg/bg colors in detail. Outer dict keys
-            are Entry types, e.g., 'ortholog', 'compound'. Inner dict keys are Graphics types, e.g.,
-            'rectangle', 'line'. Inner dict values are length-2 tuples of color hex codes for fg and
-            bg colors, respectively. This is shown in the following example, which sets the fg
-            (text) color of unprioritized ortholog Entry rectangle Graphics to dark gray and the bg
-            to light gray; the fg color of unprioritized ortholog Entry line Graphics to black and
-            the bg to white; and the fg (border) of unprioritized compounds to black and the bg to
-            white.
-            {
-                'ortholog': {
-                    'rectangle': ('#A9A9A9', '#E0E0E0'),
-                    'line': ('#000000', '#FFFFFF')
-                },
-                'compound': {
-                    'circle': ('#000000', '#FFFFFF')
-                }
-            }
+            A custom dictionary argument, a PathwayUnprioritizedColor object, can be used to set
+            fg/bg colors in detail.
+
+            The unprioritized_color attribute is set given the argument value, either automatically
+            with the string ('w', 'g') argument or directly from the custom
+            PathwayUnprioritizedColor.
 
         color_associated_compounds : Literal['high', 'low', 'average'], None
-            Automatically set the background color of compound entries based on the color priority
-            of ortholog entries involving the compounds. By default, compounds participating in
-            reactions are circles, and orthologs are lines on global/overview maps and boxes or
+            Automatically set the background color of compound entries based on the color Priority
+            of reaction-like entries involving the compounds. By default, compounds participating in
+            reactions are circles, and reactions are lines on global/overview maps and boxes or
             lines on standard maps.
 
             An argument of 'high' or 'low' sets the compound background color to the bg color of the
-            ortholog with the highest or lowest priority fg/bg color combination. 'average' sets the
-            bg color to the average bg color of orthologs with prioritized colors -- unprioritized
-            orthologs are not taken into account. 'average' should only be used if priority values
-            are normalized to the interval [0, 1] and can be converted to a color given by the
-            colormap argument. The average priority value of the orthologs with prioritized colors
-            is mapped to a bg color for compound Entry circle Graphics.
+            reaction with the highest or lowest Priority fg/bg color combination.
+
+            'average' sets the bg color to the average bg color of reactions with prioritized
+            colors: unprioritized reactions are not taken into account. 'average' should only be
+            used if Priority values are normalized to the interval [0, 1] and can be converted to a
+            color given by the colormap argument. The average Priority value of the reactions with
+            prioritized colors is mapped to a bg color for compound Entry circle Graphics.
 
             Automatically colored compound entries are added to the color_priority attribute, and
-            Entry elements in the children attribute are reordered accordingly. Compound entries
+            Entry elements in the subelements attribute are reordered accordingly. Compound entries
             that are already in the color_priority attribute are exempt from recoloring and given
-            higher priority than automatically recolored compound entries.
+            higher Priority than automatically recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
             If 'average' is used as the color_associated_compounds argument, a colormap must be
-            provided to map averaged priority values on the interval [0, 1] to a background color
+            provided to map averaged Priority values on the interval [0, 1] to a background color
             for compound Entry circle Graphics.
         """
-        # Check that new_color_priority only contains positive priority values.
-        for new_entry_color_priority in new_color_priority.values():
-            for new_graphics_color_priority in new_entry_color_priority.values():
-                for priority in new_graphics_color_priority.values():
-                    assert priority >= 0
+        # Check that new_color_priority only contains nonnegative priority values.
+        for entry_color_priority in new_color_priority.entry_type.values():
+            for graphics_color_priority in entry_color_priority.graphics_type.values():
+                for priority in graphics_color_priority.color.values():
+                    assert priority > 0
 
-        # Make the color_priority attribute dict, reordering colors from lowest to highest priority.
-        color_priority = {}
-        for entry_type, new_entry_color_priority in new_color_priority.items():
-            color_priority[entry_type] = entry_type_color_priority = {}
-            for graphics_type, new_graphics_color_priority in new_entry_color_priority.items():
-                entry_type_color_priority[graphics_type] = graphics_type_color_priority = {}
-                for colors, priority in sorted(
-                    new_graphics_color_priority.items(), key=lambda item: item[1]
+        # Make the object assigned to the color_priority attribute, reordering colors from lowest to
+        # highest priority.
+        color_priority = PathwayColorPriority()
+        for entry_type, ecp in new_color_priority.entry_type.items():
+            entry_color_priority = EntryColorPriority()
+            color_priority.entry_type[entry_type] = entry_color_priority
+            for graphics_type, gcp in ecp.graphics_type.items():
+                graphics_color_priority = GraphicsColorPriority()
+                entry_color_priority.graphics_type[graphics_type] = graphics_color_priority
+                for graphics_color, priority in sorted(
+                    graphics_color_priority.color.items(), key=lambda item: item[1]
                 ):
-                    graphics_type_color_priority[colors] = priority
+                    graphics_color_priority[graphics_color] = priority
         self.color_priority = color_priority
 
-        # Reorder Entry elements in the children attribute from lowest to highest priority.
+        # Reorder Entry elements in the subelements attribute from lowest to highest priority.
         unprioritized_entry_uuids = self.order_entries_by_color_priority()
 
         if recolor_unprioritized_entries:
             if isinstance(recolor_unprioritized_entries, str):
                 assert recolor_unprioritized_entries in ('w', 'g')
 
-                # Recolor orthologs.
+                # Recolor reactions that have not been assigned a color Priority.
                 if recolor_unprioritized_entries == 'w':
                     if self.is_overview_map:
                         color_hex_code = '#000000'
@@ -336,101 +580,330 @@ class Pathway(Element):
                         color_hex_code = '#FFFFFF'
                 elif recolor_unprioritized_entries == 'g':
                     color_hex_code = '#E0E0E0'
-                self.recolor_unprioritized_ortholog_entries(
+                reaction_unprioritized_color = self.recolor_unprioritized_reaction_entries(
                     unprioritized_entry_uuids, color_hex_code
                 )
 
-                # Recolor compounds.
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
-                self.recolor_unprioritized_compound_entries(
-                    unprioritized_entry_uuids, color_hex_code
-                )
+                if self.color_associated_compounds is None:
+                    # Recolor compounds that have not been assigned a color Priority. Avoid
+                    # redundancy if this is to happen again after coloring associated compounds.
+                    if recolor_unprioritized_entries == 'w':
+                        color_hex_code = '#FFFFFF'
+                    elif recolor_unprioritized_entries == 'g':
+                        color_hex_code = '#E0E0E0'
+                    compound_unprioritized_color = self.recolor_unprioritized_compound_entries(
+                        unprioritized_entry_uuids, color_hex_code
+                    )
+
+                    # Set the unprioritized_color attribute before returning.
+                    unprioritized_color = deepcopy(reaction_unprioritized_color)
+                    unprioritized_color.entry_type['compound'] = deepcopy(
+                        compound_unprioritized_color.entry_type['compound']
+                    )
+                    self.unprioritized_color = unprioritized_color
+
+                    return
+            elif isinstance(recolor_unprioritized_entries, PathwayUnprioritizedColor):
+                if self.color_associated_compounds is None:
+                    self.recolor_unprioritized_entries(
+                        unprioritized_entry_uuids, recolor_unprioritized_entries
+                    )
+
+                    # Set the unprioritized_color attribute before returning.
+                    self.unprioritized_color = deepcopy(recolor_unprioritized_entries)
+
+                    return
+                else:
+                    # Avoid redundancy in coloring compounds that have not been assigned a color
+                    # Priority if this is to happen again after coloring associated compounds.
+                    noncompound_unprioritized_color = PathwayColorPriority()
+                    for (
+                        entry_type, entry_type_unprioritized_color
+                    ) in recolor_unprioritized_entries.entry_type.items():
+                        if entry_type != 'compound':
+                            noncompound_unprioritized_color.entry_type[
+                                entry_type
+                            ] = entry_type_unprioritized_color
+                    self.recolor_unprioritized_entries(
+                        unprioritized_entry_uuids, noncompound_unprioritized_color
+                    )
             else:
-                self.recolor_unprioritized_entries(
-                    unprioritized_entry_uuids, recolor_unprioritized_entries
+                raise ConfigError(
+                    "Valid 'recolor_unprioritized_entries' argument values are the strings, 'w' or "
+                    "'g', or a <PathwayUnprioritizedColor>."
                 )
 
-        if color_associated_compounds is None:
-            return
         self.color_associated_compounds(color_associated_compounds, colormap=colormap)
 
-        # Reorder compound entries in the children attribute according to color priority.
+        # Reorder compound entries in the subelements attribute according to color priority.
         unprioritized_entry_uuids = self.order_entries_by_color_priority()
 
-        # Recolor compounds that have not been assigned a color priority.
-        if recolor_unprioritized_entries:
-            if isinstance(recolor_unprioritized_entries, str):
-                if recolor_unprioritized_entries == 'w':
-                    color_hex_code = '#FFFFFF'
-                elif recolor_unprioritized_entries == 'g':
-                    color_hex_code = '#E0E0E0'
-                self.recolor_unprioritized_compound_entries(
-                    unprioritized_entry_uuids, color_hex_code
-                )
-            else:
-                self.recolor_unprioritized_entries(
-                    unprioritized_entry_uuids, recolor_unprioritized_entries
-                )
+        if not recolor_unprioritized_entries:
+            return
 
-    def order_entries_by_color_priority(self) -> List[str]:
+        # Recolor compounds that have not been assigned a color priority.
+        if isinstance(recolor_unprioritized_entries, str):
+            if recolor_unprioritized_entries == 'w':
+                color_hex_code = '#FFFFFF'
+            elif recolor_unprioritized_entries == 'g':
+                color_hex_code = '#E0E0E0'
+            compound_unprioritized_color = self.recolor_unprioritized_compound_entries(
+                unprioritized_entry_uuids, color_hex_code
+            )
+
+            # Set the unprioritized_color attribute before returning.
+            unprioritized_color = deepcopy(reaction_unprioritized_color)
+            unprioritized_color.entry_type['compound'] = deepcopy(
+                compound_unprioritized_color.entry_type['compound']
+            )
+            self.unprioritized_color = unprioritized_color
+        else:
+            self.recolor_unprioritized_entries(
+                unprioritized_entry_uuids, recolor_unprioritized_entries
+            )
+
+            # Set the unprioritized_color attribute before returning.
+            self.unprioritized_color = deepcopy(recolor_unprioritized_entries)
+
+    # def set_color_priority1(
+    #     self,
+    #     new_color_priority: dict[str, dict[str, dict[tuple[str, str], float]]],
+    #     recolor_unprioritized_entries: Union[str, dict[str, tuple[str, str]]] = False,
+    #     color_associated_compounds: Literal['high', 'low', 'average'] = None,
+    #     colormap: Colormap = None
+    # ) -> None:
+    #     """
+    #     Set the color_priority attribute. Entry elements in the subelements attribute are
+    #     automatically reordered.
+
+    #     A single Entry (e.g., representing KOs or compounds) can occur multiple times on a map
+    #     (e.g., as different rectangles or circles), and thus have multiple Graphics elements. It is
+    #     required here that Graphics elements of the same type (e.g., rectangle type Graphics or line
+    #     type Graphics) for an Entry must all have the same foreground and background colors if they
+    #     are to be ordered.
+
+    #     Entries with higher priority fg/bg colors are placed last in the subelements attribute and
+    #     in KGML files, and they are rendered in the foreground of the map. The lowest priority
+    #     entries are always those without fg/bg colors defined in the color_priority attribute; these
+    #     entries are placed first in the subelements attribute and KGML files, and they are rendered
+    #     in the background of the map and thus can be overlaid by higher priority entries.
+
+    #     Parameters
+    #     ==========
+    #     new_color_priority : dict[str, dict[str, dict[tuple[str, str], float]]]
+    #         This dictionary is the basis of the color_priority attribute.
+
+    #         It has the same structure as the color_priority attribute. Outermost dict keys are Entry
+    #         types, any of the possible values of the type attribute of the Entry class, e.g.,
+    #         'ortholog' and 'compound'. Middle dict keys are Graphics types, any of the possible
+    #         values of the type attribute of the Graphics class, e.g., 'rectangle' and 'line'. Inner
+    #         dict keys are length-2 tuples of fgcolor and bgcolor hex codes, respectively. Inner dict
+    #         values are non-negative numbers indicating the priority of Entry Graphics with the given
+    #         foreground and background colors: higher numbers indicate higher priority colors.
+
+    #         What is actually used to set color_priority is a deep copy of the argument in which
+    #         fg/bg color combinations (entries in each inner dict) are reordered by priority value
+    #         ascending, so that the lowest priority colors appear first in each inner dict. The order
+    #         of Entry and Graphics types (outer and middle dict entries) do not not change: so if,
+    #         for example, 'ortholog' appears before 'compound' in the outermost dict keys, then
+    #         ortholog entries will occur before compound entries in the KGML file, and compounds can
+    #         be drawn over orthologs.
+
+    #     recolor_unprioritized_entries : Union[str, dict[str, dict[str, tuple[str, str]]]], False
+    #         Recolor unprioritized entries, either automatically with a string argument, or with a
+    #         custom dictionary argument for fine-tuning foreground and background colors by Entry
+    #         type. The valid string arguments for automatic recoloring are 'w' and 'g'.
+
+    #         It is assumed that global maps contain reaction lines and compound circles, so automatic
+    #         recoloring is tailored to ortholog Entry line Graphics and compound Entry circle
+    #         Graphics. 'w' erases unprioritized lines and circles by coloring them entirely white.
+    #         'g' colors them a light gray (#E0E0E0), consistent with other "unidentified" reactions
+    #         in the base map.
+
+    #         It is assumed that overview maps contain reaction lines (drawn as arrows) and compound
+    #         circles. Unlike global maps, 'w' colors unprioritized arrows black, consistent with
+    #         other "unidentified" reactions in the base map. 'w' colors unprioritized circles white
+    #         (with a black border). 'g' colors arrows and circles light gray.
+
+    #         It is assumed that standard maps contain ortholog boxes or lines and compound circles.
+    #         'w' colors unprioritized boxes white, with black text; lines black; and circles white.
+    #         'g' colors unprioritized boxes light gray, with black text; lines light gray; and
+    #         circles light gray. Compound rectangles are also found in a small number of KGML files
+    #         (see 00121, 00621, 01052, 01054), and it is best if the size of these is set to zero so
+    #         they don't obscure the chemical structure drawings to which they correspond on maps (see
+    #         `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
+
+    #         A custom dictionary argument can be used to set fg/bg colors in detail. Outer dict keys
+    #         are Entry types, e.g., 'ortholog', 'compound'. Inner dict keys are Graphics types, e.g.,
+    #         'rectangle', 'line'. Inner dict values are length-2 tuples of color hex codes for fg and
+    #         bg colors, respectively. This is shown in the following example, which sets the fg
+    #         (text) color of unprioritized ortholog Entry rectangle Graphics to dark gray and the bg
+    #         to light gray; the fg color of unprioritized ortholog Entry line Graphics to black and
+    #         the bg to white; and the fg (border) of unprioritized compounds to black and the bg to
+    #         white.
+    #         {
+    #             'ortholog': {
+    #                 'rectangle': ('#A9A9A9', '#E0E0E0'),
+    #                 'line': ('#000000', '#FFFFFF')
+    #             },
+    #             'compound': {
+    #                 'circle': ('#000000', '#FFFFFF')
+    #             }
+    #         }
+
+    #     color_associated_compounds : Literal['high', 'low', 'average'], None
+    #         Automatically set the background color of compound entries based on the color priority
+    #         of ortholog entries involving the compounds. By default, compounds participating in
+    #         reactions are circles, and orthologs are lines on global/overview maps and boxes or
+    #         lines on standard maps.
+
+    #         An argument of 'high' or 'low' sets the compound background color to the bg color of the
+    #         ortholog with the highest or lowest priority fg/bg color combination. 'average' sets the
+    #         bg color to the average bg color of orthologs with prioritized colors -- unprioritized
+    #         orthologs are not taken into account. 'average' should only be used if priority values
+    #         are normalized to the interval [0, 1] and can be converted to a color given by the
+    #         colormap argument. The average priority value of the orthologs with prioritized colors
+    #         is mapped to a bg color for compound Entry circle Graphics.
+
+    #         Automatically colored compound entries are added to the color_priority attribute, and
+    #         Entry elements in the subelements attribute are reordered accordingly. Compound entries
+    #         that are already in the color_priority attribute are exempt from recoloring and given
+    #         higher priority than automatically recolored compound entries.
+
+    #     colormap : matplotlib.colors.Colormap, None
+    #         If 'average' is used as the color_associated_compounds argument, a colormap must be
+    #         provided to map averaged priority values on the interval [0, 1] to a background color
+    #         for compound Entry circle Graphics.
+    #     """
+    #     # Check that new_color_priority only contains positive priority values.
+    #     for new_entry_color_priority in new_color_priority.values():
+    #         for new_graphics_color_priority in new_entry_color_priority.values():
+    #             for priority in new_graphics_color_priority.values():
+    #                 assert priority >= 0
+
+    #     # Make the color_priority attribute dict, reordering colors from lowest to highest priority.
+    #     color_priority = {}
+    #     for entry_type, new_entry_color_priority in new_color_priority.items():
+    #         color_priority[entry_type] = entry_type_color_priority = {}
+    #         for graphics_type, new_graphics_color_priority in new_entry_color_priority.items():
+    #             entry_type_color_priority[graphics_type] = graphics_type_color_priority = {}
+    #             for colors, priority in sorted(
+    #                 new_graphics_color_priority.items(), key=lambda item: item[1]
+    #             ):
+    #                 graphics_type_color_priority[colors] = priority
+    #     self.color_priority = color_priority
+
+    #     # Reorder Entry elements in the subelements attribute from lowest to highest priority.
+    #     unprioritized_entry_uuids = self.order_entries_by_color_priority()
+
+    #     if recolor_unprioritized_entries:
+    #         if isinstance(recolor_unprioritized_entries, str):
+    #             assert recolor_unprioritized_entries in ('w', 'g')
+
+    #             # Recolor orthologs.
+    #             if recolor_unprioritized_entries == 'w':
+    #                 if self.is_overview_map:
+    #                     color_hex_code = '#000000'
+    #                 else:
+    #                     color_hex_code = '#FFFFFF'
+    #             elif recolor_unprioritized_entries == 'g':
+    #                 color_hex_code = '#E0E0E0'
+    #             self.recolor_unprioritized_ortholog_entries(
+    #                 unprioritized_entry_uuids, color_hex_code
+    #             )
+
+    #             # Recolor compounds.
+    #             if recolor_unprioritized_entries == 'w':
+    #                 color_hex_code = '#FFFFFF'
+    #             elif recolor_unprioritized_entries == 'g':
+    #                 color_hex_code = '#E0E0E0'
+    #             self.recolor_unprioritized_compound_entries(
+    #                 unprioritized_entry_uuids, color_hex_code
+    #             )
+    #         else:
+    #             self.recolor_unprioritized_entries(
+    #                 unprioritized_entry_uuids, recolor_unprioritized_entries
+    #             )
+
+    #     if color_associated_compounds is None:
+    #         return
+    #     self.color_associated_compounds(color_associated_compounds, colormap=colormap)
+
+    #     # Reorder compound entries in the subelements attribute according to color priority.
+    #     unprioritized_entry_uuids = self.order_entries_by_color_priority()
+
+    #     # Recolor compounds that have not been assigned a color priority.
+    #     if recolor_unprioritized_entries:
+    #         if isinstance(recolor_unprioritized_entries, str):
+    #             if recolor_unprioritized_entries == 'w':
+    #                 color_hex_code = '#FFFFFF'
+    #             elif recolor_unprioritized_entries == 'g':
+    #                 color_hex_code = '#E0E0E0'
+    #             self.recolor_unprioritized_compound_entries(
+    #                 unprioritized_entry_uuids, color_hex_code
+    #             )
+    #         else:
+    #             self.recolor_unprioritized_entries(
+    #                 unprioritized_entry_uuids, recolor_unprioritized_entries
+    #            )
+
+    def order_entries_by_color_priority(self) -> list[str]:
         """
-        Reorder Entry (e.g., 'ortholog' and 'compound') UUIDs by color priority in the children
-        attribute of the Pathway object. This determines how entries are ordered in KGML files and
-        rendered in maps.
+        Reorder Entry (e.g., 'ortholog', 'compound') UUIDs by color Priority in the subelements
+        attribute of the Pathway. This determines how entries are ordered in KGML files and rendered
+        in maps.
 
         Returns
         =======
-        List[str]
-            UUIDs of Entry elements without a color priority.
+        list[str]
+            UUIDs of Entry elements without a color Priority.
         """
-        # Entries have different types ('ortholog', 'compound', etc.). Group entries into two
-        # classes. "Qualifying" entries have types in the color priority outermost dict. Other
-        # entries do not have types in the dict and are assigned the lowest nominal priority of
-        # -1.0. No effort is made to sort these entries in any way.
-        reordered_entry_uuids: List[str] = []
-        unprioritized_entry_uuids: List[str] = []
-        qualifying_entry_uuids: Dict[str, List[str]] = {
-            entry_type: [] for entry_type in self.color_priority
+        # Entries have different types ('ortholog', 'enzyme', 'reaction', 'compound', etc.). Group
+        # entries into two classes. "Qualifying" entries have types represented in the
+        # color_priority attribute. Other entries do not have types represented in the
+        # color_priority attribute, and are assigned the lowest nominal Priority of -1.0. No effort
+        # is made to sort these other entries in any way.
+        reordered_entry_uuids: list[str] = []
+        unprioritized_entry_uuids: list[str] = []
+        qualifying_entry_uuids: dict[str, list[str]] = {
+            entry_type: [] for entry_type in self.color_priority.entry_type
         }
-        for entry_uuid in self.children['entry']:
+        for entry_uuid in self.subelements['entry']:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
-            if entry.type in self.color_priority:
+            if entry.type in self.color_priority.entry_type:
                 qualifying_entry_uuids[entry.type].append(entry_uuid)
             else:
                 reordered_entry_uuids.append(entry_uuid)
                 unprioritized_entry_uuids.append(entry_uuid)
 
-        # Sort "qualifying" entries. Loop through each Entry type in the color priority dict.
-        for entry_type, entry_type_color_priority in self.color_priority.items():
-            # Retrieve each Entry object of the type. Its priority is determined from fg and bg
-            # colors.
+        # Sort "qualifying" entries. Loop through each Entry type in the color_priority attribute.
+        for entry_type, entry_type_color_priority in self.color_priority.entry_type.items():
+            # Retrieve each Entry object of the type. Its Priority is determined from Graphics
+            # foreground and background colors.
             type_qualifying_entry_uuids = qualifying_entry_uuids[entry_type]
-            type_priority_entry_uuids: Dict[float, List[str]] = {}
+            type_priority_entry_uuids: dict[float, list[str]] = {}
             for entry_uuid in type_qualifying_entry_uuids:
                 entry: Entry = self.uuid_element_lookup[entry_uuid]
 
                 # Ensure that all of the Entry Graphics elements are of the same type and have the
                 # same fg and bg colors.
-                graphics_types: List[str] = []
-                fgcolors: List[str] = []
-                bgcolors: List[str] = []
-                for graphics_uuid in entry.children['graphics']:
+                graphics_types: list[str] = []
+                fgcolors: list[str] = []
+                bgcolors: list[str] = []
+                for graphics_uuid in entry.subelements['graphics']:
                     graphics_element: Graphics = self.uuid_element_lookup[graphics_uuid]
                     graphics_types.append(graphics_element.type)
                     fgcolors.append(graphics_element.fgcolor)
                     bgcolors.append(graphics_element.bgcolor)
                 if len(set(graphics_types)) != 1:
                     graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
-                    raise AssertionError(
+                    raise ConfigError(
                         f"The Graphics elements for the Entry with UUID '{entry_uuid}' do not "
                         "have the same type, which is required for ordering entries based on "
-                        f"color. Graphics have types: {graphics_type_message}"
+                        f"color. Graphics have the following types: {graphics_type_message}"
                     )
                 if len(set(fgcolors)) != 1 or len(set(bgcolors)) != 1:
-                    raise AssertionError(
+                    raise ConfigError(
                         f"The Graphics elements in the Entry with UUID '{entry_uuid}' do not "
                         "have consistent foreground and background colors, which is required "
                         "for ordering entries based on color."
@@ -438,9 +911,16 @@ class Pathway(Element):
 
                 graphics_type = graphics_types[0]
                 try:
-                    priority = entry_type_color_priority[graphics_type][(fgcolors[0], bgcolors[0])]
+                    graphics_type_color_priority = entry_type_color_priority.graphics_type[graphics_type]
                 except KeyError:
-                    # The Entry does not have colors in the priority dictionary.
+                    raise ConfigError(
+                        f"The Graphics type, '{graphics_type}', does not have an entry in the "
+                        f"color priority for the Entry type, '{entry_type}'."
+                    )
+                try:
+                    priority = graphics_type_color_priority.color[(fgcolors[0], bgcolors[0])]
+                except KeyError:
+                    # The Entry does not have prioritized colors.
                     priority = -1.0
 
                 try:
@@ -449,7 +929,7 @@ class Pathway(Element):
                     type_priority_entry_uuids[priority] = [entry_uuid]
 
             # Add the reordered UUIDs of the Entry type to the new list of Entry UUIDs and to the
-            # dict mapping priority values to UUIDs of entries of all types.
+            # dict mapping Priority values to UUIDs of entries of all types.
             for priority, entry_uuids in sorted(type_priority_entry_uuids.items()):
                 reordered_entry_uuids += entry_uuids
 
@@ -458,54 +938,104 @@ class Pathway(Element):
             except KeyError:
                 pass
 
-        self.children['entry'] = reordered_entry_uuids
+        self.subelements['entry'] = reordered_entry_uuids
 
         return unprioritized_entry_uuids
 
-    def recolor_unprioritized_ortholog_entries(
+    def recolor_unprioritized_reaction_entries(
         self,
-        unprioritized_entry_uuids: List[str],
+        unprioritized_entry_uuids: list[str],
         color_hex_code: str
-    ) -> None:
+    ) -> PathwayUnprioritizedColor:
         """
-        Recolor orthologs without a color priority.
+        Recolor reaction-like entries without a color Priority.
 
-        Ortholog entries are expected to have Graphics elements of type 'line' in global and
-        overview maps and type 'rectangle' or 'line' in standard maps. The color is applied to the
-        foreground of a line, and the background is made white. The color is applied to the
-        background of a rectangle, and the foreground (text) is made black.
+        Reaction entries are expected to have Graphics elements of type 'line' in global and
+        overview maps and type 'rectangle' or 'line' in standard maps. The color_hex_code argument
+        color is applied to the foreground of a line, and the background is made white. The color is
+        applied to the background of a rectangle, and the foreground (text) is made black.
 
         Parameters
         ==========
-        unprioritized_entry_uuids : List[str]
-            List of UUIDs of all entries without a color priority.
+        unprioritized_entry_uuids : list[str]
+            List of UUIDs of all entries without a color Priority.
 
         color_hex_code : str
-            Hex code of the color for ortholog graphics.
+            Hex code of the color for reaction Graphics.
+
+        Returns
+        =======
+        reaction_unprioritized_color : PathwayUnprioritizedColor
+            Combinations of foreground and background colors of unprioritized reaction Entry
+            Graphics drawn below prioritized entries.
         """
+        reaction_unprioritized_color = PathwayUnprioritizedColor()
+        reaction_like_types = Entry.reaction_like_types
         if self.is_global_map or self.is_overview_map:
+            for entry_type in reaction_like_types:
+                entry_unprioritized_color = EntryUnprioritizedColor()
+                reaction_unprioritized_color.entry_type[entry_type] = entry_unprioritized_color
+                entry_unprioritized_color.graphics_type['line'] = (color_hex_code, '#FFFFFF')
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids, {'ortholog': {'line': (color_hex_code, '#FFFFFF')}}
+                unprioritized_entry_uuids, reaction_unprioritized_color
             )
         else:
+            for entry_type in reaction_like_types:
+                entry_unprioritized_color = EntryUnprioritizedColor()
+                reaction_unprioritized_color.entry_type[entry_type] = entry_unprioritized_color
+                entry_unprioritized_color.graphics_type['rectangle'] = ('#000000', color_hex_code)
+                entry_unprioritized_color.graphics_type['line'] = (color_hex_code, '#FFFFFF')
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids,
-                {'ortholog': {
-                    'rectangle': ('#000000', color_hex_code), 'line': (color_hex_code, '#000000')
-                }}
+                unprioritized_entry_uuids, reaction_unprioritized_color
             )
+
+        return reaction_unprioritized_color
+
+    # def recolor_unprioritized_ortholog_entries(
+    #     self,
+    #     unprioritized_entry_uuids: list[str],
+    #     color_hex_code: str
+    # ) -> None:
+    #     """
+    #     Recolor orthologs without a color priority.
+
+    #     Ortholog entries are expected to have Graphics elements of type 'line' in global and
+    #     overview maps and type 'rectangle' or 'line' in standard maps. The color is applied to the
+    #     foreground of a line, and the background is made white. The color is applied to the
+    #     background of a rectangle, and the foreground (text) is made black.
+
+    #     Parameters
+    #     ==========
+    #     unprioritized_entry_uuids : list[str]
+    #         List of UUIDs of all entries without a color priority.
+
+    #     color_hex_code : str
+    #         Hex code of the color for ortholog graphics.
+    #     """
+    #     if self.is_global_map or self.is_overview_map:
+    #         self.recolor_unprioritized_entries(
+    #             unprioritized_entry_uuids, {'ortholog': {'line': (color_hex_code, '#FFFFFF')}}
+    #         )
+    #     else:
+    #         self.recolor_unprioritized_entries(
+    #             unprioritized_entry_uuids,
+    #             {'ortholog': {
+    #                 'rectangle': ('#000000', color_hex_code), 'line': (color_hex_code, '#000000')
+    #             }}
+    #         )
 
     def recolor_unprioritized_compound_entries(
         self,
-        unprioritized_entry_uuids: List[str],
+        unprioritized_entry_uuids: list[str],
         color_hex_code: str
-    ) -> None:
+    ) -> PathwayUnprioritizedColor:
         """
-        Recolor compounds without a color priority.
+        Recolor entries of the 'compound' type without a color Priority.
 
-        Compound entries are assumed to have Graphics elements of type 'circle'. In global maps, the
+        Compound entries are expected to have Graphics elements of type 'circle'. In global maps, the
         color is applied to both the background (fill) and foreground (border) of the circle. In
         overview and standard maps, the background is colored, and the foreground is made black.
+
         Compound rectangles are also found in a small number of KGML files (see 00121, 00621, 01052,
         01054), and it is best if the size of these is set to zero so they don't obscure the
         chemical structure drawings to which they correspond on maps (see
@@ -513,82 +1043,97 @@ class Pathway(Element):
 
         Parameters
         ==========
-        unprioritized_entry_uuids : List[str]
-            List of UUIDs of all entries without a color priority.
+        unprioritized_entry_uuids : list[str]
+            List of UUIDs of all entries without a color Priority.
 
         color_hex_code : str
-            Hex code of the color for compound graphics.
+            Hex code of the color for compound Graphics.
+
+        Returns
+        =======
+        compound_unprioritized_color : PathwayUnprioritizedColor
+            Combinations of foreground and background colors of unprioritized compound Entry
+            Graphics drawn below prioritized entries.
         """
+        compound_unprioritized_color = PathwayUnprioritizedColor()
+        entry_unprioritized_color = EntryUnprioritizedColor()
+        compound_unprioritized_color.entry_type['compound'] = entry_unprioritized_color
         if self.is_global_map:
+            entry_unprioritized_color.graphics_type['circle'] = (color_hex_code, color_hex_code)
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids,
-                {'compound': {'circle': (color_hex_code, color_hex_code)}}
+                unprioritized_entry_uuids, compound_unprioritized_color
             )
         else:
+            entry_unprioritized_color.graphics_type['circle'] = ('#000000', color_hex_code)
             self.recolor_unprioritized_entries(
-                unprioritized_entry_uuids, {'compound': {'circle': ('#000000', color_hex_code)}}
+                unprioritized_entry_uuids, compound_unprioritized_color
             )
+
+        return compound_unprioritized_color
 
     def recolor_unprioritized_entries(
         self,
-        unprioritized_entry_uuids: List[str],
-        type_colors: Dict[str, Dict[str, Tuple[str, str]]]
+        unprioritized_entry_uuids: list[str],
+        pathway_unprioritized_color: PathwayUnprioritizedColor
     ) -> None:
         """
-        Entries without a color priority are recolored by Entry type.
+        Entries without a color Priority are recolored by Entry type.
 
         Parameters
         ==========
-        unprioritized_entry_uuids : List[str]
-            List of UUIDs of all entries without a color priority.
+        unprioritized_entry_uuids : list[str]
+            List of UUIDs of all entries without a color Priority.
 
-        type_colors : Dict[str, Dict[str, Tuple[str, str]]]
-            Outer dictionary keys are Entry types, e.g., 'ortholog', 'compound'. Inner dict keys are
-            Graphics types, e.g., 'rectangle', 'line', 'circle'. Inner dict values are length-2
-            tuples of foreground and background color hex codes, respectively. This is shown in the
-            following example, which sets the fg (text) color of unprioritized ortholog Entry
-            rectangle Graphics to dark gray and the bg to light gray; the fg color of unprioritized
-            ortholog Entry line Graphics to black and the bg to white; and the fg (border) of
-            unprioritized compounds to black and the bg to white.
-            {
-                'ortholog': {
-                    'rectangle': ('#A9A9A9', '#E0E0E0'),
-                    'line': ('#000000', '#FFFFFF')
-                },
-                'compound': {
-                    'circle': ('#000000', '#FFFFFF')
-                }
-            }
+        pathway_unprioritized_color : PathwayUnprioritizedColor
+            Combinations of foreground and background colors of unprioritized Entry Graphics drawn
+            below prioritized entries.
         """
         # Prevent unprioritized entries from being assigned prioritized colors.
-        for entry_type, entry_type_colors in type_colors.items():
+        for entry_type, entry_unprioritized_color in pathway_unprioritized_color.entry_type.items():
             try:
-                entry_type_color_priority = self.color_priority[entry_type]
+                entry_type_color_priority = self.color_priority.entry_type[entry_type]
             except KeyError:
+                # The Entry type has no prioritized colors.
                 continue
-            for graphics_type, graphics_type_colors in entry_type_colors.items():
+
+            for (
+                graphics_type, graphics_unprioritized_color
+            ) in entry_unprioritized_color.graphics_type.items():
                 try:
-                    graphics_type_color_priority = entry_type_color_priority[graphics_type]
+                    graphics_type_color_priority = entry_type_color_priority.graphics_type[
+                        graphics_type
+                    ]
                 except KeyError:
+                    # The Entry Graphics type has no prioritized colors.
                     continue
-                if graphics_type_colors in graphics_type_color_priority:
+
+                if graphics_unprioritized_color in graphics_type_color_priority.color:
                     raise ConfigError(
-                        "Unprioritized entry graphics cannot be assigned the same combination of "
-                        "foreground and background colors as prioritized entries of the same entry "
-                        "and graphics types."
+                        "Unprioritized Entry Graphics cannot be assigned the same combination of "
+                        "foreground and background colors as prioritized entries of the same Entry "
+                        f"and Graphics types. The Entry type is '{entry_type}'. The Graphics type "
+                        f"is '{graphics_type}'. The unprioritized foreground color is "
+                        f"'{graphics_unprioritized_color[0]}' and background color is "
+                        f"'{graphics_unprioritized_color[1]}'."
                     )
 
+        # Set colors of unprioritized Entry Graphics.
         for entry_uuid in unprioritized_entry_uuids:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             try:
-                entry_type_colors = type_colors[entry.type]
+                entry_unprioritized_color = pathway_unprioritized_color.entry_type[entry.type]
             except KeyError:
+                # The type of the Entry object is not under consideration for recoloring.
                 continue
-            for graphics_uuid in entry.children['graphics']:
+
+            for graphics_uuid in entry.subelements['graphics']:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 try:
-                    fgcolor_hex_code, bgcolor_hex_code = entry_type_colors[graphics.type]
+                    fgcolor_hex_code, bgcolor_hex_code = entry_unprioritized_color.graphics_type[
+                        graphics.type
+                    ]
                 except KeyError:
+                    # The type of the Graphics object is not under consideration for recoloring.
                     continue
                 graphics.fgcolor = fgcolor_hex_code
                 graphics.bgcolor = bgcolor_hex_code
@@ -599,12 +1144,13 @@ class Pathway(Element):
         colormap: Colormap = None
     ) -> None:
         """
-        Set the color of compound entries based on the color priority of ortholog entries involving
-        the compounds.
+        Set the color of compound entries based on the color Priority of reaction-like ('ortholog',
+        'enzyme', 'reaction', 'gene', 'group' type) entries involving the compounds.
 
         Compound entries are assumed to have Graphics elements of type 'circle'. If the map is
         global, color both the background (interior) and foreground (border) of the circle. In
         overview and standard maps, the background is colored, and the foreground is made black.
+
         Compound rectangles are also found in a small number of KGML files (see 00121, 00621, 01052,
         01054), and it is best if the size of these is set to zero so they don't obscure the
         chemical structure drawings to which they correspond on maps (see
@@ -613,136 +1159,162 @@ class Pathway(Element):
         Parameters
         ==========
         transfer : Literal['high', 'low', 'average']
-            An argument of 'high' or 'low' sets the compound color to the bg color of the ortholog
-            with the highest or lowest priority fg/bg color combination. 'average' sets the compound
-            color to the average bg color of orthologs with prioritized colors -- unprioritized
-            orthologs are not taken into account. 'average' should only be used if priority values
-            are normalized to the interval [0, 1] and can be converted to a color given by the
-            colormap argument. The average priority value of the orthologs with prioritized colors
-            is mapped to a color for the compound Entry.
+            An argument of 'high' or 'low' sets the compound color to the bg color of the reaction
+            Entry with the highest or lowest Priority fg/bg color combination.
+
+            'average' sets the compound color to the average bg color of reactions with prioritized
+            colors: unprioritized reactions are not taken into account. 'average' should only be
+            used if Priority values are normalized to the interval [0, 1] and can be converted to a
+            color given by the colormap argument. The average Priority value of the reactions with
+            prioritized colors is mapped to a color for the compound Entry.
 
             Compound entries that are already in the color_priority attribute are exempt from
             recoloring and given higher priority than recolored compound entries.
 
         colormap : matplotlib.colors.Colormap, None
-            If 'average' is used as an argument to transfer, a colormap must be provided to map
-            averaged priority values on the interval [0, 1] to a background color for compound
+            If 'average' is used as the transfer argument value, a colormap must be provided to map
+            averaged Priority values on the interval [0, 1] to a background color for compound
             entries.
         """
-        # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
-        # elements to ortholog Entry elements.
-        name_reaction: Dict[str, Reaction] = {}
-        for entry_uuid in self.children['reaction']:
+        # Make Reaction elements searchable by name. Reaction elements link compound entries to
+        # reaction entries. (Note that Reaction elements are not the same as Entry elements with
+        # types that we call reaction types.)
+        name_reaction: dict[str, Reaction] = {}
+        for entry_uuid in self.subelements['reaction']:
             reaction: Reaction = self.uuid_element_lookup[entry_uuid]
             name_reaction[reaction.name] = reaction
 
-        # For each compound Entry with associated color-prioritized ortholog entries, record the
+        # For each compound Entry with associated color-prioritized reaction entries, record the
         # colors and priorities of these entries.
-        compound_uuid_color_priorities: Dict[str, List[Tuple[str, float]]] = {}
-        # Loop through each ortholog Entry.
-        for entry_uuid in self.children['entry']:
+        compound_uuid_color_priorities: dict[str, list[tuple[str, float]]] = {}
+        # Loop through each reaction Entry.
+        reaction_like_types = Entry.reaction_like_types
+        for entry_uuid in self.subelements['entry']:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
-            if entry.type != 'ortholog':
+            entry_type = entry.type
+            if entry_type not in reaction_like_types:
                 continue
 
-            # Ensure that all of the ortholog Entry Graphics elements have the same fg/bg colors.
-            graphics_types: List[str] = []
-            fgcolors: List[str] = []
-            bgcolors: List[str] = []
-            for graphics_uuid in entry.children['graphics']:
+            # Ensure that all of the reaction Entry Graphics elements have the same combination of
+            # fg/bg colors.
+            graphics_types: list[str] = []
+            fgcolors: list[str] = []
+            bgcolors: list[str] = []
+            for graphics_uuid in entry.subelements['graphics']:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 graphics_types.append(graphics.type)
                 fgcolors.append(graphics.fgcolor)
                 bgcolors.append(graphics.bgcolor)
             if len(set(graphics_types)) != 1:
                 graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
-                raise AssertionError(
-                    f"The Graphics elements for the Entry with UUID '{entry_uuid}' do not "
-                    "have the same type, which is required for ordering entries based on "
+                raise ConfigError(
+                    f"The Graphics elements for the {entry_type} Entry with UUID '{entry_uuid}' do "
+                    "not have the same type, which is required for ordering entries based on "
                     f"color. Graphics have types: {graphics_type_message}"
                 )
             if len(set(fgcolors)) != 1 or len(set(bgcolors)) != 1:
-                raise AssertionError(
-                    "The Graphics elements in the ortholog Entry with the following UUID do not "
-                    "have consistent foreground and background colors, which is required for "
-                    f"ordering entries based on color: {entry_uuid}"
+                raise ConfigError(
+                    f"The Graphics elements for the {entry_type} Entry with UUID '{entry_uuid}' do "
+                    "not have consistent foreground and background colors, which is required for "
+                    f"ordering entries based on color."
                 )
 
             graphics_type = graphics_types[0]
             fgcolor = fgcolors[0]
             bgcolor = bgcolors[0]
+
             try:
-                priority = self.color_priority['ortholog'][graphics_type][(fgcolor, bgcolor)]
+                entry_type_color_priority = self.color_priority.entry_type[entry_type]
             except KeyError:
-                # Unprioritized ortholog entries do not affect the color of associated compounds.
+                # No color priority has been defined for the type of Entry.
+                continue
+
+            try:
+                graphics_type_color_priority = entry_type_color_priority.graphics_type[
+                    graphics_type
+                ]
+            except KeyError:
+                # No color priority has been defined for the type of Graphics.
+                continue
+
+            try:
+                priority = graphics_type_color_priority.color[(fgcolor, bgcolor)]
+            except KeyError:
+                # Unprioritized reaction entries do not affect the color of associated compounds.
                 continue
 
             reaction_name = entry.reaction
             if reaction_name is None:
-                # The ortholog is not associated with a reaction.
+                # The Entry does not have a reaction attribute.
                 continue
 
             try:
                 reaction = name_reaction[reaction_name]
             except KeyError:
-                # No Reaction element is present with the name of the ortholog reaction.
+                # No Reaction element has the reaction name attached to the Entry. This can be
+                # explained by an error in KGML file contents.
                 continue
 
             if graphics.type == 'line':
-                ortholog_color = fgcolor
+                reaction_entry_color = fgcolor
             else:
-                ortholog_color = bgcolor
+                reaction_entry_color = bgcolor
 
-            for substrate_uuid in reaction.children['substrate']:
+            # Record the color and priority of the reaction for substrate compound entries.
+            for substrate_uuid in reaction.subelements['substrate']:
                 substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
                 split_substrate_names = [
                     split_name.split(':') for split_name in substrate.name.split()
                 ]
                 for split_name in split_substrate_names:
                     for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+                        if not isinstance(compound_entry, Entry):
+                            continue
                         compound_entry: Entry
-                        compound_uuid = compound_entry.uuid
                         try:
-                            compound_uuid_color_priorities[compound_uuid].append(
-                                (ortholog_color, priority)
+                            compound_uuid_color_priorities[compound_entry.uuid].append(
+                                (reaction_entry_color, priority)
                             )
                         except KeyError:
-                            compound_uuid_color_priorities[compound_uuid] = [
-                                (ortholog_color, priority)
+                            compound_uuid_color_priorities[compound_entry.uuid] = [
+                                (reaction_entry_color, priority)
                             ]
 
-            for product_uuid in reaction.children['product']:
+            # Record the color and priority of the reaction for product compound entries.
+            for product_uuid in reaction.subelements['product']:
                 product: Product = self.uuid_element_lookup[product_uuid]
                 split_product_names = [split_name.split(':') for split_name in product.name.split()]
                 for split_name in split_product_names:
                     for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+                        if not isinstance(compound_entry, Entry):
+                            continue
                         compound_entry: Entry
-                        compound_uuid = compound_entry.uuid
                         try:
-                            compound_uuid_color_priorities[compound_uuid].append(
-                                (ortholog_color, priority)
+                            compound_uuid_color_priorities[compound_entry.uuid].append(
+                                (reaction_entry_color, priority)
                             )
                         except KeyError:
-                            compound_uuid_color_priorities[compound_uuid] = [
-                                (ortholog_color, priority)
+                            compound_uuid_color_priorities[compound_entry._uuid] = [
+                                (reaction_entry_color, priority)
                             ]
 
-        # Make compound entries searchable by ID, which should be a unique pathway element ID.
-        id_compound_entry: Dict[str, Entry] = {}
-        for entry_uuid in self.children['entry']:
+        # Make compound entries searchable by ID (not the UUID assigned by anvi'o), which should be
+        # a unique element ID in the Pathway.
+        id_compound_entry: dict[str, Entry] = {}
+        for entry_uuid in self.subelements['entry']:
             entry: Entry = self.uuid_element_lookup[entry_uuid]
             if entry.type != 'compound':
                 continue
             id_compound_entry[entry.id] = entry
 
         # Define functions for finding compound Entry color.
-        def _get_high_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_high_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
             return sorted(color_priorities, key=lambda t: -t[1])[0]
 
-        def _get_low_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_low_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
             return sorted(color_priorities, key=lambda t: t[1])[0]
 
-        def _get_average_color(color_priorities: List[Tuple[str, float]]) -> Tuple[str, float]:
+        def _get_average_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
             priority = np.mean([t[1] for t in color_priorities])
             color = rgb2hex(colormap(priority))
             return color, priority
@@ -754,27 +1326,41 @@ class Pathway(Element):
         elif transfer == 'average':
             get_color_priority = _get_average_color
         else:
-            raise AssertionError
+            raise ConfigError(
+                "The 'transfer' argument value must be one of the strings, 'high', 'low', or "
+                "'average'."
+            )
 
         # Set compound Entry color.
         for compound_uuid, color_priorities in compound_uuid_color_priorities.items():
-            compound: Union[Substrate, Product] = self.uuid_element_lookup[compound_uuid]
-            compound_entry: Entry = id_compound_entry[compound.id]
+            compound_entry: Entry = self.uuid_element_lookup[compound_uuid]
 
             # Get all of the Graphics elements for the Entry.
-            graphics_elements: List[Graphics] = []
-            for graphics_uuid in compound_entry.children['graphics']:
+            graphics_elements: list[Graphics] = []
+            for graphics_uuid in compound_entry.subelements['graphics']:
                 graphics_elements.append(self.uuid_element_lookup[graphics_uuid])
 
             set_color = True
             for graphics in graphics_elements:
                 try:
-                    # The compound Entry has already been assigned a color priority, so don't
+                    compound_color_priority = self.color_priority.entry_type['compound']
+                except KeyError:
+                    # No color priority has been defined for compound entries.
+                    continue
+
+                try:
+                    circle_color_priority = compound_color_priority.graphics_type['circle']
+                except KeyError:
+                    # No color priority has been defined for circle Graphics in compound entries.
+                    continue
+
+                try:
+                    # The compound Entry has already been assigned a color Priority, so don't
                     # recolor it automatically.
-                    self.color_priority['compound']['circle'][(graphics.fgcolor, graphics.bgcolor)]
-                    set_color = False
+                    circle_color_priority.color[(graphics.fgcolor, graphics.bgcolor)]
                 except KeyError:
                     continue
+                set_color = False
             if not set_color:
                 continue
 
@@ -787,24 +1373,397 @@ class Pathway(Element):
 
             # Record the compound Element color priority.
             try:
-                entry_type_color_priority = self.color_priority['compound']
+                compound_color_priority = self.color_priority.entry_type['compound']
             except KeyError:
-                self.color_priority['compound'] = entry_type_color_priority = {}
+                compound_color_priority = EntryColorPriority()
+                self.color_priority.entry_type['compound'] = compound_color_priority
+
             try:
-                graphics_type_color_priority = entry_type_color_priority['circle']
+                circle_color_priority = compound_color_priority.graphics_type['circle']
             except KeyError:
-                entry_type_color_priority['circle'] = graphics_type_color_priority = {}
+                circle_color_priority = GraphicsColorPriority()
+                compound_color_priority.graphics_type['circle'] = circle_color_priority
+
             if self.is_global_map:
-                graphics_type_color_priority[(compound_color, compound_color)] = compound_priority
+                circle_color_priority.color[(compound_color, compound_color)] = compound_priority
             else:
-                graphics_type_color_priority[(graphics.fgcolor, compound_color)] = compound_priority
+                circle_color_priority[(graphics.fgcolor, compound_color)] = compound_priority
+
+    # def color_associated_compounds1(
+    #     self,
+    #     transfer: Literal['high', 'low', 'average'],
+    #     colormap: Colormap = None
+    # ) -> None:
+    #     """
+    #     Set the color of compound entries based on the color priority of ortholog entries involving
+    #     the compounds.
+
+    #     Compound entries are assumed to have Graphics elements of type 'circle'. If the map is
+    #     global, color both the background (interior) and foreground (border) of the circle. In
+    #     overview and standard maps, the background is colored, and the foreground is made black.
+    #     Compound rectangles are also found in a small number of KGML files (see 00121, 00621, 01052,
+    #     01054), and it is best if the size of these is set to zero so they don't obscure the
+    #     chemical structure drawings to which they correspond on maps (see
+    #     `anvio.keggmapping.Mapper._zero_out_compound_rectangles`).
+
+    #     Parameters
+    #     ==========
+    #     transfer : Literal['high', 'low', 'average']
+    #         An argument of 'high' or 'low' sets the compound color to the bg color of the ortholog
+    #         with the highest or lowest priority fg/bg color combination. 'average' sets the compound
+    #         color to the average bg color of orthologs with prioritized colors -- unprioritized
+    #         orthologs are not taken into account. 'average' should only be used if priority values
+    #         are normalized to the interval [0, 1] and can be converted to a color given by the
+    #         colormap argument. The average priority value of the orthologs with prioritized colors
+    #         is mapped to a color for the compound Entry.
+
+    #         Compound entries that are already in the color_priority attribute are exempt from
+    #         recoloring and given higher priority than recolored compound entries.
+
+    #     colormap : matplotlib.colors.Colormap, None
+    #         If 'average' is used as an argument to transfer, a colormap must be provided to map
+    #         averaged priority values on the interval [0, 1] to a background color for compound
+    #         entries.
+    #     """
+    #     # Make Reaction elements searchable by name (KEGG IDs). Reaction elements link Compound
+    #     # elements to ortholog Entry elements.
+    #     name_reaction: dict[str, Reaction] = {}
+    #     for entry_uuid in self.subelements['reaction']:
+    #         reaction: Reaction = self.uuid_element_lookup[entry_uuid]
+    #         name_reaction[reaction.name] = reaction
+
+    #     # For each compound Entry with associated color-prioritized ortholog entries, record the
+    #     # colors and priorities of these entries.
+    #     compound_uuid_color_priorities: dict[str, list[tuple[str, float]]] = {}
+    #     # Loop through each ortholog Entry.
+    #     for entry_uuid in self.subelements['entry']:
+    #         entry: Entry = self.uuid_element_lookup[entry_uuid]
+    #         if entry.type != 'ortholog':
+    #             continue
+
+    #         # Ensure that all of the ortholog Entry Graphics elements have the same fg/bg colors.
+    #         graphics_types: list[str] = []
+    #         fgcolors: list[str] = []
+    #         bgcolors: list[str] = []
+    #         for graphics_uuid in entry.subelements['graphics']:
+    #             graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
+    #             graphics_types.append(graphics.type)
+    #             fgcolors.append(graphics.fgcolor)
+    #             bgcolors.append(graphics.bgcolor)
+    #         if len(set(graphics_types)) != 1:
+    #             graphics_type_message = ', '.join([f"'{gt}'" for gt in graphics_types])
+    #             raise AssertionError(
+    #                 f"The Graphics elements for the Entry with UUID '{entry_uuid}' do not "
+    #                 "have the same type, which is required for ordering entries based on "
+    #                 f"color. Graphics have types: {graphics_type_message}"
+    #             )
+    #         if len(set(fgcolors)) != 1 or len(set(bgcolors)) != 1:
+    #             raise AssertionError(
+    #                 "The Graphics elements in the ortholog Entry with the following UUID do not "
+    #                 "have consistent foreground and background colors, which is required for "
+    #                 f"ordering entries based on color: {entry_uuid}"
+    #             )
+
+    #         graphics_type = graphics_types[0]
+    #         fgcolor = fgcolors[0]
+    #         bgcolor = bgcolors[0]
+    #         try:
+    #             priority = self.color_priority['ortholog'][graphics_type][(fgcolor, bgcolor)]
+    #         except KeyError:
+    #             # Unprioritized ortholog entries do not affect the color of associated compounds.
+    #             continue
+
+    #         reaction_name = entry.reaction
+    #         if reaction_name is None:
+    #             # The ortholog is not associated with a reaction.
+    #             continue
+
+    #         try:
+    #             reaction = name_reaction[reaction_name]
+    #         except KeyError:
+    #             # No Reaction element is present with the name of the ortholog reaction.
+    #             continue
+
+    #         if graphics.type == 'line':
+    #             ortholog_color = fgcolor
+    #         else:
+    #             ortholog_color = bgcolor
+
+    #         for substrate_uuid in reaction.subelements['substrate']:
+    #             substrate: Substrate = self.uuid_element_lookup[substrate_uuid]
+    #             split_substrate_names = [
+    #                 split_name.split(':') for split_name in substrate.name.split()
+    #             ]
+    #             for split_name in split_substrate_names:
+    #                 for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+    #                     if not isinstance(compound_entry, Entry):
+    #                         continue
+    #                     compound_entry: Entry
+    #                     compound_uuid = compound_entry.uuid
+    #                     try:
+    #                         compound_uuid_color_priorities[compound_uuid].append(
+    #                             (ortholog_color, priority)
+    #                         )
+    #                     except KeyError:
+    #                         compound_uuid_color_priorities[compound_uuid] = [
+    #                             (ortholog_color, priority)
+    #                         ]
+
+    #         for product_uuid in reaction.subelements['product']:
+    #             product: Product = self.uuid_element_lookup[product_uuid]
+    #             split_product_names = [split_name.split(':') for split_name in product.name.split()]
+    #             for split_name in split_product_names:
+    #                 for compound_entry in self.kegg_id_element_lookup[split_name[1]]:
+    #                     if not isinstance(compound_entry, Entry):
+    #                         continue
+    #                     compound_entry: Entry
+    #                     compound_uuid = compound_entry.uuid
+    #                     try:
+    #                         compound_uuid_color_priorities[compound_uuid].append(
+    #                             (ortholog_color, priority)
+    #                         )
+    #                     except KeyError:
+    #                         compound_uuid_color_priorities[compound_uuid] = [
+    #                             (ortholog_color, priority)
+    #                         ]
+
+    #     # Make compound entries searchable by ID, which should be a unique pathway element ID.
+    #     id_compound_entry: dict[str, Entry] = {}
+    #     for entry_uuid in self.subelements['entry']:
+    #         entry: Entry = self.uuid_element_lookup[entry_uuid]
+    #         if entry.type != 'compound':
+    #             continue
+    #         id_compound_entry[entry.id] = entry
+
+    #     # Define functions for finding compound Entry color.
+    #     def _get_high_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
+    #         return sorted(color_priorities, key=lambda t: -t[1])[0]
+
+    #     def _get_low_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
+    #         return sorted(color_priorities, key=lambda t: t[1])[0]
+
+    #     def _get_average_color(color_priorities: list[tuple[str, float]]) -> tuple[str, float]:
+    #         priority = np.mean([t[1] for t in color_priorities])
+    #         color = rgb2hex(colormap(priority))
+    #         return color, priority
+
+    #     if transfer == 'high':
+    #         get_color_priority = _get_high_color
+    #     elif transfer == 'low':
+    #         get_color_priority = _get_low_color
+    #     elif transfer == 'average':
+    #         get_color_priority = _get_average_color
+    #     else:
+    #         raise AssertionError
+
+    #     # Set compound Entry color.
+    #     for compound_uuid, color_priorities in compound_uuid_color_priorities.items():
+    #         compound: Union[Substrate, Product] = self.uuid_element_lookup[compound_uuid]
+    #         compound_entry: Entry = id_compound_entry[compound.id]
+
+    #         # Get all of the Graphics elements for the Entry.
+    #         graphics_elements: list[Graphics] = []
+    #         for graphics_uuid in compound_entry.subelements['graphics']:
+    #             graphics_elements.append(self.uuid_element_lookup[graphics_uuid])
+
+    #         set_color = True
+    #         for graphics in graphics_elements:
+    #             try:
+    #                 # The compound Entry has already been assigned a color priority, so don't
+    #                 # recolor it automatically.
+    #                 self.color_priority['compound']['circle'][(graphics.fgcolor, graphics.bgcolor)]
+    #                 set_color = False
+    #             except KeyError:
+    #                 continue
+    #         if not set_color:
+    #             continue
+
+    #         compound_color, compound_priority = get_color_priority(color_priorities)
+    #         # Set the color of each Graphics element.
+    #         for graphics in graphics_elements:
+    #             graphics.bgcolor = compound_color
+    #             if self.is_global_map:
+    #                 graphics.fgcolor = compound_color
+
+    #         # Record the compound Element color priority.
+    #         try:
+    #             entry_type_color_priority = self.color_priority['compound']
+    #         except KeyError:
+    #             self.color_priority['compound'] = entry_type_color_priority = {}
+    #         try:
+    #             graphics_type_color_priority = entry_type_color_priority['circle']
+    #         except KeyError:
+    #             entry_type_color_priority['circle'] = graphics_type_color_priority = {}
+    #         if self.is_global_map:
+    #             graphics_type_color_priority[(compound_color, compound_color)] = compound_priority
+    #         else:
+    #             graphics_type_color_priority[(graphics.fgcolor, compound_color)] = compound_priority
+
+    def set_thickness_priority(
+        self,
+        new_thickness_priority: PathwayThicknessPriority,
+        reset_unprioritized_thickness: Union[bool, float] = False
+    ) -> None:
+        """
+        Set the thickness_priority attribute. Entry elements in the subelements attribute are
+        automatically reordered.
+
+        Thickness priorities apply to line Graphics of reaction-like entries (KO, EC, RN, gene,
+        group) in global and overview pathways; thickness priorities cannot be set for standard
+        pathways.
+
+        Attributes
+        ==========
+        new_thickness_priority: PathwayThicknessPriority
+            Here is what is actually set as thickness_priority. A deep copy is made of the
+            PathwayThicknessPriority object. The width dictionary attribute of the object is
+            reordered by Priority value ascending, so that the lowest Priority widths occur first.
+
+        reset_unprioritized_thickness : Union[bool, float], False
+            If not False, set unprioritized reaction-like Entry line Graphics to a uniform width.
+            With an argument value of True, a width of 6.0 is used for global maps and 1.0 for
+            overview maps. Alternatively, a custom width can be specified with a float value.
+        """
+        # Check that new_thickness_priority only contains nonnegative priority values.
+        for priority in new_thickness_priority.width.values():
+            assert priority >= 0
+
+        # Make the object assigned to the thickness_priority attribute, reordering widths from
+        # lowest to highest priority.
+        thickness_priority = PathwayThicknessPriority()
+        for width, priority in sorted(
+            new_thickness_priority.width.items(), key=lambda item: item[1]
+        ):
+            thickness_priority.width[width] = priority
+        self.thickness_priority = thickness_priority
+
+        # Reorder Entry elements in the subelements attribute from lowest to highest priority.
+        unprioritized_line_entry_uuids = self.order_entries_by_thickness_priority()
+
+        if not reset_unprioritized_thickness:
+            return
+
+        # Standardize the widths of reaction-like entries with line Graphics.
+        self.unprioritized_width = self.reset_thickness(
+            unprioritized_line_entry_uuids,
+            width=reset_unprioritized_thickness if isinstance(
+                reset_unprioritized_thickness, float
+            ) else None
+        )
+
+    def order_entries_by_thickness_priority(self) -> list[str]:
+        """
+        Reorder Entry UUIDs by thickness Priority in the subelements attribute of the Pathway. This
+        determines how entries are ordered in KGML files and rendered in maps. All reaction-like
+        entries with line Graphics are inspected for a prioritized width.
+
+        Returns
+        =======
+        list[str]
+            UUIDs of line Entry elements without a thickness Priority.
+        """
+        # Group entries into two classes. Prioritized entries are reaction-like entries with line
+        # Graphics and widths with Priority values in the thickness_priority attribute. All other
+        # entries are called unprioritized entries. Other reaction-like entries with line Graphics
+        # are assigned the lowest nominal Priority of -1.0. No effort is made to sort these other
+        # entries in any way.
+        unprioritized_entry_uuids: list[str] = []
+        unprioritized_line_entry_widths: list[float] = []
+        prioritized_entry_uuids: dict[str, float] = {}
+        reaction_like_types = Entry.reaction_like_types
+        for entry_uuid in self.subelements['entry']:
+            entry: Entry = self.uuid_element_lookup[entry_uuid]
+            if entry.type not in reaction_like_types:
+                unprioritized_entry_uuids.append(entry_uuid)
+                break
+
+            widths: list[float] = []
+            for graphics_uuid in entry.subelements['graphics']:
+                graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
+                if graphics.type == 'line':
+                    widths.append(graphics.width)
+
+            if not widths:
+                # The Entry does not have any line Graphics.
+                unprioritized_entry_uuids.append(entry_uuid)
+                continue
+
+            if len(set(widths)) > 1:
+                raise ConfigError(
+                    f"The Entry with UUID '{entry_uuid}' has line Graphics with different widths. "
+                    "Line widths for reaction-like entries should be the same."
+                )
+
+            width = widths[0]
+            try:
+                priority = self.thickness_priority.width[width]
+            except KeyError:
+                # The line width does not correspond to a Priority value.
+                unprioritized_entry_uuids.append(entry_uuid)
+                unprioritized_line_entry_widths.append(width)
+                continue
+
+            prioritized_entry_uuids[entry_uuid] = priority
+
+        for width in set(unprioritized_line_entry_widths):
+            self.thickness_priority.width[width] = -1.0
+
+        reordered_entry_uuids: list[str] = unprioritized_entry_uuids
+        reordered_entry_uuids += [
+            item[0] for item in sorted(prioritized_entry_uuids.items(), key=lambda item: item[1])
+        ]
+        self.subelements['entry'] = reordered_entry_uuids
+
+        return unprioritized_entry_uuids
+
+    def reset_thickness(self, unprioritized_entry_uuids: list[str], width: float = None) -> float:
+        """
+        In global and overview maps, set line Graphics of provided unprioritized entries to a
+        uniform width.
+
+        Parameters
+        ==========
+        unprioritized_entry_uuids : list[str]
+            UUIDs of Entry elements without a thickness Priority.
+
+        width : float, None
+            Width value set for unprioritized Entry line Graphics. With an argument value of None, a
+            width of 6.0 is used for global maps and 1.0 for overview maps.
+
+        Returns
+        =======
+        float
+            Width value used for unprioritized Entry line Graphics.
+        """
+        if width is None:
+            if self.is_global_map:
+                width = 6.0
+            elif self.is_overview_map:
+                width = 1.0
+            else:
+                raise ConfigError(
+                    "The 'reset_thickness' method should not be called with a standard Pathway, "
+                    "only with a global or overview Pathway."
+                )
+
+        for entry_uuid in unprioritized_entry_uuids:
+            entry: Entry = self.uuid_element_lookup[entry_uuid]
+
+            for graphics_uuid in entry.subelements['graphics']:
+                graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
+                if graphics.type != 'line':
+                    continue
+
+                graphics.width = width
+
+        return width
 
     def get_entries(
         self,
         entry_type: str = None,
         kegg_ids: Iterable[str] = None,
         expect_kegg_ids: bool = False
-    ) -> List[Entry]:
+    ) -> list[Entry]:
         """
         Get Entry elements from the pathway.
 
@@ -832,30 +1791,34 @@ class Pathway(Element):
 
         Returns
         =======
-        List[Entry]
-            A list of entry element objects contained in the pathway.
+        list[Entry]
+            A list of Entry element objects contained in the pathway.
         """
         if entry_type is not None:
             assert entry_type in Entry.types
         if kegg_ids is not None:
             assert entry_type is None
 
-        entries: List[Entry] = []
+        entries: list[Entry] = []
 
         if kegg_ids is None:
-            for uuid in self.children['entry']:
+            for uuid in self.subelements['entry']:
                 entry: Entry = self.uuid_element_lookup[uuid]
                 if entry_type is not None and entry.type != entry_type:
                     continue
                 entries.append(entry)
             return entries
 
-        missing_kegg_ids: List[str] = []
+        missing_kegg_ids: list[str] = []
         for kegg_id in kegg_ids:
             try:
-                entries += self.kegg_id_element_lookup[kegg_id]
+                elements = self.kegg_id_element_lookup[kegg_id]
             except KeyError:
                 missing_kegg_ids.append(kegg_id)
+                continue
+            for element in elements:
+                if isinstance(element, Entry):
+                    entries.append(element)
         if missing_kegg_ids and expect_kegg_ids:
             raise ValueError(
                 "The following 'kegg_ids' that were provided are not found among entries in the "
@@ -881,7 +1844,7 @@ class Pathway(Element):
             or "compound". The argument must be from the types attribute of the Entry class.
         """
         for entry in self.get_entries(entry_type=entry_type):
-            for graphics_uuid in entry.children['graphics']:
+            for graphics_uuid in entry.subelements['graphics']:
                 graphics: Graphics = self.uuid_element_lookup[graphics_uuid]
                 for attrib in ('x', 'y', 'width', 'height'):
                     value = getattr(graphics, attrib, None)
@@ -899,10 +1862,10 @@ class Entry(Element):
 
     Attributes
     ==========
-    types : Tuple[str]
+    types : tuple[str]
         Possible entry types.
 
-    subelement_tags : Tuple[str]
+    subelement_tags : tuple[str]
         Possible subelement tags.
 
     id : str, None
@@ -920,8 +1883,11 @@ class Entry(Element):
     link : str, None
         URL of entry information.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
+
+    reaction_like_types : tuple[str]
+        Reaction-like entry types designated by anvi'o.
     """
     tag = 'entry'
     attribute_required = {
@@ -931,7 +1897,7 @@ class Entry(Element):
         'reaction': False,
         'link': False
     }
-    types: Tuple[str] = (
+    types: tuple[str] = (
         'ortholog',
         'enzyme',
         'reaction',
@@ -942,9 +1908,16 @@ class Entry(Element):
         'brite',
         'other'
     )
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'graphics',
         'component'
+    )
+    reaction_like_types: tuple[str] = (
+        'ortholog',
+        'enzyme',
+        'reaction',
+        'gene',
+        'group'
     )
 
     def __init__(self) -> None:
@@ -954,7 +1927,7 @@ class Entry(Element):
         self.reaction: str = None
         self.link: str = None
 
-        self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
 
@@ -964,7 +1937,7 @@ class Graphics(Element):
 
     Attributes
     ==========
-    types : Tuple[str]
+    types : tuple[str]
         Possible shapes of graphical objects.
 
     name : str, None
@@ -985,7 +1958,7 @@ class Graphics(Element):
     y : float, None
         Y axis position of graphical object on map.
 
-    coords : Tuple[float], None
+    coords : tuple[float], None
         Polyline coordinates of "line"-type graphical object on map.
 
     width : float, None
@@ -1006,7 +1979,7 @@ class Graphics(Element):
         'width': False,
         'height': False
     }
-    types: Tuple[str] = (
+    types: tuple[str] = (
         'rectangle',
         'circle',
         'roundrectangle',
@@ -1020,7 +1993,7 @@ class Graphics(Element):
         self.type: str = None
         self.x: float = None
         self.y: float = None
-        self.coords: Tuple[float] = None
+        self.coords: tuple[float] = None
         self.width: float = None
         self.height: float = None
 
@@ -1050,10 +2023,10 @@ class Relation(Element):
 
     Attributes
     ==========
-    types : Tuple[str]
+    types : tuple[str]
         Possible types of relations.
 
-    subelement_tags : Tuple[str]
+    subelement_tags : tuple[str]
         Possible subelement tags.
 
     entry1 : str, None
@@ -1062,7 +2035,7 @@ class Relation(Element):
     entry2 : str, None
         ID unique to map representing the other node in the relationship.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
 
@@ -1072,14 +2045,14 @@ class Relation(Element):
         'entry2': True,
         'type': True
     }
-    types: Tuple[str] = (
+    types: tuple[str] = (
         'ECrel',
         'PPrel',
         'GErel',
         'PCrel',
         'maplink'
     )
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'subtype',
     )
     def __init__(self) -> None:
@@ -1087,7 +2060,7 @@ class Relation(Element):
         self.entry2: str = None
         self.type: str = None
 
-        self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
 
@@ -1097,7 +2070,7 @@ class Subtype(Element):
 
     Attributes
     ==========
-    names : Tuple[str]
+    names : tuple[str]
         Possible names of subcategories of relation.
 
     name : str, None
@@ -1111,7 +2084,7 @@ class Subtype(Element):
         'name': True,
         'value': True
     }
-    names: Tuple[str] = (
+    names: tuple[str] = (
         'compound',
         'hidden compound',
         'activation',
@@ -1142,10 +2115,10 @@ class Reaction(Element):
 
     Attributes
     ==========
-    types : Tuple[str]
+    types : tuple[str]
         Possible types of reactions.
 
-    subelement_tags : Tuple[str]
+    subelement_tags : tuple[str]
         Possible subelement tags.
 
     id : str, None
@@ -1157,7 +2130,7 @@ class Reaction(Element):
     type : str, None
         Reversible vs. irreversible reaction, as drawn on the map.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
     tag = 'reaction'
@@ -1166,11 +2139,11 @@ class Reaction(Element):
         'name': True,
         'type': True
     }
-    types: Tuple[str] = (
+    types: tuple[str] = (
         'reversible',
         'irreversible'
     )
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'substrate',
         'product'
     )
@@ -1180,7 +2153,7 @@ class Reaction(Element):
         self.name: str = None
         self.type: str = None
 
-        self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
 
@@ -1190,7 +2163,7 @@ class Substrate(Element):
 
     Attributes
     ==========
-    subelement_tags : Tuple[str]
+    subelement_tags : tuple[str]
         Possible subelement tags.
 
     id : str, None
@@ -1199,7 +2172,7 @@ class Substrate(Element):
     name : str, None
         KEGG ID of the compound.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
     tag = 'substrate'
@@ -1207,7 +2180,7 @@ class Substrate(Element):
         'id': True,
         'name': True
     }
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'alt',
     )
 
@@ -1215,7 +2188,7 @@ class Substrate(Element):
         self.id: str = None
         self.name: str = None
 
-        self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
 
@@ -1225,7 +2198,7 @@ class Product(Element):
 
     Attributes
     ==========
-    subelement_tags : Tuple[str]
+    subelement_tags : tuple[str]
         Possible subelement tags.
 
     id : str, None
@@ -1234,7 +2207,7 @@ class Product(Element):
     name : str, None
         KEGG ID of the compound.
 
-    children : Dict[str, List[str]]
+    subelements : dict[str, list[str]]
         Keys are subelement tags, values are lists of subelement UUIDs.
     """
     tag = 'product'
@@ -1242,7 +2215,7 @@ class Product(Element):
         'id': True,
         'name': True
     }
-    subelement_tags: Tuple[str] = (
+    subelement_tags: tuple[str] = (
         'alt',
     )
 
@@ -1250,7 +2223,7 @@ class Product(Element):
         self.id: str = None
         self.name: str = None
 
-        self.children: Dict[str, List[str]] = {n: [] for n in self.subelement_tags}
+        self.subelements: dict[str, list[str]] = {n: [] for n in self.subelement_tags}
 
         super().__init__()
 
@@ -1284,7 +2257,7 @@ class XMLOps:
         Class variable setting the indentation increment of subelements relative to parents in an
         output KGML XML file. The value of 4 spaces is that used in KGML reference files.
 
-    attribute_indentations : Dict[Tuple[str, str, str], int]
+    attribute_indentations : dict[tuple[str, str, str], int]
         Class variable setting the absolute indentation of element attributes placed on new lines in
         an output KGML XML file. Keys are tuples of element tag, name of the attribute before the
         line break, and name of the attribute after the line break; values are the number of spaces.
@@ -1292,7 +2265,7 @@ class XMLOps:
         files.
     """
     subelement_indentation_increment: int = 4
-    attribute_indentations: Dict[Tuple[str, str, str], int] = {
+    attribute_indentations: dict[tuple[str, str, str], int] = {
         ('pathway', 'number', 'title'): 9,
         ('pathway', 'title', 'image'): 9,
         ('pathway', 'image', 'link'): 9,
@@ -1318,7 +2291,11 @@ class XMLOps:
         Pathway
             KGML pathway element object containing all data from the file via subelements.
         """
-        assert os.path.exists(kgml_filepath)
+        try:
+            assert os.path.exists(kgml_filepath)
+        except:
+            print(kgml_filepath)
+            raise Exception
 
         with open(kgml_filepath, 'rb') as file:
             kgml_bytes = file.read()
@@ -1387,7 +2364,7 @@ class XMLOps:
                 kgml_subelement = self.load_element(xml_subelement, pathway=kgml_element)
             else:
                 kgml_subelement = self.load_element(xml_subelement, pathway=pathway)
-            kgml_element.children[kgml_subelement.tag].append(kgml_subelement.uuid)
+            kgml_element.subelements[kgml_subelement.tag].append(kgml_subelement.uuid)
 
         if pathway is None:
             return kgml_element
@@ -1553,11 +2530,11 @@ class XMLOps:
                         value = ','.join([str(round(coord)) for coord in value])
             xml_element.attrib[attribute] = value
 
-        if not hasattr(kgml_element, 'children'):
+        if not hasattr(kgml_element, 'subelements'):
             return xml_element
 
         # Recursively add XML subelements.
-        for subelement_uuids in kgml_element.children.values():
+        for subelement_uuids in kgml_element.subelements.values():
             for uuid in subelement_uuids:
                 kgml_subelement = pathway.uuid_element_lookup[uuid]
                 xml_subelement = self.get_element(kgml_subelement, pathway=pathway)
@@ -1587,7 +2564,7 @@ class XMLOps:
         """
         tag = xml_element.tag
         attributes = xml_element.attrib
-        children = list(xml_element)
+        subelements = list(xml_element)
 
         if attributes:
             indented_output = f'{" " * tag_indentation}<{tag}'
@@ -1602,7 +2579,7 @@ class XMLOps:
                     value: float
                     v = str(round(value))
                 elif isinstance(value, tuple):
-                    value: Tuple[float]
+                    value: tuple[float]
                     v = ','.join([str(round(coord)) for coord in value])
                 else:
                     raise AssertionError(
@@ -1625,11 +2602,12 @@ class XMLOps:
                 f"tag, '{tag}', did not have any."
             )
 
-        if children:
+        if subelements:
             indented_output += '>\n'
-            for child in children:
+            for subelement in subelements:
                 indented_output += self.get_indented_str(
-                    child, tag_indentation=tag_indentation + self.subelement_indentation_increment
+                    subelement,
+                    tag_indentation=tag_indentation + self.subelement_indentation_increment
                 )
             # End tag
             indented_output += f'{" " * tag_indentation}</{tag}>\n'
@@ -1876,7 +2854,7 @@ class Drawer:
         if map_filepath is None:
             if pathway.org == 'ko':
                 map_filepath = os.path.join(
-                    self.kegg_context.png_1x_ko_dir, f'{pathway.org}{pathway.number}.png'
+                    self.kegg_context.png_1x_ko_dir, f'ko{pathway.number}.png'
                 )
             elif pathway.org == 'ec':
                 map_filepath = os.path.join(
@@ -2115,7 +3093,7 @@ class Tester:
         =======
         None
         """
-        filepaths: List[str] = []
+        filepaths: list[str] = []
         for filename in os.listdir(dirpath):
             filepath = os.path.join(dirpath, filename)
             if not os.path.isfile(filepath) or not os.path.splitext(filepath)[1] == '.xml':
