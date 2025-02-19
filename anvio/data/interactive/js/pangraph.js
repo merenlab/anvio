@@ -380,7 +380,6 @@ function marknode(e, data, binid, bins, genome_size, group_dict){
     }
   }
 
-  var group_color = $('#groups_color')[0].value;
   var core_color = $('#core_color')[0].value;
   var paralog_color = $('#paralog_color')[0].value;
   var singleton_color = $('#singleton_color')[0].value;
@@ -396,33 +395,32 @@ function marknode(e, data, binid, bins, genome_size, group_dict){
 
   if (e.getAttribute('class') == 'group') {
 
-    var node_color = group_color;
     var group = group_dict[id]
     var node_name = group[0]
     var node = data['nodes'][node_name];
+    var node_type = node['type']
     var genome = Object.keys(node['gene_calls']).length;
 
   } else if (e.getAttribute('class') == 'node') {
 
     var node = data['nodes'][id];
     var node_type = node['type']
-
-    if (node_type == 'core'){
-      var node_color = core_color
-    } else if (node_type == 'rearranged') {
-      var node_color = rearranged_color
-    } else if (node_type == 'accessory') {
-      var node_color = accessory_color
-    } else if (node_type == 'paralog') {
-      var node_color = paralog_color
-    } else if (node_type == 'singleton') {
-      var node_color = singleton_color
-    } else if (node_type == 'trna') {
-      var node_color = trna_color
-    }
-
     var genome = Object.keys(node['gene_calls']).length;
 
+  }
+
+  if (node_type == 'core'){
+    var node_color = core_color
+  } else if (node_type == 'rearranged') {
+    var node_color = rearranged_color
+  } else if (node_type == 'accessory') {
+    var node_color = accessory_color
+  } else if (node_type == 'paralog') {
+    var node_color = paralog_color
+  } else if (node_type == 'singleton') {
+    var node_color = singleton_color
+  } else if (node_type == 'trna') {
+    var node_color = trna_color
   }
 
   if (current === binid) {
@@ -801,7 +799,6 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var offset = parseInt($('#tree_offset')[0].value);
   var tree_thickness = parseInt($('#tree_thickness')[0].value);
 
-  var group_color = $('#groups_color')[0].value;
   var core_color = $('#core_color')[0].value;
   var paralog_color = $('#paralog_color')[0].value;
   var singleton_color = $('#singleton_color')[0].value;
@@ -1323,6 +1320,22 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var right_node = data['nodes'][right_node_name];
 
     var group_genomes = Object.keys(left_node['gene_calls']);
+    var group_type = left_node['type']
+
+    if (group_type == 'core'){
+      var group_color = core_color
+    } else if (group_type == 'rearranged') {
+      var group_color = rearranged_color
+    } else if (group_type == 'accessory') {
+      var group_color = accessory_color
+    } else if (group_type == 'paralog') {
+      var group_color = paralog_color
+    } else if (group_type == 'singleton') {
+      var group_color = singleton_color
+    } else if (group_type == 'trna') {
+      var group_color = trna_color
+    }
+
     var intersection = group_genomes.filter(x => enabled.includes(x));
     if (intersection.length > 0) {
 

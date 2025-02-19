@@ -1109,6 +1109,7 @@ class Pangenome(object):
 
         self.run.quit()
 
+# ANCHOR - SyntenyGeneCluster
 class SyntenyGeneCluster():
     """A class to mine a dataframe containing all the information related to gene calls
     e.g. functions, contig, direction, etc. Furthermore the run_contextualize_paralogs_algorithm
@@ -1519,7 +1520,8 @@ class SyntenyGeneCluster():
         self.run.info_single(f"Exported mining table to {output_dir + '/synteny_cluster.tsv'}.")
         self.run.info_single("Done.")
         return(db_mining_df)
-    
+
+# ANCHOR - PangenomeGraph
 class PangenomeGraph():
     """All in one pangenome graph object. The purpose of this class is to create a
     nx.DiGraph object with a fixed set of attributes per node and edge that is still
@@ -2308,6 +2310,7 @@ class PangenomeGraph():
         pass
 
 
+# ANCHOR - DirectedForce
 class DirectedForce():
     """The first step is looking for open entrance points into the graph e.g. contigs beginning with singleton genes. Per definition 
     of the maximum branching every node has to have a exactly single predecessor, but not necessarily a successor. We can exploit this
@@ -2734,7 +2737,7 @@ class DirectedForce():
 
         return(changed_edges)
 
-
+# ANCHOR - TopologicalLayout
 class TopologicalLayout():
     """A class to calculate x,y positions on the nodes of a graph as well as
     group those nodes together in case they follow a one to one connection
@@ -2869,7 +2872,7 @@ class TopologicalLayout():
             if node_v in ungroup_open:
                 keep = True
 
-            if not node_v.startswith('GHOST_') and not node_w.startswith('GHOST_') and node_v != 'START' and node_w != 'STOP' and L.in_degree(node_v) == 1 and L.out_degree(node_v) == 1 and L.in_degree(node_w) == 1 and L.out_degree(node_w) == 1 and L.nodes()[node_w]['genomes'] == L.nodes()[node_v]['genomes']:
+            if not node_v.startswith('GHOST_') and not node_w.startswith('GHOST_') and node_v != 'START' and node_w != 'STOP' and L.in_degree(node_v) == 1 and L.out_degree(node_v) == 1 and L.in_degree(node_w) == 1 and L.out_degree(node_w) == 1 and L.nodes()[node_w]['genomes'] == L.nodes()[node_v]['genomes'] and L.nodes()[node_w]['type'] == L.nodes()[node_v]['type']:
                 if not keep:
                     if node_v not in groups_rev.keys():
                         group_name = 'GCG_' + str(group).zfill(8)
@@ -3095,6 +3098,7 @@ class TopologicalLayout():
 
         return(node_positions, edge_positions, node_groups)
 
+# ANCHOR - PangenomeGraphMaster
 class PangenomeGraphMaster():
     """The major backend class to create, solve and layout pangenome graphs in anvi'o.
     Please read through individual steps for more in-depth explanaitions on algorithms
@@ -3254,13 +3258,12 @@ class PangenomeGraphMaster():
             }}
         if not self.states:
             self.states = {'default':{
-                'groups_color': '#800080',
-                'rearranged_color': '#C7EA46',
-                'accessory_color': '#610C04',
-                'paralog_color': '#FAB972',
-                'singleton_color': '#ADD8E6',
+                'rearranged_color': '#8FF0A4',
+                'accessory_color': '#DC8ADD',
+                'paralog_color': '#FFBE6F',
+                'singleton_color': '#99C1F1',
                 'core_color': '#BCBCBC',
-                'trna_color': '#FF0000',
+                'trna_color': '#F66151',
                 'layer_color': '#F5F5F5',
                 'flexsaturation': True,
                 'arrow': 100,
