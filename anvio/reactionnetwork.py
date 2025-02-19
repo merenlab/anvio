@@ -2469,6 +2469,75 @@ class ReactionNetwork:
 
         return merged_network
 
+    def _merge_two_genome_networks(self, network: GenomicNetwork) -> GenomicNetwork:
+        """
+        This method is meant for merging two GenomicNetwork objects coming from different contigs databases. 
+        It internally uses the _merge_network() function after modifying the gene caller IDs of one network to
+        prevent overlap with gene caller IDs in the other network. It also adds a 'genomes_of_origin' attribute
+        to each element in the network to track which of the genomes contain the element.
+
+        Parameters
+        ==========
+        network : GenomicNetwork
+            The reaction network loaded from the other contigs database to be merged with the current one.
+
+        Returns
+        =======
+        merged : GenomicNetwork
+            A merged reaction network containing the elements from both genomes' reaction networks.
+        """
+
+        # first we increase the gene caller IDs in the other network to avoid overlap
+        base_gcid = max(self.genes.keys()) + 1000
+        new_gene_ids = {}
+        for gcid, gene in network.genes.items():
+            new_id = gcid + base_gcid
+            new_gene_ids[new_id] = gene
+            # the following changes the original Gene object and will be reflected in both 
+            # the original network and the returned merged network
+            new_gene_ids[new_id].gcid = new_id
+            new_gene_ids[new_id].original_gcid = gcid
+        network.genes = new_gene_ids
+
+        # then we track genomes of origin for each network element
+        db_names = []
+        for db in [self.contigs_db_source_path, network.contigs_db_source_path]:
+            contigs_db = ContigsDatabase(db)
+            db_names.append(contigs_db.meta['project_name'])
+            contigs_db.disconnect()
+        # mark elements coming from the other network
+        for id, obj in network.genes.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.kos.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.metabolites.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.reactions.items():
+            obj.genomes_of_origin = db_names[1]
+        # mark elements coming from the current network
+        for gid, gene in self.genes.items():
+            gene.genomes_of_origin = db_names[0]
+        # for anything that is shared in both networks (not genes), manually add second genome
+        for id, obj in self.kos.items():
+            if id in network.kos:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+        for id, obj in self.metabolites.items():
+            if id in network.metabolites:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+        for id, obj in self.reactions.items():
+            if id in network.reactions:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+
+        merged = self.merge_network(network)
+        assert len(merged.genes) == len(self.genes) + len(network.genes)
+        return merged
+
     def _get_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
