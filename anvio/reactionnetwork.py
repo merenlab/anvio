@@ -10662,7 +10662,7 @@ def get_chemical_equation(
     ):
         if leftside and coefficient > 0:
             leftside = False
-            equation = equation[:-3]
+            equation = equation[:-2]
             if reaction.reversibility:
                 equation += "<-> "
             else:
