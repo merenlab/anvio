@@ -2469,7 +2469,7 @@ class ReactionNetwork:
 
         return merged_network
 
-    def _merge_two_genome_networks(self, network: GenomicNetwork) -> GenomicNetwork:
+    def _merge_two_genome_networks(self, network: GenomicNetwork) -> (GenomicNetwork, Iterable[str]):
         """
         This method is meant for merging two GenomicNetwork objects coming from different contigs databases. 
         It internally uses the _merge_network() function after modifying the gene caller IDs of one network to
@@ -2485,6 +2485,9 @@ class ReactionNetwork:
         =======
         merged : GenomicNetwork
             A merged reaction network containing the elements from both genomes' reaction networks.
+        db_names : Iterable[str]
+            A list of the project names stored within each contigs database. The first element is the name 
+            associated with the current network, the second is associated with the other network.
         """
 
         # first we increase the gene caller IDs in the other network to avoid overlap
@@ -2536,7 +2539,7 @@ class ReactionNetwork:
 
         merged = self.merge_network(network)
         assert len(merged.genes) == len(self.genes) + len(network.genes)
-        return merged
+        return merged, db_names
 
     def _get_common_overview_statistics(
         self,
