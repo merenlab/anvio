@@ -148,8 +148,9 @@ class Kaiju(Parser):
 
 
         self.progress.end()
-
-        random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), 20)])
+        
+        sample_size = min(20, len(taxonomy_dict))  # Handle fewer than 20 phylums
+        random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), sample_size)])
 
         self.run.warning("Good news: anvi'o finished parsing kaiju taxonomy output. Bad news: it has no idea whether "
                          "it did well or not. Because the user can ask kaiju to report certain taxonomic levels, but "
