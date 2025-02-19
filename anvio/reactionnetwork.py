@@ -171,6 +171,7 @@ class ModelSEEDReaction:
     coefficients: Tuple[int] = None
     compartments: Tuple[str] = None
     reversibility: bool = None
+    flux: float = None
 
 @dataclass
 class KO:
@@ -2801,6 +2802,20 @@ class ReactionNetwork:
         )
 
         self.run.info("Metabolic network statistics output file", stats_file)
+
+    def import_fluxes(self, path: str):
+        df = pd.read_csv(path, sep=',', header=0, index_col=0)
+        for row in df.itertuples():
+            reaction_id = row.Index[:8]
+            if reaction_id[:3] != 'rxn':
+                continue
+            flux = float(row.fluxes)
+
+            try:
+                reaction = self.reactions[reaction_id]
+            except KeyError:
+                continue
+            reaction.flux = flux
 
 class GenomicNetwork(ReactionNetwork):
     """
