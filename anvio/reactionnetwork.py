@@ -2817,6 +2817,18 @@ class ReactionNetwork:
                 continue
             reaction.flux = flux
 
+    def map_kegg_modelseed_reactions(self) -> dict[str, dict[str, ModelSEEDReaction]]:
+        kegg_modelseed_reactions: dict[str, dict[str, ModelSEEDReaction]] = {}
+        for modelseed_reaction_id, reaction in self.reactions.items():
+            for kegg_reaction_id in reaction.kegg_aliases:
+                try:
+                    modelseed_reactions = kegg_modelseed_reactions[kegg_reaction_id]
+                except KeyError:
+                    kegg_modelseed_reactions[kegg_reaction_id] = {modelseed_reaction_id: reaction}
+                    continue
+                modelseed_reactions[modelseed_reaction_id] = reaction
+        return kegg_modelseed_reactions
+
 class GenomicNetwork(ReactionNetwork):
     """
     A reaction network predicted from KEGG Ortholog annotations of genes and ModelSEED data.
