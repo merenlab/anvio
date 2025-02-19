@@ -90,8 +90,8 @@ def main(args):
 
         genomes_produce = set([])
         genomes_consume = set([])
-        production_reactions = {g: set([]) for g in db_names}
-        consumption_reactions = {g: set([]) for g in db_names}
+        production_reactions = {g: {} for g in db_names}
+        consumption_reactions = {g: {} for g in db_names}
         
         for rid, reaction in sub_network.reactions.items():
             # replace all equivalent IDs with the compound ID we are currently working on in the network
@@ -110,15 +110,27 @@ def main(args):
                 for g in db_names:
                     if g in reaction.genomes_of_origin:
                         genomes_produce.add(g)
-                        production_reactions[g].add(get_reaction_equation(reaction))
+                        production_reactions[g][rid] = get_reaction_equation(reaction)
 
             # which genomes utilize this compound?
             elif reaction.coefficients[idx] < 0:
                 for g in db_names:
                     if g in reaction.genomes_of_origin:
                         genomes_consume.add(g)
-                        consumption_reactions[g].add(get_reaction_equation(reaction))
+                        consumption_reactions[g][rid] = get_reaction_equation(reaction)
         
+        def add_reactions_to_dict_for_compound(compound_dict):
+            """Modifies the compound dictionary in place to add production and consumption reaction output"""
+            for g in db_names:
+                prod_rxn_ids = sorted(production_reactions[g].keys())
+                cons_rxn_ids = sorted(consumption_reactions[g].keys())
+                prod_rxn_eqs = [production_reactions[g][rid] for rid in prod_rxn_ids]
+                cons_rxn_eqs = [consumption_reactions[g][rid] for rid in cons_rxn_ids]
+                compound_dict[f"production_rxn_ids_{g}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
+                compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
+                compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
+                compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
+            
         # potential interactions:
         # A: if one produces and other consumes
         # B: if one produces and both consume
@@ -130,19 +142,14 @@ def main(args):
                                                     'produced_by': list(genomes_produce)[0], 
                                                     'consumed_by': list(genomes_consume)[0],
                                                 }
-                for g in db_names:
+                add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
-                    unique_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
-                    unique_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
-            
             elif len(genomes_produce) == 0 or len(genomes_consume) == 0:
                 unique_compounds[compound_id] = {'compound_name': compound_name, 'genomes': list(genomes_produce.union(genomes_consume))[0],
                                                     'produced_by': list(genomes_produce)[0] if len(genomes_produce) > 0 else None, 
                                                     'consumed_by': list(genomes_consume)[0] if len(genomes_consume) > 0 else None,
                                                 }
-                for g in db_names:
-                    unique_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
-                    unique_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
+                add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             else: # A B or C applies
                 potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
@@ -150,10 +157,8 @@ def main(args):
                                                                 'produced_by': ",".join(genomes_produce),
                                                                 'consumed_by': ",".join(genomes_consume),
                                                                 }
-                for g in db_names:
-                    potentially_exchanged_compounds[compound_id][f"production_rxns_{g}"] = " / ".join(list(production_reactions[g])) if len(production_reactions[g]) else None
-                    potentially_exchanged_compounds[compound_id][f"consumption_rxns_{g}"] = " / ".join(list(consumption_reactions[g])) if len(consumption_reactions[g]) else None
-        
+                add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
         progress.increment(increment_to=processed_count)
@@ -161,12 +166,14 @@ def main(args):
     progress.end()
     print(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.")        
     
-    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by'] + [f"production_rxns_{g}" for g in db_names] \
-                                                                                                + [f"consumption_rxns_{g}" for g in db_names]
+    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by'] + \
+        [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
+        [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header)
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
-                key_header='compound_id', none_value="None", headers=output_header)
+                key_header='compound_id', none_value="None", headers=output_header) 
+    
 
 def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
     """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
