@@ -113,23 +113,9 @@ def main(args):
     assert len(merged.genes) == len(net_1.genes) + len(net_2.genes)
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
-    # TODO: make this a function of the ReactionNetwork class?
     def get_reaction_equation(reaction_value):
-        sub_list = []
-        prod_list = []
-        for compound, coeff in zip(reaction_value.compound_ids, reaction_value.coefficients):
-                if compound in net_1.metabolites:
-                    name = net_1.metabolites[compound].modelseed_name
-                else:
-                    name = net_2.metabolites[compound].modelseed_name
-                if coeff < 0:
-                    sub_list.append(f"{coeff*-1} {name}")
-                else:
-                    prod_list.append(f"{coeff} {name}")
-                arrow = " --> "
-                if reaction.reversibility:
-                    arrow = " <-> "
-        return " + ".join(sub_list) + arrow + " + ".join(prod_list)
+        name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
+        return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
 
     # loop over all metabolites
     potentially_exchanged_compounds = {}
