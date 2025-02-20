@@ -172,6 +172,17 @@ def main(args):
                 add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             else: # A B or C applies
+                producer_network = net_1
+                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
+                    producer_network = net_2
+                if len(compound_to_pathways[compound_id]) > 1:
+                    # FIXME: report max length for each map (except for a subset of excluded maps like D-amino acid metabolism)
+                    print(f"Found multiple pathway maps for {compound_name}: {compound_to_pathways[compound_id]}")
+                else:
+                    map_id = compound_to_pathways[compound_id].pop()
+                    print(f"Walking through map {map_id}")
+                    max_prior_rxns = walk_pathway_map_for_compound_production(compound_id, map_id, producer_network)
+                    print(f"Found {max_prior_rxns} prior reactions for {compound_name} ({compound_id})")
                 potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
                                                                 'genomes': ",".join(list(genomes_produce.union(genomes_consume))),
                                                                 'produced_by': ",".join(genomes_produce),
