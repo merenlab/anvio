@@ -711,7 +711,7 @@ anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                 -C CONCOCT \
                                 -b Bin_1 \
                                 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt \
-                                --defline-format "{contig_name}_{gene_callers_id}"
+                                --defline-format "{contig_name}_{gene_callers_id}" \
                                 --no-progress
 
 INFO "Get DNA sequences for all ABC transporter hits defined in an HMM source"

@@ -437,7 +437,7 @@ class CoverageStats:
         if coverage.size < 4:
             self.mean_Q2Q3 = self.mean
         else:
-            sorted_c = sorted(coverage)
+            sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
             self.mean_Q2Q3 = np.mean(Q2Q3)
@@ -655,7 +655,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
 
 
 def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
-                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False,
+                                     none_value=''):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -673,6 +674,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         A file object ot write (instead of the output file path)
     key_header: string
         The header for the first column ('key' if None)
+    keys_order: list
+        The order in which to write the rows (if None, first order keys will be sorted to get the row order)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
@@ -680,6 +683,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     do_not_write_key_column: boolean
         If True, the first column (keys of the dictionary) will not be written to the file. For use in
         instances when the key is meaningless or arbitrary.
+    none_value : string
+        What value to write for entries that are None. Default is empty string ('').
 
     Returns
     =======
@@ -753,7 +758,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                    "as a TAB-delimited file :/ You ask for '%s', but it is not "
                                    "even a key in the dictionary" % (header))
 
-            line.append(str(val) if not isinstance(val, type(None)) else '')
+            line.append(str(val) if not isinstance(val, type(None)) else none_value)
 
         if anvio.AS_MARKDOWN:
             f.write(f"|{'|'.join(map(str, line))}|\n")
@@ -870,11 +875,6 @@ def is_all_npm_packages_installed():
                           "Please run 'npm install' in the interactive directory and try again.")
     else:
         return True
-
-
-def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    columns = get_columns_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in columns]) else True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):

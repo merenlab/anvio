@@ -169,7 +169,7 @@ class Train(SCGDomainClassifier):
                 self.run.warning("The number of contigs databases found for the domain '%s' is %d. You should consider "
                             "increasing the number of genomes you include for this domain. A robust classifier "
                             "will require similar number of genomes for each domain that capture the diversity "
-                            "of the domain they represent. Say, at least 20 gneomes per domain is a good start." \
+                            "of the domain they represent. Say, at least 20 genomes per domain is a good start." \
                                     % (domain, len(self.contigs_dbs[domain])))
 
             self.progress.update("Making sure contigs dbs are contigs dbs")

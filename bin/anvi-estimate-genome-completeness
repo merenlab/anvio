@@ -195,7 +195,7 @@ def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collect
     else:
         run.warning(None, header = 'Genome in "%s"' % os.path.basename(contigs_db_path), lc = 'green')
 
-    if not completeness.initialized_properly:
+    if not completeness.initialized_properly or args.report_all_estimates:
         print_improper(args, collection, completeness, run, progress)
     else:
         print_proper(args, collection, completeness, run, progress)
@@ -268,6 +268,7 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
     groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupD.add_argument(*anvio.A('report-all-estimates'), **anvio.K('report-all-estimates'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupD.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))

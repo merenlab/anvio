@@ -76,9 +76,12 @@ if __name__ == '__main__':
                                 "one to recover your genes.")
     groupE.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
 
-    groupF = parser.add_argument_group('OUTPUT', "Provide a 'prefix' for anvi'o to add to the beginning of the output files anvi'o "
+    groupF = parser.add_argument_group('ADVANCED', "Kinds of parameters that you should use at your own risk.")
+    groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
+
+    groupG = parser.add_argument_group('OUTPUT', "Provide a 'prefix' for anvi'o to add to the beginning of the output files anvi'o "
                                 "will generate for you.")
-    groupF.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
+    groupG.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
 
 
 

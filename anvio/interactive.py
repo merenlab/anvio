@@ -3184,3 +3184,90 @@ class ContigsInteractive():
         self.tables['scg'] = scg_table
 
         self.progress.end()
+
+
+class AdHocRunGenerator:
+    """From a matrix file to full-blown anvi'o interface.
+
+       This is a class to take in a view data matrix at minimum, and create all
+       necessary files for an anvi'o interactive interface call in manual mode."""
+
+    def __init__(self, output_directory, view_data, additional_view_data, samples, skip_clustering_view_data=False, run=run, progress=progress, distance=None, linkage=None):
+        self.run = run
+        self.progress = progress
+
+        self.view_data = view_data
+        self.additional_view_data = additional_view_data
+        self.samples = samples
+
+        self.skip_clustering_view_data = skip_clustering_view_data
+        self.delete_output_directory_if_exists = False
+
+        # for clustering
+        self.distance = distance or constants.distance_metric_default
+        self.linkage = linkage or constants.distance_metric_default
+
+        self.output_directory = output_directory
+
+
+    def sanity_check(self):
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
+
+        if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
+            raise ConfigError("AdHocRunGenerator will not work with an existing directory. Please provide a new "
+                               "path, or use the bool member 'delete_output_directory_if_exists' to overwrite "
+                               "any existing directory.")
+
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+
+
+    def get_output_file_path(self, file_name):
+        return os.path.join(self.output_directory, file_name)
+
+
+    def generate(self):
+        self.sanity_check()
+
+        # write view data
+        view_data_path = self.get_output_file_path('view.txt')
+        self.run.info("View data file", view_data_path)
+        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_path, headers = ['contig'] + self.samples)
+
+        # generate newick and write to file
+        if not self.skip_clustering_view_data:
+            tree_path = self.get_output_file_path('tree.txt')
+            newick = clustering.get_newick_tree_data_for_dict(self.view_data, distance = self.distance, linkage=self.linkage)
+            self.run.info("Tree file", tree_path)
+
+            with open(tree_path, 'w') as f:
+                f.write(newick)
+
+        # create new profile.db and populate additional data
+        profile_db_path = self.get_output_file_path('profile.db')
+        self.run.info('Profile database', profile_db_path)
+
+        args = argparse.Namespace()
+        args.profile_db = profile_db_path
+        args.manual_mode = True
+        args.dry_run = True
+        args.view_data = view_data_path
+        args.tree = tree_path
+        args.title = None
+        Interactive(args)
+
+        self.populate_additional_data(profile_db_path)
+
+        self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (profile_db_path, tree_path, view_data_path), cut_after=200, nl_after=1, mc='green')
+
+
+    def populate_additional_data(self, profile_db_path):
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=profile_db_path))
+        table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
+
+        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=profile_db_path))
+        layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
+        table.add({'default': {'data_type': 'newick', 'data_value': layer_newick}})
+
+        # put a default state while you're at it
+        t.states.TablesForStates(profile_db_path).store_state('default', '{"version": "3"}')
