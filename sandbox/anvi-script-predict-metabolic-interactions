@@ -247,6 +247,10 @@ def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, produc
         An optional set of compound names (not IDs) to skip when walking the pathway map.
     """
 
+    if not reaction_to_pathways:
+        raise ConfigError("The function walk_pathway_map_for_compound_production() will not work unless the variable "
+                          "`reaction_to_pathways` is both global and initialized. If you don't understand this message, "
+                          "find a programmer.")
     skip_compound_list = BASIC_SKIPPED_COMPOUND_LIST.union(specific_skipped_compound_list)
 
     reaction_chains: list[list[rn.ModelSEEDReaction]] = []
