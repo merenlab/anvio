@@ -10675,7 +10675,7 @@ def get_chemical_equation(
     ):
         if leftside and coefficient > 0:
             leftside = False
-            equation = equation.rstrip('+ ') + ' '
+            equation = equation[:-2]
             if reaction.reversibility:
                 equation += "<-> "
             else:
@@ -10690,7 +10690,7 @@ def get_chemical_equation(
         else:
             equation += f"{coeff} {compound} [{compartment}] + "
 
-    return equation.rstrip('+ ')
+    return equation[:-3]
 
 def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
