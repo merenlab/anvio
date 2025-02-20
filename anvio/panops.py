@@ -3244,6 +3244,7 @@ class PangenomeGraphMaster():
         if not self.meta:
             self.meta = {
                 'project_name': self.project_name,
+                'state': self.load_state,
                 'version': self.version,
                 'priority_genome': self.priority_genome,
                 'genome_names': self.genome_names,
@@ -3296,8 +3297,8 @@ class PangenomeGraphMaster():
                 'flexgroupcompress': True,
                 'groupcompress': self.groupcompress,
                 'flexungroup': False,
-                'ungroupfrom': self.ungroup_open,
-                'ungroupto': self.ungroup_close,
+                'ungroupfrom': ','.join(self.ungroup_open),
+                'ungroupto': ','.join(self.ungroup_close),
                 **{'flex' + genome: True for genome in self.genome_names},
                 **{genome: '#000000' for genome in self.genome_names}
             }}

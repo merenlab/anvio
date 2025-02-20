@@ -1857,7 +1857,6 @@ $(document).ready(function() {
         console.log(Z)
       });
 
-
       $('#InfoDownload').on('click', function() {
 
         // Variable to store the final csv data
@@ -1959,37 +1958,40 @@ $(document).ready(function() {
   // ANCHOR - DRAW/REDRAW
   $('#redraw').on('click', function() {
 
+    var state = 'default'
+
     var new_data = new Object;
     new_data['condtr'] = parseInt($('#condtr')[0].value)
     new_data['maxlength'] = parseInt($('#maxlength')[0].value)
     new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
     new_data['ungroupfrom'] = $('#ungroupfrom')[0].value
     new_data['ungroupto'] = $('#ungroupto')[0].value
-    new_data['state'] = 'default'
+    new_data['state'] = state
 
-    // $("#genomecolors :input[type='checkbox']").each((index, element) => {
-    //   var genome = $(element).attr('name')
-    //   if ($(element).prop('checked') == true){
-    //     new_data[genome] = 'on'
-    //   } else {
-    //     new_data[genome] = 'off'
-    //   }
-    // })
+    var old_data = new Object;
+    old_data['condtr'] = data['states'][state]['condtr']
+    old_data['maxlength'] = data['states'][state]['maxlength']
+    old_data['groupcompress'] = data['states'][state]['groupcompress']
+    old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
+    old_data['ungroupto'] = data['states'][state]['ungroupto']
+    old_data['state'] = data['meta']['state']
 
-    $.ajax({
-      url: "/pangraph/settings",
-      type: "POST",
-      async: false,
-      data: JSON.stringify(new_data),
-      contentType: "application/json",
-      dataType: "json",
-      error: function(){
-        console.log('Error while attempting to update JSON data.')
-      },
-      success: function(){
-        console.log('Successfully updated JSON data.')
-      }
-    });
+    if (new_data != old_date) {
+      $.ajax({
+        url: "/pangraph/settings",
+        type: "POST",
+        async: false,
+        data: JSON.stringify(new_data),
+        contentType: "application/json",
+        dataType: "json",
+        error: function(){
+          console.log('Error while attempting to update JSON data.')
+        },
+        success: function(){
+          console.log('Successfully updated JSON data.')
+        }
+      });
+    }
 
     $.ajax({
       url: "/pangraph/get_json",
