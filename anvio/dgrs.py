@@ -180,7 +180,7 @@ class DGR_Finder:
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
-        if self.min_mismatching_base_types_tr >= 5:
+        if self.min_mismatching_base_types_vr >= 5:
             raise ConfigError('The number of mismatching base types of the VR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
 
         if self.min_base_types_tr >= 5:
