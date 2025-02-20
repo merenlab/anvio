@@ -896,9 +896,8 @@ Bins.prototype.RedrawBins = function() {
 
     for (let bin_id in this.selections) {
         for (let node of this.selections[bin_id].values()) {
-            if (node === null) return;
-            if (typeof node === 'undefined')
-            {
+            // Check if node is valid and not collapsed - issue #2042
+            if (node === null || typeof node === 'undefined') {
                 this.selections[bin_id].delete(node);
                 continue;
             }
