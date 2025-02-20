@@ -83,6 +83,7 @@ def main(args):
 
     global reaction_to_pathways
     reaction_to_pathways = merged._get_reaction_to_pathway_map_dict()
+    compound_to_pathways = {} # we will fill this dict in as we process each compound
 
 
     def get_reaction_equation(reaction_value):
@@ -109,8 +110,10 @@ def main(args):
         genomes_consume = set([])
         production_reactions = {g: {} for g in db_names}
         consumption_reactions = {g: {} for g in db_names}
-        
+        compound_to_pathways[compound_id] = set([])
         for rid, reaction in sub_network.reactions.items():
+            compound_to_pathways[compound_id].update(reaction_to_pathways[rid])
+
             # replace all equivalent IDs with the compound ID we are currently working on in the network
             # TODO: make this a function of the reaction network class?
             if compound_id in eq_compounds:
