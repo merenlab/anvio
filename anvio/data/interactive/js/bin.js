@@ -902,8 +902,11 @@ Bins.prototype.RedrawBins = function() {
                 continue;
             }
 
+            // Only process leaf nodes that are not collapsed
             if (node.IsLeaf() && !node.collapsed) {
                 leaf_list[node.order] = bin_id;
+                // Ensure the color is set for the leaf node
+                node.SetColor(this.GetBinColor(bin_id));
             }
         }
     }
