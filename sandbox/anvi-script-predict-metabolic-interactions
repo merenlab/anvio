@@ -4,6 +4,7 @@
 import sys
 import anvio
 import anvio.utils as utils
+import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
 
