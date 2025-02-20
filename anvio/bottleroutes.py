@@ -1605,24 +1605,24 @@ class BottleApplication(Bottle):
         max_edge_length_filter = payload['maxlength']
         gene_cluster_grouping_threshold = payload['condtr']
         groupcompress = payload['groupcompress']
-        ungrouping_area = payload['ungroup']
-        print(ungrouping_area)
+        ungroupfrom = payload['ungroupfrom']
+        ungroupto = payload['ungroupto']
+        state = payload['state']
+        pan_graph_json_path = self.interactive.pan_graph_json_path
 
         args = argparse.Namespace(
-            pan_graph_json=self.interactive.pan_graph_json_path,
-            output_pan_graph_json=self.interactive.pan_graph_json_path,
+            pan_graph_json=pan_graph_json_path,
+            output_dir = os.path.dirname(pan_graph_json_path),
             max_edge_length_filter=max_edge_length_filter,
             gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            gene_cluster_grouping_compression=groupcompress,
-            ungrouping_area = ungrouping_area
-            )
+            grouping_compression=groupcompress,
+            ungrouping_open = ungroupfrom,
+            ungrouping_close = ungroupto,
+            load_state = state
+        )
 
-        Pangraph = panops.Pangraph(args)
-
-        Pangraph.load_graph_from_json_file()
-        Pangraph.run_synteny_layout_algorithm()
-        Pangraph.update_json_dict()
-        Pangraph.store_network()
+        Pangraph = panops.PangenomeGraphMaster(args)
+        Pangraph.process_pangenome_graph()
 
         return({'status': 0})
 

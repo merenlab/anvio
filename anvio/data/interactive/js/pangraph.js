@@ -464,23 +464,6 @@ function marknode(e, data, binid, bins, genome_size, group_dict){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //ANCHOR - SVG FUNCTIONS
 function deg2rad(degrees)
 {
@@ -1980,16 +1963,18 @@ $(document).ready(function() {
     new_data['condtr'] = parseInt($('#condtr')[0].value)
     new_data['maxlength'] = parseInt($('#maxlength')[0].value)
     new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
-    new_data['ungroup'] = [parseInt($('#ungroupfrom')[0].value), parseInt($('#ungroupto')[0].value)]
+    new_data['ungroupfrom'] = $('#ungroupfrom')[0].value
+    new_data['ungroupto'] = $('#ungroupto')[0].value
+    new_data['state'] = 'default'
 
-    $("#genomecolors :input[type='checkbox']").each((index, element) => {
-      var genome = $(element).attr('name')
-      if ($(element).prop('checked') == true){
-        new_data[genome] = 'on'
-      } else {
-        new_data[genome] = 'off'
-      }
-    })
+    // $("#genomecolors :input[type='checkbox']").each((index, element) => {
+    //   var genome = $(element).attr('name')
+    //   if ($(element).prop('checked') == true){
+    //     new_data[genome] = 'on'
+    //   } else {
+    //     new_data[genome] = 'off'
+    //   }
+    // })
 
     $.ajax({
       url: "/pangraph/settings",

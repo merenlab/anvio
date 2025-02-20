@@ -2219,6 +2219,8 @@ class PangenomeGraph():
         for node in self.graph.nodes():
             if node in node_groups:
                 self.graph.nodes()[node]['group'] = node_groups[node]
+            else:
+                self.graph.nodes()[node]['group'] = ''
 
 
     def set_edge_positions(self, edge_positions):
@@ -3124,7 +3126,7 @@ class PangenomeGraphMaster():
         elif self.external_genomes_txt:
             self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
         else:
-            raise ConfigError("Unfortunately we couldn't find an external genomes files, please add one :)")
+            self.genome_names = []
 
         # ANVI'O OUTPUTS
         self.output_dir = A('output_dir')
