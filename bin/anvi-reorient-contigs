@@ -47,12 +47,14 @@ def get_num_contigs_and_genome_length(file_path):
 
 def main(args):
     input_dir = args.input_dir
+    output_dir = args.output_dir
     prioritize_genome_size = args.prioritize_genome_size
     prioritize_number_of_contigs = args.prioritize_number_of_contigs
 
     reference_fasta = None
 
     filesnpaths.is_output_dir_writable(input_dir)
+    filesnpaths.is_output_dir_writable(output_dir)
 
     if (not prioritize_genome_size and not prioritize_number_of_contigs) or (prioritize_genome_size and prioritize_number_of_contigs):
         raise ConfigError("You must choose one of these parameters -- not both, not none: `--prioritize-genome-size` "
@@ -109,23 +111,24 @@ def main(args):
             pass
 
 
-    progress.new("BLAST")
+    # progress.new("BLAST")
     for fasta_file in input_fasta_files:
         blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
         num_contigs, length = get_num_contigs_and_genome_length(fasta_file)
+        output_file = os.path.join(output_dir, os.path.basename(fasta_file))
 
         if fasta_file != reference_fasta:
             # run BLAST
-            progress.update(f"Running {os.path.basename(fasta_file)} against the reference ...")
+            # progress.update(f"Running {os.path.basename(fasta_file)} against the reference ...")
             cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
             subprocess.run(cmd_line, text=True, capture_output=True)
 
-            progress.update(f"Parsing {os.path.basename(fasta_file)} hits ...")
+            # progress.update(f"Parsing {os.path.basename(fasta_file)} hits ...")
             qresult = SearchIO.read(blast_result_file, 'blast-xml')
             fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
 
             hits = 0
-            with open(fasta_file, "w+") as output_handle:
+            with open(output_file, "w+") as output_handle:
                 for contig in qresult:
 
                     original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
@@ -153,6 +156,14 @@ def main(args):
 
             run.info_single(f"{hits} out of {num_contigs} for fasta {fasta_file}")
 
+        else:
+            with open(fasta_file) as input_handle:
+                lines = input_handle.readlines()
+                with open(output_file, "w+") as output_handle:
+                    output_handle.writelines(lines)
+
+            run.info_single(f"Copied reference fasta {fasta_file}")
+
     progress.end()
 
 
@@ -163,6 +174,7 @@ if __name__ == '__main__':
                 "that contains the FASTA files of interest. Anvi'o will take into consideration any file "
                 "in this directory that has any of the following extensions: '.fa', '.fasta', '.fna', "
                 "'.ffn', and '.faa'."}))
+    groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'help': ""}))
 
     groupB = parser.add_argument_group('REFERECE GENOME OPTIONS', description="Orienting contigs will require a reference genome that "
                 "must be chosen by none other than YOU.")
