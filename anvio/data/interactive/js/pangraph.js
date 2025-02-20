@@ -1526,6 +1526,8 @@ $(document).ready(function() {
   var functional_annotation_sources_available = [];
   var bins = {"bin1": []};
   var binnum = 1;
+  var old_data ={}
+  var new_data = {}
   var current_groups = {}
 
   $.ajax({
@@ -1948,6 +1950,13 @@ $(document).ready(function() {
         downloadBlob(blob, title + ".fa");
       });
 
+      old_data['condtr'] = data['states'][state]['condtr']
+      old_data['maxlength'] = data['states'][state]['maxlength']
+      old_data['groupcompress'] = data['states'][state]['groupcompress']
+      old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
+      old_data['ungroupto'] = data['states'][state]['ungroupto']
+      old_data['state'] = data['meta']['state']
+
       var end = new Date().getTime();
       var time = end - start;
       console.log('Document creation', time, 'ms.')
@@ -1959,8 +1968,6 @@ $(document).ready(function() {
   $('#redraw').on('click', function() {
 
     var state = 'default'
-
-    var new_data = new Object;
     new_data['condtr'] = parseInt($('#condtr')[0].value)
     new_data['maxlength'] = parseInt($('#maxlength')[0].value)
     new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
@@ -1968,15 +1975,41 @@ $(document).ready(function() {
     new_data['ungroupto'] = $('#ungroupto')[0].value
     new_data['state'] = state
 
-    var old_data = new Object;
-    old_data['condtr'] = data['states'][state]['condtr']
-    old_data['maxlength'] = data['states'][state]['maxlength']
-    old_data['groupcompress'] = data['states'][state]['groupcompress']
-    old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
-    old_data['ungroupto'] = data['states'][state]['ungroupto']
-    old_data['state'] = data['meta']['state']
+    var reiterate = false
 
-    if (new_data != old_date) {
+    if (new_data['condtr'] != old_data['condtr']) {
+      old_data['condtr'] = parseInt($('#condtr')[0].value)
+      reiterate = true
+    }
+
+    if (new_data['maxlength'] != old_data['maxlength']) {
+      old_data['maxlength'] = parseInt($('#maxlength')[0].value)
+      reiterate = true
+    }
+
+    if (new_data['groupcompress'] != old_data['groupcompress']) {
+      old_data['groupcompress'] = parseInt($('#groupcompress')[0].value)
+      reiterate = true
+    }
+
+    if (new_data['ungroupfrom'] != old_data['ungroupfrom']) {
+      old_data['ungroupfrom'] = parseInt($('#ungroupfrom')[0].value)
+      reiterate = true
+    }
+
+    if (new_data['ungroupto'] != old_data['ungroupto']) {
+      old_data['ungroupto'] = parseInt($('#ungroupto')[0].value)
+      reiterate = true
+    }
+
+    if (new_data['state'] != old_data['state']) {
+      old_data['state'] = state
+      reiterate = true
+    }
+
+
+    if (reiterate == true) {
+
       $.ajax({
         url: "/pangraph/settings",
         type: "POST",
