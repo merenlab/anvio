@@ -281,7 +281,8 @@ def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, produc
                 continue
             pathway_ids = reaction_to_pathways[reaction.modelseed_id]
             if pathway_map_id not in pathway_ids:
-                continue
+                continue    # only consider reactions that belong to our Pathway Map of interest
+            # this loop identifies whether the current reaction produces our compound of interest
             for coefficient, product_id in zip(reaction.coefficients, reaction.compound_ids):
                 if product_id != compound_id:
                     continue
@@ -294,7 +295,8 @@ def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, produc
                 new_directions = current_directions + [is_forward]
                 break
             else:
-                continue
+                continue    # if the reaction doesn't produce our compound, go to the next reaction
+            # this loop identifies the next compound(s) to consider (ie substrates of the current production reaction)
             for coefficient, reactant_id in zip(reaction.coefficients, reaction.compound_ids):
                 if is_forward and coefficient > 0:
                     continue
@@ -303,17 +305,18 @@ def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, produc
                 compound = producer_network.metabolites[reactant_id]
                 if compound.modelseed_name in skip_compound_list:
                     continue
+                # recursive call to repeat the walk on the previous compound(s)
                 terminal_chain, terminal_direction_chain = get_producing_reactions(
                     reactant_id, deepcopy(new_chain), new_directions.copy()
                 )
                 terminal_id_chain = [r.modelseed_id for r in terminal_chain]
                 if terminal_id_chain in reaction_id_chains:
-                    continue
+                    continue    # ignore this chain if we've already seen the exact same one before
                 reaction_chains.append(terminal_chain)
                 reaction_id_chains.append(terminal_id_chain)
                 reaction_direction_chains.append(terminal_direction_chain)
-        else:
-            return current_chain, current_directions
+        else: # if we've looped over all reactions then we stop recursing 
+            return current_chain, current_directions 
 
     get_producing_reactions(compound_id)
 
