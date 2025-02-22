@@ -2739,6 +2739,19 @@ class ReactionNetwork:
 
         self.progress.end()
 
+    def _get_reaction_to_pathway_map_dict(self) -> dict[str, set[str]]:
+        """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in."""
+
+        reaction_pathways = {}
+        for ko in self.kos.values():
+            pathway_ids = set(ko.pathway_ids)
+            for reaction_id in ko.reaction_ids:
+                try:
+                    reaction_pathways[reaction_id].update(pathway_ids)
+                except KeyError:
+                    reaction_pathways[reaction_id] = pathway_ids
+        return reaction_pathways
+
     def _print_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
