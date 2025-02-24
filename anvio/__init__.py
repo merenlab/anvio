@@ -319,12 +319,13 @@ D = {
              'action': 'store_true',
              'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
                      "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
-                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
-                     "given set of contigs prodigal will yield a segmentation fault error due to one or more genes in your "
-                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
-                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
-                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
-                     "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
+                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. Use this flag to run prodigal "
+                     "in 'normal mode'. In some rare cases, for a given set of contigs prodigal will yield a segmentation fault "
+                     "error due to one or more genes in your collections confusing the program when it is used with the "
+                     "`-p meta` flag. While anvi'o developers are not quite sure under what circumstances this happens, we "
+                     "realized that removal of this flag often solves this issue. If you are dealing with such cyrptic errors, "
+                     "the inclusion of `--prodigal-single-mode` will instruct anvi'o to run prodigal without the `-meta` flag, "
+                     "and may resolve this issue for you."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
