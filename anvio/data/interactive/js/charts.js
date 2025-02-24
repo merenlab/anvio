@@ -235,25 +235,12 @@ function loadAll() {
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
-                if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
-                  $('#toggleSNVIndelTable').hide();
-                  $("#indels").hide();
-                  $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
-                  $('#settings-section-info-SNV-warning').show();
+                // FIXME  SNVs and INDELS
+                if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
+                    console.log("Hiding SNVs and indels due to the condition being met.");
+                    // Code to hide SNVs and indels
                 } else {
-                  if(!indels_enabled) {
-                    $('#indels').hide();
-                    $('#indels_picker').hide();
-                    $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
-                  if(!state['snvs_enabled'] || maxVariability==0) {
-                    $('#snv_picker').hide();
-                    state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
-                    $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
-                    $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
+                    console.log("SNVs and indels should be visible.");
                 }
 
                 // create function color menu and table; set default color states
