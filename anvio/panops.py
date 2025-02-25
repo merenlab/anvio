@@ -1154,8 +1154,8 @@ class SyntenyGeneCluster():
 
         filesnpaths.is_file_tab_delimited(self.external_genomes)
 
-        if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes):
-            raise ConfigError("Your external genomes file does not seem to contain that anvi'o expects to find "
+        if not utils.is_all_columns_present_in_TAB_delim_file(["name","contigs_db_path"], self.external_genomes, including_first_column=True):
+            raise ConfigError("Your external genomes file does not seem to contain what anvi'o expects to find "
                               "in an external genomes file :/")
 
         pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -3121,6 +3121,11 @@ class PangenomeGraphMaster():
         self.project_name = A('project_name')
         self.start_node = []
 
+        if A('genome_reverse'):
+            self.genome_reverse = A('genome_reverse').split(',')
+        else:
+            self.genome_reverse = []
+
         if A('genome_names'):
             self.genome_names = A('genome_names').split(',')
         elif self.external_genomes_txt:
@@ -3420,7 +3425,11 @@ class PangenomeGraphMaster():
             group.reset_index(drop=False, inplace=True)
             group.sort_values(["start", "stop"], axis=0, ascending=False, inplace=True)
 
-            syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
+            if genome in self.genome_reverse:
+                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))[::-1]
+            else:
+                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
+
             group.set_index('index', inplace=True)
 
             if genome == self.priority_genome:
