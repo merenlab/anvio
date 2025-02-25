@@ -1853,10 +1853,9 @@ $(document).ready(function() {
       });
 
       $('#svgDownload').on('click', function() {
-        // var blob = new Blob([$('#svgbox')[0].innerHTML]);
-        // var title = data['meta']['project_name']
-        // downloadBlob(blob, title + ".svg");
-        console.log(Z)
+        var blob = new Blob([$('#svgbox')[0].innerHTML]);
+        var title = data['meta']['project_name']
+        downloadBlob(blob, title + ".svg");
       });
 
       $('#InfoDownload').on('click', function() {
@@ -2006,7 +2005,6 @@ $(document).ready(function() {
       old_data['state'] = state
       reiterate = true
     }
-
 
     if (reiterate == true) {
 
