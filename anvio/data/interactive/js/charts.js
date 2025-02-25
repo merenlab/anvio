@@ -85,25 +85,27 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
-    highlight_gene = getParameterByName('highlight_gene') == 'true';
-    gene_mode = getParameterByName('gene_mode') == 'true';
+    highlight_gene = getParameterByName('highlight_gene') === 'true';
+    gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined')
-    {
-        state = {}
-    }
-    else
-    {
+    if (typeof localStorage.state === 'undefined') {
+        state = {
+            snvs_enabled: false,
+            show_highlights: true
+        };
+    } else {
         state = JSON.parse(localStorage.state);
     }
 
-    if(state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
+    // Ensure state properties are defined
+    if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
+    }
+    if (state['show_highlights'] == null) {
+        state['show_highlights'] = true;
     }
 
-    if(state['show_highlights'] == null) state['show_highlights'] = true;
-
-    var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+    const endpoint = gene_mode ? 'charts_for_single_gene' : 'charts';
 
     info("Sending ajax request to gather split data");
     $.ajax({
@@ -138,6 +140,7 @@ function loadAll() {
                         }
                     }
                 }
+                state['snvs_enabled'] = state['snvs_enabled'] ?? getParameterByName('show_snvs') === 'true';
 
                 competing_nucleotides = response.competing_nucleotides;
                 indels = response.indels;
@@ -235,7 +238,8 @@ function loadAll() {
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
-                // FIXME  SNVs and INDELS
+                manageSNVsState(state, maxVariability);
+
                 if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
                     console.log("Hiding SNVs and indels due to the condition being met.");
                     // Code to hide SNVs and indels
@@ -512,6 +516,33 @@ function loadAll() {
                 });
             }
         });
+}
+
+function manageSNVsState(state, maxVariability) {
+    // Hide or show elements based on SNVs and indels state
+    if (!indels_enabled && (!state.snvs_enabled || (maxVariability === 0 && !state.snvs_enabled))) {
+        $('#toggleSNVIndelTable').hide();
+        $("#indels").hide();
+        $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
+        $('#settings-section-info-SNV-warning').show();
+    } else {
+        if (!indels_enabled) {
+            $('#indels').hide();
+            $('#indels_picker').hide();
+            $('#snv_picker').show();
+            $('#toggleSNVIndelTable').show();
+            $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+        else if (!state.snvs_enabled || maxVariability === 0) {
+            $('#snv_picker').hide();
+            $('#toggleSNVIndelTable').show();
+            state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
+            $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
+            $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+    }
 }
 
 function drawHighlightBoxes() {
