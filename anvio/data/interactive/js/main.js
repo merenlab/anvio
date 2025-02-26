@@ -83,6 +83,8 @@ var min_branch_support_value_seen = null;
 var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
+
+var structure_pan_mode = false;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -232,6 +234,8 @@ function initData() {
             ANVIO_VERSION = response.version;
             mode = response.mode;
             server_mode = response.server_mode;
+            item_lengths = response.item_lengths;
+
             switchUserInterfaceMode(response.project, response.title);
             setupDescriptionPanel(response.description);
 
@@ -263,8 +267,6 @@ function initData() {
 
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
-
-            item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
             var default_order = response.item_orders[1];
@@ -520,6 +522,14 @@ function switchUserInterfaceMode(project, title) {
                 }
             }
         })
+
+        // Manipulate the UI elements for the structure pan mode
+        // Structure pan is also pan mode but with a different data structure
+        if (Object.keys(item_lengths).some(key => key.startsWith("PSGC"))) {
+            structure_pan_mode = true;
+            $('#search-gc-filters-mode').text('Search PSGC using filters');
+            $('.title-mode').text('structure pan mode');
+        }
     }
 
     if (server_mode) {
