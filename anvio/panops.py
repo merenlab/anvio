@@ -698,15 +698,6 @@ class Pangenome(object):
                 else:
                     accessory_genes += gene_count
 
-            # necessarry for gc_types search functionality, If they are 0 we shouldn't see them in the search result.
-            # If you not happy with the code you can update gc_types_dict["something-not-include-core|accessory|singleton"] :)
-            if core_genes > 0:
-                gc_types_dict['total_core_genes'] = core_genes
-            if singleton_genes > 0:
-                gc_types_dict['total_singleton_genes'] = singleton_genes
-            if accessory_genes > 0:
-                gc_types_dict['total_accessory_genes'] = accessory_genes
-
             self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
 
             if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
