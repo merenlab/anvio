@@ -265,7 +265,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
-        self.STRUCTURE_MODE = False if self.args.init_pan_mode == constants.pangenome_mode_default else True
+        self.STRUCTURE_MODE = False if not hasattr(self.args, 'init_pan_mode') or self.args.init_pan_mode != constants.pangenome_modes_available[1] else True
 
         self.summary = {}
         self.summary['basics_pretty'] = {}
