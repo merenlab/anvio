@@ -569,7 +569,7 @@ var named_layers = {
     },
     'psgc_composition': {
         'type': 'bar',
-        'pretty_name': 'GCs in PSGC'
+        'pretty_name': 'Gene Types in PSGC'
     },
     'number_gc_in_psgc': {
         'height': 200,
