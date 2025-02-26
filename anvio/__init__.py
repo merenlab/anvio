@@ -3722,8 +3722,8 @@ D = {
             ['--init-pan-mode'],
             {'default': constants.pangenome_mode_default,
              'choices': constants.pangenome_modes_available,
-            'type': str,
-            'help': "Specify the structure type to include additional data tables for the Structural Pangenome summary. "
+             'type': str,
+             'help': "Specify the structure type to include additional data tables for the Structural Pangenome summary. "
                      "This option allows you to enhance the analysis by integrating specific structural data, "
                      "which can provide deeper insights into the pangenomic relationships among the samples."}
         ),
