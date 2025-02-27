@@ -225,6 +225,56 @@ class BAMFileObject(pysam.AlignmentFile):
 
         pysam.AlignmentFile.__init__(self)
 
+        # these are two member varialbes that are filled later if the user explicitly requests
+        # for them
+        self.primary_alignments = {}
+        self.secondary_alignments_tracked = False
+
+
+    def track_secondary_alignments(self, progress=terminal.Progress()):
+        """Function to generate necessary information to track secondary alignments in a given BAM file
+
+        This is necessary since if the mapping software reports secondary alignments, the entries may not
+        include the query sequence to avoid redundancy in reported BAM files. The purpose of this function
+        is to recover query sequences for each secondary alignment and keep it in a dictionary to consult
+        later.
+        """
+
+        if self.secondary_alignments_tracked:
+            return
+
+        progress.new("Identifying secondary alignments", progress_total_items=self.mapped)
+        progress.update("Step 01/02 ...")
+        # this is a bit convoluted. we will first go through all the reads
+        # to identify which ones are seconday alignments, and store their
+        # query names
+        counter = 0
+        for read in self.fetch():
+            counter += 1
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update(f"Step 01/02 [processed {pp(counter)} reads]")
+            if read.is_secondary:
+                self.primary_alignments[read.query_name] = None
+        progress.end()
+
+        progress.new("Identifying secondary alignments", progress_total_items=self.mapped)
+        progress.update("Step 02/02 ...")
+        # then we will go through all entries again, and fill in the sequences
+        # of primary alignments FOR those secondary alignments missing
+        # any sequences
+        counter = 0
+        for read in self.fetch():
+            counter += 1
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update(f"Step 02/02 [processed {pp(counter)} reads]")
+            if not read.is_secondary and read.query_name in self.primary_alignments and self.primary_alignments[read.query_name] == None:
+                self.primary_alignments[read.query_name] = read.query_sequence
+        progress.end()
+
+        self.secondary_alignments_tracked = True
+
 
     def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
         """A wrapper function for `bam.fetch()`.
@@ -234,6 +284,9 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch(contig_name, start, end):
+            if self.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = self.primary_alignments[read.query_name]
+
             if self.fetch_filter:
                 if constants.fetch_filters[self.fetch_filter](read):
                     yield read
@@ -249,6 +302,9 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
+            if self.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = self.primary_alignments[read.query_name]
+
             if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -749,6 +805,9 @@ class Coverage:
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
         for read in bam.fetch_only(contig_name, start, end):
+            if bam.secondary_alignments_tracked and read.is_secondary:
+                read.query_sequence = bam.primary_alignments[read.query_name]
+
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
