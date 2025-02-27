@@ -207,8 +207,11 @@
                                             <div class="col-xs-1 mr-2">
                                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_sequence('{{ gene.header|escapejs }}', '{{ gene.DNA_sequence|escapejs }}')">DNA</button>
                                             </div>
-                                            <div class="col-xs-1">
+                                            <div class="col-xs-1 mr-2">
                                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_aa_sequence('{{ gene.header|escapejs }}', '{{ gene.AA_sequence|escapejs }}')">AA</button>
+                                            </div>
+                                            <div class="col-xs-1">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="alphafold_search('{{ gene.header|escapejs }}', '{{ gene.AA_sequence|escapejs }}')">Alphafold</button>
                                             </div>
                                         </div>
                                         <!-- Functional Annotations Table -->
@@ -329,8 +332,11 @@
                                                         <div class="col-xs-1 mr-2">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_sequence('{{ vr_gene.header|escapejs }}', '{{ vr_gene.DNA_sequence|escapejs }}')">DNA</button>
                                                         </div>
-                                                        <div class="col-xs-1">
+                                                        <div class="col-xs-1 mr-2">
                                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="show_aa_sequence('{{ vr_gene.header|escapejs }}', '{{ vr_gene.AA_sequence|escapejs }}')">AA</button>
+                                                        </div>
+                                                        <div class="col-xs-1">
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="alphafold_search('{{ vr_gene.header|escapejs }}', '{{ vr_gene.AA_sequence|escapejs }}')">Alphafold</button>
                                                         </div>
                                                     </div>
                                                     <!-- Functional Annotations Table -->
@@ -480,7 +486,13 @@ function show_sequence(header, sequence) {
 }
 
 function show_aa_sequence(header, aa_sequence) {
+    console.log(aa_sequence);
     show_sequence_modal('Gene Amino Acid Sequence', header + '\n' + aa_sequence);
 }
 
+function alphafold_search(header, aa_sequence){
+    var sequence = aa_sequence;
+    var alphafoldUrl = 'https://www.alphafold.ebi.ac.uk/search/text/' + encodeURIComponent(sequence);
+    window.open(alphafoldUrl, '_blank');
+}
 </script>
