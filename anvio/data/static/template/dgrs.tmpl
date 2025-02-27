@@ -121,9 +121,11 @@
                     <!-- TR Information -->
                         <div style="margin-bottom: 15px;">
                             {% for dgr, tr in dgr_data.items %}
-                                <p><strong>TR Contig Name:</strong> {{ tr.TR_contig }}</p>
-                                <p><strong>TR Start Position:</strong> {{ tr.TR_start_position }}</p>
-                                <p><strong>TR End Position:</strong> {{ tr.TR_end_position }}</p>
+                                {% if forloop.first and tr %}
+                                    <p><strong>TR Contig Name:</strong> {{ tr.TR_contig }}</p>
+                                    <p><strong>TR Start Position:</strong> {{ tr.TR_start_position }}</p>
+                                    <p><strong>TR End Position:</strong> {{ tr.TR_end_position }}</p>
+                                {% endif %}
                             {% endfor %}
                         </div>
 
