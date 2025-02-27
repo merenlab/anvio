@@ -27,3 +27,4 @@ pulp==2.7.0
 biopython
 reportlab
 pymupdf
+pytrf
