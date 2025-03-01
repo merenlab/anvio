@@ -1,4 +1,4 @@
-The program %(anvi-compute-rarefaction-curves)s goes through all genomes in a given %(pan-db)s and calculates rarefaction curves for all gene clusters and core gene clusters. It also computes the Heap’s Law fit to model the relationship between genome sampling and the number of new gene clusters discovered for you to have a more comprehensive reporting of your pangenome.
+The program %(anvi-compute-rarefaction-curves)s goes through all genomes in a given %(pan-db)s and calculates rarefaction curves for all gene clusters and core gene clusters. It also computes the Heaps' Law fit to model the relationship between genome sampling and the number of new gene clusters discovered for you to have a more comprehensive reporting of your pangenome.
 
 ### On the utility of rarefaction curves and Heaps' Law fit
 

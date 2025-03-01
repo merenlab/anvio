@@ -61,7 +61,7 @@ additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
 
 
 class RarefactionAnalysis:
-    """Takes in a pangenome, calculates rarefaction curves and Heap's Law fit to assess the openness of the pangenome.
+    """Takes in a pangenome, calculates rarefaction curves and Heaps' Law fit to assess the openness of the pangenome.
 
         >>> import argparse
         >>> args = argparse.Namespace(pan_db="PATH/TO/PAN.db", iterations=100, output_file='rarefaction_curves.svg')
@@ -142,13 +142,13 @@ class RarefactionAnalysis:
 
 
     def heap_law(self, x, k, alpha):
-        """Heap's Law function: V(N) = K * N^alpha"""
+        """Heaps' Law function: V(N) = K * N^alpha"""
 
         return k * np.power(x, alpha)
 
 
     def fit_heaps_law(self, rarefaction_data):
-        """Fits Heap's Law parameters to rarefaction data."""
+        """Fits Heaps' Law parameters to rarefaction data."""
 
         x_data = rarefaction_data["SampleSize"]
         y_data = rarefaction_data["MeanGeneClusters"]
@@ -156,24 +156,24 @@ class RarefactionAnalysis:
         # Fit using non-linear least squares
         popt, _ = curve_fit(self.heap_law, x_data, y_data, p0=[1, 0.5])
         k, alpha = popt
-        self.run.info("Heap's Law parameters estimated", f"K={k:.4f}, alpha={alpha:.4f}")
+        self.run.info("Heaps' Law parameters estimated", f"K={k:.4f}, alpha={alpha:.4f}")
 
         return k, alpha
 
 
     def process(self):
-        """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heap's Law fit."""
+        """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heaps' Law fit."""
 
         self.progress.new("Calculating Rarefaction Curves", progress_total_items=(self.num_genomes * self.iterations * 2))
         self.progress.update('...')
 
-        # get all the data needed to calculate Heap's Law fit and visualize things
+        # get all the data needed to calculate Heaps' Law fit and visualize things
         rarefaction_pangenome, iterations_pangenome = self.calc_rarefaction_curve(target="all")
         rarefaction_core, iterations_core = self.calc_rarefaction_curve(target="core")
 
         self.progress.end()
 
-        # Fit Heap's Law
+        # Fit Heaps' Law
         k, alpha = self.fit_heaps_law(rarefaction_pangenome)
 
         if self.output_file:
@@ -193,10 +193,10 @@ class RarefactionAnalysis:
             sns.scatterplot(x="SampleSize", y="GeneClusters", data=iterations_core, color="red", alpha=0.05)
             sns.lineplot(x="SampleSize", y="MeanGeneClusters", data=rarefaction_core, color="red", label="Core gene clusters")
 
-            # Overlay Heap’s Law fit
-            plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heap’s Law Fit (K={k:.2f}, α={alpha:.2f})")
+            # Overlay Heaps’ Law fit
+            plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heaps’ Law Fit (K={k:.2f}, α={alpha:.2f})")
 
-            plt.title(f"Rarefaction Curves with Heap's Law Fit (with {self.iterations} iterations)")
+            plt.title(f"Rarefaction Curves with Heaps' Law Fit (with {self.iterations} iterations)")
             plt.xlabel("Number of Genomes")
             plt.ylabel("Number of Gene Clusters")
             plt.legend()
