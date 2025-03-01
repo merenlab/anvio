@@ -10,9 +10,11 @@ import os
 import json
 import math
 import copy
+import numpy as np
 import pandas as pd
-from itertools import chain
 
+from itertools import chain
+from scipy.optimize import curve_fit
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -22,6 +24,7 @@ from itertools import chain
 import multiprocess as multiprocessing
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -55,6 +58,154 @@ aligners = Aligners()
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
+
+
+class RarefactionAnalysis:
+    """Takes in a pangenome, calculates rarefaction curves and Heap's Law fit to assess the openness of the pangenome.
+
+        >>> import argparse
+        >>> args = argparse.Namespace(pan_db="PATH/TO/PAN.db", iterations=100, output_file='rarefaction_curves.svg')
+        >>> rarefaction_curves = RarefactionAnalysis(args)
+        >>> k, alpha = rarefaction_curves.process()
+
+    A client of this class is the program `anvi-compute-rarefaction-curves`
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.iterations = A('iterations') or 100
+        self.output_file = A('output_file')
+
+        # to be filled from the pan-db
+        self.gene_cluster_data = None
+        self.unique_genomes = None
+        self.num_genomes = None
+
+        # Load gene cluster data
+        self.load_data()
+
+
+    def load_data(self):
+        """Load gene cluster data from pan-db."""
+
+        self.gene_cluster_data = dbops.PanDatabase(self.pan_db_path).db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
+        self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
+        self.num_genomes = len(self.unique_genomes)
+
+        self.run.info("Number of genomes found", self.num_genomes)
+        self.run.info("Number of iterations to run", self.iterations)
+        if self.output_file:
+            self.run.info("Output file", self.output_file, mc='green')
+        else:
+            self.run.info("Output file", "`--output-file` parameter is not found -- rarefaction curves will not be visualized.", mc='red')
+
+
+    def calc_rarefaction_curve(self, target="all"):
+        """Calculates rarefaction curves for all gene clusters (target='all') or core gene clusters (target='core')."""
+
+        if target not in ['all', 'core']:
+            raise ConfigError("The target variable must either be set to 'all', or 'core'. It is not negotiable!")
+
+        results = []
+        iteration_results = []  # we store individual individual iteration values to be able to plot them later
+
+        for n in range(1, self.num_genomes + 1):
+            sampled_cluster_counts = []
+
+            for i in range(self.iterations):
+                self.progress.increment()
+                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at teration {i + 1} of {self.iterations}")
+                sampled_genomes = np.random.choice(self.unique_genomes, n, replace=False)
+                sampled_data = self.gene_cluster_data[self.gene_cluster_data["genome_name"].isin(sampled_genomes)]
+
+                cluster_counts = sampled_data.groupby("gene_cluster_id")["genome_name"].nunique()
+
+                if target == "core":
+                    count = sum(cluster_counts == n)
+                else:
+                    count = cluster_counts.shape[0]
+
+                sampled_cluster_counts.append(count)
+                iteration_results.append([n, count])  # Store each iteration result
+
+            results.append([n, np.mean(sampled_cluster_counts), np.std(sampled_cluster_counts)])
+
+        df_summary = pd.DataFrame(results, columns=["SampleSize", "MeanGeneClusters", "SDGeneClusters"])
+        df_iterations = pd.DataFrame(iteration_results, columns=["SampleSize", "GeneClusters"])
+
+        return df_summary, df_iterations
+
+
+    def heap_law(self, x, k, alpha):
+        """Heap's Law function: V(N) = K * N^alpha"""
+
+        return k * np.power(x, alpha)
+
+
+    def fit_heaps_law(self, rarefaction_data):
+        """Fits Heap's Law parameters to rarefaction data."""
+
+        x_data = rarefaction_data["SampleSize"]
+        y_data = rarefaction_data["MeanGeneClusters"]
+
+        # Fit using non-linear least squares
+        popt, _ = curve_fit(self.heap_law, x_data, y_data, p0=[1, 0.5])
+        k, alpha = popt
+        self.run.info("Heap's Law parameters estimated", f"K={k:.4f}, alpha={alpha:.4f}")
+
+        return k, alpha
+
+
+    def process(self):
+        """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heap's Law fit."""
+
+        self.progress.new("Calculating Rarefaction Curves", progress_total_items=(self.num_genomes * self.iterations * 2))
+        self.progress.update('...')
+
+        # get all the data needed to calculate Heap's Law fit and visualize things
+        rarefaction_pangenome, iterations_pangenome = self.calc_rarefaction_curve(target="all")
+        rarefaction_core, iterations_core = self.calc_rarefaction_curve(target="core")
+
+        self.progress.end()
+
+        # Fit Heap's Law
+        k, alpha = self.fit_heaps_law(rarefaction_pangenome)
+
+        if self.output_file:
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+
+            # Generate fitted values for plotting
+            x_fit = np.linspace(1, self.num_genomes, 100)
+            y_fit = self.heap_law(x_fit, k, alpha)
+
+            plt.figure(figsize=(10, 6))
+
+            # Plot individual iteration points with transparency
+            sns.scatterplot(x="SampleSize", y="GeneClusters", data=iterations_pangenome, color="blue", alpha=0.05)
+            sns.lineplot(x="SampleSize", y="MeanGeneClusters", data=rarefaction_pangenome, color="blue", label="All gene clusters")
+
+            sns.scatterplot(x="SampleSize", y="GeneClusters", data=iterations_core, color="red", alpha=0.05)
+            sns.lineplot(x="SampleSize", y="MeanGeneClusters", data=rarefaction_core, color="red", label="Core gene clusters")
+
+            # Overlay Heap’s Law fit
+            plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heap’s Law Fit (K={k:.2f}, α={alpha:.2f})")
+
+            plt.title(f"Rarefaction Curves with Heap's Law Fit (with {self.iterations} iterations)")
+            plt.xlabel("Number of Genomes")
+            plt.ylabel("Number of Gene Clusters")
+            plt.legend()
+            plt.grid()
+            plt.savefig(self.output_file)
+            plt.close()
+
+        return (k, alpha)
+
 
 class Pangenome(object):
     def __init__(self, args=None, run=run, progress=progress):
