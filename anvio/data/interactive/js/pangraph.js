@@ -1053,13 +1053,11 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
             if (e == genomes.length) {
 
-              var dir_set = new Set(Object.keys(edge['directions']))
-              var both_set = new Set(['L', 'R'])
-              var rev_set = new Set(['L'])
+              var dir_set = Object.values(edge['directions'])
 
-              if (rev_set == dir_set) {
+              if (dir_set.includes('L') && dir_set.includes('R')) {
                 var stroke = ' stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" '
-              } else if (both_set == dir_set) {
+              } else if (dir_set.includes('L')) {
                 var stroke = ' stroke-dasharray="' + line_thickness * 20 + ',' + line_thickness * 5 + '" '
               } else {
                 var stroke = ''
@@ -1080,8 +1078,8 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
                 layer_start += line_thickness * 0.5
                 layer_stop -= line_thickness * 0.5
 
-                var i_y_size = layer_start + (i_y + 0.5) * (layer_width / global_y)
-                var j_y_size = layer_start + (j_y + 0.5) * (layer_width / global_y)
+                var i_y_size = layer_start + i_y * (layer_width / global_y)
+                var j_y_size = layer_start + j_y * (layer_width / global_y)
                 var draw = edgecoloring[genomes[e]][1]
                 var thickness = line_thickness
                 var stroke = ''
@@ -1124,8 +1122,8 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
                     var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
                     var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
                   } else {
-                    var o_y_size = layer_start + (o_y + 0.5) * (layer_width / global_y)
-                    var n_y_size = layer_start + (n_y + 0.5) * (layer_width / global_y)
+                    var o_y_size = layer_start + o_y * (layer_width / global_y)
+                    var n_y_size = layer_start + n_y * (layer_width / global_y)
                   }
 
                   if (linear == 0){
@@ -1501,6 +1499,18 @@ function defineVariables(data) {
     global_x = x < global_x ? global_x : x
     global_y = y < global_y ? global_y : y
 
+  }
+
+  for(var e in all_edges) {
+    var edge = all_edges[e];
+    var bended = edge['bended']
+    if (bended.length > 0) {
+      for (var b in bended) {
+        var x = bended[b][0]
+        var y = bended[b][1]
+        global_y = y < global_y ? global_y : y
+      }
+    }
   }
 
   return [all_nodes, all_edges, layers, layers_min, layers_max, global_x, global_y, genomes, group_dict]

@@ -2861,7 +2861,7 @@ class TopologicalLayout():
         group = 0
         groups = {}
         groups_rev = {}
-        keep = False
+        # keep = False
 
         # TODO Currently no seperation between unequal genome context, but is it needed?
         if gene_cluster_grouping_threshold == -1:
@@ -2871,31 +2871,58 @@ class TopologicalLayout():
 
         for node_v, node_w in dfs_list:
 
-            if node_v in ungroup_open:
-                keep = True
+            # if node_v in ungroup_open:
+            #     keep = True
+            #     if not keep:
 
-            if not node_v.startswith('GHOST_') and not node_w.startswith('GHOST_') and node_v != 'START' and node_w != 'STOP' and L.in_degree(node_v) == 1 and L.out_degree(node_v) == 1 and L.in_degree(node_w) == 1 and L.out_degree(node_w) == 1 and L.nodes()[node_w]['genomes'] == L.nodes()[node_v]['genomes'] and L.nodes()[node_w]['type'] == L.nodes()[node_v]['type']:
-                if not keep:
-                    if node_v not in groups_rev.keys():
-                        group_name = 'GCG_' + str(group).zfill(8)
-                        groups[group_name] = [node_v, node_w]
-                        groups_rev[node_v] = group_name
-                        groups_rev[node_w] = group_name
-                        group += 1
-                    else:
-                        group_name = groups_rev[node_v]
-                        groups[group_name] += [node_w]
-                        groups_rev[node_w] = group_name
+            if node_v != 'START' and node_w != 'STOP' and L.in_degree(node_v) == 1 and L.out_degree(node_v) == 1 and L.in_degree(node_w) == 1 and L.out_degree(node_w) == 1:
+                if node_v not in groups_rev.keys():
+                    group_name = group
+                    groups[group_name] = [node_v, node_w]
+                    groups_rev[node_v] = group_name
+                    groups_rev[node_w] = group_name
+                    group += 1
+                else:
+                    group_name = groups_rev[node_v]
+                    groups[group_name] += [node_w]
+                    groups_rev[node_w] = group_name
 
-            if node_w in ungroup_close:
-                keep = False
+            # if node_w in ungroup_close:
+            #     keep = False
 
-        for label, condense_nodes in groups.items():
+        for group_name, group_nodes in groups.items():
 
-            # condense_nodes = [node for node in condense_nodes if not node.startswith('GHOST_')]
+            group_nodes = [node for node in group_nodes if not node.startswith('GHOST_')]
+            former_genome = set()
+            former_type = ''
+            label = 'GCG_' + str(group_name).zfill(8)
+            condense_nodes = []
+            for node in group_nodes:
+
+                current_genome = set(L.nodes()[node]['gene_calls'].keys())
+                current_type = L.nodes()[node]['type']
+
+                if not former_genome and not former_type:
+                    condense_nodes += [node]
+                elif former_genome == current_genome and former_type == current_type:
+                    condense_nodes += [node]
+                else:
+                    if len(condense_nodes) >= gene_cluster_grouping_threshold and gene_cluster_grouping_threshold != -1:
+                        grouping[label] = condense_nodes
+
+                    condense_nodes = [node]
+                    label = 'GCG_' + str(group).zfill(8)
+                    group += 1
+                    
+                former_genome = current_genome
+                former_type = current_type
 
             if len(condense_nodes) >= gene_cluster_grouping_threshold and gene_cluster_grouping_threshold != -1:
                 grouping[label] = condense_nodes
+
+            condense_nodes = [node]
+            label = 'GCG_' + str(group).zfill(8)
+            group += 1
 
         self.run.info_single(f"Grouped {len(sum(grouping.values(), []))} nodes in {len(grouping.keys())} groups")
 
@@ -2906,12 +2933,7 @@ class TopologicalLayout():
         for g in groups.keys():
             branch = groups[g]
 
-            if not set(branch).isdisjoint(m) and not set(branch).issubset(m):
-                raise ConfigError(f"A group is neither disjoint from the main path nor subset of the main path"
-                                  f"we should not continue from here as this is not something that should happen.")
-
-            elif set(branch).isdisjoint(m):
-
+            if not set(branch).issubset(m):
                 start = positions[branch[0]][0]
                 length = len(branch)
 
@@ -2935,11 +2957,7 @@ class TopologicalLayout():
         left_nodes = set(L.nodes()) - set(groups_rev.keys())
         for n in left_nodes:
 
-            if not set([n]).isdisjoint(m) and not set([n]).issubset(m):
-                raise ConfigError(f"A group is neither disjoint from the main path nor subset of the main path"
-                                  f"we should not continue from here as this is not something that should happen.")
-
-            elif set([n]).isdisjoint(m):
+            if not set([n]).issubset(m):
                 start = positions[n][0]
                 length = 1
                 if start in branches.keys():
@@ -2977,6 +2995,9 @@ class TopologicalLayout():
             remove = True
             for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
                 branch = branches[i][j][k]
+
+                # print(branch)
+
                 branch_pred = set(L.predecessors(branch[0]))
                 branch_succ = set(L.successors(branch[-1]))
                 if (not branch_pred.isdisjoint(set(current))) or (not branch_succ.isdisjoint(set(current))) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
@@ -3299,7 +3320,7 @@ class PangenomeGraphMaster():
                 'edge': 2,
                 'flexlinear': False,
                 'line': 1,
-                'label': 12,
+                'label': 20,
                 'search_hit': 200,
                 'inner_margin': 0,
                 'outer_margin': 0,
