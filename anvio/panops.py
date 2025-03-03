@@ -93,6 +93,8 @@ class RarefactionAnalysis:
     def load_data(self):
         """Load gene cluster data from pan-db."""
 
+        utils.is_pan_db(self.pan_db_path)
+
         self.gene_cluster_data = dbops.PanDatabase(self.pan_db_path).db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
         self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
         self.num_genomes = len(self.unique_genomes)
