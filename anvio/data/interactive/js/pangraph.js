@@ -1795,19 +1795,19 @@ $(document).ready(function() {
         }
       })
   
-      $('#flexungroup').change(function() {
-        if ($(this).prop('checked') == true){
-          $('#ungroupfrom')[0].value = 0;
-          $('#ungroupfrom').prop('disabled', false)
-          $('#ungroupto')[0].value = 0;
-          $('#ungroupto').prop('disabled', false)
-        } else {
-          $('#ungroupfrom')[0].value = -1;
-          $('#ungroupfrom').prop('disabled', true)
-          $('#ungroupto')[0].value = -1;
-          $('#ungroupto').prop('disabled', true)
-        }
-      })
+      // $('#flexungroup').change(function() {
+      //   if ($(this).prop('checked') == true){
+      //     $('#ungroupfrom')[0].value = 0;
+      //     $('#ungroupfrom').prop('disabled', false)
+      //     $('#ungroupto')[0].value = 0;
+      //     $('#ungroupto').prop('disabled', false)
+      //   } else {
+      //     $('#ungroupfrom')[0].value = -1;
+      //     $('#ungroupfrom').prop('disabled', true)
+      //     $('#ungroupto')[0].value = -1;
+      //     $('#ungroupto').prop('disabled', true)
+      //   }
+      // })
   
       $('#flextree').change(function() {
         if ($(this).prop('checked') == true){
@@ -1962,8 +1962,8 @@ $(document).ready(function() {
       old_data['condtr'] = data['states'][state]['condtr']
       old_data['maxlength'] = data['states'][state]['maxlength']
       old_data['groupcompress'] = data['states'][state]['groupcompress']
-      old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
-      old_data['ungroupto'] = data['states'][state]['ungroupto']
+      // old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
+      // old_data['ungroupto'] = data['states'][state]['ungroupto']
       old_data['state'] = data['meta']['state']
 
       var end = new Date().getTime();
@@ -1980,8 +1980,8 @@ $(document).ready(function() {
     new_data['condtr'] = parseInt($('#condtr')[0].value)
     new_data['maxlength'] = parseInt($('#maxlength')[0].value)
     new_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
-    new_data['ungroupfrom'] = $('#ungroupfrom')[0].value
-    new_data['ungroupto'] = $('#ungroupto')[0].value
+    // new_data['ungroupfrom'] = $('#ungroupfrom')[0].value
+    // new_data['ungroupto'] = $('#ungroupto')[0].value
     new_data['state'] = state
 
     var reiterate = false
@@ -2001,15 +2001,15 @@ $(document).ready(function() {
       reiterate = true
     }
 
-    if (new_data['ungroupfrom'] != old_data['ungroupfrom']) {
-      old_data['ungroupfrom'] = parseInt($('#ungroupfrom')[0].value)
-      reiterate = true
-    }
+    // if (new_data['ungroupfrom'] != old_data['ungroupfrom']) {
+    //   old_data['ungroupfrom'] = parseInt($('#ungroupfrom')[0].value)
+    //   reiterate = true
+    // }
 
-    if (new_data['ungroupto'] != old_data['ungroupto']) {
-      old_data['ungroupto'] = parseInt($('#ungroupto')[0].value)
-      reiterate = true
-    }
+    // if (new_data['ungroupto'] != old_data['ungroupto']) {
+    //   old_data['ungroupto'] = parseInt($('#ungroupto')[0].value)
+    //   reiterate = true
+    // }
 
     if (new_data['state'] != old_data['state']) {
       old_data['state'] = state

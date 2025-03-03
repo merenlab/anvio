@@ -2752,7 +2752,8 @@ class TopologicalLayout():
         self.progress = p
 
 
-    def run_synteny_layout_algorithm(self, F, gene_cluster_grouping_threshold=-1, groupcompress=1.0, ungroup_open=[], ungroup_close=[]):
+    # def run_synteny_layout_algorithm(self, F, gene_cluster_grouping_threshold=-1, groupcompress=1.0, ungroup_open=[], ungroup_close=[]):
+    def run_synteny_layout_algorithm(self, F, gene_cluster_grouping_threshold=-1, groupcompress=1.0):
         """One of the main functions. Describe!
 
         Parameters
@@ -3176,8 +3177,8 @@ class PangenomeGraphMaster():
         self.groupcompress = A('grouping_compression')
         self.priority_genome = A('priority_genome')
         self.load_state = A('load_state')
-        self.ungroup_open = A('ungrouping_open').split(',') if A('ungrouping_open') else []
-        self.ungroup_close = A('ungrouping_close').split(',') if A('ungrouping_close') else []
+        # self.ungroup_open = A('ungrouping_open').split(',') if A('ungrouping_open') else []
+        # self.ungroup_close = A('ungrouping_close').split(',') if A('ungrouping_close') else []
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
         # STANDARD CLASS VARIABLES
@@ -3215,8 +3216,8 @@ class PangenomeGraphMaster():
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
             groupcompress=self.groupcompress,
-            ungroup_open=self.ungroup_open,
-            ungroup_close=self.ungroup_close
+            # ungroup_open=self.ungroup_open,
+            # ungroup_close=self.ungroup_close
         )
 
         x_max = max([x for x,y in node_positions.values()])
@@ -3331,9 +3332,9 @@ class PangenomeGraphMaster():
                 'maxlength': self.max_edge_length_filter,
                 'flexgroupcompress': True,
                 'groupcompress': self.groupcompress,
-                'flexungroup': False,
-                'ungroupfrom': ','.join(self.ungroup_open),
-                'ungroupto': ','.join(self.ungroup_close),
+                # 'flexungroup': False,
+                # 'ungroupfrom': ','.join(self.ungroup_open),
+                # 'ungroupto': ','.join(self.ungroup_close),
                 **{'flex' + genome: True for genome in self.genome_names},
                 **{genome: '#000000' for genome in self.genome_names}
             }}
@@ -3384,11 +3385,11 @@ class PangenomeGraphMaster():
         self.states[self.load_state]['condtr'] = self.gene_cluster_grouping_threshold
         self.states[self.load_state]['flexcondtr'] = True if self.gene_cluster_grouping_threshold != -1 else False
 
-        self.ungroup_open = self.states[self.load_state]['ungroupfrom'] if not self.ungroup_open else self.ungroup_open
-        self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
+        # self.ungroup_open = self.states[self.load_state]['ungroupfrom'] if not self.ungroup_open else self.ungroup_open
+        # self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
 
-        self.ungroup_close = self.states[self.load_state]['ungroupto'] if not self.ungroup_close else self.ungroup_close
-        self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
+        # self.ungroup_close = self.states[self.load_state]['ungroupto'] if not self.ungroup_close else self.ungroup_close
+        # self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
 
         for node in jsondata["nodes"]:
             data = {

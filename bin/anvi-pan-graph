@@ -58,8 +58,8 @@ if __name__ == '__main__':
 
     groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
-    groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
-    groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
+    # groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
+    # groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
     groupC.add_argument('--import-values', default='', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
     groupC.add_argument('--min_contig_size', default=5, type=int, help = "Description.")
