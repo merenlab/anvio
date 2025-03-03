@@ -1194,7 +1194,7 @@ class SyntenyGeneCluster():
                 additional_info_df.drop(self.functional_annotation_sources_available, axis=1, errors='ignore', inplace=True)
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster", how="left")
-                joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=False, inplace=True)
+                joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
                 joined_contigs_df.fillna("None", inplace=True)
                 joined_contigs_df['genome'] = genome
                 joined_contigs_df.set_index(["genome", "gene_caller_id"], inplace=True)
@@ -1217,7 +1217,7 @@ class SyntenyGeneCluster():
         return(db_mining_df)
 
 
-    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, output_dir, output_synteny_gene_cluster_dendrogram):
+    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta_g, beta_m, output_dir, output_synteny_gene_cluster_dendrogram):
 
         synteny_gene_cluster_type = ''
 
@@ -1233,7 +1233,7 @@ class SyntenyGeneCluster():
                 for j, gene_cluster_k_mer_contig_position_b in enumerate(gene_cluster_k_mer_contig_positions):
                     gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
                     gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
-                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n)
+                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta_g, beta_m)
 
             np.fill_diagonal(X, 0.0)
             condensed_X = squareform(X)
@@ -1303,7 +1303,7 @@ class SyntenyGeneCluster():
         return(synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type)
 
 
-    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n):
+    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta_g, beta_m):
 
         genome_a, contig_a, position_a, gene_caller_id_a, gene_cluster_kmer_a = gene_cluster_k_mer_contig_position_a
         contig_identifier_a = str(int(contig_a.split('_')[-1]))
@@ -1325,7 +1325,7 @@ class SyntenyGeneCluster():
 
         if genome_a == genome_b:
             return(1.0)
-        elif n != 0 and gene_cluster_k_mer_left_context_score < 0.5 and gene_cluster_k_mer_right_context_score < 0.5:
+        elif n != 0 and gene_cluster_k_mer_left_context_score < alpha and gene_cluster_k_mer_right_context_score < alpha:
             return(1.0)
         elif gene_cluster_kmer_a == gene_cluster_kmer_b:
             return(0.0)
@@ -1339,9 +1339,9 @@ class SyntenyGeneCluster():
                 if not i == int(len(gene_cluster_kmer_a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         # if n[1:] != m[1:]:
-                        r_val += 0.5
+                        r_val += beta_g
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        r_val += 0.25
+                        r_val += beta_m
                     elif n == m:
                         r_val += 1.0
                     else:
@@ -1351,9 +1351,9 @@ class SyntenyGeneCluster():
                 if not i == int(len(gene_cluster_kmer_a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         # if n[1:] != m[1:]:
-                        f_val += 0.5
+                        f_val += beta_g
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        f_val += 0.25
+                        f_val += beta_m
                     elif n == m:
                         f_val += 1.0
                     else:
@@ -1365,7 +1365,7 @@ class SyntenyGeneCluster():
                 return (1.0 - f_val / div)
 
 
-    def run_contextualize_paralogs_algorithm(self, n=100, output_dir='', output_synteny_gene_cluster_dendrogram=False):
+    def run_contextualize_paralogs_algorithm(self, n=100, alpha=0.75, beta_g=0.5, beta_m=0.25, output_dir='', output_synteny_gene_cluster_dendrogram=False):
         """A function that resolves the graph context of paralogs based on gene synteny
         information across genomes and adds this information to the db_mining_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
@@ -1451,7 +1451,7 @@ class SyntenyGeneCluster():
             genome, contig = name
 
             group.reset_index(drop=False, inplace=True)
-            group.sort_values(["start", "stop"], axis=0, ascending=False, inplace=True)
+            group.sort_values(["start", "stop"], axis=0, ascending=True, inplace=True)
             gene_cluster_info = group[['gene_cluster', 'gene_caller_id']].values.tolist()
             gene_cluster_contig_order[(genome, contig)] = [gene_cluster for gene_cluster, gene_caller_id in gene_cluster_info]
 
@@ -1493,7 +1493,7 @@ class SyntenyGeneCluster():
                         break
 
                 else:
-                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, output_dir, output_synteny_gene_cluster_dendrogram)
+                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta_g, beta_m, output_dir, output_synteny_gene_cluster_dendrogram)
                     for genome, contig, position, gene_caller_id, gene_cluster_id in synteny_gene_cluster_id_contig_positions:
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
                         j += 1
@@ -3119,7 +3119,6 @@ class PangenomeGraphMaster():
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
         self.project_name = A('project_name')
-        self.start_node = []
 
         if A('genome_reverse'):
             self.genome_reverse = A('genome_reverse').split(',')
@@ -3139,8 +3138,18 @@ class PangenomeGraphMaster():
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
         self.output_synteny_distance_dendrogram = A('output_synteny_distance_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
+        self.circularize = A('circularize')
 
         # ANVI'O FLAGS
+        self.start_node = []
+        self.start_gene = A('start_gene')
+        self.min_contig_size = A('min_contig_size')
+                
+        self.alpha = A('alpha')
+        self.n = A('n')
+        self.beta_g = A('beta_g')
+        self.beta_m = A('beta_m')
+
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
         self.groupcompress = A('grouping_compression')
@@ -3213,10 +3222,10 @@ class PangenomeGraphMaster():
         else:
             # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
             self.sanity_check()
-            self.db_mining_df = SyntenyGeneCluster(self.args).run_contextualize_paralogs_algorithm(100, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
+            self.db_mining_df = SyntenyGeneCluster(self.args).run_contextualize_paralogs_algorithm(self.n, self.alpha, self.beta_g, self.beta_m, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
 
-            if not self.start_node:
-                self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains('RecA/RadA')]['syn_cluster'].to_list()))
+            if self.start_gene:
+                self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
             self.create_pangenome_graph()
 
         if self.output_pangenome_graph_summary == True and len(self.db_mining_df) != 0:
@@ -3418,76 +3427,97 @@ class PangenomeGraphMaster():
                 self.run.info_single(f"Entries {', '.join(self.import_values)} will be added as optional layers.")
                 add_layers = True
 
-        groups = self.db_mining_df.groupby(["genome", "contig"])
         number_gene_calls = {}
-        for name, group in groups:
-            genome, contig = name
-            group.reset_index(drop=False, inplace=True)
-            group.sort_values(["start", "stop"], axis=0, ascending=False, inplace=True)
+        for genome, genome_group in self.db_mining_df.groupby(["genome"]):
+            extra_connections = []
 
-            if genome in self.genome_reverse:
-                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))[::-1]
-            else:
-                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
+            for contig, group in genome_group.groupby(["contig"]):
+                group.reset_index(drop=False, inplace=True)
+                group.sort_values(["start", "stop"], axis=0, ascending=True, inplace=True)
 
-            group.set_index('index', inplace=True)
+                if genome in self.genome_reverse:
+                    syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))[::-1]
+                else:
+                    syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
 
-            if genome == self.priority_genome:
-                add_weight = 1.0 * 100
-            else:
-                add_weight = 0
+                group.set_index('index', inplace=True)
 
-            add_weight += decisison_making[genome]
-            if len(syn_cluster_tuples) > 1:
-                syn_cluster_tuple_pairs = map(tuple, zip(syn_cluster_tuples, syn_cluster_tuples[1:]))
-                for syn_cluster_tuple_pair in syn_cluster_tuple_pairs:
-                    index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuple_pair[0]
-                    index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j = syn_cluster_tuple_pair[1]
+                if genome == self.priority_genome:
+                    add_weight = 1.0 * 100
+                else:
+                    add_weight = 0
 
-                    node_attributes_i = {
-                        'gene_cluster': gene_cluster_i,
-                        'gene_calls': {genome: gene_caller_id_i},
-                        'type': syn_cluster_type_i,
-                        'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
-                    }
+                if len(syn_cluster_tuples) >= self.min_contig_size:
 
-                    node_attributes_j = {
-                        'gene_cluster': gene_cluster_j,
-                        'gene_calls': {genome: gene_caller_id_j},
-                        'type': syn_cluster_type_j,
-                        'layer': group[self.import_values].loc[index_j].to_dict() if add_layers else {}
-                    }
+                    extra_connections += [syn_cluster_tuples[0], syn_cluster_tuples[-1]]
+                    add_weight += decisison_making[genome]
+
+                    if len(syn_cluster_tuples) > 1:
+                        syn_cluster_tuple_pairs = map(tuple, zip(syn_cluster_tuples, syn_cluster_tuples[1:]))
+                        for syn_cluster_tuple_pair in syn_cluster_tuple_pairs:
+                            index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuple_pair[0]
+                            index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j = syn_cluster_tuple_pair[1]
+
+                            node_attributes_i = {
+                                'gene_cluster': gene_cluster_i,
+                                'gene_calls': {genome: gene_caller_id_i},
+                                'type': syn_cluster_type_i,
+                                'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
+                            }
+
+                            node_attributes_j = {
+                                'gene_cluster': gene_cluster_j,
+                                'gene_calls': {genome: gene_caller_id_j},
+                                'type': syn_cluster_type_j,
+                                'layer': group[self.import_values].loc[index_j].to_dict() if add_layers else {}
+                            }
+
+                            edge_attributes = {
+                                'weight': 1.0 + add_weight,
+                                'directions': {genome: 'R'}
+                            }
+
+                            self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
+                            self.pangenome_graph.add_node_to_graph(syn_cluster_j, node_attributes_j)
+                            self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
+
+                    else:
+                        index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuples[0]
+
+                        node_attributes_i = {
+                            'gene_cluster': gene_cluster_i,
+                            'gene_calls':{genome: gene_caller_id_i},
+                            'type': syn_cluster_type_i,
+                            'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
+                        }
+
+                        self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
+
+                    if genome not in number_gene_calls:
+                        number_gene_calls[genome] = len(syn_cluster_tuples)
+                    else:
+                        number_gene_calls[genome] += len(syn_cluster_tuples)
+                else:
+                    self.run.info_single(f"Skipped {contig} due to small contig size.")
+
+            if self.circularize:
+
+                extra_connections = extra_connections[1:] + [extra_connections[0]]
+                num = 0
+                while num < len(extra_connections):
+
+                    index_i, extra_connections_syn_i, extra_connections_type_i, extra_connections_gc_i, extra_connections_id_i = extra_connections[num]
+                    index_j, extra_connections_syn_j, extra_connections_type_j, extra_connections_gc_j, extra_connections_id_j = extra_connections[num+1]
+
+                    num += 2
 
                     edge_attributes = {
                         'weight': 1.0 + add_weight,
                         'directions': {genome: 'R'}
                     }
 
-                    self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
-                    self.pangenome_graph.add_node_to_graph(syn_cluster_j, node_attributes_j)
-                    self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
-
-                # Circularize
-                index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuples[-1]
-                index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j = syn_cluster_tuples[0]
-                self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
-
-            else:
-                index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuples[0]
-
-                node_attributes_i = {
-                    'gene_cluster': gene_cluster_i,
-                    'gene_calls':{genome: gene_caller_id_i},
-                    'type': syn_cluster_type_i,
-                    'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
-                }
-
-                self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
-
-            if genome not in number_gene_calls:
-                number_gene_calls[genome] = len(syn_cluster_tuples)
-            else:
-                number_gene_calls[genome] += len(syn_cluster_tuples)
+                    if extra_connections_syn_i != extra_connections_syn_j:
+                        self.pangenome_graph.add_edge_to_graph(extra_connections_syn_i, extra_connections_syn_j, edge_attributes)
 
         for genome in number_gene_calls:
             self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")
@@ -3499,9 +3529,8 @@ class PangenomeGraphMaster():
         self.run.info_single("Done.")
 
         if num_syn_cluster != num_graph_nodes:
-            raise ConfigError(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
-                              f"here is a very bad idea. We will try to do better next time. For now please check your data to make "
-                              f"sure you did not try some very crazy stuff.")
+            self.run.info_single(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
+                              f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
 
         # 3. step: Check connectivity of the graph
         self.pangenome_graph.run_connectivity_check()

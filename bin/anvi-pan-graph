@@ -50,19 +50,28 @@ if __name__ == '__main__':
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
     groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
     groupB.add_argument('--output-hybrid-genome', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes or ORDERED draft genomes.")
 
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
+    
+
     groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
     groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
     groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
     groupC.add_argument('--import-values', default='', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
-
+    groupC.add_argument('--min_contig_size', default=5, type=int, help = "Description.")
     groupC.add_argument('--max-edge-length-filter', type=int, help = "Description.")
     groupC.add_argument('--gene-cluster-grouping-threshold', type=int, help = "Description.")
     groupC.add_argument('--grouping-compression', type=float, help = "Description.")
+    groupC.add_argument('--start-gene', default='RecA/RadA', type=str, help = "Description.")
+    groupC.add_argument('--alpha', type=float, help = "Description.")
+    groupC.add_argument('--n', type=int, help = "Description.")
+    groupC.add_argument('--beta_g', type=float, help = "Description.")
+    groupC.add_argument('--beta_m', type=float, help = "Description.")
+
 
     args = parser.get_args(parser)
 
