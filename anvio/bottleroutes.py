@@ -1587,8 +1587,8 @@ class BottleApplication(Bottle):
         max_edge_length_filter = payload['maxlength']
         gene_cluster_grouping_threshold = payload['condtr']
         groupcompress = payload['groupcompress']
-        ungroupfrom = payload['ungroupfrom']
-        ungroupto = payload['ungroupto']
+        # ungroupfrom = payload['ungroupfrom']
+        # ungroupto = payload['ungroupto']
         state = payload['state']
         pan_graph_json_path = self.interactive.pan_graph_json_path
 
@@ -1598,8 +1598,8 @@ class BottleApplication(Bottle):
             max_edge_length_filter=max_edge_length_filter,
             gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
             grouping_compression=groupcompress,
-            ungrouping_open = ungroupfrom,
-            ungrouping_close = ungroupto,
+            # ungrouping_open = ungroupfrom,
+            # ungrouping_close = ungroupto,
             load_state = state
         )
 
