@@ -190,6 +190,12 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
         let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
         var q = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
+        // Check if q is null before proceeding
+        if (!q) {
+            console.warn(`No common ancestor found for ${collapse_attributes['left_most']} and ${collapse_attributes['right_most']}`);
+            continue;
+        }
+
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
             if (layerdata[0][j].indexOf(';') > -1) {
@@ -451,6 +457,12 @@ Drawer.prototype.collapse_nodes = function(node_list) {
         let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
         var cnode = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
+        // Check if cnode is null before proceeding
+        if (!cnode) {
+            console.warn(`No common ancestor found for ${collapse_attributes['left_most']} and ${collapse_attributes['right_most']}`);
+            continue;
+        }
+
         var max_edge = 0;
         var sum_size = 0;
         var n = new PreorderIterator(cnode);
@@ -499,6 +511,19 @@ Drawer.prototype.overlay_collapsed_node_layers = function() {
         let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
         var p = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
+        // Check if p is null before proceeding
+        if (!p) {
+            console.warn(`No common ancestor found for ${collapse_attributes['left_most']} and ${collapse_attributes['right_most']}`);
+            continue;
+        }
+
+        // Ensure p has an id before accessing it
+        if (!p.id) {
+            console.warn(`Node does not have an id:`, p);
+            continue;
+        }
+
+        // Proceed with drawing logic
         if (this.settings['tree-type'] == 'circlephylogram') {
             drawPie('tree_bin',
                 'overlay_collapsed_' + p.id,
@@ -522,7 +547,7 @@ Drawer.prototype.overlay_collapsed_node_layers = function() {
                 false);
         }
     }
-}
+};
 
 Drawer.prototype.bind_tree_events = function() {
     var tree_bin = document.getElementById('tree_bin');
@@ -954,6 +979,18 @@ Drawer.prototype.draw_internal_node = function(p) {
 };
 
 Drawer.prototype.draw_collapsed_node = function(p, attributes) {
+    // Check if the node is null
+    if (!p) {
+        console.warn("Attempted to draw a null node.");
+        return;
+    }
+
+    // Check if the node has the xy property
+    if (!p.xy) {
+        console.warn("Node does not have xy property:", p);
+        return;
+    }
+
     var p0 = p.xy
 
     var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');

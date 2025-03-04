@@ -319,12 +319,13 @@ D = {
              'action': 'store_true',
              'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
                      "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
-                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
-                     "given set of contigs prodigal will yield a segmentation fault error due to one or more genes in your "
-                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
-                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
-                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
-                     "will instruct anvi'o to run prodigal without the `-meta` flag, and may resolve this issue for you."}
+                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. Use this flag to run prodigal "
+                     "in 'normal mode'. In some rare cases, for a given set of contigs prodigal will yield a segmentation fault "
+                     "error due to one or more genes in your collections confusing the program when it is used with the "
+                     "`-p meta` flag. While anvi'o developers are not quite sure under what circumstances this happens, we "
+                     "realized that removal of this flag often solves this issue. If you are dealing with such cyrptic errors, "
+                     "the inclusion of `--prodigal-single-mode` will instruct anvi'o to run prodigal without the `-meta` flag, "
+                     "and may resolve this issue for you."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -2806,6 +2807,15 @@ D = {
                      "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
                      "behavior on until you have seen these errors and are absolutely sure that you do not care."}
                 ),
+    'exclude-dashed-reactions': (
+            ['--exclude-dashed-reactions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sometimes KEGG modules include steps like '--' that don't have an associated enzyme with a KOfam model. "
+                     "By default, we mark these steps as absent in our completeness and copy number calculations. If you'd prefer "
+                     "to ignore these '--' steps entirely (resulting in higher estimates), then use this flag. See "
+                     "https://github.com/merenlab/anvio/issues/2393 for a relevant discussion on this :)"}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -3727,6 +3737,12 @@ D = {
                      "This option allows you to enhance the analysis by integrating specific structural data, "
                      "which can provide deeper insights into the pangenomic relationships among the samples."}
         ),
+    'report-all-estimates': (
+            ['--report-all-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to report all C/R estimates, from all domains."}
+    )
 }
 
 # two functions that works with the dictionary above.

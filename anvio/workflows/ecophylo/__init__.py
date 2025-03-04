@@ -428,7 +428,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.hmm_dict = hmm_df.set_index('name').to_dict('index')
 
         if any("-" in s for s in self.hmm_dict.keys()):
-            raise ConfigError(f"Please do not use "-" in your external hmm names in: "
+            raise ConfigError(f"Please do not use '-' in your external hmm names in: "
                               f"{self.hmm_list_path}. It will make our lives "
                               f"easier with Snakemake wildcards :)")
 
