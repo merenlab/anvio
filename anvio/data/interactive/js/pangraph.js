@@ -1504,7 +1504,7 @@ function defineVariables(data) {
   for(var e in all_edges) {
     var edge = all_edges[e];
     var bended = edge['bended']
-    if (bended.length > 0) {
+    if (bended.length > 0 && edge['active'] == true) {
       for (var b in bended) {
         var x = bended[b][0]
         var y = bended[b][1]
