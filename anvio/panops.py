@@ -1217,7 +1217,7 @@ class SyntenyGeneCluster():
         return(db_mining_df)
 
 
-    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta_g, beta_m, output_dir, output_synteny_gene_cluster_dendrogram):
+    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta, gamma, output_dir, output_synteny_gene_cluster_dendrogram):
 
         synteny_gene_cluster_type = ''
 
@@ -1233,7 +1233,7 @@ class SyntenyGeneCluster():
                 for j, gene_cluster_k_mer_contig_position_b in enumerate(gene_cluster_k_mer_contig_positions):
                     gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
                     gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
-                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta_g, beta_m)
+                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta, gamma)
 
             np.fill_diagonal(X, 0.0)
             condensed_X = squareform(X)
@@ -1303,7 +1303,7 @@ class SyntenyGeneCluster():
         return(synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type)
 
 
-    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta_g, beta_m):
+    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta, gamma):
 
         genome_a, contig_a, position_a, gene_caller_id_a, gene_cluster_kmer_a = gene_cluster_k_mer_contig_position_a
         contig_identifier_a = str(int(contig_a.split('_')[-1]))
@@ -1339,9 +1339,9 @@ class SyntenyGeneCluster():
                 if not i == int(len(gene_cluster_kmer_a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         # if n[1:] != m[1:]:
-                        r_val += beta_g
+                        r_val += beta
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        r_val += beta_m
+                        r_val += gamma
                     elif n == m:
                         r_val += 1.0
                     else:
@@ -1351,9 +1351,9 @@ class SyntenyGeneCluster():
                 if not i == int(len(gene_cluster_kmer_a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         # if n[1:] != m[1:]:
-                        f_val += beta_g
+                        f_val += beta
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        f_val += beta_m
+                        f_val += gamma
                     elif n == m:
                         f_val += 1.0
                     else:
@@ -1365,7 +1365,7 @@ class SyntenyGeneCluster():
                 return (1.0 - f_val / div)
 
 
-    def run_contextualize_paralogs_algorithm(self, n=100, alpha=0.75, beta_g=0.5, beta_m=0.25, output_dir='', output_synteny_gene_cluster_dendrogram=False):
+    def run_contextualize_paralogs_algorithm(self, n=100, alpha=0.75, beta=0.5, gamma=0.25, output_dir='', output_synteny_gene_cluster_dendrogram=False):
         """A function that resolves the graph context of paralogs based on gene synteny
         information across genomes and adds this information to the db_mining_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
@@ -1493,7 +1493,7 @@ class SyntenyGeneCluster():
                         break
 
                 else:
-                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta_g, beta_m, output_dir, output_synteny_gene_cluster_dendrogram)
+                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, n, alpha, beta, gamma, output_dir, output_synteny_gene_cluster_dendrogram)
                     for genome, contig, position, gene_caller_id, gene_cluster_id in synteny_gene_cluster_id_contig_positions:
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
                         j += 1
@@ -3167,10 +3167,10 @@ class PangenomeGraphMaster():
         self.start_gene = A('start_gene')
         self.min_contig_size = A('min_contig_size')
                 
-        self.alpha = A('alpha')
         self.n = A('n')
-        self.beta_g = A('beta_g')
-        self.beta_m = A('beta_m')
+        self.alpha = A('alpha')
+        self.beta = A('beta')
+        self.gamma = A('gamma')
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
@@ -3244,7 +3244,7 @@ class PangenomeGraphMaster():
         else:
             # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
             self.sanity_check()
-            self.db_mining_df = SyntenyGeneCluster(self.args).run_contextualize_paralogs_algorithm(self.n, self.alpha, self.beta_g, self.beta_m, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
+            self.db_mining_df = SyntenyGeneCluster(self.args).run_contextualize_paralogs_algorithm(self.n, self.alpha, self.beta, self.gamma, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
 
             if self.start_gene:
                 self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
