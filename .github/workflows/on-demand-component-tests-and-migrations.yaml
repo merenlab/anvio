@@ -1,0 +1,58 @@
+# this is meant to be identical to .github/workflows/daily-component-tests-and-migrations.yaml
+# but one that we can run on-demand.
+name: On-Demand Component Tests and Migrations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: On-Demand Component Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v4
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniconda-version: 'latest'
+        auto-update-conda: true
+        activate-environment: anvio_env
+        environment-file: .conda/environment.yaml
+        python-version: ${{ matrix.python-version }}
+    - name: "Install Bioconductor qvalue package for R"
+      shell: bash -l {0}
+      run: |
+        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
+    - name: "Conda environment summary"
+      shell: bash -l {0}
+      run: |
+        conda info
+        conda list
+    - uses: actions/checkout@v4
+    - name: "Install anvi'o from the codebase"
+      shell: bash -l {0}
+      run: |
+        pip install .
+    - name: "Set Anvi'o interactive directory path"
+      shell: bash -l {0}
+      run: |
+        interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
+        echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - name: "Install npm dependencies for Anvi'o interactive interfaces"
+      shell: bash -l {0}
+      run: |
+        cd ${{ env.interactive_dir_path }}
+        npm install
+        cd -
+    - name: "Run component tests"
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite metagenomics-full --no-interactive
+        anvi-self-test --suite pangenomics --no-interactive
+        anvi-self-test --suite inversions --no-interactive
