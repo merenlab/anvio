@@ -78,7 +78,7 @@ def migrate(db_path):
             "you have run `anvi-reaction-network`, so we left them alone and didn't change "
             "anything in the database besides the version number."
         )
-    message = f"Done! Your pan database is now version 21. This wasn't a biggie. {change_message}"
+    message = f"Done! Your pan database is now version {current_version}. This wasn't a biggie. {change_message}"
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':
