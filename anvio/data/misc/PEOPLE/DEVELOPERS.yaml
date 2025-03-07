@@ -481,11 +481,11 @@
       inst: Helmholtz Munich
       inst_link: https://www.helmholtz-munich.de/en
       current: true
-      
+
 - github: metehaansever
   name: Metehan Sever
   twitter: metehaansever
-  avatar: no-avatar.jpg
+  avatar: metehaansever.jpg
   email: metehaansever@gmail.com
   linkedin: metehaansever
   orcid: 0000-0003-1043-4956
