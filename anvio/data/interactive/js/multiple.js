@@ -124,3 +124,61 @@ $(document).ready(function() {
         );
     });
 });
+
+$(document).ready(function() {
+    $('.select_bins').on('input', function() {
+        var input_value = this.value.toLowerCase();
+        var table = $('#bins-table');
+        var colorPicker = $('#picker_multiple-bins');
+
+        $('#picker_multiple-bins').css('background-color', '#FFFFFF').attr('color', '#FFFFFF');
+        let matchCount = 0;
+
+        table.find('.bin-row').each(function() {
+            var bin_name = $(this).find('.bin-name').val().toLowerCase();
+            var bin_color = $(this).find('.colorpicker').attr('color');
+
+            if (bin_name.includes(input_value)) {
+                $(this).show();
+                matchCount++;
+                colorPicker.css('background-color', bin_color).attr('color', bin_color);
+            } else {
+                $(this).hide();
+            }
+        });
+
+        updateMatchCount(matchCount);
+
+    });
+
+    $('.select_bins').on('keypress', function(e) {
+        if (e.which === 13) {
+            applyColorToBins();
+        }
+    });
+
+    $('#apply_color_button').on('click', function() {
+        applyColorToBins();
+    });
+
+    function applyColorToBins() {
+        var input_value = $('.select_bins').val().toLowerCase();
+        var selectedColor = $('#picker_multiple-bins').attr('color');
+        let matchCount = 0;
+
+        $('#bins-table').find('.bin-row').each(function() {
+            var bin_name = $(this).find('.bin-name').val().toLowerCase();
+            if (bin_name.includes(input_value)) {
+                $(this).find('.colorpicker').css('background-color', selectedColor).attr('color', selectedColor);
+                matchCount++;
+            }
+        });
+
+        updateMatchCount(matchCount);
+
+    }
+
+    function updateMatchCount(count) {
+        $('#apply_color_button').text('Apply (' + count + ' matches)');
+    }
+});
