@@ -129,9 +129,9 @@ $(document).ready(function() {
     $('.select_bins').on('input', function() {
         var input_value = this.value.toLowerCase();
         var table = $('#bins-table');
-        var colorPicker = $('#picker_multiple-bins');
+        var colorPicker = $('#picker_multiple_bins');
 
-        $('#picker_multiple-bins').css('background-color', '#FFFFFF').attr('color', '#FFFFFF');
+        $('#picker_multiple_bins').css('background-color', '#FFFFFF').attr('color', '#FFFFFF');
         let matchCount = 0;
 
         table.find('.bin-row').each(function() {
@@ -163,7 +163,7 @@ $(document).ready(function() {
 
     function applyColorToBins() {
         var input_value = $('.select_bins').val().toLowerCase();
-        var selectedColor = $('#picker_multiple-bins').attr('color');
+        var selectedColor = $('#picker_multiple_bins').attr('color');
         let matchCount = 0;
 
         $('#bins-table').find('.bin-row').each(function() {
