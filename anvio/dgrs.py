@@ -362,17 +362,12 @@ class DGR_Finder:
 
                     # filter snv_panda for min departure from ref and codon position
                     if self.discovery_mode:
-                        self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora!")
-                        self.snv_panda = self.snv_panda.loc[self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage]
+                        self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+                        self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
                     else:
-                        self.snv_panda = self.snv_panda.loc[(self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
-                                                            ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
-
-                    for split in self.split_names_unique:
-                        split_subset = self.snv_panda.loc[self.snv_panda.split_name==split]
-                        for sample in sample_id_list:
-                            split_subset_sample = split_subset.loc[split_subset.sample_id==sample]
-                            if split_subset_sample.shape[0] == 0:
+                        self.snv_panda = self.snv_panda.query(
+                            "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
+                        )
                                 continue
                             contig_name = split_subset_sample.contig_name.unique()[0]
                             pos_list = split_subset_sample.pos_in_contig.to_list()
@@ -503,19 +498,13 @@ class DGR_Finder:
 
                 # filter snv_panda for min departure from ref and codon position
                 if self.discovery_mode:
-                    self.snv_panda = self.snv_panda.loc[self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage]
+                    self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+                    self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
                 else:
-                    self.snv_panda = self.snv_panda.loc[(self.snv_panda.departure_from_reference>=self.departure_from_reference_percentage) &
-                                                        ((self.snv_panda.base_pos_in_codon == 1) | (self.snv_panda.base_pos_in_codon == 2))]
+                    self.snv_panda = self.snv_panda.query(
+                        "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
+                    )
 
-                for split in self.split_names_unique:
-                    split_subset = self.snv_panda.loc[self.snv_panda.split_name==split]
-                    for sample in sample_id_list:
-                        split_subset_sample = split_subset.loc[split_subset.sample_id==sample]
-                        if split_subset_sample.shape[0] == 0:
-                            continue
-                        contig_name = split_subset_sample.contig_name.unique()[0]
-                        pos_list = split_subset_sample.pos_in_contig.to_list()
 
                         if contig_name not in self.all_possible_windows:
                             # If not, initialize it with an empty dictionary
