@@ -378,8 +378,10 @@ class DGR_Finder:
                         if split in self.split_names_unique and sample in sample_id_list:
                             if group.shape[0] == 0:
                                 continue
-                            contig_name = split_subset_sample.contig_name.unique()[0]
-                            pos_list = split_subset_sample.pos_in_contig.to_list()
+
+                            # Extract the contig name and positions for the group
+                            contig_name = group.contig_name.unique()[0]
+                            pos_list = group.pos_in_contig.to_list()
 
                             if contig_name not in self.all_possible_windows:
                                 # If not, initialize it with an empty dictionary
@@ -492,7 +494,7 @@ class DGR_Finder:
                 profile_db = dbops.ProfileDatabase(self.profile_db_path)
                 #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
                 self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
+                self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
                 self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
                 profile_db.disconnect()
