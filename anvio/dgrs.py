@@ -860,6 +860,16 @@ class DGR_Finder:
                         if has_repeat:
                             continue
 
+                        #test for not quite tandem repeats using pytrf
+                        has_repeat_hseq = False
+                        for ssr in pytrf.ATRFinder('name', hseq):
+                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
+                                has_repeat_hseq = True
+
+                        #breakout
+                        if has_repeat_hseq:
+                            continue
+
                         subject_genome_start_position = min(
                             [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
                         subject_genome_end_position = max(
