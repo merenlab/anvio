@@ -368,6 +368,15 @@ class DGR_Finder:
                         self.snv_panda = self.snv_panda.query(
                             "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
                         )
+
+                    # First, group the DataFrame by 'split_name' and 'sample_id' upfront
+                    grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+
+                    # Now iterate over the grouped data
+                    for (split, sample), group in grouped:
+                        # Only process groups that match the desired split and sample
+                        if split in self.split_names_unique and sample in sample_id_list:
+                            if group.shape[0] == 0:
                                 continue
                             contig_name = split_subset_sample.contig_name.unique()[0]
                             pos_list = split_subset_sample.pos_in_contig.to_list()
@@ -505,6 +514,15 @@ class DGR_Finder:
                         "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
                     )
 
+                    # First, group the DataFrame by 'split_name' and 'sample_id' upfront
+                    grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+
+                    # Now iterate over the grouped data
+                    for (split, sample), group in grouped:
+                        # Only process groups that match the desired split and sample
+                        if split in self.split_names_unique and sample in sample_id_list:
+                            if group.shape[0] == 0:
+                                continue
 
                         if contig_name not in self.all_possible_windows:
                             # If not, initialize it with an empty dictionary
