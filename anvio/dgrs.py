@@ -526,44 +526,48 @@ class DGR_Finder:
                             if group.shape[0] == 0:
                                 continue
 
-                        if contig_name not in self.all_possible_windows:
-                            # If not, initialize it with an empty dictionary
-                            self.all_possible_windows[contig_name] = []
-                            # subset pandas df with split name
+                            # Extract the contig name and positions for the group
+                            contig_name = group.contig_name.unique()[0]
+                            pos_list = group.pos_in_contig.to_list()
 
-                        #get list of pos within that split
-                        for i in range(len(pos_list) - 1):
-                            current_pos = pos_list[i]
-                            next_pos = pos_list[i + 1]
-                            distance = next_pos - current_pos
-                            range_start = current_pos
-                            range_end = current_pos
+                            if contig_name not in self.all_possible_windows:
+                                # If not, initialize it with an empty dictionary
+                                self.all_possible_windows[contig_name] = []
+                                # subset pandas df with split name
 
-                            while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
-                                i += 1
+                            #get list of pos within that split
+                            for i in range(len(pos_list) - 1):
                                 current_pos = pos_list[i]
-                                if i + 1 < len(pos_list):
-                                    next_pos = pos_list[i + 1]
-                                    distance = next_pos - current_pos
-                                    range_end = current_pos
-                            if distance <= self.min_dist_bw_snvs:
-                                range_end = next_pos
+                                next_pos = pos_list[i + 1]
+                                distance = next_pos - current_pos
+                                range_start = current_pos
+                                range_end = current_pos
 
-                            if (range_end - range_start) < self.min_range_size:
-                                continue
-                            else:
-                                window_start = range_start - self.variable_buffer_length
-                                window_end = range_end + self.variable_buffer_length
+                                while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
+                                    i += 1
+                                    current_pos = pos_list[i]
+                                    if i + 1 < len(pos_list):
+                                        next_pos = pos_list[i + 1]
+                                        distance = next_pos - current_pos
+                                        range_end = current_pos
+                                if distance <= self.min_dist_bw_snvs:
+                                    range_end = next_pos
 
-                            contig_len = len(self.contig_sequences[contig_name]['sequence'])
+                                if (range_end - range_start) < self.min_range_size:
+                                    continue
+                                else:
+                                    window_start = range_start - self.variable_buffer_length
+                                    window_end = range_end + self.variable_buffer_length
 
-                            if window_start <0:
-                                window_start = 0
-                            if window_end > contig_len:
-                                window_end = contig_len
+                                contig_len = len(self.contig_sequences[contig_name]['sequence'])
 
-                            # Add the window to the contig's list
-                            self.all_possible_windows[contig_name].append((window_start, window_end))
+                                if window_start <0:
+                                    window_start = 0
+                                if window_end > contig_len:
+                                    window_end = contig_len
+
+                                # Add the window to the contig's list
+                                self.all_possible_windows[contig_name].append((window_start, window_end))
 
                 all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
                 # loop to merge overlaps within a given contig
