@@ -631,7 +631,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2024-09-29'
+        self.target_snapshot = self.kegg_snapshot or 'v2025-02-04'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -3582,6 +3582,7 @@ class KeggEstimatorArgs():
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_stray_KOs') else False
         self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
+        self.exclude_dashed_reactions = True if A('exclude_dashed_reactions') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -3875,7 +3876,7 @@ class KeggEstimatorArgs():
         definition in this case. However, in case there is an internal '--' within a more complicated definition, this function
         ignores the part of the string that includes it and processes the remainder of the string before re-joining the two parts.
         It is not able to do this for steps with more than one internal '--', which would require multiple splits and joins, so
-        this case results in an error.
+        this case results in an error. Note that when self.exclude_dashed_reactions is True, we instead remove '--' entirely.
 
         PARAMETERS
         ==========
@@ -3888,6 +3889,8 @@ class KeggEstimatorArgs():
             The same string, with nonessential enzyme accessions (if any) removed.
         """
 
+        if step_string == '--' and self.exclude_dashed_reactions:
+            return ""
         if step_string != '--' and '-' in step_string:
             saw_double_dash = False             # a Boolean to indicate if we found '--' within the step definition
             str_prior_to_double_dash = None     # if we find '--', this variable stores the string that occurs prior to and including this '--'
@@ -3899,8 +3902,12 @@ class KeggEstimatorArgs():
                                           "remove_nonessential_enzymes_from_module_step(). This function is not currently able to handle this "
                                           "situation. Please contact a developer and ask them to turn this into a smarter function. :) ")
                     saw_double_dash = True
-                    str_prior_to_double_dash = step_string[:idx+2]
-                    step_string = step_string[idx+2:] # continue processing the remainder of the string
+                    if self.exclude_dashed_reactions: # remove the internal '--' 
+                        str_prior_to_double_dash = step_string[:idx]
+                        step_string = step_string[idx+3:] # also remove the space after it
+                    else:
+                        str_prior_to_double_dash = step_string[:idx+2]
+                        step_string = step_string[idx+2:] # continue processing the remainder of the string
                     continue
                 elif step_string[idx+1] == '(': # group to eliminate
                     parens_index = idx+1
@@ -4865,17 +4872,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     cur_index += 1
 
                 elif step[cur_index] == "-":
-                    # '--' no associated enzyme case, always False (assumed incomplete)
+                    # '--' no associated enzyme case, by default False (assumed incomplete)
                     if step[cur_index+1] == "-":
-                        step_is_present_condition_statement += "False"
-                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+                        if self.exclude_dashed_reactions: # skip it instead
+                            cur_index += 3 # skip over both '-' AND the following space
+                        else:
+                            step_is_present_condition_statement += "False"
+                            cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
 
                         if anvio.DEBUG:
                             self.run.warning(f"While estimating the stepwise completeness of KEGG module {mnum}, anvi'o saw "
                                              f"'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                             f"associated enzyme. By default, anvi'o is marking this step incomplete. But it may not be, "
-                                             f"and as a result this module might be falsely considered incomplete. So it may be in your "
-                                             f"interest to take a closer look at this individual module.")
+                                             f"associated enzyme. By default, anvi'o marks steps like these incomplete, *unless* "
+                                             f"you are using the flag --exclude-dashed-reactions. But if you aren't using that flag, "
+                                             f"it is possible that this module might be falsely considered incomplete. So it may be in your "
+                                             f"interest to take a closer look at module {mnum}.")
                         if cur_index < len(step) and step[cur_index] != " ":
                             raise ConfigError(f"Serious, serious parsing sadness is happening. We just processed a '--' in "
                                               f"a DEFINITION line for module {mnum} but did not see a space afterwards. Instead, "
@@ -5026,11 +5037,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # 1) steps without associated enzymes, ie --
                     if atomic_step == "--":
                         # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated enzyme.
-                        # we assume that such steps are not complete
+                        # by default, we assume that such steps are not complete
                         has_no_ko_step = True
-                        warning_str = "'--' steps are assumed incomplete"
+                        if self.exclude_dashed_reactions:
+                            warning_str = "'--' step was ignored in the calculation"
+                            num_nonessential_steps_in_path += 1 # this is to ensure we fix the denominator later
+                        else:
+                            warning_str = "'--' steps are assumed incomplete"
+                            atomic_step_copy_number.append(0)
+
                         meta_dict_for_bin[mnum]["warnings"].add(warning_str)
-                        atomic_step_copy_number.append(0)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
@@ -5786,8 +5802,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # base cases
             elif '-' in step_string:
-                if step_string == '--': # no KO profile => no copy number
-                    return 0
+                if step_string == '--': # no KO profile => no copy number (unless user wants to ignore these, in which case
+                        return 0        # they were already removed by remove_nonessential_enzymes_from_module_step() above)
                 else: # contains non-essential KO, should never happen because we eliminated them above
                     raise ConfigError(f"Something is very wrong, because the get_step_copy_number() function found a nonessential "
                                       f"enzyme in the step definition {step_string}")

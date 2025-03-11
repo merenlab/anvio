@@ -896,15 +896,17 @@ Bins.prototype.RedrawBins = function() {
 
     for (let bin_id in this.selections) {
         for (let node of this.selections[bin_id].values()) {
-            if (node === null) return;
-            if (typeof node === 'undefined')
-            {
+            // Check if node is valid and not collapsed - issue #2042
+            if (node === null || typeof node === 'undefined') {
                 this.selections[bin_id].delete(node);
                 continue;
             }
 
+            // Only process leaf nodes that are not collapsed
             if (node.IsLeaf() && !node.collapsed) {
                 leaf_list[node.order] = bin_id;
+                // Ensure the color is set for the leaf node
+                node.SetColor(this.GetBinColor(bin_id));
             }
         }
     }
