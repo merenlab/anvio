@@ -216,9 +216,11 @@ def main(args):
         [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
-                key_header='compound_id', none_value="None", headers=output_header)
+                key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header) 
+    utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt", 
+                do_not_write_key_column=True, none_value="None") 
     
 
 def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
