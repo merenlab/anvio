@@ -7,8 +7,10 @@ import anvio.utils as utils
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
+import anvio.temp_networkwalk as nw
 
 from copy import deepcopy
+from argparse import Namespace
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
@@ -24,16 +26,6 @@ __description__ = "Predicts metabolic interactions between microbes based on the
 
 run = terminal.Run()
 progress = terminal.Progress()
-
-# extremely common metabolites that we want to skip when walking the reaction network
-BASIC_SKIPPED_COMPOUND_LIST = set([
-    'H+', 'H2O', 'CO2', 'Phosphate',
-    'NAD', 'NADH', 'NADP', 'NADPH',
-    'ATP', 'ADP',
-    'CoA', 'Acetyl-CoA', 'Succinyl-CoA',
-    'Pyruvate'
-])
-
 
 @time_program
 def main(args):
@@ -81,8 +73,7 @@ def main(args):
     merged, db_names = net_1._merge_two_genome_networks(net_2)
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
-    global reaction_to_pathways
-    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict()
+    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470", "02024"]), id_selection_prefix = "00")
     compound_to_pathways = {} # we will fill this dict in as we process each compound
 
 
@@ -90,9 +81,13 @@ def main(args):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
         return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
 
-    # loop over all metabolites
+    # dictionaries to store output
     potentially_exchanged_compounds = {}
     unique_compounds = {}
+    pathway_walk_evidence = {}
+    pathway_walk_dict_key = 0
+
+     # loop over all metabolites
     num_compounds_to_process = len(merged.metabolites)
     processed_count=0
     progress.new('Processing compounds', progress_total_items=num_compounds_to_process)
@@ -172,23 +167,43 @@ def main(args):
                 add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             else: # A B or C applies
-                producer_network = net_1
-                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
-                    producer_network = net_2
-                if len(compound_to_pathways[compound_id]) > 1:
-                    # FIXME: report max length for each map (except for a subset of excluded maps like D-amino acid metabolism)
-                    print(f"Found multiple pathway maps for {compound_name}: {compound_to_pathways[compound_id]}")
-                else:
-                    map_id = compound_to_pathways[compound_id].pop()
-                    print(f"Walking through map {map_id}")
-                    max_prior_rxns = walk_pathway_map_for_compound_production(compound_id, map_id, producer_network)
-                    print(f"Found {max_prior_rxns} prior reactions for {compound_name} ({compound_id})")
                 potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
                                                                 'genomes': ",".join(list(genomes_produce.union(genomes_consume))),
                                                                 'produced_by': ",".join(genomes_produce),
                                                                 'consumed_by': ",".join(genomes_consume),
                                                                 }
                 add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+
+                # look for additional evidence by walking through the reaction networks using Pathway Maps
+                producer_network = args.contigs_db_1 # FIXME: allow use of actual ReactionNetwork object here
+                consumer_network = args.contigs_db_2
+                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
+                    producer_network = args.contigs_db_2 #FIXME: allow use of actual ReactionNetwork object here
+                    consumer_network = args.contigs_db_1
+
+                prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
+                for map_id in compound_to_pathways[compound_id]:
+                    print(f"Walking through map {map_id} in producer")
+                    max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
+                    print(f"Found {max_prior_reactions} prior reactions for {compound_name} ({compound_id}) in producer")
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'type': "production",
+                                                                    'organism': producer_network,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': max_prior_reactions}
+                    pathway_walk_dict_key += 1
+                    print(f"Walking through map {map_id} in consumer")
+                    max_posterior_reactions= walk_pathway_map_for_compound(compound_id, map_id, consumer_network, 'consume')
+                    print(f"Found {max_posterior_reactions} posterior reactions for {compound_name} ({compound_id}) in consumer")
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'type': "consumption",
+                                                                    'organism': consumer_network,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': max_posterior_reactions}
+                    pathway_walk_dict_key += 1
+                    if max_prior_reactions and max_posterior_reactions:
+                        prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths) if prod_cons_total_lengths else None
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -201,9 +216,11 @@ def main(args):
         [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
-                key_header='compound_id', none_value="None", headers=output_header)
+                key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header) 
+    utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt", 
+                do_not_write_key_column=True, none_value="None") 
     
 
 def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
@@ -245,10 +262,21 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
 
     return equivalent_AAs
 
-def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, producer_network, specific_skipped_compound_list = set([])):
-    """Walks a KEGG Pathway Map to identify reactions leading to a compound in an organism that produces the compound.
+def get_args_for_pathway_walker(db, pathway_map, fate):
+    """Returns a Namespace with arguments for KGMLNetworkWalker"""
+    
+    walker_args = Namespace()
+    walker_args.contigs_db = db # FIXME: allow this class to accept existing reaction networks instead
+    walker_args.kegg_pathway_number = pathway_map
+    walker_args.compound_fate = fate
+    walker_args.max_gaps = 0 # FIXME: make this a tuneable parameter
+    return walker_args
+ 
+def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
+    """Walks a KEGG Pathway Map to identify reactions leading to a compound in an organism.
 
-    Returns the length of the longest chain of prior reactions in the producing organism.
+    Returns the length of the longest chain of either, (1) prior reactions in the producing organism OR 
+    (2) posterior reactions in the consuming organism.
 
     Parameters
     ==========
@@ -256,87 +284,24 @@ def walk_pathway_map_for_compound_production(compound_id, pathway_map_id, produc
         The ModelSEED ID for the compound of interest
     pathway_map_id : str
         The KEGG Pathway Map to walk through. Should include this compound.
-    producer_network : ReactionNetwork
-        The reaction network of the organism that can produce this compound.
-    specific_skipped_compound_list : set of str
-        An optional set of compound names (not IDs) to skip when walking the pathway map.
+    organism : str
+        Path to the contigs database of the organism that can produce/consume this compound.
+    compound_fate : str
+        One of 'produce' or 'consume'. 'produce' is the default
     """
 
-    if not reaction_to_pathways:
-        raise ConfigError("The function walk_pathway_map_for_compound_production() will not work unless the variable "
-                          "`reaction_to_pathways` is both global and initialized. If you don't understand this message, "
-                          "find a programmer.")
-    skip_compound_list = BASIC_SKIPPED_COMPOUND_LIST.union(specific_skipped_compound_list)
-
-    reaction_chains: list[list[rn.ModelSEEDReaction]] = []
-    reaction_id_chains: list[list[str]] = []
-    reaction_direction_chains: list[list[bool]] = []
-    def get_producing_reactions(
-        compound_id,
-        current_chain: list[rn.ModelSEEDReaction] = None,
-        current_directions: list[bool] = None
-    ):
-        if current_chain is None:
-            current_chain = []
-            current_directions = []
-        producing_reactions = []
-        for reaction in producer_network.reactions.values():
-            if not reaction.kegg_aliases:
-                continue
-            if reaction.modelseed_id in [r.modelseed_id for r in current_chain]:
-                continue
-            # this skips equivalent reactions with different modelseed IDs
-            if set([producer_network.metabolites[c].modelseed_name for c in reaction.compound_ids]).difference(BASIC_SKIPPED_COMPOUND_LIST) in [
-                set([producer_network.metabolites[c].modelseed_name for c in r.compound_ids]).difference(BASIC_SKIPPED_COMPOUND_LIST) for r in producing_reactions
-            ]:
-                continue
-            if set([producer_network.metabolites[c].modelseed_name for c in reaction.compound_ids]).difference(BASIC_SKIPPED_COMPOUND_LIST) in [
-                set([producer_network.metabolites[c].modelseed_name for c in r.compound_ids]).difference(BASIC_SKIPPED_COMPOUND_LIST) for r in current_chain
-            ]:
-                continue
-            pathway_ids = reaction_to_pathways[reaction.modelseed_id]
-            if pathway_map_id not in pathway_ids:
-                continue    # only consider reactions that belong to our Pathway Map of interest
-            # this loop identifies whether the current reaction produces our compound of interest
-            for coefficient, product_id in zip(reaction.coefficients, reaction.compound_ids):
-                if product_id != compound_id:
-                    continue
-                if coefficient > 0:
-                    is_forward = True
-                elif coefficient < 0:
-                    is_forward = False
-                producing_reactions.append(reaction)
-                new_chain = current_chain + [reaction]
-                new_directions = current_directions + [is_forward]
-                break
-            else:
-                continue    # if the reaction doesn't produce our compound, go to the next reaction
-            # this loop identifies the next compound(s) to consider (ie substrates of the current production reaction)
-            for coefficient, reactant_id in zip(reaction.coefficients, reaction.compound_ids):
-                if is_forward and coefficient > 0:
-                    continue
-                if not is_forward and coefficient < 0:
-                    continue
-                compound = producer_network.metabolites[reactant_id]
-                if compound.modelseed_name in skip_compound_list:
-                    continue
-                # recursive call to repeat the walk on the previous compound(s)
-                terminal_chain, terminal_direction_chain = get_producing_reactions(
-                    reactant_id, deepcopy(new_chain), new_directions.copy()
-                )
-                terminal_id_chain = [r.modelseed_id for r in terminal_chain]
-                if terminal_id_chain in reaction_id_chains:
-                    continue    # ignore this chain if we've already seen the exact same one before
-                reaction_chains.append(terminal_chain)
-                reaction_id_chains.append(terminal_id_chain)
-                reaction_direction_chains.append(terminal_direction_chain)
-        else: # if we've looped over all reactions then we stop recursing 
-            return current_chain, current_directions 
-
-    get_producing_reactions(compound_id)
-
-    max_length = max([len(chain) for chain in reaction_chains])
-    return max_length
+    try:
+        wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate)
+        walker = nw.KGMLNetworkWalker(wargs)
+        reaction_chains = walker.get_chains_in_pathway_from_modelseed_compound_id(compound_id)
+        
+        max_length = None
+        if reaction_chains:
+            max_length = max([len(chain.kgml_compound_entries) for chain in reaction_chains])
+        return max_length
+    except AssertionError:
+        print(f"Got AssertionError from pathway walker for {compound_id} in map {pathway_map_id}")
+        return None
 
 
 if __name__ == '__main__':

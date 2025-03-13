@@ -2739,17 +2739,32 @@ class ReactionNetwork:
 
         self.progress.end()
 
-    def _get_reaction_to_pathway_map_dict(self) -> dict[str, set[str]]:
-        """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in."""
+    def _get_reaction_to_pathway_map_dict(self, map_ids_to_exclude: set[str] = None,
+            id_selection_prefix: str = None) -> dict[str, set[str]]:
+        """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in.
+        
+        Parameters
+        ==========
+        map_ids_to_exclude : set[str]
+            A set of pathway map id numbers to exclude from the returned dictionary values
+        id_selection_prefix : str
+            A 2-number prefix for sub-selecting particular pathway map types based on the start of their id numbers.
+            For example, pass "01" to keep global/overview maps, or "00" for regular metabolism maps
+        """
 
         reaction_pathways = {}
         for ko in self.kos.values():
-            pathway_ids = set(ko.pathway_ids)
+            pathway_ids = set([x[3:] for x in set(ko.pathway_ids)]) # keep on the pathway number, not the `map` prefix
             for reaction_id in ko.reaction_ids:
                 try:
                     reaction_pathways[reaction_id].update(pathway_ids)
                 except KeyError:
                     reaction_pathways[reaction_id] = pathway_ids
+                if map_ids_to_exclude:
+                    reaction_pathways[reaction_id] = reaction_pathways[reaction_id].difference(map_ids_to_exclude)
+                if id_selection_prefix:
+                    reaction_pathways[reaction_id] = set([i for i in reaction_pathways[reaction_id] if i[:2] == id_selection_prefix])
+
         return reaction_pathways
 
     def _print_common_overview_statistics(

@@ -44,10 +44,39 @@ class Kaiju(Parser):
                                  },
                            }
 
+        self.check_kaiju_file(files_expected['kaiju_output'])
+
         Parser.__init__(self, 'Kaiju', input_files, files_expected, files_structure)
 
         if not skip_fix_input:
             os.remove(input_files[0])
+
+
+    def check_kaiju_file(self, input_file_path):
+        """Make sure the Kaiju output file has the expected column format"""
+
+        with open(input_file_path) as input_file:
+            while 1:
+                line = input_file.readline()
+
+                if line.startswith('#'):
+                    continue
+
+                if not line:
+                    break
+
+                fields = line.split('\t')
+
+                try:
+                    int(fields[1])
+                except ValueError:
+                    raise ConfigError(f"Something seems to be wrong with your Kaiju output file :( Anvi'o expects the second column of your Kaiju output "
+                                      f"to be a gene caller id, which should look like this: '42'. But the information in the second column of your input "
+                                      f"looks like this instead: '{fields[1]}'. Did you perhaps run Kaiju on your contig sequences rather than your gene "
+                                      f"sequences? It is not a bad idea within itself, but it doesn't work in this case since you are attempting to import "
+                                      f"'gene level taxonomy' into your contigs-db, and thus anvi'o expects things to have taken place at the gene level :/")
+
+        return True
 
 
     def fix_input_file(self, input_file_path):
@@ -149,7 +178,8 @@ class Kaiju(Parser):
 
         self.progress.end()
 
-        random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), 20)])
+        sample_size = min(20, len(taxonomy_dict))  # Handle fewer than 20 phylums
+        random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), sample_size)])
 
         self.run.warning("Good news: anvi'o finished parsing kaiju taxonomy output. Bad news: it has no idea whether "
                          "it did well or not. Because the user can ask kaiju to report certain taxonomic levels, but "
