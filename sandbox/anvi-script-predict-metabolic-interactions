@@ -202,8 +202,9 @@ def main(args):
                                                                     'pathway_map': map_id,
                                                                     'longest_reaction_chain_length': max_posterior_reactions}
                     pathway_walk_dict_key += 1
-                    prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
-                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths)
+                    if max_prior_reactions and max_posterior_reactions:
+                        prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths) if prod_cons_total_lengths else None
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
