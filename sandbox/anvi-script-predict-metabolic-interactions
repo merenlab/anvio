@@ -25,16 +25,6 @@ __description__ = "Predicts metabolic interactions between microbes based on the
 run = terminal.Run()
 progress = terminal.Progress()
 
-# extremely common metabolites that we want to skip when walking the reaction network
-BASIC_SKIPPED_COMPOUND_LIST = set([
-    'H+', 'H2O', 'CO2', 'Phosphate',
-    'NAD', 'NADH', 'NADP', 'NADPH',
-    'ATP', 'ADP',
-    'CoA', 'Acetyl-CoA', 'Succinyl-CoA',
-    'Pyruvate'
-])
-
-
 @time_program
 def main(args):
 
