@@ -28,7 +28,7 @@
     "bootstrap-waitingfor": "1.2.7",
     "d3": "3.5.6",
     "html5sortable": "0.13.3",
-    "jquery": "1.12.4",
+    "jquery": "3.5.0",
     "jquery-ui": "1.12.1",
     "marked": "14.1.2",
     "randomcolor": "0.6.2",
