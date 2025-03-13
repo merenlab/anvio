@@ -592,6 +592,14 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 
 //--------------------------------------------------------------------------------------------------
 function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family, color, maxLength, baseline) {
+    var svg = document.getElementById(svg_id);
+    
+    // Check if the SVG element exists before proceeding
+    if (!svg) {
+        console.warn(`SVG element with ID '${svg_id}' not found. Cannot append rotated text.`);
+        return;
+    }
+
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline: ' + baseline);
@@ -624,7 +632,6 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family
 
     var textNode = document.createTextNode(string);
     text.appendChild(textNode);
-    var svg = document.getElementById(svg_id);
     svg.appendChild(text);
 
     // trim long text
@@ -684,6 +691,13 @@ function drawGuideLine(svg_id, id, angle, start_radius, end_radius) {
 
 function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius, large_arc_flag, color, fill_opacity, pointer_events) {
     var pie = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+    // Check if the SVG element exists before proceeding
+    var svg = document.getElementById(svg_id);
+    if (!svg) {
+        console.warn(`SVG element with ID '${svg_id}' not found. Cannot append pie slice.`);
+        return;
+    }
 
     if (start_angle > end_angle) {
         // swap

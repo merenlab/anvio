@@ -5,7 +5,7 @@ channels:
 - defaults
 dependencies:
 - python=3.10
-- sqlite
+- sqlite=3.46
 - prodigal
 - idba
 - mcl
@@ -33,4 +33,4 @@ dependencies:
 - bioconductor-qvalue
 - meme
 - fastani
-- nodejs
+- nodejs=20.12.2

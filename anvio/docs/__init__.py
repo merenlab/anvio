@@ -956,5 +956,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "rarefaction-curves": {
+        "name": "RAREFACTION CURVES",
+        "type": "SVG",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
 }

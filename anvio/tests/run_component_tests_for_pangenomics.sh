@@ -52,6 +52,10 @@ anvi-pan-genome -g TEST-GENOMES.db \
                 --no-progress \
                 $thread_controller
 
+INFO "Calculating rarefaction curves and Heaps' Law fit for the pangenome"
+anvi-compute-rarefaction-curves -p TEST/TEST-PAN.db \
+                                --output-file rarefaction-curves.pdf
+
 INFO "Importing collections of gene clusters"
 anvi-import-collection -p TEST/TEST-PAN.db \
                        -C test_collection example-gene-clusters-collection.txt \
