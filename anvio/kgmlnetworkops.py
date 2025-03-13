@@ -33,7 +33,9 @@ class Chain:
 class KGMLNetworkWalker:
     def __init__(self, args: Namespace, run: terminal.Run = terminal.Run()):
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
-        self.contigs_db_path: str = args.contigs_db
+        # only one of the following inputs is required
+        self.contigs_db_path: str = A('contigs_db', None)
+        self.network: rn.ReactionNetwork = A('network', None)
         self.kegg_pathway_number: str = args.kegg_pathway_number
         self.compound_fate: str = A('compound_fate', 'both')
         self.max_reactions: int = A('max_reactions', None)
@@ -45,8 +47,14 @@ class KGMLNetworkWalker:
         # Assume that the reaction network was constructed with the KEGG and ModelSEED databases
         # found at the default anvi'o location. Options should be added to accommodate other
         # configurations.
-        constructor = rn.Constructor()
-        self.network = constructor.load_contigs_database_network(self.contigs_db_path, quiet = self.quiet_load)
+        
+        # input sanity check
+        if not self.contigs_db_path and not self.network:
+            raise ConfigError("Either a contigs database path or a loaded ReactionNetwork is required for "
+                              "the KGMLNetworkWalker() class, but neither was provided.")
+        elif not self.network: # only load from the contigs db if there isn't already a network provided
+            constructor = rn.Constructor()
+            self.network = constructor.load_contigs_database_network(self.contigs_db_path, quiet = self.quiet_load)
         self.kegg_data = rn.KEGGData()
         kgml_rn_dir = self.kegg_data.kegg_context.kgml_1x_rn_dir
         kgml_ko_dir = self.kegg_data.kegg_context.kgml_1x_ko_dir

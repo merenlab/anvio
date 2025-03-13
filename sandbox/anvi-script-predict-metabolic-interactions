@@ -175,11 +175,11 @@ def main(args):
                 add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
 
                 # look for additional evidence by walking through the reaction networks using Pathway Maps
-                producer_network = args.contigs_db_1 # FIXME: allow use of actual ReactionNetwork object here
-                consumer_network = args.contigs_db_2
+                producer_network = net_1
+                consumer_network = net_2
                 if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
-                    producer_network = args.contigs_db_2 #FIXME: allow use of actual ReactionNetwork object here
-                    consumer_network = args.contigs_db_1
+                    producer_network = net_2
+                    consumer_network = net_1
 
                 prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
                 for map_id in compound_to_pathways[compound_id]:
@@ -262,11 +262,11 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
 
     return equivalent_AAs
 
-def get_args_for_pathway_walker(db, pathway_map, fate):
+def get_args_for_pathway_walker(net, pathway_map, fate):
     """Returns a Namespace with arguments for KGMLNetworkWalker"""
     
     walker_args = Namespace()
-    walker_args.contigs_db = db # FIXME: allow this class to accept existing reaction networks instead
+    walker_args.network = net
     walker_args.kegg_pathway_number = pathway_map
     walker_args.compound_fate = fate
     walker_args.max_gaps = 0 # FIXME: make this a tuneable parameter
@@ -285,8 +285,8 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
         The ModelSEED ID for the compound of interest
     pathway_map_id : str
         The KEGG Pathway Map to walk through. Should include this compound.
-    organism : str
-        Path to the contigs database of the organism that can produce/consume this compound.
+    organism : ReactionNetwork
+        Loaded reaction network of the organism that can produce/consume this compound.
     compound_fate : str
         One of 'produce' or 'consume'. 'produce' is the default
     """
