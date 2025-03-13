@@ -7,8 +7,10 @@ import anvio.utils as utils
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
+import anvio.temp_networkwalk as nw
 
 from copy import deepcopy
+from argparse import Namespace
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
