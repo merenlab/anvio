@@ -2739,7 +2739,7 @@ class ReactionNetwork:
 
         self.progress.end()
 
-    def _get_reaction_to_pathway_map_dict(self) -> dict[str, set[str]]:
+    def _get_reaction_to_pathway_map_dict(self, map_ids_to_exclude: set[str] = None) -> dict[str, set[str]]:
         """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in."""
 
         reaction_pathways = {}
@@ -2750,6 +2750,9 @@ class ReactionNetwork:
                     reaction_pathways[reaction_id].update(pathway_ids)
                 except KeyError:
                     reaction_pathways[reaction_id] = pathway_ids
+                if map_ids_to_exclude:
+                    reaction_pathways[reaction_id] = reaction_pathways[reaction_id].difference(map_ids_to_exclude)
+
         return reaction_pathways
 
     def _print_common_overview_statistics(
