@@ -82,9 +82,13 @@ def main(args):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
         return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
 
-    # loop over all metabolites
+    # dictionaries to store output
     potentially_exchanged_compounds = {}
     unique_compounds = {}
+    pathway_walk_evidence = {}
+    pathway_walk_dict_key = 0
+
+     # loop over all metabolites
     num_compounds_to_process = len(merged.metabolites)
     processed_count=0
     progress.new('Processing compounds', progress_total_items=num_compounds_to_process)
@@ -164,23 +168,42 @@ def main(args):
                 add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             else: # A B or C applies
-                producer_network = net_1
-                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
-                    producer_network = net_2
-                if len(compound_to_pathways[compound_id]) > 1:
-                    # FIXME: report max length for each map (except for a subset of excluded maps like D-amino acid metabolism)
-                    print(f"Found multiple pathway maps for {compound_name}: {compound_to_pathways[compound_id]}")
-                else:
-                    map_id = compound_to_pathways[compound_id].pop()
-                    print(f"Walking through map {map_id}")
-                    max_prior_rxns = walk_pathway_map_for_compound_production(compound_id, map_id, producer_network)
-                    print(f"Found {max_prior_rxns} prior reactions for {compound_name} ({compound_id})")
                 potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
                                                                 'genomes': ",".join(list(genomes_produce.union(genomes_consume))),
                                                                 'produced_by': ",".join(genomes_produce),
                                                                 'consumed_by': ",".join(genomes_consume),
                                                                 }
                 add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+
+                # look for additional evidence by walking through the reaction networks using Pathway Maps
+                producer_network = args.contigs_db_1 # FIXME: allow use of actual ReactionNetwork object here
+                consumer_network = args.contigs_db_2
+                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
+                    producer_network = args.contigs_db_2 #FIXME: allow use of actual ReactionNetwork object here
+                    consumer_network = args.contigs_db_1
+
+                prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
+                for map_id in compound_to_pathways[compound_id]:
+                    print(f"Walking through map {map_id} in producer")
+                    max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
+                    print(f"Found {max_prior_reactions} prior reactions for {compound_name} ({compound_id}) in producer")
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'type': "production",
+                                                                    'organism': producer_network,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': max_prior_reactions}
+                    pathway_walk_dict_key += 1
+                    print(f"Walking through map {map_id} in consumer")
+                    max_posterior_reactions= walk_pathway_map_for_compound(compound_id, map_id, consumer_network, 'consume')
+                    print(f"Found {max_posterior_reactions} posterior reactions for {compound_name} ({compound_id}) in consumer")
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'type': "consumption",
+                                                                    'organism': consumer_network,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': max_posterior_reactions}
+                    pathway_walk_dict_key += 1
+                    prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths)
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
