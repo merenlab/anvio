@@ -74,7 +74,7 @@ def main(args):
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
     global reaction_to_pathways
-    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470"]))
+    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470", "02024"]))
     compound_to_pathways = {} # we will fill this dict in as we process each compound
 
 
