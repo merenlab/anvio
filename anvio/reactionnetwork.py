@@ -2744,7 +2744,7 @@ class ReactionNetwork:
 
         reaction_pathways = {}
         for ko in self.kos.values():
-            pathway_ids = set(ko.pathway_ids)
+            pathway_ids = set([x[3:] for x in set(ko.pathway_ids)]) # keep on the pathway number, not the `map` prefix
             for reaction_id in ko.reaction_ids:
                 try:
                     reaction_pathways[reaction_id].update(pathway_ids)
