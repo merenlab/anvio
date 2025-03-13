@@ -7,7 +7,7 @@ import anvio.utils as utils
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
-import anvio.temp_networkwalk as nw
+import anvio.kgmlnetworkops as nw
 
 from copy import deepcopy
 from argparse import Namespace
