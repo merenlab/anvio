@@ -41,11 +41,12 @@ class KGMLNetworkWalker:
         self.max_gaps: int = A('max_gaps', 0)
         self.allow_terminal_gaps: bool = A('allow_terminal_gaps', False)
         self.allow_alternative_reaction_gaps: bool = A('allow_alternative_reaction_gaps', False)
+        self.quiet_load: bool = A('quiet_load', False)
         # Assume that the reaction network was constructed with the KEGG and ModelSEED databases
         # found at the default anvi'o location. Options should be added to accommodate other
         # configurations.
         constructor = rn.Constructor()
-        self.network = constructor.load_contigs_database_network(self.contigs_db_path)
+        self.network = constructor.load_contigs_database_network(self.contigs_db_path, quiet = self.quiet_load)
         self.kegg_data = rn.KEGGData()
         kgml_rn_dir = self.kegg_data.kegg_context.kgml_1x_rn_dir
         kgml_ko_dir = self.kegg_data.kegg_context.kgml_1x_ko_dir

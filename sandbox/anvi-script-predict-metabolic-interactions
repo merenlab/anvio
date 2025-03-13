@@ -270,6 +270,7 @@ def get_args_for_pathway_walker(db, pathway_map, fate):
     walker_args.kegg_pathway_number = pathway_map
     walker_args.compound_fate = fate
     walker_args.max_gaps = 0 # FIXME: make this a tuneable parameter
+    walker_args.quiet_load = True
     return walker_args
  
 def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
