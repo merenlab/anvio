@@ -746,14 +746,13 @@ class GapAnalyzer:
         # toward the edges of shorter chains.
         # 1. Loop through the gaps introduced into new chains. Depending on the input chains (new
         #    more-gapped and old less-gapped), this can be one or more gaps.
-        # 2. Inner loop through the new chains containing the gap (or set of gaps). (Chains may
-        #    share gap KGML reactions that branch to multiple KGML comopunds, yielding multiple
+        # 2. Inner loop through the new chains containing the gap (or set of gaps). (New chains may
+        #    share gap KGML reactions that branch to multiple KGML compounds, yielding multiple
         #    chains sharing the same gaps.)
         # 3. Ignore new chains that, beside gap reactions, contain the same reactions as an old
         #    chain. Gaps in the new chain create "shortcuts" in what is otherwise the same chain.
         # 4. Find the longest contiguous segments of old chains that between them contain the
-        #    non-gap reactions of the new chain. Track which old chains contribute these longest
-        #    segments.
+        #    non-gap reactions of the new chain.
         # 5. Sort the longest contiguous segments in ascending order of length (breaking ties by
         #    index position in the chain). This is the last step in the inner loop.
         # 6. Sort new chains sharing the same gap reactions (new chains that only differ due to at
@@ -799,35 +798,29 @@ class GapAnalyzer:
 
         gap_unique_segments: dict[tuple[str], list[tuple[int]]] = {}
         for gap_kgml_reaction_ids, shared_gaps in self.gap_relations.items():
-            print(gap_kgml_reaction_ids)
             new_chain_unique_segments: dict[int, list[tuple[int]]] = {}
             for new_chain_index, chain_evolution in enumerate(shared_gaps.chain_evolutions):
                 new_chain = chain_evolution.new_chain
 
-                nongap_kgml_reaction_ids = set([
-                    kgml_reaction.id for kgml_reaction, is_gap in
-                    zip(new_chain.kgml_reactions, new_chain.gaps) if not is_gap
+                kgml_reaction_ids_absent_new_gaps = set([
+                    kgml_reaction.id for kgml_reaction in new_chain.kgml_reactions
+                    if kgml_reaction.id not in gap_kgml_reaction_ids
                 ])
                 for old_chain in chain_evolution.old_chains:
-                    if not nongap_kgml_reaction_ids.difference(
+                    if not kgml_reaction_ids_absent_new_gaps.difference(
                         set([kgml_reaction.id for kgml_reaction in old_chain.kgml_reactions])
                     ):
-                        is_nongap_redundant = True
+                        is_difference_in_new_gaps = True
                         break
                 else:
-                    is_nongap_redundant = False
-                if is_nongap_redundant:
+                    is_difference_in_new_gaps = False
+                if is_difference_in_new_gaps:
                     continue
 
-                segments: list[tuple[int]] = []
-                for overlap in chain_evolution.overlaps:
-                    start_index = overlap[0][0]
-                    previous_index = overlap[0][0]
-                    for indices in overlap:
-                        index = indices[0]
-                        kgml_reaction_id = new_chain.kgml_reactions[index].id
-                        if index - previous_index > 1:
-                            segments.append(tuple(range(start_index, index + 1)))
+                segments = [
+                    tuple([indices[0] for indices in overlap])
+                    for overlap in chain_evolution.overlaps
+                ]
 
                 unique_segments: list[tuple[int]] = []
                 for i, segment in enumerate(segments):
@@ -844,7 +837,9 @@ class GapAnalyzer:
             if not new_chain_unique_segments:
                 continue
 
-            ranked_new_chain_indices = rank_new_chains_by_segment_lengths(new_chain_unique_segments)
+            ranked_new_chain_indices: list[int] = rank_new_chains_by_segment_lengths(
+                new_chain_unique_segments
+            )
             gap_unique_segments[gap_kgml_reaction_ids] = new_chain_unique_segments[
                 ranked_new_chain_indices[0]
             ]
@@ -880,6 +875,8 @@ class GapAnalyzer:
                 kgml_reaction.id for kgml_reaction in more_gapped_chain.kgml_reactions
             ]
 
+            overlaps: list[tuple[tuple[int, int]]] = []
+            less_gapped_chains: list[Chain] = []
             for less_gapped_chain in self.less_gapped_chains:
                 if more_gapped_chain.is_consumed != less_gapped_chain.is_consumed:
                     continue
@@ -902,9 +899,16 @@ class GapAnalyzer:
                             overlap.append((i, j))
                 if not overlap:
                     continue
+                less_gapped_chains.append(less_gapped_chain)
+                overlaps.append(tuple(overlap))
 
-                chain_evolution.old_chains.append(less_gapped_chain)
-                chain_evolution.overlaps.append(tuple(overlap))
+            sorted_overlaps = sorted(overlaps, key=lambda overlap: overlap[0][0])
+            sorted_less_gapped_chains: list[Chain] = []
+            for overlap in sorted_overlaps:
+                overlap: tuple[tuple[int]]
+                sorted_less_gapped_chains.append(less_gapped_chains[overlaps.index(overlap)])
+            chain_evolution.old_chains = sorted_less_gapped_chains
+            chain_evolution.overlaps = sorted_overlaps
 
             for old_chain, overlap in zip(chain_evolution.old_chains, chain_evolution.overlaps):
                 if len(overlap) == len(old_chain.kgml_reactions):
