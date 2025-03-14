@@ -3,7 +3,6 @@
 """A program that computes rarefaction curves for a given pan-db"""
 
 import sys
-import argparse
 
 import anvio
 
@@ -37,10 +36,11 @@ if __name__ == '__main__':
     groupO = parser.add_argument_group('OUTPUT', "This program can generate a visualization of the rarefaction curves for you. If you provide nothing, it will simply print out"
                         "the Heaps' Law fit values for alpha and K for you to interpret. The format of the output file will be determined automatically by the extension. So if "
                         "you name your output file as `output.svg` you will get an SVG file, and if you name it as `output.pdf`, you will get a PDF.")
-    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupO.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     groupE = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "You want convenience and control? You have it (but not much).")
     groupE.add_argument('--iterations', default=100, type=int, help="How many subsampling iterations you wish to be performed? The default is %(default)d. Don't go below 10 :)")
+    groupE.add_argument('--skip-output-files', default=False, action="store_true", help="Do not bother generating any output files, just report Heaps' fit values.")
 
     args = parser.get_args(parser)
 
