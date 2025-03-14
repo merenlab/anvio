@@ -799,7 +799,6 @@ class GapAnalyzer:
 
         gap_unique_segments: dict[tuple[str], list[tuple[int]]] = {}
         for gap_kgml_reaction_ids, shared_gaps in self.gap_relations.items():
-            print(gap_kgml_reaction_ids)
             new_chain_unique_segments: dict[int, list[tuple[int]]] = {}
             for new_chain_index, chain_evolution in enumerate(shared_gaps.chain_evolutions):
                 new_chain = chain_evolution.new_chain
