@@ -880,6 +880,8 @@ class GapAnalyzer:
                 kgml_reaction.id for kgml_reaction in more_gapped_chain.kgml_reactions
             ]
 
+            overlaps: list[tuple[tuple[int, int]]] = []
+            less_gapped_chains: list[Chain] = []
             for less_gapped_chain in self.less_gapped_chains:
                 if more_gapped_chain.is_consumed != less_gapped_chain.is_consumed:
                     continue
@@ -902,9 +904,16 @@ class GapAnalyzer:
                             overlap.append((i, j))
                 if not overlap:
                     continue
+                less_gapped_chains.append(less_gapped_chain)
+                overlaps.append(tuple(overlap))
 
-                chain_evolution.old_chains.append(less_gapped_chain)
-                chain_evolution.overlaps.append(tuple(overlap))
+            sorted_overlaps = sorted(overlaps, key=lambda overlap: overlap[0][0])
+            sorted_less_gapped_chains: list[Chain] = []
+            for overlap in sorted_overlaps:
+                overlap: tuple[tuple[int]]
+                sorted_less_gapped_chains.append(less_gapped_chains[overlaps.index(overlap)])
+            chain_evolution.old_chains = sorted_less_gapped_chains
+            chain_evolution.overlaps = sorted_overlaps
 
             for old_chain, overlap in zip(chain_evolution.old_chains, chain_evolution.overlaps):
                 if len(overlap) == len(old_chain.kgml_reactions):
