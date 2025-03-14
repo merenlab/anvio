@@ -213,11 +213,8 @@ def main(args):
         progress.increment(increment_to=processed_count)
     
     progress.end()
-    print(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.")        
-    
-    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by'] + \
-        [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
-        [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+    run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.", 
+                header='RESULTS', lc='green')
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
