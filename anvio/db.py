@@ -541,6 +541,7 @@ class DB:
                 self.run.info_single(f"{sql_query}", nl_after=1, cut_after=None, level=0, mc='yellow')
                 sql_exec_timer = terminal.Timer()
 
+            self.execute_safely(self.cursor.executemany, sql_query, chunk)
 
             if anvio.DISPLAY_DB_CALLS:
                 self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
