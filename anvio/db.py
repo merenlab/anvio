@@ -90,6 +90,14 @@ class DB:
         self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.is_table_requires_unique_entry_id(table_name)
         self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
+        # if a database is locked, which happens occasionally when we are working on HPCs and multiple parallel
+        # processes are trying to write to the same database, this class will try to catch 'database locked'
+        # errors and wait a little (as in 'self.retry_delay' seconds) before trying to do its job again. If
+        # the same thing happens way too many times (as in more than 'self.max_retries' times), it will
+        # give up and raise a 'max tries reached error'
+        self.max_retries = 100 # times
+        self.retry_delay = 15 # seconds
+
         if new_database:
             filesnpaths.is_output_file_writable(db_path)
         else:
@@ -443,6 +451,26 @@ class DB:
         else:
             # it is already disconnected
             pass
+
+
+    def execute_safely(self, func, *args):
+        """Execute an SQLite instruction safely and by handlng database locked errors gracefully"""
+
+        retries = 0
+        while retries < self.max_retries:
+            try:
+                return func(*args)
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e):
+                    retries += 1
+                    self.run.info_single(f"The database at {self.db_path} is locked :/ Retrying the function `{func.__name__}` "
+                                         f"again in {self.retry_delay} seconds (attempt {retries} of {self.max_retries})...",
+                                         cut_after=None, level=0, mc='red')
+                    time.sleep(self.retry_delay)
+                else:
+                    raise ConfigError(f"Someone is very upset with your database: {e}")
+
+        raise ConfigError("Database has been locked for too long, and max retries exceeded :(")
 
 
     def _exec(self, sql_query, value=None):
