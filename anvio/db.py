@@ -446,7 +446,7 @@ class DB:
     def disconnect(self):
         """Disconnect from the database, committing any pending transactions and closing the connection."""
         if self.db_connected:
-            self.execute_safely(self.conn.commit)
+            self.commit()
             self.execute_safely(self.conn.close)
             self.db_connected = False
         else:
@@ -460,7 +460,8 @@ class DB:
         retries = 0
         while retries < self.max_retries:
             try:
-                return func(*args)
+                ret_val = func(*args)
+                return ret_val
             except sqlite3.OperationalError as e:
                 if "database is locked" in str(e):
                     retries += 1
@@ -515,6 +516,8 @@ class DB:
         if DISPLAY_DB_CALLS:
             self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
+        self.commit()
+
         return ret_val
 
 
@@ -547,6 +550,8 @@ class DB:
                 self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
             chunk_counter += 1
+
+        self.commit()
 
         return True
 
