@@ -439,14 +439,15 @@ class DB:
 
     def commit(self):
         """Commit any pending transactions to the database."""
-        self.conn.commit()
+
+        self.execute_safely(self.conn.commit)
 
 
     def disconnect(self):
         """Disconnect from the database, committing any pending transactions and closing the connection."""
         if self.db_connected:
-            self.conn.commit()
-            self.conn.close()
+            self.execute_safely(self.conn.commit)
+            self.execute_safely(self.conn.close)
             self.db_connected = False
         else:
             # it is already disconnected
@@ -507,14 +508,13 @@ class DB:
             sql_exec_timer = terminal.Timer()
 
         if value:
-            ret_val = self.cursor.execute(sql_query, value)
+            ret_val = self.execute_safely(self.cursor.execute, sql_query, value)
         else:
-            ret_val = self.cursor.execute(sql_query)
+            ret_val = self.execute_safely(self.cursor.execute, sql_query)
 
         if DISPLAY_DB_CALLS:
             self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
-        self.commit()
         return ret_val
 
 
@@ -541,7 +541,6 @@ class DB:
                 self.run.info_single(f"{sql_query}", nl_after=1, cut_after=None, level=0, mc='yellow')
                 sql_exec_timer = terminal.Timer()
 
-            self.cursor.executemany(sql_query, chunk)
 
             if anvio.DISPLAY_DB_CALLS:
                 self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
