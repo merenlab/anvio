@@ -2460,6 +2460,8 @@ class DirectedForce():
             new_data['weight'] += old_data['weight']
             new_data['direction'] = 'B'
 
+            print('Both directed edge case!')
+
         return(new_data)
 
 

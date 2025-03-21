@@ -770,6 +770,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var saturation = 0
   }
 
+  var angle = parseInt($('#angle')[0].value);
   var outer_margin = parseInt($('#outer_margin')[0].value);
   var inner_margin = parseInt($('#inner_margin')[0].value);
   var node_size = parseInt($('#size')[0].value);
@@ -790,7 +791,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var trna_color = $('#trna_color')[0].value;
   var layer_color = $('#layer_color')[0].value;
 
-  var theta = 270 / (global_x)
+  var theta = angle / (global_x)
   var start_offset = parseInt($('#inner')[0].value);
   // var start_offset = 0
   
@@ -935,7 +936,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       var [circle_g_x, circle_g_y] = transform(global_x, arrow_start + arrow_thickness * 2, theta)
       var [circle_e_x, circle_e_y] = transform(global_x - pointer_length, arrow_start, theta)
 
-      if ((global_x) * theta >= 180) {
+      if ((global_x) * theta > 180) {
         var arc_flag = 1
       } else {
         var arc_flag = 0
