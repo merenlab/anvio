@@ -96,13 +96,24 @@ class RarefactionAnalysis:
 
         utils.is_pan_db(self.pan_db_path)
 
+        # let's learn a few things form the pan-db.
         pan_db = dbops.PanDatabase(self.pan_db_path)
         self.gene_cluster_data = pan_db.db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
         self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
         self.num_genomes = len(self.unique_genomes)
-        self.output_file_prefix = pan_db.meta['project_name']
+        self.pan_project_name = pan_db.meta['project_name']
         pan_db.disconnect()
 
+        # here we will set the output file prefix (so we can define all the output file names already)
+        if self.skip_output_files:
+            self.run.info("Output files", "None will be generated as per user request", mc='red')
+        else:
+            if self.output_file_prefix:
+                self.run.info("Output file prefix", self.output_file_prefix, mc='green')
+            else:
+                self.run.info("Output file prefix", f"{self.pan_project_name} (automatically set by anvi'o)", mc="cyan")
+
+        # output file paths -- whether they will be used or not
         J = lambda x: None if self.skip_output_files else os.path.join(self.output_file_prefix.rstrip('/') + '-' + x)
         self.rarefaction_curves_figure = J('rarefaction-curves.svg')
         self.rarefaction_pangenome_txt = J('rarefaction-pangenome-averages.txt')
@@ -110,18 +121,14 @@ class RarefactionAnalysis:
         self.rarefaction_core_txt = J('rarefaction-core-averages.txt')
         self.iterations_core_txt = J('rarefaction-core-iterations.txt')
 
+        # if output files will be produced, let's make sure the user has the write
+        # permissions to these destinations
+        if not self.skip_output_files:
+            filesnpaths.is_output_file_writable(self.rarefaction_pangenome_txt)
+
+        # some insights into what's up on the terminal
         self.run.info("Number of genomes found", self.num_genomes)
         self.run.info("Number of iterations to run", self.iterations)
-
-        if self.skip_output_files:
-            self.run.info("Output files", "None will be generated as per user request", mc='red')
-        else:
-            if self.output_file_prefix:
-                self.run.info("Output file prefix", self.output_file_prefix, mc='green')
-            else:
-                self.run.info("Output file prefix", f"{self.output_file_prefix} (automatically set by anvi'o)", mc="cyan")
-
-            filesnpaths.is_output_file_writable(self.rarefaction_pangenome_txt)
 
 
     def calc_rarefaction_curve(self, target="all"):
