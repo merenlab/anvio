@@ -25,6 +25,8 @@ import random
 
 from itertools import chain
 
+from itertools import chain
+from scipy.optimize import curve_fit
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -34,6 +36,7 @@ from itertools import chain
 import multiprocess as multiprocessing
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -71,6 +74,212 @@ aligners = Aligners()
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
+
+
+class RarefactionAnalysis:
+    """Takes in a pangenome, calculates rarefaction curves and Heaps' Law fit to assess the openness of the pangenome.
+
+        >>> import argparse
+        >>> args = argparse.Namespace(pan_db="PATH/TO/PAN.db", iterations=100, output_file='rarefaction_curves.svg')
+        >>> rarefaction_curves = RarefactionAnalysis(args)
+        >>> k, alpha = rarefaction_curves.process()
+
+    A client of this class is the program `anvi-compute-rarefaction-curves`
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.iterations = A('iterations') or 100
+        self.output_file_prefix = A('output_file_prefix')
+        self.skip_output_files= A('skip_output_files')
+
+        # to be filled from the pan-db
+        self.gene_cluster_data = None
+        self.unique_genomes = None
+        self.num_genomes = None
+
+        # Load gene cluster data
+        self.load_data()
+
+
+    def load_data(self):
+        """Load gene cluster data from pan-db, setup essential variables, sanity check."""
+
+        utils.is_pan_db(self.pan_db_path)
+
+        # let's learn a few things form the pan-db.
+        pan_db = dbops.PanDatabase(self.pan_db_path)
+        self.gene_cluster_data = pan_db.db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
+        self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
+        self.num_genomes = len(self.unique_genomes)
+        self.pan_project_name = pan_db.meta['project_name']
+        pan_db.disconnect()
+
+        # here we will set the output file prefix (so we can define all the output file names already)
+        if self.skip_output_files:
+            self.run.info("Output files", "None will be generated as per user request", mc='red')
+        else:
+            if self.output_file_prefix:
+                self.run.info("Output file prefix", self.output_file_prefix, mc='green')
+            else:
+                self.run.info("Output file prefix", f"{self.pan_project_name} (automatically set by anvi'o)", mc="cyan")
+
+        # output file paths -- whether they will be used or not
+        J = lambda x: None if self.skip_output_files else os.path.join(self.output_file_prefix.rstrip('/') + '-' + x)
+        self.rarefaction_curves_figure = J('rarefaction-curves.svg')
+        self.rarefaction_pangenome_txt = J('rarefaction-pangenome-averages.txt')
+        self.iterations_pangenome_txt = J('rarefaction-pangenome-iterations.txt')
+        self.rarefaction_core_txt = J('rarefaction-core-averages.txt')
+        self.iterations_core_txt = J('rarefaction-core-iterations.txt')
+
+        # if output files will be produced, let's make sure the user has the write
+        # permissions to these destinations
+        if not self.skip_output_files:
+            filesnpaths.is_output_file_writable(self.rarefaction_pangenome_txt)
+
+        # some insights into what's up on the terminal
+        self.run.info("Number of genomes found", self.num_genomes)
+        self.run.info("Number of iterations to run", self.iterations)
+
+
+    def calc_rarefaction_curve(self, target="all"):
+        """Calculates rarefaction curves for all gene clusters (target='all') or core gene clusters (target='core')."""
+
+        if target not in ['all', 'core']:
+            raise ConfigError("The target variable must either be set to 'all', or 'core'. It is not negotiable!")
+
+        results = []
+        iteration_results = []  # we store individual individual iteration values to be able to plot them later
+
+        for n in range(1, self.num_genomes + 1):
+            sampled_cluster_counts = []
+
+            for i in range(self.iterations):
+                self.progress.increment()
+                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at teration {i + 1} of {self.iterations}")
+                sampled_genomes = np.random.choice(self.unique_genomes, n, replace=False)
+                sampled_data = self.gene_cluster_data[self.gene_cluster_data["genome_name"].isin(sampled_genomes)]
+
+                cluster_counts = sampled_data.groupby("gene_cluster_id")["genome_name"].nunique()
+
+                if target == "core":
+                    count = sum(cluster_counts == n)
+                else:
+                    count = cluster_counts.shape[0]
+
+                sampled_cluster_counts.append(count)
+                iteration_results.append([n, count])  # Store each iteration result
+
+            results.append([n, np.mean(sampled_cluster_counts), np.std(sampled_cluster_counts)])
+
+        df_summary = pd.DataFrame(results, columns=["num_genomes", "avg_num_gene_clusters", "standard_deviation"])
+        df_iterations = pd.DataFrame(iteration_results, columns=["num_genomes", "GeneClusters"])
+
+        return df_summary, df_iterations
+
+
+    def heap_law(self, x, k, alpha):
+        """Heaps' Law function: V(N) = K * N^alpha"""
+
+        return k * np.power(x, alpha)
+
+
+    def fit_heaps_law(self, rarefaction_data):
+        """Fits Heaps' Law parameters to rarefaction data."""
+
+        x_data = rarefaction_data["num_genomes"]
+        y_data = rarefaction_data["avg_num_gene_clusters"]
+
+        # Fit using non-linear least squares
+        popt, _ = curve_fit(self.heap_law, x_data, y_data, p0=[1, 0.5])
+        k, alpha = popt
+        self.run.info("Heaps' Law parameters estimated", f"K={k:.4f}, alpha={alpha:.4f}")
+
+        return k, alpha
+
+
+    def store_results_as_txt(self):
+        """Generate text files for GC gain averages per num genome and each iteration of sampling"""
+
+        self.rarefaction_pangenome.to_csv(self.rarefaction_pangenome_txt, sep ='\t', index=False)
+        self.iterations_pangenome.to_csv(self.iterations_pangenome_txt, sep ='\t', index=False)
+        self.rarefaction_core.to_csv(self.rarefaction_core_txt, sep ='\t', index=False)
+        self.iterations_core.to_csv(self.iterations_core_txt, sep ='\t', index=False)
+
+
+    def store_results_as_svg(self):
+        """Stores a nice visualization of the rarefaction curves"""
+
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        # Generate fitted values for plotting
+        x_fit = np.linspace(1, self.num_genomes, 100)
+        y_fit = self.heap_law(x_fit, self.k, self.alpha)
+
+        plt.figure(figsize=(10, 6))
+
+        # Plot individual iteration points with transparency
+        sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_pangenome, color="blue", alpha=0.05)
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_pangenome, color="blue", label="All gene clusters")
+
+        sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_core, color="red", alpha=0.05)
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_core, color="red", label="Core gene clusters")
+
+        # Overlay Heaps’ Law fit
+        plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heaps’ Law Fit (K={self.k:.2f}, α={self.alpha:.2f})")
+
+        plt.title(f"Rarefaction Curves with Heaps' Law Fit (with {self.iterations} iterations)")
+        plt.xlabel("Number of Genomes")
+        plt.ylabel("Number of Gene Clusters")
+        plt.legend()
+        plt.grid()
+        plt.savefig(self.rarefaction_curves_figure)
+        plt.close()
+
+
+    def store_output_files(self):
+        if self.skip_output_files:
+            # no output files for you
+            return
+
+        self.progress.new("Storing results")
+        self.progress.update('.. as text')
+        self.store_results_as_txt()
+        self.progress.update('.. as SVG')
+        self.store_results_as_svg()
+        self.progress.end()
+
+        self.run.warning(None, header="OUTPUT FILES", lc="cyan")
+        self.run.info("Rarefaction curves", self.rarefaction_curves_figure)
+        self.run.info("GC gain per genome for core (averages)", self.rarefaction_core_txt)
+        self.run.info("GC gain per genome for core (each iteration)", self.iterations_core_txt)
+        self.run.info("GC gain per genome for all (averages)", self.rarefaction_pangenome_txt)
+        self.run.info("GC gain per genome for all (each iteration)", self.iterations_pangenome_txt)
+
+
+    def process(self):
+        """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heaps' Law fit."""
+
+        # get all the data needed to calculate Heaps' Law fit and visualize things
+        self.progress.new("Calculating Rarefaction Curves", progress_total_items=(self.num_genomes * self.iterations * 2))
+        self.progress.update('...')
+        self.rarefaction_pangenome, self.iterations_pangenome = self.calc_rarefaction_curve(target="all")
+        self.rarefaction_core, self.iterations_core = self.calc_rarefaction_curve(target="core")
+        self.progress.end()
+
+        # Fit Heaps' Law
+        self.k, self.alpha = self.fit_heaps_law(self.rarefaction_pangenome)
+
+        # store output files
+        self.store_output_files()
+
+        return (self.k, self.alpha)
 
 
 class Pangenome(object):

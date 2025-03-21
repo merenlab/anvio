@@ -202,8 +202,6 @@ $(document).ready(function() {
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
     }
 
-    scaleBarDrawer();
-
     initData();
         // Sidebar Hide/Show button 
         $(".sidebar-toggle").click(function() {
@@ -377,55 +375,6 @@ function initData() {
     $('#show-text-option').hide()
 }
 
-function scaleBarDrawer() {
-    const panelCenter = document.getElementById('panel-center');
-    const scaleValue = document.getElementById('scale-value');
-    const scaleBar = document.getElementById('scale-bar');
-
-    let scale = 1;
-    let step = 0;
-    const stepsPerUpdate = 10;
-    const minScaleBarWidth = 40;
-    const maxScaleBarWidth = 100;
-
-    const updateScaleBar = () => {
-        const decimalPlaces = Math.max(0, Math.ceil(Math.log10(1 / scale)));
-        scaleValue.textContent = scale.toFixed(decimalPlaces);
-
-        if (scale != 0) {            
-            // Calculate the scale bar width based on the step
-            const stepRatio = Math.abs(step % stepsPerUpdate) / stepsPerUpdate;
-            const scaleBarWidth = minScaleBarWidth + stepRatio * (maxScaleBarWidth - minScaleBarWidth);
-            scaleBar.style.width = `${scaleBarWidth}px`;           
-        }
-    };
-
-    const onWheel = (event) => {
-        event.preventDefault();
-
-        if (event.deltaY < 0) {
-            // Zoom in
-            step--;
-        } else {
-            // Zoom out
-            step++;
-        }
-
-        if (Math.abs(step) >= stepsPerUpdate) {
-            if (step < 0) {
-                scale /= 10;
-            } else {
-                scale *= 10;
-            }
-            step = 0; // Reset step after updating the scale
-        }
-
-        updateScaleBar();
-    };
-
-    panelCenter.addEventListener('wheel', onWheel);
-    updateScaleBar();
-}
 
 function drawInlineScaleBar() {
     var settings = serializeSettings();
