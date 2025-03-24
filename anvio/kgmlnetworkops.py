@@ -166,7 +166,7 @@ class KGMLNetworkWalker:
         Chains can contain up to this number of reactions not found in the reaction network.
 
     allow_terminal_gaps : bool, False
-        Chains can start or end with reactions not found in the network network if True.
+        Chains can start or end with reactions not found in the reaction network if True.
 
     allow_alternative_reaction_gaps : bool, False
         If a chain links two compounds by a reaction in the reaction network, and there are other
