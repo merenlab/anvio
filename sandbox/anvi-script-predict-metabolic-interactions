@@ -270,7 +270,7 @@ def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     walker_args.kegg_pathway_number = pathway_map
     walker_args.compound_fate = fate
     walker_args.max_gaps = gaps
-    walker_args.quiet_load = True
+    walker_args.verbose = False
     return walker_args
  
 def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
@@ -290,6 +290,8 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
     compound_fate : str
         One of 'produce' or 'consume'. 'produce' is the default
     """
+    if not nw.KGMLNetworkWalker.check_pathway_number(pathway_map_id):
+        return None
 
     try:
         wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate, args.maximum_gaps)

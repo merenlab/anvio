@@ -105,19 +105,23 @@ class KGMLNetworkWalker:
     Attributes
     ==========
     kegg_pathway_number : str
-        Numerical ID of the pathway to walk.
+        Numerical ID of the pathway to walk. The pathway must have a KEGG reaction (RN) type KGML
+        file available. Valid pathways are in categories 1.0 - 1.11 as of the March 3, 2025 release
+        of KEGG (see https://www.genome.jp/kegg/pathway.html).
+
+    kegg_data : anvio.reactionnetwork.KEGGData
+        Contains information on an anvi'o KEGG installation, which is assumed to be at the default
+        location. A reaction network stored in the network attribute should be constructed from that
+        version of the database.
 
     kgml_rn_pathway : anvio.kgml.Pathway
-        KEGG reaction (RN) type KGML file for the ID number loaded from the default anvi'o
-        installation location.
+        Loaded KEGG reaction (RN) type KGML file for the ID number.
 
     kgml_ko_pathway : anvio.kgml.Pathway
-        KEGG KO type KGML file for the ID number loaded from the default anvi'o installation
-        location.
+        Loaded KEGG KO type KGML file for the ID number.
 
     kgml_ec_pathway : anvio.kgml.Pathway
-        KEGG EC number type KGML file for the ID number loaded from the default anvi'o installation
-        location.
+        Loaded KEGG EC number type KGML file for the ID number.
 
     rn_pathway_kgml_compound_id_to_kgml_reactions : dict[str, list[kgml.Reaction]]
         From the RN type KGML pathway, map KGML compound IDs to the IDs of KGML reactions involving
@@ -143,8 +147,7 @@ class KGMLNetworkWalker:
 
     network : anvio.reactionnetwork.GenomicNetwork, None
         Reaction network that can either be independent of a contigs database (contigs_db_path value
-        of None) or associated with a contigs database. The reaction should be constructed from the
-        version of the KEGG database installed at the default anvi'o installation location.
+        of None) or associated with a contigs database.
 
     network_keggcpd_id_to_modelseed_compounds : dict[str, list[rn.ModelSEEDCompound]], {}
         Map the IDs of KEGG compounds (not KGML compound IDs) in the reaction network to aliased
@@ -178,8 +181,12 @@ class KGMLNetworkWalker:
 
     run : anvio.terminal.Run, anvio.terminal.Run()
         This object prints run information to the terminal.
+
+    verbose : bool, False
+        Print additional runtime information to the terminal, such as reaction network summary
+        statistics.
     """
-    def __init__(self, args: Namespace, run: terminal.Run = terminal.Run()):
+    def __init__(self, args: Namespace):
         """
         Parameters
         ==========
@@ -205,36 +212,42 @@ class KGMLNetworkWalker:
 
             allow_alternative_reaction_gaps : bool
 
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
+            run : anvio.terminal.Run
+
+            verbose : bool
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
-        # only one of the following inputs is required
-        self.contigs_db_path: str = A('contigs_db', None)
-        self.network: rn.ReactionNetwork = A('network', None)
+
         self.kegg_pathway_number: str = args.kegg_pathway_number
+
+        self.contigs_db_path: str = A(args.contigs_db, None)
+        self.network: rn.GenomicNetwork = A(args.network, None)
+        self.verbose = A('verbose', False)
+        if self.contigs_db_path is not None and not self.network:
+            constructor = rn.Constructor()
+            self.network = constructor.load_contigs_database_network(
+                self.contigs_db_path, quiet=not self.verbose
+            )
+
         self.compound_fate: str = A('compound_fate', 'both')
         self.max_reactions: int = A('max_reactions', None)
         self.keep_intermediate_chains: bool = A('keep_intermediate_chains', False)
         self.max_gaps: int = A('max_gaps', 0)
         self.allow_terminal_gaps: bool = A('allow_terminal_gaps', False)
         self.allow_alternative_reaction_gaps: bool = A('allow_alternative_reaction_gaps', False)
-        self.quiet_load: bool = A('quiet_load', False)
+
         # Assume that the reaction network was constructed with the KEGG and ModelSEED databases
-        # found at the default anvi'o location. Options should be added to accommodate other
-        # configurations.
-        
-        # input sanity check
-        if not self.contigs_db_path and not self.network:
-            raise ConfigError("Either a contigs database path or a loaded ReactionNetwork is required for "
-                              "the KGMLNetworkWalker() class, but neither was provided.")
-        elif not self.network: # only load from the contigs db if there isn't already a network provided
-            constructor = rn.Constructor()
-            self.network = constructor.load_contigs_database_network(self.contigs_db_path, quiet = self.quiet_load)
-        kegg_data = rn.KEGGData()
-        kgml_rn_dir = kegg_data.kegg_context.kgml_1x_rn_dir
-        kgml_ko_dir = kegg_data.kegg_context.kgml_1x_ko_dir
-        kgml_ec_dir = kegg_data.kegg_context.kgml_1x_ec_dir
+        # found at the default anvi'o location.
+        self.kegg_data = rn.KEGGData()
+
+        self.run = A('run', terminal.Run())
+
+        self.sanity_check()
+
+        # Load the set of KGML files for the pathway.
+        kgml_rn_dir = self.kegg_data.kegg_context.kgml_1x_rn_dir
+        kgml_ko_dir = self.kegg_data.kegg_context.kgml_1x_ko_dir
+        kgml_ec_dir = self.kegg_data.kegg_context.kgml_1x_ec_dir
         xml_ops = kgml.XMLOps()
         kgml_rn_path = os.path.join(kgml_rn_dir, f'rn{self.kegg_pathway_number}.xml')
         kgml_ko_path = os.path.join(kgml_ko_dir, f'ko{self.kegg_pathway_number}.xml')
@@ -243,6 +256,7 @@ class KGMLNetworkWalker:
         self.kgml_ko_pathway = xml_ops.load(kgml_ko_path)
         self.kgml_ec_pathway = xml_ops.load(kgml_ec_path)
 
+        # Make attributes storing key KGML pathway data.
         ko_pathway_kgml_reaction_ids: list[str] = []
         for reaction_uuid in self.kgml_ko_pathway.children['reaction']:
             kgml_reaction: kgml.Reaction = self.kgml_ko_pathway.uuid_element_lookup[reaction_uuid]
@@ -313,19 +327,23 @@ class KGMLNetworkWalker:
                 ko_ids.append(split[3:])
             self.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction.id] = ko_ids
 
-        self.network_keggcpd_id_to_modelseed_compounds: dict[str, list[rn.ModelSEEDCompound]] = {}
-        for modelseed_compound in self.network.metabolites.values():
-            for keggcpd_id in modelseed_compound.kegg_aliases:
-                try:
-                    self.network_keggcpd_id_to_modelseed_compounds[keggcpd_id].append(
-                        modelseed_compound
-                    )
-                except KeyError:
-                    self.network_keggcpd_id_to_modelseed_compounds[keggcpd_id] = [
-                        modelseed_compound
-                    ]
-
-        self.run = run
+        # Make an attribute storing key reaction network data.
+        if self.network:
+            self.network_keggcpd_id_to_modelseed_compounds: dict[
+                str, list[rn.ModelSEEDCompound]
+            ] = {}
+            for modelseed_compound in self.network.metabolites.values():
+                for keggcpd_id in modelseed_compound.kegg_aliases:
+                    try:
+                        self.network_keggcpd_id_to_modelseed_compounds[keggcpd_id].append(
+                            modelseed_compound
+                        )
+                    except KeyError:
+                        self.network_keggcpd_id_to_modelseed_compounds[keggcpd_id] = [
+                            modelseed_compound
+                        ]
+        else:
+            self.network_keggcpd_id_to_modelseed_compounds = None
 
     @staticmethod
     def check_pathway_number(kegg_pathway_number: str, kegg_data: rn.KEGGData) -> bool:
@@ -354,11 +372,29 @@ class KGMLNetworkWalker:
         return False
 
     def sanity_check(self) -> None:
-        assert self.max_reactions == None or (
+        """Check the validity of various attributes."""
+        if not self.check_pathway_number(
+            kegg_pathway_number=self.kegg_pathway_number, kegg_data=self.kegg_data
+        ):
+            raise ConfigError(
+                "The KEGG pathway must have a reaction (RN) type KGML file available in the anvi'o "
+                "KEGG installation. Valid pathways are in categories 1.0 - 1.11 as of the March 3, "
+                "2025 release of KEGG (see https://www.genome.jp/kegg/pathway.html)."
+            )
+
+        if not (
+            self.max_reactions == None or
             isinstance(self.max_reactions, int) and self.max_reactions > 0
-        )
-        assert isinstance(self.max_gaps, int) and self.max_gaps >= 0
-        assert self.compound_fate in ('consume', 'produce', 'both')
+        ):
+            raise ConfigError("'max_reactions' must have a value of None or a positive int.")
+
+        if not (isinstance(self.max_gaps, int) and self.max_gaps >= 0):
+            raise ConfigError("'max_gaps' must have a non-negative int value.")
+
+        if self.compound_fate not in ('consume', 'produce', 'both'):
+            raise ConfigError(
+                "'compound_fate' must have a value of 'consume', 'produce', or 'both'."
+            )
 
     def get_chains_in_pathway_from_network_modelseed_compound_ids(self) -> dict[str, list[Chain]]:
         modelseed_compound_id_chains: dict[str, list[Chain]] = {}
