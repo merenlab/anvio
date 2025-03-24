@@ -27,7 +27,9 @@ class Chain:
         KGML compound entries linked by kgml_reactions oriented in kgml_reaction_directions.
 
     is_consumed : bool, None
-        True if compounds in the chain are consumed by reactions in the chain. False if produced.
+        True for a "consumption chain" in which the first through the penultimate compounds in the
+        chain are consumed by the reactions in the chain. False for a "production chain" in which
+        the first through penultimate compounds are produced. A chain is one or the other.
 
     kgml_reactions : list[kgml.Reaction], []
         KGML reactions linking kgml_compound_entries. Given is_consumed and
