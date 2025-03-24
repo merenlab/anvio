@@ -180,6 +180,34 @@ class KGMLNetworkWalker:
         This object prints run information to the terminal.
     """
     def __init__(self, args: Namespace, run: terminal.Run = terminal.Run()):
+        """
+        Parameters
+        ==========
+        args : argparse.Namespace
+            Contains arguments. See the class docstring for more information on arguments set as
+            attributes, including default values. The only required argument is kegg_pathway_number.
+
+            kegg_pathway_number : str
+
+            contigs_db_path : str
+
+            network : anvio.reactionnetwork.GenomicNetwork
+
+            compound_fate : Literal['consume', 'produce', 'both']
+
+            max_reactions : int
+
+            keep_intermediate_chains : bool
+
+            max_gaps : int
+
+            allow_terminal_gaps : bool
+
+            allow_alternative_reaction_gaps : bool
+
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
+        """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
         # only one of the following inputs is required
         self.contigs_db_path: str = A('contigs_db', None)
