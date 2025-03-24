@@ -17,6 +17,72 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 @dataclass
 class Chain:
+    """
+    Chain of compounds linked by reactions occurring in a KGML file. The chain is contextualized in
+    a reaction network.
+
+    Attributes
+    ==========
+    kgml_compound_entries : list[kgml.Entry], []
+        KGML compound entries linked by kgml_reactions oriented in kgml_reaction_directions.
+
+    is_consumed : bool, None
+        True if compounds in the chain are consumed by reactions in the chain. False if produced.
+
+    kgml_reactions : list[kgml.Reaction], []
+        KGML reactions linking kgml_compound_entries. Given is_consumed and
+        kgml_reaction_directions, one compound entry is a substrate and one is a product of the
+        reaction.
+
+    kgml_reaction_directions : list[bool], []
+        Items correspond to kgml_reactions, with True indicating the reaction runs as given from
+        substrates to products, and False indicating the reaction runs in reverse from products to
+        substrates.
+
+    gaps : list[bool], []
+        Items correspond to kgml_reactions, with False indicating the reaction is encoded by a KO in
+        the reaction network, and True indicating the reaction is not encoded and thus is a gap.
+
+    aliased_modelseed_compounds : list[tuple[anvio.reactionnetwork.ModelSEEDCompound]], []
+        Items correspond to kgml_compound_entries. Each item is the tuple of ModelSEED compounds
+        aliased by KEGG compound IDs in the name attribute of the KGML compound entry.
+
+    network_kos : list[tuple[anvio.reactionnetwork.KO]], []
+        Items correspond to kgml_reactions. Each item is the tuple of KOs in the reaction network
+        encoding KEGG reaction IDs in the name attribute of the KGML reaction.
+
+    aliased_modelseed_reactions : list[tuple[anvio.reactionnetwork.ModelSEEDReaction]], []
+        Items correspond to kgml_reactions. Each item is the tuple of ModelSEED reactions aliased by
+        KEGG reaction IDs in the name attribute of the KGML reaction.
+
+    is_consumption_terminus : bool, None
+        This value holds for the first consumed KGML compound in the chain, which is the first
+        compound of kgml_compound_entries if is_consumed is True and the last if is_consumed is
+        False. KGMLNetworkWalker.check_kgml_compound_entry_consumption_terminus returns True if the
+        compound is a consumption terminus and False if not.
+
+    is_production_terminus : bool, None
+        This value holds for the last produced KGML compound in the chain, which is the first
+        compound of kgml_compound_entries if is_consumed is False and the last if is_consumed is
+        True. KGMLNetworkWalker.check_kgml_compound_entry_production_terminus returns True if the
+        compound is a production terminus and False if not.
+
+    consumption_reversibility_range : tuple[int, int], None
+        Pythonic start and stop indices corresponding to a range of the first consumed KGML
+        compounds in the chain, which are the first compounds of kgml_compound_entries if
+        is_consumed is True and the last if is_consumed is False. This range indicates compounds
+        that are linked by KGML reactions with a type attribute of "reversible". For example, if the
+        compound at the beginning of a consumption chain (is_consumed True) is linked to the next
+        compound by an irreversible reaction, then the value is (0, 1).
+
+    production_reversibility_range : tuple[int, int], None
+        Pythonic start and stop indices corresponding to a range of the last produced KGML compounds
+        in the chain, which are the first compounds of kgml_compound_entries if is_consumed is False
+        and the last if is_consumed is True. This range indicates compounds that are linked by KGML
+        reactions with a type attribute of "reversible". For example, if the compound at the
+        beginning of a production chain (is_consumed False) is linked to the next compound by an
+        irreversible reaction, then the value is (0, 1).
+    """
     kgml_compound_entries: list[kgml.Entry] = field(default_factory=list)
     is_consumed: bool = None
     kgml_reactions: list[kgml.Reaction] = field(default_factory=list)
