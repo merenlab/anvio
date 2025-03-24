@@ -121,17 +121,17 @@ class KGMLNetworkWalker:
         elif not self.network: # only load from the contigs db if there isn't already a network provided
             constructor = rn.Constructor()
             self.network = constructor.load_contigs_database_network(self.contigs_db_path, quiet = self.quiet_load)
-        self.kegg_data = rn.KEGGData()
-        kgml_rn_dir = self.kegg_data.kegg_context.kgml_1x_rn_dir
-        kgml_ko_dir = self.kegg_data.kegg_context.kgml_1x_ko_dir
-        kgml_ec_dir = self.kegg_data.kegg_context.kgml_1x_ec_dir
-        self.xml_ops = kgml.XMLOps()
+        kegg_data = rn.KEGGData()
+        kgml_rn_dir = kegg_data.kegg_context.kgml_1x_rn_dir
+        kgml_ko_dir = kegg_data.kegg_context.kgml_1x_ko_dir
+        kgml_ec_dir = kegg_data.kegg_context.kgml_1x_ec_dir
+        xml_ops = kgml.XMLOps()
         kgml_rn_path = os.path.join(kgml_rn_dir, f'rn{self.kegg_pathway_number}.xml')
         kgml_ko_path = os.path.join(kgml_ko_dir, f'ko{self.kegg_pathway_number}.xml')
         kgml_ec_path = os.path.join(kgml_ec_dir, f'ec{self.kegg_pathway_number}.xml')
-        self.kgml_rn_pathway = self.xml_ops.load(kgml_rn_path)
-        self.kgml_ko_pathway = self.xml_ops.load(kgml_ko_path)
-        self.kgml_ec_pathway = self.xml_ops.load(kgml_ec_path)
+        self.kgml_rn_pathway = xml_ops.load(kgml_rn_path)
+        self.kgml_ko_pathway = xml_ops.load(kgml_ko_path)
+        self.kgml_ec_pathway = xml_ops.load(kgml_ec_path)
 
         ko_pathway_kgml_reaction_ids: list[str] = []
         for reaction_uuid in self.kgml_ko_pathway.children['reaction']:
