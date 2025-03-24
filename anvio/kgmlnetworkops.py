@@ -27,8 +27,8 @@ class Chain:
     aliased_modelseed_reactions: list[tuple[rn.ModelSEEDReaction]] = field(default_factory=list)
     is_consumption_terminus: bool = None
     is_production_terminus: bool = None
-    consumption_equilibrium_range: tuple[int, int] = None
-    production_equilibrium_range: tuple[int, int] = None
+    consumption_reversibility_range: tuple[int, int] = None
+    production_reversibility_range: tuple[int, int] = None
 
 class KGMLNetworkWalker:
     def __init__(self, args: Namespace, run: terminal.Run = terminal.Run()):
@@ -542,9 +542,9 @@ class KGMLNetworkWalker:
                             break
                         i += 1
                     if candidate_terminal_chain.is_consumed:
-                        candidate_terminal_chain.consumption_equilibrium_range = (0, i + 1)
+                        candidate_terminal_chain.consumption_reversibility_range = (0, i + 1)
                     else:
-                        candidate_terminal_chain.production_equilibrium_range = (0, i + 1)
+                        candidate_terminal_chain.production_reversibility_range = (0, i + 1)
 
                     i = 0
                     for kgml_reaction in candidate_terminal_chain.kgml_reactions[::-1]:
@@ -552,12 +552,12 @@ class KGMLNetworkWalker:
                             break
                         i += 1
                     if candidate_terminal_chain.is_consumed:
-                        candidate_terminal_chain.production_equilibrium_range = (
+                        candidate_terminal_chain.production_reversibility_range = (
                             len(candidate_terminal_chain.kgml_reactions) - i,
                             len(candidate_terminal_chain.kgml_reactions) + 1
                         )
                     else:
-                        candidate_terminal_chain.consumption_equilibrium_range = (
+                        candidate_terminal_chain.consumption_reversibility_range = (
                             len(candidate_terminal_chain.kgml_reactions) - i,
                             len(candidate_terminal_chain.kgml_reactions) + 1
                         )
