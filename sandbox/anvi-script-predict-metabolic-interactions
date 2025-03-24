@@ -73,9 +73,8 @@ def main(args):
     merged, db_names = net_1._merge_two_genome_networks(net_2)
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
-    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470", "02024"]), id_selection_prefix = "00")
+    reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470"]), id_selection_prefix = "00")
     compound_to_pathways = {} # we will fill this dict in as we process each compound
-
 
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
@@ -176,31 +175,35 @@ def main(args):
 
                 # look for additional evidence by walking through the reaction networks using Pathway Maps
                 producer_network = net_1
+                producer_name = db_names[0]
                 consumer_network = net_2
+                consumer_name = db_names[1]
                 if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
                     producer_network = net_2
+                    producer_name = db_names[1]
                     consumer_network = net_1
+                    consumer_name = db_names[0]
 
                 prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
                 for map_id in compound_to_pathways[compound_id]:
-                    print(f"Walking through map {map_id} in producer")
                     max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
-                    print(f"Found {max_prior_reactions} prior reactions for {compound_name} ({compound_id}) in producer")
                     pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
                                                                     'type': "production",
-                                                                    'organism': producer_network,
+                                                                    'organism': producer_name,
                                                                     'pathway_map': map_id,
                                                                     'longest_reaction_chain_length': max_prior_reactions}
                     pathway_walk_dict_key += 1
-                    print(f"Walking through map {map_id} in consumer")
                     max_posterior_reactions= walk_pathway_map_for_compound(compound_id, map_id, consumer_network, 'consume')
-                    print(f"Found {max_posterior_reactions} posterior reactions for {compound_name} ({compound_id}) in consumer")
                     pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
                                                                     'type': "consumption",
-                                                                    'organism': consumer_network,
+                                                                    'organism': consumer_name,
                                                                     'pathway_map': map_id,
                                                                     'longest_reaction_chain_length': max_posterior_reactions}
                     pathway_walk_dict_key += 1
+                    if anvio.DEBUG:
+                        progress.reset()
+                        run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
+                                        f"found max of {max_prior_reactions} prior reactions in producer and {max_posterior_reactions} posterior reactions in consumer")
                     if max_prior_reactions and max_posterior_reactions:
                         prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
                 potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths) if prod_cons_total_lengths else None
@@ -210,11 +213,8 @@ def main(args):
         progress.increment(increment_to=processed_count)
     
     progress.end()
-    print(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.")        
-    
-    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by'] + \
-        [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
-        [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+    run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.", 
+                header='RESULTS', lc='green')
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
@@ -262,14 +262,14 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
 
     return equivalent_AAs
 
-def get_args_for_pathway_walker(net, pathway_map, fate):
+def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     """Returns a Namespace with arguments for KGMLNetworkWalker"""
     
     walker_args = Namespace()
     walker_args.network = net
     walker_args.kegg_pathway_number = pathway_map
     walker_args.compound_fate = fate
-    walker_args.max_gaps = 0 # FIXME: make this a tuneable parameter
+    walker_args.max_gaps = gaps
     walker_args.quiet_load = True
     return walker_args
  
@@ -292,7 +292,7 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
     """
 
     try:
-        wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate)
+        wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate, args.maximum_gaps)
         walker = nw.KGMLNetworkWalker(wargs)
         reaction_chains = walker.get_chains_in_pathway_from_modelseed_compound_id(compound_id)
         
@@ -325,6 +325,11 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('CUSTOMIZATION', "Decisions only you can make.")
     groupD.add_argument(*anvio.A('use-equivalent-amino-acids'), **anvio.K('use-equivalent-amino-acids'))
     groupD.add_argument(*anvio.A('custom-equivalent-compounds-file'), **anvio.K('custom-equivalent-compounds-file'))
+    groupD.add_argument('--maximum-gaps', required=False, type=int, metavar="INT", default=0, help="We'll look for the longest chain of reactions surrounding "
+                                                        "each potentially-exchanged metabolite to help rank the output by "
+                                                        "likelihood of the interaction. This parameter allows you to choose "
+                                                        "how many gaps there can be in the chain on either side of the metabolite "
+                                                        "in the network. Very conservatively set to 0, as in no gaps allowed.")
 
     args = parser.get_args(parser)
 
