@@ -327,7 +327,31 @@ class KGMLNetworkWalker:
 
         self.run = run
 
-        self.sanity_check()
+    @staticmethod
+    def check_pathway_number(kegg_pathway_number: str, kegg_data: rn.KEGGData) -> bool:
+        """
+        Check that the KEGG pathway number has an RN type KGML file available in the anvi'o KEGG
+        installation.
+
+        Parameters
+        ==========
+        kegg_pathway_number : str
+            Numerical ID of a pathway.
+
+        kegg_data : anvio.reactionnetwork.KEGGData
+            Contains information on an anvi'o KEGG installation.
+
+        Returns
+        =======
+        bool
+            RN type KGML file exists if True.
+        """
+        kgml_rn_path = os.path.join(
+            kegg_data.kegg_context.kgml_1x_rn_dir, f'rn{kegg_pathway_number}.xml'
+        )
+        if os.path.exists(kgml_rn_path):
+            return True
+        return False
 
     def sanity_check(self) -> None:
         assert self.max_reactions == None or (
