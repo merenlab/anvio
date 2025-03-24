@@ -18,8 +18,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 @dataclass
 class Chain:
     """
-    Chain of compounds linked by reactions occurring in a KGML file. The chain is contextualized in
-    a reaction network.
+    Chain of compounds linked by reactions occurring in a KGML representation of a KEGG pathway. The
+    chain is contextualized in a reaction network.
 
     Attributes
     ==========
