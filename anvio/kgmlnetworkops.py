@@ -97,6 +97,86 @@ class Chain:
     production_reversibility_range: tuple[int, int] = None
 
 class KGMLNetworkWalker:
+    """
+    Walk chains of compounds linked by reactions in a KGML representation of a KEGG pathway.
+
+    Attributes
+    ==========
+    kegg_pathway_number : str
+        Numerical ID of the pathway to walk.
+
+    kgml_rn_pathway : anvio.kgml.Pathway
+        KEGG reaction (RN) type KGML file for the ID number loaded from the default anvi'o
+        installation location.
+
+    kgml_ko_pathway : anvio.kgml.Pathway
+        KEGG KO type KGML file for the ID number loaded from the default anvi'o installation
+        location.
+
+    kgml_ec_pathway : anvio.kgml.Pathway
+        KEGG EC number type KGML file for the ID number loaded from the default anvi'o installation
+        location.
+
+    rn_pathway_kgml_compound_id_to_kgml_reactions : dict[str, list[kgml.Reaction]]
+        From the RN type KGML pathway, map KGML compound IDs to the IDs of KGML reactions involving
+        the compound as substrate or product.
+
+    pathway_nonenzymatic_kgml_reaction_ids : list[str]
+        The RN, KO, and EC type KGML pathways are compared to find nonenzymatic reactions in the RN
+        file that are not in the KO or EC files, the KGML IDs of which are recorded in this list.
+
+    rn_pathway_kgml_compound_id_to_kgml_compound_entry : dict[str, list[kgml.Entry]]
+        Map KGML compound IDs to the corresponding entries in the RN type pathway.
+
+    ko_pathway_kgml_ortholog_id_to_kgml_ortholog_entry : dict[str, kgml.Entry]
+        Map KGML ortholog entry IDs to the corresponding entries in the KO type pathway.
+
+    rn_pathway_kgml_reaction_id_to_ko_ids : dict[str, list[str]]
+        Map KGML reaction IDs to KO IDs. The reactions are from the RN type KGML pathway and the KO
+        IDs are from the name attribute of a corresponding ortholog entry, if one exists, in the KO
+        type KGML pathway.
+
+    contigs_db_path : str, None
+        Path to contigs database containing reaction network.
+
+    network : anvio.reactionnetwork.GenomicNetwork, None
+        Reaction network that can either be independent of a contigs database (contigs_db_path value
+        of None) or associated with a contigs database. The reaction should be constructed from the
+        version of the KEGG database installed at the default anvi'o installation location.
+
+    network_keggcpd_id_to_modelseed_compounds : dict[str, list[rn.ModelSEEDCompound]], {}
+        Map the IDs of KEGG compounds (not KGML compound IDs) in the reaction network to aliased
+        ModelSEED compounds.
+
+    compound_fate : Literal['consume', 'produce', 'both'], 'both'
+        Seek chains that consume or produce compounds in the network. If 'consume' or 'produce',
+        only consumption or production chains are sought, respectively. If 'both', both consumption
+        and production chains are sought. Chains that only contain reversible reactions are
+        therefore found in both directions with 'both'.
+
+    max_reactions : int, None
+        Truncate chains at this number of reactions. If None, chains can be continued to
+        indeterminate length.
+
+    keep_intermediate_chains : bool, False
+        Chains starting from compounds in the network can be subchains of chains from other
+        compounds in the network. If False, such intermediate chains are ignored.
+
+    max_gaps : int, 0
+        Chains can contain up to this number of reactions not found in the reaction network.
+
+    allow_terminal_gaps : bool, False
+        Chains can start or end with reactions not found in the network network if True.
+
+    allow_alternative_reaction_gaps : bool, False
+        If a chain links two compounds by a reaction in the reaction network, and there are other
+        "parallel" KGML reactions not in the reaction network that also link the compounds, then
+        treat these parallel reactions as gaps that can be filled when allowing alternative reaction
+        gaps with a value of True. Otherwise, with a value of False, ignore parallel reaction gaps.
+
+    run : anvio.terminal.Run, anvio.terminal.Run()
+        This object prints run information to the terminal.
+    """
     def __init__(self, args: Namespace, run: terminal.Run = terminal.Run()):
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
         # only one of the following inputs is required
