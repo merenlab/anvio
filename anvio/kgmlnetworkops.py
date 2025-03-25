@@ -240,7 +240,7 @@ class KGMLNetworkWalker:
         # found at the default anvi'o location.
         self.kegg_data = rn.KEGGData()
 
-        self.run = A('run', terminal.Run())
+        self.run: terminal.Run = A('run', terminal.Run())
 
         self.sanity_check()
 
