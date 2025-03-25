@@ -19,7 +19,9 @@ from anvio.errors import ConfigError, FilesNPathsError
 class Chain:
     """
     Chain of compounds linked by reactions occurring in a KGML representation of a KEGG pathway. The
-    chain is contextualized in a reaction network.
+    chain may be contextualized in a reaction network, with information added to the attributes
+    'gaps', 'aliased_modelseed_compounds', 'network_kos', 'aliased_modelseed_reactions',
+    'network_kos', and 'aliased_modelseed_reactions'.
 
     Attributes
     ==========
@@ -396,11 +398,91 @@ class KGMLNetworkWalker:
                 "'compound_fate' must have a value of 'consume', 'produce', or 'both'."
             )
 
-    def get_chains_in_pathway_from_network_modelseed_compound_ids(self) -> dict[str, list[Chain]]:
+    def get_chains(
+        self,
+        kegg_compound_ids: Union[str, list[str]] = None,
+        modelseed_compound_ids: Union[str, list[str]] = None
+    ) -> dict[str, list[Chain]]:
+        if kegg_compound_ids is None and modelseed_compound_ids is None:
+            raise ConfigError(
+                "Either KEGG compound IDs or ModelSEED compound IDs must be provided."
+            )
+        if kegg_compound_ids is not None and modelseed_compound_ids is not None:
+            raise ConfigError(
+                "Chains can be sought from either KEGG compound IDs or ModelSEED compound IDs, but "
+                "not both."
+            )
+
+        if isinstance(kegg_compound_ids, str):
+            kegg_compound_ids = [kegg_compound_ids]
+        if isinstance(kegg_compound_ids, list):
+            compound_id_chains = self._get_chains_from_kegg_compound_ids(kegg_compound_ids)
+            return compound_id_chains
+
+        if modelseed_compound_ids is not None and self.network is None:
+            raise ConfigError(
+                "A reaction network is required to get chains from ModelSEED compound IDs, but "
+                "none is stored as expected in the 'network' attribute."
+            )
+        if isinstance(modelseed_compound_ids, str):
+            modelseed_compound_ids = [modelseed_compound_ids]
+        if isinstance(modelseed_compound_ids, list):
+            run_verbosity = self.run.verbose
+            if not modelseed_compound_ids:
+                self.run.verbose = False
+                modelseed_compound_ids = list(self.network.metabolites)
+            else:
+                self.run.verbose = True
+            compound_id_chains = self._get_chains_from_modelseed_compound_ids(modelseed_compound_ids)
+            self.run.verbose = run_verbosity
+
+        return compound_id_chains
+
+    def _get_chains_from_kegg_compound_ids(self, keggcpd_ids: list[str]) -> dict[str, list[Chain]]:
+        keggcpd_id_chains: dict[str, list[Chain]] = {}
+        for keggcpd_id in keggcpd_ids:
+            chains = self._get_chains_from_kegg_compound_id(keggcpd_id)
+            if not chains:
+                continue
+            keggcpd_id_chains[keggcpd_id] = chains
+
+        if not self.keep_intermediate_chains:
+            keggcpd_id_chains = self.remove_intermediate_chains(keggcpd_id_chains)
+
+        return keggcpd_id_chains
+
+    def _get_chains_from_kegg_compound_id(self, keggcpd_id: str) -> list[Chain]:
+        kgml_compound_entries = self.kgml_rn_pathway.get_entries(kegg_ids=[keggcpd_id])
+
+        chains: list[Chain] = []
+        for kgml_compound_entry in kgml_compound_entries:
+            kgml_compound_entry_chains: list[Chain] = self._get_chains_from_kgml_compound_entry(
+                kgml_compound_entry
+            )
+
+            new_chains: list[Chain] = []
+            for kgml_compound_entry_chain in kgml_compound_entry_chains:
+                candidate_kgml_compound_entry_ids = [
+                    c.id for c in kgml_compound_entry_chain.kgml_compound_entries
+                ]
+                for chain in chains:
+                    kgml_compound_entry_ids = [c.id for c in chain.kgml_compound_entries]
+                    if candidate_kgml_compound_entry_ids == kgml_compound_entry_ids:
+                        break
+                else:
+                    new_chains.append(kgml_compound_entry_chain)
+            chains = chains + new_chains
+
+        return chains
+
+    def _get_chains_from_modelseed_compound_ids(
+        self,
+        modelseed_compound_ids: list[str]
+    ) -> dict[str, list[Chain]]:
         modelseed_compound_id_chains: dict[str, list[Chain]] = {}
-        self.run.verbose = False
-        for modelseed_compound_id in self.network.metabolites:
-            chains = self.get_chains_in_pathway_from_modelseed_compound_id(modelseed_compound_id)
+        self.run.verbose = True if self.verbose else False
+        for modelseed_compound_id in modelseed_compound_ids:
+            chains = self._get_chains_from_modelseed_compound_id(modelseed_compound_id)
             if not chains:
                 continue
             modelseed_compound_id_chains[modelseed_compound_id] = chains
@@ -412,10 +494,7 @@ class KGMLNetworkWalker:
 
         return modelseed_compound_id_chains
 
-    def get_chains_in_pathway_from_modelseed_compound_id(
-        self,
-        modelseed_compound_id: str
-    ) -> list[Chain]:
+    def _get_chains_from_modelseed_compound_id(self, modelseed_compound_id: str) -> list[Chain]:
         try:
             compound = self.network.metabolites[modelseed_compound_id]
         except KeyError:
@@ -435,7 +514,7 @@ class KGMLNetworkWalker:
 
         chains: list[Chain] = []
         for keggcpd_id in keggcpd_ids:
-            keggcpd_chains = self.get_chains_in_pathway_from_kegg_compound_id(keggcpd_id)
+            keggcpd_chains = self._get_chains_from_kegg_compound_id(keggcpd_id)
 
             new_chains: list[Chain] = []
             for keggcpd_chain in keggcpd_chains:
@@ -452,30 +531,7 @@ class KGMLNetworkWalker:
 
         return chains
 
-    def get_chains_in_pathway_from_kegg_compound_id(self, keggcpd_id: str) -> list[Chain]:
-        kgml_compound_entries = self.kgml_rn_pathway.get_entries(kegg_ids=[keggcpd_id])
-
-        chains: list[Chain] = []
-        for kgml_compound_entry in kgml_compound_entries:
-            kgml_compound_entry_chains: list[Chain] = \
-                self.get_chains_in_pathway_from_kgml_compound_entry(kgml_compound_entry)
-
-            new_chains: list[Chain] = []
-            for kgml_compound_entry_chain in kgml_compound_entry_chains:
-                candidate_kgml_compound_entry_ids = [
-                    c.id for c in kgml_compound_entry_chain.kgml_compound_entries
-                ]
-                for chain in chains:
-                    kgml_compound_entry_ids = [c.id for c in chain.kgml_compound_entries]
-                    if candidate_kgml_compound_entry_ids == kgml_compound_entry_ids:
-                        break
-                else:
-                    new_chains.append(kgml_compound_entry_chain)
-            chains = chains + new_chains
-
-        return chains
-
-    def get_chains_in_pathway_from_kgml_compound_entry(
+    def _get_chains_from_kgml_compound_entry(
         self,
         kgml_compound_entry: kgml.Entry,
         current_chain: Chain = None,
@@ -483,7 +539,7 @@ class KGMLNetworkWalker:
         is_consumed: bool = None
     ) -> Union[Chain, list[Chain]]:
         if terminal_chains is None:
-            # Recursion start.
+            # This condition should only occur in the initial method call.
             terminal_chains = []
 
         # Check that the target compound KGML ID is involved in any reactions at all in the
@@ -493,30 +549,40 @@ class KGMLNetworkWalker:
                 kgml_compound_entry.id
             ]
         except KeyError:
-            assert not terminal_chains
+            if terminal_chains:
+                raise AssertionError(
+                    "The target KGML compound ID has been found not to participate in KGML "
+                    "reactions. This is only expected to occur for the initial method call, as "
+                    "recursive calls target a compound known to participate in a reaction. "
+                    "However, this error occurred because chains have been found, which should not "
+                    "be possible at this early point in the initial call."
+                )
             return terminal_chains
 
-        modelseed_compounds = {}
-        for candidate_keggcpd_id in kgml_compound_entry.name.split():
-            if candidate_keggcpd_id[:4] != 'cpd:':
-                continue
-            keggcpd_id = candidate_keggcpd_id[4:]
-            try:
-                keggcpd_modelseed_compounds = self.network_keggcpd_id_to_modelseed_compounds[
-                    keggcpd_id
-                ]
-            except KeyError:
-                continue
-            for modelseed_compound in keggcpd_modelseed_compounds:
-                modelseed_compounds[modelseed_compound.modelseed_id] = modelseed_compound
-        modelseed_compounds = tuple(
-            sorted(modelseed_compounds.values(), key=lambda c: c.modelseed_id)
-        )
+        if self.network:
+            # Find aliased ModelSEED compounds.
+            modelseed_compounds = {}
+            for candidate_keggcpd_id in kgml_compound_entry.name.split():
+                if candidate_keggcpd_id[:4] != 'cpd:':
+                    continue
+                keggcpd_id = candidate_keggcpd_id[4:]
+                try:
+                    keggcpd_modelseed_compounds = self.network_keggcpd_id_to_modelseed_compounds[
+                        keggcpd_id
+                    ]
+                except KeyError:
+                    continue
+                for modelseed_compound in keggcpd_modelseed_compounds:
+                    modelseed_compounds[modelseed_compound.modelseed_id] = modelseed_compound
+            modelseed_compounds = tuple(
+                sorted(modelseed_compounds.values(), key=lambda c: c.modelseed_id)
+            )
 
         if current_chain is None:
+            # This occurs in the initial method call. Seed a chain with the target compound.
             current_chain = Chain(
                 kgml_compound_entries=[kgml_compound_entry],
-                aliased_modelseed_compounds=[modelseed_compounds]
+                aliased_modelseed_compounds=[modelseed_compounds] if self.network else []
             )
 
             if self.compound_fate == 'both':
@@ -526,12 +592,17 @@ class KGMLNetworkWalker:
             elif self.compound_fate == 'produce':
                 consumption_options = [False]
             else:
-                raise AssertionError
+                raise AssertionError("'compound_fate' does not have an accepted value.")
 
+            # At the end of the initial method call, return terminal chains identified after
+            # recursion.
             return_terminal_chains = True
         else:
+            # This occurs in a recursive method call. Add the target compound to the chain under
+            # construction.
             current_chain.kgml_compound_entries.append(kgml_compound_entry)
-            current_chain.aliased_modelseed_compounds.append(modelseed_compounds)
+            if self.network:
+                current_chain.aliased_modelseed_compounds.append(modelseed_compounds)
 
             if self.max_reactions != None:
                 if self.max_reactions == len(current_chain.kgml_reactions):
@@ -543,18 +614,24 @@ class KGMLNetworkWalker:
 
             consumption_options = [is_consumed]
 
+            # At the end of a recursive method call, return the completed chain, a candidate
+            # terminal chain.
             return_terminal_chains = False
 
         for is_explore_consumption in consumption_options:
-            # Record each KGML reaction involving the KGML compound that is to be explored,
-            # including whether the reaction represents a gap (if it is not in the reaction network)
-            # and the network KOs encoding the reaction.
+            # Record each KGML reaction involving the compound that is to be explored. If comparing
+            # to a reaction network, also record whether the reaction represents a gap (if not in
+            # the network), and the network KOs encoding the reaction.
             kgml_reaction_info: list[tuple[kgml.Reaction, bool, list[rn.KO]]] = []
             for kgml_reaction in kgml_reactions:
                 if current_chain.kgml_reactions:
                     if kgml_reaction.id == current_chain.kgml_reactions[-1].id:
                         # Do not record the same reaction as the previous one in the chain.
                         continue
+
+                if not self.network:
+                    kgml_reaction_info.append((kgml_reaction, None, None))
+                    continue
 
                 if kgml_reaction.id in self.pathway_nonenzymatic_kgml_reaction_ids:
                     kgml_reaction_info.append((kgml_reaction, False, []))
@@ -685,27 +762,28 @@ class KGMLNetworkWalker:
                 if is_forward is None:
                     continue
 
-                network_kos = tuple(sorted(network_kos, key=lambda ko: ko.id))
+                if self.network:
+                    # Get the ModelSEED reactions aliasing the KEGG reactions underlying the KGML
+                    # reaction.
+                    network_kos = tuple(sorted(network_kos, key=lambda ko: ko.id))
 
-                # Get the ModelSEED reactions aliasing the KEGG reactions underlying the KGML
-                # reaction.
-                keggrn_ids: list[str] = []
-                for candidate_keggrn_id in kgml_reaction.name.split():
-                    if candidate_keggrn_id[:3] != 'rn:':
-                        continue
-                    keggrn_id = candidate_keggrn_id[3:]
-
-                modelseed_reaction_ids: list[str] = []
-                for ko in network_kos:
-                    for keggrn_id in keggrn_ids:
-                        try:
-                            modelseed_reaction_ids += ko.kegg_reaction_aliases[keggrn_id]
-                        except KeyError:
+                    keggrn_ids: list[str] = []
+                    for candidate_keggrn_id in kgml_reaction.name.split():
+                        if candidate_keggrn_id[:3] != 'rn:':
                             continue
+                        keggrn_id = candidate_keggrn_id[3:]
 
-                modelseed_reactions: list[rn.ModelSEEDReaction] = []
-                for modelseed_reaction_id in sorted(set(modelseed_reaction_ids)):
-                    modelseed_reactions.append(self.network.reactions[modelseed_reaction_id])
+                    modelseed_reaction_ids: list[str] = []
+                    for ko in network_kos:
+                        for keggrn_id in keggrn_ids:
+                            try:
+                                modelseed_reaction_ids += ko.kegg_reaction_aliases[keggrn_id]
+                            except KeyError:
+                                continue
+
+                    modelseed_reactions: list[rn.ModelSEEDReaction] = []
+                    for modelseed_reaction_id in sorted(set(modelseed_reaction_ids)):
+                        modelseed_reactions.append(self.network.reactions[modelseed_reaction_id])
 
                 # Recurse on each KGML compound on the other side of the reaction.
                 for next_kgml_compound_id in next_kgml_compound_ids:
@@ -720,15 +798,18 @@ class KGMLNetworkWalker:
                         kgml_reactions=current_chain.kgml_reactions + [kgml_reaction],
                         kgml_reaction_directions=\
                             current_chain.kgml_reaction_directions + [is_forward],
-                        gaps=current_chain.gaps + [is_gap],
+                        gaps=current_chain.gaps + [is_gap] if self.network else [],
                         aliased_modelseed_compounds=\
-                            current_chain.aliased_modelseed_compounds.copy(),
-                        network_kos=current_chain.network_kos + [tuple(network_kos)],
+                            current_chain.aliased_modelseed_compounds.copy() \
+                                if self.network else [],
+                        network_kos=current_chain.network_kos + [tuple(network_kos)] \
+                            if self.network else [],
                         aliased_modelseed_reactions=\
-                            current_chain.aliased_modelseed_reactions + [tuple(modelseed_reactions)]
+                            current_chain.aliased_modelseed_reactions + \
+                                [tuple(modelseed_reactions)] if self.network else []
                     )
                     candidate_terminal_chain: Chain = \
-                        self.get_chains_in_pathway_from_kgml_compound_entry(
+                        self._get_chains_from_kgml_compound_entry(
                             self.rn_pathway_kgml_compound_id_to_kgml_compound_entry[
                                 next_kgml_compound_id
                             ],
@@ -737,11 +818,12 @@ class KGMLNetworkWalker:
                             is_consumed=is_explore_consumption
                         )
 
-                    if not self.allow_terminal_gaps:
-                        # Gaps are not allowed at the beginning or end of the chain.
-                        if candidate_terminal_chain.gaps[-1]:
-                            # The reaction chain would end with a gap.
-                            continue
+                    if self.network:
+                        if not self.allow_terminal_gaps:
+                            # Gaps are not allowed at the beginning or end of the chain.
+                            if candidate_terminal_chain.gaps[-1]:
+                                # The reaction chain would end with a gap.
+                                continue
 
                     # For each compound in a terminal chain, a subchain that extends to the terminus
                     # is also generated as a "candidate terminal chain" and is ignored.

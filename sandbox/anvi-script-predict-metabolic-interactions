@@ -296,8 +296,8 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
     try:
         wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate, args.maximum_gaps)
         walker = nw.KGMLNetworkWalker(wargs)
-        reaction_chains = walker.get_chains_in_pathway_from_modelseed_compound_id(compound_id)
-        
+        reaction_chains = walker.get_chains(modelseed_compound_ids=compound_id)
+
         max_length = None
         if reaction_chains:
             max_length = max([len(chain.kgml_compound_entries) for chain in reaction_chains])
