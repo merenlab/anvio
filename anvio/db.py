@@ -109,6 +109,10 @@ class DB:
         if self.read_only and new_database:
             raise ConfigError("One cannot create a new database that is read-only.")
 
+        if self.max_retries < 1 or self.retry_delay < 1:
+            raise ConfigError("Neither self.max_retries nor self.retry_delay can be set to a value smaller than 1. "
+                              "This instance is poorly configured :(")
+
         try:
             self.conn = sqlite3.connect(self.db_path)
         except Exception as e:
@@ -458,7 +462,7 @@ class DB:
         """Execute an SQLite instruction safely and by handlng database locked errors gracefully"""
 
         retries = 0
-        while retries < self.max_retries:
+        while retries <= self.max_retries:
             try:
                 ret_val = func(*args)
                 return ret_val
