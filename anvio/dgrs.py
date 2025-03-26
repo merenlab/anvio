@@ -10,11 +10,11 @@ import shutil
 import argparse
 import copy
 import json
-import pytrf
+import pytrf # type: ignore
 
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
+from Bio import SeqIO # type: ignore
+from Bio.SeqRecord import SeqRecord # type: ignore
+from Bio.Seq import Seq # type: ignore
 
 import anvio
 import anvio.dbops as dbops
@@ -22,7 +22,7 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
-import multiprocess as multiprocessing
+import multiprocess as multiprocessing # type: ignore
 
 
 from anvio.errors import ConfigError
@@ -87,6 +87,8 @@ class DGR_Finder:
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
+        self.vr_repeat_motif_coverage = A('vr_repeat_motif_coverage') or 0.8
+        self.tr_repeat_motif_coverage = A('tr_repeat_motif_coverage') or 0.8
 
 
         # performance
@@ -855,20 +857,56 @@ class DGR_Finder:
                         for ssr in pytrf.ATRFinder('name', qseq):
                             if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
                                 has_repeat = True
+                            #breakout
+                            if has_repeat:
+                                continue
 
+                        #look for homopolymers that are tandem in the VR
+                        for ssr in pytrf.STRFinder('name', qseq):
+                            if (len(ssr.motif) == 1 or len(ssr.motif) == 2) and ssr.repeat > 10:
+                                has_repeat = True
+                            #breakout
+                            if has_repeat:
+                                continue
+
+                        #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
+                        for atr in pytrf.ATRFinder('name', qseq, min_motif=4, max_motif=10, min_seedrep=1, min_identity=90):
+                            coverage = (len(atr.motif)*atr.repeat) / len(qseq)
+                            if coverage > self.vr_repeat_motif_coverage:
+                                has_repeat = True
+                            #breakout
+                            if has_repeat:
+                                continue
+
+                        for ssr in pytrf.ATRFinder('name', hseq):
+                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
+                                has_repeat = True
                         #breakout
                         if has_repeat:
                             continue
 
-                        #test for not quite tandem repeats using pytrf
-                        has_repeat_hseq = False
-                        for ssr in pytrf.ATRFinder('name', hseq):
-                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
-                                has_repeat_hseq = True
+                        #look for homopolymers that are tandem in the TR
+                        for ssr in pytrf.STRFinder('name', hseq):
+                            if (len(ssr.motif) == 1 or len(ssr.motif) == 2) and ssr.repeat > 10:
+                                has_repeat = True
+                            #breakout
+                            if has_repeat:
+                                continue
 
-                        #breakout
-                        if has_repeat_hseq:
-                            continue
+                        #look for approximate tandem repeats that in the TR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
+                        for atr in pytrf.ATRFinder('name', hseq, min_motif=4, max_motif=10, min_seedrep=1, min_identity=90):
+                            coverage = (len(atr.motif)*atr.repeat) / len(hseq)
+                            if coverage > self.tr_repeat_motif_coverage:
+                                has_repeat = True
+                            #breakout
+                            if has_repeat:
+                                continue
+
+                        for ssr in pytrf.ATRFinder('name', qseq):
+                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
+                                has_repeat = True
+                            if has_repeat:
+                                continue
 
                         subject_genome_start_position = min(
                             [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
