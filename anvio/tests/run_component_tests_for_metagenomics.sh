@@ -189,6 +189,7 @@ anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
                                   --hmm-source Bacteria_71 \
                                   --min-model-coverage 0.9 \
                                   --no-progress \
+                                  --report-gene-and-model-coverage \
                                   --filter-out-partial-gene-calls
 
 INFO "Filtering hmm_hits using target coverage"
