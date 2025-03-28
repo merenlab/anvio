@@ -442,8 +442,6 @@ class KGMLNetworkWalker:
         keggcpd_id_chains: dict[str, list[Chain]] = {}
         for keggcpd_id in keggcpd_ids:
             chains = self._get_chains_from_kegg_compound_id(keggcpd_id)
-            if not chains:
-                continue
             keggcpd_id_chains[keggcpd_id] = chains
 
         if not self.keep_intermediate_chains:
@@ -483,8 +481,6 @@ class KGMLNetworkWalker:
         self.run.verbose = True if self.verbose else False
         for modelseed_compound_id in modelseed_compound_ids:
             chains = self._get_chains_from_modelseed_compound_id(modelseed_compound_id)
-            if not chains:
-                continue
             modelseed_compound_id_chains[modelseed_compound_id] = chains
 
         if not self.keep_intermediate_chains:
