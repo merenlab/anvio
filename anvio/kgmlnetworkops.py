@@ -400,23 +400,42 @@ class KGMLNetworkWalker:
 
     def get_chains(
         self,
-        kegg_compound_ids: Union[str, list[str]] = None,
+        keggcpd_ids: Union[str, list[str]] = None,
         modelseed_compound_ids: Union[str, list[str]] = None
     ) -> dict[str, list[Chain]]:
-        if kegg_compound_ids is None and modelseed_compound_ids is None:
+        """
+        Get chains in the pathway starting from select compounds.
+
+        Parameters
+        ==========
+        keggcpd_ids : Union[str, list[str]], None
+            KEGG compound ID(s) to seek in the KGML file.
+
+        modelseed_compound_ids : Union[str, list[str]], None
+            ModelSEED compound ID(s), which are mapped to KEGG compound IDs via a reaction
+            network.
+
+        Returns
+        =======
+        dict[str, list[Chain]]
+            Keys are the select compound IDs. Values are lists of chains starting from the
+            corresponding KGML compounds. If certain of the select compounds are not found in the
+            pathway, empty lists are returned for them.
+        """
+        if keggcpd_ids is None and modelseed_compound_ids is None:
             raise ConfigError(
                 "Either KEGG compound IDs or ModelSEED compound IDs must be provided."
             )
-        if kegg_compound_ids is not None and modelseed_compound_ids is not None:
+        if keggcpd_ids is not None and modelseed_compound_ids is not None:
             raise ConfigError(
                 "Chains can be sought from either KEGG compound IDs or ModelSEED compound IDs, but "
                 "not both."
             )
 
-        if isinstance(kegg_compound_ids, str):
-            kegg_compound_ids = [kegg_compound_ids]
-        if isinstance(kegg_compound_ids, list):
-            compound_id_chains = self._get_chains_from_kegg_compound_ids(kegg_compound_ids)
+        if isinstance(keggcpd_ids, str):
+            keggcpd_ids = [keggcpd_ids]
+        if isinstance(keggcpd_ids, list):
+            compound_id_chains = self._get_chains_from_kegg_compound_ids(keggcpd_ids)
             return compound_id_chains
 
         if modelseed_compound_ids is not None and self.network is None:
@@ -439,6 +458,21 @@ class KGMLNetworkWalker:
         return compound_id_chains
 
     def _get_chains_from_kegg_compound_ids(self, keggcpd_ids: list[str]) -> dict[str, list[Chain]]:
+        """
+        Get chains in the pathway starting from select KEGG compounds.
+
+        Parameters
+        ==========
+        keggcpd_ids : list[str]
+            KEGG compound IDs to seek in the KGML file.
+
+        Returns
+        =======
+        dict[str, list[Chain]]
+            Keys are the select KEGG compound IDs. Values are lists of chains starting from the
+            corresponding KGML compounds. If certain of the KEGG compounds are not found in the
+            pathway, empty lists are returned for them.
+        """
         keggcpd_id_chains: dict[str, list[Chain]] = {}
         for keggcpd_id in keggcpd_ids:
             chains = self._get_chains_from_kegg_compound_id(keggcpd_id)
@@ -450,6 +484,20 @@ class KGMLNetworkWalker:
         return keggcpd_id_chains
 
     def _get_chains_from_kegg_compound_id(self, keggcpd_id: str) -> list[Chain]:
+        """
+        Get chains in the pathway starting from a KEGG compound.
+
+        Parameters
+        ==========
+        keggcpd_id : str
+            KEGG compound ID to seek in the KGML file.
+
+        Returns
+        =======
+        list[Chain]
+            List of chains starting from corresponding KGML compounds. If the KEGG compound is not
+            found in the pathway, an empty list is returned.
+        """
         kgml_compound_entries = self.kgml_rn_pathway.get_entries(kegg_ids=[keggcpd_id])
 
         chains: list[Chain] = []
@@ -477,6 +525,22 @@ class KGMLNetworkWalker:
         self,
         modelseed_compound_ids: list[str]
     ) -> dict[str, list[Chain]]:
+        """
+        Get chains in the pathway starting from select ModelSEED compounds.
+
+        Parameters
+        ==========
+        modelseed_compound_ids : list[str]
+            ModelSEED compound IDs, which are mapped to KEGG compound IDs via a reaction network and
+            are sought in the KGML file.
+
+        Returns
+        =======
+        dict[str, list[Chain]]
+            Keys are the select ModelSEED compound IDs. Values are lists of chains starting from the
+            corresponding KGML compounds. If certain of the ModelSEED compounds are not found in the
+            pathway, empty lists are returned for them.
+        """
         modelseed_compound_id_chains: dict[str, list[Chain]] = {}
         self.run.verbose = True if self.verbose else False
         for modelseed_compound_id in modelseed_compound_ids:
@@ -491,6 +555,20 @@ class KGMLNetworkWalker:
         return modelseed_compound_id_chains
 
     def _get_chains_from_modelseed_compound_id(self, modelseed_compound_id: str) -> list[Chain]:
+        """
+        Get chains in the pathway starting from a ModelSEED compound.
+
+        Parameters
+        ==========
+        modelseed_compound_id : str
+            ModelSEED compound ID, which is mapped to KEGG compound IDs and sought in the KGML file.
+
+        Returns
+        =======
+        list[Chain]
+            List of chains starting from corresponding KGML compounds. If the ModelSEED compound is
+            not found in the pathway, an empty list is returned.
+        """
         try:
             compound = self.network.metabolites[modelseed_compound_id]
         except KeyError:
