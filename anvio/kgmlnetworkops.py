@@ -609,8 +609,7 @@ class KGMLNetworkWalker:
         self,
         kgml_compound_entry: kgml.Entry,
         current_chain: Chain = None,
-        terminal_chains: list[Chain] = None,
-        is_consumed: bool = None
+        terminal_chains: list[Chain] = None
     ) -> Union[Chain, list[Chain]]:
         if terminal_chains is None:
             # This condition should only occur in the initial method call.
@@ -686,7 +685,7 @@ class KGMLNetworkWalker:
             if kgml_compound_entry.id in [c.id for c in current_chain.kgml_compound_entries[:-1]]:
                 return current_chain
 
-            consumption_options = [is_consumed]
+            consumption_options = [current_chain.is_consumed]
 
             # At the end of a recursive method call, return the completed chain, a candidate
             # terminal chain.
@@ -888,8 +887,7 @@ class KGMLNetworkWalker:
                                 next_kgml_compound_id
                             ],
                             current_chain=new_chain,
-                            terminal_chains=terminal_chains,
-                            is_consumed=is_explore_consumption
+                            terminal_chains=terminal_chains
                         )
 
                     if self.network:
