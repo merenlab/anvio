@@ -611,6 +611,29 @@ class KGMLNetworkWalker:
         current_chain: Chain = None,
         terminal_chains: list[Chain] = None
     ) -> Union[Chain, list[Chain]]:
+        """
+        Recursive method to get chains in the pathway starting from a KGML compound entry (a circle
+        on the map).
+
+        Parameters
+        ==========
+        kgml_compound_entry : anvio.kgml.Entry
+            KGML Entry of type "compound", which, in recursion, is at the end of a chain under
+            construction.
+
+        current_chain : Chain, None
+            Chain under construction, which should be None in the initial method call.
+
+        terminal_chains : list[Chain], None
+            List of finished chains from the initial compound that fulfill
+            criteria set in class attributes. This should be None in the initial method call.
+
+        Returns
+        =======
+        Union[Chain, list[Chain]]
+            Return the current chain under construction from a recursive method call. Return the
+            list of terminal chains from the initial method call.
+        """
         if terminal_chains is None:
             # This condition should only occur in the initial method call.
             terminal_chains = []
