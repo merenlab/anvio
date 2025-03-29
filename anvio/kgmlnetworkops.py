@@ -1204,48 +1204,134 @@ class KGMLNetworkWalker:
         return derep_compound_id_chains
 
 @dataclass
-class ChainEvolution:
-    new_chain: Chain = None
-    old_chains: list[Chain] = field(default_factory=list)
+class GapChainRelations:
+    """
+    Records how chains with fewer gaps relate to a chain with more gaps.
+
+    Attributes
+    ==========
+    gappy_chain : Chain, None
+        Chain with more gaps.
+
+    ungappy_chains : list[Chain], []
+        Chains with fewer gaps.
+
+    overlaps : list[tuple[tuple[int, int]]], []
+        This list has a tuple item for each ungappy chain. There is an inner tuple for each reaction
+        shared between the gappy and ungappy chain, with the first item of the inner tuple being the
+        index of the reaction in the gappy chain and the second item being the index of the reaction
+        in the ungappy chain.
+
+    is_subchain : list[bool], []
+        This list has an item for each ungappy chain. An ungappy chain has a value of True if the
+        chain is a subchain of the gappy chain, meaning that none of the gaps in the gappy chain
+        occur in the ungappy subchain. Otherwise the ungappy chain has a value of False.
+    """
+    gappy_chain: Chain = None
+    ungappy_chains: list[Chain] = field(default_factory=list)
     overlaps: list[tuple[tuple[int, int]]] = field(default_factory=list)
-    subchains: list[Chain] = field(default_factory=list)
+    is_subchain: list[bool] = field(default_factory=list)
 
 @dataclass
 class SharedGaps:
+    """
+    Information associated with the set of gaps that can exist in one or more chains: different
+    chains may share the same set of gaps.
+
+    Attributes
+    ==========
+    gap_kgml_reactions : list[anvio.kgml.Reaction], []
+        Each of the gaps is a reaction.
+
+    gap_chain_relations : list[GapChainRelations], []
+        This list contains an item per "gappy" chain that has the set of gaps represented here.
+    """
     gap_kgml_reactions: list[kgml.Reaction] = field(default_factory=list)
-    chain_evolutions: list[ChainEvolution] = field(default_factory=list)
+    gap_chain_relations: list[GapChainRelations] = field(default_factory=list)
 
 class GapAnalyzer:
-    def __init__(self, more_gapped_chains: list[Chain], less_gapped_chains: list[Chain]) -> None:
-        self.less_gapped_chains = less_gapped_chains
-        self.more_gapped_chains = more_gapped_chains
+    """
+    Analyze chains of KGML compounds linked by reactions, some of which are designated as gaps.
+    Compare two sets of chains found from the same KGML source but with the set of "gappy" chains
+    permitting more gaps than "ungappy" chains.
+
+    Attributes
+    ==========
+    gappy_chains : list[Chain]
+        Chains with more gaps permitted than "ungappy" chains.
+
+    ungappy_chains : list[Chain]
+        Chains with fewer gaps permitted than "gappy" chains.
+
+    gap_relations : dict[tuple[str], SharedGaps]
+        Information associated with sets of gaps found in one or more chains, including
+        relationships between ungappy and gappy chains.
+    """
+    def __init__(self, gappy_chains: list[Chain], ungappy_chains: list[Chain]):
+        """
+        Parameters
+        ==========
+        gappy_chains : list[Chain]
+            Set as attribute of same name.
+
+        ungappy_chains : list[Chain]
+            Set as attribute of same name.
+        """
+        self.gappy_chains = gappy_chains
+        self.ungappy_chains = ungappy_chains
         self.gap_relations = self.get_gap_relations()
 
     def rank_gaps(self) -> list[tuple[str]]:
-        # Here is the algorithm used to rank gaps introduced in the new chains. In essence, the
-        # algorithm assigns higher ranks to gaps that occur in the middle of longer chains than
-        # toward the edges of shorter chains.
-        # 1. Loop through the gaps introduced into new chains. Depending on the input chains (new
-        #    more-gapped and old less-gapped), this can be one or more gaps.
-        # 2. Inner loop through the new chains containing the gap (or set of gaps). (New chains may
-        #    share gap KGML reactions that branch to multiple KGML compounds, yielding multiple
-        #    chains sharing the same gaps.)
-        # 3. Ignore new chains that, beside gap reactions, contain the same reactions as an old
-        #    chain. Gaps in the new chain create "shortcuts" in what is otherwise the same chain.
-        # 4. Find the longest contiguous segments of old chains that between them contain the
-        #    non-gap reactions of the new chain.
-        # 5. Sort the longest contiguous segments in ascending order of length (breaking ties by
-        #    index position in the chain). This is the last step in the inner loop.
-        # 6. Sort new chains sharing the same gap reactions (new chains that only differ due to at
-        #    least one reaction gap involving multiple substrates or products). New chains are
-        #    sorted in descending order of contiguous segment length, first considering the shortest
-        #    segment from each chain, then the next shortest to break ties, etc. The top-ranking
-        #    chain has the longest of the shortest segments.
-        # 7. Select the top-ranking new chain to represent the gap (or set of gaps). This is the
-        #    last step of the outer loop.
-        # 8. Among gaps, sort the new chains selected in step 7 using the ranking procedure of step
-        #    6.
+        """
+        Rank gaps that are in the gappy chains but not the ungappy chains. This algorithm can be
+        used to find candidate reactions to "gap-fill" in pathways. In essence, the algorithm
+        assigns higher ranks to gaps that occur in the middle of longer chains than toward the edges
+        of shorter chains. Here are the steps in the algorithm:
+
+        1. Loop through each set of gaps (one or more gaps) in the gappy chains. (Gappy chains may
+        share gap KGML reactions that branch to multiple KGML compounds, yielding multiple chains
+        sharing the same gaps.)
+
+        2. Inner loop through each gappy chain containing the set of gaps.
+
+        3. Ignore gappy chains that, beside gap reactions, contain the same reactions as an ungappy
+        chain. Gaps in the gappy chain create "shortcuts" in what is otherwise the same chain.
+
+        4. Find the longest ungappy chains that encompass the reactions of the gappy chain beside
+        its gaps not in ungappy chains. Call these unique segments.
+
+        5. Sort unique segments in ascending order of length, with ties broken by index position in
+        the chain. This is the last step in the inner loop.
+
+        6. Sort gappy chains sharing the same gap reactions (gappy chains that only differ due to
+        one or more gap reactions involving multiple substrates or products that are in the
+        different chains). Gappy chains are sorted in descending order of unique segment length,
+        first considering the shortest unique segment from each chain, then the next shortest to
+        break ties, etc. The top-ranking chain has the longest of the shortest unique segments.
+
+        7. Select the top-ranking gappy chain to represent the set of gaps. This is the last step of
+        the outer loop.
+
+        8. Sort the gappy chains selected in step (7) to represent each set of gaps. Use the
+        ranking procedure of step (6).
+        """
         def is_subsequence(t1: tuple[int], t2: tuple[int]) -> bool:
+            """
+            Check if the first sequence is a subsequence of the second.
+
+            Parameters
+            ==========
+            t1 : tuple[int]
+                First integer sequence.
+
+            t2 : tuple[int]
+                Second integer sequence.
+
+            Returns
+            =======
+            bool
+                True if a subsequence was found, and False otherwise.
+            """
             if len(t1) >= len(t2):
                 return False
 
@@ -1254,55 +1340,82 @@ class GapAnalyzer:
                     return True
             return False
 
-        def rank_new_chains_by_segment_lengths(
-            new_chain_segments: dict[Any, list[int]]
+        def rank_gappy_chains_by_segment_lengths(
+            gappy_chain_segments: dict[Any, list[int]]
         ) -> list[Any]:
+            """
+            Sort gappy chains in descending order of contiguous non-gap segment length, first
+            considering the shortest segment from each chain, then the next shortest to break ties,
+            etc. The top-ranking chain has the longest of the shortest segments.
+
+            Parameters
+            ==========
+            gappy_chain_segments : dict[Any, list[int]]
+                Keys identify a gappy chain. Values are lengths, in ascending order, of the
+                contiguous segments in the gappy chain.
+
+            Returns
+            =======
+            list[Any]
+                Ranked keys of gappy_chain_segments.
+            """
+            # Find the maximum number of segments in the gappy chains.
             max_segment_count = 0
-            for segments in new_chain_segments.values():
+            for segments in gappy_chain_segments.values():
                 if len(segments) > max_segment_count:
                     max_segment_count = len(segments)
 
-            new_chain_segment_lengths: dict[int, list[int]] = {}
-            for new_chain_index, segments in new_chain_segments.items():
+            # Gappy chains with fewer segments than the maximum have their lists of segments lengths
+            # padded at the end with zero lengths.
+            gappy_chain_segment_lengths: dict[int, list[int]] = {}
+            for gappy_chain_index, segments in gappy_chain_segments.items():
                 padded_segments = segments + [
                     tuple() for i in range(max_segment_count - len(segments))
                 ]
-                new_chain_segment_lengths[new_chain_index] = [
+                gappy_chain_segment_lengths[gappy_chain_index] = [
                     len(segment) for segment in padded_segments
                 ]
 
-            ranked_new_chain_ids = [item[0] for item in sorted(
-                new_chain_segment_lengths.items(),
+            ranked_gappy_chain_ids = [item[0] for item in sorted(
+                gappy_chain_segment_lengths.items(),
                 key=lambda item: tuple(-segment_length for segment_length in item[1])
             )]
-            return ranked_new_chain_ids
+            return ranked_gappy_chain_ids
 
         gap_unique_segments: dict[tuple[str], list[tuple[int]]] = {}
         for gap_kgml_reaction_ids, shared_gaps in self.gap_relations.items():
-            new_chain_unique_segments: dict[int, list[tuple[int]]] = {}
-            for new_chain_index, chain_evolution in enumerate(shared_gaps.chain_evolutions):
-                new_chain = chain_evolution.new_chain
+            gappy_chain_unique_segments: dict[int, list[tuple[int]]] = {}
 
-                kgml_reaction_ids_absent_new_gaps = set([
-                    kgml_reaction.id for kgml_reaction in new_chain.kgml_reactions
+            for gappy_chain_index, gap_chain_relations in enumerate(
+                shared_gaps.gap_chain_relations
+            ):
+                gappy_chain = gap_chain_relations.gappy_chain
+
+                # Ignore gappy chains that, beside gap reactions, contain the same reactions as an
+                # ungappy chain. Gaps in the gappy chain create "shortcuts" in what is otherwise the
+                # same chain.
+                kgml_reaction_ids_absent_gaps = set([
+                    kgml_reaction.id for kgml_reaction in gappy_chain.kgml_reactions
                     if kgml_reaction.id not in gap_kgml_reaction_ids
                 ])
-                for old_chain in chain_evolution.old_chains:
-                    if not kgml_reaction_ids_absent_new_gaps.difference(
-                        set([kgml_reaction.id for kgml_reaction in old_chain.kgml_reactions])
+                for ungappy_chain in gap_chain_relations.ungappy_chains:
+                    if not kgml_reaction_ids_absent_gaps.difference(
+                        set([kgml_reaction.id for kgml_reaction in ungappy_chain.kgml_reactions])
                     ):
-                        is_difference_in_new_gaps = True
+                        is_difference_gaps = True
                         break
                 else:
-                    is_difference_in_new_gaps = False
-                if is_difference_in_new_gaps:
+                    is_difference_gaps = False
+                if is_difference_gaps:
                     continue
 
                 segments = [
                     tuple([indices[0] for indices in overlap])
-                    for overlap in chain_evolution.overlaps
+                    for overlap in gap_chain_relations.overlaps
                 ]
 
+                # Find unique segments, or the longest ungappy chains that encompass the reactions
+                # of the gappy chain beside its gaps not in ungappy chains.
                 unique_segments: list[tuple[int]] = []
                 for i, segment in enumerate(segments):
                     for j, other_segment in enumerate(segments):
@@ -1312,34 +1425,39 @@ class GapAnalyzer:
                             break
                     else:
                         unique_segments.append(segment)
+                # Sort unique segments in ascending order of length, with ties broken by index
+                # position in the chain.
                 unique_segments = sorted(set(unique_segments), key=lambda segment: len(segment))
+                gappy_chain_unique_segments[gappy_chain_index] = unique_segments
+            if not gappy_chain_unique_segments:
+                raise AssertionError(
+                    "The gappy chain would only lack unique segments if the gappy and ungappy "
+                    "chains do not have the proper relationship, in which they were found "
+                    "identically except that more gaps were allowed in the gappy chains."
+                )
 
-                new_chain_unique_segments[new_chain_index] = unique_segments
-            if not new_chain_unique_segments:
-                continue
-
-            ranked_new_chain_indices: list[int] = rank_new_chains_by_segment_lengths(
-                new_chain_unique_segments
+            # Sort gappy chains sharing the same gap reactions.
+            ranked_gappy_chain_indices: list[int] = rank_gappy_chains_by_segment_lengths(
+                gappy_chain_unique_segments
             )
-            gap_unique_segments[gap_kgml_reaction_ids] = new_chain_unique_segments[
-                ranked_new_chain_indices[0]
+            # Select the top-ranking gappy chain to represent the set of gaps.
+            gap_unique_segments[gap_kgml_reaction_ids] = gappy_chain_unique_segments[
+                ranked_gappy_chain_indices[0]
             ]
 
-        if not gap_unique_segments:
-            return []
-
-        ranked_gap_kgml_reaction_ids = rank_new_chains_by_segment_lengths(gap_unique_segments)
+        # Sort the gappy chains selected to represent each set of gaps.
+        ranked_gap_kgml_reaction_ids = rank_gappy_chains_by_segment_lengths(gap_unique_segments)
         return ranked_gap_kgml_reaction_ids
 
     def get_gap_relations(self) -> dict[tuple[str], SharedGaps]:
         gap_relations = {}
-        for more_gapped_chain in self.more_gapped_chains:
-            if sum(more_gapped_chain.gaps) == 0:
+        for gappy_chain in self.gappy_chains:
+            if sum(gappy_chain.gaps) == 0:
                 continue
 
             gap_kgml_reactions = [
                 kgml_reaction for is_gap, kgml_reaction in
-                zip(more_gapped_chain.gaps, more_gapped_chain.kgml_reactions) if is_gap
+                zip(gappy_chain.gaps, gappy_chain.kgml_reactions) if is_gap
             ]
             gap_kgml_reaction_ids = tuple(
                 [kgml_reaction.id for kgml_reaction in gap_kgml_reactions]
@@ -1349,21 +1467,21 @@ class GapAnalyzer:
             except KeyError:
                 gap_relations[gap_kgml_reaction_ids] = shared_gaps = SharedGaps()
             shared_gaps.gap_kgml_reactions = gap_kgml_reactions
-            chain_evolution = ChainEvolution(new_chain=more_gapped_chain)
-            shared_gaps.chain_evolutions.append(chain_evolution)
+            gap_chain_relations = GapChainRelations(gappy_chain=gappy_chain)
+            shared_gaps.gap_chain_relations.append(gap_chain_relations)
 
             more_gapped_chain_kgml_reaction_ids = [
-                kgml_reaction.id for kgml_reaction in more_gapped_chain.kgml_reactions
+                kgml_reaction.id for kgml_reaction in gappy_chain.kgml_reactions
             ]
 
             overlaps: list[tuple[tuple[int, int]]] = []
-            less_gapped_chains: list[Chain] = []
-            for less_gapped_chain in self.less_gapped_chains:
-                if more_gapped_chain.is_consumed != less_gapped_chain.is_consumed:
+            ungappy_chains: list[Chain] = []
+            for ungappy_chain in self.ungappy_chains:
+                if gappy_chain.is_consumed != ungappy_chain.is_consumed:
                     continue
 
                 less_gapped_chain_kgml_reaction_ids = [
-                    kgml_reaction.id for kgml_reaction in less_gapped_chain.kgml_reactions
+                    kgml_reaction.id for kgml_reaction in ungappy_chain.kgml_reactions
                 ]
 
                 if more_gapped_chain_kgml_reaction_ids == less_gapped_chain_kgml_reaction_ids:
@@ -1380,18 +1498,22 @@ class GapAnalyzer:
                             overlap.append((i, j))
                 if not overlap:
                     continue
-                less_gapped_chains.append(less_gapped_chain)
+                ungappy_chains.append(ungappy_chain)
                 overlaps.append(tuple(overlap))
 
             sorted_overlaps = sorted(overlaps, key=lambda overlap: overlap[0][0])
             sorted_less_gapped_chains: list[Chain] = []
             for overlap in sorted_overlaps:
                 overlap: tuple[tuple[int]]
-                sorted_less_gapped_chains.append(less_gapped_chains[overlaps.index(overlap)])
-            chain_evolution.old_chains = sorted_less_gapped_chains
-            chain_evolution.overlaps = sorted_overlaps
+                sorted_less_gapped_chains.append(ungappy_chains[overlaps.index(overlap)])
+            gap_chain_relations.ungappy_chains = sorted_less_gapped_chains
+            gap_chain_relations.overlaps = sorted_overlaps
 
-            for old_chain, overlap in zip(chain_evolution.old_chains, chain_evolution.overlaps):
-                if len(overlap) == len(old_chain.kgml_reactions):
-                    chain_evolution.subchains.append(old_chain)
+            for ungappy_chain, overlap in zip(
+                gap_chain_relations.ungappy_chains, gap_chain_relations.overlaps
+            ):
+                if len(overlap) == len(ungappy_chain.kgml_reactions):
+                    gap_chain_relations.is_subchain.append(True)
+                else:
+                    gap_chain_relations.is_subchain.append(False)
         return gap_relations
