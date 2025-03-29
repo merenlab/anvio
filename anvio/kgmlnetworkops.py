@@ -1025,7 +1025,10 @@ class KGMLNetworkWalker:
             elif kgml_compound_entry.id in kgml_product_ids:
                 reaction_compound_data.append(tuple(kgml_substrate_ids))
             else:
-                raise AssertionError
+                raise AssertionError(
+                    "The compound should either be a substrate or product of the reaction. This "
+                    "point should not be reached."
+                )
 
         if any(reaction_reversibility_data) and len(set(reaction_compound_data)) > 1:
             return False
