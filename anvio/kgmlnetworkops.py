@@ -1125,6 +1125,25 @@ class KGMLNetworkWalker:
         self,
         compound_id_chains: dict[str, list[Chain]]
     ) -> dict[str, list[Chain]]:
+        """
+        Remove subchains, or chains running in the same direction within other chains.
+
+        Assume that there are no subchains of other chains starting from the same compound, since
+        these are not found by methods that get chains (via _get_chains_from_kgml_compound_entry):
+        subchains can only start from an intermediate compound in another chain.
+
+        Parameters
+        ==========
+        compound_id_chains : dict[str, list[Chain]]
+            Keys are IDs of compounds from which chains start. Values are lists of chains from the
+            compounds.
+
+        Returns
+        =======
+        dict[str, list[Chain]]
+            Dictionary like compound_id_chains but with subchains removed.
+        """
+        # Determine whether each chain is a subchain.
         derep_compound_id_chains: dict[str, list[Chain]] = {}
         for compound_id, chains in compound_id_chains.items():
             derep_chains: list[Chain] = []
@@ -1135,10 +1154,13 @@ class KGMLNetworkWalker:
 
                 for other_compound_id, other_chains in compound_id_chains.items():
                     if compound_id == other_compound_id:
+                        # Assume that there are no subchains starting from the same compound as
+                        # other chains.
                         continue
 
                     for other_chain in other_chains:
                         if chain.is_consumed != other_chain.is_consumed:
+                            # Subchains run in the same direction as the other chain.
                             continue
 
                         other_kgml_compound_ids: list[str] = [
@@ -1146,11 +1168,14 @@ class KGMLNetworkWalker:
                         ]
                         delta_length = len(other_kgml_compound_ids) - len(kgml_compound_ids)
                         if delta_length < 1:
+                            # Subchains must be shorter than the other chain.
                             continue
 
                         try:
                             i = other_kgml_compound_ids.index(kgml_compound_ids[0])
                         except ValueError:
+                            # The chain isn't a subchain as its starting compound isn't in the other
+                            # chain.
                             continue
 
                         other_kgml_reaction_ids: list[str] = [
@@ -1163,11 +1188,15 @@ class KGMLNetworkWalker:
                                 i: i + len(kgml_reaction_ids)
                             ]
                         ):
+                            # The chain is a subchain because it shares the same compounds and
+                            # reactions in the same order as the other chain.
                             break
                     else:
                         continue
+                    # Subchain was found.
                     break
                 else:
+                    # The chain was not a subchain, so record it.
                     derep_chains.append(chain)
 
             if derep_chains:
