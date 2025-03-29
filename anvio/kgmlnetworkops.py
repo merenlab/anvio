@@ -987,11 +987,27 @@ class KGMLNetworkWalker:
         kgml_compound_entry: kgml.Entry
     ) -> bool:
         """
-        A KGML compound is here defined to be a consumption terminus in a pathway map in a negative
-        sense. First, the compound is not a consumption terminus if an irreversible reaction
-        produces the compound. Second, the compound is not a consumption terminus if there are
-        multiple reactions that consume the compound, and any one of these reactions is reversible,
-        and not all of the reactions have the same KGML compound products.
+        Check if a KGML Entry of type "compound" is a consumption terminus in a pathway map. A
+        consumption terminus is defined in a negative sense as follows.
+
+        The compound is not a consumption terminus if an irreversible reaction produces the
+        compound. Also, the compound is not a consumption terminus if a) there are multiple
+        reactions that consume the compound, b) any one of these reactions is reversible, and c) not
+        all of the reactions have the same KGML compound products.
+
+        Examples of consumption termini are acetyl-CoA in Fatty Acid Biosynthesis (00061) and
+        L-valine, L-leucine, and L-isoleucine in Valine, Leucine, and Isoleucine Degradation
+        (00280).
+
+        Parameters
+        ==========
+        kgml_compound_entry : anvio.kgml.Entry
+            Compound to check.
+
+        Returns
+        =======
+        bool
+            True if consumption terminus, False otherwise.
         """
         try:
             kgml_reactions = self.rn_pathway_kgml_compound_id_to_kgml_reactions[
@@ -1000,6 +1016,7 @@ class KGMLNetworkWalker:
         except KeyError:
             return
 
+        # Inspect each reaction involving the compound.
         reaction_reversibility_data: list[bool] = []
         reaction_compound_data: list[tuple[str]] = []
         for kgml_reaction in kgml_reactions:
@@ -1009,6 +1026,7 @@ class KGMLNetworkWalker:
             for product_uuid in kgml_reaction.children['product']:
                 kgml_product: kgml.Product = self.kgml_rn_pathway.uuid_element_lookup[product_uuid]
                 if kgml_compound_entry.id == kgml_product.id and not is_reversible:
+                    # The compound is the product of an irreversible reaction.
                     return False
                 kgml_product_ids.append(kgml_product.id)
 
@@ -1031,6 +1049,8 @@ class KGMLNetworkWalker:
                 )
 
         if any(reaction_reversibility_data) and len(set(reaction_compound_data)) > 1:
+            # The compound is involved in at least one reversible reaction. The compound is also
+            # involved in distinct reactions with different sets of chemical species.
             return False
 
         return True
@@ -1040,11 +1060,27 @@ class KGMLNetworkWalker:
         kgml_compound_entry: kgml.Entry
     ) -> bool:
         """
-        A KGML compound is here defined to be a production terminus in a pathway map in a negative
-        sense. First, the compound is not a production terminus if an irreversible reaction consumes
-        the compound. Second, the compound is not a production terminus if there are multiple
-        reactions that produce the compound, and any one of these reactions is reversible, and not
-        all of the reactions have the same KGML compound substrates.
+        Check if a KGML Entry of type "compound" is a production terminus in a pathway map. A
+        production terminus is defined in a negative sense as follows.
+
+        The compound is not a production terminus if an irreversible reaction consumes the
+        compound. Also, the compound is not a production terminus if a) there are multiple
+        reactions that produce the compound, b) any one of these reactions is reversible, and c) not
+        all of the reactions have the same KGML compound reactants.
+
+        Examples of production termini are acetyl-CoA in Fatty Acid Degradation (00071) and
+        L-valine, L-leucine, and L-isoleucine in Valine, Leucine, and Isoleucine Biosynthesis
+        (00290).
+
+        Parameters
+        ==========
+        kgml_compound_entry : anvio.kgml.Entry
+            Compound to check.
+
+        Returns
+        =======
+        bool
+            True if production terminus, False otherwise.
         """
         try:
             kgml_reactions = self.rn_pathway_kgml_compound_id_to_kgml_reactions[
