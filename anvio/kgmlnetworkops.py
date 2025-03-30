@@ -1447,15 +1447,15 @@ class GapAnalyzer:
             gappy_chain_segments: dict[Any, list[int]]
         ) -> list[Any]:
             """
-            Sort gappy chains in descending order of contiguous non-gap segment length, first
-            considering the shortest segment from each chain, then the next shortest to break ties,
-            etc. The top-ranking chain has the longest of the shortest segments.
+            Sort gappy chains in descending order of unique segment length, first considering the
+            shortest segment from each chain, then the next shortest to break ties, etc. The
+            top-ranking chain has the longest of the shortest segments.
 
             Parameters
             ==========
             gappy_chain_segments : dict[Any, list[int]]
-                Keys identify a gappy chain. Values are lengths, in ascending order, of the
-                contiguous segments in the gappy chain.
+                Keys identify a gappy chain. Values are lengths, in ascending order, of the unique
+                segments in the gappy chain.
 
             Returns
             =======
