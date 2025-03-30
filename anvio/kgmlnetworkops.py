@@ -1295,7 +1295,7 @@ class GapAnalyzer:
         """
         gap_relations = {}
         for gappy_chain in self.gappy_chains:
-            if sum(gappy_chain.gaps) == 0:
+            if not any(gappy_chain.gaps):
                 # The chain has no gaps. (Gapless along with gapped chains can be returned when
                 # seeking chains allowing for gaps.)
                 continue
