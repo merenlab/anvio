@@ -1281,65 +1281,6 @@ class GapAnalyzer:
         self.ungappy_chains = ungappy_chains
         self.gap_relations = self.get_gap_relations()
 
-    def rank_gaps(self) -> list[tuple[str]]:
-        """
-        Rank gaps that are in the gappy chains but not the ungappy chains. This algorithm can be
-        used to find candidate reactions to "gap-fill" in pathways. In essence, the algorithm
-        assigns higher ranks to gaps that occur in the middle of longer chains than toward the edges
-        of shorter chains. Here are the steps in the algorithm:
-
-        1. Loop through each set of gaps (one or more gaps) in the gappy chains. (Gappy chains may
-        share gap KGML reactions that branch to multiple KGML compounds, yielding multiple chains
-        sharing the same gaps.)
-
-        2. Inner loop through each gappy chain containing the set of gaps.
-
-        3. Ignore gappy chains that, beside gap reactions, contain the same reactions as an ungappy
-        chain. Gaps in the gappy chain create "shortcuts" in what is otherwise the same chain.
-
-        4. Find the longest ungappy chains that encompass the reactions of the gappy chain beside
-        its gaps not in ungappy chains. Call these unique segments.
-
-        5. Sort unique segments in ascending order of length, with ties broken by index position in
-        the chain. This is the last step in the inner loop.
-
-        6. Sort gappy chains sharing the same gap reactions (gappy chains that only differ due to
-        one or more gap reactions involving multiple substrates or products that are in the
-        different chains). Gappy chains are sorted in descending order of unique segment length,
-        first considering the shortest unique segment from each chain, then the next shortest to
-        break ties, etc. The top-ranking chain has the longest of the shortest unique segments.
-
-        7. Select the top-ranking gappy chain to represent the set of gaps. This is the last step of
-        the outer loop.
-
-        8. Sort the gappy chains selected in step (7) to represent each set of gaps. Use the
-        ranking procedure of step (6).
-        """
-        def is_subsequence(t1: tuple[int], t2: tuple[int]) -> bool:
-            """
-            Check if the first sequence is a subsequence of the second.
-
-            Parameters
-            ==========
-            t1 : tuple[int]
-                First integer sequence.
-
-            t2 : tuple[int]
-                Second integer sequence.
-
-            Returns
-            =======
-            bool
-                True if a subsequence was found, and False otherwise.
-            """
-            if len(t1) >= len(t2):
-                return False
-
-            for i in range(len(t2) - len(t1) + 1):
-                if t2[i: i + len(t1)] == t1:
-                    return True
-            return False
-
     def get_gap_relations(self) -> dict[tuple[str], SharedGaps]:
         """
         Get information associated with each set of gaps that exists in one or more gappy chains,
@@ -1432,6 +1373,65 @@ class GapAnalyzer:
                 else:
                     gap_chain_relations.is_subchain.append(False)
         return gap_relations
+
+    def rank_gaps(self) -> list[tuple[str]]:
+        """
+        Rank gaps that are in the gappy chains but not the ungappy chains. This algorithm can be
+        used to find candidate reactions to "gap-fill" in pathways. In essence, the algorithm
+        assigns higher ranks to gaps that occur in the middle of longer chains than toward the edges
+        of shorter chains. Here are the steps in the algorithm:
+
+        1. Loop through each set of gaps (one or more gaps) in the gappy chains. (Gappy chains may
+        share gap KGML reactions that branch to multiple KGML compounds, yielding multiple chains
+        sharing the same gaps.)
+
+        2. Inner loop through each gappy chain containing the set of gaps.
+
+        3. Ignore gappy chains that, beside gap reactions, contain the same reactions as an ungappy
+        chain. Gaps in the gappy chain create "shortcuts" in what is otherwise the same chain.
+
+        4. Find the longest ungappy chains that encompass the reactions of the gappy chain beside
+        its gaps not in ungappy chains. Call these unique segments.
+
+        5. Sort unique segments in ascending order of length, with ties broken by index position in
+        the chain. This is the last step in the inner loop.
+
+        6. Sort gappy chains sharing the same gap reactions (gappy chains that only differ due to
+        one or more gap reactions involving multiple substrates or products that are in the
+        different chains). Gappy chains are sorted in descending order of unique segment length,
+        first considering the shortest unique segment from each chain, then the next shortest to
+        break ties, etc. The top-ranking chain has the longest of the shortest unique segments.
+
+        7. Select the top-ranking gappy chain to represent the set of gaps. This is the last step of
+        the outer loop.
+
+        8. Sort the gappy chains selected in step (7) to represent each set of gaps. Use the
+        ranking procedure of step (6).
+        """
+        def is_subsequence(t1: tuple[int], t2: tuple[int]) -> bool:
+            """
+            Check if the first sequence is a subsequence of the second.
+
+            Parameters
+            ==========
+            t1 : tuple[int]
+                First integer sequence.
+
+            t2 : tuple[int]
+                Second integer sequence.
+
+            Returns
+            =======
+            bool
+                True if a subsequence was found, and False otherwise.
+            """
+            if len(t1) >= len(t2):
+                return False
+
+            for i in range(len(t2) - len(t1) + 1):
+                if t2[i: i + len(t1)] == t1:
+                    return True
+            return False
 
         def rank_gappy_chains_by_segment_lengths(
             gappy_chain_segments: dict[Any, list[int]]
