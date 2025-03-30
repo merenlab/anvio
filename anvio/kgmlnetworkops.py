@@ -1628,7 +1628,7 @@ class GapFiller:
             syntenous_regions: list[list[int]] = []
             for gcid in gcids:
                 # Search around the gene. The search stops in either direction when a gene in the
-                # opposite direction is found or the first or last gene in the contig is reached.
+                # opposite orientation is found or the first or last gene in the contig is reached.
                 row = self.genes_in_contigs_df[
                     self.genes_in_contigs_df['gene_callers_id'] == gcid
                 ].squeeze()
