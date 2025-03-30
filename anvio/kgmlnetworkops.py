@@ -1,5 +1,6 @@
 import os
 import sys
+import pandas as pd
 
 from copy import deepcopy
 from argparse import Namespace
@@ -1376,10 +1377,13 @@ class GapAnalyzer:
 
     def rank_gaps(self) -> list[tuple[str]]:
         """
-        Rank gaps that are in the gappy chains but not the ungappy chains. This algorithm can be
-        used to find candidate reactions to "gap-fill" in pathways. In essence, the algorithm
-        assigns higher ranks to gaps that occur in the middle of longer chains than toward the edges
-        of shorter chains. Here are the steps in the algorithm:
+        Rank sets of gaps that are in the gappy chains but not the ungappy chains. This algorithm
+        can be used to find candidate reactions to "gap-fill" in pathways. In essence, the algorithm
+        assigns higher ranks to sets of gaps that occur in the middle of longer chains than toward
+        the edges of shorter chains. If the gappy chains are allowed at most one gap and the ungappy
+        chains are allowed no gaps, then the ranked "sets of gaps" are single reaction gaps.
+
+        Here are the steps in the algorithm:
 
         1. Loop through each set of gaps (one or more gaps) in the gappy chains. (Gappy chains may
         share gap KGML reactions that branch to multiple KGML compounds, yielding multiple chains
@@ -1407,6 +1411,12 @@ class GapAnalyzer:
 
         8. Sort the gappy chains selected in step (7) to represent each set of gaps. Use the
         ranking procedure of step (6).
+
+        Returns
+        =======
+        list[tuple[str]]
+            Ranked sets of gaps in gappy chains, with higher ranks first. Each tuple of KGML
+            reaction IDs corresponds to a key of the gap_relations attribute.
         """
         def is_subsequence(t1: tuple[int], t2: tuple[int]) -> bool:
             """
