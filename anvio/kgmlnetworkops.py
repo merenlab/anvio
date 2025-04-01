@@ -1558,10 +1558,7 @@ class GapFiller:
 
         self.walker: KGMLNetworkWalker = A(args.walker, None)
         if self.walker is None:
-            raise ConfigError(
-                "The KGML network walker used to find gapped and ungapped chains is required as "
-                "the 'walker' argument."
-            )
+            raise ConfigError("A KGML network walker is required as the 'walker' argument.")
         if self.walker.contigs_db_path is None:
             raise ConfigError(
                 "The KGML network walker must be associated with a contigs database."
@@ -1572,11 +1569,11 @@ class GapFiller:
             )
 
         self.gap_analyzer: GapAnalyzer = A(args.gap_analyzer, None)
-        if self.gap_analyzer is None:
-            raise ConfigError(
-                "The gap analyzer used to compare gapped and ungapped chains is required as the "
-                "'gap_analyzer' argument."
-            )
+        # if self.gap_analyzer is None:
+        #     raise ConfigError(
+        #         "The gap analyzer used to compare gapped and ungapped chains is required as the "
+        #         "'gap_analyzer' argument."
+        #     )
 
         self.ko_cog_path: str = A(args.ko_cog, None)
 
@@ -1594,22 +1591,30 @@ class GapFiller:
                 "Genes of the contigs database should have been annotated with KOs, but there is "
                 "no 'KOfam' function source."
             )
-        if 'COG20_FUNCTION' not in function_sources and self.ko_cog_path:
-            raise ConfigError(
-                "KO and COG20 annotations are to be compared, so genes of the contigs database "
-                "should have been annotated with COG20 functions, but there is no 'COG20_FUNCTION' "
-                "source."
-            )
+        # if 'COG20_FUNCTION' not in function_sources and self.ko_cog_path:
+        #     raise ConfigError(
+        #         "KO and COG20 annotations are to be compared, so genes of the contigs database "
+        #         "should have been annotated with COG20 functions, but there is no 'COG20_FUNCTION' "
+        #         "source."
+        #     )
         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
         # Sort genes by contig start position.
         self.genes_in_contigs_df = self.genes_in_contigs_df.sort_values(
             ['contig', 'start']
         ).reset_index()
-        self.gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
+        gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
+        self.gene_kos_df = gene_functions_df[gene_functions_df['source'] == 'KOfam']
+        if 'COG20_FUNCTION' not in function_sources:
+            self.gene_cogs_df = None
+        else:
+            self.gene_cogs_df = gene_functions_df[gene_functions_df['source'] == 'COG20_FUNCTION']
 
-        self.gap_key_ranks = self.gap_analyzer.rank_gaps()
+        if self.gap_analyzer:
+            self.gap_key_ranks = self.gap_analyzer.rank_gaps()
 
-        if self.ko_cog_path:
+        if self.ko_cog_path is None:
+            self.cog_kos = None
+        else:
             cog_kos: dict[str, list[str]] = {}
             ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
             ko_cog_df.columns = ['ko', 'cog']
@@ -1620,86 +1625,424 @@ class GapFiller:
                     except KeyError:
                         cog_kos[cog_id] = [row.ko]
             self.cog_kos = cog_kos
+
+    def eval_gap_ko(self, ko_id: str) -> Union[dict, None]:
+        gene_hits_df = self.gene_kos_df[self.gene_kos_df['accession'] == ko_id]
+
+        if not len(gene_hits_df):
+            return None
+
+        other_gene_hits_df = self.gene_kos_df[
+            self.gene_kos_df['gene_callers_id'].isin(gene_hits_df['gene_callers_id'])
+        ]
+        other_gene_hits_df = other_gene_hits_df[other_gene_hits_df['accession'] != ko_id]
+
+        json_obj = {}
+        if len(gene_hits_df):
+            json_obj['ko_id'] = ko_id
+            json_obj['ko_name'] = gene_hits_df.iloc[0]['function']
+
+        if gcid_cog_df is None:
+            gcid_cog_df = None
+            equivalent_cog_ids = None
         else:
-            self.cog_kos = None
+            gcid_cog_df: dict[int, pd.DataFrame] = {}
+            for gcid in gene_hits_df['gene_callers_id']:
+                gcid_cog_df[gcid] = self.get_cog_hits(gcid)
 
-    def evaluate(self):
-        def get_syntenous_regions(self, gcids: list[int]) -> list[list[int]]:
-            syntenous_regions: list[list[int]] = []
-            for gcid in gcids:
-                # Search around the gene. The search stops in either direction when a gene in the
-                # opposite orientation is found or the first or last gene in the contig is reached.
-                row = self.genes_in_contigs_df[
-                    self.genes_in_contigs_df['gene_callers_id'] == gcid
-                ].squeeze()
-                row_index = row.name
-                direction = row['direction']
+            if self.cog_kos is None:
+                equivalent_cog_ids = None
+            else:
+                equivalent_cog_ids: list[str] = []
+                for gcid, cog_df in gcid_cog_df.items():
+                    for cog_id in cog_df['accession'].unique():
+                        equivalent_ko_ids = self.cog_kos[cog_id]
+                        for equivalent_ko_id in equivalent_ko_ids:
+                            if equivalent_ko_id != ko_id:
+                                continue
+                            equivalent_cog_ids.append(cog_id)
 
-                syntenous_region: list[int] = []
-                # Search preceding genes.
-                for row_index in range(row_index, -1, -1):
-                    prior_row = self.genes_in_contigs_df.loc[row_index]
-                    if prior_row['direction'] != direction:
-                        break
-                    if prior_row['partial'] == 1:
-                        # Ignore partial gene calls.
-                        continue
-                    syntenous_region.append(row_index)
-                # Search succeeding genes.
-                for row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
-                    next_row = self.genes_in_contigs_df.loc[row_index]
-                    if next_row['direction'] != direction:
-                        break
-                    if next_row['partial'] == 1:
-                        continue
-                    syntenous_region.append(row_index)
+        json_gene_hits: list[dict] = []
+        json_obj['annotated_genes'] = json_gene_hits
+        for gene_hit_row in gene_hits_df.itertuples():
+            json_gene_hit = {}
+            json_gene_hits.append(json_gene_hit)
 
-                syntenous_region = sorted(syntenous_region)
-                if syntenous_region in syntenous_regions:
-                    # The syntenous region has already been encountered in considering another gene.
-                    continue
-                syntenous_regions.append(syntenous_region)
-            return syntenous_regions
+            json_gene_hit['gene_callers_id'] = gcid = gene_hit_row.gene_callers_id
+            json_gene_hit['e_value'] = gene_hit_row.e_value
 
-        syntenous_regions: dict[int, list[list[int]]] = {}
-        for gappy_chain_index, gappy_chain in enumerate(self.gap_analyzer.gappy_chains):
-            if not any(gappy_chain.gaps):
-                # The chain has no gaps. (Gapless along with gapped chains can be returned when
-                # seeking chains allowing for gaps.)
+            json_other_kos: list[dict] = []
+            json_gene_hit['other_kos'] = json_other_kos
+            for other_gene_hit_row in other_gene_hits_df[
+                other_gene_hits_df['gene_callers_id'] == gcid
+            ].itertuples():
+                json_other_ko = {}
+                json_other_kos.append(json_other_ko)
+                json_other_ko['other_ko_id'] = other_gene_hit_row.accession
+                json_other_ko['other_ko_name'] = other_gene_hit_row.function
+                json_other_ko['other_e_value'] = other_gene_hit_row.e_value
+
+            if gcid_cog_df is None:
+                json_cog_annotations = None
+            else:
+                json_cog_annotations: list[dict] = []
+                cog_df = gcid_cog_df[gcid]
+                for cog_row in cog_df.itertuples():
+                    json_cog_annotation = {}
+                    json_cog_annotation['cog20_id'] = cog_id = cog_row.accession
+                    json_cog_annotation['cog20_name'] = cog_row.function
+                    if self.cog_kos is None:
+                        json_cog_annotation['is_equivalent_to_ko'] = None
+                    elif cog_id in equivalent_cog_ids:
+                        json_cog_annotation['is_equivalent_to_ko'] = True
+                    else:
+                        json_cog_annotation['is_equivalent_to_ko'] = False
+            json_gene_hit['cog20_annotations'] = json_cog_annotations
+
+        return json_obj
+
+    def get_cog_hits(self, gcid: int) -> Union[pd.DataFrame, None]:
+        if self.gene_cogs_df is None:
+            return None
+
+        gene_hits_df = self.gene_cogs_df[self.gene_cogs_df['gene_callers_id'] == gcid]
+
+        expanded_gene_hits = []
+        for row in gene_hits_df.itertuples(index=False):
+            if '!!!' not in row.accession:
+                expanded_gene_hits.append(row)
+                continue
+            for cog_id, cog_name in zip(row.accession.split('!!!'), row.function.split('!!!')):
+                new_row = row._replace(accession=cog_id, function=cog_name)
+                expanded_gene_hits.append(new_row)
+        expanded_gene_hits_df = pd.DataFrame(expanded_gene_hits, columns=gene_hits_df.columns)
+
+        return expanded_gene_hits_df
+
+    def eval_kgml_reaction(self, kgml_reaction_id):
+        pass
+
+    def eval_pathway(self):
+        pass
+
+    def eval_chain(self, chains):
+        pass
+
+    def eval_gap_in_chains(self, kgml_reaction_id, chains):
+        pass
+
+    def get_chain_gcids(self, chain: Chain) -> list[int]:
+        chain_gcids: list[int] = []
+        for is_gap, kgml_reaction in chain.kgml_reactions:
+            if is_gap:
                 continue
 
-            # Find genes annotated by KOs in the chain.
-            gappy_chain_gcids: list[int] = []
-            for is_gap, kgml_reaction in gappy_chain.kgml_reactions:
-                if is_gap:
+            # Find the KGML ortholog entry for the reaction.
+            for entry in self.pathway_ortholog_entries:
+                if entry.id == kgml_reaction.id:
+                    kgml_entry = entry
+                    break
+            else:
+                raise AssertionError
+
+            # The entry corresponds to one or more KOs: look for KOs that annotate genes.
+            network_kos: list[rn.KO] = []
+            for name_substring in kgml_entry.name.split():
+                if name_substring[:3] != 'ko:':
                     continue
 
-                # Find the KGML ortholog entry for the reaction.
-                for entry in self.pathway_ortholog_entries:
-                    if entry.id == kgml_reaction.id:
-                        kgml_entry = entry
-                        break
-                else:
-                    raise AssertionError
+                ko_id = name_substring[3:]
+                try:
+                    network_kos.append(self.walker.network.kos[ko_id])
+                except KeyError:
+                    # The KO does not annotate a gene.
+                    continue
 
-                # The entry corresponds to one or more KOs: look for KOs that annotate genes.
-                network_kos: list[rn.KO] = []
-                for name_substring in kgml_entry.name.split():
-                    if name_substring[:3] != 'ko:':
-                        continue
+            # Record IDs of genes annotated by the KOs.
+            for ko in network_kos:
+                for gene in self.walker.network.genes.values():
+                    if ko.id in gene.ko_ids:
+                        chain_gcids.append(gene.gcid)
+        return chain_gcids
 
-                    ko_id = name_substring[3:]
-                    try:
-                        network_kos.append(self.walker.network.kos[ko_id])
-                    except KeyError:
-                        # The KO does not annotate a gene.
-                        continue
+    def get_syntenous_regions(self, gcids: list[int]) -> list[list[int]]:
+        syntenous_regions: list[list[int]] = []
+        for gcid in gcids:
+            # Search around the gene. The search stops in either direction when a gene in the
+            # opposite orientation is found or the first or last gene in the contig is reached.
+            row = self.genes_in_contigs_df[
+                self.genes_in_contigs_df['gene_callers_id'] == gcid
+            ].squeeze()
+            row_index = row.name
+            direction = row['direction']
 
-                # Record IDs of genes annotated by the KOs.
-                for ko in network_kos:
-                    for gene in self.walker.network.genes.values():
-                        if ko.id in gene.ko_ids:
-                            gappy_chain_gcids.append(gene.gcid)
+            syntenous_region: list[int] = []
+            # Search preceding genes.
+            for row_index in range(row_index, -1, -1):
+                prior_row = self.genes_in_contigs_df.loc[row_index]
+                if prior_row['direction'] != direction:
+                    break
+                if prior_row['partial'] == 1:
+                    # Ignore partial gene calls.
+                    continue
+                syntenous_region.append(row_index)
+            # Search succeeding genes.
+            for row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
+                next_row = self.genes_in_contigs_df.loc[row_index]
+                if next_row['direction'] != direction:
+                    break
+                if next_row['partial'] == 1:
+                    continue
+                syntenous_region.append(row_index)
 
-            syntenous_regions[gappy_chain_index] = self.get_syntenous_regions(gappy_chain_gcids)
+            syntenous_region = sorted(syntenous_region)
+            if syntenous_region in syntenous_regions:
+                # The syntenous region has already been encountered in considering another gene.
+                continue
+            syntenous_regions.append(syntenous_region)
+        return syntenous_regions
 
+    """
+    {
+        "pathway_number": <pathway number>, # Class to evaluate each gap
+        "pathway_name": <pathway name>,
+        "gaps": [
+            {
+                "kgml_reaction_id": <KGML reaction ID>, # have a function to return result from this point
+                "ko_hits": [
+                    {
+                        "ko_id": <KO ID>, # have a function to return result from this point
+                        "ko_name": <KO name>,
+                        "gene_hits": [
+                            {
+                                "gene_callers_id": <GCID>,
+                                "e_value": <E value>,
+                                "other_kos": [
+                                    {
+                                        "other_ko_id": <KO ID>,
+                                        "other_ko_name": <KO name>,
+                                        "other_e_value": <E value>
+                                    },
+                                    ...
+                                ],
+                                "cog20_annotations": [ or null
+                                    {
+                                        "cog20_id": <COG20 ID>,
+                                        "cog20_name": <COG20 name>,
+                                        "is_equivalent_to_ko": <true or false> or null,
+                                    },
+                                    ...
+                                ],
+                                "gene_index_in_syntenous_region": <gene index in syntenous region>,
+                                "syntenous_region_in_pathway": {
+                                    "contig_id": <contig ID>,
+                                    "gene_orientation": <"f" or "r">,
+                                    "gene_count": <gene count>,
+                                    "surrounding_syntenous_genes": [
+                                        {
+                                            "gene_callers_id": <GCID>,
+                                            "start_position": <start position>,
+                                            "stop_position": <stop position>,
+                                            "gene_call_source": <gene call source>,
+                                            "ko_id": <KO ID or null>,
+                                            "ko_name": <KO name or null>,
+                                            "cog20_id": <COG20 ID or null>,
+                                            "cog20_name": <COG20 ID or null>,
+                                            "is_in_pathway": <true or false>,
+                                            "chains": [
+                                                {
+                                                    "chain_id": <chain ID>,
+                                                    "reaction_count": <reaction count>,
+                                                    "reaction_indices_in_chain": [<reaction index in chain>, ...]
+                                                },
+                                                ...
+                                            ]
+                                        },
+                                        ...
+                                    ]
+                                }
+                            },
+                            ...
+                        ]
+                    },
+                    ...
+                ]
+            },
+            ...
+        ],
+        "chains": [
+            {
+                "id": <ID>,
+            },
+            ...
+        ]
+    }
+    """
+
+    # def evaluate(self):
+    #     json = {}
+    #     json['kegg_pathway_number'] = self.walker.kegg_pathway_number
+    #     json['kegg_pathway_name'] = self.walker.kgml_ko_pathway.name
+    #     json['gaps'] = []
+    #     # have separate evaluate gap function for arbitrary gap
+    #     for gap_kgml_reaction_ids in self.gap_key_ranks:
+    #         json_gap = {}
+    #         shared_gaps = self.gap_analyzer.gap_relations[gap_kgml_reaction_ids]
+
+    #         for gap_index in range(len(gap_kgml_reaction_ids)):
+    #             gap_kgml_reaction = shared_gaps.gap_kgml_reactions[gap_index]
+
+    #             for entry in self.pathway_ortholog_entries:
+    #                 if gap_kgml_reaction.id == entry.id:
+    #                     gap_entry = entry
+    #                     break
+    #             else:
+    #                 raise AssertionError(
+    #                     f"Every KGML reaction in the KO type file should correspond to an ortholog "
+    #                     f"type entry. The reaction with KGML ID '{gap_kgml_reaction.id}' does not "
+    #                     "have a corresponding entry with the same ID in pathway "
+    #                     f"'{self.walker.kegg_pathway_number}'."
+    #                 )
+
+    #             gap_ko_gene_hits: dict[str, pd.DataFrame] = {}
+    #             for candidate_ko_id in gap_entry.name.split():
+    #                 if candidate_ko_id[:3] != 'ko:':
+    #                     continue
+    #                 ko_id = candidate_ko_id[3:]
+    #                 gene_hits = self.gene_kos_df[self.gene_kos_df['accession'] == ko_id]
+    #                 if len(gene_hits):
+    #                     gap_ko_gene_hits[ko_id] = gene_hits
+
+    #             if gap_ko_gene_hits:
+    #                 pass
+
+    #         for gap_chain_relations in shared_gaps.gap_chain_relations:
+    #             gappy_chain = gap_chain_relations.gappy_chain
+    #             # Find genes annotated by KOs in the chain.
+    #             chain_gcids = get_chain_gcids(gappy_chain)
+    #             chain_syntenous_regions = get_syntenous_regions(chain_gcids)
+
+    #         json['gaps'] = json_gap
+
+# class GapFiller:
+#     def __init__(self, args: Namespace) -> None:
+#         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
+#         self.gapped_chains: list[Chain] = A(args.gapped_chains, None)
+#         self.ungapped_chains: list[Chain] = A(args.ungapped_chains, None)
+#         self.walker: KGMLNetworkWalker = A(args.walker, None)
+#         self.contigs_db_path: str = A(args.contigs_db, None)
+#         self.ko_cog_path: str = A(args.ko_cog, None)
+
+#         self.gap_analyzer = GapAnalyzer(self.gapped_chains, self.ungapped_chains)
+#         self.chain_gaps = self.gap_analyzer.rank_gaps()
+
+#         self.pathway_ortholog_entries = self.walker.kgml_ko_pathway.get_entries(
+#             entry_type='ortholog'
+#         )
+
+#         self.contigs_db = ContigsDatabase(self.contigs_db_path)
+#         function_sources = (
+#             self.contigs_db.meta['gene_function_sources']
+#             if self.meta['gene_function_sources'] else []
+#         )
+#         assert 'KOfam' in function_sources
+#         assert 'COG20_FUNCTION' in function_sources
+#         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
+#         self.genes_in_contigs_df = self.genes_in_contigs_df.sort_values('start').reset_index()
+#         self.gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
+
+#         cog_kos: dict[str, list[str]] = {}
+#         ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
+#         ko_cog_df.columns = ['ko', 'cog']
+#         for row in ko_cog_df.itertuples():
+#             for cog_id in row.cog[5: -1].split():
+#                 try:
+#                     cog_kos[cog_id].append(row.ko)
+#                 except KeyError:
+#                     cog_kos[cog_id] = [row.ko]
+#         self.cog_kos = cog_kos
+
+#     def get_syntenous_regions(self, chain_gcids: list[int]) -> list[list[int]]:
+#         # Find syntenous regions containing genes in the chain.
+#         syntenous_regions: list[list[int]] = []
+#         for gcid in chain_gcids:
+#             # Search for the syntenous region around the GCID.
+#             row = self.genes_in_contigs_df[
+#                 self.genes_in_contigs_df['gene_callers_id'] == gcid
+#             ].squeeze()
+#             row_index = row.name
+#             direction = row['direction']
+
+#             syntenous_region: list[int] = []
+#             # Search for preceding syntenous genes. The search stops when a gene in the opposite
+#             # direction is found or the first gene is reached.
+#             for candidate_row_index in range(row_index, -1, -1):
+#                 prior_row = self.genes_in_contigs_df.loc[candidate_row_index]
+#                 if prior_row['direction'] != direction:
+#                     break
+#                 if prior_row['partial'] == 1:
+#                     # Ignore partial gene calls.
+#                     continue
+#                 syntenous_region.append(candidate_row_index)
+#             # Search for succeeding syntenous genes.
+#             for candidate_row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
+#                 next_row = self.genes_in_contigs_df.loc[candidate_row_index]
+#                 if next_row['direction'] != direction:
+#                     break
+#                 if next_row['partial'] == 1:
+#                     continue
+#                 syntenous_region.append(candidate_row_index)
+
+#             syntenous_region = sorted(syntenous_region)
+#             if syntenous_region in syntenous_regions:
+#                 # The syntenous region has already been encountered in considering another gene in
+#                 # the chain.
+#                 continue
+#             syntenous_regions.append(syntenous_region)
+#         return syntenous_regions
+
+#     def run(self):
+#         for chain in self.gapped_chains:
+#             if True not in chain.gaps:
+#                 continue
+
+#             # Find genes annotated by KOs in the chain.
+#             chain_gcids: list[int] = []
+#             for is_gap, kgml_reaction in chain.kgml_reactions:
+#                 if is_gap:
+#                     continue
+
+#                 # Find the KGML ortholog entry for the reaction.
+#                 for entry in self.ortholog_entries:
+#                     if entry.id == kgml_reaction.id:
+#                         kgml_entry = entry
+#                         break
+#                 else:
+#                     raise AssertionError
+
+#                 # The entry corresponds to one or more KOs. Look for the KOs in the reaction
+#                 # network.
+#                 network_kos: list[rn.KO] = []
+#                 for name_substring in kgml_entry.name.split():
+#                     if name_substring[:3] != 'ko:':
+#                         continue
+
+#                     ko_id = name_substring[3:]
+#                     try:
+#                         network_kos.append(self.walker.network.kos[ko_id])
+#                     except KeyError:
+#                         continue
+
+#                 # Get the annotated genes.
+#                 for ko in network_kos:
+#                     for gene in self.walker.network.genes.values():
+#                         if ko.id in gene.ko_ids:
+#                             chain_gcids.append(gene.gcid)
+
+#             syntenous_regions = self.get_syntenous_regions(chain_gcids)
+
+
+
+#         for gap_kgml_reaction_ids in self.chain_gaps:
+#             for gap_kgml_reaction_id in gap_kgml_reaction_ids:
+#                 pass
