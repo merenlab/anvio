@@ -324,10 +324,10 @@ class KGMLNetworkWalker:
             except KeyError:
                 continue
             ko_ids: list[str] = []
-            for split in kgml_ortholog_entry.name.split():
-                if split[:3] != 'ko:':
+            for candidate_ko_id in kgml_ortholog_entry.name.split():
+                if candidate_ko_id[:3] != 'ko:':
                     continue
-                ko_ids.append(split[3:])
+                ko_ids.append(candidate_ko_id[3:])
             self.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction.id] = ko_ids
 
         # Make an attribute storing key reaction network data.
