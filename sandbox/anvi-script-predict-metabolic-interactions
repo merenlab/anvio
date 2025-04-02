@@ -184,7 +184,8 @@ def main(args):
                     consumer_network = net_1
                     consumer_name = db_names[0]
 
-                prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
+                overall_max_prior = None
+                overall_max_posterior = None
                 for map_id in compound_to_pathways[compound_id]:
                     max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
                     pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
@@ -204,9 +205,23 @@ def main(args):
                         progress.reset()
                         run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
                                         f"found max of {max_prior_reactions} prior reactions in producer and {max_posterior_reactions} posterior reactions in consumer")
-                    if max_prior_reactions and max_posterior_reactions:
-                        prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
-                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths) if prod_cons_total_lengths else None
+                    
+                    # we want to find the longest chain of production reactions + the longest chain of consumption reactions
+                    if (not overall_max_prior and max_prior_reactions) or \
+                        (overall_max_prior and max_prior_reactions and overall_max_prior < max_prior_reactions):
+                        overall_max_prior = max_prior_reactions
+                    if (not overall_max_posterior and max_posterior_reactions) or \
+                        (overall_max_posterior and max_posterior_reactions and overall_max_posterior < max_posterior_reactions):
+                        overall_max_posterior = max_posterior_reactions
+
+                longest_overall_chain = None
+                if overall_max_prior and overall_max_posterior:
+                    longest_overall_chain = overall_max_prior + overall_max_posterior
+                elif overall_max_prior:
+                    longest_overall_chain = overall_max_prior
+                elif overall_max_posterior:
+                    longest_overall_chain = overall_max_posterior
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
