@@ -114,6 +114,7 @@ def main(args):
                 reaction.compound_ids = [compound_id if x == eq_compounds[compound_id]['equivalent_id'] else x for x in reaction.compound_ids]
 
             idx = reaction.compound_ids.index(compound_id) 
+            #TODO: make a dict of compounds with transport reactions and use as evidence in final output
             if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
                 if anvio.DEBUG:
                     run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
