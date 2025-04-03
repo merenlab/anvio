@@ -471,7 +471,10 @@ class KGMLNetworkWalker:
         modelseed_compound_ids: Union[str, list[str]] = None
     ) -> dict[str, list[Chain]]:
         """
-        Get chains in the pathway starting from select compounds.
+        Get chains in the pathway starting from compounds. Select compounds can be requested. If
+        none are requested and a reaction network is available, chains are sought from all compounds
+        in the network and pathway; if no network is available, chains are sought for all compounds
+        in the pathway.
 
         Parameters
         ==========
@@ -485,19 +488,21 @@ class KGMLNetworkWalker:
         Returns
         =======
         dict[str, list[Chain]]
-            Keys are the select compound IDs. Values are lists of chains starting from the
-            corresponding KGML compounds. If certain of the select compounds are not found in the
-            pathway, empty lists are returned for them.
+            Keys are KEGG compound IDs or, if requested, ModelSEED compound IDs. Values are lists of
+            chains starting from the corresponding KGML compounds. If certain requested compounds
+            are not found in the pathway, empty lists are returned for them.
         """
-        if keggcpd_ids is None and modelseed_compound_ids is None:
-            raise ConfigError(
-                "Either KEGG compound IDs or ModelSEED compound IDs must be provided."
-            )
         if keggcpd_ids is not None and modelseed_compound_ids is not None:
             raise ConfigError(
                 "Chains can be sought from either KEGG compound IDs or ModelSEED compound IDs, but "
                 "not both."
             )
+
+        if keggcpd_ids is None and modelseed_compound_ids is None:
+            if self.network is None:
+                keggcpd_ids = self.rn_pathway_keggcpd_ids_in_kgml_reactions
+            else:
+                keggcpd_ids = self.network_keggcpd_ids_in_pathway
 
         if isinstance(keggcpd_ids, str):
             keggcpd_ids = [keggcpd_ids]
