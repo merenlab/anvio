@@ -508,7 +508,7 @@ class KGMLNetworkWalker:
         if modelseed_compound_ids is not None and self.network is None:
             raise ConfigError(
                 "A reaction network is required to get chains from ModelSEED compound IDs, but "
-                "none is stored as expected in the 'network' attribute."
+                "none happen to be stored in the 'network' attribute."
             )
         if isinstance(modelseed_compound_ids, str):
             modelseed_compound_ids = [modelseed_compound_ids]
