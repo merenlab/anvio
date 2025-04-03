@@ -330,7 +330,10 @@ class KGMLNetworkWalker:
                 ko_ids.append(candidate_ko_id[3:])
             self.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction.id] = ko_ids
 
-        # Make an attribute storing key reaction network data.
+        self.rn_pathway_keggcpd_ids_in_kgml_reactions = \
+            self._get_kgml_reaction_keggcpd_ids_in_pathway()
+
+        # Make attributes storing key reaction network data.
         if self.network:
             self.network_keggcpd_id_to_modelseed_compounds: dict[
                 str, list[rn.ModelSEEDCompound]
@@ -345,8 +348,12 @@ class KGMLNetworkWalker:
                         self.network_keggcpd_id_to_modelseed_compounds[keggcpd_id] = [
                             modelseed_compound
                         ]
+
+            self.network_keggcpd_ids_in_pathway = \
+                self._get_reaction_network_keggcpd_ids_in_pathway()
         else:
             self.network_keggcpd_id_to_modelseed_compounds = None
+            self.network_keggcpd_ids_in_pathway = None
 
     @staticmethod
     def check_pathway_number(kegg_pathway_number: str, kegg_data: rn.KEGGData) -> bool:
@@ -398,6 +405,65 @@ class KGMLNetworkWalker:
             raise ConfigError(
                 "'compound_fate' must have a value of 'consume', 'produce', or 'both'."
             )
+
+    def _get_kgml_reaction_keggcpd_ids_in_pathway(self) -> list[str]:
+        """
+        Get KEGG compound IDs of KGML compounds that participate in KGML reactions in the pathway.
+
+        Returns
+        =======
+        list[str]
+            KEGG compound IDs.
+        """
+        rn_pathway_keggcpd_ids_in_kgml_reactions = []
+        for reaction_uuid in self.kgml_rn_pathway.children['reaction']:
+            kgml_reaction: kgml.Reaction = self.kgml_rn_pathway.uuid_element_lookup[reaction_uuid]
+            for uuid in kgml_reaction.children['substrate']:
+                substrate: kgml.Substrate = self.kgml_rn_pathway.uuid_element_lookup[uuid]
+                kgml_compound_entry = self.rn_pathway_kgml_compound_id_to_kgml_compound_entry[
+                    substrate.id
+                ]
+                for candidate_keggcpd_id in kgml_compound_entry.name.split():
+                    if candidate_keggcpd_id[:4] != 'cpd:':
+                        continue
+                    keggcpd_id = candidate_keggcpd_id[4:]
+                    rn_pathway_keggcpd_ids_in_kgml_reactions.append(keggcpd_id)
+        rn_pathway_keggcpd_ids_in_kgml_reactions = list(
+            set(rn_pathway_keggcpd_ids_in_kgml_reactions)
+        )
+
+        return rn_pathway_keggcpd_ids_in_kgml_reactions
+
+    def _get_reaction_network_keggcpd_ids_in_pathway(self) -> list[str]:
+        """
+        Get KEGG compound IDs in the pathway from the reaction network.
+
+        KEGG compounds in the reaction network are selected to ensure that they are linked to KO
+        annotations by ModelSEED reactions with KEGG reaction aliases, not EC number aliases, since
+        EC numbers associated with KOs can alias a large number of reactions of questionable
+        validity for the enzyme.
+
+        Returns
+        =======
+        list[str]
+            KEGG compound IDs.
+        """
+        keggcpd_ids = []
+        pathway_id = f'map{self.kegg_pathway_number}'
+        for ko in self.network.kos.values():
+            if pathway_id not in ko.pathway_ids:
+                continue
+            for modelseed_reaction_id in ko.reaction_ids:
+                modelseed_reaction = self.network.reactions[modelseed_reaction_id]
+                if not modelseed_reaction.kegg_aliases:
+                    continue
+                for modelseed_compound_id in modelseed_reaction.compound_ids:
+                    modelseed_compound = self.network.metabolites[modelseed_compound_id]
+                    keggcpd_id_aliases = list(modelseed_compound.kegg_aliases)
+                    keggcpd_ids += keggcpd_id_aliases
+        keggcpd_ids = sorted(set(keggcpd_ids))
+
+        return keggcpd_ids
 
     def get_chains(
         self,
