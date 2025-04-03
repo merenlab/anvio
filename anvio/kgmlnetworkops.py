@@ -393,7 +393,7 @@ class KGMLNetworkWalker:
             )
 
         if not (
-            self.max_reactions == None or
+            self.max_reactions is None or
             isinstance(self.max_reactions, int) and self.max_reactions > 0
         ):
             raise ConfigError("'max_reactions' must have a value of None or a positive int.")
@@ -767,7 +767,7 @@ class KGMLNetworkWalker:
             if self.network:
                 current_chain.aliased_modelseed_compounds.append(modelseed_compounds)
 
-            if self.max_reactions != None:
+            if self.max_reactions is not None:
                 if self.max_reactions == len(current_chain.kgml_reactions):
                     return current_chain
 
