@@ -114,6 +114,7 @@ def main(args):
                 reaction.compound_ids = [compound_id if x == eq_compounds[compound_id]['equivalent_id'] else x for x in reaction.compound_ids]
 
             idx = reaction.compound_ids.index(compound_id) 
+            #TODO: make a dict of compounds with transport reactions and use as evidence in final output
             if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
                 if anvio.DEBUG:
                     run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
@@ -184,7 +185,8 @@ def main(args):
                     consumer_network = net_1
                     consumer_name = db_names[0]
 
-                prod_cons_total_lengths = [] # the longest chain of production reactions + the longest chain of consumption reactions
+                overall_max_prior = None
+                overall_max_posterior = None
                 for map_id in compound_to_pathways[compound_id]:
                     max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
                     pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
@@ -204,9 +206,23 @@ def main(args):
                         progress.reset()
                         run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
                                         f"found max of {max_prior_reactions} prior reactions in producer and {max_posterior_reactions} posterior reactions in consumer")
-                    if max_prior_reactions and max_posterior_reactions:
-                        prod_cons_total_lengths.append(max_prior_reactions + max_posterior_reactions)
-                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = max(prod_cons_total_lengths) if prod_cons_total_lengths else None
+                    
+                    # we want to find the longest chain of production reactions + the longest chain of consumption reactions
+                    if (not overall_max_prior and max_prior_reactions) or \
+                        (overall_max_prior and max_prior_reactions and overall_max_prior < max_prior_reactions):
+                        overall_max_prior = max_prior_reactions
+                    if (not overall_max_posterior and max_posterior_reactions) or \
+                        (overall_max_posterior and max_posterior_reactions and overall_max_posterior < max_posterior_reactions):
+                        overall_max_posterior = max_posterior_reactions
+
+                longest_overall_chain = None
+                if overall_max_prior and overall_max_posterior:
+                    longest_overall_chain = overall_max_prior + overall_max_posterior
+                elif overall_max_prior:
+                    longest_overall_chain = overall_max_prior
+                elif overall_max_posterior:
+                    longest_overall_chain = overall_max_posterior
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -215,6 +231,11 @@ def main(args):
     progress.end()
     run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.", 
                 header='RESULTS', lc='green')
+
+    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
+    if args.add_reactions_to_output:
+        output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
+        [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
                 key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
@@ -332,6 +353,8 @@ if __name__ == '__main__':
                                                         "likelihood of the interaction. This parameter allows you to choose "
                                                         "how many gaps there can be in the chain on either side of the metabolite "
                                                         "in the network. Very conservatively set to 0, as in no gaps allowed.")
+    groupD.add_argument('--add-reactions-to-output', required=False, help="Do you want relevant reaction IDs and chemical equations to be added to the output? "
+                                                        "Use this flag.")
 
     args = parser.get_args(parser)
 
