@@ -1289,7 +1289,7 @@ class KGMLNetworkWalker:
 @dataclass
 class GapChainRelations:
     """
-    Records how chains with fewer gaps relate to a chain with more gaps.
+    Records how chains with fewer genomic gaps relate to a chain with more gaps.
 
     Attributes
     ==========
