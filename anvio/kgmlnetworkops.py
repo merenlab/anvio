@@ -1318,8 +1318,8 @@ class GapChainRelations:
 @dataclass
 class SharedGaps:
     """
-    Information associated with the set of gaps that exists in one or more gappy chains: different
-    chains may share the same set of gaps.
+    Information associated with the set of genomic gaps that exists in one or more gappy chains:
+    different chains may share the same set of gaps.
 
     Attributes
     ==========
