@@ -54,7 +54,9 @@ anvi-pan-genome -g TEST-GENOMES.db \
 
 INFO "Calculating rarefaction curves and Heaps' Law fit for the pangenome"
 anvi-compute-rarefaction-curves -p TEST/TEST-PAN.db \
-                                --output-file rarefaction-curves.pdf
+                                -O RF
+SHOW_FILE RF-rarefaction-pangenome-averages.txt
+SHOW_FILE RF-rarefaction-core-averages.txt
 
 INFO "Importing collections of gene clusters"
 anvi-import-collection -p TEST/TEST-PAN.db \
