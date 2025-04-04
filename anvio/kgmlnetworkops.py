@@ -1334,9 +1334,9 @@ class SharedGaps:
 
 class GapAnalyzer:
     """
-    Analyze chains of KGML compounds linked by reactions, some of which are designated as gaps.
-    Compare two sets of chains found from the same KGML source but with the set of gappy chains
-    permitting more gaps than ungappy chains.
+    Analyze chains of KGML compounds linked by reactions, with some reactions designated as genomic
+    gaps. Compare two sets of chains found from the same KGML source but with the set of gappy
+    chains permitting more gaps than ungappy chains.
 
     Attributes
     ==========
