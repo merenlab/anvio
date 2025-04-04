@@ -45,8 +45,9 @@ class Chain:
         substrates.
 
     gaps : list[bool], []
-        Items correspond to kgml_reactions, with False indicating the reaction is encoded by a KO in
-        the reaction network, and True indicating the reaction is not encoded and thus is a gap.
+        Items correspond to kgml_reactions, with False indicating the reaction is genomically
+        encoded by a KO in the reaction network, and True indicating the reaction is not encoded and
+        thus is a gap.
 
     aliased_modelseed_compounds : list[tuple[anvio.reactionnetwork.ModelSEEDCompound]], []
         Items correspond to kgml_compound_entries. Each item is the tuple of ModelSEED compounds
