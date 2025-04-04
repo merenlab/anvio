@@ -181,7 +181,8 @@ class KGMLNetworkWalker:
         compounds in the network. If False, such intermediate chains are ignored.
 
     max_gaps : int, 0
-        Chains can contain up to this number of reactions not found in the reaction network.
+        Chains can contain up to this number of reactions not genomically encoded in the reaction
+        network.
 
     allow_terminal_gaps : bool, False
         Chains can start or end with reactions not found in the reaction network if True.
@@ -189,8 +190,8 @@ class KGMLNetworkWalker:
     allow_alternative_reaction_gaps : bool, False
         If a chain links two compounds by a reaction in the reaction network, and there are other
         "parallel" KGML reactions not in the reaction network that also link the compounds, then
-        treat these parallel reactions as gaps that can be filled when allowing alternative reaction
-        gaps with a value of True. Otherwise, with a value of False, ignore parallel reaction gaps.
+        treat these parallel reactions as gaps with a value of True. With a value of False, ignore
+        parallel reaction gaps.
 
     run : anvio.terminal.Run, anvio.terminal.Run()
         This object prints run information to the terminal.
