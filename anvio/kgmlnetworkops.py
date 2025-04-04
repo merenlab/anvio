@@ -1635,77 +1635,174 @@ class GapAnalyzer:
         return ranked_gap_kgml_reaction_ids
 
 class GapFiller:
+    """
+    Analyze how genomic gaps in a KEGG pathway can be filled.
+
+    Attributes
+    ==========
+    kegg_pathway_number : str
+        Numerical ID of the pathway to analyze. The pathway must have a KEGG reaction (RN) type KGML
+        file available. Valid pathways are in categories 1.0 - 1.11 as of the March 3, 2025 release
+        of KEGG (see https://www.genome.jp/kegg/pathway.html).
+
+    contigs_db_path : str
+        Path to contigs database containing reaction network.
+
+    compound_fate : Literal['consume', 'produce', 'both'], 'both'
+        Fill gaps in chains that consume or produce compounds in the network. If 'consume' or
+        'produce', only consumption or production chains are gap-filled, respectively. If 'both',
+        both consumption and production chains are gap-filled.
+
+    max_reactions : int, None
+        Truncate chains at this number of reactions. If None, chains can be continued to
+        indeterminate length.
+
+    allow_alternative_reaction_gaps : bool, False
+        If a chain links two compounds by a reaction in the reaction network, and there are other
+        "parallel" KGML reactions not in the reaction network that also link the compounds, then
+        treat these parallel reactions as gaps with a value of True. With a value of False, ignore
+        parallel reaction gaps.
+
+    walker : KGMLNetworkWalker
+        Walks chains of compounds linked by reactions in a KGML representation of a KEGG pathway.
+
+    contigs_db : anvio.dbops.ContigsDatabase
+        Contigs database containing reaction network.
+
+    genes_in_contigs_df : pandas.core.frame.DataFrame
+        Table of information on gene calls in contigs.
+
+    gene_kos_df : pandas.core.frame.DataFrame
+        Table of gene KO annotations, which should include all KO hits, not just the top hit.
+
+    gene_cogs_df : pandas.core.frame.DataFrame, None
+        Table of gene COG annotations, if available, else None.
+
+    ungapped_chains : dict[str, list[Chain]]
+        Chains from compounds in the KGML representation of the pathway, allowing zero genomic gaps
+        in the chains.
+
+    gapped_chains : dict[str, list[Chain]]
+        Chains from compounds in the KGML representation of the pathway, allowing up to one genomic
+        gap per chain.
+
+    gap_analyzer : GapAnalyzer
+        Compares the ungapped and gapped chains.
+
+    ranked_gaps : list[str]
+        KGML reaction ID of each gap in gapped_chains as ranked by gap_analyzer.rank_gaps. In
+        essence, higher ranking (first) gaps occur toward the middle of longer chains and lower
+        ranking (last) gaps occur toward the edges of shorter chains.
+
+    pathway_ortholog_entries : list[Entry]
+        Ortholog entries in the KGML KO type pathway.
+
+    ko_cog_path : str, None
+        Path to KEGG binary relations file mapping KO to COG IDs. None if not provided.
+
+    ko_cogs : dict[str, list[str]], None
+        Mapping of KO to COG IDs loaded from ko_cog_path. None if path not provided.
+
+    cog_kos : dict[str, list[str]], None
+        Mapping of COG to KO IDs loaded from ko_cog_path. None if path not provided.
+    """
     def __init__(self, args: Namespace):
+        """
+        Parameters
+        ==========
+        args : argparse.Namespace
+            Contains arguments. See the class docstring for more information on arguments set as
+            attributes, including default values. The only required arguments are
+            kegg_pathway_number and contigs_db_path.
+
+            kegg_pathway_number : str
+
+            contigs_db_path : str
+
+            compound_fate : Literal['consume', 'produce', 'both']
+
+            max_reactions : int
+
+            allow_alternative_reaction_gaps : bool
+
+            ko_cog_path : str
+        """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
-        self.walker: KGMLNetworkWalker = A(args.walker, None)
-        if self.walker is None:
-            raise ConfigError("A KGML network walker is required as the 'walker' argument.")
-        if self.walker.contigs_db_path is None:
+        self.kegg_pathway_number = A(args.kegg_pathway_number, None)
+        self.contigs_db_path = A(args.contigs_db_path, None)
+        if self.kegg_pathway_number is None or self.contigs_db_path is None:
             raise ConfigError(
-                "The KGML network walker must be associated with a contigs database."
-            )
-        if self.walker.network is None:
-            raise ConfigError(
-                "The KGML network walker must be associated with a reaction network."
+                "A KEGG pathway number (args.kegg_pathway_number) and the path to a contigs "
+                "database containing a reaction network (args.contigs_db_path) should be provided "
+                "for initialization."
             )
 
-        self.gap_analyzer: GapAnalyzer = A(args.gap_analyzer, None)
-        # if self.gap_analyzer is None:
-        #     raise ConfigError(
-        #         "The gap analyzer used to compare gapped and ungapped chains is required as the "
-        #         "'gap_analyzer' argument."
-        #     )
-
-        self.ko_cog_path: str = A(args.ko_cog, None)
-
-        self.pathway_ortholog_entries = self.walker.kgml_ko_pathway.get_entries(
-            entry_type='ortholog'
+        self.compound_fate = A(args.compound_fate, 'both')
+        self.max_reactions = A(args.max_reactions, None)
+        self.allow_alternative_reaction_gaps = A(args.allow_alternative_reaction_gaps, False)
+        walker_args = Namespace(
+            kegg_pathway_number=self.kegg_pathway_number,
+            contigs_db_path=self.contigs_db_path,
+            compound_fate=self.compound_fate,
+            max_reactions=self.max_reactions,
+            allow_alternative_reaction_gaps=self.allow_alternative_reaction_gaps
         )
+        self.walker = KGMLNetworkWalker(walker_args)
 
         self.contigs_db = ContigsDatabase(self.contigs_db_path)
-        function_sources = (
-            self.contigs_db.meta['gene_function_sources']
-            if self.meta['gene_function_sources'] else []
-        )
-        if 'KOfam' not in function_sources:
+        if 'KOfam' not in self.contigs_db.meta['gene_function_sources']:
             raise ConfigError(
-                "Genes of the contigs database should have been annotated with KOs, but there is "
-                "no 'KOfam' function source."
+                "Genes of the contigs database should have been annotated with all KO hits, but "
+                "the database has no 'KOfam' function source."
             )
-        # if 'COG20_FUNCTION' not in function_sources and self.ko_cog_path:
-        #     raise ConfigError(
-        #         "KO and COG20 annotations are to be compared, so genes of the contigs database "
-        #         "should have been annotated with COG20 functions, but there is no 'COG20_FUNCTION' "
-        #         "source."
-        #     )
+
         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
         # Sort genes by contig start position.
         self.genes_in_contigs_df = self.genes_in_contigs_df.sort_values(
             ['contig', 'start']
         ).reset_index()
+
         gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
         self.gene_kos_df = gene_functions_df[gene_functions_df['source'] == 'KOfam']
-        if 'COG20_FUNCTION' not in function_sources:
+
+        if 'COG20_FUNCTION' not in self.contigs_db.meta['gene_function_sources']:
             self.gene_cogs_df = None
         else:
             self.gene_cogs_df = gene_functions_df[gene_functions_df['source'] == 'COG20_FUNCTION']
 
-        if self.gap_analyzer:
-            self.gap_key_ranks = self.gap_analyzer.rank_gaps()
+        self.ungapped_chains = self.walker.get_chains()
+        self.walker.max_gaps = 1
+        self.gapped_chains = self.walker.get_chains()
+
+        self.gap_analyzer = GapAnalyzer(self.gapped_chains, self.ungapped_chains)
+        self.ranked_gaps = [
+            kgml_reaction_ids[0] for kgml_reaction_ids in self.gap_analyzer.rank_gaps()
+        ]
+
+        self.pathway_ortholog_entries = self.walker.kgml_ko_pathway.get_entries(
+            entry_type='ortholog'
+        )
+
+        self.ko_cog_path: str = A(args.ko_cog_path, None)
 
         if self.ko_cog_path is None:
+            self.ko_cogs = None
             self.cog_kos = None
         else:
+            ko_cogs: dict[str, list[str]] = {}
             cog_kos: dict[str, list[str]] = {}
             ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
             ko_cog_df.columns = ['ko', 'cog']
             for row in ko_cog_df.itertuples():
-                for cog_id in row.cog[5: -1].split():
+                cog_ids = row.cog[5: -1].split()
+                ko_cogs[row.ko] = cog_ids
+                for cog_id in cog_ids:
                     try:
                         cog_kos[cog_id].append(row.ko)
                     except KeyError:
                         cog_kos[cog_id] = [row.ko]
+            self.ko_cogs = ko_cogs
             self.cog_kos = cog_kos
 
     def eval_gap_ko(self, ko_id: str) -> Union[dict, None]:
