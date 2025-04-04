@@ -1362,9 +1362,9 @@ class GapAnalyzer:
         """
         self.gappy_chains = gappy_chains
         self.ungappy_chains = ungappy_chains
-        self.gap_relations = self.get_gap_relations()
+        self.gap_relations = self._get_gap_relations()
 
-    def get_gap_relations(self) -> dict[tuple[str], SharedGaps]:
+    def _get_gap_relations(self) -> dict[tuple[str], SharedGaps]:
         """
         Get information associated with each set of gaps that exists in one or more gappy chains,
         including relationships between gappy chains and overlapping ungappy chains.
