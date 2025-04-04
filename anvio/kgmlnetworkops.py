@@ -419,7 +419,7 @@ class KGMLNetworkWalker:
 
     def _get_kgml_reaction_keggcpd_ids_in_pathway(self) -> list[str]:
         """
-        Get KEGG compound IDs of KGML compounds that participate in KGML reactions in the pathway.
+        Get KEGG compound IDs of KGML compounds that participate in pathway KGML reactions.
 
         Returns
         =======
