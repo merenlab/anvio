@@ -146,6 +146,9 @@ class KGMLNetworkWalker:
         IDs are from the name attribute of a corresponding ortholog entry, if one exists, in the KO
         type KGML pathway.
 
+    rn_pathway_keggcpd_ids_in_kgml_reactions : list[str]
+        KEGG compound IDs of KGML compounds that participate in pathway KGML reactions.
+
     contigs_db_path : str, None
         Path to contigs database containing reaction network.
 
@@ -156,6 +159,12 @@ class KGMLNetworkWalker:
     network_keggcpd_id_to_modelseed_compounds : dict[str, list[rn.ModelSEEDCompound]], {}
         Map the IDs of KEGG compounds (not KGML compound IDs) in the reaction network to aliased
         ModelSEED compounds.
+
+    network_keggcpd_ids_in_pathway : list[str]
+        KEGG compound IDs in the pathway from the reaction network. KEGG compounds in the reaction
+        network are selected to ensure that they are linked to KO annotations by ModelSEED reactions
+        with KEGG reaction aliases, not EC number aliases, since EC numbers associated with KOs can
+        alias a large number of reactions of questionable validity for the enzyme.
 
     compound_fate : Literal['consume', 'produce', 'both'], 'both'
         Seek chains that consume or produce compounds in the network. If 'consume' or 'produce',
