@@ -43,7 +43,11 @@ P = terminal.pluralize
 J = lambda x, y: os.path.join(x, y)
 
 # if you add a new database version, please do not forget to add its reference here
-COG_REFERENCES = {'COG20': {
+COG_REFERENCES = {'COG24': {
+                            'ref_text': 'Galperin et al. 2025',
+                            'doi_link': 'https://doi.org/10.1093/nar/gkae983',
+                           },
+                  'COG20': {
                             'ref_text': 'Galperin et al. 2021',
                             'doi_link': 'https://doi.org/10.1093/nar/gkaa1018',
                            },
