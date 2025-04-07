@@ -87,8 +87,7 @@ class DGR_Finder:
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
-        self.vr_repeat_motif_coverage = A('vr_repeat_motif_coverage') or 0.8
-        self.tr_repeat_motif_coverage = A('tr_repeat_motif_coverage') or 0.8
+        self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
 
 
         # performance
