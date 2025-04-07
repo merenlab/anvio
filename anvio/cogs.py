@@ -893,7 +893,7 @@ class COGsSetup:
                 #
                 # COG0059	EH	Ketol-acid reductoisomerase	IlvC	Isoleucine, leucine, valine biosynthesis		1NP3
                 try:
-                    COG, category, function, nn, pathway, pubmed_id, PDB_id = [e.strip() for e line.strip('\n').split('\t')]
+                    COG, category, function, nn, pathway, pubmed_id, PDB_id = [e.strip() for e in line.strip('\n').split('\t')]
                 except ValueError:
                     # this is a line with unexpected number of columns. we shall remember
                     # it for later:
