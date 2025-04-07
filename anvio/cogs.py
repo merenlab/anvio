@@ -264,6 +264,8 @@ class COGs:
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
         elif self.COG_version == 'COG20':
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
+        elif self.COG_version == 'COG24':
+            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                               "parsing of a new generation of COG files.")
@@ -288,11 +290,13 @@ class COGs:
                 gene_function_calls_table.add_empty_sources_to_functional_sources({'COG14_FUNCTION', 'COG14_CATEGORY'})
             elif self.COG_version == 'COG20':
                 gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
+            elif self.COG_version == 'COG24':
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
             return
-        
+
         elif not self.hits and self.aa_sequence_file_input:
             self.run.warning("COGs class has no hits to process. Returning empty handed.")
             return
@@ -353,7 +357,7 @@ class COGs:
 
                 if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                     pass
-                elif self.COG_version == 'COG20':
+                elif self.COG_version in ['COG20', 'COG24']:
                     if cogs_data.cogs[COG_id]['pathway']:
                         pathways.append(cogs_data.cogs[COG_id]['pathway'])
                 else:
@@ -367,7 +371,7 @@ class COGs:
             if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
-            elif self.COG_version == 'COG20':
+            elif self.COG_version in ['COG20', 'COG24']:
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
                 if len(pathways):
@@ -482,7 +486,7 @@ class COGsData:
 
         if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
-        elif self.COG_version == 'COG20':
+        elif self.COG_version in ['COG20', 'COG24']:
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
@@ -809,9 +813,15 @@ class COGsSetup:
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
-            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
+            elif self.COG_version in ['COG20', 'arCOG14']:
                 try:
                     p_id = fields[2].replace('.', '_')
+                    COG = fields[6]
+                except Exception as e:
+                    raise_error(line_counter, line, fields, e)
+            elif self.COG_version == 'COG24':
+                try:
+                    p_id = fields[2]
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
@@ -870,7 +880,7 @@ class COGsSetup:
 
                 output.write('\t'.join([COG, ', '.join(list(category)), function]) + '\n')
 
-            elif self.COG_version == 'COG20':
+            elif self.COG_version in ['COG20', 'COG24']:
                 # example line from 2020:
                 #
                 # COG0059	EH	Ketol-acid reductoisomerase	IlvC	Isoleucine, leucine, valine biosynthesis		1NP3
@@ -902,8 +912,34 @@ class COGsSetup:
 
             if self.COG_version == 'COG14':
                 category, description = line.strip('\n').split('\t')
-            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
+            elif self.COG_version in ['COG20', 'arCOG14']:
+                # example lines from COG20:
+                #     J	FCCCFC	Translation, ribosomal structure and biogenesis
+                #     A	FCDCFC	RNA processing and modification
+                #     K	FCDCEC	Transcription
+                #     L	FCDCDC	Replication, recombination and repair
+                #     B	FCDCCC	Chromatin structure and dynamics
+                #     D	FCFCDC	Cell cycle control, cell division, chromosome partitioning
+                #     Y	FCFCCC	Nuclear structure
+                #     V	FCFCBC	Defense mechanisms
+                #     T	FCFCAC	Signal transduction mechanisms
+                #     M	ECFCAC	Cell wall/membrane/envelope biogenesis
                 category, _, description = line.strip('\n').split('\t')
+            elif self.COG_version == 'COG24':
+                # exmaple lines from 24 -- either two or four columns. GREAT.
+                #
+                #     1	INFORMATION STORAGE AND PROCESSING
+                #     J	1	FCCCFC	Translation, ribosomal structure and biogenesis
+                #     A	1	FCDCFC	RNA processing and modification
+                #     K	1	FCDCEC	Transcription
+                #     L	1	FCDCDC	Replication, recombination and repair
+                #     B	1	FCDCCC	Chromatin structure and dynamics
+                #     2	CELLULAR PROCESSES AND SIGNALING
+                #     D	2	FCFCCC	Cell cycle control, cell division, chromosome partitioning
+                #     Y	2	FCFCBC	Nuclear structure
+                #     V	2	FCFCAC	Defense mechanisms
+                fields = line.strip('\n').split('\t')
+                category, description = fields[0], fields[-1]
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
@@ -1009,7 +1045,7 @@ class COGsSetup:
         progress.new('Checking checksums and file existence')
 
         # Checksum file either provided by NCBI or us
-        if self.COG_version == 'COG20':
+        if self.COG_version == 'COG20' or self.COG_version == 'COG24':
             input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
         elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
