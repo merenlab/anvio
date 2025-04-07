@@ -858,9 +858,17 @@ class COGsSetup:
         except UnicodeDecodeError:
             lines = open(input_file_path, encoding='ISO-8859-1').readlines()
 
+        # some lines may not have the expected number of columns, and it is a good idea to
+        # keep track of them explicilty so the careful users have an idea about what is
+        # goin on
+        bad_lines = []
+        line_counter = 0
+
         for line in lines:
             if line.startswith('#'):
                 continue
+
+            line_counter += 1
 
             if self.COG_version == 'COG14':
                 # example line from 2014:
@@ -884,7 +892,13 @@ class COGsSetup:
                 # example line from 2020:
                 #
                 # COG0059	EH	Ketol-acid reductoisomerase	IlvC	Isoleucine, leucine, valine biosynthesis		1NP3
-                COG, category, function, nn, pathway, pubmed_id, PDB_id = line.strip('\n').split('\t')
+                try:
+                    COG, category, function, nn, pathway, pubmed_id, PDB_id = line.strip('\n').split('\t')
+                except ValueError:
+                    # this is a line with unexpected number of columns. we shall remember
+                    # it for later:
+                    bad_lines.append(line)
+                    continue
 
                 function = ''.join([i if ord(i) < 128 else '' for i in function])
                 function = function if not nn else f"{function} ({nn})"
