@@ -394,12 +394,13 @@ class COGs:
                              'were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
 
         if len(missing_ncbi_protein_ids_found):
-            self.run.warning("Well. Your COGs were successfully added to the database, but there were some garbage anvi'o brushed "
+            self.run.warning("Well. Your COGs were successfully added to the database, but there were some things anvi'o brushed "
                              "off under the rug. There were %d genes in your database that hit %d protein IDs in NCBIs COGs database, "
-                             "but since NCBI did not release what COGs they correspond to in the database they made available (that "
-                             "helps us to resolve protein IDs to COG ids), we could not annotate those genes with functions. Anvi'o "
-                             "apologizes on behalf of all computer scientists for half-done stuff we often force biologists to deal "
-                             "with. If you want to do some Googling, these were the offending protein IDs: '%s'." % \
+                             "but those protein IDs were not described in the table that associates protein IDs to COG IDs. Our manual "
+                             "inspections before suggested that these hits are usually matching to very poorly described functions that "
+                             "are not mature enough to warrant a new COG id, or to be associated with an existing one. While that is "
+                             "our interpretation, we may be totally wrong, and we welcome you to double-check these. Here are the "
+                             "offending protein IDs if you would like to dig deeper: '%s'." % \
                                         (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found), ', '.join([str(s) for s in missing_ncbi_protein_ids_found])))
 
         if len(in_proteins_FASTA_not_in_cogs_CSV):
