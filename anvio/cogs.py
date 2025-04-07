@@ -592,6 +592,33 @@ class COGsSetup:
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
                              },
+                        'COG24':
+                             {'cog-24.cog.csv': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.cog.csv',
+                                  'func': self.format_p_id_to_cog_id_cPickle,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'PID-TO-CID.cPickle'},
+                              'cog-24.def.tab': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.def.tab',
+                                  'func': self.format_cog_names,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'COG.txt'},
+                              'cog-24.fun.tab': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.fun.tab',
+                                  'func': self.format_categories,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'CATEGORIES.txt'},
+                              'checksum.md5.txt': {  # No func as it is called by the setup_raw_data function
+                                   'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/checksums.md5',
+                                   'type': 'non-essential',
+                                   'formatted_file_name': 'CHECKSUMS.txt'},
+                              'COGorg24.faa.gz': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/COGorg24.faa.gz',
+                                  'func': self.format_protein_db,
+                                  'type': 'database',
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
+                             },
+
                         }
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
