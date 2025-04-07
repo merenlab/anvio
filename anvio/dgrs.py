@@ -829,6 +829,7 @@ class DGR_Finder:
         Process a single bin's BLAST XML data and store mismatch hits.
         If bin_name is None, it means we're processing a single BLAST output.
         """
+
         for iteration in root.findall(".//Iteration"):
             for hit in iteration.findall(".//Hit"):
                 for hsp in hit.findall(".//Hsp"):
@@ -851,61 +852,37 @@ class DGR_Finder:
                         hseq = str(hsp.find('Hsp_hseq').text)
                         midline = str(hsp.find('Hsp_midline').text)
 
-                        #test for not quite tandem repeats using pytrf
                         has_repeat = False
-                        for ssr in pytrf.ATRFinder('name', qseq):
-                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
-                                has_repeat = True
-                            #breakout
-                            if has_repeat:
-                                continue
+                        # here we use pytrf for removing tandem and not exact tandem repeats, this is a python compiled version of tandem repeats finder:
+                        # the idea is that there are a lot of false positives found in metagenomic samples that are found with `anvi-report-dgrs` due to the nature of the two sequences
+                        # being very similar and we only want those that are similar due to the TR/VR constraints and not because they are repeated sequences.
+                        # the first loop uses the approximate repeat finder to search for imperfect tandem repeats that are above a threshold number of times
+                        # repeated, by default this is 10.
+                        # the second loop loops for sequential tandem repeats and has the parameter to catch any mono or di motif (so single base, or pair of bases) that repeats 6 times
+                        # after each other and default settings for tri=5, tetra=4, penta=4, hexa=4. If any are caught the sequence is removed.
+                        # the third loop for approximate repeat finder works by looking for any repeated motif that is over 4 and under 10 bp long that has a minimum identity fo up to 1 bp difference.
+                        # then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined value or 80% as default then the sequence is removed.
 
-                        #look for homopolymers that are tandem in the VR
-                        for ssr in pytrf.STRFinder('name', qseq):
-                            if (len(ssr.motif) == 1 or len(ssr.motif) == 2) and ssr.repeat > 10:
-                                has_repeat = True
-                            #breakout
-                            if has_repeat:
-                                continue
+                        for seq in [hseq, qseq]:
+                            for atr1 in pytrf.ATRFinder('name', seq):
+                                if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
+                                    has_repeat = True
 
-                        #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
-                        for atr in pytrf.ATRFinder('name', qseq, min_motif=4, max_motif=10, min_seedrep=1, min_identity=90):
-                            coverage = (len(atr.motif)*atr.repeat) / len(qseq)
-                            if coverage > self.vr_repeat_motif_coverage:
-                                has_repeat = True
-                            #breakout
-                            if has_repeat:
-                                continue
+                            #look for tandem homopolymers and 2 base short tandem repeats that are over 6 times in the sequence
+                            for ssr in pytrf.STRFinder('name', seq, mono=6, di=6):
+                                #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
+                                if ssr:
+                                    has_repeat = True
 
-                        for ssr in pytrf.ATRFinder('name', hseq):
-                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
-                                has_repeat = True
-                        #breakout
-                        if has_repeat:
+                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
+                            for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=1, min_identity=80):
+                                coverage = (len(atr.motif)*atr.repeat) / len(seq)
+                                if coverage > self.repeat_motif_coverage:
+                                    has_repeat = True
+
+                        if has_repeat == True:
+                            #breakout of loop (don't add as dgr)
                             continue
-
-                        #look for homopolymers that are tandem in the TR
-                        for ssr in pytrf.STRFinder('name', hseq):
-                            if (len(ssr.motif) == 1 or len(ssr.motif) == 2) and ssr.repeat > 10:
-                                has_repeat = True
-                            #breakout
-                            if has_repeat:
-                                continue
-
-                        #look for approximate tandem repeats that in the TR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
-                        for atr in pytrf.ATRFinder('name', hseq, min_motif=4, max_motif=10, min_seedrep=1, min_identity=90):
-                            coverage = (len(atr.motif)*atr.repeat) / len(hseq)
-                            if coverage > self.tr_repeat_motif_coverage:
-                                has_repeat = True
-                            #breakout
-                            if has_repeat:
-                                continue
-
-                        for ssr in pytrf.ATRFinder('name', qseq):
-                            if int(ssr.repeat) > self.numb_imperfect_tandem_repeats:
-                                has_repeat = True
-                            if has_repeat:
-                                continue
 
                         subject_genome_start_position = min(
                             [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
