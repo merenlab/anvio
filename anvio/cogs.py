@@ -631,7 +631,13 @@ class COGsSetup:
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
         self.COG_data_source = 'unknown'
-        self.COG_version = A('cog_version') or 'COG20'
+        self.COG_version = A('cog_version') or 'COG24' # this is where we set the default database version
+                                                       # it is dumb, and there is a better way to do it by
+                                                       # keeping all the available version and the default
+                                                       # version in the constants module, but this is what
+                                                       # it is at the moment. if you change this value,
+                                                       # please don't forget to change the `cog-version`
+                                                       # help menu in anvio/__init__.py
 
         if self.COG_version not in self.cog_files:
             raise ConfigError(f"The COG versions known to anvi'o do not include '{self.COG_version}' :/ This is "
