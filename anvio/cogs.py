@@ -915,6 +915,11 @@ class COGsSetup:
             self.cogs_found_in_cog_names_file.add(COG)
             progress.end()
 
+        if len(bad_lines):
+            self.run.warning(f"Just so you know, there were {len(bad_lines)} lines in the COGs file (which contained "
+                             f"{line_counter} lines itself) that did not have the expected number of columns for "
+                             f"for entries in this file and anvi'o ignored them.")
+
 
     def format_categories(self, input_file_path, output_file_path):
         progress.new('Formatting COG categories file')
