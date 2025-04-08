@@ -291,7 +291,7 @@ class COGs:
             elif self.COG_version == 'COG20':
                 gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
             elif self.COG_version == 'COG24':
-                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG24_FUNCTION', 'COG24_CATEGORY', 'COG24_PATHWAY'})
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
