@@ -748,6 +748,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   // access all the relevant variables from UI
   var start = new Date().getTime();
   var svg_search = [];
+  var svg_backbone = [];
   var svg_heatmaps = [];
   var svg_edges = [];
   var svg_nodes = [];
@@ -851,6 +852,21 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
     }
   }
+
+  //TEST BACKBONE NON BACKBONE LAYER
+
+  var back_width = parseInt($('#backbone')[0].value);
+  var back_color = $('#back_color')[0].value;
+  var non_back_color = $('#non_back_color')[0].value;
+
+  var layer_width = back_width
+  var layer_middle_start = current_middle_stop + inner_margin
+  var layer_middle_stop = layer_middle_start + layer_width
+
+  current_middle_stop = layer_middle_stop
+  sum_middle_layer += layer_width + inner_margin
+  
+  middle_layers['back_vs_non_back'] = [layer_width, layer_middle_start, layer_middle_stop]
 
   for (var layer_name of layers) {
     if ($('#flex' + layer_name).prop('checked') == true){
@@ -1098,11 +1114,16 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
             if (draw !== "") {
 
               if (edge['bended'].length == 0){
-
-                if (i_y == j_y) {
-                  svg_edges.push(
-                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                  )  
+                if (linear == 0){
+                  if (i_y == j_y) {
+                    svg_edges.push(
+                      $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                    )  
+                  } else {
+                    svg_edges.push(
+                      $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
+                    )
+                  }
                 } else {
                   svg_edges.push(
                     $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
@@ -1170,6 +1191,8 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var time = end - start;
   console.log('SVG drawing lines', time, 'ms.')
 
+  var backbone_pos = [];
+
   var start = new Date().getTime();
   var global_values = []
   for(var k in nodes) {
@@ -1216,6 +1239,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
       if (node_type == 'core'){
         var node_color = core_color
+        backbone_pos.push(k_x)
       } else if (node_type == 'rearranged') {
         var node_color = rearranged_color
       } else if (node_type == 'accessory') {
@@ -1290,13 +1314,38 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
   global_values.push(k_x)
 
+  var k_x = 0
+  while (k_x <= global_x) {
+  // for(var k_x of backbone_pos) {
+
+    var [backbone_size, backbone_start, backbone_stop] = middle_layers['back_vs_non_back']
+        
+    var i_x = k_x - 0.5
+    var i_y = backbone_start
+    var j_x = k_x + 0.5
+    var j_y = backbone_stop
+
+    if (backbone_pos.includes(k_x)) {
+      var color = back_color
+    } else {
+      var color = non_back_color
+    }
+
+    svg_backbone.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, k_x))
+    k_x = k_x + 1
+  }
   // };
 
   for(var [l, group] of Object.entries(group_dict)) {
 
     var group_length = group.length
-    var left_node_name = group[0]
-    var right_node_name = group[group_length-1]
+    var group_x = group.map((a) => (data['nodes'][a]['position'][0]));
+    
+    ind_max = group_x.indexOf(Math.max.apply(Math, group_x))
+    ind_min = group_x.indexOf(Math.min.apply(Math, group_x))
+    
+    var left_node_name = group[ind_min]
+    var right_node_name = group[ind_max]
 
     var left_node = data['nodes'][left_node_name];
     var right_node = data['nodes'][right_node_name];
@@ -1445,6 +1494,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
   for (var item of svg_search) svg_core.append(item);
   for (var item of svg_heatmaps) svg_core.append(item);
+  for (var item of svg_backbone) svg_core.append(item);
   for (var item of svg_edges) svg_core.append(item);
   for (var item of svg_nodes) svg_core.append(item);
   for (var item of svg_groups) svg_core.append(item);
