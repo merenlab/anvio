@@ -932,7 +932,7 @@ D = {
              'type': str,
              'help': "COG version. The default is the latest version, which is COG24, meaning that anvi'o will "
                      "use the NCBI's 2024 release of COGs to setup the database and run it on contigs databases. "
-                     "Alternatively you can pass any of these as a parametr: 'COG20' (2020 release of the database), "
+                     "Alternatively you can pass any of these as a parameter: 'COG20' (2020 release of the database), "
                      "or 'COG14' (the 2014 release of the database). You can have multiple databases on your "
                      "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
                      "The anvi'o way."}
