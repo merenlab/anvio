@@ -260,11 +260,9 @@ class COGs:
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
-        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
+        if self.COG_version in ['COG14', 'arCOG14']:
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
-        elif self.COG_version == 'COG20':
-            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
-        elif self.COG_version == 'COG24':
+        elif self.COG_version in ['COG20', 'COG24']:
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
