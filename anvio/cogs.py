@@ -1069,10 +1069,10 @@ class COGsSetup:
         progress.new('Checking checksums and file existence')
 
         # Checksum file either provided by NCBI or us
-        if self.COG_version == 'COG20' or self.COG_version == 'COG24':
+        if self.COG_version in ['COG20', 'COG24']:
             input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
-        elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
+        elif self.COG_version in ['COG14', 'arCOG14']:
             # Get check_.md5.txt file from anvio/misc
             input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
 
