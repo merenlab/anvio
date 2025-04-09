@@ -238,7 +238,7 @@ class DGR_Finder:
 
         html_files_exist = any(file.endswith('.html') for file in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, file)))
         if html_files_exist:
-            raise ConfigError("Files with .html suffix exist in the directory. Please delete before carrying on. (later this will delete them for you)")
+            raise ConfigError("Files with .html suffix exist in the directory. Please delete them before rerunning and we will keep calm and carry on. (later this will delete them for you)")
 
         if not self.skip_compute_DGR_variability_profiling and not self.samples_txt:
             raise ConfigError("No samples.txt declared and no skip-compute-DGR-variability-profiling flag used. Either use the skip flag or "
@@ -1157,8 +1157,7 @@ class DGR_Finder:
                             continue
 
                         if self.only_a_bases:
-                            print(subject_mismatch_counts)
-
+                            self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
                             # Filter out bases with count > 0 before checking
                             nonzero_mismatch_bases = [base for base, count in subject_mismatch_counts.items() if count > 0]
 
@@ -1168,8 +1167,6 @@ class DGR_Finder:
                             else:
                                 all_mismatches_are_A = all(base == 'A' for base in nonzero_mismatch_bases)
 
-                            print(f"{all_mismatches_are_A}")
-
                             # Skip if any mismatching base is not valid
                             if not all_mismatches_are_A:
                                 continue
@@ -1178,7 +1175,7 @@ class DGR_Finder:
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
-                            print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}", header="NEW DGR", lc='yellow')
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches)
@@ -1461,7 +1458,7 @@ class DGR_Finder:
                 self.run.warning(f"No HMM Reverse Transcriptase was found for {DGR_id}. This does not affect the "
                                 "outcome of the tool, other than meaning that there is no RT found on the same contig "
                                 "as the Template Region meaning it might be a good idea to manually inspect your data "
-                                "to see if any RT's are present.")
+                                "to see if any RT's are present.", header="NO REVERSE TRANSCRIPTASE HMMs")
 
                 HMM_gene_callers_id = ''
                 DGR_info['HMM_gene_callers_id'] = ''
@@ -1517,7 +1514,7 @@ class DGR_Finder:
         if not any(dgrs_dict.values()):
             self.run.warning("No DGRS were found so no output file will be written :( However, you can go "
                             "back and tinker with the parameters of this tool if you believe this should not "
-                            "be the case. Anvi'o wishes you a nice day :)")
+                            "be the case. Anvi'o wishes you a nice day :)", header="NO DIVERSITY-GENERATING RETROELEMENTS")
             return
 
         # Open the CSV file and write headers and rows
@@ -2005,7 +2002,7 @@ class DGR_Finder:
                     #this will take the start of the contig to create a shorter initial primer length
                     vr_primer_region_start = vr_data['VR_start_position']
                     vr_primer_region_end = (vr_data['VR_start_position'] -1)
-                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}. Is going to fall off the start of the Contig it is one: {vr_data['VR_contig']}.")
+                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}, is going to fall off the start of the Contig. This is the pesky VR contig: {vr_data['VR_contig']}.")
 
                 contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
                 vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
@@ -2494,7 +2491,7 @@ class DGR_Finder:
         IT DON'T LOOK AT IT. IT MIGHT MAKE YOU CRY
         """
         if not len(self.DGRs_found_dict):
-            self.run.warning("No DGRs were found so no HTML file will be written :(")
+            self.run.warning("No DGRs were found so no HTML file will be written :(", header="No HTML OUTPUT")
             return
 
         # in which we will store all the static HTML output related stuff
