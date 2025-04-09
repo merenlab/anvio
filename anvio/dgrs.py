@@ -1009,6 +1009,7 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
         self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
         self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
+        self.DGRs_found_dict[DGR_key]['next_VR_id'] = 2  # next available VR index so we dont overwrite VR ids when we delete them if there are overlapping ones in update_existing_DGR
 
         # VR stuff
         self.DGRs_found_dict[DGR_key]['VRs'] = {'VR_001':{}}
@@ -1059,8 +1060,11 @@ class DGR_Finder:
             raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
 
         # VR info
+        vr_id = self.DGRs_found_dict[existing_DGR_key].get('next_VR_id', 2)
+        new_VR_key = f'VR_{vr_id:03d}'
+        self.DGRs_found_dict[existing_DGR_key]['next_VR_id'] = vr_id + 1
         num_VR = len(self.DGRs_found_dict[existing_DGR_key]['VRs']) + 1
-        new_VR_key = f'VR_{num_VR:03d}'
+        old_new_VR_key = f'VR_{num_VR:03d}'
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key] = {}
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence'] = VR_sequence
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_bin'] = bin
