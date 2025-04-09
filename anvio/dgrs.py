@@ -812,6 +812,12 @@ class DGR_Finder:
                     self.run.warning(f"Warning: BLAST output file for {bin_name} not found. Skipping...")
                     continue
 
+                if os.stat(f"{self.blast_output}").st_size == 0:
+                    self.run.warning(f"No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
+                    raise ConfigError(f"Therefore, we will exit here because anvi'o has found no DGRs in your data, "
+                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+
                 # Parse XML file for the current bin
                 tree = ET.parse(blast_file)
                 root = tree.getroot()
@@ -826,9 +832,16 @@ class DGR_Finder:
             print(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
 
+        #run in normal none collections mode
         else:
             # Single BLAST output processing
             self.mismatch_hits = {}
+
+            if os.stat(f"{self.blast_output}").st_size == 0:
+                self.run.warning(f"No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
+                raise ConfigError(f"Therefore, we will exit here because anvi'o has found no DGRs in your data, "
+                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
             # Parse the standard BLAST output
             tree = ET.parse(self.blast_output)
