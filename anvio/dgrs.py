@@ -466,10 +466,19 @@ class DGR_Finder:
                         contig_name = record.id
                         if contig_name in all_merged_snv_windows:
                             self.positions= all_merged_snv_windows[contig_name]
-                            for i, (start, end) in enumerate(self.positions, start):
+                            for i, (start, end) in enumerate(self.positions):
                                 section_sequence = record.seq[start:end]
                                 section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
                                 contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+
+                    if len(contig_records) == 0:
+                        self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
+                                        f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
+                                        , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
+                        raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
+                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+
 
                     # Save the subset sequences to a temporary FASTA file
                     output_fasta_path = os.path.join(self.temp_dir, f"bin_{bin_name}_subsequences.fasta")
@@ -613,10 +622,18 @@ class DGR_Finder:
                     contig_name = record.id
                     if contig_name in all_merged_snv_windows:
                         self.positions= all_merged_snv_windows[contig_name]
-                        for i, (start, end) in enumerate(self.positions, start):
+                        for i, (start, end) in enumerate(self.positions):
                             section_sequence = record.seq[start:end]
                             section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
                             contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+
+                if len(contig_records) == 0:
+                    self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
+                                    f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
+                                    , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
+                    raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
+                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
                 # Write SeqRecord objects to a new FASTA file
                 output_fasta_path = os.path.join(self.temp_dir,"output.fasta")
