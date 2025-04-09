@@ -701,6 +701,7 @@ class DGR_Finder:
 
 
     def check_overlap(window1, window2):
+        #NOTE: An old function that is here just in case she is ever needed again.
         """
         This function checks if the sections of sequences overlap based on the start and end positions.
         Parameters
