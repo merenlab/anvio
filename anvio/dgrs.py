@@ -895,6 +895,8 @@ class DGR_Finder:
                         # then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined value or 80% as default then the sequence is removed.
 
                         for seq in [hseq, qseq]:
+                            #remove - in sequences to remove repeats properly
+                            seq = seq.replace("-", "")
                             for atr1 in pytrf.ATRFinder('name', seq):
                                 if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
                                     has_repeat = True
