@@ -22,7 +22,7 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ['contigs-db'] #TODO: add equivalent-compounds-txt as new artifact
 __provides__ = []
-__description__ = "Predicts metabolic interactions between microbes based on the reaction network"
+__description__ = "Predicts metabolic exchanges between microbes based on the reaction network"
 
 run = terminal.Run()
 progress = terminal.Progress()
