@@ -1269,6 +1269,14 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
+                ),
     'unique-genes': (
             ['--unique-genes'],
             {'default': False,
