@@ -106,6 +106,8 @@ def is_proper_external_gene_calls_file(file_path):
                                    "your header line should look like (the `aa_sequence` is optional): '%s'." % ', '.join(headers_proper))
 
         for i,h in enumerate(headers_proper):
+            if not has_aa_sequences and i == 9:
+                break
             if headers[i] != h:
                 raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields " 
                                        f"to the right data type. Please re-order the columns to match this order: \"{', '.join(headers_proper)}. "
