@@ -1504,6 +1504,7 @@ class SyntenyGeneCluster():
             ax.set_yticklabels(new_labels)
             plt.tight_layout()
             fig.savefig(output_dir + '/' + gene_cluster + '.svg')
+            plt.close(fig)
 
             labels_matrix = [re.search(r'\((.+)\)', label_matrix).group(0) for label_matrix in labels]
             synteny_gene_cluster_matrix = pd.DataFrame(X, index=labels_matrix, columns=labels_matrix)
@@ -2500,6 +2501,7 @@ class PangenomeGraph():
             dn = dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
             plt.tight_layout()
             fig.savefig(output_dir + '/synteny_distance_dendrogram.svg')
+            plt.close(fig)
 
             distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
             distance_matrix.to_csv(output_dir + '/synteny_distance_matrix.tsv', sep='\t')
@@ -2804,7 +2806,7 @@ class DirectedForce():
         i = 0
         resolved_nodes = set(['STOP'])
 
-        pred = ''
+        next_node = ''
         x = 0
 
         self.progress.new("Solving complex graph")
@@ -2820,11 +2822,11 @@ class DirectedForce():
 
                 self.progress.update(f"{str(len(resolved_nodes)).rjust(len(str(len(G_nodes) + 1)), ' ')} / {len(G_nodes) + 1}")
 
-                if pred:
-                    current_branch_root = pred
-                    pred = ''
-                else:
-                    current_branch_root = M_predecessors[current_node]
+                # if next_node:
+                #     current_branch_root = next_node
+                #     next_node = ''
+                # else:
+                current_branch_root = M_predecessors[current_node]
 
                 current_forward_connected = []
                 current_backward_connected = []
@@ -2893,27 +2895,49 @@ class DirectedForce():
                         if current_backward_connected:
 
                             number = max([(G.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
+                            current_connector = current_backward_connected[number]
+                            next_node = current_node
 
-                            node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_backward_connected[number], changed_edges, reverse = True)
-                            M.remove_edge(M_predecessors[current_node], current_node)
+                            # while current_connector:
+                            # while next_node not in resolved_nodes:
+                            while True:
 
-                            new_data = self.edge_check(M, node_i, node_j, data)
-                            M.add_edge(node_i, node_j, **new_data)
+                                print(next_node, current_connector)
 
-                            M_removed_edges.remove((current_node, current_backward_connected[number]))
-                            M_removed_edges.add((M_predecessors[current_node], current_node))
+                                current_node = next_node
 
-                            M_successors[M_predecessors[current_node]].remove(current_node)
-                            M_successors[current_backward_connected[number]] += [current_node]
+                                node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_connector, changed_edges, reverse = True)
+                                M.remove_edge(M_predecessors[current_node], current_node)
 
-                            pred = M_predecessors[current_node]
+                                new_data = self.edge_check(M, node_i, node_j, data)
+                                M.add_edge(node_i, node_j, **new_data)
 
-                            M_predecessors.pop(current_node, None)
-                            M_predecessors[current_node] = current_backward_connected[number]
+                                M_removed_edges.remove((current_node, current_connector))
+                                M_removed_edges.add((M_predecessors[current_node], current_node))
 
-                            M_distances[current_node] = self.mean_M_path_weight(M, 'START', current_node)
+                                M_successors[M_predecessors[current_node]].remove(current_node)
+                                M_successors[current_connector] += [current_node]
 
-                            resolved_nodes.add(current_node)
+                                next_node = M_predecessors[current_node]
+
+                                M_predecessors.pop(current_node, None)
+                                M_predecessors[current_node] = current_connector
+
+                                M_distances[current_node] = self.mean_M_path_weight(M, 'START', current_node)
+
+                                if current_node in resolved_nodes:
+                                    break
+                                else:
+                                    resolved_nodes.add(current_node)
+                                    current_connector = current_node
+
+                                # if M.out_degree(current_node) == 0:
+                                # current_connector = current_node
+                                # else:
+                                # current_connector = ''
+                                # print(next_node)
+
+                            break
 
                 visited_nodes.add(current_node)
 
