@@ -1,6 +1,8 @@
 - github: tdelmont
   name: Tom O. Delmont
   email: tom.o.delmont@gmail.com
+  git_records:
+    - tom.o.delmont@gmail.com
   twitter: tomodelmont
   avatar: bio-tom.jpg
   bio: "Microbial ecologist who seeks to understand small and large-scale ecological patterns in the microbial world."
@@ -21,6 +23,8 @@
 - github: genomewalker
   name: Antonio Fernandez-Guerra
   email: antonio@metagenomics.eu
+  git_records:
+    - antonio@metagenomics.eu
   avatar: bio-antonio.png
   orcid: 0000-0002-8679-490X
   web: https://dark.metagenomics.eu
@@ -35,6 +39,9 @@
   name: Jessika Fuessel
   avatar: bio-jessika.jpg
   email: ju.fuessel@gmail.com
+  git_records:
+    - ju.fuessel@gmail.com
+    - 68665857+jessika-fuessel@users.noreply.github.com
   twitter: FuesselJessika
   orcid: 0000-0002-4210-2318
   bio: "Biogeochemist and microbiologist intereted in understanding the production and fate of microbial metabolites within the context of changing environmental conditions using a multi-omics."
@@ -53,6 +60,8 @@
   name: Chiara Vanni
   avatar: bio-chiara.jpg
   email: cvanni@mpi-bremen.de
+  git_records:
+    - cvanni@mpi-bremen.de
   orcid: 0000-0002-1124-1147
   web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
   twitter: ChiaraVanni5
@@ -65,6 +74,8 @@
 - github: karkman
   name: Antti Karkman
   email: antti.karkman@helsinki.fi
+  git_records:
+    - antti.karkman@helsinki.fi
   avatar: bio-antti.png
   twitter: AnttiKarkman
   orcid: 0000-0003-0983-3319
@@ -77,6 +88,9 @@
 
 - github: edgraham
   name: Elaina Graham
+  email: edgraham@usc.edu
+  git_records:
+    - edgraham@usc.edu
   avatar: bio-elaina.jpg
   twitter: perilousUnknown
   affiliations:
@@ -89,6 +103,8 @@
   name: Jarrod J. Scott
   avatar: bio-jarrod_s.jpg
   email: jarrod.jude.scott@gmail.com
+  git_records:
+    - jarrod.jude.scott@gmail.com
   web: https://istmobiome.rbind.io/
   bio: "Microbiologist interested in understanding how bacteria and archaea coalesce into complex communities and how they affect host biology, biogeochemical cycles, and ecosystem-level processes in marine and terrestrial systems."
   affiliations:
@@ -102,6 +118,9 @@
   avatar: bio-daan.jpg
   twitter: daanspeth
   email: dspeth@mpi-bremen.de
+  git_records:
+    - dspeth@mpi-bremen.de
+    - daanspeth@gmail.com
   web: https://www.micro-explorer.net
   orcid: 0000-0002-2361-5935
   bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
@@ -116,6 +135,8 @@
   avatar: bio-simroux.jpg
   twitter: simroux_virus
   email: sroux@lbl.gov
+  git_records:
+    - sroux@lbl.gov
   web: https://simroux.github.io
   orcid: 0000-0002-5831-5895
   bio: "Viral ecologist and bioinformatician at the DOE JGI - interested in everything phage, 'omics, microbial and viral ecology and evolution, virus-host interactions, etc"
@@ -131,6 +152,9 @@
   web: https://www.researchgate.net/profile/Xabier-Vazquez-Campos
   avatar: bio-xabi.jpg
   email: xvazquezc@gmail.com
+  git_records:
+    - xvazquezc@gmail.com
+    - xvazquezc@users.noreply.github.com
   linkedin: xabier-vázquez-campos-5316483
   orcid: 0000-0003-1134-5058
   bio: "Environmental microbiologist and bioinformatician - interested in all things 'omics, extremophiles, taxonomy and systematics, evolution..."
@@ -146,6 +170,8 @@
   web: https://dutter.github.io
   avatar: bio-dutter.jpg
   email: bajenak@gmail.com
+  git_records:
+    - bajenak@gmail.com
   orcid: 0000-0003-3322-7108
   bio: "Microbial ecologist interested in the evolution and maintenance of diversity in complex natural communities, mostly using bioinformatics"
   affiliations:
@@ -159,6 +185,9 @@
   web: https://www.mbl.edu/research/faculty-and-whitman-scientists/Hilary%20Morrison
   avatar: bio-morrison.jpg
   email: hmorrison1981@gmail.com
+  git_records:
+    - hmorrison1981@gmail.com
+    - HMorrison@users.noreply.github.com
   orcid: 0000-0003-0281-326X
   bio: "A long and winding road to microbial ecology"
   affiliations:
@@ -172,6 +201,8 @@
   web: https://www1.bio.ku.dk/english/staff/?pure=en/persons/670045
   avatar: RobMurphy.png
   email: robert.murphy@bio.ku.dk
+  git_records:
+    - robert.murphy@bio.ku.dk
   linkedin: robert-murphy-b36475105
   orcid: 0000-0002-0850-5439
   bio: "Microbiologist and bioinformatician - intrested in microbial communites present in symbiosis as a source for novel secondary metabolites"
@@ -185,6 +216,8 @@
   name: Patrick J. H. Bradley
   web: https://bradleylab.science/authors/admin/
   email: bradley.720@osu.edu
+  git_records:
+    - bradley.720@osu.edu
   avatar: PatBradley.jpg
   bio: "Bioinformatician interested in Metagenomics, Statistical Modeling, Microbial Evolution, Functional Genomics and Metabolism"
   affiliations:
@@ -200,6 +233,8 @@
   name: Kathryn Kananen
   web: https://bradleylab.science/author/kathryn-kananen/
   email: kekananen@gmail.com
+  git_records:
+    - kekananen@gmail.com
   avatar: KatKananen.jpg
   linkedin: kathryn-kananen-85352b109
   orcid: 0000-0001-6080-0323
@@ -213,6 +248,8 @@
 - github: treitlis
   name: Sebastian Cristian Treitli
   email: sebastian.treitli@gmail.com
+  git_records:
+    - sebastian.treitli@gmail.com
   avatar: SebastianTreitli.jpg
   orcid: 0000-0001-8000-1780
   bio: "Microbiologist and bioinformatician - interested in protists and symbiotic interactions between protists and bacteria."
