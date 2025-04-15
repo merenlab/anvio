@@ -494,3 +494,16 @@
       inst: HIFMB
       inst_link: https://hifmb.de/
       current: true
+
+- github: bcoltman
+  name: Benjamin Luke Coltman
+  avatar: bio_bcoltman.jpg
+  email: benjamin.coltman@univie.ac.at
+  linkedin: bencoltman
+  orcid: 0000-0001-8573-0229
+  bio: "Bioinformatician working on simplifying microbiome complexity"
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: The Centre for Microbiology and Environmental Systems Science at the University of Vienna
+      inst_link: https://cemess.univie.ac.at/
+      current: true
