@@ -1009,7 +1009,7 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
         self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
         self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
-        self.DGRs_found_dict[DGR_key]['next_VR_id'] = 2  # next available VR index so we dont overwrite VR ids when we delete them if there are overlapping ones in update_existing_DGR
+        #self.DGRs_found_dict[DGR_key]['next_VR_id'] = 2  # next available VR index so we dont overwrite VR ids when we delete them if there are overlapping ones in update_existing_DGR
 
         # VR stuff
         self.DGRs_found_dict[DGR_key]['VRs'] = {'VR_001':{}}
@@ -1060,44 +1060,44 @@ class DGR_Finder:
             raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
 
         #keep a list of the VRs that are overlapping and therefore need deleting
-        VRs_to_delete=[]
+        #VRs_to_delete=[]
         #check if the VR overlaps with another one present and only keep the longest one.
-        for vr_key, existing_vr in list(self.DGRs_found_dict[existing_DGR_key]["VRs"].items()):
-            print(f"{existing_vr}")
-            existing_vr_start = existing_vr["VR_start_position"]
-            existing_vr_end = existing_vr["VR_end_position"]
+        #for vr_key, existing_vr in list(self.DGRs_found_dict[existing_DGR_key]["VRs"].items()):
+            #print(f"{existing_vr}")
+            #existing_vr_start = existing_vr["VR_start_position"]
+            #existing_vr_end = existing_vr["VR_end_position"]
 
 
-            if existing_vr['VR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
-                                                                                    query_genome_end_position,
-                                                                                    existing_vr["VR_start_position"],
-                                                                                    existing_vr["VR_end_position"]):
+            #if existing_vr['VR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
+                                                                                    #query_genome_end_position,
+                                                                                    #existing_vr["VR_start_position"],
+                                                                                    #existing_vr["VR_end_position"]):
 
-                new_length = query_genome_end_position - query_genome_start_position
-                existing_length = existing_vr_end - existing_vr_start
+                #new_length = query_genome_end_position - query_genome_start_position
+                #existing_length = existing_vr_end - existing_vr_start
 
-                if new_length > existing_length:
+                #if new_length > existing_length:
                     #only add the longest VR and remove existing vr and add new one
-                    VRs_to_delete.append(vr_key)
-                    self.run.warning(f"Heads up. An existing VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
-                                    f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
-                                    "your read recruitment for this contig, which is always a good idea", header="Existing VR is being discarded because it is shorter")
-                else:
-                    self.run.warning(f"Heads up. The new VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
-                                    f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
-                                    "your read recruitment for this contig, which is always a good idea", header="New VR is being discarded because it is shorter")
+                    #VRs_to_delete.append(vr_key)
+                    #self.run.warning(f"Heads up. An existing VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
+                                    #f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
+                                    #"your read recruitment for this contig, which is always a good idea", header="Existing VR is being discarded because it is shorter")
+                #else:
+                    #self.run.warning(f"Heads up. The new VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
+                                    #f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
+                                    #"your read recruitment for this contig, which is always a good idea", header="New VR is being discarded because it is shorter")
                     #return skips adding the shorter vr.
-                    return
+                    #return
         # Now delete the old, overlapping VRs safely
-        for vr_key in VRs_to_delete:
-            del self.DGRs_found_dict[existing_DGR_key]['VRs'][vr_key]
+        #for vr_key in VRs_to_delete:
+            #del self.DGRs_found_dict[existing_DGR_key]['VRs'][vr_key]
 
         # VR info
-        vr_id = self.DGRs_found_dict[existing_DGR_key].get('next_VR_id', 2)
-        new_VR_key = f'VR_{vr_id:03d}'
-        self.DGRs_found_dict[existing_DGR_key]['next_VR_id'] = vr_id + 1
+        #vr_id = self.DGRs_found_dict[existing_DGR_key].get('next_VR_id', 2)
+        #new_VR_key = f'VR_{vr_id:03d}'
+        #self.DGRs_found_dict[existing_DGR_key]['next_VR_id'] = vr_id + 1
         num_VR = len(self.DGRs_found_dict[existing_DGR_key]['VRs']) + 1
-        old_new_VR_key = f'VR_{num_VR:03d}'
+        new_VR_key = f'VR_{num_VR:03d}'
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key] = {}
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence'] = VR_sequence
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_bin'] = bin
