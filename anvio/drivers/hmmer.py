@@ -312,7 +312,7 @@ class HMMer:
                         append_function = self.append_to_main_standard_file
                     elif file_type == 'domtable':
                         append_function = self.append_to_main_table_file
-
+                    
                     append_function(main_file_buffer, worker_file, main_file_lock)
 
             except KeyboardInterrupt:
@@ -427,37 +427,49 @@ class HMMer:
             with buffer_write_lock:
                 merged_file_buffer.write(f.read())
 
-
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
         """Append table output to the main file.
 
-        Lines starting with '#' (ie, header lines) are ignored.
+        Lines starting with '#' (i.e., header lines) are ignored.
         """
-
         detected_non_ascii = False
         lines_with_non_ascii = []
 
+        # Read the entire file into memory as binary data
         with open(table_output_file, 'rb') as hmm_hits_file:
-            line_counter = 0
-            for line_bytes in hmm_hits_file:
-                line_counter += 1
-                line = line_bytes.decode('ascii', 'ignore')
+            file_data = hmm_hits_file.read()
 
-                if not len(line) == len(line_bytes):
-                    lines_with_non_ascii.append(line_counter)
-                    detected_non_ascii = True
+        # Decode all lines at once and split by newline
+        lines = file_data.decode('ascii', 'ignore').splitlines()
 
-                if line.startswith('#'):
-                    continue
+        # Identify lines with non-ASCII characters
+        non_ascii_lines = [
+            i + 1 for i, line_bytes in enumerate(file_data.splitlines())
+            if len(line_bytes.decode('ascii', 'ignore')) != len(line_bytes)
+        ]
 
-                with buffer_write_lock:
-                    merged_file_buffer.write(line)
+        if non_ascii_lines:
+            detected_non_ascii = True
+            lines_with_non_ascii.extend(non_ascii_lines)
 
+        # Filter lines and concatenate in one go
+        filtered_lines = "\n".join(line for line in lines if not line.startswith('#'))
+        if filtered_lines.strip():  # Check if there's non-empty content
+            filtered_lines += "\n"
+
+        # Write to the buffer in a single operation with a lock
+        with buffer_write_lock:
+            merged_file_buffer.write(filtered_lines)
+
+        # Log warning if non-ASCII characters were detected
         if detected_non_ascii:
-            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
-                             "the file '%s' and cleared them. Here are the line numbers with non-ascii characters: %s. "
-                             "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                                                 (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
+            self.run.warning(
+                "Just a heads-up, Anvi'o HMMer parser detected non-ASCII characters while processing "
+                f"the file '{table_output_file}' and cleared them. Here are the line numbers with non-ASCII characters: "
+                f"{', '.join(map(str, lines_with_non_ascii))}. You may want to check those lines with a command like "
+                "\"awk 'NR==<line number>' <file path> | cat -vte\"."
+            )
+
 
 
     def clean_tmp_dirs(self):

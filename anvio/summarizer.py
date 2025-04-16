@@ -1657,9 +1657,10 @@ class Bin:
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
                     self.contig_name_conversion_dict[contig_name] = {'reformatted_contig_name': reformatted_contig_name}
-                    contig_name = reformatted_contig_name
+                else:
+                    reformatted_contig_name = contig_name
 
-                fasta_id = contig_name + appendix
+                fasta_id = reformatted_contig_name + appendix
                 self.contig_lengths.append(len(sequence))
 
                 output += '>%s\n' % fasta_id

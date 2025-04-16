@@ -1269,6 +1269,14 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
+                ),
     'unique-genes': (
             ['--unique-genes'],
             {'default': False,
@@ -2171,8 +2179,9 @@ D = {
             ['-O', '--output-file-prefix'],
             {'metavar': 'FILENAME_PREFIX',
              'type': str,
-             'help': "A prefix to be used while naming the output files (no file type "
-                     "extensions please; just a prefix)."}
+             'help': "A prefix to be used while naming the output files. No file type "
+                     "extensions please; just a prefix -- all ouptut file names and "
+                     "extensions will be appended to this prefix."}
                 ),
     'long-format': (
             ['--long-format'],

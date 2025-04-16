@@ -67,6 +67,9 @@ def main():
     for read in bam:
         read_count += 1
 
+        if read.flag == 4:
+            continue
+
         if read_count % 500 == 0:
             progress.update('%d / %d' % (read_count, total_reads))
 
