@@ -61,6 +61,8 @@ def export_from_contigs(args):
             raise ConfigError("Due to the lazy programming, --flank-length and --export-gff3 flags are incompatible :(")
         if args.annotation_source:
             func_kwargs['gene_annotation_source'] = args.annotation_source
+        if args.return_all_function_hits_for_each_gene:
+            anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = True
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
@@ -122,6 +124,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupB.add_argument(*anvio.A('return-all-function-hits-for-each-gene'), **anvio.K('return-all-function-hits-for-each-gene'))
 
     groupC = parser.add_argument_group('OPTION #2: GET SEQUENCES FROM A GENOMES STORAGE')
     groupC.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
