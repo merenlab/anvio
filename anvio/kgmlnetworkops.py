@@ -2130,44 +2130,6 @@ class GapFiller:
     }
     """
 
-# class GapFiller:
-#     def __init__(self, args: Namespace) -> None:
-#         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
-#         self.gapped_chains: list[Chain] = A(args.gapped_chains, None)
-#         self.ungapped_chains: list[Chain] = A(args.ungapped_chains, None)
-#         self.walker: KGMLNetworkWalker = A(args.walker, None)
-#         self.contigs_db_path: str = A(args.contigs_db, None)
-#         self.ko_cog_path: str = A(args.ko_cog, None)
-
-#         self.gap_analyzer = GapAnalyzer(self.gapped_chains, self.ungapped_chains)
-#         self.chain_gaps = self.gap_analyzer.rank_gaps()
-
-#         self.pathway_ortholog_entries = self.walker.kgml_ko_pathway.get_entries(
-#             entry_type='ortholog'
-#         )
-
-#         self.contigs_db = ContigsDatabase(self.contigs_db_path)
-#         function_sources = (
-#             self.contigs_db.meta['gene_function_sources']
-#             if self.meta['gene_function_sources'] else []
-#         )
-#         assert 'KOfam' in function_sources
-#         assert 'COG20_FUNCTION' in function_sources
-#         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-#         self.genes_in_contigs_df = self.genes_in_contigs_df.sort_values('start').reset_index()
-#         self.gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
-
-#         cog_kos: dict[str, list[str]] = {}
-#         ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
-#         ko_cog_df.columns = ['ko', 'cog']
-#         for row in ko_cog_df.itertuples():
-#             for cog_id in row.cog[5: -1].split():
-#                 try:
-#                     cog_kos[cog_id].append(row.ko)
-#                 except KeyError:
-#                     cog_kos[cog_id] = [row.ko]
-#         self.cog_kos = cog_kos
-
 #     def get_syntenous_regions(self, chain_gcids: list[int]) -> list[list[int]]:
 #         # Find syntenous regions containing genes in the chain.
 #         syntenous_regions: list[list[int]] = []
