@@ -2059,6 +2059,52 @@ class GapFiller:
         "pathway_number": <pathway number>, # Class to evaluate each gap
         "pathway_name": <pathway name>,
         "gaps": [
+    def get_syntenous_region(self, gcid: int) -> list[int]:
+        """
+        Find the "syntenous region" of genes in the same orientation around the given gene.
+
+        Parameters
+        ==========
+        gcid : int
+            Gene caller ID of gene to search around.
+
+        Returns
+        =======
+        list[int]
+            The syntenous region is recorded as a list of row indices of full-length gene calls in
+            the 'genes_in_contigs_df' attribute, which is the 'genes_in_contigs' table of the
+            contigs database sorted by contig ID and, within each contig, start position of the gene
+            call. The input gene is included in the syntenous region.
+        """
+        # The search around each gene stops in either direction when a gene in the opposite
+        # orientation is found or the first or last gene in the contig is reached.
+        row = self.genes_in_contigs_df[
+            self.genes_in_contigs_df['gene_callers_id'] == gcid
+        ].squeeze()
+        row_index = row.name
+        direction = row['direction']
+
+        syntenous_region: list[int] = []
+        # Search preceding genes.
+        for row_index in range(row_index, -1, -1):
+            lower_row = self.genes_in_contigs_df.loc[row_index]
+            if lower_row['direction'] != direction:
+                break
+            if lower_row['partial'] == 1:
+                # Ignore partial gene calls.
+                continue
+            syntenous_region.append(row_index)
+        # Search succeeding genes.
+        for row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
+            higher_row = self.genes_in_contigs_df.loc[row_index]
+            if higher_row['direction'] != direction:
+                break
+            if higher_row['partial'] == 1:
+                continue
+            syntenous_region.append(row_index)
+        syntenous_region.sort()
+
+        return syntenous_region
             {
                 "kgml_reaction_id": <KGML reaction ID>, # have a function to return result from this point
                 "ko_hits": [
