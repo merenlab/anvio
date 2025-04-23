@@ -1762,13 +1762,15 @@ class GapFiller:
 
             contigs_db_path : str
 
+            all_ko_hits_path : str
+
+            ko_cog_path : str
+
             compound_fate : Literal['consume', 'produce', 'both']
 
             max_reactions : int
 
             allow_alternative_reaction_gaps : bool
-
-            ko_cog_path : str
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
