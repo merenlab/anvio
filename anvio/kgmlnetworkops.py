@@ -1754,8 +1754,8 @@ class GapFiller:
         ==========
         args : argparse.Namespace
             Contains arguments. See the class docstring for more information on arguments set as
-            attributes, including default values. The only required arguments are
-            kegg_pathway_number and contigs_db_path.
+            attributes, including default values. The required arguments are kegg_pathway_number,
+            contigs_db_path, all_ko_hits_path, and ko_cog_path.
 
             kegg_pathway_number : str
 
