@@ -2054,11 +2054,6 @@ class GapFiller:
 
         return syntenous_regions
 
-    """
-    {
-        "pathway_number": <pathway number>, # Class to evaluate each gap
-        "pathway_name": <pathway name>,
-        "gaps": [
     def get_syntenous_region(self, gcid: int) -> list[int]:
         """
         Find the "syntenous region" of genes in the same orientation around the given gene.
@@ -2131,75 +2126,192 @@ class GapFiller:
 
         return json_pathway
 
+    def eval_gap_kgml_reaction(self, kgml_reaction_id : str) -> Union[dict, None]:
+        """
+        Evaluate genomic evidence to fill a particular reaction gap in the pathway map.
+
+        Evidence supports hypotheses for how particular genes can fill the gap. Evidence is based on
+        alternative KO annotations of genes and synteny with other genes in the pathway. Here are
+        lines of evidence to fill a gap.
+
+        1. A gene's top-scoring KO annotation can be replaced by a lower-scoring KO annotation
+        that corresponds to the gap reaction.
+
+        2. A gene's top-scoring COG annotation maps to a KO that corresponds to the gap reaction.
+        If the gene does not have a KO annotation, or has a different KO annotation, it can be
+        replaced by the KO suggested by the COG.
+
+        3. A gene is adjacent to other syntenous genes (in the same orientation) in the pathway,
+        or stronger yet, in the chain with the gap. This gene may also have an alternative KO
+        annotation to fill the gap (see 1 and 2), or may be unannotated.
+
+        Here are practical examples of how reported evidence can be used in gap-filling.
+
+        1. A gap can be filled by reannotation of a gene with a lower-ranking KO for a bifunctional
+        protein. For instance, there is a gap for the ArgA reaction in arginine biosynthesis, but a
+        gene is annotated with the ArgB KO for the subsequent reaction. The gene has a lower-scoring
+        ArgAB bifunctional KO which fills the gap. The gene is adjacent to syntenous genes in the
+        gapped biosynthetic chain, and there are no adjacent unannotated genes that may represent
+        ArgA. ArgAB would represent a gene fusion, which can be confirmed by separate protein domain
+        hits to ArgA and ArgB in the amino acid sequence.
+
+        2. A gap can represent an alternative reaction that is missing from the map, the
+        identification of which allows the chain to be completed. For instance, some bacteria such
+        as Bacteroides fragilis have an arginine biosynthetic pathway variant that produces arginine
+        through succinylated derivatives of glutamate rather than typical acetylated derivatives.
+        There is a KO for N-succinyl-L-ornithine carbamoyltransferase which is similar to the KO for
+        N-acetyl-L-ornithine carbamoyltransferase. However, the KEGG map only contains reactions
+        involving acetylated intermediates. Therefore, genomes with the succinyl version of the
+        pathway have a map that looks complete except for the carbamoyltransferase gap. However, the
+        gene in question can have a lower-ranking KO for the N-acetyl variant, which fills the gap,
+        and this is especially obvious if the gene is adjacent to syntenous arginine biosynthetic
+        genes in the gapped chain. In the context of metabolic modeling, identification of this
+        variant indicates that an automatically annotated acetyl version of the pathway might need
+        to be replaced by a succinyl version of the pathway, with potentially important implications
+        for the metabolic network given the alternative origins of succinyl-CoA and acetyl-CoA.
+
+        Parameters
+        ==========
+        kgml_reaction_id : str
+            ID of KGML reaction gap.
+
+        Returns
+        =======
+        Union[dict, None]
+            JSON-formatted dictionary of gap-filling evidence. The dictionary is empty if no KOs
+            associated with the KGML reaction hit genes in the contigs database. None is returned if
+            the requested KGML reaction ID is not found in the pathway or is not a gap.
+
+            The following shows the template of the returned dictionary.
             {
-                "kgml_reaction_id": <KGML reaction ID>, # have a function to return result from this point
-                "ko_hits": [
+                "pathway_number": <pathway number>,
+                "pathway_name": <pathway name>,
+                "gaps": [
                     {
-                        "ko_id": <KO ID>, # have a function to return result from this point
-                        "ko_name": <KO name>,
-                        "gene_hits": [
+                        "kgml_reaction_id": <KGML reaction ID>,
+                        "candidate_genes": [
                             {
                                 "gene_callers_id": <GCID>,
-                                "e_value": <E value>,
-                                "other_kos": [
+                                "gap_ko_hits": [
                                     {
-                                        "other_ko_id": <KO ID>,
-                                        "other_ko_name": <KO name>,
-                                        "other_e_value": <E value>
+                                        "ko_id": <KO ID>,
+                                        "ko_name": <KO name>,
+                                        "e_value": <E value>
                                     },
                                     ...
                                 ],
-                                "cog20_annotations": [ or null
+                                "other_ko_hits": [
                                     {
-                                        "cog20_id": <COG20 ID>,
-                                        "cog20_name": <COG20 name>,
-                                        "is_equivalent_to_ko": <true or false> or null,
+                                        "ko_id": <KO ID>,
+                                        "ko_name": <KO name>,
+                                        "e_value": <E value>
                                     },
                                     ...
                                 ],
-                                "gene_index_in_syntenous_region": <gene index in syntenous region>,
-                                "syntenous_region_in_pathway": {
-                                    "contig_id": <contig ID>,
-                                    "gene_orientation": <"f" or "r">,
-                                    "gene_count": <gene count>,
-                                    "surrounding_syntenous_genes": [
+                                "gap_kos_via_cog_top_hits": [
+                                    {
+                                        "ko_id": <KO ID>,
+                                        "ko_name": <KO name>,
+                                        "cog_ids": [<COG ID>, ...]
+                                    },
+                                    ...
+                                ],
+                                "cog_top_hits": [
+                                    {
+                                        "cog_id": <COG ID>,
+                                        "cog_name": <COG name>,
+                                        "e_value": <E value>
+                                    },
+                                    ...
+                                ],
+                                "syntenous_region": { or null
+                                    "id": <ID>,
+                                    "gene_index": <gene index>,
+                                    "is_gene_elsewhere_in_gapped_chain": <true or false>,
+                                    "is_gene_elsewhere_in_pathway": <true or false>,
+                                    "region_gene_count": <count of full genes in region>,
+                                    "region_pathway_gene_count":
+                                        <count of genes in region and pathway>,
+                                    "region_gapped_chain_gene_count":
+                                        <count of genes in region and gapped chains>,
+                                    "adjacent_pathway_genes": [
                                         {
-                                            "gene_callers_id": <GCID>,
-                                            "start_position": <start position>,
-                                            "stop_position": <stop position>,
-                                            "gene_call_source": <gene call source>,
-                                            "ko_id": <KO ID or null>,
-                                            "ko_name": <KO name or null>,
-                                            "cog20_id": <COG20 ID or null>,
-                                            "cog20_name": <COG20 ID or null>,
-                                            "is_in_pathway": <true or false>,
-                                            "chains": [
-                                                {
-                                                    "chain_id": <chain ID>,
-                                                    "reaction_count": <reaction count>,
-                                                    "reaction_indices_in_chain": [<reaction index in chain>, ...]
-                                                },
-                                                ...
-                                            ]
+                                            "gene_index": <gene index>,
+                                            "is_gene_in_gapped_chain": <true or false>
                                         },
                                         ...
                                     ]
                                 }
                             },
                             ...
+                        ],
+                        "syntenous_regions": [
+                            {
+                                "id": <id>,
+                                "contig_id": <contig ID>,
+                                "gene_orientation": <"f" or "r">,
+                                "full_genes": [
+                                    {
+                                        "gene_index": <gene index>,
+                                        "is_gap_candidate": <true or false>,
+                                        "start_position": <start position>,
+                                        "stop_position": <stop position>,
+                                        "gene_callers_id": <GCID>,
+                                        "gene_call_source": <gene call source>,
+                                        "ko_top_hits": [
+                                            {
+                                                "ko_id": <KO ID>,
+                                                "ko_name": <KO name>,
+                                                "e_value": <E value>
+                                            },
+                                            ...
+                                        ],
+                                        "cog_top_hits": [
+                                            {
+                                                "cog_id": <COG ID>,
+                                                "cog_name": <COG name>,
+                                                "e_value": <E value>
+                                            },
+                                            ...
+                                        ],
+                                        "is_in_pathway": <true or false>,
+                                        "gapped_chains": [
+                                            {
+                                                "gapped_chain_index": <gapped chain index>,
+                                                "reaction_count": <reaction count>,
+                                                "reaction_indices_in_chain":
+                                                    [<reaction_index_in_chain>, ...]
+                                            },
+                                            ...
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "gapped_chains": [
+                            {
+                                "gapped_chain_index": <gapped chain index>,
+                                "reactions": [
+                                    {
+                                        "reaction_index_in_chain": <reaction index in chain>,
+                                        "is_gap": <true or false>,
+                                        "kgml_reaction_id": <KGML reaction ID>,
+                                        "kos": [
+                                            {
+                                                "ko_id": <KO ID>,
+                                                "ko_name": <KO name>
+                                            },
+                                            ...
+                                        ]
+                                    },
+                                    ...
+                                ]
+                            },
+                            ...
                         ]
                     },
                     ...
                 ]
-            },
-            ...
-        ],
-        "chains": [
-            {
-                "id": <ID>,
-            },
-            ...
-        ]
-    }
-    """
+            }
+        """
 
