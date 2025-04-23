@@ -2665,3 +2665,6 @@ class GapFiller:
                     'adjacent_pathway_genes'
                 ] = json_adjacent_pathway_genes
 
+        # Add information on the gapped chains to the gap record.
+        json_gap['gapped_chains'] = json_gapped_chains
+
