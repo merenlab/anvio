@@ -2314,4 +2314,111 @@ class GapFiller:
                 ]
             }
         """
+        def get_json_candidate_gene_sort_key(
+            json_candidate_gene: dict
+        ) -> tuple[int, float, float, int, int, int]:
+            """
+            Get a sort key for the JSON-formatted dictionary of information on a gap-filling
+            candidate gene.
+
+            The sort first depends on the presence or absence of a particular type of gap-filling
+            evidence and then, to break ties within presence/absence tiers, numerical values from
+            each tier.
+
+            The following are the types of presence/absence evidence for a candidate gene.
+            A. The gene has a top-scoring COG hit that is associated with a KO linked to the gap
+            KGML reaction.
+            B. The gene has lower-ranking KO hit linked to the gap KGML reaction.
+            C. The gene is syntenous with other genes linked to chains containing the gap.
+
+            The following are the presence/absence tiers indicated by their identifying values (0-5)
+            for the first level of the sort.
+            0: The gene has evidence types A + B + C.
+            1: A + C
+            2: B + C
+            3: A
+            4: B
+            5: C
+
+            The following are the numerical values for the second through sixth levels of the sort.
+            The second and third levels are sorted in ascending order, and the fourth, fifth, and
+            sixth levels are descending.
+            1. E value of the best-scoring, lower-ranking KO hit linked to the gap reaction. In the
+            absence of a lower-ranking KO hit, infinity is used as a placeholder value.
+            2. E value of the best-scoring COG associated with a KO linked to the reaction. In the
+            absence of such a COG, infinity is used as a placeholder value.
+            3. Count of adjacent pathway genes in the syntenous region that contains genes linked to
+            gapped chains. If the candidate gene is not in a syntenous region flanked by genes in
+            gapped chains, then 0 is used as a placeholder value.
+            4. Count of genes (not necessarily adjacent to the candidate gene) linked to gapped
+            chains in the syntenous region. If the candidate gene is not in a syntenous region
+            containing genes in gapped chains, then 0 is used as a placeholder value.
+            5. Count of pathway genes (not necessarily adjacent to the candidate gene) in the
+            syntenous region. If the candidate gene is not in a syntenous region containing genes in
+            the pathway, then 0 is used as a placeholder value.
+
+            Further ties are unlikely and not systematically resolved.
+
+            Parameters
+            ==========
+            json_candidate_gene : list[dict]
+                JSON-formatted dictionary of information on a gap-filling candidate gene.
+
+            Returns
+            =======
+            tuple[int, float, float, int, int, int]
+                Sort key, with the first level being presence/absence tier of evidence (0-5), and
+                the second, third, and fourth levels being a numerical value for each type of
+                evidence.
+            """
+            evidence = []
+            has_cog_ko_evidence = len(json_candidate_gene['gap_kos_via_cog_top_hits']) > 0
+            evidence.append(has_cog_ko_evidence)
+            has_lower_ranking_ko_evidence = len(json_candidate_gene['gap_ko_hits']) > 0
+            evidence.append(has_lower_ranking_ko_evidence)
+            has_synteny_evidence = json_candidate_gene['syntenous_region'] is not None
+            evidence.append(has_synteny_evidence)
+            evidence = tuple(evidence)
+            if evidence == (True, True, True):
+                evidence_tier = 0
+            elif evidence == (True, False, True):
+                evidence_tier = 1
+            elif evidence == (False, True, True):
+                evidence_tier = 2
+            elif evidence == (True, False, False):
+                evidence_tier = 3
+            elif evidence == (False, True, False):
+                evidence_tier = 4
+            elif evidence == (False, False, False):
+                evidence_tier = 5
+            sort_key = [evidence_tier]
+
+            ko_e_values = [
+                gap_ko_hit['e_value'] for gap_ko_hit in json_candidate_gene['gap_ko_hits']
+            ]
+            min_ko_e_value = min(
+                ko_e_values
+            ) if len(json_candidate_gene['gap_ko_hits']) > 0 else float('inf')
+            sort_key.append(min_ko_e_value)
+
+            cog_ids: list[str] = []
+            for gap_ko_via_cog_top_hits in json_candidate_gene['gap_kos_via_cog_top_hits']:
+                for cog_id in gap_ko_via_cog_top_hits['cog_ids']:
+                    cog_ids.append(cog_id)
+            cog_e_values = [
+                cog_top_hit['e_value'] for cog_top_hit in json_candidate_gene['cog_top_hits']
+                if cog_top_hit['cog_id'] in set(cog_ids)
+            ]
+            min_cog_e_value = min(cog_e_values) if cog_e_values else float('inf')
+            sort_key.append(min_cog_e_value)
+
+            json_syntenous_region = json_candidate_gene['syntenous_region']
+            if json_syntenous_region is None:
+                sort_key.extend([0, 0, 0])
+            else:
+                sort_key.append(len(json_syntenous_region['adjacent_pathway_genes']))
+                sort_key.append(json_syntenous_region['region_gapped_chain_gene_count'])
+                sort_key.append(json_syntenous_region['region_pathway_gene_count'])
+
+            return sort_key
 
