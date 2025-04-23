@@ -2675,3 +2675,58 @@ class GapFiller:
 
         return json_gap
 
+    def get_gap_synteny_info(self, kgml_reaction_id: str) -> Union[list[dict], None]:
+        """
+        Get information on all syntenous regions around genes linked to chains containing the gap.
+
+        Parameters
+        ==========
+        kgml_reaction_id : str
+            ID of KGML reaction gap.
+
+        Returns
+        =======
+        list[dict]
+            JSON-formatted dictionary for each syntenous region. None is returned if the requested
+            KGML reaction ID is not a gap in a chain.
+        """
+        # Find which KOs link genes to reactions in each chain.
+        try:
+            gapped_chains_ko_ids = self.gapped_chains_ko_ids[kgml_reaction_id]
+        except KeyError:
+            # The KGML reaction ID does not correspond to a gap in a chain.
+            return None
+
+        # Get syntenous regions around the genes in the chains containing the reaction gap. Create a
+        # JSON-formatted dictionary for each syntenous region.
+        json_syntenous_regions: list[dict] = []
+        for syntenous_region_index, syntenous_region in enumerate(
+            self.gap_syntenous_regions[kgml_reaction_id]
+        ):
+            json_syntenous_region = self.make_json_syntenous_region(syntenous_region)
+            json_syntenous_regions.append(json_syntenous_region)
+            json_syntenous_region['id'] = syntenous_region_index
+
+            # Record the gapped chains that contain the gene, including the number of KGML reactions
+            # in the chain, and the indices of KGML reactions linked to the gene via top KO hits.
+            for json_full_genes in json_syntenous_region['full_genes']:
+                json_ko_top_hits: list[dict] = json_full_genes['ko_top_hits']
+                json_gapped_chains: list[dict] = json_full_genes['gapped_chains']
+                for gapped_chain_index, gapped_chain_ko_ids in enumerate(gapped_chains_ko_ids):
+                    reaction_indices: list[int] = []
+                    for json_ko_top_hit in json_ko_top_hits:
+                        ko_id = json_ko_top_hit['ko_id']
+                        for reaction_index, chain_gene_ko_ids in enumerate(gapped_chain_ko_ids):
+                            if ko_id in chain_gene_ko_ids:
+                                reaction_indices.append(reaction_index)
+                    if not reaction_indices:
+                        # The gene is not linked to any reactions in the chain.
+                        continue
+                    json_gapped_chain = {}
+                    json_gapped_chains.append(json_gapped_chain)
+                    json_gapped_chain['gapped_chain_index'] = gapped_chain_index
+                    json_gapped_chain['reaction_count'] = len(gapped_chain_ko_ids)
+                    json_gapped_chain['reaction_indices_in_chain'] = sorted(set(reaction_indices))
+
+        return json_syntenous_regions
+
