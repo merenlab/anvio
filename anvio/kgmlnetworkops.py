@@ -1859,10 +1859,6 @@ class GapFiller:
             self.gene_kos_df.groupby('gene_callers_id')['e_value'].transform('min')
         ]
 
-        if 'COG20_FUNCTION' not in self.contigs_db.meta['gene_function_sources']:
-            self.gene_cogs_df = None
-        else:
-            self.gene_cogs_df = gene_functions_df[gene_functions_df['source'] == 'COG20_FUNCTION']
 
         self.ungapped_chains = self.walker.get_chains()
         self.walker.max_gaps = 1
