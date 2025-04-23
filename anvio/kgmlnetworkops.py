@@ -2422,3 +2422,79 @@ class GapFiller:
 
             return sort_key
 
+        try:
+            # Get KO IDs associated with the KGML reaction.
+            ko_ids = self.walker.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction_id]
+        except KeyError:
+            # The KGML reaction ID is not found in the pathway.
+            return None
+
+        # Get chains containing the reaction gap. Make template JSON dictionaries used in every JSON
+        # candidate gene entry: these contain information on the position of the gap and the number
+        # of reactions in the chains. Make JSON dictionaries, added later to the gap JSON dictionary
+        # after other attributes, that record information on the gapped chains as a whole.
+        try:
+            shared_gaps = self.gap_analyzer.gap_relations[(kgml_reaction_id, )]
+        except KeyError:
+            # The KGML reaction ID is not a gap in a chain.
+            return None
+        gapped_chains = [relations.gappy_chain for relations in shared_gaps.gap_chain_relations]
+        json_full_gene_gapped_chains_template: list[dict] = []
+        json_gapped_chains: list[dict] = []
+        for gapped_chain_index, gapped_chain in enumerate(gapped_chains):
+            json_full_gene_gapped_chain_template = {}
+            json_full_gene_gapped_chains_template.append(json_full_gene_gapped_chain_template)
+            json_full_gene_gapped_chain_template['gapped_chain_index'] = gapped_chain_index
+            json_full_gene_gapped_chain_template['reaction_count'] = len(
+                gapped_chain.kgml_reactions
+            )
+
+            json_gapped_chain = {}
+            json_gapped_chains.append(json_gapped_chain)
+            json_gapped_chain['gapped_chain_index'] = gapped_chain_index
+            json_gapped_chain_reactions: list[dict] = []
+            json_gapped_chain['reactions'] = json_gapped_chain_reactions
+
+            for kgml_reaction_index, kgml_reaction in enumerate(gapped_chain.kgml_reactions):
+                json_gapped_chain_reaction = {}
+                json_gapped_chain_reactions.append(json_gapped_chain_reaction)
+
+                json_gapped_chain_reaction['reaction_index_in_chain'] = kgml_reaction_index
+
+                if kgml_reaction.id == kgml_reaction_id:
+                    json_full_gene_gapped_chain_template[
+                        'reaction_indices_in_chain'
+                    ] = kgml_reaction_index
+                    json_gapped_chain_reaction['is_gap'] = True
+                else:
+                    json_gapped_chain_reaction['is_gap'] = False
+
+                json_gapped_chain_reaction['kgml_reaction_id'] = kgml_reaction.id
+
+                json_kos: list[dict] = []
+                json_gapped_chain_reaction['kos'] = json_kos
+                for ko_definitions in self.kgml_reaction_id_ko_definitions[kgml_reaction.id]:
+                    json_ko = {}
+                    json_kos.append(json_ko)
+                    json_ko['ko_id'], json_ko['ko_name'] = ko_definitions
+
+        # Get the GCIDs linked to the gapped chains.
+        gap_chain_gcids = self.gap_chain_gcids[kgml_reaction_id]
+
+        # Get information on the syntenous regions around genes in the chains containing the gap.
+        gap_syntenous_regions = self.gap_syntenous_regions[kgml_reaction_id]
+        json_syntenous_regions = self.get_gap_synteny_info(kgml_reaction_id)
+
+        # Get information regarding gap KOs associated with genes, recording at the gene level.
+        gcid_records: dict[int, list[dict]] = {}
+        for ko_id in ko_ids:
+            ko_info = self.get_ko_info(ko_id)
+            if not ko_info:
+                continue
+            for json_candidate_gene in ko_info:
+                gcid = json_candidate_gene['gene_callers_id']
+                try:
+                    gcid_records[gcid].append(json_candidate_gene)
+                except KeyError:
+                    gcid_records[gcid] = [json_candidate_gene]
+
