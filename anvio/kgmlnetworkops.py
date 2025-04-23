@@ -1885,6 +1885,21 @@ class GapFiller:
                 expanded_gene_hits.append(new_row)
         self.gene_cogs_df = pd.DataFrame(expanded_gene_hits, columns=gene_functions_df.columns)
 
+        # Load the KEGG binary relations file mapping KO to COG IDs, and make dictionaries mapping
+        # KOs and COGs to each other.
+        self.ko_cogs: dict[str, list[str]] = {}
+        self.cog_kos: dict[str, list[str]] = {}
+        ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
+        ko_cog_df.columns = ['ko', 'cog']
+        for row in ko_cog_df.itertuples():
+            cog_ids = row.cog[5: -1].split()
+            self.ko_cogs[row.ko] = cog_ids
+            for cog_id in cog_ids:
+                try:
+                    self.cog_kos[cog_id].append(row.ko)
+                except KeyError:
+                    self.cog_kos[cog_id] = [row.ko]
+
         self.ungapped_chains = self.walker.get_chains()
         self.walker.max_gaps = 1
         self.gapped_chains = self.walker.get_chains()
