@@ -1783,9 +1783,23 @@ class GapFiller:
                 "for initialization."
             )
 
-        self.compound_fate = A(args.compound_fate, 'both')
-        self.max_reactions = A(args.max_reactions, None)
-        self.allow_alternative_reaction_gaps = A(args.allow_alternative_reaction_gaps, False)
+        self.all_ko_hits_path: str = A(args.ko_hits_path, None)
+        if self.all_ko_hits_path is None:
+            raise ConfigError(
+                "The path to the table of all KO hits to genes in the contigs "
+                "(args.all_ko_hits_path) should be provided for initialization."
+            )
+
+        self.ko_cog_path: str = A(args.ko_cog_path, None)
+        if self.ko_cog_path is None:
+            raise ConfigError(
+                "The path to the KEGG binary relations file mapping KO to COG IDs "
+                "(args.ko_cog_path) should be provided for initialization."
+            )
+
+        self.compound_fate: str = A(args.compound_fate, 'both')
+        self.max_reactions: Union[int, None] = A(args.max_reactions, None)
+        self.allow_alternative_reaction_gaps: bool = A(args.allow_alternative_reaction_gaps, False)
         walker_args = Namespace(
             kegg_pathway_number=self.kegg_pathway_number,
             contigs_db_path=self.contigs_db_path,
