@@ -205,30 +205,31 @@ class KGMLNetworkWalker:
         Parameters
         ==========
         args : argparse.Namespace
-            Contains arguments. See the class docstring for more information on arguments set as
-            attributes, including default values. The only required argument is kegg_pathway_number.
+            Contains arguments, listed below. See the class docstring for more information on
+            arguments set as attributes, including default values. The only required argument is
+            kegg_pathway_number.
 
-            kegg_pathway_number : str
+        'kegg_pathway_number' : str
 
-            contigs_db_path : str
+        'contigs_db_path' : str
 
-            network : anvio.reactionnetwork.GenomicNetwork
+        'network' : anvio.reactionnetwork.GenomicNetwork
 
-            compound_fate : Literal['consume', 'produce', 'both']
+        'compound_fate' : Literal['consume', 'produce', 'both']
 
-            max_reactions : int
+        'max_reactions' : int
 
-            keep_intermediate_chains : bool
+        'keep_intermediate_chains' : bool
 
-            max_gaps : int
+        'max_gaps' : int
 
-            allow_terminal_gaps : bool
+        'allow_terminal_gaps' : bool
 
-            allow_alternative_reaction_gaps : bool
+        'allow_alternative_reaction_gaps' : bool
 
-            run : anvio.terminal.Run
+        'run' : anvio.terminal.Run
 
-            verbose : bool
+        'verbose' : bool
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
@@ -1753,23 +1754,23 @@ class GapFiller:
         Parameters
         ==========
         args : argparse.Namespace
-            Contains arguments. See the class docstring for more information on arguments set as
-            attributes, including default values. The required arguments are kegg_pathway_number,
-            contigs_db_path, all_ko_hits_path, and ko_cog_path.
+            Contains arguments, listed below. See the class docstring for more information on
+            arguments set as attributes, including default values. The required arguments are
+            kegg_pathway_number, contigs_db_path, all_ko_hits_path, and ko_cog_path.
 
-            kegg_pathway_number : str
+        'kegg_pathway_number' : str
 
-            contigs_db_path : str
+        'contigs_db_path' : str
 
-            all_ko_hits_path : str
+        'all_ko_hits_path' : str
 
-            ko_cog_path : str
+        'ko_cog_path' : str
 
-            compound_fate : Literal['consume', 'produce', 'both']
+        'compound_fate' : Literal['consume', 'produce', 'both']
 
-            max_reactions : int
+        'max_reactions' : int
 
-            allow_alternative_reaction_gaps : bool
+        'allow_alternative_reaction_gaps' : bool
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
