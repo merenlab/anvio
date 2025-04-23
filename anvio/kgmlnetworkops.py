@@ -2598,3 +2598,11 @@ class GapFiller:
                 'adjacent_pathway_genes'
             ] = json_adjacent_pathway_genes
 
+        # All syntenous regions related to the gap have been found at this point.
+        json_gap['syntenous_regions'] = json_syntenous_regions
+        # Record genes in syntenous regions that are not gap-filling candidates.
+        for json_syntenous_region in json_syntenous_regions:
+            for json_full_gene in json_syntenous_region['full_genes']:
+                if json_full_gene['is_gap_candidate'] is None:
+                    json_full_gene['is_gap_candidate'] = False
+
