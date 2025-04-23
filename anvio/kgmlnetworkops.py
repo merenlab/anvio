@@ -2944,3 +2944,55 @@ class GapFiller:
 
         return json_candidate_genes
 
+    def get_ko_via_cog_hit_info(self, ko_id: str) -> list[dict]:
+        """
+        Get information on genes with COG annotations that map to the KO via the KEGG binary
+        relations table.
+
+        Parameters
+        ==========
+        ko_id : str
+            KO ID.
+
+        Returns
+        =======
+        list[dict]
+            JSON-formatted dictionary for each gene associated with the KO via COG, formatted for
+            use in the dictionary of gap-filling evidence. If the KO does not map to any COGs, or if
+            no genes hit the COGs, then an empty dictionary is returned.
+        """
+        # Find COGs that KEGG deems equivalent to the KO, and find gene hits to the COGs.
+        try:
+            equivalent_cog_ids = self.ko_cogs[ko_id]
+        except KeyError:
+            # The KO does not have equivalent COGs.
+            return {}
+        gene_hits_df = self.gene_cogs_df[self.gene_cogs_df['accession'].isin(equivalent_cog_ids)]
+
+        if not len(gene_hits_df):
+            # No genes are annotated by equivalent COGs.
+            return {}
+
+        # Get the KO name, checking proper data formatting.
+        ko_name_df = self.ko_list_df[self.ko_list_df['accession'] == ko_id]
+        assert len(ko_name_df) == 1
+        ko_name = ko_name_df.iloc[0]['function']
+
+        # Record information on each gene.
+        json_candidate_genes: list[dict] = []
+        for gcid, hits_df in gene_hits_df.groupby('gene_callers_id'):
+            json_candidate_gene = {}
+            json_candidate_genes.append(json_candidate_gene)
+            json_candidate_gene['gene_callers_id'] = gcid
+
+            json_gap_kos_via_cog_top_hits: list[dict] = []
+            json_candidate_gene['gap_kos_via_cog_top_hits'] = json_gap_kos_via_cog_top_hits
+            json_gap_ko_via_cog_top_hits = {}
+            json_gap_kos_via_cog_top_hits.append(json_gap_ko_via_cog_top_hits)
+            json_gap_ko_via_cog_top_hits['ko_id'] = ko_id
+            json_gap_ko_via_cog_top_hits['ko_name'] = ko_name
+            json_associated_cog_hits: list[dict] = []
+            json_gap_ko_via_cog_top_hits['cog_ids'] = hits_df['accession'].tolist()
+
+        return json_candidate_genes
+
