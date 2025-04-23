@@ -234,15 +234,14 @@ class KGMLNetworkWalker:
 
         self.kegg_pathway_number: str = args.kegg_pathway_number
 
-        self.contigs_db_path: str = A(args.contigs_db, None)
-        self.network: rn.GenomicNetwork = A(args.network, None)
+        self.contigs_db_path: str = A('contigs_db', None)
+        self.network: rn.GenomicNetwork = A('network', None)
         self.verbose = A('verbose', False)
         if self.contigs_db_path is not None and not self.network:
             constructor = rn.Constructor()
             self.network = constructor.load_contigs_database_network(
                 self.contigs_db_path, quiet=not self.verbose
             )
-
         self.compound_fate: str = A('compound_fate', 'both')
         self.max_reactions: int = A('max_reactions', None)
         self.keep_intermediate_chains: bool = A('keep_intermediate_chains', False)
