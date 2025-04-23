@@ -2668,3 +2668,10 @@ class GapFiller:
         # Add information on the gapped chains to the gap record.
         json_gap['gapped_chains'] = json_gapped_chains
 
+        # Sort gap-filling candidate genes.
+        json_gap['candidate_genes'] = sorted(
+            json_gap['candidate_genes'], key=get_json_candidate_gene_sort_key
+        )
+
+        return json_gap
+
