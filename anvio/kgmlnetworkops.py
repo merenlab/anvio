@@ -2046,38 +2046,12 @@ class GapFiller:
         """
         syntenous_regions: list[list[int]] = []
         for gcid in gcids:
-            # Search around the gene. The search stops in either direction when a gene in the
-            # opposite orientation is found or the first or last gene in the contig is reached.
-            row = self.genes_in_contigs_df[
-                self.genes_in_contigs_df['gene_callers_id'] == gcid
-            ].squeeze()
-            row_index = row.name
-            direction = row['direction']
-
-            syntenous_region: list[int] = []
-            # Search preceding genes.
-            for row_index in range(row_index, -1, -1):
-                prior_row = self.genes_in_contigs_df.loc[row_index]
-                if prior_row['direction'] != direction:
-                    break
-                if prior_row['partial'] == 1:
-                    # Ignore partial gene calls.
-                    continue
-                syntenous_region.append(row_index)
-            # Search succeeding genes.
-            for row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
-                next_row = self.genes_in_contigs_df.loc[row_index]
-                if next_row['direction'] != direction:
-                    break
-                if next_row['partial'] == 1:
-                    continue
-                syntenous_region.append(row_index)
-
-            syntenous_region = sorted(syntenous_region)
+            syntenous_region = self.get_syntenous_region(gcid)
             if syntenous_region in syntenous_regions:
                 # The syntenous region has already been encountered in considering another gene.
                 continue
             syntenous_regions.append(syntenous_region)
+
         return syntenous_regions
 
     """
