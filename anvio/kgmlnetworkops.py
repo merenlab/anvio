@@ -1915,26 +1915,6 @@ class GapFiller:
             entry_type='ortholog'
         )
 
-        self.ko_cog_path: str = A(args.ko_cog_path, None)
-
-        if self.ko_cog_path is None:
-            self.ko_cogs = None
-            self.cog_kos = None
-        else:
-            ko_cogs: dict[str, list[str]] = {}
-            cog_kos: dict[str, list[str]] = {}
-            ko_cog_df = pd.read_csv(self.ko_cog_path, sep='\t')
-            ko_cog_df.columns = ['ko', 'cog']
-            for row in ko_cog_df.itertuples():
-                cog_ids = row.cog[5: -1].split()
-                ko_cogs[row.ko] = cog_ids
-                for cog_id in cog_ids:
-                    try:
-                        cog_kos[cog_id].append(row.ko)
-                    except KeyError:
-                        cog_kos[cog_id] = [row.ko]
-            self.ko_cogs = ko_cogs
-            self.cog_kos = cog_kos
 
     def eval_gap_ko(self, ko_id: str) -> Union[dict, None]:
         gene_hits_df = self.gene_kos_df[self.gene_kos_df['accession'] == ko_id]
