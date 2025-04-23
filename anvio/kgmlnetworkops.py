@@ -2805,3 +2805,86 @@ class GapFiller:
 
         return json_syntenous_region
 
+    def get_ko_info(self, ko_id: str) -> list[dict]:
+        """
+        Get information on KO annotations associated with genes.
+
+        Parameters
+        ==========
+        ko_id : str
+            KO ID.
+
+        Returns
+        =======
+        list[dict]
+            JSON-formatted dictionary for each gene associated with the KO.
+        """
+        # Find the genes with lower-ranked hits to the KO and the genes with hits to COGs that map
+        # to the KO.
+        json_ko_gene_hits = self.get_lower_scoring_ko_hit_info(ko_id)
+        json_cog_gene_hits = self.get_ko_via_cog_hit_info(ko_id)
+
+        if not json_ko_gene_hits and not json_cog_gene_hits:
+            # No genes are associated with the KO.
+            return {}
+
+        # Combine gene records for the two types of KO associations. First map GCID to records.
+        gcids: set[int] = set(
+            [json_ko_hit['gene_callers_id'] for json_ko_hit in json_ko_gene_hits] +
+            [json_cog_hit['gene_callers_id'] for json_cog_hit in json_cog_gene_hits]
+        )
+        gcid_records = {gcid: {'ko': None, 'cog': None} for gcid in gcids}
+        for json_ko_gene_hit in json_ko_gene_hits:
+            gcid_records[json_ko_gene_hit['gene_callers_id']]['ko'] = json_ko_gene_hit
+        for json_gene_cog_hit in json_cog_gene_hits:
+            gcid_records[json_gene_cog_hit['gene_callers_id']]['cog'] = json_gene_cog_hit
+
+        # Make new gene records, copying data from the two record types.
+        json_candidate_genes: list[dict] = []
+        for gcid, records in gcid_records.items():
+            json_candidate_gene = {'gene_callers_id': gcid}
+
+            # Record information on KO hits.
+            json_ko_gene_hit = records['ko']
+            if json_ko_gene_hit:
+                # The gene has lower-ranking hits to the KO.
+                json_candidate_gene['gap_ko_hits'] = json_ko_gene_hit['gap_ko_hits']
+                json_candidate_gene['other_ko_hits'] = json_ko_gene_hit['other_ko_hits']
+            else:
+                # The gene does not have lower-ranking hits to the KO, but is associated with the KO
+                # by means of COG hits.
+                json_candidate_gene['gap_ko_hits'] = []
+                # Find and record other KO hits to the gene.
+                other_gene_hits_df = self.gene_kos_df[self.gene_kos_df['gene_callers_id'] == gcid]
+                assert ko_id not in other_gene_hits_df['accession']
+                json_other_ko_hits: list[dict] = []
+                json_candidate_gene['other_ko_hits'] = json_other_ko_hits
+                for other_gene_hit_row in other_gene_hits_df.itertuples():
+                    json_other_ko_hit = {}
+                    json_other_ko_hits.append(json_other_ko_hit)
+                    json_other_ko_hit['ko_id'] = other_gene_hit_row.accession
+                    json_other_ko_hit['ko_name'] = other_gene_hit_row.function
+                    json_other_ko_hit['e_value'] = other_gene_hit_row.e_value
+
+            # Record information on associations to the gap KO via COG hits.
+            json_cog_gene_hit = records['cog']
+            if json_cog_gene_hit:
+                json_candidate_gene['gap_kos_via_cog_top_hits'] = json_cog_gene_hit[
+                    'gap_kos_via_cog_top_hits'
+                ]
+            else:
+                json_candidate_gene['gap_kos_via_cog_top_hits'] = []
+
+            # Find and record COG hits.
+            cog_hits_df = self.gene_cogs_df[self.gene_cogs_df['gene_callers_id'] == gcid]
+            json_cog_top_hits: list[dict] = []
+            json_candidate_gene['cog_top_hits'] = json_cog_top_hits
+            for cog_hit_row in cog_hits_df.itertuples():
+                json_cog_top_hit = {}
+                json_cog_top_hits.append(json_cog_top_hit)
+                json_cog_top_hit['cog_id'] = cog_hit_row.accession
+                json_cog_top_hit['cog_name'] = cog_hit_row.function
+                json_cog_top_hit['e_value'] = cog_hit_row.e_value
+
+        return json_candidate_genes
+
