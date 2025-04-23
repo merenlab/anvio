@@ -1990,9 +1990,20 @@ class GapFiller:
 
         return syntenous_regions, gcids
 
-
-
     def get_chain_gcids(self, chain: Chain) -> list[int]:
+        """
+        Get the gene caller IDs of genes annotated by KOs associated with reactions in the chain.
+
+        Parameters
+        ==========
+        chain : Chain
+            Chain in the pathway map.
+
+        Returns
+        =======
+        list[int]
+            Gene caller IDs.
+        """
         chain_gcids: list[int] = []
         for is_gap, kgml_reaction in chain.kgml_reactions:
             if is_gap:
@@ -2006,24 +2017,16 @@ class GapFiller:
             else:
                 raise AssertionError
 
-            # The entry corresponds to one or more KOs: look for KOs that annotate genes.
-            network_kos: list[rn.KO] = []
+            # The entry corresponds to one or more KOs. Record IDs of genes annotated by the KOs.
+            ko_ids: list[str] = []
             for name_substring in kgml_entry.name.split():
-                if name_substring[:3] != 'ko:':
-                    continue
+                if name_substring[:3] == 'ko:':
+                    ko_ids.append(name_substring[3:])
+            chain_gcids += self.top_gene_kos_df[
+                self.top_gene_kos_df['accession'].isin(ko_ids)
+            ]['gene_callers_id'].unique().tolist()
+        chain_gcids = sorted(set(chain_gcids))
 
-                ko_id = name_substring[3:]
-                try:
-                    network_kos.append(self.walker.network.kos[ko_id])
-                except KeyError:
-                    # The KO does not annotate a gene.
-                    continue
-
-            # Record IDs of genes annotated by the KOs.
-            for ko in network_kos:
-                for gene in self.walker.network.genes.values():
-                    if ko.id in gene.ko_ids:
-                        chain_gcids.append(gene.gcid)
         return chain_gcids
 
     def get_syntenous_regions(self, gcids: list[int]) -> list[list[int]]:
