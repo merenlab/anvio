@@ -1774,8 +1774,8 @@ class GapFiller:
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
-        self.kegg_pathway_number = A(args.kegg_pathway_number, None)
-        self.contigs_db_path = A(args.contigs_db_path, None)
+        self.kegg_pathway_number: str = A(args.kegg_pathway_number, None)
+        self.contigs_db_path: str = A(args.contigs_db_path, None)
         if self.kegg_pathway_number is None or self.contigs_db_path is None:
             raise ConfigError(
                 "A KEGG pathway number (args.kegg_pathway_number) and the path to a contigs "
