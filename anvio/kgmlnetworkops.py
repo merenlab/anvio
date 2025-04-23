@@ -1773,8 +1773,8 @@ class GapFiller:
         """
         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
 
-        self.kegg_pathway_number: str = A(args.kegg_pathway_number, None)
-        self.contigs_db_path: str = A(args.contigs_db_path, None)
+        self.kegg_pathway_number: str = A('kegg_pathway_number', None)
+        self.contigs_db_path: str = A('contigs_db_path', None)
         if self.kegg_pathway_number is None or self.contigs_db_path is None:
             raise ConfigError(
                 "A KEGG pathway number (args.kegg_pathway_number) and the path to a contigs "
@@ -1782,23 +1782,23 @@ class GapFiller:
                 "for initialization."
             )
 
-        self.all_ko_hits_path: str = A(args.ko_hits_path, None)
+        self.all_ko_hits_path: str = A('ko_hits_path', None)
         if self.all_ko_hits_path is None:
             raise ConfigError(
                 "The path to the table of all KO hits to genes in the contigs "
                 "(args.all_ko_hits_path) should be provided for initialization."
             )
 
-        self.ko_cog_path: str = A(args.ko_cog_path, None)
+        self.ko_cog_path: str = A('ko_cog_path', None)
         if self.ko_cog_path is None:
             raise ConfigError(
                 "The path to the KEGG binary relations file mapping KO to COG IDs "
                 "(args.ko_cog_path) should be provided for initialization."
             )
 
-        self.compound_fate: str = A(args.compound_fate, 'both')
-        self.max_reactions: Union[int, None] = A(args.max_reactions, None)
-        self.allow_alternative_reaction_gaps: bool = A(args.allow_alternative_reaction_gaps, False)
+        self.compound_fate: str = A('compound_fate', 'both')
+        self.max_reactions: Union[int, None] = A('max_reactions', None)
+        self.allow_alternative_reaction_gaps: bool = A('allow_alternative_reaction_gaps', False)
         walker_args = Namespace(
             kegg_pathway_number=self.kegg_pathway_number,
             contigs_db_path=self.contigs_db_path,
