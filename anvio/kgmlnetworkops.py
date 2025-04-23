@@ -21,8 +21,7 @@ class Chain:
     """
     Chain of compounds linked by reactions occurring in a KGML representation of a KEGG pathway. The
     chain may be contextualized in a reaction network, with information added to the attributes
-    'gaps', 'aliased_modelseed_compounds', 'network_kos', 'aliased_modelseed_reactions',
-    'network_kos', and 'aliased_modelseed_reactions'.
+    'gaps', 'aliased_modelseed_compounds', 'aliased_modelseed_reactions', and 'network_kos'.
 
     Attributes
     ==========
@@ -95,8 +94,8 @@ class Chain:
     kgml_reaction_directions: list[bool] = field(default_factory=list)
     gaps: list[bool] = field(default_factory=list)
     aliased_modelseed_compounds: list[tuple[rn.ModelSEEDCompound]] = field(default_factory=list)
-    network_kos: list[tuple[rn.KO]] = field(default_factory=list)
     aliased_modelseed_reactions: list[tuple[rn.ModelSEEDReaction]] = field(default_factory=list)
+    network_kos: list[tuple[rn.KO]] = field(default_factory=list)
     is_consumption_terminus: bool = None
     is_production_terminus: bool = None
     consumption_reversibility_range: tuple[int, int] = None
