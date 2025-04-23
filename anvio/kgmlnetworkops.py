@@ -1952,23 +1952,8 @@ class GapFiller:
             self.gap_chain_gcids[kgml_reaction_id] = gcids
 
 
-    def get_cog_hits(self, gcid: int) -> Union[pd.DataFrame, None]:
-        if self.gene_cogs_df is None:
-            return None
 
-        gene_hits_df = self.gene_cogs_df[self.gene_cogs_df['gene_callers_id'] == gcid]
 
-        expanded_gene_hits = []
-        for row in gene_hits_df.itertuples(index=False):
-            if '!!!' not in row.accession:
-                expanded_gene_hits.append(row)
-                continue
-            for cog_id, cog_name in zip(row.accession.split('!!!'), row.function.split('!!!')):
-                new_row = row._replace(accession=cog_id, function=cog_name)
-                expanded_gene_hits.append(new_row)
-        expanded_gene_hits_df = pd.DataFrame(expanded_gene_hits, columns=gene_hits_df.columns)
-
-        return expanded_gene_hits_df
 
     def eval_kgml_reaction(self, kgml_reaction_id):
         pass
