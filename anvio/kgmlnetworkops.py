@@ -1827,8 +1827,9 @@ class GapFiller:
             )
         self.cog_function_source = f'COG{version}_FUNCTION'
 
+        # Load the table containing information on gene calls and where they are located in contigs.
+        # Sort gene rows by contig start position.
         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-        # Sort genes by contig start position.
         self.genes_in_contigs_df = self.genes_in_contigs_df.sort_values(
             ['contig', 'start']
         ).reset_index()
