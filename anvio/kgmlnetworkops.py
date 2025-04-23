@@ -238,7 +238,7 @@ class KGMLNetworkWalker:
         self.contigs_db_path: str = A('contigs_db', None)
         self.network: rn.GenomicNetwork = A('network', None)
         self.verbose = A('verbose', False)
-        if self.contigs_db_path is not None and not self.network:
+        if self.contigs_db_path is not None and self.network is None:
             constructor = rn.Constructor()
             self.network = constructor.load_contigs_database_network(
                 self.contigs_db_path, quiet=not self.verbose
