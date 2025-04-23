@@ -2130,45 +2130,6 @@ class GapFiller:
     }
     """
 
-#     def get_syntenous_regions(self, chain_gcids: list[int]) -> list[list[int]]:
-#         # Find syntenous regions containing genes in the chain.
-#         syntenous_regions: list[list[int]] = []
-#         for gcid in chain_gcids:
-#             # Search for the syntenous region around the GCID.
-#             row = self.genes_in_contigs_df[
-#                 self.genes_in_contigs_df['gene_callers_id'] == gcid
-#             ].squeeze()
-#             row_index = row.name
-#             direction = row['direction']
-
-#             syntenous_region: list[int] = []
-#             # Search for preceding syntenous genes. The search stops when a gene in the opposite
-#             # direction is found or the first gene is reached.
-#             for candidate_row_index in range(row_index, -1, -1):
-#                 prior_row = self.genes_in_contigs_df.loc[candidate_row_index]
-#                 if prior_row['direction'] != direction:
-#                     break
-#                 if prior_row['partial'] == 1:
-#                     # Ignore partial gene calls.
-#                     continue
-#                 syntenous_region.append(candidate_row_index)
-#             # Search for succeeding syntenous genes.
-#             for candidate_row_index in range(row_index + 1, len(self.genes_in_contigs_df)):
-#                 next_row = self.genes_in_contigs_df.loc[candidate_row_index]
-#                 if next_row['direction'] != direction:
-#                     break
-#                 if next_row['partial'] == 1:
-#                     continue
-#                 syntenous_region.append(candidate_row_index)
-
-#             syntenous_region = sorted(syntenous_region)
-#             if syntenous_region in syntenous_regions:
-#                 # The syntenous region has already been encountered in considering another gene in
-#                 # the chain.
-#                 continue
-#             syntenous_regions.append(syntenous_region)
-#         return syntenous_regions
-
 #     def run(self):
 #         for chain in self.gapped_chains:
 #             if True not in chain.gaps:
