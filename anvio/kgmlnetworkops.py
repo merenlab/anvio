@@ -1851,19 +1851,24 @@ class GapFiller:
         gene_kos_df = gene_kos_df[['gene_callers_id', 'accession', 'function', 'e_value']]
         self.gene_kos_df = gene_kos_df.sort_values(['gene_callers_id', 'e_value', 'accession'])
 
-        # Subset the table to only retain the top gene-KO hits, equivalent to the entries stored in
-        # the contigs database.
-        self.top_gene_kos_df = self.gene_kos_df[
-            self.gene_kos_df['e_value'] ==
-            self.gene_kos_df.groupby('gene_callers_id')['e_value'].transform('min')
-        ]
+        # Load a table of the top gene-KO hits stored in the contigs database. Top hits to genes
+        # from the table of all hits can be excluded from the table in the contigs database due to
+        # not meeting a score threshold.
+        gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
+        self.top_gene_kos_df = gene_functions_df[gene_functions_df['source'] == 'KOfam']
 
         # Record whether genes are linked to the KEGG pathway via top KO hits.
         self.gene_in_pathway: dict[str, bool] = {}
         ko_id_pathway_ids = lambda ko_id: self.walker.kegg_data.ko_data[ko_id]['PTH']
         for gcid, gene_df in self.top_gene_kos_df.groupby('gene_callers_id'):
             for ko_id in gene_df['accession']:
-                if self.kegg_pathway_number in ko_id_pathway_ids(ko_id):
+                try:
+                    pathway_ids = ko_id_pathway_ids(ko_id)
+                except KeyError:
+                    # The KO is not in a pathway, at least as recorded in the anvi'o KEGG
+                    # installation (modules database).
+                    continue
+                if self.kegg_pathway_number in pathway_ids:
                     self.gene_in_pathway[gcid] = True
                     break
             else:
@@ -1871,7 +1876,6 @@ class GapFiller:
 
         # Load a table containing information on COG hits, splitting the table into one line per
         # hit, as in the gene KO hit table.
-        gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
         expanded_gene_hits = []
         for row in gene_functions_df[
             gene_functions_df['source'] == self.cog_function_source
