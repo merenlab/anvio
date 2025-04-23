@@ -1816,6 +1816,16 @@ class GapFiller:
                 "puzzling since a reaction network was loaded from the contigs database, and the "
                 "network should contain gene KO hits that were initially recorded in the database."
             )
+        for version in ['24', '20', '14']:
+            # Take the most recent version available starting with COG 2014.
+            if f'COG{version}_FUNCTION' in self.contigs_db.meta['gene_function_sources']:
+                break
+        else:
+            raise ConfigError(
+                "The contigs database has no COG functional annotation source ('COG24_FUNCTION', "
+                "'COG20_FUNCTION', or 'COG14_FUNCTION'). The gap filler requires COG annotation."
+            )
+        self.cog_function_source = f'COG{version}_FUNCTION'
 
         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
         # Sort genes by contig start position.
