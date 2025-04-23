@@ -1859,6 +1859,16 @@ class GapFiller:
             self.gene_kos_df.groupby('gene_callers_id')['e_value'].transform('min')
         ]
 
+        # Record whether genes are linked to the KEGG pathway via top KO hits.
+        self.gene_in_pathway: dict[str, bool] = {}
+        ko_id_pathway_ids = lambda ko_id: self.walker.kegg_data.ko_data[ko_id]['PTH']
+        for gcid, gene_df in self.top_gene_kos_df.groupby('gene_callers_id'):
+            for ko_id in gene_df['accession']:
+                if self.kegg_pathway_number in ko_id_pathway_ids[ko_id]:
+                    self.gene_in_pathway[gcid] = True
+                    break
+            else:
+                self.gene_in_pathway[gcid] = False
 
         self.ungapped_chains = self.walker.get_chains()
         self.walker.max_gaps = 1
