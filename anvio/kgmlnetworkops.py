@@ -2996,3 +2996,66 @@ class GapFiller:
 
         return json_candidate_genes
 
+    def make_json_adjacent_pathway_genes(
+        self,
+        json_syntenous_region: dict,
+        gap_gene_index: int,
+        gap_chain_gcids: list[int]
+    ) -> list[dict]:
+        """
+        Make JSON-formatted dictionaries containing information on the genes in a syntenous region
+        that directly surround a candidate gap-filling gene and that have top KO annotations found
+        in the pathway.
+
+        Dictionaries for adjacent genes are ordered along the contig, from genes before to genes
+        after the gap gene.
+
+        Parameters
+        ==========
+        json_syntenous_region : dict
+            JSON-formatted dictionary of information on the syntenous region.
+
+        gap_gene_index : int
+            Index of the candidate gap-filling gene in the syntenous region.
+
+        gap_chain_gcids : list[int]
+            Gene caller IDs of all genes linked to KGML reactions in the chain by top KO
+            annotations.
+
+        Returns
+        =======
+        list[dict]
+            JSON-formatted dictionaries containing information on adjacent genes in the pathway.
+        """
+        json_adjacent_pathway_genes: list[dict] = []
+        # Investigate adjacent genes moving from the gap gene toward the start of the contig.
+        for relative_gene_index, json_full_gene in enumerate(
+            json_syntenous_region['full_genes'][: gap_gene_index][::-1], 1
+        ):
+            is_gene_in_pathway = json_full_gene['is_in_pathway']
+            if not is_gene_in_pathway:
+                # The gene's top KO annotations are not in the pathway, so stop the traversal.
+                break
+            json_adjacent_pathway_gene = {}
+            json_adjacent_pathway_genes.append(json_adjacent_pathway_gene)
+            json_adjacent_pathway_gene['gene_index'] = gap_gene_index - relative_gene_index
+            json_adjacent_pathway_gene[
+                'is_gene_in_gapped_chain'
+            ] = json_full_gene['gene_callers_id'] in gap_chain_gcids
+
+        # Investigate adjacent genes moving from the gap gene toward the end of the contig.
+        for relative_gene_index, json_full_gene in enumerate(
+            json_syntenous_region['full_genes'][gap_gene_index + 1: ], 1
+        ):
+            is_gene_in_pathway = json_full_gene['is_in_pathway']
+            if not is_gene_in_pathway:
+                # The gene's top KO annotations are not in the pathway, so stop the traversal.
+                break
+            json_adjacent_pathway_gene = {}
+            json_adjacent_pathway_genes.append(json_adjacent_pathway_gene)
+            json_adjacent_pathway_gene['gene_index'] = gap_gene_index + relative_gene_index
+            json_adjacent_pathway_gene[
+                'is_gene_in_gapped_chain'
+            ] = json_full_gene['gene_callers_id'] in gap_chain_gcids
+
+        return json_adjacent_pathway_genes
