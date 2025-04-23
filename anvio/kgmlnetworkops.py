@@ -1955,17 +1955,9 @@ class GapFiller:
 
 
 
-    def eval_kgml_reaction(self, kgml_reaction_id):
-        pass
 
-    def eval_pathway(self):
-        pass
 
-    def eval_chain(self, chains):
-        pass
 
-    def eval_gap_in_chains(self, kgml_reaction_id, chains):
-        pass
 
     def get_chain_gcids(self, chain: Chain) -> list[int]:
         chain_gcids: list[int] = []
