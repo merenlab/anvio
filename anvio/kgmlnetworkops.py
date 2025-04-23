@@ -2130,51 +2130,6 @@ class GapFiller:
     }
     """
 
-    # def evaluate(self):
-    #     json = {}
-    #     json['kegg_pathway_number'] = self.walker.kegg_pathway_number
-    #     json['kegg_pathway_name'] = self.walker.kgml_ko_pathway.name
-    #     json['gaps'] = []
-    #     # have separate evaluate gap function for arbitrary gap
-    #     for gap_kgml_reaction_ids in self.gap_key_ranks:
-    #         json_gap = {}
-    #         shared_gaps = self.gap_analyzer.gap_relations[gap_kgml_reaction_ids]
-
-    #         for gap_index in range(len(gap_kgml_reaction_ids)):
-    #             gap_kgml_reaction = shared_gaps.gap_kgml_reactions[gap_index]
-
-    #             for entry in self.pathway_ortholog_entries:
-    #                 if gap_kgml_reaction.id == entry.id:
-    #                     gap_entry = entry
-    #                     break
-    #             else:
-    #                 raise AssertionError(
-    #                     f"Every KGML reaction in the KO type file should correspond to an ortholog "
-    #                     f"type entry. The reaction with KGML ID '{gap_kgml_reaction.id}' does not "
-    #                     "have a corresponding entry with the same ID in pathway "
-    #                     f"'{self.walker.kegg_pathway_number}'."
-    #                 )
-
-    #             gap_ko_gene_hits: dict[str, pd.DataFrame] = {}
-    #             for candidate_ko_id in gap_entry.name.split():
-    #                 if candidate_ko_id[:3] != 'ko:':
-    #                     continue
-    #                 ko_id = candidate_ko_id[3:]
-    #                 gene_hits = self.gene_kos_df[self.gene_kos_df['accession'] == ko_id]
-    #                 if len(gene_hits):
-    #                     gap_ko_gene_hits[ko_id] = gene_hits
-
-    #             if gap_ko_gene_hits:
-    #                 pass
-
-    #         for gap_chain_relations in shared_gaps.gap_chain_relations:
-    #             gappy_chain = gap_chain_relations.gappy_chain
-    #             # Find genes annotated by KOs in the chain.
-    #             chain_gcids = get_chain_gcids(gappy_chain)
-    #             chain_syntenous_regions = get_syntenous_regions(chain_gcids)
-
-    #         json['gaps'] = json_gap
-
 # class GapFiller:
 #     def __init__(self, args: Namespace) -> None:
 #         A = lambda x, y: args.__dict__[x] if x in args.__dict__ else y
