@@ -1900,10 +1900,12 @@ class GapFiller:
                 except KeyError:
                     self.cog_kos[cog_id] = [row.ko]
 
+        # Find chains in the pathway with zero gaps and up to one gap.
         self.ungapped_chains = self.walker.get_chains()
         self.walker.max_gaps = 1
         self.gapped_chains = self.walker.get_chains()
 
+        # Compare gapped to ungapped chains. Rank gaps to prioritize for gap filling.
         self.gap_analyzer = GapAnalyzer(self.gapped_chains, self.ungapped_chains)
         self.ranked_gaps = [
             kgml_reaction_ids[0] for kgml_reaction_ids in self.gap_analyzer.rank_gaps()
