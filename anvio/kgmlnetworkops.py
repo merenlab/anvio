@@ -2606,3 +2606,62 @@ class GapFiller:
                 if json_full_gene['is_gap_candidate'] is None:
                     json_full_gene['is_gap_candidate'] = False
 
+        # Search syntenous regions for KO-unannotated genes that are adjacent to genes in a gapped
+        # chain. Record adjacent unannotated genes as gap-filling candidates.
+        for json_syntenous_region in json_syntenous_regions[: len(gap_syntenous_regions)]:
+            for gene_index, json_full_gene in enumerate(json_syntenous_region['full_genes']):
+                if json_full_gene['ko_top_hits'] or json_full_gene['is_gap_candidate']:
+                    # The gene is annotated with a KO or is a candidate to fill the gap.
+                    continue
+
+                # Check on both sides for a gene in a gapped chain.
+                is_adjacent = False
+                if gene_index - 1 >= 0:
+                    other_json_full_gene = json_syntenous_region['full_genes'][gene_index - 1]
+                    if other_json_full_gene['gapped_chains']:
+                        is_adjacent = True
+                if not is_adjacent and gene_index + 1 < len(json_syntenous_region['full_genes']):
+                    other_json_full_gene = json_syntenous_region['full_genes'][gene_index + 1]
+                    if other_json_full_gene['gapped_chains']:
+                        is_adjacent = True
+                if not is_adjacent:
+                    # There is no flanking gene in a gapped chain.
+                    continue
+
+                # Create a record for the gap-filling candidate gene.
+                json_candidate_gene = {}
+                json_candidate_genes.append(json_candidate_gene)
+                json_candidate_gene['gene_callers_id'] = json_full_gene['gene_callers_id']
+                # The gene doesn't have any KO hits.
+                json_candidate_gene['gap_ko_hits'] = []
+                json_candidate_gene['other_ko_hits'] = []
+                # The gene doesn't have COG hits aliasing KOs that can fill the gap.
+                json_candidate_gene['gap_kos_via_cog_top_hits'] = []
+                # The gene may have COG hits.
+                json_candidate_gene['cog_top_hits'] = deepcopy(json_full_gene['cog_top_hits'])
+                json_candidate_gene_syntenous_region = {}
+                json_candidate_gene['syntenous_region'] = json_candidate_gene_syntenous_region
+                json_candidate_gene_syntenous_region['id'] = json_syntenous_region['id']
+                json_candidate_gene_syntenous_region['gene_index'] = gene_index
+                # Without KO hits, the gene can't be linked to reactions in the gapped chain, nor
+                # can it be in the pathway.
+                json_candidate_gene_syntenous_region['is_gene_elsewhere_in_gapped_chain'] = False
+                json_candidate_gene_syntenous_region['is_gene_elsewhere_in_pathway'] = False
+                json_candidate_gene_syntenous_region['region_gene_count'] = len(
+                    json_syntenous_region['full_genes']
+                )
+                json_candidate_gene_syntenous_region['region_pathway_gene_count'] = sum(
+                    [jg['is_in_pathway'] for jg in json_syntenous_region['full_genes']]
+                )
+                json_candidate_gene_syntenous_region['region_gapped_chain_gene_count'] = sum(
+                    [1 if jg['gapped_chains'] else 0 for jg in json_syntenous_region['full_genes']]
+                )
+                # Record genes that directly surround the gap candidate gene in the syntenous region
+                # and that are also in the pathway.
+                json_adjacent_pathway_genes = self.make_json_adjacent_pathway_genes(
+                    json_syntenous_region, gene_index, gap_chain_gcids
+                )
+                json_candidate_gene_syntenous_region[
+                    'adjacent_pathway_genes'
+                ] = json_adjacent_pathway_genes
+
