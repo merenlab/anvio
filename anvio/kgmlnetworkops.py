@@ -2105,6 +2105,32 @@ class GapFiller:
         syntenous_region.sort()
 
         return syntenous_region
+
+    def eval_pathway(self) -> dict:
+        """
+        Evaluate genomic evidence to fill reaction gaps in the pathway map.
+
+        The returned dictionary contains a dictionary for each gap. These are ordered, roughly
+        speaking, with those closer to the center of longer chains coming before those closer to the
+        edge of shorter chains. Each dictionary contains a list of candidate genes to fill the gap,
+        which is empty if no candidates were found.
+
+        Returns
+        =======
+        dict
+            JSON-formatted dictionary of evidence for how gaps can be filled.
+        """
+        json_pathway = {}
+        json_pathway['pathway_number'] = self.kegg_pathway_number
+        json_pathway['pathway_name'] = self.walker.kgml_rn_pathway.title
+        json_gaps: list[dict] = []
+        json_pathway['gaps'] = json_gaps
+        for kgml_reaction_id in self.ranked_gaps:
+            json_gap = self.eval_gap_kgml_reaction(kgml_reaction_id)
+            json_gaps.append(json_gap)
+
+        return json_pathway
+
             {
                 "kgml_reaction_id": <KGML reaction ID>, # have a function to return result from this point
                 "ko_hits": [
