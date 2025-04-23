@@ -1782,7 +1782,7 @@ class GapFiller:
                 "for initialization."
             )
 
-        self.all_ko_hits_path: str = A('ko_hits_path', None)
+        self.all_ko_hits_path: str = A('all_ko_hits_path', None)
         if self.all_ko_hits_path is None:
             raise ConfigError(
                 "The path to the table of all KO hits to genes in the contigs "
