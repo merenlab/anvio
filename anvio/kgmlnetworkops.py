@@ -1870,6 +1870,21 @@ class GapFiller:
             else:
                 self.gene_in_pathway[gcid] = False
 
+        # Load a table containing information on COG hits, splitting the table into one line per
+        # hit, as in the gene KO hit table.
+        gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
+        expanded_gene_hits = []
+        for row in gene_functions_df[
+            gene_functions_df['source'] == self.cog_function_source
+        ].itertuples(index=False):
+            if '!!!' not in row.accession:
+                expanded_gene_hits.append(row)
+                continue
+            for cog_id, cog_name in zip(row.accession.split('!!!'), row.function.split('!!!')):
+                new_row = row._replace(accession=cog_id, function=cog_name)
+                expanded_gene_hits.append(new_row)
+        self.gene_cogs_df = pd.DataFrame(expanded_gene_hits, columns=gene_functions_df.columns)
+
         self.ungapped_chains = self.walker.get_chains()
         self.walker.max_gaps = 1
         self.gapped_chains = self.walker.get_chains()
