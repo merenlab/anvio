@@ -1812,8 +1812,9 @@ class GapFiller:
         self.contigs_db = ContigsDatabase(self.contigs_db_path)
         if 'KOfam' not in self.contigs_db.meta['gene_function_sources']:
             raise ConfigError(
-                "Genes of the contigs database should have been annotated with all KO hits, but "
-                "the database has no 'KOfam' function source."
+                "The contigs database has no 'KOfam' functional annotation source. This is "
+                "puzzling since a reaction network was loaded from the contigs database, and the "
+                "network should contain gene KO hits that were initially recorded in the database."
             )
 
         self.genes_in_contigs_df = self.contigs_db.db.get_table_as_dataframe('genes_in_contigs')
