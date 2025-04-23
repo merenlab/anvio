@@ -1911,9 +1911,45 @@ class GapFiller:
             kgml_reaction_ids[0] for kgml_reaction_ids in self.gap_analyzer.rank_gaps()
         ]
 
+        # For each KGML reaction in a gapped chain, record the associated KOs (ID and name).
+        self.kgml_reaction_id_ko_definitions: dict[str, list[tuple[str, str]]] = {}
+        ko_list_df = self.ko_list_df.set_index('accession')
+        for shared_gaps in self.gap_analyzer.gap_relations.values():
+            for relations in shared_gaps.gap_chain_relations:
+                gapped_chain = relations.gappy_chain
+                for kgml_reaction in gapped_chain.kgml_reactions:
+                    if kgml_reaction_id in self.kgml_reaction_id_ko_definitions:
+                        continue
+                    ko_ids = self.walker.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction_id]
+                    ko_definitions = []
+                    for ko_id in ko_ids:
+                        ko_name = ko_list_df.loc[ko_id]['function']
+                        ko_definitions.append((ko_id, ko_name))
+                    self.kgml_reaction_id_ko_definitions[kgml_reaction] = ko_definitions
+
+        # Record which KOs link genes to reactions in gapped chains.
+        self.gapped_chains_ko_ids: dict[str, list[list[tuple[str]]]] = {}
+        for key, shared_gaps in self.gap_analyzer.gap_relations.items():
+            kgml_reaction_id = key[0]
+            gapped_chains = [relations.gappy_chain for relations in shared_gaps.gap_chain_relations]
+            self.gapped_chains_ko_ids[kgml_reaction_id] = [
+                [tuple([ko.id for ko in kos]) for kos in gapped_chain.network_kos]
+                for gapped_chain in gapped_chains
+            ]
+
+        # Find the syntenous regions around genes in gapped chains. Map gap reaction IDs to
+        # syntenous regions.
         self.pathway_ortholog_entries = self.walker.kgml_ko_pathway.get_entries(
             entry_type='ortholog'
         )
+        self.gap_syntenous_regions: dict[str, list[list[int]]] = {}
+        self.gap_chain_gcids: dict[str, list[int]] = {}
+        for kgml_reaction_id in self.ranked_gaps:
+            syntenous_regions, gcids = self.get_gap_kgml_reaction_syntenous_regions(
+                kgml_reaction_id
+            )
+            self.gap_syntenous_regions[kgml_reaction_id] = syntenous_regions
+            self.gap_chain_gcids[kgml_reaction_id] = gcids
 
 
     def eval_gap_ko(self, ko_id: str) -> Union[dict, None]:
