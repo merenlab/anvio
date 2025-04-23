@@ -1951,11 +1951,44 @@ class GapFiller:
             self.gap_syntenous_regions[kgml_reaction_id] = syntenous_regions
             self.gap_chain_gcids[kgml_reaction_id] = gcids
 
+    def get_gap_kgml_reaction_syntenous_regions(
+        self,
+        kgml_reaction_id: str
+    ) -> tuple[list[list[int]], list[int]]:
+        """
+        Find "syntenous regions" of genes in the same orientation around genes in chains with the
+        reaction gap.
 
+        Parameters
+        ==========
+        kgml_reaction_id : str
+            Gap reaction ID that occurs in one or more chains.
 
+        Returns
+        =======
+        list[list[int]]
+            List of unique syntenous regions. An empty list is returned if the reaction ID does not
+            represent a gap.
 
+        list[int]
+            Gene caller IDs of genes annotated by KOs associated with reactions in chains containing
+            the gap.
+        """
+        key = (kgml_reaction_id, )
+        try:
+            shared_gaps = self.gap_analyzer.gap_relations[key]
+        except KeyError:
+            return []
 
+        gcids: list[int] = []
+        for gap_chain_relations in shared_gaps.gap_chain_relations:
+            gapped_chain = gap_chain_relations.gappy_chain
+            chain_gcids = self.get_chain_gcids(gapped_chain)
+            gcids += chain_gcids
+        gcids = sorted(set(gcids))
+        syntenous_regions = self.get_syntenous_regions(gcids)
 
+        return syntenous_regions, gcids
 
 
 
