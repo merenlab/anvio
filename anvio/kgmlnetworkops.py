@@ -235,7 +235,7 @@ class KGMLNetworkWalker:
 
         self.kegg_pathway_number: str = args.kegg_pathway_number
 
-        self.contigs_db_path: str = A('contigs_db', None)
+        self.contigs_db_path: str = A('contigs_db_path', None)
         self.network: rn.GenomicNetwork = A('network', None)
         self.verbose = A('verbose', False)
         if self.contigs_db_path is not None and self.network is None:
