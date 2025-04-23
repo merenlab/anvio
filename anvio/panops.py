@@ -2902,7 +2902,7 @@ class DirectedForce():
                             # while next_node not in resolved_nodes:
                             while True:
 
-                                print(next_node, current_connector)
+                                # print(next_node, current_connector)
 
                                 current_node = next_node
 
@@ -3172,23 +3172,28 @@ class TopologicalLayout():
             if not set(branch).issubset(m):
                 start = positions[branch[0]][0]
                 length = len(branch)
-
+                impact = - sum([len(L.nodes()[br]['gene_calls'].keys()) if 'gene_calls' in L.nodes()[br].keys() else 0 for br in branch])
+                
                 if start in branches.keys():
                     if length in branches[start].keys():
-                        if branches[start][length].keys():
-                            num = max(branches[start][length].keys()) + 1
+                        if impact in branches[start][length].keys():
+                            if branches[start][length][impact].keys():
+                                num = max(branches[start][length][impact].keys()) + 1
+                            else:
+                                num = 1
+
+                            branches[start][length][impact][num] = branch
                         else:
                             num = 1
-
-                        branches[start][length][num] = branch
+                            branches[start][length][impact] = {num: branch}
                     else:
                         num = 1
-                        branches[start][length] = {num: branch}
+                        branches[start][length] = {impact: {num: branch}}
                 else:
                     num = 1
-                    branches[start] = {length: {num: branch}}
+                    branches[start] = {length: {impact: {num: branch}}}
 
-                sortable += [(start, length, num)]
+                sortable += [(start, length, impact, num)]
 
         left_nodes = set(L.nodes()) - set(groups_rev.keys())
         for n in left_nodes:
@@ -3196,22 +3201,28 @@ class TopologicalLayout():
             if not set([n]).issubset(m):
                 start = positions[n][0]
                 length = 1
+                impact = - len(L.nodes()[n]['gene_calls'].keys()) if 'gene_calls' in L.nodes()[n].keys() else 0
+                
                 if start in branches.keys():
                     if length in branches[start].keys():
-                        if branches[start][length].keys():
-                            num = max(branches[start][length].keys()) + 1
+                        if impact in branches[start][length].keys():    
+                            if branches[start][length].keys():
+                                num = max(branches[start][length][impact].keys()) + 1
+                            else:
+                                num = 1
+
+                            branches[start][length][impact][num] = [n]
                         else:
                             num = 1
-
-                        branches[start][length][num] = [n]
+                            branches[start][length][impact] = {num: [n]}
                     else:
                         num = 1
-                        branches[start][length] = {num: [n]}
+                        branches[start][length] = {impact: {num: [n]}}
                 else:
                     num = 1
-                    branches[start] = {length: {num: [n]}}
+                    branches[start] = {length: {impact: {num: [n]}}}
 
-                sortable += [(start, length, num)]
+                sortable += [(start, length, impact, num)]
 
         used = set()
         finished = set()
@@ -3229,8 +3240,8 @@ class TopologicalLayout():
             current = stack[0]
 
             remove = True
-            for i,j,k in sorted(sortable, key=lambda x: (x[1], x[0]), reverse = False):
-                branch = branches[i][j][k]
+            for i,j,k,l in sorted(sortable, key=lambda x: (x[1], x[0], x[2]), reverse = False):
+                branch = branches[i][j][k][l]
 
                 # print(branch)
 
@@ -3239,7 +3250,7 @@ class TopologicalLayout():
                 if (not branch_pred.isdisjoint(set(current))) or (not branch_succ.isdisjoint(set(current))) or (not branch_pred.isdisjoint(set(current)) and not branch_succ.isdisjoint(set(current))):
 
                     remove = False
-                    sortable.remove((i,j,k))
+                    sortable.remove((i,j,k,l))
                     y_new = max(sum([[positions[ypred][1] for ypred in branch_pred], [positions[ysucc][1] for ysucc in branch_succ]], []))
 
                     stack = [branch] + stack
