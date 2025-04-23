@@ -1834,8 +1834,30 @@ class GapFiller:
             ['contig', 'start']
         ).reset_index()
 
-        gene_functions_df = self.contigs_db.db.get_table_as_dataframe('gene_functions')
-        self.gene_kos_df = gene_functions_df[gene_functions_df['source'] == 'KOfam']
+        # Load a table containing information on all KO hits to genes in the contigs database,
+        # including lower-ranking hits.
+        gene_kos_df = pd.read_csv(
+            self.all_ko_hits_path, sep='\t',
+            usecols=['gene_callers_id', 'e_value', 'gene_name']
+        )
+        gene_kos_df = gene_kos_df.rename({'gene_name': 'accession'}, axis=1)
+        self.ko_list_df = pd.read_csv(
+            self.walker.kegg_data.kegg_context.ko_list_file_path, sep='\t',
+            usecols=['knum', 'definition']
+        )
+        self.ko_list_df = self.ko_list_df.rename(
+            {'knum': 'accession', 'definition': 'function'}, axis=1
+        )
+        gene_kos_df = gene_kos_df.merge(self.ko_list_df, how='left', on='accession')
+        gene_kos_df = gene_kos_df[['gene_callers_id', 'accession', 'function', 'e_value']]
+        self.gene_kos_df = gene_kos_df.sort_values(['gene_callers_id', 'e_value', 'accession'])
+
+        # Subset the table to only retain the top gene-KO hits, equivalent to the entries stored in
+        # the contigs database.
+        self.top_gene_kos_df = self.gene_kos_df[
+            self.gene_kos_df['e_value'] ==
+            self.gene_kos_df.groupby('gene_callers_id')['e_value'].transform('min')
+        ]
 
         if 'COG20_FUNCTION' not in self.contigs_db.meta['gene_function_sources']:
             self.gene_cogs_df = None
