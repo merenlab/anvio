@@ -2888,3 +2888,59 @@ class GapFiller:
 
         return json_candidate_genes
 
+    def get_lower_scoring_ko_hit_info(self, ko_id: str) -> list[dict]:
+        """
+        Get information on all gene hits to the KO.
+
+        Parameters
+        ==========
+        ko_id : str
+            KO ID.
+
+        Returns
+        =======
+        list[dict]
+            JSON-formatted dictionary for each gene associated with the KO, formatted for use in the
+            dictionary of gap-filling evidence.
+        """
+        # Get all gene hits to the KO.
+        gene_hits_df = self.gene_kos_df[self.gene_kos_df['accession'] == ko_id]
+
+        if not len(gene_hits_df):
+            # No genes hit the KO.
+            return {}
+
+        # Check proper data formatting. Get the KO name.
+        assert gene_hits_df['gene_callers_id'].nunique() == len(gene_hits_df)
+        assert gene_hits_df['ko_name'].nunique() == 1
+        ko_name = gene_hits_df.iloc[0]['function']
+
+        # Record information on each gene.
+        json_candidate_genes: list[dict] = []
+        for gene_hit_row in gene_hits_df.itertuples():
+            json_candidate_gene = {}
+            json_candidate_genes.append(json_candidate_gene)
+            json_candidate_gene['gene_callers_id'] = gcid = gene_hit_row.gene_callers_id
+
+            json_gap_ko_hits: list[dict] = []
+            json_candidate_gene['gap_ko_hits'] = json_gap_ko_hits
+            json_gap_ko_hit = {}
+            json_gap_ko_hits.append(json_gap_ko_hit)
+            json_gap_ko_hit['ko_id'] = ko_id
+            json_gap_ko_hit['ko_name'] = ko_name
+            json_gap_ko_hit['e_value'] = gene_hit_row.e_value
+
+            # Record information on other KOs that hit the gene.
+            other_gene_hits_df = self.gene_kos_df[self.gene_kos_df['gene_callers_id'] == gcid]
+            other_gene_hits_df = other_gene_hits_df[other_gene_hits_df['accession'] != ko_id]
+
+            json_other_ko_hits: list[dict] = []
+            for other_gene_hit_row in other_gene_hits_df.itertuples():
+                json_other_ko_hit = {}
+                json_other_ko_hits.append(json_other_ko_hit)
+                json_other_ko_hit['ko_id'] = other_gene_hit_row.accession
+                json_other_ko_hit['ko_name'] = other_gene_hit_row.function
+                json_other_ko_hit['e_value'] = other_gene_hit_row.e_value
+
+        return json_candidate_genes
+
