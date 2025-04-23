@@ -2730,3 +2730,78 @@ class GapFiller:
 
         return json_syntenous_regions
 
+    def make_json_syntenous_region(self, syntenous_region: list[int]) -> dict:
+        """
+        Make a JSON-formatted dictionary for a syntenous region.
+
+        Various attributes are left to be filled out.
+
+        Parameters
+        ==========
+        syntenous_region : list[int]
+            The syntenous region is recorded as a list of row indices of full-length gene calls in
+            the 'genes_in_contigs_df' attribute.
+
+        Returns
+        =======
+        dict
+            JSON-formatted dictionary of information on the syntenous region.
+        """
+        # Get information on the genes in the syntenous region.
+        gene_rows = self.genes_in_contigs_df.loc[syntenous_region]
+        first_gene_row = gene_rows.iloc[0]
+
+        # Record information regarding the whole syntenous region. The unique ID of the region is
+        # left to be filled out. IDs are meant to identify regions related to a particular gap.
+        json_syntenous_region = {}
+        json_syntenous_region['id'] = None
+        json_syntenous_region['contig_id'] = first_gene_row.contig
+        json_syntenous_region['gene_orientation'] = first_gene_row.direction
+
+        # Record information on each gene in the region.
+        json_full_genes: list[dict] = []
+        json_syntenous_region['full_genes'] = json_full_genes
+        for gene_index, gene_row in enumerate(gene_rows.itertuples()):
+            json_full_gene = {}
+            json_full_genes.append(json_full_gene)
+
+            # Record the identity and position of the gene. Whether the gene is a candidate to fill
+            # a particular gap is left to be filled out.
+            json_full_gene['gene_index'] = gene_index
+            json_full_gene['is_gap_candidate'] = None
+            json_full_gene['start_position'] = gene_row.start
+            json_full_gene['stop_position'] = gene_row.stop
+            json_full_gene['gene_callers_id'] = gcid = gene_row.gene_callers_id
+            json_full_gene['gene_call_source'] = (
+                f"{gene_row.source}"
+                f"{'_' + gene_row.version if gene_row.version != 'unknown' else ''}"
+            )
+
+            # Record the top KO hits to the gene.
+            json_ko_top_hits: list[dict] = []
+            json_full_gene['ko_top_hits'] = json_ko_top_hits
+            ko_df = self.top_gene_kos_df[self.top_gene_kos_df['gene_callers_id'] == gcid]
+            for ko_row in ko_df.itertuples():
+                json_ko_top_hits['ko_id'] = ko_id = ko_row.accession
+                json_ko_top_hits['ko_name'] = ko_row.function
+                json_ko_top_hits['e_value'] = ko_row.e_value
+
+            # Record the top COG hits to the gene.
+            json_cog_top_hits: list[dict] = []
+            json_full_gene['cog_top_hits'] = json_cog_top_hits
+            cog_df = self.gene_cogs_df[self.gene_cogs_df['gene_callers_id'] == gcid]
+            for cog_row in cog_df.itertuples():
+                json_cog_top_hits['cog_id'] = cog_row.accession
+                json_cog_top_hits['cog_name'] = cog_row.function
+                json_cog_top_hits['e_value'] = cog_row.e_value
+
+            # Record whether the gene is linked to the pathway through any of its top KO hits.
+            json_full_gene['is_in_pathway'] = self.gene_in_pathway[gcid]
+
+            # It is left to record the gapped chains that contain the gene, including the number of KGML
+            # reactions in the chain, and the indices of KGML reactions linked to the gene via
+            # top KO hits.
+            json_full_gene['gapped_chains'] = []
+
+        return json_syntenous_region
+
