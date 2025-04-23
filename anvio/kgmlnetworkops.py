@@ -2030,6 +2030,20 @@ class GapFiller:
         return chain_gcids
 
     def get_syntenous_regions(self, gcids: list[int]) -> list[list[int]]:
+        """
+        Find "syntenous regions" of genes in the same orientation around any of the given genes.
+
+        Parameters
+        ==========
+        gcids : list[int]
+            Gene caller IDs of genes to search around.
+
+        Returns
+        =======
+        list[list[int]]
+            Unique list of syntenous regions, avoiding duplicate regions around multiple input
+            genes.
+        """
         syntenous_regions: list[list[int]] = []
         for gcid in gcids:
             # Search around the gene. The search stops in either direction when a gene in the
