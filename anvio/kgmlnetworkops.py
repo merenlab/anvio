@@ -155,9 +155,13 @@ class KGMLNetworkWalker:
         Reaction network that can either be independent of a contigs database (contigs_db_path value
         of None) or associated with a contigs database.
 
+    network_keggrn_id_to_modelseed_reactions : dict[str, list[rn.ModelSEEDReaction]], {}
+        Map the IDs of KEGG reactions (not KGML reaction IDs) to aliased ModelSEED reactions in the
+        reaction network.
+
     network_keggcpd_id_to_modelseed_compounds : dict[str, list[rn.ModelSEEDCompound]], {}
-        Map the IDs of KEGG compounds (not KGML compound IDs) in the reaction network to aliased
-        ModelSEED compounds.
+        Map the IDs of KEGG compounds (not KGML compound IDs) to aliased ModelSEED compounds in the
+        reaction network.
 
     network_keggcpd_ids_in_pathway : list[str]
         KEGG compound IDs in the pathway from the reaction network. KEGG compounds in the reaction
