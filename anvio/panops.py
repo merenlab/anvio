@@ -1930,15 +1930,24 @@ class PangenomeGraph():
         if not nx.is_directed_acyclic_graph(self.graph):
             raise ConfigError(f"Cyclic graphs, are not implemented.")
 
-        non_core_positions = sorted([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) != len(genome_names)])
-        core_positions = sorted([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)])
-
-        # print(core_positions)
-
-        all_positions = non_core_positions + core_positions
-
+        all_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True)]))
         all_positions_min = min(all_positions)
         all_positions_max = max(all_positions)
+
+        # FIXME 0.95 hardcoded
+        reversed_edges = [(edge_i, edge_j) for edge_i, edge_j, data in self.graph.edges(data=True) if 'L' in set(data['directions'].values())]
+        reversed_positions = []
+        for (edge_i, edge_j) in reversed_edges:
+            reverse_start = min(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
+            reverse_end = max(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
+
+            if (reverse_end - reverse_start) / all_positions_max < 0.95:
+                reversed_positions += list(range(reverse_start, reverse_end + 1))
+
+        # print(sorted(set(reversed_positions)))
+        # non_core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) != len(genome_names)]) | set(reversed_positions))
+        core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]) - set(reversed_positions))
+        # print(core_positions)
 
         core_position_min = min(core_positions)
         core_position_max = max(core_positions)
@@ -1984,6 +1993,7 @@ class PangenomeGraph():
         # print(node_regions_dict)
         # all_ghost_max_y_positions = {}
 
+        # FIXME height depends on the position of empty edges
         i = 0
         regions_summary_dict = {}
         for region_id, values_list in regions_info_dict.items():
@@ -3402,9 +3412,7 @@ class PangenomeGraphMaster():
 
         # ANVI'O OUTPUTS
         self.output_dir = A('output_dir')
-        self.output_pangenome_graph_summary = A('output_pangenome_graph_summary')
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
-        self.output_synteny_distance_dendrogram = A('output_synteny_distance_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
 
@@ -3433,11 +3441,13 @@ class PangenomeGraphMaster():
         self.seed = None
         self.pangenome_graph = PangenomeGraph()
         self.db_mining_df = pd.DataFrame()
+
         self.newick = ''
 
         self.meta = {}
         self.bins = {}
         self.states = {}
+
 
     def summarize_pangenome_graph(self):
         self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
@@ -3446,6 +3456,10 @@ class PangenomeGraphMaster():
         self.pangenome_graph.set_node_positions(node_positions)
         region_sides_df, nodes_df = self.pangenome_graph.summarize_pangenome_graph()
         # nodes_db_mining_df = pd.merge(nodes_df, self.db_mining_df, how='left', on=['syn_cluster', 'genome'], copy=False)
+        additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
+
+        for index, line in additional_info.iterrows():
+            self.pangenome_graph.graph.nodes()[index]['layer']['backbone'] = True if line["motif"] == "SynCGC" else False
 
         region_sides_df.to_csv(self.output_dir + '/region_sides_df.tsv', sep='\t')
         nodes_df.to_csv(self.output_dir + '/nodes_df.tsv', sep='\t')
@@ -3496,12 +3510,12 @@ class PangenomeGraphMaster():
                 self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
             self.create_pangenome_graph()
 
-        if self.output_pangenome_graph_summary == True and len(self.db_mining_df) != 0:
+        if len(self.db_mining_df) != 0:
             self.summarize_pangenome_graph()
 
         self.layout_pangenome_graph()
 
-        if self.output_synteny_distance_dendrogram:
+        if not self.newick:
             self.newick = self.pangenome_graph.calculate_graph_distance(self.output_dir)
 
         if self.output_hybrid_genome:

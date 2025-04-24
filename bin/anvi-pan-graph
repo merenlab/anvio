@@ -46,9 +46,9 @@ if __name__ == '__main__':
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    groupB.add_argument('--output-pangenome-graph-summary', default=False, action="store_true", help="Description.")
+    # groupB.add_argument('--output-pangenome-graph-summary', default=False, action="store_true", help="Description.")
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
-    groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
+    # groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
     groupB.add_argument('--output-hybrid-genome', default=False, action="store_true", help="Description.")
     groupB.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes or ORDERED draft genomes.")
 

@@ -1216,6 +1216,9 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       var node_group = node['group']
       var node_type = node['type']
 
+      if (node['layer']['backbone'] == true)
+        backbone_pos.push(k_x)
+
       if (!node_group) {
         var node_class = 'class="node'
         var x_value_start = k_x - 0.5
@@ -1246,7 +1249,6 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
       if (node_type == 'core'){
         var node_color = core_color
-        backbone_pos.push(k_x)
       } else if (node_type == 'rearranged') {
         var node_color = rearranged_color
       } else if (node_type == 'accessory') {
