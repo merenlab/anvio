@@ -1761,9 +1761,6 @@ class GapFiller:
     genes_in_contigs_df : pandas.core.frame.DataFrame
         Table of information on gene calls in contigs.
 
-    ko_list_df : pandas.core.frame.DataFrame
-        Table of all KOs and there names from the anvi'o KEGG installation.
-
     gene_kos_df : pandas.core.frame.DataFrame
         Table of gene-KO hits, including all hits from the file at 'all_ko_hits_path', not just top
         hits recorded in the contigs database.
@@ -1784,6 +1781,9 @@ class GapFiller:
 
     cog_kos : dict[str, list[str]]
         Mapping of COG to KO IDs loaded from ko_cog_path.
+
+    ko_list_df : pandas.core.frame.DataFrame
+        Table of all KOs and their names from the anvi'o KEGG installation.
 
     ungapped_chains : dict[str, list[Chain]]
         Chains from compounds in the KGML representation of the pathway, allowing zero genomic gaps
@@ -1916,18 +1916,11 @@ class GapFiller:
         # including lower-ranking hits.
         gene_kos_df = pd.read_csv(
             self.all_ko_hits_path, sep='\t',
-            usecols=['gene_callers_id', 'e_value', 'gene_name']
+            usecols=['gene_callers_id', 'gene_hmm_id', 'gene_name', 'e_value']
+        )[['gene_callers_id', 'gene_hmm_id', 'gene_name', 'e_value']]
+        gene_kos_df = gene_kos_df.rename(
+            {'gene_hmm_id': 'accession', 'gene_name': 'function'}, axis=1
         )
-        gene_kos_df = gene_kos_df.rename({'gene_name': 'accession'}, axis=1)
-        self.ko_list_df = pd.read_csv(
-            self.walker.kegg_data.kegg_context.ko_list_file_path, sep='\t',
-            usecols=['knum', 'definition']
-        )
-        self.ko_list_df = self.ko_list_df.rename(
-            {'knum': 'accession', 'definition': 'function'}, axis=1
-        )
-        gene_kos_df = gene_kos_df.merge(self.ko_list_df, how='left', on='accession')
-        gene_kos_df = gene_kos_df[['gene_callers_id', 'accession', 'function', 'e_value']]
         self.gene_kos_df = gene_kos_df.sort_values(['gene_callers_id', 'e_value', 'accession'])
 
         # Load a table of the top gene-KO hits stored in the contigs database. Top hits to genes
@@ -1981,6 +1974,16 @@ class GapFiller:
                     self.cog_kos[cog_id].append(row.ko)
                 except KeyError:
                     self.cog_kos[cog_id] = [row.ko]
+
+        # Load the table of all KO definitions in the anvi'o KEGG installation, needed to retrieve
+        # the names of KOs associated with KGML reactions and gene COG hits.
+        self.ko_list_df = pd.read_csv(
+            self.walker.kegg_data.kegg_context.ko_list_file_path, sep='\t',
+            usecols=['knum', 'definition']
+        )
+        self.ko_list_df = self.ko_list_df.rename(
+            {'knum': 'accession', 'definition': 'function'}, axis=1
+        )
 
         # Find chains in the pathway with zero gaps and up to one gap.
         self.ungapped_chains: list[Chain] = []
