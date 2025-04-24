@@ -2471,7 +2471,7 @@ class ReactionNetwork:
 
         return merged_network
 
-    def _merge_two_genome_networks(self, network: GenomicNetwork) -> (GenomicNetwork, Iterable[str]):
+    def _merge_two_genome_networks(self, network: GenomicNetwork) -> Tuple[GenomicNetwork, Iterable[str]]:
         """
         This method is meant for merging two GenomicNetwork objects coming from different contigs databases. 
         It internally uses the _merge_network() function after modifying the gene caller IDs of one network to
