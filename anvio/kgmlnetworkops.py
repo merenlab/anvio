@@ -1344,7 +1344,7 @@ class SharedGaps:
     Attributes
     ==========
     gap_kgml_reactions : list[anvio.kgml.Reaction], []
-        Each of the gaps is a reaction.
+        The reaction for each gap.
 
     gap_chain_relations : list[GapChainRelations], []
         This list contains an item per gappy chain that has the set of gaps represented here.
