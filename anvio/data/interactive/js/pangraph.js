@@ -749,10 +749,15 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var start = new Date().getTime();
   var svg_search = [];
   var svg_backbone = [];
+  var svg_text = [];
   var svg_heatmaps = [];
   var svg_edges = [];
   var svg_nodes = [];
   var svg_groups = [];
+  var svg_genome_tracks = {}
+  for (var genome of genomes){
+    svg_genome_tracks[genome] = []
+  }
 
   var edgecoloring = {}
   $("#genomecolors :input[type='color']").each((index, element) => {
@@ -899,11 +904,11 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
     var x_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
-    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
+    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
   } else {
     var x_size = global_x * node_distance_x;
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
-    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size*0.5 + ' -' + y_size*5 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg">')
+    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size*0.5 + ' -' + y_size*5 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
   }
 
   for (var genome of genomes) {
@@ -923,7 +928,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
         // console.log(i_x, i_y, j_x, j_y)
 
-        svg_heatmaps.push(
+        svg_genome_tracks[genome].push(
           create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, layer_color)
         )
       }
@@ -994,7 +999,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       var [circle_h_x, circle_h_y] = [0, -(arrow_start + arrow_thickness * 2)]
     }
       
-    svg_core.append(
+    svg_text.push(
       $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
@@ -1113,26 +1118,21 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
             if (draw !== "") {
 
+              var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+
               if (edge['bended'].length == 0){
                 if (linear == 0){
                   if (i_y == j_y) {
-                    svg_edges.push(
-                      $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                    )  
+                    bended_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   } else {
-                    svg_edges.push(
-                      $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                    )
+                    bended_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   }
                 } else {
-                  svg_edges.push(
-                    $('<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y + ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>')
-                  )
+                  bended_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                 }
 
               } else {
 
-                var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
                 var o_y = i_y
 
                 for(var n in edge['bended']) {
@@ -1176,8 +1176,14 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
                 } else {
                   bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                 }
+              }
 
+              if (e == genomes.length) {
                 svg_edges.push(
+                  $(bended_edge)
+                )
+              } else {
+                svg_genome_tracks[genomes[e]].push(
                   $(bended_edge)
                 )
               }
@@ -1187,6 +1193,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       }
     }
   };
+
   var end = new Date().getTime();
   var time = end - start;
   console.log('SVG drawing lines', time, 'ms.')
@@ -1451,7 +1458,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
         var [circle_x, circle_y] = [0, -(layer_start + y_size)]
       }
 
-      svg_heatmaps.push(
+      svg_text.push(
         $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
       )
     }
@@ -1474,7 +1481,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
         item_dist[genome_name] = circle_y
 
-        svg_edges.push(
+        svg_text.push(
           $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
         )
       }
@@ -1492,12 +1499,39 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var time = end - start;
   console.log('SVG drawing remaining elements', time, 'ms.')
 
-  for (var item of svg_search) svg_core.append(item);
-  for (var item of svg_heatmaps) svg_core.append(item);
-  for (var item of svg_backbone) svg_core.append(item);
-  for (var item of svg_edges) svg_core.append(item);
-  for (var item of svg_nodes) svg_core.append(item);
-  for (var item of svg_groups) svg_core.append(item);
+  var svg_group = $('<g></g>')
+  for (var item of svg_search) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_heatmaps) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  for (var [genome, svg_genome_track] of Object.entries(svg_genome_tracks)) {
+    var svg_group = $('<g></g>')
+    for (var item of svg_genome_track) svg_group.append(item);
+    svg_core.append(svg_group);
+  }
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_backbone) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_edges) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_nodes) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_groups) svg_group.append(item);
+  svg_core.append(svg_group);
+
+  var svg_group = $('<g></g>')
+  for (var item of svg_text) svg_group.append(item);
+  svg_core.append(svg_group);
 
   return svg_core
 }
