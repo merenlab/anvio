@@ -345,6 +345,20 @@ class KGMLNetworkWalker:
 
         # Make attributes storing key reaction network data.
         if self.network:
+            self.network_keggrn_id_to_modelseed_reactions: dict[
+                str, list[rn.ModelSEEDReaction]
+            ] = {}
+            for modelseed_reaction in self.network.reactions.values():
+                for keggrn_id in modelseed_reaction.kegg_aliases:
+                    try:
+                        self.network_keggrn_id_to_modelseed_reactions[keggrn_id].append(
+                            modelseed_reaction
+                        )
+                    except KeyError:
+                        self.network_keggrn_id_to_modelseed_reactions[keggrn_id] = [
+                            modelseed_reaction
+                        ]
+
             self.network_keggcpd_id_to_modelseed_compounds: dict[
                 str, list[rn.ModelSEEDCompound]
             ] = {}
@@ -362,6 +376,7 @@ class KGMLNetworkWalker:
             self.network_keggcpd_ids_in_pathway = \
                 self._get_reaction_network_keggcpd_ids_in_pathway()
         else:
+            self.network_keggrn_id_to_modelseed_reactions = None
             self.network_keggcpd_id_to_modelseed_compounds = None
             self.network_keggcpd_ids_in_pathway = None
 
