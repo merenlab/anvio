@@ -3530,7 +3530,12 @@ class RunKOfams(KeggContext):
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:
             self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
-            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, key_header='entry_id')
+            # we have to change some things in the raw search results because the KOfam models don't store the gene functions
+            # and the HMM ID is actually stored in a model's gene name element
+            for key, entry in search_results_dict.items():
+                entry['gene_hmm_id'] = entry['gene_name']
+                entry['gene_name'] = self.get_annotation_from_ko_dict(entry['gene_hmm_id'], ok_if_missing_from_dict=True)
+            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, do_not_write_key_column=True)
             self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         # mark contigs db with hash of modules.db content for version tracking

@@ -1448,16 +1448,26 @@ class ContigsSuperclass(object):
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
                     if gene_callers_id in self.gene_function_calls_dict:
-                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
-                        accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+                        accession_str, function_str, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
+                        accessions = accession_str.split('!!!')
+                        functions = function_str.split('!!!')
 
-                        # now we have the function text, but it may contain characters that are offensive to the GFF3
-                        # specifications, so we will simply replace them with space character. for more information
-                        # please see https://github.com/merenlab/anvio/issues/2070
-                        for character in [':', ';', ',', '&', '\t']:
-                            function = function.replace(character, ' ')
+                        # Clean functions for GFF3 compliance
+                        cleaned_functions = []
+                        for function in functions:
+                            # now we have the function text, but it may contain characters that are offensive to the GFF3
+                            # specifications, so we will simply replace them with space character. for more information
+                            # please see https://github.com/merenlab/anvio/issues/2070
+                            for character in [':', ';', ',', '&', '\t']:
+                                function = function.replace(character, ' ')
+                            cleaned_functions.append(function)
 
-                        attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
+                        # Build attribute fields
+                        name_field = ",".join(accessions) # Not strictly correct for gff3 as only meant to have 1 entry for Name
+                        dbxref_field = f"{gene_annotation_source}:" + ",".join(accessions)
+                        product_field = ",".join(cleaned_functions)
+
+                        attributes += f";Name={name_field};db_xref={dbxref_field};product={product_field}"
 
                 output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
