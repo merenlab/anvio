@@ -169,11 +169,15 @@ class KGMLNetworkWalker:
         with KEGG reaction aliases, not EC number aliases, since EC numbers associated with KOs can
         alias a large number of reactions of questionable validity for the enzyme.
 
-    compound_fate : Literal['consume', 'produce', 'both'], 'both'
+    compound_fate : Literal['consume', 'produce', 'both'], 'consume'
         Seek chains that consume or produce compounds in the network. If 'consume' or 'produce',
         only consumption or production chains are sought, respectively. If 'both', both consumption
-        and production chains are sought. Chains that only contain reversible reactions are
-        therefore found in both directions with 'both'.
+        and production chains are sought, yielding pairs of chains, one consumption chain ordered
+        from the first reactant to the last product, and one production chain ordered from the last
+        product to the first reactant. Therefore, chains that only contain reversible reactions are
+        found in both directions with 'both', as the first reactant can be the last product, and the
+        last product can be the first reactant, yielding four chains traversing identical compounds
+        and reactions.
 
     max_reactions : int, None
         Truncate chains at this number of reactions. If None, chains can be continued to
@@ -246,7 +250,7 @@ class KGMLNetworkWalker:
             self.network = constructor.load_contigs_database_network(
                 self.contigs_db_path, quiet=not self.verbose
             )
-        self.compound_fate: str = A('compound_fate', 'both')
+        self.compound_fate: str = A('compound_fate', 'consume')
         self.max_reactions: int = A('max_reactions', None)
         self.keep_intermediate_chains: bool = A('keep_intermediate_chains', False)
         self.max_gaps: int = A('max_gaps', 0)
@@ -782,12 +786,12 @@ class KGMLNetworkWalker:
                 aliased_modelseed_compounds=[modelseed_compounds] if self.network else []
             )
 
-            if self.compound_fate == 'both':
-                consumption_options = [True, False]
-            elif self.compound_fate == 'consume':
+            if self.compound_fate == 'consume':
                 consumption_options = [True]
             elif self.compound_fate == 'produce':
                 consumption_options = [False]
+            elif self.compound_fate == 'both':
+                consumption_options = [True, False]
             else:
                 raise AssertionError("'compound_fate' does not have an accepted value.")
 
