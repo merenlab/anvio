@@ -3535,6 +3535,7 @@ class RunKOfams(KeggContext):
             for key, entry in search_results_dict.items():
                 entry['gene_hmm_id'] = entry['gene_name']
                 entry['gene_name'] = self.get_annotation_from_ko_dict(entry['gene_hmm_id'], ok_if_missing_from_dict=True)
+            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, do_not_write_key_column=True)
             self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         # mark contigs db with hash of modules.db content for version tracking
