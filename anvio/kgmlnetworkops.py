@@ -964,23 +964,25 @@ class KGMLNetworkWalker:
                     # reaction.
                     network_kos = tuple(sorted(network_kos, key=lambda ko: ko.id))
 
-                    keggrn_ids: list[str] = []
+                    modelseed_reaction_dict: dict[str, rn.ModelSEEDReaction] = {}
                     for candidate_keggrn_id in kgml_reaction.name.split():
                         if candidate_keggrn_id[:3] != 'rn:':
                             continue
                         keggrn_id = candidate_keggrn_id[3:]
-
-                    modelseed_reaction_ids: list[str] = []
-                    for ko in network_kos:
-                        for keggrn_id in keggrn_ids:
-                            try:
-                                modelseed_reaction_ids += ko.kegg_reaction_aliases[keggrn_id]
-                            except KeyError:
-                                continue
-
-                    modelseed_reactions: list[rn.ModelSEEDReaction] = []
-                    for modelseed_reaction_id in sorted(set(modelseed_reaction_ids)):
-                        modelseed_reactions.append(self.network.reactions[modelseed_reaction_id])
+                        try:
+                            modelseed_reactions = self.network_keggrn_id_to_modelseed_reactions[
+                                keggrn_id
+                            ]
+                        except KeyError:
+                            continue
+                        for modelseed_reaction in modelseed_reactions:
+                            modelseed_reaction_dict[
+                                modelseed_reaction.modelseed_id
+                            ] = modelseed_reaction
+                    modelseed_reactions = [
+                        modelseed_reaction_dict[modelseed_reaction_id]
+                        for modelseed_reaction_id in sorted(modelseed_reaction_dict)
+                    ]
 
                 # Recurse on each KGML compound on the other side of the reaction.
                 for next_kgml_compound_id in next_kgml_compound_ids:
