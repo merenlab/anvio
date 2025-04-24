@@ -1679,10 +1679,10 @@ class GapFiller:
     ko_cog_path : str
         Path to KEGG binary relations file mapping KO to COG IDs.
 
-    compound_fate : Literal['consume', 'produce', 'both'], 'both'
-        Fill gaps in chains that consume or produce compounds in the network. If 'consume' or
-        'produce', only consumption or production chains are gap-filled, respectively. If 'both',
-        both consumption and production chains are gap-filled.
+    compound_fate : Literal['consume', 'produce'], 'consume'
+        Fill gaps in chains that consume or produce compounds in the network. The two options simply
+        consider the same chains in reverse, with 'consume' treating chains ordered from reactant to
+        product, and 'produce' treating chains ordered from product to reactant.
 
     max_reactions : int, None
         Truncate chains at this number of reactions. If None, chains can be continued to
@@ -1790,7 +1790,7 @@ class GapFiller:
 
         'ko_cog_path' : str
 
-        'compound_fate' : Literal['consume', 'produce', 'both']
+        'compound_fate' : Literal['consume', 'produce']
 
         'max_reactions' : int
 
@@ -1821,7 +1821,7 @@ class GapFiller:
                 "(args.ko_cog_path) should be provided for initialization."
             )
 
-        self.compound_fate: str = A('compound_fate', 'both')
+        self.compound_fate: str = A('compound_fate', 'consume')
         self.max_reactions: Union[int, None] = A('max_reactions', None)
         self.allow_alternative_reaction_gaps: bool = A('allow_alternative_reaction_gaps', False)
         walker_args = Namespace(
