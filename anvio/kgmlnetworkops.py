@@ -1399,6 +1399,57 @@ class GapAnalyzer:
             Keys are the KGML reaction IDs of sets of gaps in gappy chains. Values are information
             associated with each set of gaps.
         """
+        def sort_ungappy_chains(
+            ungappy_chains: list[Chain],
+            overlaps: list[tuple[tuple[int, int]]]
+        ) -> tuple[list[Chain], list[tuple[tuple[int, int]]]]:
+            """
+            Sort ungappy chains overlapping with a particular gappy chain.
+
+            The first sort level is the index of the first overlapping reaction in the gappy chain.
+            The second sort level is the ID of the first KGML compound entry in the ungappy chain,
+            and the third sort level is the ID of the last KGML compound entry in the ungappy chain.
+            The second and third sort levels differentiate ungappy chains that consist of the same
+            reactions but that start with one of multiple reactants or end with one of multiple
+            products.
+
+            Parameters
+            ==========
+            ungappy_chains : list[Chain]
+                Ungappy chains overlapping with a gappy chain.
+
+            overlaps : list[tuple[tuple[int, int]]]
+                Each outer tuple corresponds to each ungappy chain. Inner tuples represent KGML
+                reaction reactions shared, in order, between the gappy and ungappy chains. The items
+                of the tuple are the reaction indices in the gappy and ungappy chains, respectively.
+
+            Returns
+            =======
+            list[Chain]
+                Sorted ungappy chains.
+
+            list[tuple[int, int]]
+                Sorted overlaps, corresponding to sorted ungappy chains.
+            """
+            ungappy_chain_keys: dict[int, tuple[int, str, str]] = {}
+            for i, (ungappy_chain, overlap) in enumerate(zip(ungappy_chains, overlaps)):
+                key = []
+                key.append(overlap[0][0])
+                key.append(ungappy_chain.kgml_compound_entries[0].id)
+                key.append(ungappy_chain.kgml_compound_entries[-1].id)
+                ungappy_chain_keys[i] = key
+            sorted_ungappy_chain_indices = sorted(
+                ungappy_chain_keys,
+                key=lambda ungappy_chain_index: ungappy_chain_keys[ungappy_chain_index]
+            )
+            sorted_ungappy_chains = []
+            sorted_overlaps = []
+            for i in sorted_ungappy_chain_indices:
+                sorted_ungappy_chains.append(ungappy_chains[i])
+                sorted_overlaps.append(overlaps[i])
+
+            return sorted_ungappy_chains, sorted_overlaps
+
         gap_relations = {}
         for gappy_chain in self.gappy_chains:
             if not any(gappy_chain.gaps):
@@ -1461,13 +1512,8 @@ class GapAnalyzer:
                 # tuples.
                 overlaps.append(tuple(overlap))
 
-            # Sort ungappy chains associated with the gappy chain by index of first overlapping
-            # reaction in the gappy chain.
-            sorted_overlaps = sorted(overlaps, key=lambda overlap: overlap[0][0])
-            sorted_ungappy_chains: list[Chain] = []
-            for overlap in sorted_overlaps:
-                overlap: tuple[tuple[int]]
-                sorted_ungappy_chains.append(ungappy_chains[overlaps.index(overlap)])
+            # Sort ungappy chains associated with the gappy chain.
+            sorted_ungappy_chains, sorted_overlaps = sort_ungappy_chains(ungappy_chains, overlaps)
             gap_chain_relations.ungappy_chains = sorted_ungappy_chains
             gap_chain_relations.overlaps = sorted_overlaps
 
