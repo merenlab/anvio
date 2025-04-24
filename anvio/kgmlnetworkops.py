@@ -1398,8 +1398,8 @@ class GapAnalyzer:
         gap_relations = {}
         for gappy_chain in self.gappy_chains:
             if not any(gappy_chain.gaps):
-                # The chain has no gaps. (Gapless along with gapped chains can be returned when
-                # seeking chains allowing for gaps.)
+                # The chain has no gaps. (Chains with and without gaps can be returned when seeking
+                # chains permitting gaps.)
                 continue
 
             gap_kgml_reactions = [
