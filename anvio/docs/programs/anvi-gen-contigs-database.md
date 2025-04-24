@@ -61,6 +61,17 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
                           --ignore-internal-stop-codons
 {{ codestop }}
 
+### Using amino acid sequences to start
+
+While anvi'o will translate nucleotide sequences to amino acids, there may be a case where you would want to generate a database with amino acids and not nucleotides. We recommend letting anvi'o handle translation internally, but if you wish to, using this flag will allow anvio to generate a database with non-nucleotides. If you do choose to run this flag, then gene calling will not work since we utilize prodigal which expects nucleotide. You will need to supply a fasta that has already undergone gene calling in this case where each fasta entry represents a protein. 
+
+{{ codestart }}
+anvi-gen-contigs-database -f %(contigs-fasta)s \
+                          -o %(contigs-db)s \
+                          --external-gene-calls %(external-gene-calls)s \
+                          --allow-amino-acid-contig-db
+{{ codestop }}
+
 ### Changing k-mer size
 
 You can change the k-mer size by modifying the `--kmer-size` parameter:
