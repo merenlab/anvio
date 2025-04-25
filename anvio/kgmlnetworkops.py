@@ -1720,26 +1720,102 @@ class GapAnalyzer:
                 if is_shortcut:
                     continue
 
-                segments = [
-                    tuple([indices[0] for indices in overlap])
-                    for overlap in gap_chain_relations.overlaps
-                ]
+                # Find "unique segments", the longest ungappy chains that between them contain the
+                # compounds and reactions of the gappy chain, besides the gap reactions not in
+                # ungappy chains.
 
-                # Find unique segments, or the longest ungappy chains that encompass the reactions
-                # of the gappy chain beside its gaps not in ungappy chains.
-                unique_segments: list[tuple[int]] = []
-                for i, segment in enumerate(segments):
-                    for j, other_segment in enumerate(segments):
-                        if i == j:
-                            continue
-                        if is_subsequence(segment, other_segment):
+                # The case of cyclic gappy chains with the entry or exit of an uncycled compound
+                # requires special treatment and creates an exception to the compound overlap
+                # requirement. Consider a cycle of just two reactions. Reaction 1 incorporates A, a
+                # compound produced by the cycle, A + B -> C. Reaction 2 emits D, a compound
+                # produced by the cycle, C -> B + D.
+
+                # First consider reaction 2 as the gap in the gappy chain, G, and reaction 1 as the
+                # only reaction in the two related ungappy chains, U and V. Chain U contains
+                # compounds A and C linked by reaction 1, and chain V contains compounds B and C
+                # linked by reaction 1. Gappy chain G contains compounds A, C, B, and then C again:
+                # reaction 1 reacts A to C, gap reaction 2 reacts C to B, and reaction 1 occurs
+                # again, reacting B to C. The cycle is complete encountering C again. The gappy
+                # chain is a consumption chain, found by the KGML network walker parameterized with
+                # a compound fate value of 'consume' or 'both', but not 'produce'.
+
+                # Both chains U and V fulfill the "unique segment" criterion of containing the
+                # reactions that are not unique gaps in the gappy chain: both contain reaction 1.
+                # However, neither fulfills the other criterion of containing the gappy chain
+                # compounds, as U contains A but not B, and V contains B but not A. It does not make
+                # sense to treat both as unique segments to fulfill the criterion, as this would
+                # doubly trace reaction 1. Instead, select the ungappy chain that contains the
+                # uncycled compound (here A). Chain U instead of V is chosen as the single unique segment
+                # covering chain G.
+
+                # For the sake of completeness, here is a complementary example in which reaction 1
+                # is now the gap. Chain U contains compounds C and D linked by reaction 2, and chain
+                # V contains compounds C and B linked by reaction 2. Gappy chain G contains
+                # compounds C, B, C, and then D: reaction 2 reacts C to B, gap reaction 1 reacts B
+                # to C, and reaction 2 occurs again, reacting C to D. The gappy chain is a
+                # production chain, found by the KGML network walker parameterized with a compound
+                # fate value of 'produce' or 'both', but not 'consume': therefore the compounds and
+                # reactions are recorded in the opposite order just given, as the chain was found
+                # starting from the final product, D, and completed encountered C a second time.
+
+                # Both chains U and V fulfill the "unique segment" criterion of containing the
+                # reactions that are not unique gaps in the gappy chain: both contain reaction 2.
+                # However, neither fulfills the other criterion of containing the gappy chain
+                # compounds, as U contains D but not B, and V contains B but not D. Follow the rule
+                # of selecting the ungappy chain that contains the uncycled compound (here D). Chain
+                # U instead of V is chosen as the single unique segment covering chain G.
+
+                # To identify a chain looping a cycle via the entry or exit of an uncycled compound,
+                # check if the last reaction in the chain is traversed earlier. In the first example
+                # above, the last reaction of the gappy consumption chain, reaction 1, produces
+                # compound C; reaction 1 is encountered earlier entering the cycle, also producing
+                # C. In the second example, the last reaction of the gappy production chain,
+                # reaction 2, consumes compound C; reaction 2 is encountered earlier exiting the
+                # cycle, also consuming C. This method avoids cyclic chains that do not branch off
+                # and only include cycled compounds. Unique segments can be found for such purely
+                # cyclic gappy chains using the standard method.
+                branch_index = is_chain_partly_cyclic(gappy_chain)
+                if branch_index == -1:
+                    # The gappy chain is not partly cyclic.
+                    segments = [
+                        tuple([overlap_indices[0] for overlap_indices in overlap])
+                        for overlap in gap_chain_relations.overlaps
+                    ]
+
+                    # Find unique segments: the longest ungappy chains that encompass the reactions
+                    # of the gappy chain, besides gap reactions not in ungappy chains, and the
+                    # involved compounds.
+                    unique_segments: list[tuple[int]] = []
+                    for i, segment in enumerate(segments):
+                        for j, other_segment in enumerate(segments):
+                            if i == j:
+                                continue
+                            if is_subsequence(segment, other_segment):
+                                break
+                        else:
+                            unique_segments.append(segment)
+                else:
+                    # The gappy chain is partly cyclic. The branch index records the position in the
+                    # chain of the particular occurrence of the reaction that enters or exits the
+                    # cycle.
+                    gappy_kgml_compound_id = gappy_chain.kgml_compound_entries[branch_index].id
+                    segments: list[tuple[int]] = []
+                    for ungappy_chain, overlap in zip(
+                        gap_chain_relations.ungappy_chains, gap_chain_relations.overlaps
+                    ):
+
+                        gappy_overlap_indices = [overlap_indices[0] for overlap_indices in overlap]
+                        if branch_index not in gappy_overlap_indices:
+                            # The ungappy chain does not overlap with the reaction step that enters
+                            # or exits the cycle, so ignore it.
                             break
-                    else:
-                        unique_segments.append(segment)
+                        segments.append(tuple(gappy_overlap_indices))
+
                 # Sort unique segments in ascending order of length, with ties broken by index
                 # position in the chain.
                 unique_segments = sorted(set(unique_segments), key=lambda segment: len(segment))
                 gappy_chain_unique_segments[gappy_chain_index] = unique_segments
+
             if not gappy_chain_unique_segments:
                 raise AssertionError(
                     "The gappy chain would only lack unique segments if the gappy and ungappy "
