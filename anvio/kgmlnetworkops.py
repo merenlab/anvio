@@ -132,21 +132,21 @@ def is_chain_partly_cyclic(chain: Chain) -> int:
     for i, (kgml_reaction, direction) in enumerate(zip(
         chain.kgml_reactions[: -1], chain.kgml_reaction_directions[: -1]
     )):
-        if kgml_reaction == last_kgml_reaction_id and direction == last_direction:
+        if kgml_reaction.id == last_kgml_reaction_id and direction == last_direction:
             break
     else:
         return -1
 
     if (
         chain.is_consumed and
-        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1]
+        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
     ):
         # The partly cyclic consumption chain traversed the same KGML reaction in the same direction
         # producing the same compound as before.
         return i
     elif (
         not chain.is_consumed and
-        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i]
+        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
     ):
         # The partly cyclic production chain traversed the same KGML reaction in the same direction
         # consuming the same reactant as before.
