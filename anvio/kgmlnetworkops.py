@@ -1366,7 +1366,8 @@ class KGMLNetworkWalker:
 @dataclass
 class GapChainRelations:
     """
-    Records how chains with fewer genomic gaps relate to a chain with more gaps.
+    Records how chains with fewer (including 0) genomic gaps, "ungappy" chains, relate to a chain
+    with more gaps, the "gappy" chain.
 
     Attributes
     ==========
@@ -1374,7 +1375,7 @@ class GapChainRelations:
         Chain with more gaps.
 
     ungappy_chains : list[Chain], []
-        Chains with fewer gaps.
+        Chains with fewer (including 0) gaps.
 
     overlaps : list[tuple[tuple[int, int]]], []
         This list has a tuple item for each ungappy chain. There is an inner tuple for each reaction
