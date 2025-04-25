@@ -1574,15 +1574,7 @@ class GapAnalyzer:
             for ungappy_chain, overlap in zip(
                 gap_chain_relations.ungappy_chains, gap_chain_relations.overlaps
             ):
-                if 0 <= len(overlap) - len(ungappy_chain.kgml_reactions) <= 1:
-                    # The number of overlapping reactions can exceed the length of the ungappy chain
-                    # by one in the following situation. The ungappy chain represents part of a
-                    # cycle. The cycle is completed by a gap in the gappy chain. The first reaction
-                    # of the ungappy chain may consume a substrate that doesn't regenerate in the
-                    # cycle, or the last reaction of the ungappy chain may yield an uncycled
-                    # product. The gappy can cover this reaction twice in going around the cycle,
-                    # once encountering the cycled compound, and once encountering the uncycled
-                    # compound.
+                if len(overlap) == len(ungappy_chain.kgml_reactions):
                     gap_chain_relations.is_subchain.append(True)
                 else:
                     gap_chain_relations.is_subchain.append(False)
