@@ -1841,6 +1841,11 @@ class GapAnalyzer:
                         "identically except that more gaps were allowed in the gappy chains."
                     )
 
+            if not gappy_chain_unique_segments:
+                # All of the gappy chains containing the set of gaps were shortcuts in ungappy
+                # chains. The set of gaps is thus ignored.
+                continue
+
             # Sort gappy chains sharing the same gap reactions.
             ranked_gappy_chain_indices: list[int] = rank_gappy_chains_by_segment_lengths(
                 gappy_chain_unique_segments
