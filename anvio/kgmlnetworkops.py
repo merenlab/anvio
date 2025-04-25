@@ -1785,19 +1785,6 @@ class GapAnalyzer:
                         tuple([overlap_indices[0] for overlap_indices in overlap])
                         for overlap in gap_chain_relations.overlaps
                     ]
-
-                    # Find unique segments: the longest ungappy chains that encompass the reactions
-                    # of the gappy chain, besides gap reactions not in ungappy chains, and the
-                    # involved compounds.
-                    unique_segments: list[tuple[int]] = []
-                    for i, segment in enumerate(segments):
-                        for j, other_segment in enumerate(segments):
-                            if i == j:
-                                continue
-                            if is_subsequence(segment, other_segment):
-                                break
-                        else:
-                            unique_segments.append(segment)
                 else:
                     # The gappy chain is partly cyclic. The branch index records the position in the
                     # chain of the particular occurrence of the reaction that enters or exits the
@@ -1815,6 +1802,18 @@ class GapAnalyzer:
                             break
                         segments.append(tuple(gappy_overlap_indices))
 
+                # Find unique segments: the longest ungappy chains that encompass the reactions
+                # of the gappy chain, besides gap reactions not in ungappy chains, and the
+                # involved compounds.
+                unique_segments: list[tuple[int]] = []
+                for i, segment in enumerate(segments):
+                    for j, other_segment in enumerate(segments):
+                        if i == j:
+                            continue
+                        if is_subsequence(segment, other_segment):
+                            break
+                    else:
+                        unique_segments.append(segment)
                 # Sort unique segments in ascending order of length, with ties broken by index
                 # position in the chain.
                 unique_segments = sorted(set(unique_segments), key=lambda segment: len(segment))
