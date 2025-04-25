@@ -87,6 +87,14 @@ class Chain:
         reactions with a type attribute of "reversible". For example, if the compound at the
         beginning of a production chain (is_consumed False) is linked to the next compound by an
         irreversible reaction, then the value is (0, 1).
+
+    cyclic_branch_index : int, None
+        Non-negative integer if the chain is "partly cyclic," meaning that the chain loops a cycle
+        via the entry or exit of an uncycled compound in a "branching" reaction that is part of the
+        cycle, such as acetyl-CoA entering the Krebs cycle by combining with oxaloacetate to form
+        citrate using citrate synthase. The branching reaction occurs twice in the partly cyclic
+        chain, once at the end. The non-negative integer is the index of the first occurrence of the
+        branching KGML reaction that also ends the chain. -1 if the chain is not partly cyclic.
     """
     kgml_compound_entries: list[kgml.Entry] = field(default_factory=list)
     is_consumed: bool = None
@@ -100,59 +108,7 @@ class Chain:
     is_production_terminus: bool = None
     consumption_reversibility_range: tuple[int, int] = None
     production_reversibility_range: tuple[int, int] = None
-
-def is_chain_partly_cyclic(chain: Chain) -> int:
-    """
-    To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
-    compound, check if the last reaction in the chain is traversed earler in the chain.
-
-    This method avoids cyclic chains that do not branch off and only include cycled compounds.
-
-    Stringent criteria must be met for a partly cyclic chain beyond the last KGML reaction occurring
-    a second time in the chain, although that might be sufficient for detecting partly cyclic
-    chains. Additionally, the KGML reaction must occur in the same direction and produce or consume
-    the same KGML compound, which is the cycle-closing compound last in the chain.
-
-    Parameters
-    ==========
-    chain : Chain
-        Chain to be checked.
-
-    Returns
-    =======
-    int
-        If the chain is partly cyclic, a non-negative int representing the index of the first
-        occurrence of the branching KGML reaction that also ends the chain. -1 if the chain is not
-        partly cyclic.
-    """
-    last_kgml_reaction_id = chain.kgml_reactions[-1].id
-    last_direction = chain.kgml_reaction_directions[-1]
-    candidate_cycled_kgml_compound_id = chain.kgml_compound_entries[-1].id
-
-    for i, (kgml_reaction, direction) in enumerate(zip(
-        chain.kgml_reactions[: -1], chain.kgml_reaction_directions[: -1]
-    )):
-        if kgml_reaction.id == last_kgml_reaction_id and direction == last_direction:
-            break
-    else:
-        return -1
-
-    if (
-        chain.is_consumed and
-        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
-    ):
-        # The partly cyclic consumption chain traversed the same KGML reaction in the same direction
-        # producing the same compound as before.
-        return i
-    elif (
-        not chain.is_consumed and
-        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
-    ):
-        # The partly cyclic production chain traversed the same KGML reaction in the same direction
-        # consuming the same reactant as before.
-        return i
-
-    return -1
+    cyclic_branch_index: int = None
 
 class KGMLNetworkWalker:
     """
@@ -1135,6 +1091,10 @@ class KGMLNetworkWalker:
                             len(candidate_terminal_chain.kgml_reactions) + 1
                         )
 
+                    candidate_terminal_chain.cyclic_branch_index = self.get_cyclic_branch_index(
+                        candidate_terminal_chain
+                    )
+
                     terminal_chains.append(candidate_terminal_chain)
 
         if return_terminal_chains:
@@ -1833,7 +1793,7 @@ class GapAnalyzer:
                 # cycle, also consuming C. This method avoids cyclic chains that do not branch off
                 # and only include cycled compounds. Unique segments can be found for such purely
                 # cyclic gappy chains using the standard method.
-                branch_index = is_chain_partly_cyclic(gappy_chain)
+                branch_index = gappy_chain.cyclic_branch_index
                 if branch_index == -1:
                     # The gappy chain is not partly cyclic.
                     segments = [
