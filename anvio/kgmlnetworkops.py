@@ -101,7 +101,7 @@ class Chain:
     consumption_reversibility_range: tuple[int, int] = None
     production_reversibility_range: tuple[int, int] = None
 
-def is_chain_partly_cyclic(chain: Chain) -> bool:
+def is_chain_partly_cyclic(chain: Chain) -> int:
     """
     To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
     compound, check if the last reaction in the chain is traversed earler in the chain.
@@ -120,8 +120,10 @@ def is_chain_partly_cyclic(chain: Chain) -> bool:
 
     Returns
     =======
-    bool
-        True if the chain is partly cyclic, False
+    int
+        If the chain is partly cyclic, a non-negative int representing the index of the first
+        occurrence of the branching KGML reaction that also ends the chain. -1 if the chain is not
+        partly cyclic.
     """
     last_kgml_reaction_id = chain.kgml_reactions[-1].id
     last_direction = chain.kgml_reaction_directions[-1]
@@ -133,7 +135,7 @@ def is_chain_partly_cyclic(chain: Chain) -> bool:
         if kgml_reaction == last_kgml_reaction_id and direction == last_direction:
             break
     else:
-        return False
+        return -1
 
     if (
         chain.is_consumed and
@@ -141,16 +143,16 @@ def is_chain_partly_cyclic(chain: Chain) -> bool:
     ):
         # The partly cyclic consumption chain traversed the same KGML reaction in the same direction
         # producing the same compound as before.
-        return True
+        return i
     elif (
         not chain.is_consumed and
         candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i]
     ):
         # The partly cyclic production chain traversed the same KGML reaction in the same direction
         # consuming the same reactant as before.
-        return True
+        return i
 
-    return False
+    return -1
 
 class KGMLNetworkWalker:
     """
