@@ -1459,14 +1459,8 @@ class GapAnalyzer:
             overlaps: list[tuple[tuple[int, int]]]
         ) -> tuple[list[Chain], list[tuple[tuple[int, int]]]]:
             """
-            Sort ungappy chains overlapping with a particular gappy chain.
-
-            The first sort level is the index of the first overlapping reaction in the gappy chain.
-            The second sort level is the ID of the first KGML compound entry in the ungappy chain,
-            and the third sort level is the ID of the last KGML compound entry in the ungappy chain.
-            The second and third sort levels differentiate ungappy chains that consist of the same
-            reactions but that start with one of multiple reactants or end with one of multiple
-            products.
+            Sort ungappy chains overlapping with a particular gappy chain by the index of the first
+            overlapping reaction step in the gappy chain.
 
             Parameters
             ==========
@@ -1475,8 +1469,8 @@ class GapAnalyzer:
 
             overlaps : list[tuple[tuple[int, int]]]
                 Each outer tuple corresponds to each ungappy chain. Inner tuples represent KGML
-                reaction reactions shared, in order, between the gappy and ungappy chains. The items
-                of the tuple are the reaction indices in the gappy and ungappy chains, respectively.
+                reactions shared, in order, between the gappy and ungappy chains. The items of the
+                tuple are the reaction indices in the gappy and ungappy chains, respectively.
 
             Returns
             =======
@@ -1486,16 +1480,11 @@ class GapAnalyzer:
             list[tuple[int, int]]
                 Sorted overlaps, corresponding to sorted ungappy chains.
             """
-            ungappy_chain_keys: dict[int, tuple[int, str, str]] = {}
+            ungappy_keys: dict[int, int] = {}
             for i, (ungappy_chain, overlap) in enumerate(zip(ungappy_chains, overlaps)):
-                key = []
-                key.append(overlap[0][0])
-                key.append(ungappy_chain.kgml_compound_entries[0].id)
-                key.append(ungappy_chain.kgml_compound_entries[-1].id)
-                ungappy_chain_keys[i] = key
+                ungappy_keys[i] = overlap[0][0]
             sorted_ungappy_chain_indices = sorted(
-                ungappy_chain_keys,
-                key=lambda ungappy_chain_index: ungappy_chain_keys[ungappy_chain_index]
+                ungappy_keys, key=lambda ungappy_chain_index: ungappy_keys[ungappy_chain_index]
             )
             sorted_ungappy_chains = []
             sorted_overlaps = []
