@@ -1703,7 +1703,7 @@ class GapAnalyzer:
             ):
                 gappy_chain = gap_chain_relations.gappy_chain
 
-                # Ignore gappy chains that, beside gap reactions, contain a smaller subset of
+                # Ignore gappy chains that, beside gap reactions, consist of a smaller subset of
                 # ungappy chain reactions. This is caused by gaps in the gappy chain creating
                 # "shortcuts" in the ungappy chain.
                 kgml_reaction_ids_absent_gaps = [
