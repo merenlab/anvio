@@ -2149,6 +2149,7 @@ class GapFiller:
             for relations in shared_gaps.gap_chain_relations:
                 gapped_chain = relations.gappy_chain
                 for kgml_reaction in gapped_chain.kgml_reactions:
+                    kgml_reaction_id = kgml_reaction.id
                     if kgml_reaction_id in self.kgml_reaction_id_ko_definitions:
                         continue
                     ko_ids = self.walker.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction_id]
@@ -2156,7 +2157,7 @@ class GapFiller:
                     for ko_id in ko_ids:
                         ko_name = ko_list_df.loc[ko_id]['function']
                         ko_definitions.append((ko_id, ko_name))
-                    self.kgml_reaction_id_ko_definitions[kgml_reaction] = ko_definitions
+                    self.kgml_reaction_id_ko_definitions[kgml_reaction_id] = ko_definitions
 
         # Record which KOs link genes to reactions in gapped chains.
         self.gapped_chains_ko_ids: dict[str, list[list[tuple[str]]]] = {}
