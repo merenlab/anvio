@@ -1379,9 +1379,10 @@ class GapChainRelations:
 
     overlaps : list[tuple[tuple[int, int]]], []
         This list has a tuple item for each ungappy chain. There is an inner tuple for each reaction
-        shared between the gappy and ungappy chain, with the first item of the inner tuple being the
-        index of the reaction in the gappy chain and the second item being the index of the reaction
-        in the ungappy chain.
+        step shared between the gappy and ungappy chain, with the first item of the inner tuple
+        being the index of the reaction in the gappy chain and the second item being the index of
+        the reaction in the ungappy chain. Overlap involves both chains consuming the same reactant
+        and producing the same product in the reaction step.
 
     is_subchain : list[bool], []
         This list has an item for each ungappy chain. An ungappy chain has a value of True if the
