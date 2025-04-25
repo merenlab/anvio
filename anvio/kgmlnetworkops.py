@@ -1517,9 +1517,8 @@ class GapAnalyzer:
             gap_chain_relations = GapChainRelations(gappy_chain=gappy_chain)
             shared_gaps.gap_chain_relations.append(gap_chain_relations)
 
-            gappy_chain_kgml_reaction_ids = [
-                kgml_reaction.id for kgml_reaction in gappy_chain.kgml_reactions
-            ]
+            gappy_kgml_reaction_ids = [kr.id for kr in gappy_chain.kgml_reactions]
+            gappy_kgml_compound_ids = [kc.id for kc in gappy_chain.kgml_compound_entries]
 
             # Record information on ungappy chains overlapping with the gappy chain.
             overlaps: list[tuple[tuple[int, int]]] = []
@@ -1530,30 +1529,40 @@ class GapAnalyzer:
                     # gappy chain.
                     continue
 
-                ungappy_chain_kgml_reaction_ids = [
-                    kgml_reaction.id for kgml_reaction in ungappy_chain.kgml_reactions
-                ]
+                ungappy_kgml_reaction_ids = [kr.id for kr in ungappy_chain.kgml_reactions]
 
-                if gappy_chain_kgml_reaction_ids == ungappy_chain_kgml_reaction_ids:
-                    # Ignore gappy and ungappy chains with identical reactions. (The same chains can
-                    # be returned when seeking chains allowing for more and fewer gaps.)
+                if gappy_kgml_reaction_ids == ungappy_kgml_reaction_ids:
+                    # Ignore gappy and ungappy chains with identical reactions. The same chains can
+                    # be returned when seeking chains allowing for more and fewer gaps. Chains can
+                    # also have the same sequence of reactions but differ in which one of multiple
+                    # initial reactants or final products of the reaction sequence are included in
+                    # each chain.
                     continue
 
+                ungappy_kgml_compound_ids = [kc.id for kc in ungappy_chain.kgml_compound_entries]
+
                 overlap: list[tuple[int, int]] = []
-                for i, gappy_chain_kgml_reaction_id in enumerate(gappy_chain_kgml_reaction_ids):
-                    for j, ungappy_chain_kgml_reaction_id in enumerate(
-                        ungappy_chain_kgml_reaction_ids
+                prev_ungappy_overlap_index = 0
+                for i, gappy_kgml_reaction_id in enumerate(gappy_kgml_reaction_ids):
+                    for j, ungappy_kgml_reaction_id in enumerate(
+                        ungappy_kgml_reaction_ids[prev_ungappy_overlap_index: ]
                     ):
-                        if gappy_chain_kgml_reaction_id == ungappy_chain_kgml_reaction_id:
+                        if (
+                            gappy_kgml_reaction_id == ungappy_kgml_reaction_id and
+                            gappy_kgml_compound_ids[i] == ungappy_kgml_compound_ids[j] and
+                            gappy_kgml_compound_ids[i + 1] == ungappy_kgml_compound_ids[j + 1]
+                        ):
                             # Record the index of the reaction in the gappy and ungappy chains,
                             # respectively.
                             overlap.append((i, j))
+                            # Backtracking to previous ungappy chain reactions is not allowed.
+                            prev_ungappy_overlap_index = j + 1
+
                 if not overlap:
-                    # Ignore ungappy chains that do not overlap with the gappy chain.
+                    # Ignore ungappy chains that do not overlap the gappy chain.
                     continue
                 ungappy_chains.append(ungappy_chain)
-                # Each ungappy chain's overlap with the gappy chain is represented by a tuple of
-                # tuples.
+                # Represent each ungappy chain's overlap of the gappy chain as a tuple of tuples.
                 overlaps.append(tuple(overlap))
 
             # Sort ungappy chains associated with the gappy chain.
