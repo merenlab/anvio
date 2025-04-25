@@ -1834,12 +1834,12 @@ class GapAnalyzer:
                 unique_segments = sorted(set(unique_segments), key=lambda segment: len(segment))
                 gappy_chain_unique_segments[gappy_chain_index] = unique_segments
 
-            if not gappy_chain_unique_segments:
-                raise AssertionError(
-                    "The gappy chain would only lack unique segments if the gappy and ungappy "
-                    "chains do not have the proper relationship, in which they were found "
-                    "identically except that more gaps were allowed in the gappy chains."
-                )
+                if not gappy_chain_unique_segments:
+                    raise AssertionError(
+                        "The gappy chain would only lack unique segments if the gappy and ungappy "
+                        "chains do not have the proper relationship, in which they were found "
+                        "identically except that more gaps were allowed in the gappy chains."
+                    )
 
             # Sort gappy chains sharing the same gap reactions.
             ranked_gappy_chain_indices: list[int] = rank_gappy_chains_by_segment_lengths(
