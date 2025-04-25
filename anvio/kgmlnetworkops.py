@@ -101,6 +101,57 @@ class Chain:
     consumption_reversibility_range: tuple[int, int] = None
     production_reversibility_range: tuple[int, int] = None
 
+def is_chain_partly_cyclic(chain: Chain) -> bool:
+    """
+    To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
+    compound, check if the last reaction in the chain is traversed earler in the chain.
+
+    This method avoids cyclic chains that do not branch off and only include cycled compounds.
+
+    Stringent criteria must be met for a partly cyclic chain beyond the last KGML reaction occurring
+    a second time in the chain, although that might be sufficient for detecting partly cyclic
+    chains. Additionally, the KGML reaction must occur in the same direction and produce or consume
+    the same KGML compound, which is the cycle-closing compound last in the chain.
+
+    Parameters
+    ==========
+    chain : Chain
+        Chain to be checked.
+
+    Returns
+    =======
+    bool
+        True if the chain is partly cyclic, False
+    """
+    last_kgml_reaction_id = chain.kgml_reactions[-1].id
+    last_direction = chain.kgml_reaction_directions[-1]
+    candidate_cycled_kgml_compound_id = chain.kgml_compound_entries[-1].id
+
+    for i, (kgml_reaction, direction) in enumerate(zip(
+        chain.kgml_reactions[: -1], chain.kgml_reaction_directions[: -1]
+    )):
+        if kgml_reaction == last_kgml_reaction_id and direction == last_direction:
+            break
+    else:
+        return False
+
+    if (
+        chain.is_consumed and
+        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1]
+    ):
+        # The partly cyclic consumption chain traversed the same KGML reaction in the same direction
+        # producing the same compound as before.
+        return True
+    elif (
+        not chain.is_consumed and
+        candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i]
+    ):
+        # The partly cyclic production chain traversed the same KGML reaction in the same direction
+        # consuming the same reactant as before.
+        return True
+
+    return False
+
 class KGMLNetworkWalker:
     """
     Walk chains of compounds linked by reactions in a KGML representation of a KEGG pathway.
