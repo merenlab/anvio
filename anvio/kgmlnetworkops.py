@@ -1705,16 +1705,19 @@ class GapAnalyzer:
                 kgml_reaction_ids_absent_gaps = [
                     kgml_reaction.id for kgml_reaction in gappy_chain.kgml_reactions
                     if kgml_reaction.id not in gap_kgml_reaction_ids
-                ])
-                for ungappy_chain in gap_chain_relations.ungappy_chains:
-                    if not kgml_reaction_ids_absent_gaps.difference(
-                        set([kgml_reaction.id for kgml_reaction in ungappy_chain.kgml_reactions])
-                    ):
-                        is_difference_gaps = True
+                ]
+                for ungappy_chain, overlap in zip(
+                    gap_chain_relations.ungappy_chains, gap_chain_relations.overlaps
+                ):
+                    if len(overlap) == len(kgml_reaction_ids_absent_gaps):
+                        assert (
+                            len(ungappy_chain.kgml_reactions) > len(kgml_reaction_ids_absent_gaps)
+                        )
+                        is_shortcut = True
                         break
                 else:
-                    is_difference_gaps = False
-                if is_difference_gaps:
+                    is_shortcut = False
+                if is_shortcut:
                     continue
 
                 segments = [
