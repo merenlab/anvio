@@ -1542,21 +1542,25 @@ class GapAnalyzer:
                 ungappy_kgml_compound_ids = [kc.id for kc in ungappy_chain.kgml_compound_entries]
 
                 overlap: list[tuple[int, int]] = []
-                prev_ungappy_overlap_index = 0
-                for i, gappy_kgml_reaction_id in enumerate(gappy_kgml_reaction_ids):
-                    for j, ungappy_kgml_reaction_id in enumerate(
-                        ungappy_kgml_reaction_ids[prev_ungappy_overlap_index: ]
+                prev_ungappy_overlap_index = -1
+                for gappy_index, gappy_kgml_reaction_id in enumerate(gappy_kgml_reaction_ids):
+                    for i, ungappy_kgml_reaction_id in enumerate(
+                        ungappy_kgml_reaction_ids[prev_ungappy_overlap_index + 1: ]
                     ):
+                        ungappy_index = prev_ungappy_overlap_index + i + 1
                         if (
                             gappy_kgml_reaction_id == ungappy_kgml_reaction_id and
-                            gappy_kgml_compound_ids[i] == ungappy_kgml_compound_ids[j] and
-                            gappy_kgml_compound_ids[i + 1] == ungappy_kgml_compound_ids[j + 1]
+                            gappy_kgml_compound_ids[gappy_index] ==
+                            ungappy_kgml_compound_ids[ungappy_index] and
+                            gappy_kgml_compound_ids[gappy_index + 1] ==
+                            ungappy_kgml_compound_ids[ungappy_index + 1]
                         ):
                             # Record the index of the reaction in the gappy and ungappy chains,
                             # respectively.
-                            overlap.append((i, j))
+                            overlap.append((gappy_index, ungappy_index))
                             # Backtracking to previous ungappy chain reactions is not allowed.
-                            prev_ungappy_overlap_index = j + 1
+                            prev_ungappy_overlap_index = ungappy_index
+                            break
 
                 if not overlap:
                     # Ignore ungappy chains that do not overlap the gappy chain.
