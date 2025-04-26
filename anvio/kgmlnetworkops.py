@@ -1036,14 +1036,34 @@ class KGMLNetworkWalker:
                                 # The reaction chain would end with a gap.
                                 continue
 
-                    # For each compound in a terminal chain, a subchain that extends to the terminus
-                    # is also generated as a "candidate terminal chain" and is ignored.
+                    # A subchain to each compound in a terminal chain is also generated as a
+                    # "candidate terminal chain" and is ignored.
                     if terminal_chains:
-                        if [c.id for c in candidate_terminal_chain.kgml_compound_entries] == [
-                            c.id for c in terminal_chains[-1].kgml_compound_entries[
-                                :len(candidate_terminal_chain.kgml_compound_entries)
+                        candidate_kgml_compound_ids = [
+                            c.id for c in candidate_terminal_chain.kgml_compound_entries
+                        ]
+                        terminal_kgml_compound_ids = [
+                            c.id for c in terminal_chains[-1].kgml_compound_entries
+                        ]
+                        candidate_kgml_reaction_ids = [
+                            r.id for r in candidate_terminal_chain.kgml_reactions
+                        ]
+                        terminal_kgml_reaction_ids = [
+                            r.id for r in terminal_chains[-1].kgml_reactions
+                        ]
+                        if (
+                            candidate_kgml_compound_ids == terminal_kgml_compound_ids[
+                                : len(candidate_kgml_compound_ids)
+                            ] and candidate_kgml_reaction_ids == terminal_kgml_reaction_ids[
+                                : len(candidate_kgml_reaction_ids)
                             ]
-                        ]:
+                        ):
+                            if len(candidate_kgml_compound_ids) == len(terminal_kgml_compound_ids):
+                                raise AssertionError(
+                                    "Only shorter subchains of the last found terminal chain were "
+                                    "expected here, but a candidate terminal chain with the same "
+                                    "KGML reactions and compounds was found."
+                                )
                             continue
 
                     if candidate_terminal_chain.is_consumed:
