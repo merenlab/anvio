@@ -999,10 +999,15 @@ class KGMLNetworkWalker:
 
                 # Recurse on each KGML compound on the other side of the reaction.
                 for next_kgml_compound_id in next_kgml_compound_ids:
-                    if len(current_chain.kgml_compound_entries) > 2:
-                        if next_kgml_compound_id == current_chain.kgml_compound_entries[-2].id:
-                            # Avoid backtracking to the previous KGML compound in the chain.
-                            continue
+                    if (
+                        len(current_chain.kgml_compound_entries) >= 2 and
+                        next_kgml_compound_id == current_chain.kgml_compound_entries[-2].id
+                    ):
+                        # Avoid backtracking to the previous KGML compound in the chain. This causes
+                        # the shortest cycles with a single intermediate, such as the cyclic reuse
+                        # of thiamine diphosphate (ThPP) in the Krebs cycle (00020), to not close in
+                        # chains.
+                        continue
 
                     new_chain = Chain(
                         kgml_compound_entries=current_chain.kgml_compound_entries.copy(),
