@@ -1091,8 +1091,8 @@ class KGMLNetworkWalker:
                             )
 
                     i = 0
-                    for kgml_reaction in candidate_terminal_chain.kgml_reactions:
-                        if kgml_reaction.type == 'irreversible':
+                    for candidate_kgml_reaction in candidate_terminal_chain.kgml_reactions:
+                        if candidate_kgml_reaction.type == 'irreversible':
                             break
                         i += 1
                     if candidate_terminal_chain.is_consumed:
@@ -1101,8 +1101,8 @@ class KGMLNetworkWalker:
                         candidate_terminal_chain.production_reversibility_range = (0, i + 1)
 
                     i = 0
-                    for kgml_reaction in candidate_terminal_chain.kgml_reactions[::-1]:
-                        if kgml_reaction.type == 'irreversible':
+                    for candidate_kgml_reaction in candidate_terminal_chain.kgml_reactions[::-1]:
+                        if candidate_kgml_reaction.type == 'irreversible':
                             break
                         i += 1
                     if candidate_terminal_chain.is_consumed:
