@@ -1273,7 +1273,8 @@ class KGMLNetworkWalker:
         compound through a reaction in the cycle, check if the last reaction in the chain is
         traversed earler in the chain.
 
-        This method avoids cyclic chains that do not branch off and only include cycled compounds.
+        This method distinguishes partly cyclic chains from purely cyclic chains, which do not
+        branch off and only include cycled compounds.
 
         Stringent criteria are imposed in the identification of a partly cyclic chain beyond the
         last KGML reaction occurring a second time in the chain, although that might be sufficient
