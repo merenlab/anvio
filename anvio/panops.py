@@ -2098,10 +2098,18 @@ class PangenomeGraph():
                 }
                 i += 1
 
+        i = 0
+        gene_calls_dict = {}
+        for node, data in self.graph.nodes(data='gene_calls'):
+            for genome, gene_call in data.items():
+                gene_calls_dict[i] = {'syn_cluster': node, 'genome': genome, 'gene_caller_id': gene_call}
+                i += 1
+    
+        gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
 
-        return(region_sides_df, nodes_df)
+        return(region_sides_df, nodes_df, gene_calls_df)
 
     def summarize_pangenome_graph_depreciated(self):
         """This is the main summary function for pangenome graphs. Input is the self
@@ -3518,16 +3526,18 @@ class PangenomeGraphMaster():
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
         self.pangenome_graph.set_node_positions(node_positions)
-        region_sides_df, nodes_df = self.pangenome_graph.summarize_pangenome_graph()
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize_pangenome_graph()
         # nodes_db_mining_df = pd.merge(nodes_df, self.db_mining_df, how='left', on=['syn_cluster', 'genome'], copy=False)
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
         for index, line in additional_info.iterrows():
             self.pangenome_graph.graph.nodes()[index]['layer']['backbone'] = True if line["motif"] == "SynCGC" else False
 
+        gene_calls_df.to_csv(self.output_dir + '/gene_calls_df.tsv', sep='\t')
         region_sides_df.to_csv(self.output_dir + '/region_sides_df.tsv', sep='\t')
         nodes_df.to_csv(self.output_dir + '/nodes_df.tsv', sep='\t')
 
+        self.run.info_single(f"Exported gene calls table to {self.output_dir + '/gene_calls_df.tsv'}.")
         self.run.info_single(f"Exported region table to {self.output_dir + '/region_sides_df.tsv'}.")
         self.run.info_single(f"Exported nodes table to {self.output_dir + '/nodes_df.tsv'}.")
         self.run.info_single("Done.")
