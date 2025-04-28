@@ -589,3 +589,21 @@
       inst: The Centre for Microbiology and Environmental Systems Science at the University of Vienna
       inst_link: https://cemess.univie.ac.at/
       current: true
+
+- github: katysloz
+  name:  Kathryn Lambert-Slosarska (Katy)
+  avatar: bio-katy.jpeg
+  email: klambert@mpi-bremen.de
+  git_records:
+    - klambertslosarska@gmail.com
+  linkedin: katy-lambert-slosarksa-96030219b
+  orcid: 0000-0003-1612-6794
+  bio: "I am a marine (micro)biologist utilising computational approaches to understand the dynamism and impact of diversity-generating retroelements in microbial lifestyles within changing marine ecosystems."
+  affiliations:
+    - title: Graduate Student
+      inst: Helmholtz Institute for Functional Marine Biodiversity (HIFMB)
+      inst_link: https://hifmb.de
+      current: true
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/en/Home.html
+      current: true
