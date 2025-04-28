@@ -2128,8 +2128,8 @@ D = {
              'help': "Directory path for output files"}
                 ),
      # start of anvi-pan-graph related input and output variables:
-    'testing-yaml': (
-            ['--testing-yaml'],
+    'pan-graph-yaml': (
+            ['--pan-graph-yaml'],
             {'metavar': 'YAML',
              'type': str,
              'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}

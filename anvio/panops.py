@@ -11,6 +11,7 @@ import re
 import json
 import math
 import copy
+import yaml
 import argparse
 import pandas as pd
 import networkx as nx
@@ -1335,16 +1336,59 @@ class SyntenyGeneCluster():
         self.pan_db = A('pan_db')
         self.external_genomes = A('external_genomes')
         self.genomes_storage = A('genomes_storage')
+        self.pan_graph_yaml = A('pan_graph_yaml')
+
+        if self.pan_graph_yaml:
+            with open(self.pan_graph_yaml) as file:
+                self.yaml_file = yaml.safe_load(file)
+        else:
+            self.yaml_file = {}
 
         if A('genome_names'):
             self.genome_names = A('genome_names').split(',')
         elif self.external_genomes:
             self.genome_names = pd.read_csv(self.external_genomes, header=0, sep="\t")['name'].to_list()
+        elif self.pan_graph_yaml:
+            self.genome_names = list(self.yaml_file.keys())
         else:
             raise ConfigError("Unfortunately we couldn't find an external genomes files, please add one :)")
 
-        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources()
+        if self.pan_graph_yaml:
+            self.functional_annotation_sources_available = []
+        else:
+            self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources()
         # self.db_mining_df = pd.DataFrame()
+
+
+    def yaml_mining(self):
+        
+        i = 0
+        db_mining_dict = {}
+        for genome in self.genome_names:
+            current_pos = 0
+            for contig_num, contig in enumerate(self.yaml_file[genome]):
+                for gene_call, gene_cluster in enumerate(contig):
+
+                    direction = 'l' if gene_cluster.endswith('!') else 'r'
+                    gene_cluster = gene_cluster.replace('!', '')
+
+                    db_mining_dict[i] = {
+                        'genome': genome,
+                        'gene_cluster': gene_cluster,
+                        'gene_caller_id': gene_call,
+                        'contig': genome + '_' + str(contig_num),
+                        'direction': direction,
+                        'start': current_pos,
+                        'stop': current_pos + 400
+                    }
+                    current_pos += 500
+                    i += 1
+
+        
+        db_mining_df = pd.DataFrame.from_dict(db_mining_dict, orient='index').set_index(["genome", "gene_caller_id"])
+        self.run.info_single(f"Done.")
+        return(db_mining_df)
+
 
     def db_mining(self):
         """Major mining function. Can be used outside of the purpose of creating anvi'o
@@ -1575,7 +1619,7 @@ class SyntenyGeneCluster():
                 return (1.0 - f_val / div)
 
 
-    def run_contextualize_paralogs_algorithm(self, n=100, alpha=0.75, beta=0.5, gamma=0.25, output_dir='', output_synteny_gene_cluster_dendrogram=False):
+    def run_contextualize_paralogs_algorithm(self, db_mining_df, n=100, alpha=0.75, beta=0.5, gamma=0.25, output_dir='', output_synteny_gene_cluster_dendrogram=False):
         """A function that resolves the graph context of paralogs based on gene synteny
         information across genomes and adds this information to the db_mining_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
@@ -1647,7 +1691,6 @@ class SyntenyGeneCluster():
             plus the additional column of unipque syn clusters.
         """
 
-        db_mining_df = self.db_mining()
         # db_mining_df.to_csv(output_dir + '/db_mining_df.tsv', sep='\t')
 
         self.run.warning(None, header="Select paralog context", lc="green")
@@ -1941,7 +1984,7 @@ class PangenomeGraph():
             reverse_start = min(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
             reverse_end = max(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
 
-            if (reverse_end - reverse_start) / all_positions_max < 0.95:
+            if (reverse_end - reverse_start) / all_positions_max < 0.90:
                 reversed_positions += list(range(reverse_start, reverse_end + 1))
 
         # print(sorted(set(reversed_positions)))
@@ -1949,16 +1992,22 @@ class PangenomeGraph():
         core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]) - set(reversed_positions))
         # print(core_positions)
 
-        core_position_min = min(core_positions)
-        core_position_max = max(core_positions)
+        regions_dict = {}
 
-        overlap = [i for i in range(all_positions_min, core_position_min)] + [i for i in range(core_position_max+1, all_positions_max+1)]
+        if core_positions:
+            core_position_min = min(core_positions)
+            core_position_max = max(core_positions)
 
-        regions_dict = {pos:-1 for pos in core_positions}
-        regions_dict |= {pos:0 for pos in overlap}
-        regions_id = 1
+            overlap = [i for i in range(all_positions_min, core_position_min)] + [i for i in range(core_position_max+1, all_positions_max+1)]
+            regions_dict |= {pos:0 for pos in overlap}
+            regions_id = 1
 
-        core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
+            regions_dict = {pos:-1 for pos in core_positions}
+
+            core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
+        else:
+            regions_id = 0
+            core_positions_pairs = [(all_positions_min, all_positions_max)]
 
         for (i,j) in core_positions_pairs:
             if i != j-1:
@@ -2048,7 +2097,6 @@ class PangenomeGraph():
                     'density': 1.0
                 }
                 i += 1
-        # print(regions_summary_dict)
 
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
@@ -2589,9 +2637,16 @@ class DirectedForce():
             # Suboptimal run, trying to find a sufficient starting point without a lot of ressources.
             G = nx.DiGraph(H)
             add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0]
-            G = self.add_node_to_connector('START', add_start, G, max_weight)
-            # G, M, removed_nodes, removed_edges = self.find_maximum_branching(G)
-            G, M = self.find_maximum_branching(G)
+            
+            if not add_start:
+                G, M = self.find_maximum_branching(G)
+                add_start = [node for node in M.nodes() if len(list(M.predecessors(node))) == 0]
+                G = self.add_node_to_connector('START', add_start, G, max_weight)
+                M = self.add_node_to_connector('START', add_start, M, max_weight)
+            else:
+                G = self.add_node_to_connector('START', add_start, G, max_weight)
+                # G, M, removed_nodes, removed_edges = self.find_maximum_branching(G)
+                G, M = self.find_maximum_branching(G)
 
             self.run.info_single("Solving complex graph.")
             changed_edges = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
@@ -3396,7 +3451,14 @@ class PangenomeGraphMaster():
         self.genomes_storage = A('genomes_storage')
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
+        self.pan_graph_yaml = A('pan_graph_yaml')
         self.project_name = A('project_name')
+
+        if self.pan_graph_yaml:
+            with open(self.pan_graph_yaml) as file:
+                self.yaml_file = yaml.safe_load(file)
+        else:
+            self.yaml_file = {}
 
         if A('genome_reverse'):
             self.genome_reverse = A('genome_reverse').split(',')
@@ -3407,6 +3469,8 @@ class PangenomeGraphMaster():
             self.genome_names = A('genome_names').split(',')
         elif self.external_genomes_txt:
             self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+        elif self.pan_graph_yaml:
+            self.genome_names = list(self.yaml_file.keys())
         else:
             self.genome_names = []
 
@@ -3500,14 +3564,22 @@ class PangenomeGraphMaster():
     def process_pangenome_graph(self):
 
         if self.pan_graph_json:
-            self.import_pangenome_graph()
+            self.import_pangenome_graph()        
         else:
-            # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
             self.sanity_check()
-            self.db_mining_df = SyntenyGeneCluster(self.args).run_contextualize_paralogs_algorithm(self.n, self.alpha, self.beta, self.gamma, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
+            # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
+            SynGC = SyntenyGeneCluster(self.args)
+
+            if self.pan_graph_yaml:
+                db_mining_df = SynGC.yaml_mining()
+            else:
+                db_mining_df = SynGC.db_mining()
+            
+            self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.n, self.alpha, self.beta, self.gamma, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
 
             if self.start_gene:
                 self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
+            
             self.create_pangenome_graph()
 
         if len(self.db_mining_df) != 0:
