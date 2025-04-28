@@ -141,7 +141,7 @@ def main(args):
                           "is a bit too much to display comfortably. You can change your min/max departure from "
                           "consensus/reference values, or you can ask anvi'o to randomly select a number of positions "
                           "from your data dictionary by using `--random` parameter. Alternatively you can use the flag "
-                          "`--just-to-it` to not see this message and letting anvi'o to try to cluster these data for you.")
+                          "`--just-do-it` to not see this message and letting anvi'o to try to cluster these data for you.")
     if len(data_dict) > 10000 and args.just_do_it:
         run.warning("There are %d positions to cluster, and anvi'o will try to do it since you so nicely asked anvi'o to "
                     "just to it. Brace yourself (for a potentially never-ending clustering operation).")
