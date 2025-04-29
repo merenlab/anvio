@@ -566,8 +566,8 @@ function create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, co
 }
 
 function transform(x, y, theta) {
-  var circle_x = y * Math.sin(deg2rad(theta * x))
-  var circle_y = y * Math.cos(deg2rad(theta * x))
+  var circle_x = y * Math.sin(deg2rad(theta * (x+0.5)))
+  var circle_y = y * Math.cos(deg2rad(theta * (x+0.5)))
   return [circle_x, circle_y]
 }
 
@@ -797,7 +797,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var trna_color = $('#trna_color')[0].value;
   var layer_color = $('#layer_color')[0].value;
 
-  var theta = angle / (global_x)
+  var theta = angle / (global_x+1)
   var start_offset = parseInt($('#inner')[0].value);
   // var start_offset = 0
   
@@ -921,9 +921,9 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
         var add_start = 1
         var add_stop = 0
 
-        var i_x = x-add_start
+        var i_x = x-add_start-0.5
         var i_y = layer_start
-        var j_x = x+add_stop
+        var j_x = x+add_stop+0.5
         var j_y = layer_stop
 
         // console.log(i_x, i_y, j_x, j_y)
@@ -939,7 +939,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     
     var [arrow_size, arrow_start, arrow_stop] = middle_layers['arrow']
 
-    var pointer_length = 5/ theta
+    var pointer_length = 10/ theta
     var pointer_height = arrow_stop - arrow_start
     var arrow_thickness = pointer_height / 4
     var steps = Math.round((30 / theta))
@@ -949,13 +949,13 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     }
 
     if (linear == 0){
-      var [circle_c_x, circle_c_y] = transform(global_x - pointer_length, arrow_start + arrow_thickness, theta)
-      var [circle_a_x, circle_a_y] = transform(0, arrow_start + arrow_thickness, theta)
-      var [circle_b_x, circle_b_y] = transform(0, arrow_stop - arrow_thickness, theta)
-      var [circle_d_x, circle_d_y] = transform(global_x - pointer_length, arrow_stop - arrow_thickness, theta)
-      var [circle_f_x, circle_f_y] = transform(global_x - pointer_length, arrow_stop, theta)
-      var [circle_g_x, circle_g_y] = transform(global_x, arrow_start + arrow_thickness * 2, theta)
-      var [circle_e_x, circle_e_y] = transform(global_x - pointer_length, arrow_start, theta)
+      var [circle_c_x, circle_c_y] = transform(global_x + 0.5 - pointer_length, arrow_start + arrow_thickness, theta)
+      var [circle_a_x, circle_a_y] = transform(0-0.5, arrow_start + arrow_thickness, theta)
+      var [circle_b_x, circle_b_y] = transform(0-0.5, arrow_stop - arrow_thickness, theta)
+      var [circle_d_x, circle_d_y] = transform(global_x + 0.5 - pointer_length, arrow_stop - arrow_thickness, theta)
+      var [circle_f_x, circle_f_y] = transform(global_x + 0.5 - pointer_length, arrow_stop, theta)
+      var [circle_g_x, circle_g_y] = transform(global_x + 0.5, arrow_start + arrow_thickness * 2, theta)
+      var [circle_e_x, circle_e_y] = transform(global_x + 0.5 - pointer_length, arrow_start, theta)
 
       if ((global_x) * theta > 180) {
         var arc_flag = 1
@@ -974,16 +974,16 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
         ' Z" stroke-width="0" fill="slateGrey"></path>')
       )
 
-      var [circle_h_x, circle_h_y] = transform(0, arrow_start + arrow_thickness * 2, theta)
+      var [circle_h_x, circle_h_y] = transform(0-0.5, arrow_start + arrow_thickness * 2, theta)
 
     } else {
-      var [circle_c_x, circle_c_y] = [(global_x - pointer_length) * node_distance_x, -(arrow_start + arrow_thickness)]
-      var [circle_a_x, circle_a_y] = [0, -(arrow_start + arrow_thickness)]
-      var [circle_b_x, circle_b_y] = [0, -(arrow_stop - arrow_thickness)]
-      var [circle_d_x, circle_d_y] = [(global_x - pointer_length) * node_distance_x , -(arrow_stop - arrow_thickness)]
-      var [circle_f_x, circle_f_y] = [(global_x - pointer_length) * node_distance_x, -arrow_stop]
-      var [circle_g_x, circle_g_y] = [global_x * node_distance_x, -(arrow_start + arrow_thickness * 2)]
-      var [circle_e_x, circle_e_y] = [(global_x - pointer_length) * node_distance_x, -arrow_start]
+      var [circle_c_x, circle_c_y] = [(global_x + 0.5 - pointer_length) * node_distance_x, -(arrow_start + arrow_thickness)]
+      var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness)]
+      var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -(arrow_stop - arrow_thickness)]
+      var [circle_d_x, circle_d_y] = [(global_x + 0.5 - pointer_length) * node_distance_x , -(arrow_stop - arrow_thickness)]
+      var [circle_f_x, circle_f_y] = [(global_x + 0.5 - pointer_length) * node_distance_x, -arrow_stop]
+      var [circle_g_x, circle_g_y] = [(global_x + 0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+      var [circle_e_x, circle_e_y] = [(global_x + 0.5 - pointer_length) * node_distance_x, -arrow_start]
 
       svg_core.append(
         $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
@@ -996,11 +996,11 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
         ' Z" stroke-width="0" fill="slateGrey"></path>')
       )
 
-      var [circle_h_x, circle_h_y] = [0, -(arrow_start + arrow_thickness * 2)]
+      var [circle_h_x, circle_h_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
     }
       
     svg_text.push(
-      $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
+      $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
     )
 
     var l = steps
@@ -1015,7 +1015,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       if (linear == 0){
 
         var [circle_l_x, circle_l_y] = transform(l, arrow_start + arrow_thickness * 2, theta)
-        var rotate = theta * (l-0.5)
+        var rotate = theta * (l+0.5)
         if (rotate >= 90 && rotate <= 180) {
           rotate += 180;
         } else if (rotate >= 180 && rotate <= 270) {
@@ -1455,13 +1455,13 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       var y_size = sum_middle_layer + layer_width * 0.5
       
       if (linear == 0){
-        var [circle_x, circle_y] = transform(0, (layer_start + y_size), theta)
+        var [circle_x, circle_y] = transform(0-0.5, (layer_start + y_size), theta)
       } else {
-        var [circle_x, circle_y] = [0, -(layer_start + y_size)]
+        var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -(layer_start + y_size)]
       }
 
       svg_text.push(
-        $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+        $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
       )
     }
   }
@@ -1476,15 +1476,15 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
         var y_size = layer_start + layer_width * 0.5
 
         if (linear == 0){
-          var [circle_x, circle_y] = transform(0, y_size, theta)
+          var [circle_x, circle_y] = transform(0-0.5, y_size, theta)
         } else {
-          var [circle_x, circle_y] = [0, -y_size]
+          var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -y_size]
         }
 
         item_dist[genome_name] = circle_y
 
         svg_text.push(
-          $('<text text-anchor="end" transform="translate (-20)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+          $('<text text-anchor="end" transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
         )
       }
     }
