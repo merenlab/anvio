@@ -63,6 +63,8 @@ def main(args):
                 run.warning(f"Found {len(pairs_to_add)} inverse pairs of equivalent compounds that were not in the equivalent compounds file. "
                                     f"These have been added to the dictionary of equivalent compounds. Here is the set of missing pairs: {pairs_to_add}. ",
                                     header="DEBUG", lc="yellow")
+    
+    run.info("Doing pathway walks for additional evidence", not args.no_pathway_walk)
 
     constructor = rn.Constructor()
     run.info("Loading reaction network from database", args.contigs_db_1)
@@ -175,54 +177,55 @@ def main(args):
                 add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
 
                 # look for additional evidence by walking through the reaction networks using Pathway Maps
-                producer_network = net_1
-                producer_name = db_names[0]
-                consumer_network = net_2
-                consumer_name = db_names[1]
-                if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
-                    producer_network = net_2
-                    producer_name = db_names[1]
-                    consumer_network = net_1
-                    consumer_name = db_names[0]
+                if not args.no_pathway_walk:
+                    producer_network = net_1
+                    producer_name = db_names[0]
+                    consumer_network = net_2
+                    consumer_name = db_names[1]
+                    if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
+                        producer_network = net_2
+                        producer_name = db_names[1]
+                        consumer_network = net_1
+                        consumer_name = db_names[0]
 
-                overall_max_prior = None
-                overall_max_posterior = None
-                for map_id in compound_to_pathways[compound_id]:
-                    max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
-                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                    'type': "production",
-                                                                    'organism': producer_name,
-                                                                    'pathway_map': map_id,
-                                                                    'longest_reaction_chain_length': max_prior_reactions}
-                    pathway_walk_dict_key += 1
-                    max_posterior_reactions= walk_pathway_map_for_compound(compound_id, map_id, consumer_network, 'consume')
-                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                    'type': "consumption",
-                                                                    'organism': consumer_name,
-                                                                    'pathway_map': map_id,
-                                                                    'longest_reaction_chain_length': max_posterior_reactions}
-                    pathway_walk_dict_key += 1
-                    if anvio.DEBUG:
-                        progress.reset()
-                        run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
-                                        f"found max of {max_prior_reactions} prior reactions in producer and {max_posterior_reactions} posterior reactions in consumer")
-                    
-                    # we want to find the longest chain of production reactions + the longest chain of consumption reactions
-                    if (not overall_max_prior and max_prior_reactions) or \
-                        (overall_max_prior and max_prior_reactions and overall_max_prior < max_prior_reactions):
-                        overall_max_prior = max_prior_reactions
-                    if (not overall_max_posterior and max_posterior_reactions) or \
-                        (overall_max_posterior and max_posterior_reactions and overall_max_posterior < max_posterior_reactions):
-                        overall_max_posterior = max_posterior_reactions
+                    overall_max_prior = None
+                    overall_max_posterior = None
+                    for map_id in compound_to_pathways[compound_id]:
+                        max_prior_reactions = walk_pathway_map_for_compound(compound_id, map_id, producer_network, 'produce')
+                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                        'type': "production",
+                                                                        'organism': producer_name,
+                                                                        'pathway_map': map_id,
+                                                                        'longest_reaction_chain_length': max_prior_reactions}
+                        pathway_walk_dict_key += 1
+                        max_posterior_reactions= walk_pathway_map_for_compound(compound_id, map_id, consumer_network, 'consume')
+                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                        'type': "consumption",
+                                                                        'organism': consumer_name,
+                                                                        'pathway_map': map_id,
+                                                                        'longest_reaction_chain_length': max_posterior_reactions}
+                        pathway_walk_dict_key += 1
+                        if anvio.DEBUG:
+                            progress.reset()
+                            run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
+                                            f"found max of {max_prior_reactions} prior reactions in producer and {max_posterior_reactions} posterior reactions in consumer")
+                        
+                        # we want to find the longest chain of production reactions + the longest chain of consumption reactions
+                        if (not overall_max_prior and max_prior_reactions) or \
+                            (overall_max_prior and max_prior_reactions and overall_max_prior < max_prior_reactions):
+                            overall_max_prior = max_prior_reactions
+                        if (not overall_max_posterior and max_posterior_reactions) or \
+                            (overall_max_posterior and max_posterior_reactions and overall_max_posterior < max_posterior_reactions):
+                            overall_max_posterior = max_posterior_reactions
 
-                longest_overall_chain = None
-                if overall_max_prior and overall_max_posterior:
-                    longest_overall_chain = overall_max_prior + overall_max_posterior
-                elif overall_max_prior:
-                    longest_overall_chain = overall_max_prior
-                elif overall_max_posterior:
-                    longest_overall_chain = overall_max_posterior
-                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
+                    longest_overall_chain = None
+                    if overall_max_prior and overall_max_posterior:
+                        longest_overall_chain = overall_max_prior + overall_max_posterior
+                    elif overall_max_prior:
+                        longest_overall_chain = overall_max_prior
+                    elif overall_max_posterior:
+                        longest_overall_chain = overall_max_posterior
+                    potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -236,12 +239,16 @@ def main(args):
     if args.add_reactions_to_output:
         output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+    exchange_header = output_header
+    if not args.no_pathway_walk:
+        exchange_header += ['max_reaction_chain_length']
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
-                key_header='compound_id', none_value="None", headers=output_header + ['max_reaction_chain_length'])
+                key_header='compound_id', none_value="None", headers=exchange_header)
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
-                key_header='compound_id', none_value="None", headers=output_header) 
-    utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt", 
-                do_not_write_key_column=True, none_value="None") 
+                key_header='compound_id', none_value="None", headers=output_header)
+    if not args.no_pathway_walk:
+        utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt", 
+                    do_not_write_key_column=True, none_value="None") 
     
 
 def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
@@ -323,6 +330,9 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
         if reaction_chains:
             max_length = max([len(chain.kgml_compound_entries) for chain in reaction_chains[compound_id]])
         return max_length
+    except ConfigError: # this is redundant for now, but useful for debugging
+        print(f"Got ConfigError from pathway walker for {compound_id} in map {pathway_map_id}")
+        return None
     except AssertionError:
         print(f"Got AssertionError from pathway walker for {compound_id} in map {pathway_map_id}")
         return None
@@ -353,8 +363,13 @@ if __name__ == '__main__':
                                                         "likelihood of the interaction. This parameter allows you to choose "
                                                         "how many gaps there can be in the chain on either side of the metabolite "
                                                         "in the network. Very conservatively set to 0, as in no gaps allowed.")
-    groupD.add_argument('--add-reactions-to-output', required=False, help="Do you want relevant reaction IDs and chemical equations to be added to the output? "
-                                                        "Use this flag.")
+    groupD.add_argument('--add-reactions-to-output', required=False, action='store_true', help="Do you want relevant reaction IDs and chemical "
+                                                        "equations to be added to the output? Use this flag.")
+
+    groupE = parser.add_argument_group('PERFORMANCE', "Because ain't nobody got time for that")
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupE.add_argument('--no-pathway-walk', required=False, action='store_true', help="Skip walking KEGG pathways in the network upstream and downstream of "
+                                                            "predicted exchanges for additional evidence to rank predictions (a time-consuming step).")
 
     args = parser.get_args(parser)
 
