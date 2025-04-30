@@ -743,7 +743,7 @@ function newick_to_order(string, prior = 0) {
   return(result)
 }
 
-function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, layers_min, layers_max, group_dict) {
+function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, layers_min, layers_max, group_dict, scale=1) {
 
   // access all the relevant variables from UI
   var start = new Date().getTime();
@@ -798,8 +798,12 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var layer_color = $('#layer_color')[0].value;
 
   var theta = angle / (global_x+1)
-  var start_offset = parseInt($('#inner')[0].value);
-  // var start_offset = 0
+
+  if (linear == 0){
+    var start_offset = parseInt($('#inner')[0].value);
+  } else {
+    var start_offset = 0
+  }
   
   var middle_layers = new Object();
   var outer_layers = new Object();
@@ -904,11 +908,19 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
     var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
     var x_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
-    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    if (scale == 0){
+      var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    } else {
+      var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    }
   } else {
-    var x_size = global_x * node_distance_x;
-    var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer);
-    var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size*0.5 + ' -' + y_size*5 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    var x_size = (global_x + 1) * node_distance_x * 0.5;
+    var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer) * 0.5;
+    if (scale == 0){
+      var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    } else {
+      var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+    }
   }
 
   for (var genome of genomes) {
@@ -1295,7 +1307,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
       var j_y = search_stop
 
       if (!global_values.includes(k_x)) {
-        svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'none', k_x))
+        svg_search.push(create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'white', k_x))
       }
 
       for (var layer_name of layers) {
@@ -1949,12 +1961,6 @@ $(document).ready(function() {
         items: 'div'
       });
 
-      $('#svgDownload').on('click', function() {
-        var blob = new Blob([$('#svgbox')[0].innerHTML]);
-        var title = data['meta']['project_name']
-        downloadBlob(blob, title + ".svg");
-      });
-
       $('#InfoDownload').on('click', function() {
 
         // Variable to store the final csv data
@@ -2161,6 +2167,14 @@ $(document).ready(function() {
           window.zoomSVG.fit();
           window.zoomSVG.center();
         })
+
+        $('#svgDownload').off('click')
+        $('#svgDownload').on('click', function() {
+          var svg_download = generate_svg(data, all_nodes, genomes, global_x, global_y, all_edges, layers, layers_min, layers_max, group_dict, scale=0)
+          var blob = new Blob([svg_download[0].outerHTML]);
+          var title = data['meta']['project_name']
+          downloadBlob(blob, title + ".svg");
+        });
 
         var gc_nodes = document.querySelectorAll(".node")
         var divs = document.querySelectorAll(".node, .group");
