@@ -609,3 +609,20 @@
       inst: Max Planck Institute for Marine Microbiology
       inst_link: https://www.mpi-bremen.de/en/Home.html
       current: true
+
+- github: mankeldy
+  name: Dylan Mankel
+  web: https://mankeldy.github.io/
+  avatar: mankeldy.jpg
+  email: mankeldy@bu.edu
+  git_records:
+    - dylanmankel@gmail.com
+    - 43360020+mankeldy@users.noreply.github.com
+  linkedin: dmankel
+  orcid: 0000-0002-5574-589X
+  bio: "Geomicrobiologist studying the activity and distribution of life in extreme environments."
+  affiliations:
+    - title: PhD Candidate
+      inst: Boston University
+      inst_link: https://www.bu.edu/biology/
+      current: true
