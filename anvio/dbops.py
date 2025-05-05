@@ -270,9 +270,14 @@ class ContigsSuperclass(object):
 
     @property
     def contigs_basic_info(self):
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            return {}
-        return self._lazy_loaded_data['_contigs_and_genes_info']['contigs_basic_info']
+        """Property that ensures contigs data is loaded before access."""
+        # If data isn't loaded yet, load it
+        if '_contigs_and_genes_info' not in self._lazy_loaded_data:
+            _ = self._contigs_and_genes_info  # This triggers the lazy loading
+
+        # Now return the loaded data
+        return self._lazy_loaded_data.get('_contigs_and_genes_info', {}).get('contigs_basic_info', {})
+
 
     @property
     def genes_in_contigs_dict(self):
