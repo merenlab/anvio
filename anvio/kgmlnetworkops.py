@@ -121,7 +121,7 @@ class KGMLNetworkWalker:
         file available. Valid pathways are in categories 1.0 - 1.11 as of the March 3, 2025 release
         of KEGG (see https://www.genome.jp/kegg/pathway.html).
 
-    kegg_data : anvio.reactionnetwork.KEGGData
+    kegg_context : anvio.kegg.KeggContext
         Contains information on an anvi'o KEGG installation, which is assumed to be at the default
         location. A reaction network stored in the network attribute should be constructed from that
         version of the database.
@@ -266,18 +266,18 @@ class KGMLNetworkWalker:
         self.allow_terminal_gaps: bool = A('allow_terminal_gaps', False)
         self.allow_alternative_reaction_gaps: bool = A('allow_alternative_reaction_gaps', False)
 
-        # Assume that the reaction network was constructed with the KEGG and ModelSEED databases
-        # found at the default anvi'o location.
-        self.kegg_data = rn.KEGGData()
+        # Assume that the reaction network was constructed with the KEGG database found at the
+        # default anvi'o location.
+        self.kegg_context = kegg.KeggContext(Namespace())
 
         self.run: terminal.Run = A('run', terminal.Run())
 
         self.sanity_check()
 
         # Load the set of KGML files for the pathway.
-        kgml_rn_dir = self.kegg_data.kegg_context.kgml_1x_rn_dir
-        kgml_ko_dir = self.kegg_data.kegg_context.kgml_1x_ko_dir
-        kgml_ec_dir = self.kegg_data.kegg_context.kgml_1x_ec_dir
+        kgml_rn_dir = self.kegg_context.kgml_1x_rn_dir
+        kgml_ko_dir = self.kegg_context.kgml_1x_ko_dir
+        kgml_ec_dir = self.kegg_context.kgml_1x_ec_dir
         xml_ops = kgml.XMLOps()
         kgml_rn_path = os.path.join(kgml_rn_dir, f'rn{self.kegg_pathway_number}.xml')
         kgml_ko_path = os.path.join(kgml_ko_dir, f'ko{self.kegg_pathway_number}.xml')
@@ -398,7 +398,7 @@ class KGMLNetworkWalker:
             self.network_keggcpd_ids_in_pathway = None
 
     @staticmethod
-    def check_pathway_number(kegg_pathway_number: str, kegg_data: rn.KEGGData) -> bool:
+    def check_pathway_number(kegg_pathway_number: str, kegg_context: kegg.KeggContext) -> bool:
         """
         Check that the KEGG pathway number has an RN type KGML file available in the anvi'o KEGG
         installation.
@@ -408,7 +408,7 @@ class KGMLNetworkWalker:
         kegg_pathway_number : str
             Numerical ID of a pathway.
 
-        kegg_data : anvio.reactionnetwork.KEGGData
+        kegg_context : anvio.kegg.KeggContext
             Contains information on an anvi'o KEGG installation.
 
         Returns
@@ -416,17 +416,13 @@ class KGMLNetworkWalker:
         bool
             RN type KGML file exists if True.
         """
-        kgml_rn_path = os.path.join(
-            kegg_data.kegg_context.kgml_1x_rn_dir, f'rn{kegg_pathway_number}.xml'
-        )
-        if os.path.exists(kgml_rn_path):
-            return True
-        return False
+        kgml_rn_path = os.path.join(kegg_context.kgml_1x_rn_dir, f'rn{kegg_pathway_number}.xml')
+        return True if os.path.exists(kgml_rn_path) else False
 
     def sanity_check(self) -> None:
         """Check the validity of various attributes."""
         if not self.check_pathway_number(
-            kegg_pathway_number=self.kegg_pathway_number, kegg_data=self.kegg_data
+            kegg_pathway_number=self.kegg_pathway_number, kegg_context=self.kegg_context
         ):
             raise ConfigError(
                 "The KEGG pathway must have a reaction (RN) type KGML file available in the anvi'o "
