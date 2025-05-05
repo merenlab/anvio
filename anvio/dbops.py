@@ -285,6 +285,7 @@ class ContigsSuperclass(object):
             return {}
         return self._lazy_loaded_data['_contigs_and_genes_info']['genes_in_contigs_dict']
 
+
     @LazyProperty
     def nt_positions_info(self):
         """Lazily load nucleotide positions info."""
@@ -317,6 +318,7 @@ class ContigsSuperclass(object):
 
         return nt_positions_info
 
+
     @LazyProperty
     def gene_lengths(self):
         """Lazily calculate gene lengths from genes_in_contigs_dict."""
@@ -333,6 +335,7 @@ class ContigsSuperclass(object):
 
         self.progress.end()
         return gene_lengths
+
 
     @LazyProperty
     def contig_name_to_genes(self):
@@ -356,6 +359,7 @@ class ContigsSuperclass(object):
 
         self.progress.end()
         return contig_name_to_genes
+
 
     @LazyProperty
     def split_name_to_genes_in_splits_entry_ids(self):
@@ -384,6 +388,7 @@ class ContigsSuperclass(object):
         self.progress.end()
         return split_name_to_genes_in_splits_entry_ids
 
+
     @LazyProperty
     def gene_callers_id_to_split_name_dict(self):
         """Lazily build gene_callers_id_to_split_name_dict mapping."""
@@ -403,6 +408,7 @@ class ContigsSuperclass(object):
         self.progress.end()
         return gene_callers_id_to_split_name_dict
 
+
     @LazyProperty
     def hmm_sources_info(self):
         """Lazily load HMM sources info."""
@@ -420,6 +426,7 @@ class ContigsSuperclass(object):
 
         return hmm_sources_info
 
+
     @LazyProperty
     def singlecopy_gene_hmm_sources(self):
         """Lazily identify singlecopy gene HMM sources."""
@@ -430,6 +437,7 @@ class ContigsSuperclass(object):
 
         return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
 
+
     @LazyProperty
     def non_singlecopy_gene_hmm_sources(self):
         """Lazily identify non-singlecopy gene HMM sources."""
@@ -439,6 +447,7 @@ class ContigsSuperclass(object):
             _ = self.hmm_sources_info
 
         return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
+
 
     def init_splits_taxonomy(self, t_level='t_genus'):
         """Initialize splits taxonomy for the given level."""
@@ -467,6 +476,7 @@ class ContigsSuperclass(object):
 
         if len(splits_taxonomy_table):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
+
 
     def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([]), contig_names_of_interest=set([])):
         """Load contig sequences into memory."""
@@ -559,6 +569,7 @@ class ContigsSuperclass(object):
         self.progress.end()
 
         return contigs_shorter_than_M
+
 
     def get_items_additional_data_for_functions_per_split_summary(self, source, split_names_of_interest, data_dict={}, keys_list=[]):
         """Get items additional data layers to display the frequency of function names
@@ -827,6 +838,7 @@ class ContigsSuperclass(object):
         if position_info == 1:
             return (0, 1, 3)
 
+
     def init_functions(self, requested_sources=[], dont_panic=False):
         """Initialize gene functions dictionary."""
         if not self.contigs_db_path:
@@ -900,9 +912,11 @@ class ContigsSuperclass(object):
 
         self.gene_function_calls_initiated = True
 
+
     def list_function_sources(self):
         """List function sources in the contigs database."""
         ContigsDatabase(self.contigs_db_path).list_function_sources()
+
 
     def check_functional_annotation_sources(self, sources=None, dont_panic=False):
         """Checks whether a given list of sources for functional annotation is valid.
@@ -932,6 +946,7 @@ class ContigsSuperclass(object):
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
                                   "they are (or here it is, whatever): %s." % \
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
+
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False):
         """Search for gene functions matching the given terms."""
@@ -1031,6 +1046,7 @@ class ContigsSuperclass(object):
 
         return split_names, full_report
 
+
     def nt_position_to_gene_caller_id(self, contig_name, position_in_contig):
         """Returns the gene caller id for a given nucleotide position.
 
@@ -1068,6 +1084,7 @@ class ContigsSuperclass(object):
                 return gene_caller_id
 
         return -1
+
 
     def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
         """Returns the order of codon a given nucleotide belongs to.
@@ -1118,6 +1135,7 @@ class ContigsSuperclass(object):
 
         return corresponding_codon_order_in_gene
 
+
     def get_gene_start_stops_in_contig(self, contig_name):
         """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring in contig_name"""
         # Make sure contig_name_to_genes is loaded
@@ -1125,6 +1143,7 @@ class ContigsSuperclass(object):
             _ = self.contig_name_to_genes
 
         return self.contig_name_to_genes[contig_name]
+
 
     def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([]), return_codons_instead=False):
         """Returns a dictionary of AA counts.
@@ -1204,6 +1223,7 @@ class ContigsSuperclass(object):
 
         return counts_dict
 
+
     def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
         """For a given nucleotide position and contig name, returns all matching gene caller ids
 
@@ -1227,6 +1247,7 @@ class ContigsSuperclass(object):
                                     if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
+
 
     def get_gene_info_for_each_position(self, contig_name, info='all'):
         """For a given contig, calculate per-position gene info
@@ -1382,6 +1403,7 @@ class ContigsSuperclass(object):
 
         return output
 
+
     def get_gene_amino_acid_sequence(self, gene_caller_ids):
         """A much faster way to get back amino acid sequences for genes.
 
@@ -1407,6 +1429,7 @@ class ContigsSuperclass(object):
                 sequences[gene_callers_id] = None
 
         return sequences
+
 
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True,
                                            include_aa_sequences=False, flank_length=0, output_file_path_external_gene_calls=None,
@@ -1681,6 +1704,7 @@ class ContigsSuperclass(object):
             self.run.warning("Gene caller IDs %s have empty AA sequences and skipped." % (", ".join(map(str, skipped_gene_calls))))
 
         return (gene_caller_ids_list, sequences_dict)
+
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, gene_annotation_source=None):
         """Generate a GFF3 file for the genes with the given gene caller IDs."""
