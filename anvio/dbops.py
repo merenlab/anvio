@@ -224,11 +224,13 @@ class ContigsSuperclass(object):
 
         return {'splits_basic_info': splits_basic_info, 'genes_in_splits': genes_in_splits}
 
+
     @property
     def splits_basic_info(self):
         if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
             return {}
         return self._lazy_loaded_data['_splits_and_genes_basic_info']['splits_basic_info']
+
 
     @property
     def genes_in_splits(self):
@@ -236,27 +238,34 @@ class ContigsSuperclass(object):
             return {}
         return self._lazy_loaded_data['_splits_and_genes_basic_info']['genes_in_splits']
 
+
     @LazyProperty
     def _contigs_and_genes_info(self):
         """Lazily load contigs and genes in contigs information."""
         self.progress.new('Loading contigs and genes in contigs')
         self.progress.update('...')
 
-        # If no splits of interest are specified, load all contigs
-        if not self.split_names_of_interest or not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            contig_names_of_interest = set([])  # Empty set means "get all"
+        # Determine contigs of interest - if empty, load all
+        if not self.split_names_of_interest:
+            # When no splits are specified, we want ALL contigs (empty set means "all" to smart_get)
+            contig_names_of_interest = set([])
         else:
+            # If splits are specified but _splits_and_genes_basic_info isn't loaded, load it
+            if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
+                _ = self._splits_and_genes_basic_info
+
             # Get contig names of interest from split names
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
         # Read CONTIGS and GENES basic information
+        # For smart_get, an empty set means "get all" rather than "get none"
         contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig',
-                                                 contig_names_of_interest, string_the_key=True,
-                                                 progress=self.progress)
+                                                   contig_names_of_interest, string_the_key=True,
+                                                   progress=self.progress)
         genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
-                                                    contig_names_of_interest, progress=self.progress)
+                                                      contig_names_of_interest, progress=self.progress)
 
         contigs_db.disconnect()
         self.progress.end()
@@ -267,6 +276,7 @@ class ContigsSuperclass(object):
         }
 
         return result
+
 
     @property
     def contigs_basic_info(self):
@@ -281,9 +291,13 @@ class ContigsSuperclass(object):
 
     @property
     def genes_in_contigs_dict(self):
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            return {}
-        return self._lazy_loaded_data['_contigs_and_genes_info']['genes_in_contigs_dict']
+        """Property that ensures genes data is loaded before access."""
+        # If data isn't loaded yet, load it
+        if '_contigs_and_genes_info' not in self._lazy_loaded_data:
+            _ = self._contigs_and_genes_info  # This triggers the lazy loading
+
+        # Now return the loaded data
+        return self._lazy_loaded_data.get('_contigs_and_genes_info', {}).get('genes_in_contigs_dict', {})
 
 
     @LazyProperty
