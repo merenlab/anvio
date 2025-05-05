@@ -239,7 +239,7 @@ def main(args):
     if args.add_reactions_to_output:
         output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
-    exchange_header = output_header
+    exchange_header = deepcopy(output_header)
     if not args.no_pathway_walk:
         exchange_header += ['max_reaction_chain_length']
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
