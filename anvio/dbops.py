@@ -242,9 +242,9 @@ class ContigsSuperclass(object):
         self.progress.new('Loading contigs and genes in contigs')
         self.progress.update('...')
 
-        # If we haven't loaded splits basic info yet, we can't determine contig_names_of_interest
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            contig_names_of_interest = set([])
+        # If no splits of interest are specified, load all contigs
+        if not self.split_names_of_interest or not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
+            contig_names_of_interest = set([])  # Empty set means "get all"
         else:
             # Get contig names of interest from split names
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
