@@ -776,18 +776,18 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var saturation = 0
   }
 
-  var angle = parseInt($('#angle')[0].value);
-  var outer_margin = parseInt($('#outer_margin')[0].value);
-  var inner_margin = parseInt($('#inner_margin')[0].value);
-  var node_size = parseInt($('#size')[0].value);
-  var node_thickness = parseInt($('#circ')[0].value);
-  var edge_thickness = parseInt($('#edge')[0].value);
-  var line_thickness = parseInt($('#line')[0].value);
-  var node_distance_x = parseInt($('#distx')[0].value);
-  var node_distance_y = parseInt($('#disty')[0].value);
-  var tree_length = parseInt($('#tree_length')[0].value);
-  var offset = parseInt($('#tree_offset')[0].value);
-  var tree_thickness = parseInt($('#tree_thickness')[0].value);
+  var angle = parseFloat($('#angle')[0].value);
+  var outer_margin = parseFloat($('#outer_margin')[0].value);
+  var inner_margin = parseFloat($('#inner_margin')[0].value);
+  var node_size = parseFloat($('#size')[0].value);
+  var node_thickness = parseFloat($('#circ')[0].value);
+  var edge_thickness = parseFloat($('#edge')[0].value);
+  var line_thickness = parseFloat($('#line')[0].value);
+  var node_distance_x = parseFloat($('#distx')[0].value);
+  var node_distance_y = parseFloat($('#disty')[0].value);
+  var tree_length = parseFloat($('#tree_length')[0].value);
+  var offset = parseFloat($('#tree_offset')[0].value);
+  var tree_thickness = parseFloat($('#tree_thickness')[0].value);
 
   var core_color = $('#core_color')[0].value;
   var paralog_color = $('#paralog_color')[0].value;
@@ -802,7 +802,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var theta = angle / (global_x+1)
 
   if (linear == 0){
-    var start_offset = parseInt($('#inner')[0].value);
+    var start_offset = parseFloat($('#inner')[0].value);
   } else {
     var start_offset = 0
   }
@@ -810,11 +810,11 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var middle_layers = new Object();
   var outer_layers = new Object();
 
-  var search_size = parseInt($('#search_hit')[0].value);
+  var search_size = parseFloat($('#search_hit')[0].value);
   middle_layers['search'] = [search_size, start_offset, search_size + start_offset]
 
   if ($('#flexarrow').prop('checked') == true){
-    var arrow_size = parseInt($('#arrow')[0].value)
+    var arrow_size = parseFloat($('#arrow')[0].value)
     middle_layers['arrow'] = [arrow_size, search_size + start_offset, arrow_size + search_size + start_offset]
   } else {
     var arrow_size = 0
@@ -856,7 +856,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
     var layer_name = genome + 'layer'
     if ($('#flex' + layer_name).prop('checked') == true){
-      var layer_width = parseInt($('#' + layer_name)[0].value)
+      var layer_width = parseFloat($('#' + layer_name)[0].value)
 
       var layer_middle_start = current_middle_stop + inner_margin
       var layer_middle_stop = layer_middle_start + layer_width
@@ -870,7 +870,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
   if ($('#flexbackbone').prop('checked') == true){
     //TEST BACKBONE NON BACKBONE LAYER
-    var back_width = parseInt($('#backbone')[0].value);
+    var back_width = parseFloat($('#backbone')[0].value);
 
     var layer_width = back_width
     var layer_middle_start = current_middle_stop + inner_margin
@@ -885,7 +885,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   for (var layer_name of layers) {
     if ($('#flex' + layer_name).prop('checked') == true){
 
-      var layer_width = parseInt($('#' + layer_name)[0].value)
+      var layer_width = parseFloat($('#' + layer_name)[0].value)
       var layer_outer_start = current_outer_stop + outer_margin
       var layer_outer_stop = layer_outer_start + layer_width
 
