@@ -177,30 +177,33 @@ class ContigsSuperclass(object):
 
         contigs_db.disconnect()
 
-        # Initialize empty containers for properties that will be lazily loaded
-        self.splits_basic_info = {}
-        self.splits_taxonomy_dict = {}
+        # Initialize _lazy_loaded_data dictionary with empty containers
+        self._lazy_loaded_data = {
+            '_splits_and_genes_basic_info': {'splits_basic_info': {}, 'genes_in_splits': {}},
+            '_contigs_and_genes_info': {'contigs_basic_info': {}, 'genes_in_contigs_dict': {}},
+            'nt_positions_info': {},
+            'gene_lengths': {},
+            'contig_name_to_genes': {},
+            'split_name_to_genes_in_splits_entry_ids': {},
+            'gene_callers_id_to_split_name_dict': {},
+            'hmm_sources_info': {},
+            'singlecopy_gene_hmm_sources': set([]),
+            'non_singlecopy_gene_hmm_sources': set([])
+        }
+
+        # Initialize other directly accessible attributes
         self.split_sequences = {}
-        self.contigs_basic_info = {}
-        self.nt_positions_info = {}
         self.contig_sequences = {}
         self.gene_caller_ids_included_in_contig_sequences_initialized = set([])
-        self.genes_in_contigs_dict = {}
-        self.gene_lengths = {}
-        self.contig_name_to_genes = {}
-        self.genes_in_splits = {}
-        self.split_name_to_genes_in_splits_entry_ids = {}
-        self.gene_callers_id_to_split_name_dict = {}
+        self.splits_taxonomy_dict = {}
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
         self.gene_function_calls_initiated = False
-        self.hmm_sources_info = {}
         self.hmm_searches_dict = {}
         self.hmm_searches_header = []
-        self.singlecopy_gene_hmm_sources = set([])
-        self.non_singlecopy_gene_hmm_sources = set([])
 
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
+
 
     @LazyProperty
     def _splits_and_genes_basic_info(self):
