@@ -2286,13 +2286,7 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
-    def get_gene_cluster_function_summary(
-        self,
-        gene_cluster_id,
-        functional_annotation_source,
-        discard_ties: bool = False,
-        consensus_threshold: float = None
-    ):
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source, discard_ties: bool = False, consensus_threshold: float = None):
         """
         Returns the most frequently occurring functional annotation across genes in a gene cluster
         for a given functional annotation source.
