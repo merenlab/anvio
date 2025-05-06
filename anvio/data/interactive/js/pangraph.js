@@ -901,9 +901,9 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var circle_dist = sum_middle_layer + graph_size * 0.5
     var extra_offset = 0
 
-    if (circle_dist < radius) {
-      extra_offset = radius - circle_dist
-    }
+    // if (circle_dist < radius) {
+    //   extra_offset = radius - circle_dist
+    // }
 
     sum_middle_layer += extra_offset
     for (var layer in middle_layers) {
@@ -960,6 +960,8 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var pointer_height = arrow_stop - arrow_start
     var arrow_thickness = pointer_height / 4
     var steps = Math.round((30 / theta))
+
+    console.log(middle_layers)
 
     if (steps < 1) {
       steps = 1
