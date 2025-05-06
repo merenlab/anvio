@@ -253,10 +253,9 @@ class ContigsSuperclass(object):
 
 
     @LazyProperty
+    @LazyProgress('splits basic info')
     def splits_basic_info(self):
         """Lazily load basic information about splits."""
-        self.progress.new('Loading splits basic info')
-        self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
@@ -265,16 +264,14 @@ class ContigsSuperclass(object):
                                                  self.split_names_of_interest, progress=self.progress)
 
         contigs_db.disconnect()
-        self.progress.end()
 
         return splits_basic_info
 
 
     @LazyProperty
+    @LazyProgress('genes in splits')
     def genes_in_splits(self):
         """Lazily load information about genes in splits."""
-        self.progress.new('Loading genes in splits')
-        self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
@@ -283,16 +280,14 @@ class ContigsSuperclass(object):
                                                self.split_names_of_interest, progress=self.progress)
 
         contigs_db.disconnect()
-        self.progress.end()
 
         return genes_in_splits
 
 
     @LazyProperty
+    @LazyProgress('contigs basic info')
     def contigs_basic_info(self):
         """Lazily load basic information about contigs."""
-        self.progress.new('Loading contigs basic info')
-        self.progress.update('...')
 
         # Determine contigs of interest based on splits (if any)
         if self.split_names_of_interest:
@@ -309,16 +304,14 @@ class ContigsSuperclass(object):
                                                   progress=self.progress)
 
         contigs_db.disconnect()
-        self.progress.end()
 
         return contigs_basic_info
 
 
     @LazyProperty
+    @LazyProgress('genes in contigs')
     def genes_in_contigs_dict(self):
         """Lazily load information about genes in contigs."""
-        self.progress.new('Loading genes in contigs')
-        self.progress.update('...')
 
         # Determine contigs of interest based on splits (if any)
         if self.split_names_of_interest:
@@ -334,20 +327,14 @@ class ContigsSuperclass(object):
                                                      contig_names_of_interest, progress=self.progress)
 
         contigs_db.disconnect()
-        self.progress.end()
 
         return genes_in_contigs_dict
 
 
     @LazyProperty
+    @LazyProgress('nucleotide positions info')
     def nt_positions_info(self):
         """Lazily load nucleotide positions info."""
-        if self.progress.pid:
-            existing_progress_message = self.progress.msg
-            self.progress.update(' [Lazy loading nucleotide positions info]')
-        else:
-            self.progress.new('Loading nucleotide positions info')
-            self.progress.update('...')
 
         nt_positions_info = {}
         contigs_db = ContigsDatabase(self.contigs_db_path)
@@ -356,43 +343,33 @@ class ContigsSuperclass(object):
         contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest]) if self.split_names_of_interest else set([])
 
         if contig_names_of_interest:
-            self.progress.update('Reading **SOME** entries in the nucleotide positions info table :)')
             where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
             for contig_name, nt_positions_info_data in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
                 nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
         else:
-            self.progress.update('Reading **ALL** entries in the nucleotide positions info table :(')
             for contig_name, nt_positions_info_data in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
                 nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
 
         contigs_db.disconnect()
 
-        if existing_progress_message:
-            self.progress.update(existing_progress_message)
-        else:
-            self.progress.end()
-
         return nt_positions_info
 
 
     @LazyProperty
+    @LazyProgress('gene lengths info')
     def gene_lengths(self):
         """Lazily calculate gene lengths from genes_in_contigs_dict."""
-        self.progress.new('Calculating gene lengths')
-        self.progress.update('...')
 
         gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start']))
                            for g in self.genes_in_contigs_dict])
 
-        self.progress.end()
         return gene_lengths
 
 
     @LazyProperty
+    @LazyProgress('contig name to genes mapping')
     def contig_name_to_genes(self):
         """Lazily build contig_name_to_genes mapping."""
-        self.progress.new('Building contig name to genes mapping')
-        self.progress.update('...')
 
         contig_name_to_genes = {}
 
@@ -403,15 +380,13 @@ class ContigsSuperclass(object):
             e = self.genes_in_contigs_dict[gene_unique_id]
             contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
-        self.progress.end()
         return contig_name_to_genes
 
 
     @LazyProperty
+    @LazyProgress('split names to genes mapping')
     def split_name_to_genes_in_splits_entry_ids(self):
         """Lazily build split_name_to_genes_in_splits_entry_ids mapping."""
-        self.progress.new('Building split name to genes mapping')
-        self.progress.update('...')
 
         split_name_to_genes_in_splits_entry_ids = {}
 
@@ -426,30 +401,26 @@ class ContigsSuperclass(object):
             if split_name not in split_name_to_genes_in_splits_entry_ids:
                 split_name_to_genes_in_splits_entry_ids[split_name] = set([])
 
-        self.progress.end()
         return split_name_to_genes_in_splits_entry_ids
 
 
     @LazyProperty
+    @LazyProgress('gene caller id to split name mapping')
     def gene_callers_id_to_split_name_dict(self):
         """Lazily build gene_callers_id_to_split_name_dict mapping."""
-        self.progress.new('Building gene caller id to split name mapping')
-        self.progress.update('...')
 
         gene_callers_id_to_split_name_dict = {}
 
         for entry in list(self.genes_in_splits.values()):
             gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
-        self.progress.end()
         return gene_callers_id_to_split_name_dict
 
 
     @LazyProperty
+    @LazyProgress('HMM sources info')
     def hmm_sources_info(self):
         """Lazily load HMM sources info."""
-        self.progress.new('Loading HMM sources info')
-        self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
         hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
@@ -458,12 +429,12 @@ class ContigsSuperclass(object):
             hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in hmm_sources_info[hmm_source]['genes'].split(',')])
 
         contigs_db.disconnect()
-        self.progress.end()
 
         return hmm_sources_info
 
 
     @LazyProperty
+    @LazyProgress('SCG HMM sources')
     def singlecopy_gene_hmm_sources(self):
         """Lazily identify singlecopy gene HMM sources."""
         # If hmm_sources_info isn't loaded yet, we can't identify sources
@@ -475,6 +446,7 @@ class ContigsSuperclass(object):
 
 
     @LazyProperty
+    @LazyProgress('Non-SCG HMM sources')
     def non_singlecopy_gene_hmm_sources(self):
         """Lazily identify non-singlecopy gene HMM sources."""
         # If hmm_sources_info isn't loaded yet, we can't identify sources
