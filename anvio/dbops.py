@@ -150,6 +150,7 @@ class ContigsSuperclass(object):
         if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual':
             return
 
+
     def _initialize_minimal_data(self):
         """Initialize only the essential data needed for basic functionality."""
         # Basic metadata that's always needed
@@ -179,8 +180,10 @@ class ContigsSuperclass(object):
 
         # Initialize _lazy_loaded_data dictionary with empty containers
         self._lazy_loaded_data = {
-            '_splits_and_genes_basic_info': {'splits_basic_info': {}, 'genes_in_splits': {}},
-            '_contigs_and_genes_info': {'contigs_basic_info': {}, 'genes_in_contigs_dict': {}},
+            'genes_in_splits': {},
+            'genes_in_contigs_dict': {},
+            'contigs_basic_info': {},
+            'splits_basic_info': {},
             'nt_positions_info': {},
             'gene_lengths': {},
             'contig_name_to_genes': {},
@@ -206,110 +209,101 @@ class ContigsSuperclass(object):
 
 
     @LazyProperty
-    def _splits_and_genes_basic_info(self):
-        """Lazily load splits and genes basic information."""
-        self.progress.new('Loading splits and genes basic info')
+    def splits_basic_info(self):
+        """Lazily load basic information about splits."""
+        self.progress.new('Loading splits basic info')
         self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        # Read SPLITS and GENES basic information
+        # Read SPLITS basic information
         splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split',
                                                  self.split_names_of_interest, progress=self.progress)
+
+        contigs_db.disconnect()
+        self.progress.end()
+
+        return splits_basic_info
+
+
+    @LazyProperty
+    def genes_in_splits(self):
+        """Lazily load information about genes in splits."""
+        self.progress.new('Loading genes in splits')
+        self.progress.update('...')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read GENES in splits information
         genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split',
                                                self.split_names_of_interest, progress=self.progress)
 
         contigs_db.disconnect()
         self.progress.end()
 
-        return {'splits_basic_info': splits_basic_info, 'genes_in_splits': genes_in_splits}
-
-
-    @property
-    def splits_basic_info(self):
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            return {}
-        return self._lazy_loaded_data['_splits_and_genes_basic_info']['splits_basic_info']
-
-
-    @property
-    def genes_in_splits(self):
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            return {}
-        return self._lazy_loaded_data['_splits_and_genes_basic_info']['genes_in_splits']
+        return genes_in_splits
 
 
     @LazyProperty
-    def _contigs_and_genes_info(self):
-        """Lazily load contigs and genes in contigs information."""
-        self.progress.new('Loading contigs and genes in contigs')
+    def contigs_basic_info(self):
+        """Lazily load basic information about contigs."""
+        self.progress.new('Loading contigs basic info')
         self.progress.update('...')
 
-        # Determine contigs of interest - if empty, load all
-        if not self.split_names_of_interest:
-            # When no splits are specified, we want ALL contigs (empty set means "all" to smart_get)
-            contig_names_of_interest = set([])
-        else:
-            # If splits are specified but _splits_and_genes_basic_info isn't loaded, load it
-            if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-                _ = self._splits_and_genes_basic_info
-
-            # Get contig names of interest from split names
+        # Determine contigs of interest based on splits (if any)
+        if self.split_names_of_interest:
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
+        else:
+            # When no splits are specified, we want all contigs
+            contig_names_of_interest = set([])
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        # Read CONTIGS and GENES basic information
-        # For smart_get, an empty set means "get all" rather than "get none"
+        # Read CONTIGS basic information
         contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig',
-                                                   contig_names_of_interest, string_the_key=True,
-                                                   progress=self.progress)
-        genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
-                                                      contig_names_of_interest, progress=self.progress)
+                                                  contig_names_of_interest, string_the_key=True,
+                                                  progress=self.progress)
 
         contigs_db.disconnect()
         self.progress.end()
 
-        result = {
-            'contigs_basic_info': contigs_basic_info,
-            'genes_in_contigs_dict': genes_in_contigs_dict
-        }
-
-        return result
+        return contigs_basic_info
 
 
-    @property
-    def contigs_basic_info(self):
-        """Property that ensures contigs data is loaded before access."""
-        # If data isn't loaded yet, load it
-        if '_contigs_and_genes_info' not in self._lazy_loaded_data:
-            _ = self._contigs_and_genes_info  # This triggers the lazy loading
-
-        # Now return the loaded data
-        return self._lazy_loaded_data.get('_contigs_and_genes_info', {}).get('contigs_basic_info', {})
-
-
-    @property
+    @LazyProperty
     def genes_in_contigs_dict(self):
-        """Property that ensures genes data is loaded before access."""
-        # If data isn't loaded yet, load it
-        if '_contigs_and_genes_info' not in self._lazy_loaded_data:
-            _ = self._contigs_and_genes_info  # This triggers the lazy loading
+        """Lazily load information about genes in contigs."""
+        self.progress.new('Loading genes in contigs')
+        self.progress.update('...')
 
-        # Now return the loaded data
-        return self._lazy_loaded_data.get('_contigs_and_genes_info', {}).get('genes_in_contigs_dict', {})
+        # Determine contigs of interest based on splits (if any)
+        if self.split_names_of_interest:
+            contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
+        else:
+            # When no splits are specified, we want all contigs
+            contig_names_of_interest = set([])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read GENES in contigs information
+        genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
+                                                     contig_names_of_interest, progress=self.progress)
+
+        contigs_db.disconnect()
+        self.progress.end()
+
+        return genes_in_contigs_dict
 
 
     @LazyProperty
     def nt_positions_info(self):
         """Lazily load nucleotide positions info."""
-        self.progress.new('Loading nucleotide positions info')
-        self.progress.update('...')
-
-        # If we haven't loaded contigs basic info yet, we don't know what contigs to look for
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            # Trigger loading of contigs info
-            _ = self._contigs_and_genes_info
+        if self.progress.pid:
+            existing_progress_message = self.progress.msg
+            self.progress.update(' [Lazy loading nucleotide positions info]')
+        else:
+            self.progress.new('Loading nucleotide positions info')
+            self.progress.update('...')
 
         nt_positions_info = {}
         contigs_db = ContigsDatabase(self.contigs_db_path)
@@ -328,7 +322,11 @@ class ContigsSuperclass(object):
                 nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
 
         contigs_db.disconnect()
-        self.progress.end()
+
+        if existing_progress_message:
+            self.progress.update(existing_progress_message)
+        else:
+            self.progress.end()
 
         return nt_positions_info
 
@@ -338,11 +336,6 @@ class ContigsSuperclass(object):
         """Lazily calculate gene lengths from genes_in_contigs_dict."""
         self.progress.new('Calculating gene lengths')
         self.progress.update('...')
-
-        # If genes_in_contigs_dict is not loaded yet, we can't calculate lengths
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            # Trigger loading of contigs and genes info
-            _ = self._contigs_and_genes_info
 
         gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start']))
                            for g in self.genes_in_contigs_dict])
@@ -356,11 +349,6 @@ class ContigsSuperclass(object):
         """Lazily build contig_name_to_genes mapping."""
         self.progress.new('Building contig name to genes mapping')
         self.progress.update('...')
-
-        # If necessary data isn't loaded yet, we can't proceed
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            # Trigger loading of contigs and genes info
-            _ = self._contigs_and_genes_info
 
         contig_name_to_genes = {}
 
@@ -380,11 +368,6 @@ class ContigsSuperclass(object):
         """Lazily build split_name_to_genes_in_splits_entry_ids mapping."""
         self.progress.new('Building split name to genes mapping')
         self.progress.update('...')
-
-        # If necessary data isn't loaded yet, we can't proceed
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            # Trigger loading of splits and genes basic info
-            _ = self._splits_and_genes_basic_info
 
         split_name_to_genes_in_splits_entry_ids = {}
 
@@ -408,11 +391,6 @@ class ContigsSuperclass(object):
         """Lazily build gene_callers_id_to_split_name_dict mapping."""
         self.progress.new('Building gene caller id to split name mapping')
         self.progress.update('...')
-
-        # If necessary data isn't loaded yet, we can't proceed
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            # Trigger loading of splits and genes basic info
-            _ = self._splits_and_genes_basic_info
 
         gene_callers_id_to_split_name_dict = {}
 
@@ -515,10 +493,6 @@ class ContigsSuperclass(object):
             raise ConfigError("Ehem. Someone just called `init_contig_sequences` with %s AND %s. "
                               "Someone should make up their mind and go for only one of those." % (opt1, opt2))
 
-        # Load genes_in_contigs_dict if needed for gene caller IDs
-        if gene_caller_ids_of_interest and not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
-
         # are we going to read everything, or only those that are of interest?
         if contig_names_of_interest:
             subset_provided = True
@@ -529,10 +503,6 @@ class ContigsSuperclass(object):
                 if gene_callers_id in gene_caller_ids_of_interest:
                     contig_names_of_interest.add(self.genes_in_contigs_dict[gene_callers_id]['contig'])
         elif split_names_of_interest:
-            # Load splits_basic_info if it's not already loaded
-            if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-                _ = self._splits_and_genes_basic_info
-
             subset_provided = True
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in split_names_of_interest])
         else:
@@ -552,12 +522,7 @@ class ContigsSuperclass(object):
         if subset_provided:
             self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
         else:
-            # Make sure genes_in_contigs_dict is loaded
-            if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-                _ = self._contigs_and_genes_info
             self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
-
-        self.progress.end()
 
         if subset_provided:
             self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
@@ -565,14 +530,12 @@ class ContigsSuperclass(object):
                              f"you. Just FYI, this class will only know about {P('contig sequence', len(contig_names_of_interest))} "
                              f"instead of all the things in the database.", header="THE MORE YOU KNOW 🌈", lc='yellow')
 
+        self.progress.end()
         contigs_db.disconnect()
+
 
         self.progress.new('Filtering contig sequences')
         self.progress.update('Identifying contigs shorter than M')
-
-        # Load contigs_basic_info if needed
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
 
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
@@ -676,10 +639,6 @@ class ContigsSuperclass(object):
             split_names_of_interest = self.split_names_of_interest
 
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
-
-        # Make sure splits_basic_info is loaded
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            _ = self._splits_and_genes_basic_info
 
         if not len(self.splits_basic_info):
             self.run.info_single("Anvi'o was attempting to initialize split sequences, but the splits basic info dictionary "
@@ -877,10 +836,6 @@ class ContigsSuperclass(object):
         if self.split_names_of_interest:
             if not self._lazy_loaded_data.get('gene_callers_id_to_split_name_dict'):
                 _ = self.gene_callers_id_to_split_name_dict
-
-            # And make sure we have genes_in_contigs_dict
-            if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-                _ = self._contigs_and_genes_info
 
             gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
             where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
@@ -1080,10 +1035,6 @@ class ContigsSuperclass(object):
         if not isinstance(position_in_contig, int):
             raise ConfigError("get_gene_caller_id_for_position_in_contig :: position_in_contig must be of type 'int'")
 
-        # Make sure contigs_basic_info is loaded
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
-
         if contig_name not in self.contigs_basic_info:
             raise ConfigError("Contig name '{contig_name} does not occur in this contigs-db :/'")
 
@@ -1122,9 +1073,6 @@ class ContigsSuperclass(object):
         if not isinstance(gene_caller_id, int):
             raise ConfigError("get_corresponding_codon_order_in_gene :: gene_caller_id must be of type 'int'")
 
-        # Make sure genes_in_contigs_dict is loaded
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
 
         gene_call = self.genes_in_contigs_dict[gene_caller_id]
 
@@ -1202,10 +1150,6 @@ class ContigsSuperclass(object):
         elif gene_caller_ids:
             gene_calls_of_interest = set(gene_caller_ids)
         else:
-            # Make sure genes_in_contigs_dict is loaded
-            if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-                _ = self._contigs_and_genes_info
-
             gene_calls_of_interest = set(self.genes_in_contigs_dict.keys())
 
         if not len(self.contig_sequences):
@@ -1325,10 +1269,6 @@ class ContigsSuperclass(object):
 
         output = {}
 
-        # Make sure we have contig sequences and contigs_basic_info
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
-
         if not len(self.contig_sequences):
             self.init_contig_sequences()
 
@@ -1361,10 +1301,6 @@ class ContigsSuperclass(object):
         # Next, we calculte the next 5 columns. As a first pass, we populate the splice of `data`
         # corresponding to each gene call and set the "gene_caller_id" and "codon_order_in_gene"
         # columns. This first ignores the fact that gene calls may overlap.
-
-        # Make sure genes_in_contigs_dict is loaded
-        if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-            _ = self._contigs_and_genes_info
 
         # Make sure contig_name_to_genes is loaded
         if not self._lazy_loaded_data.get('contig_name_to_genes'):
@@ -1485,10 +1421,6 @@ class ContigsSuperclass(object):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
         if not len(gene_caller_ids_list):
-            # Make sure genes_in_contigs_dict is loaded
-            if not self._lazy_loaded_data.get('_contigs_and_genes_info'):
-                _ = self._contigs_and_genes_info
-
             gene_caller_ids_list = list(self.genes_in_contigs_dict.keys())
             self.run.warning("You did not provide any gene caller ids. As a result, anvi'o will give you back sequences for every "
                              "%d gene call stored in the contigs database. %s" % (len(gene_caller_ids_list), ' Brace yourself.' if len(gene_caller_ids_list) > 10000 else ''))
@@ -1814,10 +1746,6 @@ class ContigsSuperclass(object):
         column_list = ['split_name'] + [k for k in taxon_names_table[list(taxon_names_table.keys())[0]].keys()]
         header = "\t".join(column_list)
         output.write(f"{header}\n")
-
-        # Make sure splits_basic_info is loaded
-        if not self._lazy_loaded_data.get('_splits_and_genes_basic_info'):
-            _ = self._splits_and_genes_basic_info
 
         for split_name in self.splits_basic_info:
             if split_name in splits_taxonomy_table:
