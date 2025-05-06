@@ -26,6 +26,7 @@ import scipy.signal
 import multiprocess as multiprocessing
 
 from io import StringIO
+from functools import wraps
 from collections import Counter
 
 import anvio
@@ -115,6 +116,49 @@ class LazyProperty:
             instance._lazy_loaded_data[self.attr_name] = self.loader_method(instance)
 
         return instance._lazy_loaded_data[self.attr_name]
+
+
+def LazyProgress(message):
+    """Decorator to wrap functions with progress handling (please fasten your seatbelt).
+
+    This is a necessary function since lazy loading the code does not always follow a linear
+    path. For instance a progress instance starts, then the code reaches to a variable that
+    needs to be load lazily, and in the function it loads it there is a `self.progress.new`
+    call that really complicates everything. With this decorator + wrapper solution we are
+    reaching in new depths in anvi'o codebase with technically sound hacks, and implement
+    a logic that can work with every case of 'progress'. Well, fingers crossed.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Pre-call logic that prepares to 'append' to the existing progress,
+            # or creating a new one depending on what is going on in this context.
+            existing_progress_message = None
+            started_new = False
+
+            if hasattr(self.progress, 'pid') and self.progress.pid:
+                existing_progress_message = self.progress.msg
+                self.progress.update(f' [Lazy loading {message}]')
+            else:
+                self.progress.new(f'Loading {message}')
+                self.progress.update('...')
+                started_new = True
+
+            try:
+                result = func(self, *args, **kwargs)
+            finally:
+                # Post-call logic to finalize things by either ending a new
+                # progress item, or returning the old progress message to its
+                # rightful owner
+                if existing_progress_message:
+                    self.progress.update(existing_progress_message)
+                elif started_new:
+                    self.progress.end()
+
+            return result
+        return wrapper
+    return decorator
 
 
 class ContigsSuperclass(object):
