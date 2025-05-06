@@ -57,7 +57,8 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls'))
     groupD.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupD.add_argument(*anvio.A('skip-predict-frame'), **anvio.K('skip-predict-frame'))
-
+    groupD.add_argument(*anvio.A('allow-amino-acid-contig-db'), **anvio.K('allow-amino-acid-contig-db'))
+    
     try:
         args = parser.get_args(parser)
         main(args)
