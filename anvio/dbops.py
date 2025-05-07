@@ -4141,7 +4141,7 @@ class ProfileSuperclass(object):
 
         # get trimmed collection and bins_info dictionaries
         collection, bins_info, self.split_names_in_profile_db_but_not_binned \
-                    = self.collections.get_trimmed_dicts(collection_name, self.split_names)
+                    = self.collections.get_trimmed_dicts(collection_name, self.split_names_of_interest if len(self.split_names_of_interest) else self.split_names)
 
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
