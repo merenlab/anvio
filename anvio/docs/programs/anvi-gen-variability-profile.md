@@ -26,6 +26,16 @@ anvi-gen-variability-profile -p %(profile-db)s \
                              -s %(structure-db)s 
 {{ codestop }}
 
+You can also output your %(variability-profile-txt) to a specific location, which can be useful when working with multiple `engine` parameters.
+
+{{ codestart }}
+anvi-gen-variability-profile -p %(profile-db)s \
+                             -c %(contigs-db)s \
+                             -C DEFAULT \
+                             -b EVERYTHING \
+                             --output-file /path/to/your/variability.txt
+{{ codestop }}
+
 ### Focusing on a subset of the input 
 
 Instead of focusing on everything (providing the collection `DEFAULT` and the bin `EVERYTHING`), there are three ways to focus on a subset of the input: 
