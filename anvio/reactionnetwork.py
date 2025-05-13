@@ -8728,8 +8728,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO
+            # KEGG reaction.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_kegg_alias_tuple = modelseed_kegg_alias_dict[modelseed_reaction_id]
@@ -8853,8 +8855,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO EC
+            # number.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_ec_alias_tuple = modelseed_ec_alias_dict[modelseed_reaction_id]
@@ -8887,11 +8891,14 @@ class Constructor:
                 network.modelseed_kegg_aliases[modelseed_reaction_id] = []
 
             if modelseed_reaction_id in ko.ec_number_aliases:
-                # The ModelSEED reaction aliased KEGG reaction(s) refereced by the KO. An empty
+                # The ModelSEED reaction aliased KEGG reaction(s) referenced by the KO. An empty
                 # list was added for the ModelSEED reaction in the following attribute.
                 if DEBUG:
                     assert not ko.ec_number_aliases[modelseed_reaction_id]
-                ko.ec_number_aliases[modelseed_reaction_id] += ec_numbers
+                ko_modelseed_reaction_ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                for ec_number in ec_numbers:
+                    if ec_number not in ko_modelseed_reaction_ec_number_aliases:
+                        ko_modelseed_reaction_ec_number_aliases.append(ec_number)
             else:
                 # The ModelSEED reaction did not alias any KEGG reactions referenced by the KO.
                 ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers
