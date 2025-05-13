@@ -2473,7 +2473,7 @@ class ReactionNetwork:
 
     def _merge_two_genome_networks(self, network: GenomicNetwork) -> Tuple[GenomicNetwork, Iterable[str]]:
         """
-        This method is meant for merging two GenomicNetwork objects coming from different contigs databases. 
+        This method is meant for merging two GenomicNetwork objects coming from different contigs databases.
         It internally uses the _merge_network() function after modifying the gene caller IDs of one network to
         prevent overlap with gene caller IDs in the other network. It also adds a 'genomes_of_origin' attribute
         to each element in the network to track which of the genomes contain the element.
@@ -2488,7 +2488,7 @@ class ReactionNetwork:
         merged : GenomicNetwork
             A merged reaction network containing the elements from both genomes' reaction networks.
         db_names : Iterable[str]
-            A list of the project names stored within each contigs database. The first element is the name 
+            A list of the project names stored within each contigs database. The first element is the name
             associated with the current network, the second is associated with the other network.
         """
 
@@ -2498,7 +2498,7 @@ class ReactionNetwork:
         for gcid, gene in network.genes.items():
             new_id = gcid + base_gcid
             new_gene_ids[new_id] = gene
-            # the following changes the original Gene object and will be reflected in both 
+            # the following changes the original Gene object and will be reflected in both
             # the original network and the returned merged network
             new_gene_ids[new_id].gcid = new_id
             new_gene_ids[new_id].original_gcid = gcid
@@ -2744,7 +2744,7 @@ class ReactionNetwork:
     def _get_reaction_to_pathway_map_dict(self, map_ids_to_exclude: set[str] = None,
             id_selection_prefix: str = None) -> dict[str, set[str]]:
         """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in.
-        
+
         Parameters
         ==========
         map_ids_to_exclude : set[str]
