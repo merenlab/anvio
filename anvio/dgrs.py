@@ -315,6 +315,7 @@ class DGR_Finder:
                 where_clause = f'''collection_name == "{self.collections_given}"'''
                 self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
                     error_if_no_data=True)
+                profile_db.disconnect()
 
                 # Dictionary to store splits by bin_name
                 bin_splits_dict = {}
