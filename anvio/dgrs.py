@@ -990,7 +990,8 @@ class DGR_Finder:
 
     def add_new_DGR(self, DGR_number, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
                     is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position, subject_contig, midline,
-                    percentage_of_mismatches):
+                    percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                    numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs):
         """
         This function is adding the DGRs that are found initially to the DGRs_found_dict.
 
@@ -1038,6 +1039,13 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] =   query_genome_end_position
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = query_contig
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'query'
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['DGR_looks_snv_false'] = DGR_looks_snv_false
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_at_3_codon_over_a_third'] = snv_at_3_codon_over_a_third
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_TR_mismatch_positions'] = mismatch_pos_contig_relative
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_VR_positions'] = snv_VR_positions
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_snv_in_matches_not_mutagen_base']= numb_of_snv_in_matches_not_mutagen_base
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_mismatches']= numb_of_mismatches
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_SNVs']= numb_of_SNVs
 
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
@@ -1048,7 +1056,9 @@ class DGR_Finder:
 
 
     def update_existing_DGR(self, existing_DGR_key, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement,
-                            query_genome_start_position, query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position, subject_contig):
+                            query_genome_start_position, query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
+                            subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                            numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs):
         """
         This function is updating the DGRs in the DGRs_found_dict with those DGRs that overlap each other.
 
@@ -1130,6 +1140,13 @@ class DGR_Finder:
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_frame'] = TR_frame
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = subject_genome_start_position
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['DGR_looks_snv_false'] = DGR_looks_snv_false
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_at_3_codon_over_a_third'] = snv_at_3_codon_over_a_third
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_TR_mismatch_positions'] = mismatch_pos_contig_relative
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_VR_positions'] = snv_VR_positions
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_snv_in_matches_not_mutagen_base']= numb_of_snv_in_matches_not_mutagen_base
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_mismatches']= numb_of_mismatches
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_SNVs']= numb_of_SNVs
 
         self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(subject_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
         self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(subject_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
@@ -1209,6 +1226,7 @@ class DGR_Finder:
                 for letter, count in subject_mismatch_counts.items():
                     percentage_of_mismatches = (count / mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
+
                         # if the letter is T, then we assume that it is an A base and we reverse complement EVERYTHING
                         if letter == 'T':
                             TR_sequence = str(subject_sequence.reverse_complement())
@@ -1224,6 +1242,94 @@ class DGR_Finder:
                             midline = original_midline
                             base = letter
                             is_reverse_complement = False
+
+
+                        #### SNV logic based removal of DGRs.
+                        #first remove dgrs that have more than 34% of the SNVs in the VR range to be coming from the 3rd codon position
+                        # - because this is not very DGR like and means that there is more non-specific read mapping happening nothing biological
+                        # Secondly, we want to check that the SNVs are coming from the sites of matches in the mutagenesis base (usually A), and
+                        # all of the mismatching bases (remember we have already cut out those that have more than 20% of the mismatches coming
+                        # from the non-mutagenesis site). This means that we filter out those that have SNVs at the site of matches in the non-mutagenesis base (usually C,G,T).
+                        # Currently the code (30.04.2025) adds a column to the DGR_looks_snv_false if there is ONE single SNV at a non-mutagenesis match site.
+                        # Going to look and create a threshold - for populations etc
+
+                        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
+                        #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
+                        self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+                        self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
+                        profile_db.disconnect()
+
+                        #subset snv df by query contig (vr contig) and VR range
+                        matching_snv_rows = self.snv_panda_bin[(self.snv_panda_bin['contig_name'] == query_contig) &
+                        (self.snv_panda_bin['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
+
+                        #make snv vr positions a list so we can print it in the output
+                        snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
+
+                        #currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
+                        mismatch_pos_contig_relative = [x + query_genome_start_position for x in position]
+
+                        if matching_snv_rows.empty:
+                            #skip because you are useless to us
+                            #i.e. there are no SNVs in the VR
+                            continue
+                        else:
+                            # first check majority of SNVs come from 1&2 codon pos
+                            # get the counts of the snv codon positions
+                            codon_pos_sorted = matching_snv_rows['base_pos_in_codon'].value_counts()
+                            count_1 = codon_pos_sorted.get(1, 0)
+                            count_2 = codon_pos_sorted.get(2, 0)
+                            count_3 = codon_pos_sorted.get(3, 0)
+
+                            total = count_1 + count_2 + count_3
+                            percent_3 = count_3 / total * 100
+
+                            # Apply threshold of 66% because we want less than a third of snvs to be at the third codon position
+                            is_3_over_a_third = percent_3 > 33
+                            if is_3_over_a_third:
+                                print(f"3rd codon position is over a third of the total VR SNVs, so we remove you")
+                                snv_at_3_codon_over_a_third = True
+                            else:
+                                print(f"3rd codon position is the minority of the SNVs")
+                                snv_at_3_codon_over_a_third = False
+
+                            #look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
+                            #letter to skip is mutagenesis base (usually A), if mismatch majority A IF rev comp then T, else make mismatch majority use base
+                            letter_to_skip = base.upper()
+
+                            if is_reverse_complement:
+                                if letter_to_skip == "A":
+                                    letter_to_skip = "T"
+                                elif letter_to_skip == "T":
+                                    letter_to_skip = "A"
+                                elif letter_to_skip == "C":
+                                    letter_to_skip = "G"
+                                elif letter_to_skip == "G":
+                                    letter_to_skip = "C"
+                                elif letter_to_skip == "N":
+                                    letter_to_skip = "N"
+
+                            # subset VR snv df, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
+                            snv_in_matches_not_mutagen_base = matching_snv_rows[~matching_snv_rows['pos_in_contig'].isin(mismatch_pos_contig_relative) & (matching_snv_rows['reference'] != letter_to_skip)]
+                            #this needs to be a set of the posisiont in contig so that there are not multiple reported
+                            numb_of_snv_in_matches_not_mutagen_base = len(set(snv_in_matches_not_mutagen_base['pos_in_contig']))
+                            numb_of_mismatches = len(position)
+                            numb_of_SNVs = len(snv_VR_positions)
+                            #TODO:
+                            #report proportion
+                            # or have literal number
+                            #could add in reference has to be above certain threshold if more than just first have this?
+
+                            #if there is a SNV in a matching none mutagenesis base then record it
+                            #HERE ADD THRESHOLD - 30.04.2025
+                            if numb_of_snv_in_matches_not_mutagen_base > 2:
+                                print(f"More than 2 SNVs are at VR match not at mutagenesis base")
+                                DGR_looks_snv_false = True
+                            else:
+                                #NO SNV in matching none mutagenesis base
+                                DGR_looks_snv_false = False
+                                print(f"NO more than 2 SNVS at match of VR not at mutagenesis base")
 
                         #to test for VR diversity of base types in the protein sequence
                         for letter, count in query_mismatch_counts.items():
@@ -1248,7 +1354,8 @@ class DGR_Finder:
                             continue
 
                         if self.only_a_bases:
-                            self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
+                            #THIS WARNIGN SHOULD GO AT THE top of fuc so not run for every check
+                            #self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
                             # Filter out bases with count > 0 before checking
                             nonzero_mismatch_bases = [base for base, count in subject_mismatch_counts.items() if count > 0]
 
@@ -1269,7 +1376,8 @@ class DGR_Finder:
                             self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}", header="NEW DGR", lc='yellow')
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
+                                        subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
+                                        snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
                         else:
                             was_added = False
                             for dgr in self.DGRs_found_dict:
@@ -1281,15 +1389,17 @@ class DGR_Finder:
                                     #TODO can rename consensus_TR
                                     self.update_existing_DGR(dgr, bin, query_frame, VR_sequence, subject_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
                                                     query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
-                                                    subject_contig)
+                                                    subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                                                    numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
                                     break
                             if not was_added:
                                 # add new TR and its first VR
-                                print(f"Adding new DGR {num_DGR} with bin: {bin}")
+                                self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}", header="NEW DGR", lc='yellow')
                                 num_DGR += 1
                                 self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches)
+                                        subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
+                                        snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
 
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
@@ -1410,7 +1520,7 @@ class DGR_Finder:
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
-        #MAKE into WRITE DGR_genes_found write function
+        #TODO: MAKE into WRITE DGR_genes_found write function
         #define output path
         output_directory_path = self.output_directory
         output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.csv")
@@ -1598,7 +1708,9 @@ class DGR_Finder:
             "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
             "TR_start_position", "TR_end_position", "TR_bin", "TR_in_gene", "HMM_source",
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
-            "HMM_stop", "HMM_gene_callers_id"
+            "HMM_stop", "HMM_gene_callers_id", "DGR_looks_snv_false", "snv_at_3_codon_over_a_third",
+            "numb_of_snv_in_matches_not_mutagen_base", "numb_of_mismatches", "numb_of_SNVs",
+            "VR_TR_mismatch_positions", "snv_VR_positions"
         ]
 
         # Check if either dictionary is empty or lacks meaningful keys
@@ -1626,7 +1738,9 @@ class DGR_Finder:
                         vr_data['TR_start_position'], vr_data['TR_end_position'],
                         tr.get('TR_bin', 'N/A'),tr['TR_in_gene'], tr['HMM_source'], tr["distance_to_HMM"],
                         tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
-                        tr["HMM_stop"], tr["HMM_gene_callers_id"]
+                        tr["HMM_stop"], tr["HMM_gene_callers_id"], vr_data["DGR_looks_snv_false"],
+                        vr_data["snv_at_3_codon_over_a_third"], vr_data["numb_of_snv_in_matches_not_mutagen_base"],
+                        vr_data["numb_of_mismatches"], vr_data["numb_of_SNVs"], vr_data["VR_TR_mismatch_positions"], vr_data["snv_VR_positions"]
                     ]
                     csv_writer.writerow(csv_row)
         return
