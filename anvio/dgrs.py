@@ -886,14 +886,19 @@ class DGR_Finder:
 
                         has_repeat = False
                         # here we use pytrf for removing tandem and not exact tandem repeats, this is a python compiled version of tandem repeats finder:
-                        # the idea is that there are a lot of false positives found in metagenomic samples that are found with `anvi-report-dgrs` due to the nature of the two sequences
-                        # being very similar and we only want those that are similar due to the TR/VR constraints and not because they are repeated sequences.
-                        # the first loop uses the approximate repeat finder to search for imperfect tandem repeats that are above a threshold number of times
-                        # repeated, by default this is 10.
-                        # the second loop loops for sequential tandem repeats and has the parameter to catch any mono or di motif (so single base, or pair of bases) that repeats 6 times
-                        # after each other and default settings for tri=5, tetra=4, penta=4, hexa=4. If any are caught the sequence is removed.
-                        # the third loop for approximate repeat finder works by looking for any repeated motif that is over 4 and under 10 bp long that has a minimum identity fo up to 1 bp difference.
-                        # then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined value or 80% as default then the sequence is removed.
+                        # the idea is that there are a lot of false positives found in metagenomic samples that are found with `anvi-report-dgrs` due to
+                        # the nature of the two sequences being very similar and we only want those that are similar due to the TR/VR constraints and not
+                        # because they are repeated sequences. The first loop uses the approximate repeat finder to search for imperfect tandem repeats
+                        # that are above a threshold number of times repeated, by default this is 10.
+                        #
+                        # The second loop loops for sequential tandem repeats and has the parameter to catch any mono or di motif (so single base, or pair of bases)
+                        # that repeats 6 times after each other and default settings for tri=5, tetra=4, penta=4, hexa=4. If any are caught the sequence is removed.
+                        #
+                        # The third loop for approximate repeat finder works by looking for any repeated motif that is over 4 and under 10 bp long that has a minimum
+                        # identity fo up to 1 bp difference. then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined
+                        # value or 80% as default then the sequence is removed.
+                        # The fourth loop is there because the pytrf code has the quirk that the if you change the min motif to smaller it misses the larger motif repeats,
+                        # this loop also has the seed len as 9 not 10 which is the default to remove some more repeats
 
                         for seq in [hseq, qseq]:
                             #remove - in sequences to remove repeats properly
@@ -908,9 +913,19 @@ class DGR_Finder:
                                 if ssr:
                                     has_repeat = True
 
-                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats divided by the sequence length
+                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+                            # divided by the sequence length
                             for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
                                 coverage = (len(atr.motif)*atr.repeat) / len(seq)
+                                if coverage > self.repeat_motif_coverage:
+                                    has_repeat = True
+
+
+                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+                            # divided by the sequence length
+                            # Need to do this for shorter motifs too because pytrf misses them otherwise
+                            for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
+                                coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
                                 if coverage > self.repeat_motif_coverage:
                                     has_repeat = True
 
