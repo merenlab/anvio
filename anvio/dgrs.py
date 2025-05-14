@@ -1164,6 +1164,11 @@ class DGR_Finder:
 
         #possible DGR dictionary
         self.DGRs_found_dict = {}
+
+        if self.only_a_bases:
+                #This is here so that every potential VR doesn't get a new warning and clog up the terminal
+                self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
+
         if self.collections_mode:
             hits_item = self.merged_mismatch_hits
         else:
