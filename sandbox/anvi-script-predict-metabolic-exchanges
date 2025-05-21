@@ -326,7 +326,7 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
 
         max_length = None
         if reaction_chains:
-            max_length = max([len(chain.kgml_compound_entries) for chain in reaction_chains[compound_id]])
+            max_length = max([len(chain.kgml_reactions) for chain in reaction_chains[compound_id]])
         return max_length
     except ConfigError as c: # this is redundant for now, but useful for debugging
         print(f"Got ConfigError from pathway walker for {compound_id} in map {pathway_map_id}: {c}")
