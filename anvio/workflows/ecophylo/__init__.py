@@ -338,8 +338,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clustering_param_space_list_strings = [str(format(clustering_threshold, '.2f')).split(".")[1] + "_percent" for clustering_threshold in self.clustering_param_space]
         self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
 
-        self.target_files = self.get_target_files()
+        # target files for make_anvio_state_tree
+        self.target_files_make_anvio_state_file_tree = self.get_target_files_make_anvio_state_file_tree()
 
+        # global target files
+        self.target_files = self.get_target_files()
 
     def get_target_files(self):
         """This function creates a list of target files for Snakemake
@@ -353,26 +356,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         target_files = []
 
         for hmm in self.hmm_dict.keys():
-
-            # Clustering parameter space
-            for clustering_threshold in self.clustering_param_space_list_strings:
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta")
-                target_files.append(target_file)
-
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
-                target_files.append(target_file)
-
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
+            target_files.append(target_file)
+            
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
-                target_files.append(target_file)
-
                 target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_tree.done")
                 target_files.append(target_file)
             
@@ -381,18 +369,31 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
-                target_files.append(target_file)
-
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
-                target_files.append(target_file)
-
                 target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
                 target_files.append(target_file)
         
+        return target_files
+
+    def get_target_files_make_anvio_state_file_tree(self):
+        """This function creates a list of target files for make_anvio_state_file_tree
+        
+        RETURNS
+        =======
+        target_files: list
+            list of target files for snakemake
+        """
+
+        target_files = []
+
+        for hmm in self.hmm_dict.keys():
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm}_misc.tsv")
+            target_files.append(target_file)
+
+            run_scg_taxonomy = self.get_param_value_from_config(["anvi_scg_taxonomy", "run"]) == True
+            if run_scg_taxonomy:
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_files.append(target_file)
+
         return target_files
     
     def init_hmm_list_txt(self):
