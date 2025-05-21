@@ -375,8 +375,7 @@ rule combine_sequence_data:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "combine_sequence_data_{hmm}.log")
     input:
-        done_files = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm}}-dom-hmmsearch", "{sample_names}-{{hmm}}-processed.done"), sample_names = M.names_list),
-        hmm_hits = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm}}-dom-hmmsearch", "hmm_hits_filtered.txt"), sample_names = M.names_list),
+        done_files = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm}}-dom-hmmsearch", "{sample_names}-{{hmm}}-processed.done"), sample_names = M.names_list)
     output:
         NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-all.fna"),
         AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-all.faa"),
@@ -384,13 +383,15 @@ rule combine_sequence_data:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-external_gene_calls_all.tsv"),
         done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-combine_sequence_data.done"))
     threads: M.T('combine_sequence_data')
+    params:
+        hmm_hits = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm}}-dom-hmmsearch", "hmm_hits_filtered.txt"), sample_names = M.names_list)
     run:
         # Make list of contigDBs that had a hit with the hmm
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
 
         contigs_db_with_hmm_hits = []
         contigs_db_with_hmm_NO_hits = []
-        for hmm_hits in input.hmm_hits:
+        for hmm_hits in params.hmm_hits:
             df = pd.read_csv(hmm_hits, sep='\t')
             df = df[df.source == hmm_source]
             gene_name_list = df['gene_name'].tolist()
@@ -489,12 +490,12 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{hmm}_{clustering_threshold}.log")
     input: 
-        NT_all = rules.combine_sequence_data.output.NT_all,
         done = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR_cluster.done")
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
     params:
+        NT_all = rules.combine_sequence_data.output.NT_all,
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-tmp"),
         cov_mode = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--cov-mode']),
@@ -502,7 +503,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
-        shell("mmseqs easy-cluster {input.NT_all} \
+        shell("mmseqs easy-cluster {params.NT_all} \
                                    {params.output_prefix} \
                                    {params.mmseqs_tmp} \
                                    --threads {threads} \
@@ -633,16 +634,16 @@ if M.cluster_representative_method == "mmseqs":
         version: 1.0
         log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_mmseqs_reps_{hmm}.log")
         input:
-            fa = rules.combine_sequence_data.output.AA_all,
-            mmseqs_reps = rules.cluster_X_percent_sim_mmseqs.output.fasta,
+            mmseqs_reps = rules.cluster_X_percent_sim_mmseqs.output.fasta
         output:
             fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-AA_subset.fa"),
         params:
+            fa = rules.combine_sequence_data.output.AA_all,
             headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-headers.tmp")
         threads: M.T('subset_AA_seqs_with_mmseqs_reps')
         run:
             shell("grep '>' {input.mmseqs_reps} | sed 's/>//g' > {params.headers}")
-            shell("anvi-script-reformat-fasta {input.fa} -I {params.headers} -o {output.fasta} >> {log} 2>&1")
+            shell("anvi-script-reformat-fasta {params.fa} -I {params.headers} -o {output.fasta} >> {log} 2>&1")
 
 
 rule align_sequences:
@@ -697,10 +698,11 @@ rule count_num_sequences_filtered:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{hmm}.log")
     input:
-        step1 = rules.combine_sequence_data.output.NT_all,
-        step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
-        step3 = rules.remove_sequences_with_X_percent_gaps.output.fasta,
+        remove_seq_with_gaps = rules.remove_sequences_with_X_percent_gaps.output.fasta,
         clustering_thresholds = expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{{hmm}}", "{clustering_threshold}", "{{hmm}}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"), clustering_threshold = M.clustering_param_space_list_strings),
+    params:
+        combined_seq = rules.combine_sequence_data.output.NT_all,
+        cluster_mmseqs = rules.cluster_X_percent_sim_mmseqs.output.fasta,
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{hmm}", "{hmm}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
     run:
@@ -722,7 +724,7 @@ rule count_num_sequences_filtered:
                     num_seqs += 1
             return num_seqs
 
-        input_files_list = [input.step1, input.step2, input.step3]
+        input_files_list = [params.combined_seq, params.cluster_mmseqs, input.remove_seq_with_gaps]
         num_seqs_list = [count_num_sequences(open(fasta)) for fasta in input_files_list]
 
         clustering_threshold_attributes_list = []
@@ -736,9 +738,9 @@ rule count_num_sequences_filtered:
 
         with open(output[0], 'w') as f:
             col_names = ["rule_name", "num_sequences_left", "rel_path"]
-            step1 = ["combine_sequence_data", str(num_seqs_list[0]), input.step1]
-            step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), input.step2]
-            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.step3]
+            step1 = ["combine_sequence_data", str(num_seqs_list[0]), params.combined_seq]
+            step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), params.cluster_mmseqs]
+            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.remove_seq_with_gaps]
             lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
             for line in lines:
                 f.write('\t'.join(line) + '\n')
@@ -750,16 +752,17 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{hmm}.log")
     input:
-        fasta = rules.combine_sequence_data.output.NT_all,
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
         NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-references_for_mapping_NT.fa"),
         headers = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_headers.tmp")
+    params:
+        fasta = rules.combine_sequence_data.output.NT_all
     threads: M.T('subset_DNA_reps_with_QCd_AA_reps_for_mapping')
     run:
         shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
 
-        shell("anvi-script-reformat-fasta {input.fasta} -I {output.headers} -o {output.NT_for_mapping} >> {log} 2>&1")
+        shell("anvi-script-reformat-fasta {params.fasta} -I {output.headers} -o {output.NT_for_mapping} >> {log} 2>&1")
 
 
 rule subset_external_gene_calls_file_all:
@@ -1035,7 +1038,7 @@ rule anvi_run_scg_taxonomy:
                 shell("anvi-run-scg-taxonomy -c {contigs_db} --num-threads {threads} {params.additional_params} > {log} 2>&1")
 
 
-rule anvi_scg_taxonomy:
+rule anvi_estimate_scg_taxonomy:
     """Run anvi-estimate-SCG-taxonomy and import the resulting taxonomy misc data to profileDB for internal hmms only"""
 
     version: 1.0
@@ -1051,7 +1054,7 @@ rule anvi_scg_taxonomy:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
     output: 
         done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
-    threads: M.T('anvi_scg_taxonomy')
+    threads: M.T('anvi_estimate_scg_taxonomy')
     run:
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
 
