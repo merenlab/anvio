@@ -34,7 +34,7 @@ rule make_metagenomics_config_file:
         config_dict['bowtie_build']['threads'] = 5
         config_dict['anvi_gen_contigs_database']['threads'] = 5
         config_dict['anvi_init_bam']['threads'] = 2
-        config_dict['anvi_profile']['--profile-SCVs'] = True 
+        config_dict['anvi_profile']['--profile-SCVs'] = True
 
         if M.clusterize_metagenomics_workflow == True:
             config_dict['bowtie']['threads'] = 10
@@ -42,7 +42,7 @@ rule make_metagenomics_config_file:
             config_dict['anvi_merge']['threads'] = 10
 
         if M.bowtie2_additional_params:
-            config_dict['bowtie']['additional_params'] = " ".join(["--no-unal", M.bowtie2_additional_params]) 
+            config_dict['bowtie']['additional_params'] = " ".join(["--no-unal", M.bowtie2_additional_params])
 
         if M.anvi_profile_min_percent_identity:
             config_dict['anvi_profile']['--min-percent-identity'] = M.anvi_profile_min_percent_identity
@@ -62,7 +62,7 @@ rule run_metagenomics_workflow:
     threads: M.T('run_metagenomics_workflow')
     params:
     run:
-        metagenomics_workflow_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW") 
+        metagenomics_workflow_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW")
 
         # Convert r1 and r2 to absolute paths
         samples_txt_new_path = os.path.join(metagenomics_workflow_path, M.samples_txt_file)
@@ -107,7 +107,7 @@ rule anvi_summarize:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{hmm}.log")
-    input: 
+    input:
         done = rules.add_default_collection.output.done
     params:
         contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{hmm}-contigs.db")),
@@ -115,9 +115,9 @@ rule anvi_summarize:
         output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{hmm}")
     output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{hmm}_summarize.done"))
     threads: M.T('anvi_summarize')
-    run: 
+    run:
         shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it >> {log} 2>&1')
-        
+
 
 rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
@@ -158,13 +158,13 @@ rule make_anvio_state_file:
 
         # height and width
         # FIXME: It's unclear to me how the interactive interface determines
-        # height and width of a tree when the input value is 0. There has to 
+        # height and width of a tree when the input value is 0. There has to
         # be some kind of calculation to determine the tree shape in the backend
         # of the interface because even after I export a "default" state file
         # the height and width are still "0". However, if you change the height and width
-        # values within the interface to "" the tree will disappear. I need to sort this 
-        # out eventually to have a clean way of changing the tree shape to 
-        # match the dimensions of the number of SCGs vs metagenomes. 
+        # values within the interface to "" the tree will disappear. I need to sort this
+        # out eventually to have a clean way of changing the tree shape to
+        # match the dimensions of the number of SCGs vs metagenomes.
         # num_tree_tips = pd.read_csv(input.num_tree_tips, \
         #                             sep="\t", \
         #                             index_col=None)
@@ -178,9 +178,9 @@ rule make_anvio_state_file:
             metagenomes.append(metagenome)
 
         if hmm_source in M.internal_hmm_sources:
-            layer_order = first_layers + metagenomes + misc_layers_list + scg_taxonomy_layers_list 
+            layer_order = first_layers + metagenomes + misc_layers_list + scg_taxonomy_layers_list
         else:
-            layer_order = first_layers + metagenomes + misc_layers_list 
+            layer_order = first_layers + metagenomes + misc_layers_list
 
         state_dict['layer-order'] = layer_order
 
@@ -239,7 +239,7 @@ rule make_anvio_state_file:
             "type": "line",
             "color-start": "#FFFFFF"
             }
-            
+
         layers_dict.update(metagenome_layers_dict)
         layers_dict['__parent__'] = layer_attributes_parent
         layers_dict['length'] = length
@@ -272,9 +272,9 @@ rule make_anvio_state_file:
             "normalization": "none"
         }
 
-        single_dict['percent_identity'] = percent_identity 
-        mean_coverage_dict['percent_identity'] = percent_identity 
-        mean_coverage_dict['cluster_size'] = cluster_size 
+        single_dict['percent_identity'] = percent_identity
+        mean_coverage_dict['percent_identity'] = percent_identity
+        mean_coverage_dict['cluster_size'] = cluster_size
         views_dict['single'] = single_dict
         views_dict['mean_coverage'] = mean_coverage_dict
         state_dict['views'] = views_dict
@@ -299,7 +299,7 @@ rule make_anvio_state_file:
                 },
             }
         }
-        
+
         state_dict['samples-layers'] = samples_layers_dict
 
         with open(output.state_file, "w") as outfile:
@@ -321,7 +321,7 @@ rule anvi_import_everything_metagenome:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
-    output: 
+    output:
         touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
     run:
@@ -340,7 +340,7 @@ rule anvi_import_everything_metagenome:
         shell("echo -e '' >> {log}")
 
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
-        
+
         if hmm_source in M.internal_hmm_sources:
             shell("echo -e 'Step 4: anvi-import-misc-data:\n' >> {log}")
             shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")

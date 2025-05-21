@@ -37,9 +37,9 @@ rule ECOPHYLO_WORKFLOW_target_rule:
 
 
 def get_hmm_threads(wildcards):
-    """This function conditionally selects threads for anvi-run-hmms based on 
+    """This function conditionally selects threads for anvi-run-hmms based on
     if a contigs-db is a metagenome or not.
-    
+
     Parameters
     ==========
     wildcards: snakemake object
@@ -60,7 +60,7 @@ def get_hmm_threads(wildcards):
             threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes'])
     else:
         threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes'])
-    
+
     if threads:
         try:
             if int(threads) > float(max_threads):
@@ -127,13 +127,13 @@ rule anvi_run_hmms_hmmsearch:
 
         # Get hmm_hits.txt
         get_hmm_hits_txt(contigs_db_path, output.hmm_hits)
-        
+
         shell("touch {output.done}")
 
 
 def get_hmm_hits_txt(contigs_db, out_file):
     """This function extracts the hmm_hits table from a contigs-db
-    
+
     Parameters
     ==========
     contigs_db
@@ -143,7 +143,7 @@ def get_hmm_hits_txt(contigs_db, out_file):
 
     Returns
     =======
-    hmm_hits.tsv : tsv 
+    hmm_hits.tsv : tsv
     """
 
     database = db.DB(contigs_db, None, ignore_version=True)
@@ -165,7 +165,7 @@ rule filter_hmm_hits_by_model_coverage:
     """Remove weak hmm hits using model alignment coverage filter"""
 
     version: 1.0
-    log: 
+    log:
         log = os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm}.log")
     input:
         done = ancient(rules.anvi_run_hmms_hmmsearch.output.done),
@@ -210,13 +210,13 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --min-model-coverage {params.model_coverage} \
                                                         {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
-            
+
         else:
             no_hmm_hits_string = f"The hmm {wildcards.hmm} was not found in the hmm_hits of the contigs_db: {contigs_db}"
             print(no_hmm_hits_string)
             with open(log.log, "w") as logfile:
                 logfile.write(no_hmm_hits_string)
-        
+
         # Get hmm_hits.txt
         get_hmm_hits_txt(contigs_db, output.hmm_hits_filtered)
 
@@ -225,11 +225,11 @@ rule filter_hmm_hits_by_model_coverage:
 
 rule process_hmm_hits:
     """Extract AA/NT fastas and external-gene-calls from contigs-db then rename external-gene-calls
-    names with reformated names. 
+    names with reformated names.
     """
 
     version: 1.0
-    log: 
+    log:
         log = os.path.join(dirs_dict['LOGS_DIR'], "process_hmm_hits-{sample_name}-{hmm}.log")
     input:
         done = ancient(rules.filter_hmm_hits_by_model_coverage.output.done),
@@ -258,7 +258,7 @@ rule process_hmm_hits:
         external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.sample_name}-{wildcards.hmm}-external_gene_calls.tsv")
         fasta = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.sample_name}-{wildcards.hmm}-orfs.fna")
 
-        # rename external gene calls                                                       
+        # rename external gene calls
         external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.sample_name}-{wildcards.hmm}-external_gene_calls_renamed.tsv")
 
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
@@ -267,7 +267,7 @@ rule process_hmm_hits:
         gene_name_list = df['gene_name'].tolist()
 
         # There is no point in running the following if we don't have any hmm_hits to begin with!
-        if wildcards.hmm in gene_name_list:            
+        if wildcards.hmm in gene_name_list:
             if hmm_source in M.internal_hmm_sources:
 
                 # Get AA and NT fasta files
@@ -279,7 +279,7 @@ rule process_hmm_hits:
                                                        --get-aa-sequences \
                                                        -o {faa} --just-do-it >> {log} 2>&1")
                 shell("echo -e '' >> {log}")
-                
+
                 shell("echo -e 'anvi-get-sequences-for-hmm-hits NT stdout:\n' >> {log}")
                 shell("echo -e '' >> {log}")
                 shell("anvi-get-sequences-for-hmm-hits -c {contigs_db} \
@@ -290,7 +290,7 @@ rule process_hmm_hits:
 
 
             else:
-            
+
                 # Get AA and NT fasta files
                 shell("echo -e 'anvi-get-sequences-for-hmm-hits AA stdout:\n' >> {log}")
                 shell("anvi-get-sequences-for-hmm-hits -c {contigs_db} \
@@ -306,7 +306,7 @@ rule process_hmm_hits:
 
             # Clean up fasta headers for tree calculation
             prefix_list = [wildcards.sample_name, wildcards.hmm]
-            prefix = "_".join(prefix_list) 
+            prefix = "_".join(prefix_list)
 
             shell("echo -e 'anvi-script-reformat-fasta AA stdout:\n' >> {log}")
             shell("anvi-script-reformat-fasta {faa} \
@@ -328,7 +328,7 @@ rule process_hmm_hits:
                                                      --external-gene-calls {external_gene_calls} \
                                                      -o {fasta} >> {log} 2>&1')
 
-            
+
             # Import tables
             external_gene_calls = pd.read_csv(external_gene_calls, delim_whitespace=True, index_col=False)
 
@@ -360,8 +360,8 @@ rule process_hmm_hits:
 
 
 rule combine_sequence_data:
-    """Cat all NT/AA fastas, reformat files, and renamed external-gene-calls files 
-    Narrow end of the workflow funnel! 
+    """Cat all NT/AA fastas, reformat files, and renamed external-gene-calls files
+    Narrow end of the workflow funnel!
 
     In this rule output files from metagenomes, genomes, SAGs, and MAGs all come together here!
 
@@ -401,23 +401,23 @@ rule combine_sequence_data:
             else:
                 contigs_db = hmm_hits.split("/")[2].split("-")[0]
                 contigs_db_with_hmm_NO_hits.append(contigs_db)
-        
-        outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_hmm_hit_{wildcards.hmm}.log") 
+
+        outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_hmm_hit_{wildcards.hmm}.log")
         with open(outfile, "a") as outfile:
             for element in contigs_db_with_hmm_NO_hits:
                 outfile.write(element + '\n')
-        
+
         NT_list = []
         AA_list = []
         AA_reformat_list = []
         external_gene_calls_reformat_list = []
 
         for contigs_db in contigs_db_with_hmm_hits:
-           NT_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-hmm_hits_renamed.fna") 
-           AA_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-hmm_hits_renamed.faa") 
-           NT_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-reformat_report_NT.txt") 
-           AA_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-reformat_report_AA.txt") 
-           external_gene_calls_reformat_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-external_gene_calls_renamed.tsv") 
+           NT_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-hmm_hits_renamed.fna")
+           AA_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-hmm_hits_renamed.faa")
+           NT_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-reformat_report_NT.txt")
+           AA_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-reformat_report_AA.txt")
+           external_gene_calls_reformat_reformat_path = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{contigs_db}-{wildcards.hmm}-external_gene_calls_renamed.tsv")
            NT_list.append(NT_path)
            AA_list.append(AA_path)
            AA_reformat_list.append(AA_reformat_path)
@@ -446,9 +446,9 @@ rule cluster_X_percent_sim_mmseqs:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{hmm}.log")
-    input: 
+    input:
         done = rules.combine_sequence_data.output.done
-    output: 
+    output:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR_cluster.tsv"),
         done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR_cluster.done"))
@@ -461,7 +461,7 @@ rule cluster_X_percent_sim_mmseqs:
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         if M.AA_mode == True:
-           fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{wildcards.hmm}", f"{wildcards.hmm}-all.faa") 
+           fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{wildcards.hmm}", f"{wildcards.hmm}-all.faa")
         else:
            fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{wildcards.hmm}", f"{wildcards.hmm}-all.fna")
 
@@ -472,7 +472,7 @@ rule cluster_X_percent_sim_mmseqs:
         if len(fasta_dict) == 0:
             raise ConfigError(f"anvi'o and the EcoPhylo workflow are sad to announce that the "
                               f"hmm, {wildcards.hmm}, was not not found in any of your contigs_dbs")
-            
+
         shell(f"mmseqs easy-cluster {fasta} \
                                     {params.output_prefix} \
                                     {params.mmseqs_tmp} \
@@ -483,15 +483,15 @@ rule cluster_X_percent_sim_mmseqs:
 
 
 rule cluster_X_percent_sim_mmseqs_OTUs:
-    """Cluster extracted proteins within percent identity parameter space provided by user. 
+    """Cluster extracted proteins within percent identity parameter space provided by user.
     This will help identify clustering thresholds for OTU like analyses.
     """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{hmm}_{clustering_threshold}.log")
-    input: 
+    input:
         done = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR_cluster.done")
-    output: 
+    output:
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
     params:
@@ -557,7 +557,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
         input:
             mmseqs_cluster_rep_index = rules.cluster_X_percent_sim_mmseqs.output.mmseqs_cluster_rep_index,
             reformat_report = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-reformat-report-all.txt"),
-            coverages = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "gene-coverages.txt") 
+            coverages = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "gene-coverages.txt")
         output:
             coverage_reps = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-coverage-headers.txt"),
             coverage_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-coverage_cluster.tsv")
@@ -582,13 +582,13 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
             reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
             reformat_report["contig"] = reformat_report['header'].str.split("contig:|\|gene_callers_id:", expand=True)[1].astype(str)
             reformat_report['primary_key'] = reformat_report['contig'] + "_" + reformat_report['gene_callers_id'].astype(str)
-            
+
             df = pd.merge(reformat_report, bam, on='primary_key', how='inner')
             df2 = pd.merge(cluster_rep_index, df, left_on='cluster_members', right_on='new_header', how='inner')[["representative", "cluster_members", "mean_cov"]]
 
             def get_new_seed(df):
                 """This function extracts the hmm_hits table from a contigs-db
-                
+
                 Parameters
                 ==========
                 contigs_db
@@ -598,7 +598,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
                 Returns
                 =======
-                hmm_hits.tsv : tsv 
+                hmm_hits.tsv : tsv
                 """
                 new_seed = df[df['mean_cov'] == df['mean_cov'].max()]['cluster_members'].iloc[0]
                 df['representative'] = [new_seed] * len(df)
@@ -680,7 +680,7 @@ rule remove_sequences_with_X_percent_gaps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_sequences_with_X_percent_gaps_{hmm}.log")
     input: rules.trim_alignment.output
-    output: 
+    output:
         fasta = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_aligned_trimmed_filtered.fa")
     params:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_gaps_counts"),
@@ -708,7 +708,7 @@ rule count_num_sequences_filtered:
     run:
         def count_num_sequences(fasta):
             """This function counts the number of sequences in a fasta file
-            
+
             Parameters
             ==========
             fasta: fasta
@@ -741,7 +741,7 @@ rule count_num_sequences_filtered:
             step1 = ["combine_sequence_data", str(num_seqs_list[0]), params.combined_seq]
             step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), params.cluster_mmseqs]
             step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.remove_seq_with_gaps]
-            lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
+            lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list
             for line in lines:
                 f.write('\t'.join(line) + '\n')
 
@@ -767,8 +767,8 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
 
 rule subset_external_gene_calls_file_all:
     """Subset the concatenated external_gene_calls.txt for the final set of NT sequences for profiling.
-    ALSO, once all external-gene-calls are concatenated, gene-callers-ids will be re-indexed so that 
-    there are NO repeating gene-callers-id values. 
+    ALSO, once all external-gene-calls are concatenated, gene-callers-ids will be re-indexed so that
+    there are NO repeating gene-callers-id values.
     """
 
     version: 1.0
@@ -810,7 +810,7 @@ if M.run_iqtree == True:
       version: 1.0
       log: os.path.join(dirs_dict['LOGS_DIR'], "iqtree_{hmm}.log")
       input: rules.remove_sequences_with_X_percent_gaps.output
-      output: 
+      output:
           tree = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}.iqtree"),
           done = touch(os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-tree.done"))
       params:
@@ -858,12 +858,12 @@ rule rename_tree_tips:
         fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-all.faa")
     threads: M.T('rename_tree_tips')
     run:
-        # rename tree tips 
+        # rename tree tips
         from ete3 import Tree
 
         def add_split_name_to_tree_tips(tree, outfile):
             """This function adds a string to the end of tree tip names in a newick file
-            
+
             Parameters
             ==========
             tree: newick file
@@ -880,15 +880,15 @@ rule rename_tree_tips:
 
         if M.run_iqtree == True:
             add_split_name_to_tree_tips(tree = params.iqtree, outfile = output.tree)
-        
+
         elif M.run_fasttree == True:
             add_split_name_to_tree_tips(tree = params.fasttree, outfile = output.tree)
-        
+
         # rename fasta headers to match tree
 
         def add_split_name_to_fasta_headers(fasta, outfile):
             """This function adds a string "_split_00001\n" to the end of fasta file headers
-            
+
             Parameters
             ==========
             fasta: str
@@ -918,7 +918,7 @@ rule rename_tree_tips:
 
 def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
     """This function creates a tsv of metadata for mmseqs cluster tsv outfile (*_cluster.tsv)
-    
+
     Parameters
     ==========
     mmseqs_cluster_rep_index: str
@@ -926,7 +926,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
 
     final_sequences_headers: str
         path to tsv with fasta file headers
-    
+
     output: str
         path to output tsv, metadata values include ['split_name', 'contigs_db_type', 'genomic_seq_in_cluster', 'cluster_size']
         - 'split_name': ID name in interactive interface
@@ -940,10 +940,10 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, sep="\t", index_col=False, names=["representative", "cluster_members"])
 
     final_sequences_headers = pd.read_csv(final_sequences_headers, sep="\t", index_col=False, names=["identifier"])
-    
+
     # Clean data
     #------------
-    
+
     # Detect if there is a genomic reference protein in cluster
     cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
 
@@ -959,7 +959,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
 
     # Make split names for anvi-interactive
-    df['split_name'] = df['cluster_members'].astype(str) + '_split_00001' 
+    df['split_name'] = df['cluster_members'].astype(str) + '_split_00001'
 
     # subset misc data to final set of proteins
     df = pd.merge(df, final_sequences_headers, left_on='cluster_members', right_on='identifier', how='inner')
@@ -975,7 +975,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
             contigs_db_type_dict[name] = "genome"
         else:
             contigs_db_type_dict[name] = "metagenome"
-        
+
     df["contigs_db_type"] = df.cluster_members.apply(lambda name: contigs_db_type_dict[name])
 
     # grab the final columns
@@ -1052,7 +1052,7 @@ rule anvi_estimate_scg_taxonomy:
         taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results"),
         taxonomy_long = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
-    output: 
+    output:
         done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
     threads: M.T('anvi_estimate_scg_taxonomy')
     run:
@@ -1071,13 +1071,13 @@ rule anvi_estimate_scg_taxonomy:
                                    -T {threads} \
                                    --raw-output \
                                    -O {params.taxonomy} &> {log}")
-        
+
         # Import data
         #------------
         scg_taxonomy = pd.read_csv(params.taxonomy_long, \
                                    sep="\t", \
                                    index_col=False)
-                                        
+
         reformat_report = pd.read_csv(params.reformat_file, \
                                       sep="\t", \
                                       index_col=False, \
@@ -1087,16 +1087,16 @@ rule anvi_estimate_scg_taxonomy:
                                             sep="\t", \
                                             index_col=False, \
                                             names=["identifier"])
-        
+
         # Clean Data
         #-----------
         reformat_report = pd.merge(reformat_report, final_sequences_headers, left_on='new_header', right_on='identifier', how='inner')
         reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
         reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
-        reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"] 
+        reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"]
         scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" +  scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
         scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
-        scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001' 
+        scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001'
         scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
 
         # Export

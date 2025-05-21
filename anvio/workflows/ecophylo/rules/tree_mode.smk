@@ -5,8 +5,7 @@ rule make_anvio_state_file_tree:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm}.log")
     input:
-        num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
-        done_scg = rules.anvi_scg_taxonomy.output.done
+        M.target_files_make_anvio_state_file_tree
     params:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
@@ -33,28 +32,28 @@ rule make_anvio_state_file_tree:
 
         # height and width
         # FIXME: It's unclear to me how the interactive interface determines
-        # height and width of a tree when the input value is 0. There has to 
+        # height and width of a tree when the input value is 0. There has to
         # be some kind of calculation to determine the tree shape in the backend
         # of the interface because even after I export a "default" state file
         # the height and width are still "0". However, if you change the height and width
-        # values within the interface to "" the tree will disappear. I need to sort this 
-        # out eventually to have a clean way of changing the tree shape to 
-        # match the dimensions of the number of SCGs vs metagenomes. 
+        # values within the interface to "" the tree will disappear. I need to sort this
+        # out eventually to have a clean way of changing the tree shape to
+        # match the dimensions of the number of SCGs vs metagenomes.
         # num_tree_tips = pd.read_csv(input.num_tree_tips, \
         #                             sep="\t", \
         #                             index_col=None)
 
-
         # layer-orders
         first_layers = ["__parent__", "length", "gc_content"]
 
-        if hmm_source in M.internal_hmm_sources:
+        #if hmm_source in M.internal_hmm_sources:
+        if os.path.isfile(params.tax_data_final):
             with open(params.tax_data_final) as f:
                 lines = f.read()
                 first = lines.split('\n', 1)[0]
                 scg_taxonomy_layers_list = first.split("\t")
 
-            layer_order = first_layers + misc_layers_list + scg_taxonomy_layers_list 
+            layer_order = first_layers + misc_layers_list + scg_taxonomy_layers_list
 
         else:
             layer_order = first_layers + misc_layers_list
@@ -112,7 +111,7 @@ rule make_anvio_state_file_tree:
             "type": "line",
             "color-start": "#FFFFFF"
             }
-            
+
         layers_dict['__parent__'] = layer_attributes_parent
         layers_dict['length'] = length
         layers_dict['gc_content'] = gc_content
@@ -139,7 +138,7 @@ rule make_anvio_state_file_tree:
                 }
         }
 
-        single_dict['percent_identity'] = percent_identity 
+        single_dict['percent_identity'] = percent_identity
         views_dict['single'] = single_dict
         state_dict['views'] = views_dict
 
@@ -155,12 +154,12 @@ rule anvi_import_everything_tree:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm}.log")
     input:
         tree = rules.rename_tree_tips.output.tree,
-        misc_data = rules.make_misc_data.output.misc_data_final,
         state = rules.make_anvio_state_file_tree.output.state_file
     params:
-        tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
+        misc_data = rules.make_misc_data.output.misc_data_final,
+        tax_data_final = rules.anvi_estimate_scg_taxonomy.params.tax_data_final,
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
-    output: 
+    output:
         touch(os.path.join(dirs_dict['HOME'], "{hmm}_state_imported_tree.done"))
 
     threads: M.T('anvi_import_state')
@@ -207,13 +206,13 @@ rule anvi_import_everything_tree:
                             'samples': ', '.join(p_meta['samples']),
                             'sample_id': p_meta['sample_id']})
 
-        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.hmm}_tree")
+        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.hmm}_tree >> {log} 2>&1")
 
-        shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {input.misc_data} --just-do-it")
+        shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.misc_data} --just-do-it >> {log} 2>&1")
 
-        shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
+        shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default >> {log} 2>&1")
 
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
-        
-        if hmm_source in M.internal_hmm_sources:
-            shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
+
+        if os.path.isfile(params.tax_data_final):
+            shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")
