@@ -342,7 +342,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
 
         # target files for make_anvio_state_tree
-        self.target_files_make_anvio_state_file_tree = self.get_target_files_make_anvio_state_file_tree()
+        self.target_files_make_anvio_state_file = self.get_target_files_make_anvio_state_file()
 
         # global target files
         self.target_files = self.get_target_files()
@@ -377,7 +377,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         return target_files
 
-    def get_target_files_make_anvio_state_file_tree(self):
+    def get_target_files_make_anvio_state_file(self):
         """This function creates a list of target files for make_anvio_state_file_tree
 
         RETURNS

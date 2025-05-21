@@ -5,7 +5,7 @@ rule make_anvio_state_file_tree:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm}.log")
     input:
-        M.target_files_make_anvio_state_file_tree
+        M.target_files_make_anvio_state_file
     params:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
@@ -14,10 +14,7 @@ rule make_anvio_state_file_tree:
     threads: M.T('make_anvio_state_file')
     run:
 
-        hmm_source = M.hmm_dict[wildcards.hmm]['source']
-
         # Read in misc data headers for layer_order
-
         with open(params.misc_data_final) as f:
             lines = f.read()
             first = lines.split('\n', 1)[0]
@@ -46,18 +43,15 @@ rule make_anvio_state_file_tree:
         # layer-orders
         first_layers = ["__parent__", "length", "gc_content"]
 
-        #if hmm_source in M.internal_hmm_sources:
+        layer_order = first_layers + misc_layers_list
+
+        #if anvi-estimate-scg-taxonomy was run:
         if os.path.isfile(params.tax_data_final):
             with open(params.tax_data_final) as f:
                 lines = f.read()
                 first = lines.split('\n', 1)[0]
                 scg_taxonomy_layers_list = first.split("\t")
-
-            layer_order = first_layers + misc_layers_list + scg_taxonomy_layers_list
-
-        else:
-            layer_order = first_layers + misc_layers_list
-
+            layer_order.extend(scg_taxonomy_layers_list)
 
         state_dict['layer-order'] = layer_order
 
@@ -211,8 +205,6 @@ rule anvi_import_everything_tree:
         shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.misc_data} --just-do-it >> {log} 2>&1")
 
         shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default >> {log} 2>&1")
-
-        hmm_source = M.hmm_dict[wildcards.hmm]['source']
 
         if os.path.isfile(params.tax_data_final):
             shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")

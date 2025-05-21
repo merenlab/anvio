@@ -26,7 +26,6 @@ rule make_metagenomics_config_file:
         config_dict['anvi_run_ncbi_cogs']['run'] = False
         config_dict['anvi_run_scg_taxonomy']['run'] = False
         config_dict['anvi_run_trna_scan']['run'] = False
-        config_dict['anvi_run_scg_taxonomy']['run'] = False
         config_dict['iu_filter_quality_minoche']['run'] = False
         config_dict['anvi_profile']['--min-contig-length'] = 0
         config_dict['anvi_profile']['--profile-SCVs'] = True
@@ -125,8 +124,7 @@ rule make_anvio_state_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm}.log")
     input:
-        num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
-        done_scg = rules.anvi_scg_taxonomy.output.done
+        M.target_files_make_anvio_state_file
     params:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
@@ -135,15 +133,7 @@ rule make_anvio_state_file:
     threads: M.T('make_anvio_state_file')
     run:
 
-        hmm_source = M.hmm_dict[wildcards.hmm]['source']
-
         # Read in misc data headers for layer_order
-        if hmm_source in M.internal_hmm_sources:
-            with open(params.tax_data_final) as f:
-                lines = f.read()
-                first = lines.split('\n', 1)[0]
-            scg_taxonomy_layers_list = first.split("\t")
-
         with open(params.misc_data_final) as f:
             lines = f.read()
             first = lines.split('\n', 1)[0]
@@ -177,10 +167,15 @@ rule make_anvio_state_file:
         for metagenome in M.sample_names_for_mapping_list:
             metagenomes.append(metagenome)
 
-        if hmm_source in M.internal_hmm_sources:
-            layer_order = first_layers + metagenomes + misc_layers_list + scg_taxonomy_layers_list
-        else:
-            layer_order = first_layers + metagenomes + misc_layers_list
+        layer_order = first_layers + metagenomes + misc_layers_list
+
+        # Read in misc data headers for layer_order
+        if os.path.isfile(params.tax_data_final):
+            with open(params.tax_data_final) as f:
+                lines = f.read()
+                first = lines.split('\n', 1)[0]
+                scg_taxonomy_layers_list = first.split("\t")
+            layer_order.extend(scg_taxonomy_layers_list)
 
         state_dict['layer-order'] = layer_order
 
@@ -318,7 +313,7 @@ rule anvi_import_everything_metagenome:
         state = rules.make_anvio_state_file.output.state_file,
         done = rules.run_metagenomics_workflow.output.done
     params:
-        tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
+        tax_data_final = rules.anvi_estimate_scg_taxonomy.params.tax_data_final,
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output:
@@ -339,9 +334,7 @@ rule anvi_import_everything_metagenome:
         shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it >> {log} 2>&1")
         shell("echo -e '' >> {log}")
 
-        hmm_source = M.hmm_dict[wildcards.hmm]['source']
-
-        if hmm_source in M.internal_hmm_sources:
+        if os.path.isfile(params.tax_data_final):
             shell("echo -e 'Step 4: anvi-import-misc-data:\n' >> {log}")
             shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")
             shell("echo -e '' >> {log}")
