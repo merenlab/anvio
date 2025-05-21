@@ -38,6 +38,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
+                           'anvi_run_scg_taxonomy',
                            'filter_hmm_hits_by_model_coverage',
                            'process_hmm_hits',
                            'combine_sequence_data',
@@ -60,7 +61,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_misc_data',
-                           'anvi_scg_taxonomy',
+                           'anvi_estimate_scg_taxonomy',
                            'make_anvio_state_file',
                            'anvi_import_everything'
                            ])
@@ -78,6 +79,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
+        rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', 'additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--min-model-coverage', '--min-gene-coverage', '--filter-out-partial-gene-calls', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode', 'additional_params']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
@@ -97,6 +99,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
+            'anvi_run_scg_taxonomy': {'run': True, 'threads': 2},
+            'anvi_estimate_scg_taxonomy': {'threads': 5},
             'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
@@ -119,7 +123,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 1},
             'make_misc_data': {'threads': 2},
-            'anvi_scg_taxonomy': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
             'anvi_import_everything': {'threads': 2},
             'run_genomes_sanity_check': True,
@@ -389,7 +392,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm}_misc.tsv")
             target_files.append(target_file)
 
-            run_scg_taxonomy = self.get_param_value_from_config(["anvi_scg_taxonomy", "run"]) == True
+            run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
             if run_scg_taxonomy:
                 target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
@@ -445,10 +448,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
-                if hmm not in constants.default_scgs_for_taxonomy:
-                    raise ConfigError(f"EcoPhylo currently does not support the HMM {hmm} in {hmm_source} because it is incompatible with anvi-estimate-scg-taxonomy. "
-                                      f"anvi'o is really sorry about this and hopes one of these other HMMs in {hmm_source} will be adequate to profile "
-                                      f"your dataset: {constants.default_scgs_for_taxonomy}")
+                if hmm not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+                    raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm} in {hmm_source} is not compatible. "
+                                      f"You can either turn off anvi-estimate-scg-taxonomy in the config file, or choose a compatible gene in this set: "
+                                      f"{constants.default_scgs_for_taxonomy}")
 
             if not filesnpaths.is_file_exists(hmm_path, dont_raise=True):
                 if hmm_path == 'INTERNAL':
