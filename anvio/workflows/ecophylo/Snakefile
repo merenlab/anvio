@@ -1029,12 +1029,13 @@ rule anvi_scg_taxonomy:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_scg_taxonomy_{hmm}.log")
     input:
-        misc_data = rules.make_misc_data.output.misc_data_final,
-        reformat_file = rules.combine_sequence_data.output.reformat_report_all,
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_headers.tmp"),
+        run_scg_taxonomy = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_scg_taxonomy.done"), sample_name = M.names_list),
     params:
+        reformat_file = rules.combine_sequence_data.output.reformat_report_all,
+        misc_data_dir = dirs_dict['MISC_DATA'],
         taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results"),
         taxonomy_long = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
-        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_headers.tmp"),
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
     output: 
         done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
@@ -1048,50 +1049,47 @@ rule anvi_scg_taxonomy:
         combined_genomes_df_path = f"{wildcards.hmm}_combined_genomes.txt"
         contigs_db_name_path_df.to_csv(combined_genomes_df_path, sep="\t", index=False, header=True)
 
-        if hmm_source in M.internal_hmm_sources:
-            shell("anvi-estimate-scg-taxonomy -M {combined_genomes_df_path} \
-                                              --metagenome-mode \
-                                              --scg-name-for-metagenome-mode {wildcards.hmm} \
-                                              -T {threads} \
-                                              --raw-output \
-                                              -O {params.taxonomy} &> {log}")
-            
-            # Import data
-            #------------
-            scg_taxonomy = pd.read_csv(params.taxonomy_long, \
-                                       sep="\t", \
-                                       index_col=False)
-                                            
-            reformat_report = pd.read_csv(input.reformat_file, \
-                                          sep="\t", \
-                                          index_col=False, \
-                                          names=["new_header", "header"])
+        shell("mkdir -p {params.misc_data_dir}; \
+        anvi-estimate-scg-taxonomy -M {combined_genomes_df_path} \
+                                   --metagenome-mode \
+                                   --scg-name-for-metagenome-mode {wildcards.hmm} \
+                                   -T {threads} \
+                                   --raw-output \
+                                   -O {params.taxonomy} &> {log}")
+        
+        # Import data
+        #------------
+        scg_taxonomy = pd.read_csv(params.taxonomy_long, \
+                                   sep="\t", \
+                                   index_col=False)
+                                        
+        reformat_report = pd.read_csv(params.reformat_file, \
+                                      sep="\t", \
+                                      index_col=False, \
+                                      names=["new_header", "header"])
 
-            final_sequences_headers = pd.read_csv(params.final_list_of_sequences_for_mapping_headers, \
-                                                sep="\t", \
-                                                index_col=False, \
-                                                names=["identifier"])
-            
-            # Clean Data
-            #-----------
-            reformat_report = pd.merge(reformat_report, final_sequences_headers, left_on='new_header', right_on='identifier', how='inner')
-            reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
-            reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
-            reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"] 
-            scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" +  scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
-            scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
-            scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001' 
-            scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
+        final_sequences_headers = pd.read_csv(input.final_list_of_sequences_for_mapping_headers, \
+                                            sep="\t", \
+                                            index_col=False, \
+                                            names=["identifier"])
+        
+        # Clean Data
+        #-----------
+        reformat_report = pd.merge(reformat_report, final_sequences_headers, left_on='new_header', right_on='identifier', how='inner')
+        reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
+        reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
+        reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"] 
+        scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" +  scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
+        scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
+        scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001' 
+        scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
 
-            # Export
-            #-------
-            scg_taxonomy.to_csv(params.tax_data_final, \
-                                sep="\t", \
-                                index=None, \
-                                na_rep="NA")
-
-        else:
-            pass
+        # Export
+        #-------
+        scg_taxonomy.to_csv(params.tax_data_final, \
+                            sep="\t", \
+                            index=None, \
+                            na_rep="NA")
 
 
 if M.samples_txt_file:
