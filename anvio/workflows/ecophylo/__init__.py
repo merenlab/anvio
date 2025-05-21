@@ -143,7 +143,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
     def init(self):
         """This function is called from within the Snakefile to initialize parameters."""
-        
+
         super().init()
         #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
         self.dirs_dict.update({"LOGS_DIR": os.path.join(self.dirs_dict['HOME'],"00_LOGS")})
@@ -223,11 +223,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         else:
             self.metagenomes_name_list = []
-        
+
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
-            
+
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_genomes_file):
                     # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
@@ -281,7 +281,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         else:
             self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
                              f"to profile the ecology of your proteins and will just be making trees for now!")
-        
+
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
@@ -310,7 +310,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             if jobs_param == False:
                 raise ConfigError("The EcoPhylo workflow did not detect the parameter '--jobs' in `snakemake_additional_params`. "
                                   "Please include '--jobs'. You can read about it with snakemake -h")
-            
+
             if self.metagenomics_workflow_HPC_string:
                 raise ConfigError("You can't clusterize and provide an HPC_string for the metagenomics workflow at the same time. "
                                   "Please choose one or the other. ")
@@ -349,7 +349,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
     def get_target_files(self):
         """This function creates a list of target files for Snakemake
-        
+
         RETURNS
         =======
         target_files: list
@@ -361,12 +361,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         for hmm in self.hmm_dict.keys():
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
             target_files.append(target_file)
-            
+
             if not self.samples_txt_file:
                 # TREE-MODE
                 target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_tree.done")
                 target_files.append(target_file)
-            
+
             else:
                 # PROFILE-MODE
                 target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm}_state_imported_profile.done")
@@ -374,12 +374,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
                 target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
                 target_files.append(target_file)
-        
+
         return target_files
 
     def get_target_files_make_anvio_state_file_tree(self):
         """This function creates a list of target files for make_anvio_state_file_tree
-        
+
         RETURNS
         =======
         target_files: list
@@ -398,7 +398,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_files.append(target_file)
 
         return target_files
-    
+
     def init_hmm_list_txt(self):
         """This function will sanity check hmm-list.txt
 
@@ -414,7 +414,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
-        
+
         try:
             hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
         except AttributeError as e:
@@ -461,10 +461,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                       f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
                                       f"If the hmm you want to use is in an internal anvi'o hmm collection e.g. Bacteria_71 "
                                       f"please put 'INTERNAL' for the path.")
-            
+
             if hmm_path != "INTERNAL":
                 sources = u.get_HMM_sources_dictionary([hmm_path])
-                
+
                 for source,value in sources.items():
                     gene = value['genes']
                     if hmm_source != source:
@@ -475,15 +475,15 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                         raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
 
     def sanity_check_samples_txt(self):
-        """This function will sanity check the samples.txt file. 
-        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the 
-        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit 
-        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is 
-        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo 
-        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus, 
-        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is 
+        """This function will sanity check the samples.txt file.
+        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the
+        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit
+        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is
+        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo
+        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus,
+        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is
         not exited pre-maturely.
-       
+
         FIXME: This is a temporary solution and should moved into a utils so it can be shared by all anvio workflows.
 
         PARAMETERS
@@ -493,14 +493,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.samples_txt_file)
         filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-        
+
         samples_txt_web_string = "Please read more about the samples.txt file here: https://anvio.org/help/main/artifacts/samples-txt/"
         try:
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
         except AttributeError as e:
             raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
                               f"This is what we know: {self.samples_txt_file}\n samples_txt_web_string")
-        
+
         if 'sample' not in list(self.samples_information.columns):
             raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
                               f"We are not sure what's wrong, but we can't find a column with title 'sample'.{samples_txt_web_string}")
