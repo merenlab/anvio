@@ -300,12 +300,12 @@ def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     walker_args.max_gaps = gaps
     walker_args.verbose = False
     return walker_args
- 
+
 def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
     """Walks a KEGG Pathway Map to identify reactions leading to a compound in an organism.
 
-    Returns the length of the longest chain of either, (1) prior reactions in the producing organism OR 
-    (2) posterior reactions in the consuming organism.
+    Returns the reaction chains of either, (1) prior reactions that 'produce' a compound OR 
+    (2) posterior reactions that 'consume' a compound in the provided organism's reaction network.
 
     Parameters
     ==========
@@ -323,11 +323,10 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
         wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate, args.maximum_gaps)
         walker = nw.KGMLNetworkWalker(wargs)
         reaction_chains = walker.get_chains(modelseed_compound_ids=compound_id)
+        if not reaction_chains:
+            return []
+        return reaction_chains[compound_id]
 
-        max_length = None
-        if reaction_chains:
-            max_length = max([len(chain.kgml_reactions) for chain in reaction_chains[compound_id]])
-        return max_length
     except ConfigError as c: # this is redundant for now, but useful for debugging
         print(f"Got ConfigError from pathway walker for {compound_id} in map {pathway_map_id}: {c}")
         return None
