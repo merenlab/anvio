@@ -63,7 +63,7 @@ def main(args):
                 run.warning(f"Found {len(pairs_to_add)} inverse pairs of equivalent compounds that were not in the equivalent compounds file. "
                                     f"These have been added to the dictionary of equivalent compounds. Here is the set of missing pairs: {pairs_to_add}. ",
                                     header="DEBUG", lc="yellow")
-    
+
     run.info("Doing pathway walks for additional evidence", not args.no_pathway_walk)
 
     constructor = rn.Constructor()
@@ -123,7 +123,7 @@ def main(args):
             if compound_id in eq_compounds:
                 reaction.compound_ids = [compound_id if x == eq_compounds[compound_id]['equivalent_id'] else x for x in reaction.compound_ids]
 
-            idx = reaction.compound_ids.index(compound_id) 
+            idx = reaction.compound_ids.index(compound_id)
             #TODO: make a dict of compounds with transport reactions and use as evidence in final output
             if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
                 if anvio.DEBUG:
@@ -143,7 +143,7 @@ def main(args):
                     if g in reaction.genomes_of_origin:
                         genomes_consume.add(g)
                         consumption_reactions[g][rid] = get_reaction_equation(reaction)
-        
+
         def add_reactions_to_dict_for_compound(compound_dict):
             """Modifies the compound dictionary in place to add production and consumption reaction output"""
             for g in db_names:
@@ -155,7 +155,7 @@ def main(args):
                 compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
                 compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
                 compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
-            
+
         # potential interactions:
         # A: if one produces and other consumes
         # B: if one produces and both consume
@@ -164,20 +164,20 @@ def main(args):
             # when the same genome produces and/or consumes, compound is unique to one genome
             if genomes_produce == genomes_consume:
                 unique_compounds[compound_id] = {'compound_name': compound_name, 'genomes': list(genomes_produce)[0],
-                                                    'produced_by': list(genomes_produce)[0], 
+                                                    'produced_by': list(genomes_produce)[0],
                                                     'consumed_by': list(genomes_consume)[0],
                                                 }
                 add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             elif len(genomes_produce) == 0 or len(genomes_consume) == 0:
                 unique_compounds[compound_id] = {'compound_name': compound_name, 'genomes': list(genomes_produce.union(genomes_consume))[0],
-                                                    'produced_by': list(genomes_produce)[0] if len(genomes_produce) > 0 else None, 
+                                                    'produced_by': list(genomes_produce)[0] if len(genomes_produce) > 0 else None,
                                                     'consumed_by': list(genomes_consume)[0] if len(genomes_consume) > 0 else None,
                                                 }
                 add_reactions_to_dict_for_compound(unique_compounds[compound_id])
 
             else: # A B or C applies
-                potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name, 
+                potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
                                                                 'genomes': ",".join(list(genomes_produce.union(genomes_consume))),
                                                                 'produced_by': ",".join(genomes_produce),
                                                                 'consumed_by': ",".join(genomes_consume),
@@ -230,7 +230,7 @@ def main(args):
                             run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
                                             f"found max of {map_evidence['max_production_length']} prior reactions in producer and "
                                             f"{map_evidence['max_consumption_length']} posterior reactions in consumer")
-                        
+
                         # we want to find the longest chain of production reactions + the longest chain of consumption reactions
                         if (not overall_max_prior and map_evidence["max_production_length"]) or \
                             (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
@@ -255,9 +255,9 @@ def main(args):
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
         progress.increment(increment_to=processed_count)
-    
+
     progress.end()
-    run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.", 
+    run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.",
                 header='RESULTS', lc='green')
 
     output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
@@ -267,19 +267,19 @@ def main(args):
     exchange_header = deepcopy(output_header)
     if not args.no_pathway_walk:
         exchange_header += ['max_reaction_chain_length', 'production_overlap', 'consumption_overlap']
-    utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt", 
+    utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt",
                 key_header='compound_id', none_value="None", headers=exchange_header)
-    utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt", 
+    utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt",
                 key_header='compound_id', none_value="None", headers=output_header)
     if not args.no_pathway_walk:
-        utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt", 
-                    do_not_write_key_column=True, none_value="None") 
-    
+        utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt",
+                    do_not_write_key_column=True, none_value="None")
+
 
 def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
     """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
-    
-    Returns a dictionary in which keys are compound IDs matched to their names and the equivalent compound ID. Each match is 
+
+    Returns a dictionary in which keys are compound IDs matched to their names and the equivalent compound ID. Each match is
     in the dictionary twice to enable O(1) lookups with either compound ID.
 
     Parameters
@@ -309,14 +309,14 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
         equivalent_AAs[id_list[1]] = {'equivalent_id': id_list[0], 'name': eqs.loc[id_list[1]], 'equivalent_name': eqs.loc[id_list[0]]}
 
     if print_to_file:
-        utils.store_dict_as_TAB_delimited_file(equivalent_AAs, output_file_name, key_header='compound_id', 
+        utils.store_dict_as_TAB_delimited_file(equivalent_AAs, output_file_name, key_header='compound_id',
                     headers = ['compound_id', 'equivalent_id', 'name', 'equivalent_name'])
         run.info("File of equivalent amino acid compound IDs", output_file_name)
 
     return equivalent_AAs
 
 def map_kegg_ids_to_compound_names(network):
-    """Returns a dictionary where the keys are KEGG compound IDs and the values are compound names 
+    """Returns a dictionary where the keys are KEGG compound IDs and the values are compound names
     for all compounds in the provided network"""
 
     id_to_name_dict = {}
@@ -327,7 +327,7 @@ def map_kegg_ids_to_compound_names(network):
 
 def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     """Returns a Namespace with arguments for KGMLNetworkWalker"""
-    
+
     walker_args = Namespace()
     walker_args.network = net
     walker_args.kegg_pathway_number = pathway_map
@@ -339,7 +339,7 @@ def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
 def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
     """Walks a KEGG Pathway Map to identify reactions leading to a compound in an organism.
 
-    Returns the reaction chains of either, (1) prior reactions that 'produce' a compound OR 
+    Returns the reaction chains of either, (1) prior reactions that 'produce' a compound OR
     (2) posterior reactions that 'consume' a compound in the provided organism's reaction network.
 
     Parameters
@@ -372,13 +372,13 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
 
 def get_longest_chains(chain_list):
     max_length = None
-    longest = [] 
+    longest = []
 
     if chain_list:
         chain_lengths = [len(chain.kgml_reactions) for chain in chain_list]
         max_length = max(chain_lengths)
         longest = [chain_list[i] for i in range(len(chain_list)) if chain_lengths[i] == max_length]
-    
+
     return max_length, longest
 
 def get_max_overlap(starting_chains, comparison_chains):
@@ -414,7 +414,7 @@ def get_pathway_walk_evidence(compound, map_id, producer, consumer):
 
     max_production_length, longest_producer_chains = get_longest_chains(production_chains_in_producer)
     max_production_overlap, longest_with_max_overlap = get_max_overlap(longest_producer_chains, production_chains_in_consumer)
-    
+
     if longest_with_max_overlap:
         longest_producer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
                                           "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
@@ -423,8 +423,8 @@ def get_pathway_walk_evidence(compound, map_id, producer, consumer):
 
     max_consumption_length, longest_consumer_chains = get_longest_chains(consumption_chains_in_consumer)
     max_consumption_overlap, longest_with_max_overlap = get_max_overlap(longest_consumer_chains, consumption_chains_in_producer)
-    
-    if longest_with_max_overlap:       
+
+    if longest_with_max_overlap:
         longest_consumer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
                                           "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
     else:
