@@ -369,6 +369,42 @@ def get_max_overlap(starting_chains, comparison_chains):
 
     return max_overlap, longest_with_max_overlap
 
+def get_pathway_walk_evidence(compound, map_id, producer, consumer):
+    """Calls the pathway walk in both organisms. Compares the output to compute max reaction chain length, overlap, etc"""
+
+    production_chains_in_producer = walk_pathway_map_for_compound(compound, map_id, producer, 'produce')
+    production_chains_in_consumer = walk_pathway_map_for_compound(compound, map_id, consumer, 'produce')
+    consumption_chains_in_producer = walk_pathway_map_for_compound(compound, map_id, producer, 'consume')
+    consumption_chains_in_consumer = walk_pathway_map_for_compound(compound, map_id, consumer, 'consume')
+
+    max_production_length, longest_producer_chains = get_longest_chains(production_chains_in_producer)
+    max_production_overlap, longest_with_max_overlap = get_max_overlap(longest_producer_chains, production_chains_in_consumer)
+    
+    if longest_with_max_overlap:
+        longest_producer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
+                                          "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
+    else:
+        longest_producer_chain_strings = {"reactions": [], "compounds": []}
+
+    max_consumption_length, longest_consumer_chains = get_longest_chains(consumption_chains_in_consumer)
+    max_consumption_overlap, longest_with_max_overlap = get_max_overlap(longest_consumer_chains, consumption_chains_in_producer)
+    
+    if longest_with_max_overlap:       
+        longest_consumer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
+                                          "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
+    else:
+        longest_consumer_chain_strings = {"reactions": [], "compounds": []}
+
+    results = {"max_production_length": max_production_length, # in producer network
+               "max_consumption_length": max_consumption_length, # in consumer network
+               "max_production_overlap": max_production_overlap, # between longest chain in producer network and all in consumer
+               "max_consumption_overlap": max_consumption_overlap, # between longest chain in consumer network and all in producer
+               "longest_chain_producer_strings": longest_producer_chain_strings,
+               "longest_chain_consumer_strings": longest_consumer_chain_strings
+    }
+
+    return results
+
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
