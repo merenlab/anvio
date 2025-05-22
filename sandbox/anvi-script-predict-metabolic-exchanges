@@ -75,12 +75,20 @@ def main(args):
     merged, db_names = net_1._merge_two_genome_networks(net_2)
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
+    # get some important dictionaries
+    kegg_id_to_compound_name = map_kegg_ids_to_compound_names(merged)
     reaction_to_pathways = merged._get_reaction_to_pathway_map_dict(map_ids_to_exclude=set(["00470"]), id_selection_prefix = "00")
     compound_to_pathways = {} # we will fill this dict in as we process each compound
 
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
         return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
+
+    def get_compound_name_from_kegg_id(kid):
+        if kid in kegg_id_to_compound_name:
+            return kegg_id_to_compound_name[kid]
+        else:
+            return "None"
 
     # dictionaries to store output
     potentially_exchanged_compounds = {}
@@ -289,6 +297,16 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
         run.info("File of equivalent amino acid compound IDs", output_file_name)
 
     return equivalent_AAs
+
+def map_kegg_ids_to_compound_names(network):
+    """Returns a dictionary where the keys are KEGG compound IDs and the values are compound names 
+    for all compounds in the provided network"""
+
+    id_to_name_dict = {}
+    for mid, compound in network.metabolites.items():
+        for kid in compound.kegg_aliases:
+            id_to_name_dict[kid] = compound.modelseed_name
+    return id_to_name_dict
 
 def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     """Returns a Namespace with arguments for KGMLNetworkWalker"""
