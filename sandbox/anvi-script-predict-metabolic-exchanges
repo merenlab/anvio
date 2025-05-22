@@ -335,6 +335,41 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
         return None
 
 
+def get_longest_chains(chain_list):
+    max_length = None
+    longest = [] 
+
+    if chain_list:
+        chain_lengths = [len(chain.kgml_reactions) for chain in chain_list]
+        max_length = max(chain_lengths)
+        longest = [chain_list[i] for i in range(len(chain_list)) if chain_lengths[i] == max_length]
+    
+    return max_length, longest
+
+def get_max_overlap(starting_chains, comparison_chains):
+    # below, we look for the longest reaction overlap between the longest producer chains and all consumer chains (or vice versa)
+    # note that if there are multiple solutions with the same max overlap, we only report the first 'longest' chain with that overlap value
+    max_overlap = None
+    longest_with_max_overlap = None
+    for sc in starting_chains:
+        reaction_chain = [r.name for r in sc.kgml_reactions]
+        for c in comparison_chains:
+            compare_chain = [r.name for r in c.kgml_reactions]
+            intersection = 0
+            i = 0
+            while (i < len(reaction_chain)) and (i < len(compare_chain)) and reaction_chain[i] == compare_chain[i]:
+                intersection += 1
+                i += 1
+            if not max_overlap:
+                max_overlap = intersection
+                longest_with_max_overlap = sc
+            elif intersection > max_overlap:
+                max_overlap = intersection
+                longest_with_max_overlap = sc
+
+    return max_overlap, longest_with_max_overlap
+
+
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
