@@ -5,7 +5,7 @@ import pandas as pd
 
 # Import tables
 #--------------
-external_gene_calls_all = pd.read_csv(snakemake.input.external_gene_calls_all, \
+external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all, \
                                       delim_whitespace=True, \
                                       index_col=False)
 

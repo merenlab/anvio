@@ -309,13 +309,13 @@ rule anvi_import_everything_metagenome:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm}.log")
     input:
         tree = rules.rename_tree_tips.output.tree,
-        misc_data = rules.make_misc_data.output.misc_data_final,
         state = rules.make_anvio_state_file.output.state_file,
         done = rules.run_metagenomics_workflow.output.done
     params:
         tax_data_final = rules.anvi_estimate_scg_taxonomy.params.tax_data_final,
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db"),
-        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
+        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db"),
+        misc_data = rules.make_misc_data.output.misc_data_final
     output:
         touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
@@ -331,7 +331,7 @@ rule anvi_import_everything_metagenome:
         shell("echo -e '' >> {log}")
 
         shell("echo -e 'Step 3: anvi-import-misc-data:\n' >> {log}")
-        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it >> {log} 2>&1")
+        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.misc_data} --just-do-it >> {log} 2>&1")
         shell("echo -e '' >> {log}")
 
         if os.path.isfile(params.tax_data_final):

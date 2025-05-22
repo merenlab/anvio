@@ -774,10 +774,11 @@ rule subset_external_gene_calls_file_all:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{hmm}.log")
     input:
-        external_gene_calls_all = rules.combine_sequence_data.output.external_gene_calls_all,
         headers = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_headers.tmp")
     output:
         external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-external_gene_calls_subset.tsv"),
+    params:
+        external_gene_calls_all = rules.combine_sequence_data.output.external_gene_calls_all,
     threads: M.T('subset_external_gene_calls_file_all')
     script:
         "scripts/subset_external_gene_calls_file.py"
@@ -790,7 +791,6 @@ rule make_fasta_txt:
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_fasta_txt.log")
     input:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-external_gene_calls_subset.tsv"), hmm = M.hmm_dict.keys()),
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-references_for_mapping_NT.fa"), hmm = M.hmm_dict.keys()),
     output:
         fasta_txt = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "fasta.txt"),
     threads: M.T('make_fasta_txt')
