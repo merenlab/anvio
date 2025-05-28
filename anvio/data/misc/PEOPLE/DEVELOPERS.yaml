@@ -45,6 +45,7 @@
   git_records:
     - trigodet.florian@gmail.com
     - frigodet@MED42038.local
+    - patz5242@hpcl002.cm.cluster
   twitter: FlorianTrigodet
   orcid: 0000-0002-4933-2896
   linkedin: florian-trigodet-67b351b4
@@ -588,4 +589,40 @@
     - title: Post-doctoral scientist
       inst: The Centre for Microbiology and Environmental Systems Science at the University of Vienna
       inst_link: https://cemess.univie.ac.at/
+      current: true
+
+- github: katysloz
+  name:  Kathryn Lambert-Slosarska (Katy)
+  avatar: bio-katy.jpg
+  email: klambert@mpi-bremen.de
+  git_records:
+    - klambertslosarska@gmail.com
+    - 98827122+katysloz@users.noreply.github.com
+  linkedin: katy-lambert-slosarksa-96030219b
+  orcid: 0000-0003-1612-6794
+  bio: "I am a marine (micro)biologist utilising computational approaches to understand the dynamism and impact of diversity-generating retroelements in microbial lifestyles within changing marine ecosystems."
+  affiliations:
+    - title: Graduate Student
+      inst: Helmholtz Institute for Functional Marine Biodiversity (HIFMB)
+      inst_link: https://hifmb.de
+      current: true
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/en/Home.html
+      current: true
+
+- github: mankeldy
+  name: Dylan Mankel
+  web: https://mankeldy.github.io/
+  avatar: mankeldy.jpg
+  email: mankeldy@bu.edu
+  git_records:
+    - dylanmankel@gmail.com
+    - 43360020+mankeldy@users.noreply.github.com
+  linkedin: dmankel
+  orcid: 0000-0002-5574-589X
+  bio: "Geomicrobiologist studying the activity and distribution of life in extreme environments."
+  affiliations:
+    - title: PhD Candidate
+      inst: Boston University
+      inst_link: https://www.bu.edu/biology/
       current: true
