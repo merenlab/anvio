@@ -200,6 +200,8 @@ def main(args):
                     overall_max_posterior = None
                     overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
                     overall_overlap_posterior = None
+                    prop_overlap_prior = None
+                    prop_overlap_posterior = None
                     for map_id in compound_to_pathways[compound_id]:
                         map_evidence = get_pathway_walk_evidence(compound_id, map_id, producer_network, consumer_network)
 
@@ -210,6 +212,7 @@ def main(args):
                                                                         'pathway_map': map_id,
                                                                         'longest_reaction_chain_length': map_evidence["max_production_length"],
                                                                         'maximum_overlap': map_evidence["max_production_overlap"],
+                                                                        'proportion_overlap': map_evidence["prop_production_overlap"],
                                                                         'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
                                                                         'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
                                                                         'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
@@ -221,6 +224,7 @@ def main(args):
                                                                         'pathway_map': map_id,
                                                                         'longest_reaction_chain_length': map_evidence["max_consumption_length"],
                                                                         'maximum_overlap': map_evidence["max_consumption_overlap"],
+                                                                        'proportion_overlap': map_evidence["prop_consumption_overlap"],
                                                                         'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
                                                                         'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
                                                                         'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
@@ -236,10 +240,12 @@ def main(args):
                             (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
                             overall_max_prior = map_evidence["max_production_length"]
                             overall_overlap_prior = map_evidence["max_production_overlap"]
+                            prop_overlap_prior = map_evidence["prop_production_overlap"]
                         if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
                             (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
                             overall_max_posterior = map_evidence["max_consumption_length"]
                             overall_overlap_posterior = map_evidence["max_consumption_overlap"]
+                            prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
 
                     longest_overall_chain = None
                     if overall_max_prior and overall_max_posterior:
@@ -249,8 +255,12 @@ def main(args):
                     elif overall_max_posterior:
                         longest_overall_chain = overall_max_posterior
                     potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
-                    potentially_exchanged_compounds[compound_id]['production_overlap'] = overall_overlap_prior
-                    potentially_exchanged_compounds[compound_id]['consumption_overlap'] = overall_overlap_posterior
+                    potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = overall_max_prior
+                    potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = overall_max_posterior
+                    potentially_exchanged_compounds[compound_id]['production_overlap_length'] = overall_overlap_prior
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = overall_overlap_posterior
+                    potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = prop_overlap_prior
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
 
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -266,7 +276,9 @@ def main(args):
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
     exchange_header = deepcopy(output_header)
     if not args.no_pathway_walk:
-        exchange_header += ['max_reaction_chain_length', 'production_overlap', 'consumption_overlap']
+        exchange_header += ['max_reaction_chain_length', 'max_production_chain_length', 'max_consumption_chain_length',
+                            'production_overlap_length', 'consumption_overlap_length', 
+                            'production_overlap_proportion', 'consumption_overlap_proportion']
     utils.store_dict_as_TAB_delimited_file(potentially_exchanged_compounds, f"{args.output_file_prefix}-potentially-exchanged-compounds.txt",
                 key_header='compound_id', none_value="None", headers=exchange_header)
     utils.store_dict_as_TAB_delimited_file(unique_compounds, f"{args.output_file_prefix}-unique-compounds.txt",
@@ -434,6 +446,8 @@ def get_pathway_walk_evidence(compound, map_id, producer, consumer):
                "max_consumption_length": max_consumption_length, # in consumer network
                "max_production_overlap": max_production_overlap, # between longest chain in producer network and all in consumer
                "max_consumption_overlap": max_consumption_overlap, # between longest chain in consumer network and all in producer
+               "prop_production_overlap": max_production_overlap / max_production_length if max_production_length and max_production_overlap else None,
+               "prop_consumption_overlap": max_consumption_overlap / max_consumption_length if max_consumption_length and max_consumption_overlap else None,
                "longest_chain_producer_strings": longest_producer_chain_strings,
                "longest_chain_consumer_strings": longest_consumer_chain_strings
     }
