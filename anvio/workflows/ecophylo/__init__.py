@@ -341,9 +341,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clustering_param_space_list_strings = [str(format(clustering_threshold, '.2f')).split(".")[1] + "_percent" for clustering_threshold in self.clustering_param_space]
         self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
 
-        # target files for make_anvio_state_tree
-        self.target_files_make_anvio_state_file = self.get_target_files_make_anvio_state_file()
-
         # global target files
         self.target_files = self.get_target_files()
 
@@ -359,26 +356,27 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         target_files = []
 
         for hmm in self.hmm_dict.keys():
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
+            hmm_source = self.hmm_dict[hmm]['source']
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm_source}", f"{hmm}", f"{hmm}_stats.tsv")
             target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_tree.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm_source}-{hmm}_state_imported_tree.done")
                 target_files.append(target_file)
 
             else:
                 # PROFILE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm_source}-{hmm}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm_source}-{hmm}_summarize.done")
                 target_files.append(target_file)
 
         return target_files
 
-    def get_target_files_make_anvio_state_file(self):
-        """This function creates a list of target files for make_anvio_state_file_tree
+    def get_target_files_make_anvio_state_file(self, hmm_source, hmm):
+        """This function creates a list of target files for make_anvio_state_file
 
         RETURNS
         =======
@@ -388,14 +386,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        for hmm in self.hmm_dict.keys():
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm}_misc.tsv")
-            target_files.append(target_file)
+        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm}_misc.tsv")
+        target_files.append(target_file)
 
-            run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
-            if run_scg_taxonomy:
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
-                target_files.append(target_file)
+        run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
+        if run_scg_taxonomy:
+            target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm_source}-{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+            target_files.append(target_file)
 
         return target_files
 
@@ -439,6 +436,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # FIXME: this line prints the list of hmm_sources to stdout and I don't want that
         self.internal_hmm_sources = list(anvio.data.hmm.sources.keys())
 
+        # make a list of unique hmm source
+        self.unique_hmm_source = {}
+
         for hmm in self.hmm_dict.keys():
             hmm_source = self.hmm_dict[hmm]['source']
             hmm_path = self.hmm_dict[hmm]['path']
@@ -473,6 +473,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                         raise ConfigError("EcoPhylo can only work with one gene at a time in a hmm directory (at the moment)")
                     if hmm != gene[0]:
                         raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
+
+            if hmm_source not in self.unique_hmm_source:
+                self.unique_hmm_source[hmm_source] = hmm_path
+
 
     def sanity_check_samples_txt(self):
         """This function will sanity check the samples.txt file.
