@@ -355,22 +355,23 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        for hmm in self.hmm_dict.keys():
-            hmm_source = self.hmm_dict[hmm]['source']
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm_source}", f"{hmm}", f"{hmm}_stats.tsv")
+        for hmm, value in self.hmm_dict.items():
+            hmm_name = value['name']
+            hmm_source = value['source']
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm_source}", f"{hmm_name}", f"{hmm_name}_stats.tsv")
             target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm_source}-{hmm}_state_imported_tree.done")
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm_source}", f"{hmm_name}", "state_imported_tree.done")
                 target_files.append(target_file)
 
             else:
                 # PROFILE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm_source}-{hmm}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm_source}-{hmm_name}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm_source}-{hmm}_summarize.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm_name}_summarize.done")
                 target_files.append(target_file)
 
         return target_files
@@ -386,12 +387,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm}_misc.tsv")
+        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "{hmm_name}_misc.tsv")
         target_files.append(target_file)
 
         run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
         if run_scg_taxonomy:
-            target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm_source}-{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
         return target_files
@@ -407,7 +408,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         RETURNS
         =======
         self.hmm_dict : dict
-            Dict with hmm as primary key and values: hmm_source, PATH
+            Dict with hmm (source and name) as primary key and values: hmm_name, hmm_source, PATH
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
@@ -426,12 +427,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                   f"We are not sure what's wrong, but we can't find a column with title '{column_name}'."
                                   f"Please make sure you have a tsv with the column names: {hmm_list_txt_columns}")
 
-        self.hmm_dict = hmm_df.set_index('name').to_dict('index')
-
-        if any("-" in s for s in self.hmm_dict.keys()):
+        if any("-" in s for s in hmm_df['name']):
             raise ConfigError(f"Please do not use '-' in your external hmm names in: "
                               f"{self.hmm_list_path}. It will make our lives "
                               f"easier with Snakemake wildcards :)")
+
+        # create a unique name based on the hmm source and hmm name
+        hmm_df['id'] = hmm_df['source'] + '_' + hmm_df['name']
+        self.hmm_dict = hmm_df.set_index('id').to_dict('index')
 
         # FIXME: this line prints the list of hmm_sources to stdout and I don't want that
         self.internal_hmm_sources = list(anvio.data.hmm.sources.keys())
@@ -439,17 +442,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # make a list of unique hmm source
         self.unique_hmm_source = {}
 
-        for hmm in self.hmm_dict.keys():
-            hmm_source = self.hmm_dict[hmm]['source']
-            hmm_path = self.hmm_dict[hmm]['path']
+        for hmm, value in self.hmm_dict.items():
+            hmm_name = value['name']
+            hmm_source = value['source']
+            hmm_path = value['path']
 
             if hmm_path == "INTERNAL":
                 if hmm_source not in self.internal_hmm_sources:
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
-                if hmm not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
-                    raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm} in {hmm_source} is not compatible. "
+                if hmm_name not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+                    raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm_name} in {hmm_source} is not compatible. "
                                       f"You can either turn off anvi-estimate-scg-taxonomy in the config file, or choose a compatible gene in this set: "
                                       f"{constants.default_scgs_for_taxonomy}")
 
@@ -457,7 +461,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 if hmm_path == 'INTERNAL':
                     pass
                 else:
-                    raise ConfigError(f"The path to your hmm {hmm} does not exist: {hmm_path}. "
+                    raise ConfigError(f"The path to your hmm {hmm_name} does not exist: {hmm_path}. "
                                       f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
                                       f"If the hmm you want to use is in an internal anvi'o hmm collection e.g. Bacteria_71 "
                                       f"please put 'INTERNAL' for the path.")
@@ -468,11 +472,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 for source,value in sources.items():
                     gene = value['genes']
                     if hmm_source != source:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm} to this: {source}")
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm_name} to this: {source}")
                     if len(gene) > 1:
                         raise ConfigError("EcoPhylo can only work with one gene at a time in a hmm directory (at the moment)")
-                    if hmm != gene[0]:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
+                    if hmm_name != gene[0]:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm_name} to this: {gene[0]}")
 
             if hmm_source not in self.unique_hmm_source:
                 self.unique_hmm_source[hmm_source] = hmm_path

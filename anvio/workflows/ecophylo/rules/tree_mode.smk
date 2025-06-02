@@ -3,14 +3,14 @@ rule make_anvio_state_file_tree:
     """Make a state file customized for EcoPhylo workflow interactive interface - TREE MODE"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm_source}_{hmm}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm_source}_{hmm_name}.log")
     input:
-        M.get_target_files_make_anvio_state_file("{hmm_source}", "{hmm}")
+        M.get_target_files_make_anvio_state_file("{hmm_source}", "{hmm_name}")
     params:
-        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm}_scg_taxonomy_data.tsv"),
-        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm}_misc.tsv"),
+        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "{hmm_name}_scg_taxonomy_data.tsv"),
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "{hmm_name}_misc.tsv")
     output:
-        state_file = os.path.join(dirs_dict['HOME'], "{hmm_source}-{hmm}_TREE_state.json")
+        state_file = os.path.join(dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "{hmm_name}_TREE_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
@@ -145,16 +145,16 @@ rule anvi_import_everything_tree:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm_source}_{hmm}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm_source}_{hmm_name}.log")
     input:
         tree = rules.rename_tree_tips.output.tree,
         state = rules.make_anvio_state_file_tree.output.state_file
     params:
         misc_data = rules.make_misc_data.output.misc_data_final,
         tax_data_final = rules.anvi_estimate_scg_taxonomy.params.tax_data_final,
-        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm_source}", "{hmm}", "{hmm}-PROFILE.db")
+        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm_source}", "{hmm_name}", "{hmm_name}-PROFILE.db")
     output:
-        touch(os.path.join(dirs_dict['HOME'], "{hmm_source}-{hmm}_state_imported_tree.done"))
+        touch(os.path.join(dirs_dict['TREES'], "{hmm_source}", "{hmm_name}", "state_imported_tree.done"))
 
     threads: M.T('anvi_import_state')
     run:
@@ -200,7 +200,7 @@ rule anvi_import_everything_tree:
                             'samples': ', '.join(p_meta['samples']),
                             'sample_id': p_meta['sample_id']})
 
-        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.hmm}_tree >> {log} 2>&1")
+        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.hmm_name}_tree >> {log} 2>&1")
 
         shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.misc_data} --just-do-it >> {log} 2>&1")
 
