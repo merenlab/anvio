@@ -803,21 +803,27 @@ rule make_fasta_txt:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_fasta_txt.log")
     input:
-        #expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-external_gene_calls_subset.tsv"), hmm_name = M.hmm_dict.keys()),
         M.get_input_files_fasta_txt()
     output:
         fasta_txt = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "fasta.txt"),
-    params:
-        fastas = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping
     threads: M.T('make_fasta_txt')
     run:
-        fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-references_for_mapping_NT.fa') for r in M.hmm_dict.keys()]
-        external_gene_calls = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-external_gene_calls_subset.tsv') for r in M.hmm_dict.keys()]
+        with open(output.fasta_txt, "a") as fasta_txt:
+            # fasta-txt header
+            fasta_txt.write('name\tpath\texternal_gene_calls\n')
 
-        list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.hmm_dict.keys(), fastas, external_gene_calls)]
+            # per unique group name
+            unique_group = []
+            for hmm, value in M.hmm_dict.items():
+                group = value['group']
+                if group not in unique_group:
+                    # terrible hack with two .. in the relative path
+                    fasta = os.path.join("..", "..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{group}", f"{group}-references_for_mapping_NT.fa")
+                    external_gene_calls = os.path.join("..", "..", dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{group}", f"{group}-external_gene_calls_subset.tsv")
+                    line = [group, fasta, external_gene_calls]
+                    fasta_txt.write('\t'.join(line) + '\n')
 
-        shell('echo -e "name\tpath\texternal_gene_calls" > {output.fasta_txt}')
-        shell('echo -n "%s" >> {output.fasta_txt}' % ''.join(list_of_strings))
+                    unique_group.append(group)
 
 if M.run_iqtree == True:
   rule iqtree:
