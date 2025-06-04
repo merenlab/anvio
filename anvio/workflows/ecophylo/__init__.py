@@ -397,6 +397,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         return target_files
 
+    def get_input_files_fasta_txt(self):
+        """This function return a list of input file for the rule that makes the fasta-txt file"""
+
+        input_files = []
+
+        for hmm, value in self.hmm_dict.items():
+            group = value['group']
+            input_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'],  f"{group}", f"{group}-external_gene_calls_subset.tsv")
+            input_files.append(input_file)
+
+        return input_files
+
     def get_input_files_combine_sequence_data(self, group):
         """This function return a list of input file for the rule combine_sequence_data"""
 
