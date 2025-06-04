@@ -907,8 +907,8 @@ class DGR_Finder:
                                 if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
                                     has_repeat = True
 
-                            #look for tandem homopolymers and 2 base short tandem repeats that are over 6 times in the sequence
-                            for ssr in pytrf.STRFinder('name', seq, mono=6, di=6):
+                            #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
+                            for ssr in pytrf.STRFinder('name', seq, mono=5, di=5):
                                 #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
                                 if ssr:
                                     has_repeat = True
@@ -1318,8 +1318,11 @@ class DGR_Finder:
                             numb_of_SNVs = len(snv_VR_positions)
                             #TODO:
                             #report proportion
-                            # or have literal number
-                            #could add in reference has to be above certain threshold if more than just first have this?
+                            #Need to have over 5 SNVs as the number of SNVs to be considered a DGR
+                            #minimum 2 SNVs not at the mutagenesis base/mismatch base if over SNVs total  12 have threshold of <25% of bad SNVs
+                            #if over 30 SNVs then have a higher threshold of 30%?
+                            #delete third codon pos SNVs
+
 
                             #if there is a SNV in a matching none mutagenesis base then record it
                             #HERE ADD THRESHOLD - 30.04.2025
