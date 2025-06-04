@@ -397,6 +397,24 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         return target_files
 
+    def get_input_files_combine_sequence_data(self, group):
+        """This function return a list of input file for the rule combine_sequence_data"""
+
+        input_files = []
+        hmm_source_name = []
+
+        # get list of unique hmm sources
+        for hmm, value in self.hmm_dict.items():
+            if value['group'] == group:
+                hmm_source_name.append((value['source'], value['name']))
+
+        # for samples and unique hmm_source, get the input files
+        for hmm_source, hmm_name in hmm_source_name:
+            input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, hmm_source, hmm_name, f"{sample_name}-{hmm_name}-processed.done") for sample_name in self.names_list]
+            input_files.extend(input_file)
+
+        return input_files
+
     def init_hmm_list_txt(self):
         """This function will sanity check hmm-list.txt
 

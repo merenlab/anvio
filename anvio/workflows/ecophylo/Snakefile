@@ -375,54 +375,67 @@ rule combine_sequence_data:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "combine_sequence_data_{hmm_source}-{hmm_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "combine_sequence_data_{group}.log")
     input:
-        done_files = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm_source}}", "{{hmm_name}}", "{sample_names}-{{hmm_name}}-processed.done"), sample_names = M.names_list)
+        lambda wildcards: M.get_input_files_combine_sequence_data(wildcards.group)
     output:
-        NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-all.fna"),
-        AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-all.faa"),
-        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-reformat-report-all.txt"),
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-external_gene_calls_all.tsv"),
-        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm_source}", "{hmm_name}", "{hmm_name}-combine_sequence_data.done"))
+        NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-all.fna"),
+        AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-all.faa"),
+        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-reformat-report-all.txt"),
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-external_gene_calls_all.tsv"),
+        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-combine_sequence_data.done"))
     threads: M.T('combine_sequence_data')
-    params:
-        hmm_hits = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{{hmm_source}}-dom-hmmsearch", "hmm_hits_filtered.txt"), sample_names = M.names_list)
     run:
-        contigs_db_with_hmm_hits = []
-        contigs_db_with_hmm_NO_hits = []
-        for hmm_hits in params.hmm_hits:
-            df = pd.read_csv(hmm_hits, sep='\t')
-            df = df[df.source == wildcards.hmm_source]
-            gene_name_list = df['gene_name'].tolist()
-            if wildcards.hmm_name in gene_name_list:
-                contigs_db = hmm_hits.split("/")[2].split("-")[0]
-                contigs_db_with_hmm_hits.append(contigs_db)
-            else:
-                contigs_db = hmm_hits.split("/")[2].split("-")[0]
-                contigs_db_with_hmm_NO_hits.append(contigs_db)
+        # this code checks for existing hits per hmm per sample.
+        # TODO: do the check at the previous step and provide list of sample for this rule
 
-        outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_hmm_hit_{wildcards.hmm_name}.log")
-        with open(outfile, "a") as outfile:
-            for element in contigs_db_with_hmm_NO_hits:
-                outfile.write(element + '\n')
+        # get list of unique hmm sources and hmm names from the group
+        hmm_sources_name = []
+        unique_source = []
+        for hmm, value in M.hmm_dict.items():
+            if value['group'] == wildcards.group:
+                hmm_sources_name.append((value['source'], value['name']))
 
+        # list of hmm_hits file
+        hmm_hits = [os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, f"{hmm_source}-dom-hmmsearch", "hmm_hits_filtered.txt") for sample_name in M.names_list for hmm_source in unique_source]
+
+        # list for various paths, to merge later
         NT_list = []
         AA_list = []
         AA_reformat_list = []
         external_gene_calls_reformat_list = []
 
-        for contigs_db in contigs_db_with_hmm_hits:
-            working_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{contigs_db}", f"{wildcards.hmm_source}", f"{wildcards.hmm_name}")
-            NT_path = os.path.join(working_dir, f"{contigs_db}-{wildcards.hmm_name}-hmm_hits_renamed.fna")
-            AA_path = os.path.join(working_dir, f"{contigs_db}-{wildcards.hmm_name}-hmm_hits_renamed.faa")
-            NT_reformat_path = os.path.join(working_dir, f"{contigs_db}-{wildcards.hmm_name}-reformat_report_NT.txt")
-            AA_reformat_path = os.path.join(working_dir, f"{contigs_db}-{wildcards.hmm_name}-reformat_report_AA.txt")
-            external_gene_calls_reformat_reformat_path = os.path.join(working_dir, f"{contigs_db}-{wildcards.hmm_name}-external_gene_calls_renamed.tsv")
-            NT_list.append(NT_path)
-            AA_list.append(AA_path)
-            AA_reformat_list.append(AA_reformat_path)
-            external_gene_calls_reformat_list.append(external_gene_calls_reformat_reformat_path)
+        # check for hmm hit per sample
+        for hmm_source, hmm_name in hmm_sources_name:
+            contigs_db_with_hmm_hits = []
+            contigs_db_with_hmm_NO_hits = []
+            for sample_name in M.names_list:
+                hmm_hit = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, f"{hmm_source}-dom-hmmsearch", "hmm_hits_filtered.txt")
+                df = pd.read_csv(hmm_hit, sep='\t')
+                df = df[df.source == hmm_source]
+                gene_name_list = df['gene_name'].tolist()
+                if hmm_name in gene_name_list:
+                    contigs_db_with_hmm_hits.append(sample_name)
+                    # add path to merge
+                    working_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{hmm_source}", f"{hmm_name}")
+                    NT_path = os.path.join(working_dir, f"{sample_name}-{hmm_name}-hmm_hits_renamed.fna")
+                    AA_path = os.path.join(working_dir, f"{sample_name}-{hmm_name}-hmm_hits_renamed.faa")
+                    NT_reformat_path = os.path.join(working_dir, f"{sample_name}-{hmm_name}-reformat_report_NT.txt")
+                    AA_reformat_path = os.path.join(working_dir, f"{sample_name}-{hmm_name}-reformat_report_AA.txt")
+                    external_gene_calls_reformat_reformat_path = os.path.join(working_dir, f"{sample_name}-{hmm_name}-external_gene_calls_renamed.tsv")
+                    NT_list.append(NT_path)
+                    AA_list.append(AA_path)
+                    AA_reformat_list.append(AA_reformat_path)
+                    external_gene_calls_reformat_list.append(external_gene_calls_reformat_reformat_path)
+                else:
+                    contigs_db_with_hmm_NO_hits.append(sample_name)
 
+            outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_hmm_hit_{hmm_source}-{hmm_name}.log")
+            with open(outfile, "a") as outfile:
+                for element in contigs_db_with_hmm_NO_hits:
+                    outfile.write(element + '\n')
+
+        # time to merge all these files
         with open(output.NT_all, "a") as NT_output:
             for f in NT_list:
                 NT_output.write(open(f).read())
