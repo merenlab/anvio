@@ -1072,6 +1072,13 @@ rule anvi_estimate_scg_taxonomy:
         done = touch(os.path.join(dirs_dict['MISC_DATA'], "{group}", "anvi_estimate_scg_taxonomy_for_SCGs.done"))
     threads: M.T('anvi_estimate_scg_taxonomy')
     run:
+        # get hmm name, if more than one, exit for now
+        hmm_name, hmm_source = '', ''
+        for hmm, value in M.hmm_dict.items():
+            if value['group'] == wildcards.group:
+                hmm_name = value['name']
+                hmm_source = value['source']
+
         # Concatenate metagenomes.txt and external-genomes.txt
         contigs_db_name_path_list = list(M.contigs_db_name_path_dict.items())
         contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
@@ -1081,7 +1088,7 @@ rule anvi_estimate_scg_taxonomy:
         shell("mkdir -p {params.misc_data_dir}; \
         anvi-estimate-scg-taxonomy -M {combined_genomes_df_path} \
                                    --metagenome-mode \
-                                   --scg-name-for-metagenome-mode {wildcards.hmm_name} \
+                                   --scg-name-for-metagenome-mode {hmm_name} \
                                    -T {threads} \
                                    --raw-output \
                                    -O {params.taxonomy} &> {log}")
@@ -1108,7 +1115,7 @@ rule anvi_estimate_scg_taxonomy:
         reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
         reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
         reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"]
-        scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" +  scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
+        scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" + hmm_source + "_" + scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
         scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
         scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001'
         scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
