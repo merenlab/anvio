@@ -356,27 +356,27 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         target_files = []
 
         for hmm, value in self.hmm_dict.items():
-            hmm_name = value['name']
+            group = value['group']
             hmm_source = value['source']
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm_source}", f"{hmm_name}", f"{hmm_name}_stats.tsv")
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{group}", f"{group}_stats.tsv")
             target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm_source}", f"{hmm_name}", "state_imported_tree.done")
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{group}", "state_imported_tree.done")
                 target_files.append(target_file)
 
             else:
                 # PROFILE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm_source}-{hmm_name}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{group}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm_name}_summarize.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{group}_summarize.done")
                 target_files.append(target_file)
 
         return target_files
 
-    def get_target_files_make_anvio_state_file(self, hmm_source, hmm):
+    def get_target_files_make_anvio_state_file(self):
         """This function creates a list of target files for make_anvio_state_file
 
         RETURNS
@@ -387,12 +387,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "{hmm_name}_misc.tsv")
+        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "{group}_misc.tsv")
         target_files.append(target_file)
 
         run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
         if run_scg_taxonomy:
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{hmm_source}", "{hmm_name}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
         return target_files
