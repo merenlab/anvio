@@ -307,7 +307,7 @@ rule process_hmm_hits:
                                                         -o {fna} --just-do-it >> {log} 2>&1")
 
             # Clean up fasta headers for tree calculation
-            prefix_list = [wildcards.sample_name, wildcards.hmm_name]
+            prefix_list = [wildcards.sample_name, wildcards.hmm_source, wildcards.hmm_name]
             prefix = "_".join(prefix_list)
 
             shell("echo -e 'anvi-script-reformat-fasta AA stdout:\n' >> {log}")
