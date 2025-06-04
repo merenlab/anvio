@@ -408,7 +408,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         RETURNS
         =======
         self.hmm_dict : dict
-            Dict with hmm (source and name) as primary key and values: hmm_name, hmm_source, PATH
+            Dict with hmm (source and name) as primary key and values: hmm_name, hmm_source, PATH, group (optional)
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
@@ -434,6 +434,15 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # create a unique name based on the hmm source and hmm name
         hmm_df['id'] = hmm_df['source'] + '_' + hmm_df['name']
+
+        # the group column is optional and used to combine sequences
+        # from multiple HMM source/genes.
+        # if no group provided, group name is hmm id (source + name).
+        # This "group" will be the main hmm wildcards, similarly to the metagenomics workflow
+        if 'group' not in hmm_df:
+            hmm_df['group'] = hmm_df['id']
+
+        # to dict
         self.hmm_dict = hmm_df.set_index('id').to_dict('index')
 
         # FIXME: this line prints the list of hmm_sources to stdout and I don't want that
@@ -441,6 +450,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # make a list of unique hmm source
         self.unique_hmm_source = {}
+
+        # make a list of group id for sanity check
+        unique_group = []
 
         for hmm, value in self.hmm_dict.items():
             hmm_name = value['name']
@@ -480,6 +492,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
             if hmm_source not in self.unique_hmm_source:
                 self.unique_hmm_source[hmm_source] = hmm_path
+
+            if value['group'] not in unique_group:
+                unique_group.append(value['group'])
+
+        # if groups combine two or more hmm, then anvi-scg-taxonomy is not compatible with the workflow
+        # TODO: I hope we can change that in the future, probably by making a contigs.db for the representative sequence,
+        # in tree mode or not.
+        if len(unique_group) < len(self.hmm_dict) and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+            raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
+                              f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
+                              f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
+
 
 
     def sanity_check_samples_txt(self):
