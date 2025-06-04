@@ -31,6 +31,6 @@ dependencies:
 - r-stringi
 - r-magrittr
 - bioconductor-qvalue
-- meme
+- "meme>=5.5"
 - fastani
 - nodejs=20.12.2
