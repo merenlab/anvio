@@ -241,9 +241,7 @@ rule process_hmm_hits:
     threads: M.T('process_hmm_hits')
     run:
         contigs_db = os.path.join(M.contigs_db_name_path_dict[wildcards.sample_name])
-        # hmm_dir = os.path.join(M.hmm_dict[wildcards.hmm]['path'])
         hmm_source = wildcards.hmm_source
-        # domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.hmm}-dom-hmmsearch", "hmm.domtable")
         fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.hmm_source}", f"{wildcards.hmm_name}")
         if not os.path.exists(fasta_output_dir):
             os.mkdir(fasta_output_dir)
