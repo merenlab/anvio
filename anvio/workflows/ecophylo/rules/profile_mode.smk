@@ -54,6 +54,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
+    log: "00_LOGS/run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:

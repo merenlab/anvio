@@ -427,39 +427,52 @@ class HMMer:
             with buffer_write_lock:
                 merged_file_buffer.write(f.read())
 
-    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
+
+    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock, lines_per_chunk=1000000):
         """Append table output to the main file.
 
         Lines starting with '#' (i.e., header lines) are ignored.
         """
+        
         detected_non_ascii = False
         lines_with_non_ascii = []
+        output_lines = []
+        line_number = 0
 
-        # Read the entire file into memory as binary data
+        def process_batch(line_batch, base_line_number):
+            nonlocal detected_non_ascii
+            local_output = []
+            for i, line_bytes in enumerate(line_batch):
+                line_number_actual = base_line_number + i
+                try:
+                    line = line_bytes.decode('ascii')
+                except UnicodeDecodeError:
+                    decoded = line_bytes.decode('ascii', 'ignore')
+                    if len(decoded) != len(line_bytes):
+                        detected_non_ascii = True
+                        lines_with_non_ascii.append(line_number_actual)
+                    line = decoded
+                if not line.startswith('#'):
+                    local_output.append(line.rstrip())
+            return local_output
+            
         with open(table_output_file, 'rb') as hmm_hits_file:
-            file_data = hmm_hits_file.read()
+            batch = []
+            base_line_number = 1
 
-        # Decode all lines at once and split by newline
-        lines = file_data.decode('ascii', 'ignore').splitlines()
+            for line_bytes in hmm_hits_file:
+                batch.append(line_bytes)
+                if len(batch) >= lines_per_chunk:
+                    output_lines.extend(process_batch(batch, base_line_number))
+                    base_line_number += len(batch)
+                    batch = []
 
-        # Identify lines with non-ASCII characters
-        non_ascii_lines = [
-            i + 1 for i, line_bytes in enumerate(file_data.splitlines())
-            if len(line_bytes.decode('ascii', 'ignore')) != len(line_bytes)
-        ]
-
-        if non_ascii_lines:
-            detected_non_ascii = True
-            lines_with_non_ascii.extend(non_ascii_lines)
-
-        # Filter lines and concatenate in one go
-        filtered_lines = "\n".join(line for line in lines if not line.startswith('#'))
-        if filtered_lines.strip():  # Check if there's non-empty content
-            filtered_lines += "\n"
-
-        # Write to the buffer in a single operation with a lock
-        with buffer_write_lock:
-            merged_file_buffer.write(filtered_lines)
+            if batch:
+                filtered_lines = process_batch(batch, base_line_number)
+                if filtered_lines:
+                    filtered_text = "\n".join(filtered_lines) + "\n"
+                    with buffer_write_lock:
+                        merged_file_buffer.write(filtered_text)
 
         # Log warning if non-ASCII characters were detected
         if detected_non_ascii:
