@@ -237,7 +237,7 @@ rule process_hmm_hits:
     output:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm_source}", "{hmm_name}", "{sample_name}-{hmm_name}-processed.done")
     params:
-        hmm_hits = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm_source}-dom-hmmsearch", "hmm_hits.txt")
+        hmm_hits = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm_source}-dom-hmmsearch", "hmm_hits_filtered.txt")
     threads: M.T('process_hmm_hits')
     run:
         contigs_db = os.path.join(M.contigs_db_name_path_dict[wildcards.sample_name])
