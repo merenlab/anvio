@@ -68,11 +68,10 @@ INFO "Running ecophylo workflow (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json
 
 INFO "Running ecophylo workflow interactive (profile-mode)"
-HMM="Ribosomal_L16"
-anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
-                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/Bacteria_71_Ribosomal_L16-contigs.db \
+                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/Bacteria_71_Ribosomal_L16/PROFILE.db
 
-rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
 INFO "Saving a workflow graph - no samples.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-graph
@@ -94,18 +93,16 @@ rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
 
 INFO "Running ecophylo workflow interactive (tree-mode)"
-HMM="Ribosomal_L16"
-anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
-                 -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
+anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/Bacteria_71_Ribosomal_L16/Bacteria_71_Ribosomal_L16_renamed.nwk \
+                 -p ECOPHYLO_WORKFLOW/05_TREES/Bacteria_71_Ribosomal_L16/Bacteria_71_Ribosomal_L16-PROFILE.db \
                  --manual
 
-rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
 INFO "Running ecophylo workflow - external HMM (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json
 
 INFO "Running ecophylo workflow interactive from external HMM (tree-mode)"
-HMM="Ribosomal_L16"
-anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
-                 -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
+anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/Bacteria_71_Ribosomal_L16/Bacteria_71_Ribosomal_L16_renamed.nwk \
+                 -p ECOPHYLO_WORKFLOW/05_TREES/Bacteria_71_Ribosomal_L16/Bacteria_71_Ribosomal_L16-PROFILE.db \
                  --manual
