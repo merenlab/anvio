@@ -18,8 +18,8 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
-__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
-__credits__ = ['mschecht']
+__copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
+__credits__ = ['mschecht', 'FlorianTrigodet']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
