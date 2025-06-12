@@ -696,10 +696,10 @@ rule remove_sequences_with_X_percent_gaps:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{group}", "{group}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
-	run:
-		shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
-									              --max-percentage-gaps {params.max_percentage_gaps} \
-									              --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
+    run:
+        shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
+                                                  --max-percentage-gaps {params.max_percentage_gaps} \
+                                                  --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
 
 
 rule count_num_sequences_filtered:
