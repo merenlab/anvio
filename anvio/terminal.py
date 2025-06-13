@@ -174,6 +174,13 @@ def get_terminal_size():
     return int(cr[1]), int(cr[0])
 
 
+def clear_progress_line():
+    null = '\r' + ' ' * (get_terminal_width())
+    sys.stderr.write(null)
+    sys.stderr.write('\r')
+    sys.stderr.flush()
+
+
 class Progress:
     def __init__(self, verbose=True):
         self.pid = None
@@ -277,10 +284,8 @@ class Progress:
         if not self.verbose:
             return
 
-        null = '\r' + ' ' * (self.terminal_width)
-        sys.stderr.write(null)
-        sys.stderr.write('\r')
-        sys.stderr.flush()
+        clear_progress_line()
+
         self.current = None
         self.step = None
 
@@ -479,6 +484,7 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
+            clear_progress_line()
             self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
@@ -506,6 +512,7 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
+            clear_progress_line()
             self.write(message_line, overwrite_verbose=overwrite_verbose)
 
 
@@ -527,6 +534,7 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
+            clear_progress_line()
             self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 
 
@@ -918,7 +926,7 @@ def time_program(program_method):
     TimeCode_params = {
         'success_msg': '%s took ' % program_name,
         'failure_msg': '%s encountered an error after ' % program_name,
-        'suppress_first': 3, # avoid clutter when program finishes or fails within 3 seconds
+        'suppress_first': 1, # avoid clutter when program finishes or fails within 3 seconds
     }
 
     def wrapper(*args, **kwargs):
