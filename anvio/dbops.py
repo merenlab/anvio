@@ -168,6 +168,34 @@ def LazyProgress(message):
 
 
 class ContigsSuperclass(object):
+    """A superclass for operations on contigs databases with lazy loading optimization.
+
+    This class provides access to various data structures from anvi'o contigs databases.
+    To improve its performance, most data is loaded lazily (as in, only retrieved from
+    the database when first accessed, then cached in memory for subsequent use).
+
+    At the time of writing this comment, lazy-loaded properties of the class included:
+        - splits_basic_info: Basic information about splits
+        - genes_in_splits: Gene-to-split mappings
+        - contigs_basic_info: Basic information about contigs
+        - genes_in_contigs_dict: Gene-to-contig mappings
+        - nt_positions_info: Nucleotide position information
+        - hmm_sources_info: HMM search source information
+        - And several others (not going through all here since there will be more over time)
+
+    Usage:
+        >>> contigs = ContigsSuperclass(args)
+        >>> # Data is loaded only when accessed:
+        >>> splits = contigs.splits_basic_info  # Triggers database query
+        >>> splits_again = contigs.splits_basic_info  # Uses cached data
+
+    Note:
+        The first access to any lazy-loaded property will trigger a database query
+        and may take some time depending on the size of your database and the
+        complexity of the data being loaded. We have progress bars to help both programmers
+        and users to track that, but more may be needed.
+
+    """
     def __init__(self, args, r=run, p=progress):
         self.args = args
         self.run = r
