@@ -230,7 +230,18 @@ class ContigsSuperclass(object):
 
 
     def _initialize_minimal_data(self):
-        """Initialize only the essential data needed for basic functionality."""
+        """Initialize only the essential data needed for basic functionality.
+
+           This method loads only the most basic metadata required for the class
+           to function. All other data structures are loaded lazily when first
+           accessed to improve initialization performance.
+
+           Loads:
+               - Basic database metadata
+               - Database connection verification
+               - Essential configuration values
+               - AND THAT'S IT.
+        """
         # Basic metadata that's always needed
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
