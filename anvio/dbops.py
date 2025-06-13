@@ -14,6 +14,7 @@ import numpy
 import random
 import argparse
 import textwrap
+import threading
 import itertools
 import scipy.signal
 
@@ -104,16 +105,21 @@ class LazyProperty:
     def __init__(self, loader_method):
         self.loader_method = loader_method
         self.attr_name = loader_method.__name__
+        self._lock = threading.Lock()
 
     def __get__(self, instance, owner):
         if instance is None:
             return self
 
         if not hasattr(instance, '_lazy_loaded_data'):
-            instance._lazy_loaded_data = {}
+            with self._lock:
+                if not hasattr(instance, '_lazy_loaded_data'):
+                    instance._lazy_loaded_data = {}
 
         if self.attr_name not in instance._lazy_loaded_data:
-            instance._lazy_loaded_data[self.attr_name] = self.loader_method(instance)
+            with self._lock:
+                if self.attr_name not in instance._lazy_loaded_data:
+                    instance._lazy_loaded_data[self.attr_name] = self.loader_method(instance)
 
         return instance._lazy_loaded_data[self.attr_name]
 
