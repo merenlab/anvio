@@ -471,10 +471,9 @@ class ContigsSuperclass(object):
     @LazyProgress('SCG HMM sources')
     def singlecopy_gene_hmm_sources(self):
         """Lazily identify singlecopy gene HMM sources."""
-        # If hmm_sources_info isn't loaded yet, we can't identify sources
-        if not self._lazy_loaded_data.get('hmm_sources_info'):
-            # Trigger loading of HMM sources info
-            _ = self.hmm_sources_info
+        # If hmm_sources_info isn't loaded yet, we can't identify sources, and this is our way
+        # to explicitly esnure the dependency is loaded:
+        _ = self.hmm_sources_info
 
         return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
 
@@ -483,10 +482,9 @@ class ContigsSuperclass(object):
     @LazyProgress('Non-SCG HMM sources')
     def non_singlecopy_gene_hmm_sources(self):
         """Lazily identify non-singlecopy gene HMM sources."""
-        # If hmm_sources_info isn't loaded yet, we can't identify sources
-        if not self._lazy_loaded_data.get('hmm_sources_info'):
-            # Trigger loading of HMM sources info
-            _ = self.hmm_sources_info
+        # If hmm_sources_info isn't loaded yet, we can't identify sources, and this is our way
+        # to explicitly esnure the dependency is loaded:
+        _ = self.hmm_sources_info
 
         return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
 
@@ -635,8 +633,7 @@ class ContigsSuperclass(object):
                                   "per split, then you also need to send a keys dictionary to be expanded.")
 
         # Make sure split_name_to_genes_in_splits_entry_ids is loaded
-        if not self._lazy_loaded_data.get('split_name_to_genes_in_splits_entry_ids'):
-            _ = self.split_name_to_genes_in_splits_entry_ids
+        _ = self.split_name_to_genes_in_splits_entry_ids
 
         # learn the number of categories for the function source
         function_source_categories = set([])
@@ -759,8 +756,7 @@ class ContigsSuperclass(object):
             split_names_of_interest = self.split_names_of_interest
 
         # Make sure non_singlecopy_gene_hmm_sources is loaded
-        if not self._lazy_loaded_data.get('non_singlecopy_gene_hmm_sources'):
-            _ = self.non_singlecopy_gene_hmm_sources
+        _ = self.non_singlecopy_gene_hmm_sources
 
         if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
@@ -769,8 +765,7 @@ class ContigsSuperclass(object):
         self.progress.update('...')
 
         # Make sure hmm_sources_info is loaded
-        if not self._lazy_loaded_data.get('hmm_sources_info'):
-            _ = self.hmm_sources_info
+        _ = self.hmm_sources_info
 
         non_singlecopy_gene_hmm_info_dict = {}
         for source in self.non_singlecopy_gene_hmm_sources:
@@ -837,8 +832,7 @@ class ContigsSuperclass(object):
         """
 
         # Make sure nt_positions_info is loaded
-        if not self._lazy_loaded_data.get('nt_positions_info'):
-            _ = self.nt_positions_info
+        _ = self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or \
            (not contig_name in self.nt_positions_info) or \
@@ -884,8 +878,7 @@ class ContigsSuperclass(object):
 
         # Make sure we have gene_callers_id_to_split_name_dict if needed
         if self.split_names_of_interest:
-            if not self._lazy_loaded_data.get('gene_callers_id_to_split_name_dict'):
-                _ = self.gene_callers_id_to_split_name_dict
+            _ = self.gene_callers_id_to_split_name_dict
 
             gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
             where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
@@ -1001,8 +994,7 @@ class ContigsSuperclass(object):
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
         # Make sure gene_callers_id_to_split_name_dict is loaded
-        if not self._lazy_loaded_data.get('gene_callers_id_to_split_name_dict'):
-            _ = self.gene_callers_id_to_split_name_dict
+        _ = self.gene_callers_id_to_split_name_dict
 
         for search_term in search_terms:
             self.progress.new('Search functions')
@@ -1151,8 +1143,7 @@ class ContigsSuperclass(object):
     def get_gene_start_stops_in_contig(self, contig_name):
         """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring in contig_name"""
         # Make sure contig_name_to_genes is loaded
-        if not self._lazy_loaded_data.get('contig_name_to_genes'):
-            _ = self.contig_name_to_genes
+        _ = self.contig_name_to_genes
 
         return self.contig_name_to_genes[contig_name]
 
@@ -1183,16 +1174,14 @@ class ContigsSuperclass(object):
         # Load necessary data if split_names or contig_names are provided
         if split_names:
             # Make sure split_name_to_genes_in_splits_entry_ids and genes_in_splits are loaded
-            if not self._lazy_loaded_data.get('split_name_to_genes_in_splits_entry_ids'):
-                _ = self.split_name_to_genes_in_splits_entry_ids
+            _ = self.split_name_to_genes_in_splits_entry_ids
 
             for split_name in split_names:
                 for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
                     gene_calls_of_interest.add(self.genes_in_splits[entry_id]['gene_callers_id'])
         elif contig_names:
             # Make sure contig_name_to_genes is loaded
-            if not self._lazy_loaded_data.get('contig_name_to_genes'):
-                _ = self.contig_name_to_genes
+            _ = self.contig_name_to_genes
 
             for contig_name in contig_names:
                 for gene_call_id in [t[0] for t in self.contig_name_to_genes[contig_name]]:
@@ -1242,8 +1231,7 @@ class ContigsSuperclass(object):
         """
 
         # Make sure contig_name_to_genes is loaded
-        if not self._lazy_loaded_data.get('contig_name_to_genes'):
-            _ = self.contig_name_to_genes
+        _ = self.contig_name_to_genes
 
         gene_start_stops_in_contig = self.get_gene_start_stops_in_contig(contig_name)
 
@@ -1334,8 +1322,7 @@ class ContigsSuperclass(object):
         # accessing self.nt_positions_info
 
         # Make sure nt_positions_info is loaded
-        if not self._lazy_loaded_data.get('nt_positions_info'):
-            _ = self.nt_positions_info
+        _ = self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or \
            (not contig_name in self.nt_positions_info) or \
@@ -1353,8 +1340,7 @@ class ContigsSuperclass(object):
         # columns. This first ignores the fact that gene calls may overlap.
 
         # Make sure contig_name_to_genes is loaded
-        if not self._lazy_loaded_data.get('contig_name_to_genes'):
-            _ = self.contig_name_to_genes
+        _ = self.contig_name_to_genes
 
         gene_calls = self.get_gene_start_stops_in_contig(contig_name)
 
