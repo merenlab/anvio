@@ -1,6 +1,7 @@
 # coding: utf-8
 """Interface for gene calling that uses `pyrodigal-gv`."""
 
+import copy
 import multiprocessing.pool
 
 import anvio
