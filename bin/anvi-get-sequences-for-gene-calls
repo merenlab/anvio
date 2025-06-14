@@ -48,6 +48,10 @@ def export_from_contigs(args):
         wrap=args.wrap
     )
 
+    if args.export_gff3 and (args.list_defline_variables or args.defline_format):
+        raise ConfigError("User-defined deflines for gene sequence output files is not compatible with the "
+                          "GFF3 output mode. Sorry :/")
+
     if args.export_gff3:
         if args.get_aa_sequences:
             raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")
@@ -57,12 +61,16 @@ def export_from_contigs(args):
             raise ConfigError("Due to the lazy programming, --flank-length and --export-gff3 flags are incompatible :(")
         if args.annotation_source:
             func_kwargs['gene_annotation_source'] = args.annotation_source
+        if args.return_all_function_hits_for_each_gene:
+            anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = True
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
         if args.annotation_source:
             raise ConfigError("A functional annotation source is only relevant for the GFF output format.")
-        c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length, output_file_path_external_gene_calls=args.external_gene_calls)
+        c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length,
+                                             output_file_path_external_gene_calls=args.external_gene_calls, defline_format=args.defline_format,
+                                             list_defline_variables=args.list_defline_variables)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
@@ -103,10 +111,8 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('OPTION #1: GET SEQUENCES FROM A CONTIGS DB')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
-    groupA.add_argument(*anvio.A('flank-length'), **anvio.K('flank-length'))
     groupA.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
-    groupA.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
-    groupA.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
+    groupA.add_argument(*anvio.A('flank-length'), **anvio.K('flank-length'))
     groupA.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
     groupA.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls',
                                         {"help": ("An optional external gene calls file path that precisely "
@@ -118,13 +124,20 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupB.add_argument(*anvio.A('return-all-function-hits-for-each-gene'), **anvio.K('return-all-function-hits-for-each-gene'))
 
     groupC = parser.add_argument_group('OPTION #2: GET SEQUENCES FROM A GENOMES STORAGE')
     groupC.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
 
-    groupD = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
-    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupD = parser.add_argument_group('FASTA OUTPUT FORMATTING OPTIONS')
+    groupD.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
+    groupD.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
+    groupD.add_argument(*anvio.A('list-defline-variables'), **anvio.K('list-defline-variables'))
+    groupD.add_argument(*anvio.A('defline-format'), **anvio.K('defline-format'))
+
+    groupE = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
+    groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     args = parser.get_args(parser)
 

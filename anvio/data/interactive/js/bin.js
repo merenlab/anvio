@@ -93,7 +93,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        `}
                        <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    ${ mode === 'full' || mode === 'refine' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
+                    ${ mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
                     <td style="border-top: 0px;">&nbsp;</td>
                     <td style="border-top: 0px;">&nbsp;</td>
                     <td colspan="6" style="border-top: 0px; padding-top: 0px;">
@@ -896,15 +896,17 @@ Bins.prototype.RedrawBins = function() {
 
     for (let bin_id in this.selections) {
         for (let node of this.selections[bin_id].values()) {
-            if (node === null) return;
-            if (typeof node === 'undefined')
-            {
+            // Check if node is valid and not collapsed - issue #2042
+            if (node === null || typeof node === 'undefined') {
                 this.selections[bin_id].delete(node);
                 continue;
             }
 
+            // Only process leaf nodes that are not collapsed
             if (node.IsLeaf() && !node.collapsed) {
                 leaf_list[node.order] = bin_id;
+                // Ensure the color is set for the leaf node
+                node.SetColor(this.GetBinColor(bin_id));
             }
         }
     }

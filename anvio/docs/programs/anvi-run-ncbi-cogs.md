@@ -27,3 +27,10 @@ By default, this program uses `diamond` to search for hits to the database. You 
 anvi-run-ncbi-cogs -c %(contigs-db)s \
             --search-with blastp
 {{ codestop }}
+
+### Running with multiple threads
+{{ codestart }}
+anvi-run-ncbi-cogs -c %(contigs-db)s \
+            --cog-data-dir path/to/%(cogs-data)s \ 
+            -T 16
+{{ codestop }}

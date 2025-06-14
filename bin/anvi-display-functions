@@ -89,7 +89,7 @@ if __name__ == '__main__':
     args = parser.get_args(parser)
 
     try:
-        utils.is_all_submodules_present()
+        utils.is_all_npm_packages_installed()
         args.mode = 'functional'
         d = interactive.Interactive(args)
 

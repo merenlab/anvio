@@ -98,6 +98,25 @@ function getCleanCagCode(code) {
 
 //-----------------------------------------------------------------------------
 
+function search_protein_structure_in_alphafold(gene_id, target) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        async: false,
+        url: '/data/' + target + '/' + gene_id,
+        success: function(data) {
+            if ('error' in data) {
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            } else {
+                var sequence = data['aa_sequence'];
+
+                var alphafoldUrl = 'https://www.alphafold.ebi.ac.uk/search/text/' + encodeURIComponent(sequence);
+                window.open(alphafoldUrl, '_blank');
+            }
+        }
+    });
+}
+
 function search_gene_sequence_in_remote_dbs(gene_id, program, database, target) {
     
         $.ajax({
@@ -265,25 +284,32 @@ function getParameterByName(name, url) {
 function renderMarkdown(content) {
     var renderer = new marked.Renderer();
 
-    renderer.link = function( href, title, text ) {
+    renderer.link = function (hrefObj, title, text) {
+        var href = typeof hrefObj === 'string' ? hrefObj : hrefObj.href;
+
+        if (typeof href !== 'string') {
+            console.error('Expected href to be a string, got:', hrefObj);
+            return `<a href="#">${text}</a>`;
+        }
+
         if (href.startsWith('item://')) {
             var item_name = href.split('//')[1];
-
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
                 <span href="#" onclick="bins.HighlightItems(\'' + item_name + '\');">HIGHLIGHT</span>';
 
-            if (mode == 'full' | mode == 'pan') {
-                var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
+            if (mode === 'full' || mode === 'pan') {
+                var target = (mode === 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
                 html += ' | <span href="#" onclick="context_menu_target_id = label_to_node_map[\'' + item_name + '\'].id; \
                                                  menu_callback(\'' + target + '\');">INSPECT</span>';
             }
 
             return html + '</span></a>';
         }
-        return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
-    }
 
-    return marked(content, { renderer:renderer });
+        return `<a target="_blank" href="${href}" title="${title}">${text}</a>`;
+    };
+
+    return marked.parse(content, { renderer: renderer });
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -349,9 +375,6 @@ function showTaxonomyTableDialog(title, content)
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
 }
 
 
@@ -386,10 +409,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 
@@ -428,10 +448,7 @@ function showDraggableDialog(title, content, updateOnly)
     $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 //--------------------------------------------------------------------------------------------------

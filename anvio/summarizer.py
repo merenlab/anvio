@@ -93,6 +93,7 @@ class ArgsTemplateForSummarizerClass:
         self.debug = None
         self.quick_summary = False
         self.init_gene_coverages = False
+        self.calculate_Q2Q3_carefully = False
         self.skip_check_collection_name = False
         self.skip_init_functions = False
         self.cog_data_dir = None
@@ -133,6 +134,7 @@ class SummarizerSuperClass(object):
         self.skip_check_collection_name = A('skip_check_collection_name')
         self.skip_init_functions = A('skip_init_functions')
         self.init_gene_coverages = A('init_gene_coverages')
+        self.calculate_Q2Q3_carefully = A('calculate_Q2Q3_carefully')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
@@ -717,7 +719,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def init(self):
         # init profile data for colletion.
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully)
 
         # let bin names known to all
         self.bin_ids = list(self.collection_profile.keys())
@@ -1655,9 +1657,10 @@ class Bin:
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
                     self.contig_name_conversion_dict[contig_name] = {'reformatted_contig_name': reformatted_contig_name}
-                    contig_name = reformatted_contig_name
+                else:
+                    reformatted_contig_name = contig_name
 
-                fasta_id = contig_name + appendix
+                fasta_id = reformatted_contig_name + appendix
                 self.contig_lengths.append(len(sequence))
 
                 output += '>%s\n' % fasta_id

@@ -24,7 +24,7 @@ anvi-gen-genomes-storage -e external-genomes.txt \
                          -o TEST-GENOMES.db \
                          --no-progress
 
-INFO "Running the pangenome anaysis with default parameters"
+INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
                 -o TEST/ \
                 -n TEST \
@@ -51,6 +51,12 @@ anvi-pan-genome -g TEST-GENOMES.db \
                 --description example_description.md \
                 --no-progress \
                 $thread_controller
+
+INFO "Calculating rarefaction curves and Heaps' Law fit for the pangenome"
+anvi-compute-rarefaction-curves -p TEST/TEST-PAN.db \
+                                -O RF
+SHOW_FILE RF-rarefaction-pangenome-averages.txt
+SHOW_FILE RF-rarefaction-core-averages.txt
 
 INFO "Importing collections of gene clusters"
 anvi-import-collection -p TEST/TEST-PAN.db \

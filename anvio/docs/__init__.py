@@ -615,6 +615,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "kegg-pathway-map": {
+        "name": "KEGG PATHWAY MAP",
+        "type": "DISPLAY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
@@ -944,9 +950,16 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
-    }, "contig-rename-report-txt": {
+    },
+    "contig-rename-report-txt": {
         "name": "CONTIG RENAME REPORT TXT",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "rarefaction-curves": {
+        "name": "RAREFACTION CURVES",
+        "type": "SVG",
         "provided_by_anvio": True,
         "provided_by_user": False
     }

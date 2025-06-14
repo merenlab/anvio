@@ -706,7 +706,7 @@ class DB:
         return [t[0] for t in results]
 
 
-    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None):
+    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None, as_data_frame=False):
         self.is_table_exists(table_name)
 
         if where_clause:
@@ -716,6 +716,9 @@ class DB:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name))
 
         results = self._fetchall(response, table_name)
+
+        if as_data_frame:
+            results = pd.DataFrame(results, columns=[c.strip() for c in comma_separated_column_names.split(',')])
 
         return results
 

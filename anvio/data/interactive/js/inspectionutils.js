@@ -143,7 +143,9 @@ function get_gene_functions_table_html(gene){
       functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
       functions_table_html += '</ul></li></ul> ';
     }
-    functions_table_html += '</div></div></div>';
+    functions_table_html += '</div></div>';
+    functions_table_html += '<div class="col-xs-1 dp-button"> <a class="btn btn-outline-secondary btn-sm" href="#" onClick="search_protein_structure_in_alphafold(' + gene.gene_callers_id + ', \'gene\');">Alphafold Search</a></div>' ;
+    functions_table_html += '</div>';
 
     if(!gene.functions)
         return functions_table_html;

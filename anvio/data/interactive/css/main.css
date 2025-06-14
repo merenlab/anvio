@@ -293,6 +293,7 @@ html, body, #wrapper {
 
 .toggle-panel-left-pos {
     left: 560px;
+    z-index: 1;
 }
 
 #toggle-panel-left:hover {
@@ -1054,68 +1055,9 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     min-width: 16px;
 }
 
-
-#scale-bar-container {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    background: var(--bg-color-hover);
-    padding: 5px 10px;
-    border-radius: 5px;
-    opacity: 75%;
-}
-
-#scale-bar {
-    height: 2px;
-    background: #000;
-    margin-left: 5px;
-    position: relative;
-}
-
-#scale-bar::before,
-#scale-bar::after {
-    content: '';
-    position: absolute;
-    width: 1px;
-    height: 10px;
-    background: #000;
-}
-
-#scale-bar::before {
-    left: 0;
-    top: -4px;
-}
-
-#scale-bar::after {
-    right: 0;
-    top: -4px;
-}
-
-#scale-bar .middle-line {
-    content: '';
-    position: absolute;
-    width: 1px;
-    height: 5px;
-    background: #000;
-    top: 0px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-#tree-scale-switch{
-    justify-content: flex-end;
-}
-
 #calculated-scale-bar{
     justify-content: flex-start;
     align-items: center;
-}
-
-#interactive-scale-text{
-    min-width: 107px;
 }
 
 .custom-control-input:checked ~ .custom-control-label::before {
@@ -1183,42 +1125,54 @@ position: relative;
 @include btn-border-drawing(#58afd1, #ffe593, 4px, bottom, right);
 }
 
-@media only screen and (min-width:1440px){
-    /* styles for browsers larger than 1460px; */
-    *:not(text) {
-        font-size: 12px;
-        line-height: 1.428;
-    }
-    .glyphicon {
-        top: 4px;
-        font-size: 15px;
-    }
+.disabled{
+    pointer-events:none;
+    opacity:0.6;
+}
 
+@media screen and (min-width: 1440px) and (min-height: 900px) {
     .fs-2x {
         font-size: 2em !important;
     }
-}
-
-@media only screen and (min-width:1280px) and (max-width: 1440px){
-    /* styles for browsers larger than 1280px; */
+    
     *:not(text) {
         font-size: 12px;
         line-height: 1.428;
     }
+}
 
+@media screen and (min-width: 1024px) and (max-width: 1439px), 
+       screen and (min-height: 650px) and (max-height: 899px) {
+    .fs-2x {
+        font-size: 1.4em !important;
+    }
+    
+    *:not(text) {
+        font-size: 11px;
+        line-height: 1.428;
+    }
+}
+
+@media screen and (min-width: 900) and (max-width: 1023), 
+       screen and (max-height: 649px) {
     .fs-2x {
         font-size: 1.2em !important;
     }
-}
-
-@media only screen and (min-width:768px) and (max-width: 1280px){
-    /* styles for browsers larger than 1280px; */
+    
     *:not(text) {
-        font-size: 12px;
+        font-size: 11px;
         line-height: 1.428;
     }
+}
 
+@media screen and (max-width: 900px),
+       screen and (max-height: 649px) {
     .fs-2x {
-        font-size: 1.1em !important;
+        font-size: 1em !important;
+    }
+    
+    *:not(text) {
+        font-size: 10px;
+        line-height: 1.428;
     }
 }

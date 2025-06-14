@@ -42,6 +42,8 @@ def main(args):
     if A('output_dir'):
         filesnpaths.check_output_directory(A('output_dir'))
 
+    utils.is_all_npm_packages_installed()
+
     # k, gud. lets move on with business.
     db_type = utils.get_db_type(args.pan_or_profile_db)
 
@@ -59,6 +61,9 @@ def main(args):
 
         if not args.contigs_db:
             raise ConfigError("You must provide a contigs database when you summarize anvi'o profiles. True story.")
+
+        # set this global arg so that all functional annotations are reflected in the summary output
+        anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = True
 
         summary = summarizer.ProfileSummarizer(args)
     else:
@@ -93,6 +98,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupC.add_argument(*anvio.A('init-gene-coverages'), **anvio.K('init-gene-coverages'))
+    groupC.add_argument(*anvio.A('calculate-Q2Q3-carefully'), **anvio.K('calculate-Q2Q3-carefully'))
     groupC.add_argument(*anvio.A('reformat-contig-names'), **anvio.K('reformat-contig-names'))
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like amino acid AND dna sequences for your gene calls in the genes output\

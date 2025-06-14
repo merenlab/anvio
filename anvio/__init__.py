@@ -74,6 +74,9 @@ DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
+# global args that we can set internally as needed
+RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = False  # set to True if you want all functional annotations from a given annotation source
+                                                        # instead of the best hit per gene
 
 # if the user wants to use a non-default tmp directory, we set it here
 if '--tmp-dir' in sys.argv:
@@ -1272,6 +1275,14 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
+                ),
     'unique-genes': (
             ['--unique-genes'],
             {'default': False,
@@ -2174,8 +2185,9 @@ D = {
             ['-O', '--output-file-prefix'],
             {'metavar': 'FILENAME_PREFIX',
              'type': str,
-             'help': "A prefix to be used while naming the output files (no file type "
-                     "extensions please; just a prefix)."}
+             'help': "A prefix to be used while naming the output files. No file type "
+                     "extensions please; just a prefix -- all ouptut file names and "
+                     "extensions will be appended to this prefix."}
                 ),
     'long-format': (
             ['--long-format'],
@@ -2548,6 +2560,27 @@ D = {
                      "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
                      "flag all indels are reported."}
                 ),
+    'list-defline-variables': (
+            ['--list-defline-variables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will list the variable names that can be used to construct deflines in "
+                     "FASTA outputs from the user-defined `--defline-format` strings."}
+                ),
+    'defline-format': (
+            ['--defline-format'],
+            {'default': None,
+             'metavar': "F-STRING",
+             'help': "Proivide a defline template for anvi'o to use when generating the FASTA output. The way this "
+                     "works is actually quite simple: first you learn about all the options that exist using the "
+                     "`--list-defline-variables`, and then use them to create your template. Available variables "
+                     "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
+                     "of curly brackets will be kept as is. For instance, if you would like your defline to have "
+                     "the gene caller ID after the contig name in which it occurs, you can use this template: "
+                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "See more examples in online help."}
+                ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
             {'default': False,
@@ -2707,6 +2740,20 @@ D = {
                      "is because anvi'o computes gene coverages by going back to actual coverage values of each gene to "
                      "average them, instead of using contig average coverage values, for extreme accuracy."}
                 ),
+    'calculate-Q2Q3-carefully': (
+            ['--calculate-Q2Q3-carefully'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o summarizes collections by cutting corners. One of those corners is to take values "
+                     "for mean coverage Q2Q3 for each contig, and normalize that value by the size of the contig, and "
+                     "average those values to have a single value for the bin. While this strategy works quite well for "
+                     "regular mean coverage, the calculation of mean coverage Q2Q3 requires the ENTIRETY of the raw "
+                     "coverage values for each contig to be first concatenated so they can be sorted to calculate the "
+                     "most accurate Q2Q3 value for a given bin. This flag ensures anvi'o calculates mean coverage Q2Q3 "
+                     "values in that careful way at the expense of things taking much longer (but it really is worth it "
+                     "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
+                     "details."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
@@ -2774,6 +2821,15 @@ D = {
                      "rather that we gracefully ignored such annotations, use this flag. But since errors about unrecognized "
                      "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
                      "behavior on until you have seen these errors and are absolutely sure that you do not care."}
+                ),
+    'exclude-dashed-reactions': (
+            ['--exclude-dashed-reactions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sometimes KEGG modules include steps like '--' that don't have an associated enzyme with a KOfam model. "
+                     "By default, we mark these steps as absent in our completeness and copy number calculations. If you'd prefer "
+                     "to ignore these '--' steps entirely (resulting in higher estimates), then use this flag. See "
+                     "https://github.com/merenlab/anvio/issues/2393 for a relevant discussion on this :)"}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
@@ -3154,6 +3210,22 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
+    'skip-map-images': (
+            ['--skip-map-images'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG pathway map image files, which we don't "
+                     "recommend, since they are used in visualizing pathway membership, but let you "
+                     "do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
@@ -3640,6 +3712,12 @@ D = {
                      "a comma-separated list. The default stats are 'detection' and "
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
+    ),
+    'report-all-estimates': (
+            ['--report-all-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to report all C/R estimates, from all domains."}
     )
 }
 

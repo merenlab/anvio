@@ -55,6 +55,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
+    log: "00_LOGS/run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
@@ -96,7 +97,7 @@ rule add_default_collection:
     params:
         contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{hmm}.db")),
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db")
-    output: done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_add_default_collection.done"))
+    output: done = touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     run:
         shell('anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}')
@@ -110,13 +111,13 @@ rule anvi_summarize:
     input: 
         done = rules.add_default_collection.output.done
     params:
-        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}-contigs.db")),
-        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
-        output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}")
-    output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}_summarize.done"))
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{hmm}-contigs.db")),
+        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db"),
+        output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{hmm}")
+    output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{hmm}_summarize.done"))
     threads: M.T('anvi_summarize')
     run: 
-        shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it;')
+        shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it >> {log} 2>&1')
         
 
 rule make_anvio_state_file:
@@ -131,7 +132,7 @@ rule make_anvio_state_file:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
     output:
-        state_file = os.path.join(dirs_dict['HOME'], "{hmm}_ECOPHYLO_WORKFLOW_state.json")
+        state_file = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_ECOPHYLO_WORKFLOW_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
@@ -319,21 +320,29 @@ rule anvi_import_everything_metagenome:
         done = rules.run_metagenomics_workflow.output.done
     params:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
+        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output: 
-        touch(os.path.join(dirs_dict['HOME'], "{hmm}_state_imported_profile.done"))
+        touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
     run:
-        state = os.path.join(dirs_dict['HOME'], f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
+        state = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
 
-        shell("anvi-import-state -p {params.profileDB} -s {state} -n default")
+        shell("echo -e 'Step 1: anvi-import-state:\n' >> {log}")
+        shell("anvi-import-state -p {params.profileDB} -s {state} -n default >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
-        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.hmm}_tree")
+        shell("echo -e 'Step 2: anvi-import-items-order:\n' >> {log}")
+        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.hmm}_tree >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
-        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")
+        shell("echo -e 'Step 3: anvi-import-misc-data:\n' >> {log}")
+        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it >> {log} 2>&1")
+        shell("echo -e '' >> {log}")
 
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
         
         if hmm_source in M.internal_hmm_sources:
-            shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
+            shell("echo -e 'Step 4: anvi-import-misc-data:\n' >> {log}")
+            shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it >> {log} 2>&1")
+            shell("echo -e '' >> {log}")

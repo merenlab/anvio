@@ -8,6 +8,8 @@ v2020-04-27:
     modules_db_version: 1
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-06-23:
     url: https://ndownloader.figshare.com/files/23701919
@@ -16,6 +18,8 @@ v2020-06-23:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-08-06:
     url: https://ndownloader.figshare.com/files/25464530
@@ -24,6 +28,8 @@ v2020-08-06:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-12-23:
     url: https://ndownloader.figshare.com/files/25878342
@@ -32,6 +38,8 @@ v2020-12-23:
     modules_db_version: 2
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2021-12-18:
     url: https://figshare.com/ndownloader/files/31959416
@@ -40,6 +48,8 @@ v2021-12-18:
     modules_db_version: 3
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2022-04-14:
     url: https://figshare.com/ndownloader/files/34817812
@@ -48,6 +58,8 @@ v2022-04-14:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2023-01-10:
     url: https://figshare.com/ndownloader/files/38799687
@@ -56,6 +68,8 @@ v2023-01-10:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2023-09-18:
     url: https://figshare.com/ndownloader/files/42381873
@@ -64,6 +78,8 @@ v2023-09-18:
     modules_db_version: 4
     no_modeling_data: True
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2023-09-22:
     url: https://figshare.com/ndownloader/files/42428115
@@ -71,6 +87,8 @@ v2023-09-22:
     hash: a2b5bde358bb
     modules_db_version: 4
     no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2024-03-09:
     url: https://figshare.com/ndownloader/files/44953354
@@ -78,6 +96,35 @@ v2024-03-09:
     hash: 23910d68b4f2
     modules_db_version: 4
     no_modeling_data: True
+    no_binary_relations: True
+    no_maps: True
+
+v2024-08-30:
+    url: https://figshare.com/ndownloader/files/48903154
+    archive_name: KEGG_build_2024-08-30_6b658b5c4379.tar.gz
+    hash: 6b658b5c4379
+    modules_db_version: 4
+    no_stray_KOs: True
+
+v2024-09-08:
+    url: https://figshare.com/ndownloader/files/49080904
+    archive_name: KEGG_build_2024-09-08_5a9644d40061.tar.gz
+    hash: 5a9644d40061
+    modules_db_version: 4
+
+v2024-09-29:
+    url: https://figshare.com/ndownloader/files/49500822
+    archive_name: KEGG_build_2024-09-29_5a9644d40061.tar.gz
+    hash: 5a9644d40061
+    modules_db_version: 4
+
+v2025-02-04:
+    url: https://figshare.com/ndownloader/files/52133138
+    archive_name: KEGG_build_2025-02-04_4039c79d9c82.tar.gz
+    hash: 4039c79d9c82
+    modules_db_version: 4
+    no_maps: True
+
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running

@@ -175,7 +175,7 @@ class ContigsSuperclass(object):
         ####################################################################################
         # read SPLITS and GENES basic information.
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split', self.split_names_of_interest, progress=self.progress)
-        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress)
+        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress, error_if_no_data=False)
 
         # if there are no splits names of interest, contig names of interest will be an empty set.
         # that's OK, because `smart_get` will take care of it.
@@ -183,7 +183,7 @@ class ContigsSuperclass(object):
 
         # read CONTIGS and GENES basic information.
         self.contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
-        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress)
+        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress, error_if_no_data=False)
 
         # because this table is as dumb as Eric, it needs some special attention
         if self.split_names_of_interest:
@@ -318,7 +318,7 @@ class ContigsSuperclass(object):
         # know which gene caller ids they represent if only a subset of contigs
         # were requested:
         if subset_provided:
-            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress, error_if_no_data=False).keys())
         else:
             self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
 
@@ -602,6 +602,9 @@ class ContigsSuperclass(object):
         If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
 
         Afterwards, it sets self.gene_function_calls_initiated to True.
+
+        Note: the global argument RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE affects the behavior of this function. If False, we get 
+        the best hit per gene (lowest e-value) for a given annotation source. If True, we get all hits.
         """
         if not self.contigs_db_path:
             return
@@ -643,13 +646,21 @@ class ContigsSuperclass(object):
             if gene_callers_id not in self.gene_function_calls_dict:
                 self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
 
-            if self.gene_function_calls_dict[gene_callers_id][source] and e_value:
-                if self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
-                    # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
-                    # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
-                    continue
-
             entry = (accession, '%s' % (function if function else 'unknown'), e_value)
+
+            if self.gene_function_calls_dict[gene_callers_id][source]:
+                if anvio.RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE:
+                    previous_entry_acc, previous_entry_func, previous_entry_evalue = self.gene_function_calls_dict[gene_callers_id][source]
+                    combined_acc = f"{previous_entry_acc}!!!{accession}"
+                    combined_func = f"{previous_entry_func}!!!{entry[1]}"
+                    combined_evalue = f"{previous_entry_evalue}!!!{e_value}"
+                    entry = (combined_acc, combined_func, combined_evalue)
+                else:
+                    if e_value and self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
+                        # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
+                        # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
+                        continue
+
             self.gene_function_calls_dict[gene_callers_id][source] = entry
 
         contigs_db.disconnect()
@@ -1120,10 +1131,42 @@ class ContigsSuperclass(object):
         return sequences
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True, include_aa_sequences=False, flank_length=0,
-                                           output_file_path_external_gene_calls=None, simple_headers=False, report_aa_sequences=False, wrap=120, rna_alphabet=False):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list=[], output_file_path=None, reverse_complement_if_necessary=True,
+                                           include_aa_sequences=False, flank_length=0, output_file_path_external_gene_calls=None,
+                                           simple_headers=False, list_defline_variables=False, defline_format='{gene_caller_id}',
+                                           report_aa_sequences=False, wrap=120, rna_alphabet=False):
 
-        # bunch of sanity checks below
+        ##################################################################################################
+        #
+        # DEFLIINE FORMATTING REPORTING RELATED PRE-CHECKS
+        #
+        ##################################################################################################
+        # available options to determine deflines through user-provided f-strings. the dictionary is
+        # populated below, and if you make any changes here, please don't forget to update it there too:
+        defline_data_dict = {'gene_caller_id': None,
+                             'contig_name': None,
+                             'start': None,
+                             'stop': None,
+                             'direction': None,
+                             'length': None,
+                             'contigs_db_project_name': None}
+
+        # if the user needs to see the list, show the list and quit
+        if list_defline_variables:
+            self.run.warning("Here are the variables you can use to provide a user-defined defline template: ")
+            for key in defline_data_dict.keys():
+                self.run.info_single("{%s}" % key)
+            self.run.info_single("Remember, by default, anvi'o will only use '{gene_caller_id}' to format the deflines of "
+                                 "FASTA files it produces.", level=0, nl_before=1, nl_after=1, mc='red')
+
+            sys.exit()
+
+        ##################################################################################################
+        #
+        # BUNCH OF SANITY CHECKS BEFORE WE GET INTO BUSINESS
+        #
+        ##################################################################################################
+
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -1165,6 +1208,20 @@ class ContigsSuperclass(object):
             raise ConfigError("If you are asking anvi'o to create an external gene calls file for your gene sequences, you can't also "
                               "also ask FASTA file headers for gene sequences to be not simple. External gene calls file and the FASTA "
                               "file must match, and anvi'o will have to take care of it without your supervision.")
+
+        # if we came all the way down here without a defline format, let's set one up:
+        if not defline_format:
+            defline_format = "{gene_caller_id}"
+
+        # we will also check if the `defline_format` is composed of variables that are defined in
+        # the  `defline_data_dict` which is filled later
+        utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+
+        ##################################################################################################
+        #
+        # BUSINESS TIME
+        #
+        ##################################################################################################
 
         # finally getting our sequences initialized. please NOTE that we do it only if there are no
         # contig sequences available OR if the gene caller ids of interest is not represented among
@@ -1255,6 +1312,17 @@ class ContigsSuperclass(object):
                 else:
                     gene_call['aa_sequence'] = None
 
+            # let's populate the dictionary that holds all the information that could be used to report
+            # gene FASTA files. if you change anything in this dictionary, please don't forget to
+            # update the list of variables where it is first defined in this function.
+            defline_data_dict = {'gene_caller_id': gene_callers_id,
+                                 'contig_name': gene_call['contig'],
+                                 'start': gene_call['start'],
+                                 'stop': gene_call['stop'],
+                                 'direction': gene_call['direction'],
+                                 'length': gene_call['length'],
+                                 'contigs_db_project_name': self.a_meta['project_name_str']} 
+
             if output_file_path_external_gene_calls:
                 # if the user is asking for an external gene calls file, the FASTA file for sequences
                 # should not start with digits and we also need to set the contig name in sequences
@@ -1266,10 +1334,9 @@ class ContigsSuperclass(object):
                     gene_call['start'] = 0
                     gene_call['stop'] = gene_call['length']
             else:
-                if simple_headers:
-                    gene_call['header'] = '%d' % (gene_callers_id)
-                else:
-                    gene_call['header'] = '%d ' % (gene_callers_id) + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
+                gene_call['header'] = utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+                if not simple_headers:
+                    gene_call['header'] += ' ' + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
             # adding the updated gene call to our sequences dict.
             sequences_dict[gene_callers_id] = gene_call
@@ -1381,16 +1448,26 @@ class ContigsSuperclass(object):
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
                     if gene_callers_id in self.gene_function_calls_dict:
-                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
-                        accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+                        accession_str, function_str, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
+                        accessions = accession_str.split('!!!')
+                        functions = function_str.split('!!!')
 
-                        # now we have the function text, but it may contain characters that are offensive to the GFF3
-                        # specifications, so we will simply replace them with space character. for more information
-                        # please see https://github.com/merenlab/anvio/issues/2070
-                        for character in [':', ';', ',', '&', '\t']:
-                            function = function.replace(character, ' ')
+                        # Clean functions for GFF3 compliance
+                        cleaned_functions = []
+                        for function in functions:
+                            # now we have the function text, but it may contain characters that are offensive to the GFF3
+                            # specifications, so we will simply replace them with space character. for more information
+                            # please see https://github.com/merenlab/anvio/issues/2070
+                            for character in [':', ';', ',', '&', '\t']:
+                                function = function.replace(character, ' ')
+                            cleaned_functions.append(function)
 
-                        attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
+                        # Build attribute fields
+                        name_field = ",".join(accessions) # Not strictly correct for gff3 as only meant to have 1 entry for Name
+                        dbxref_field = f"{gene_annotation_source}:" + ",".join(accessions)
+                        product_field = ",".join(cleaned_functions)
+
+                        attributes += f";Name={name_field};db_xref={dbxref_field};product={product_field}"
 
                 output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
@@ -1406,24 +1483,32 @@ class ContigsSuperclass(object):
         if not self.a_meta['gene_level_taxonomy_source']:
             raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
-        if not len(self.splits_taxonomy_dict):
-            self.init_splits_taxonomy()
 
-        if not len(self.splits_taxonomy_dict):
-            raise ConfigError("The splits taxonomy is empty. There is nothing to report. Could it be "
-                               "possible the taxonomy caller you used did not assign any taxonomy to "
-                               "anything?")
+        self.progress.new('Initializing splits taxonomy')
+        self.progress.update('...')
 
-        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(self.splits_taxonomy_dict), len(self.splits_basic_info)))
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        splits_taxonomy_table = contigs_db.db.smart_get(t.splits_taxonomy_table_name, 'split', self.split_names_of_interest, string_the_key=True, error_if_no_data=False, progress=self.progress)
+        taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         output = open(output_file_path, 'w')
+        column_list = ['split_name'] + [k for k in taxon_names_table[list(taxon_names_table.keys())[0]].keys()]
+        header = "\t".join(column_list)
+        output.write(f"{header}\n")
         for split_name in self.splits_basic_info:
-            if split_name in self.splits_taxonomy_dict:
-                output.write('{0}\t{1}\n'.format(split_name, self.splits_taxonomy_dict[split_name]))
-            else:
-                output.write('{0}\t\n'.format(split_name))
+            if split_name in splits_taxonomy_table:
+                taxon_id = splits_taxonomy_table[split_name]['taxon_id']
+                if taxon_id:
+                    self.splits_taxonomy_dict[split_name] = taxon_names_table[taxon_id]
+                    taxonomy_string = "\t".join(str(x) for x in self.splits_taxonomy_dict[split_name].values())
+                    output.write(f"{split_name}\t{taxonomy_string}\n")
+                else:
+                    output.write(f"{split_name}\t\n")
         output.close()
 
+        contigs_db.disconnect()
+        self.progress.end()
+        self.run.info("Taxonomy", "Annotations for %d of %d total splits are recovered" % (len(splits_taxonomy_table), len(self.splits_basic_info)))
         self.run.info("Output", output_file_path)
 
 
@@ -3782,7 +3867,7 @@ class ProfileSuperclass(object):
             return split_coverages_dict
 
 
-    def init_collection_profile(self, collection_name):
+    def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
         profile_db = ProfileDatabase(self.profile_db_path, quiet=True)
 
         # we only have a self.collections instance if the profile super has been inherited by summary super class.
@@ -3803,6 +3888,14 @@ class ProfileSuperclass(object):
 
         samples_template = dict([(s, []) for s in self.p_meta['samples']])
 
+        if calculate_Q2Q3_carefully:
+            self.run.warning("The anvi'o sumarizer class is instructed (hopefully by you) to calculate Q2Q3 mean "
+                             "coverages carefully. This means, depending on the size of your dataset and the number "
+                             "of contigs in your bins this step can take much much longer than usual, since anvi'o "
+                             "will have to do a lot of sorting of very large arrays. But then you will get the best "
+                             "mean coverage values for your populations (so brace yourself).",
+                             header="💀 THINGS WILL TAKE LONGER 💀")
+
         self.progress.new(f"Collection profile for '{collection_name}'")
         for table_name in table_names:
             # if SNVs are not profiled, skip the `variability` table
@@ -3813,32 +3906,42 @@ class ProfileSuperclass(object):
             table_data, _ = profile_db.db.get_view_data(f'{table_name}_splits')
 
             for bin_id in collection:
-                # populate averages per bin
-                averages = copy.deepcopy(samples_template)
-
-                # These weights are used to properly account for differences in split lengths.
-                # Consider table_name == 'mean_coverage', for a bin with 2 splits. Without
-                # weighting, if one split is length 100 with coverage 100 and the other is length
-                # 900 wth coverage 500, the mean_coverage for this bin is (100 + 500)/2 = 300. But
-                # more accurately, mean_coverage of this bin is 100*[100/1000] + 500*[900/1000] =
-                # 460
-                weights = []
-
-                for split_name in collection[bin_id]:
-                    if split_name not in table_data:
-                        continue
-
-                    weights.append(self.splits_basic_info[split_name]['length'])
-
+                if calculate_Q2Q3_carefully and table_name == 'mean_coverage_Q2Q3':
+                    self.collection_profile[bin_id][table_name] = {}
+                    # we need to do something specific here.
                     for sample_name in samples_template:
-                        averages[sample_name].append(table_data[split_name][sample_name])
+                        nucleotide_level_coverage_values = numpy.array([])
+                        for split_name in collection[bin_id]:
+                            nucleotide_level_coverage_values = numpy.append(nucleotide_level_coverage_values, self.split_coverage_values.get(split_name)[sample_name])
+                        stats = utils.CoverageStats(nucleotide_level_coverage_values)
+                        self.collection_profile[bin_id][table_name][sample_name] = stats.mean_Q2Q3
+                else:
+                    # populate averages per bin
+                    averages = copy.deepcopy(samples_template)
 
-                # finalize averages per bin:
-                for sample_name in samples_template:
-                    # weights is automatically normalized in numpy.average such that sum(weights) == 1
-                    averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
+                    # These weights are used to properly account for differences in split lengths.
+                    # Consider table_name == 'mean_coverage', for a bin with 2 splits. Without
+                    # weighting, if one split is length 100 with coverage 100 and the other is length
+                    # 900 wth coverage 500, the mean_coverage for this bin is (100 + 500)/2 = 300. But
+                    # more accurately, mean_coverage of this bin is 100*[100/1000] + 500*[900/1000] =
+                    # 460
+                    weights = []
 
-                self.collection_profile[bin_id][table_name] = averages
+                    for split_name in collection[bin_id]:
+                        if split_name not in table_data:
+                            continue
+
+                        weights.append(self.splits_basic_info[split_name]['length'])
+
+                        for sample_name in samples_template:
+                            averages[sample_name].append(table_data[split_name][sample_name])
+
+                    # finalize averages per bin:
+                    for sample_name in samples_template:
+                        # weights is automatically normalized in numpy.average such that sum(weights) == 1
+                        averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
+
+                    self.collection_profile[bin_id][table_name] = averages
 
         # generating precent recruitment of each bin plus __splits_not_binned__ in each sample:
         coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
@@ -4162,8 +4265,9 @@ class PanDatabase:
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_reactions_table_name, t.pan_gene_cluster_function_reactions_table_structure, t.pan_gene_cluster_function_reactions_table_types)
-        self.db.create_table(t.pan_gene_cluster_function_metabolites_table_name, t.pan_gene_cluster_function_metabolites_table_structure, t.pan_gene_cluster_function_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
+        self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
+        self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -4246,7 +4350,7 @@ class ContigsDatabase:
 
         # set a project name for the contigs database without any funny
         # characters to make sure it can be used programmatically later.
-        self.meta['project_name_str'] = self.meta['project_name'].translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_') \
+        self.meta['project_name_str'] = self.meta['project_name'].strip().translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_').strip('_') \
                                 if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
 
         if 'creation_date' not in self.meta:
@@ -4298,8 +4402,9 @@ class ContigsDatabase:
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
-        self.db.create_table(t.gene_function_reactions_table_name, t.gene_function_reactions_table_structure, t.gene_function_reactions_table_types)
-        self.db.create_table(t.gene_function_metabolites_table_name, t.gene_function_metabolites_table_structure, t.gene_function_metabolites_table_types)
+        self.db.create_table(t.reaction_network_reactions_table_name, t.reaction_network_reactions_table_structure, t.reaction_network_reactions_table_types)
+        self.db.create_table(t.reaction_network_metabolites_table_name, t.reaction_network_metabolites_table_structure, t.reaction_network_metabolites_table_types)
+        self.db.create_table(t.reaction_network_kegg_table_name, t.reaction_network_kegg_table_structure, t.reaction_network_kegg_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
@@ -4728,6 +4833,8 @@ class ContigsDatabase:
         self.db.set_meta_value('reaction_network_ko_annotations_hash', None)
         self.db.set_meta_value('reaction_network_kegg_database_release', None)
         self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
+        self.db.set_meta_value('reaction_network_consensus_threshold', None)
+        self.db.set_meta_value('reaction_network_discard_ties', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 

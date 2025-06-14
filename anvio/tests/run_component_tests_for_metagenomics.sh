@@ -643,10 +643,18 @@ anvi-get-codon-frequencies -c $output_dir/CONTIGS.db \
                            --no-progress
 SHOW_FILE $output_dir/CODON_frequencies_for_the_contigs_db.txt
 
-INFO "Getting back the sequence for gene call 3"
+INFO "Learning about the available defline variables"
 anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
                                   --gene-caller-ids 3 \
                                   -o $output_dir/Sequence_for_gene_caller_id_3.fa \
+                                  --list-defline-variables \
+                                  --no-progress
+
+INFO "Getting back the sequence for gene call 3 with a specific defline template"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db \
+                                  --gene-caller-ids 3 \
+                                  -o $output_dir/Sequence_for_gene_caller_id_3.fa \
+                                  --defline-format "{contigs_db_project_name}_{contig_name}_{gene_caller_id}" \
                                   --no-progress
 
 INFO "Getting back the AA sequence for gene call 3"
@@ -697,12 +705,13 @@ anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db \
                                 -L \
                                 --no-progress
 
-INFO "Get DNA sequences for HMM hits for a bin in a collection"
+INFO "Get DNA sequences for HMM hits for a bin in a collection with a defline format"
 anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                 -c $output_dir/CONTIGS.db \
                                 -C CONCOCT \
                                 -b Bin_1 \
                                 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt \
+                                --defline-format "{contig_name}_{gene_callers_id}" \
                                 --no-progress
 
 INFO "Get DNA sequences for all ABC transporter hits defined in an HMM source"

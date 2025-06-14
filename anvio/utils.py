@@ -437,7 +437,7 @@ class CoverageStats:
         if coverage.size < 4:
             self.mean_Q2Q3 = self.mean
         else:
-            sorted_c = sorted(coverage)
+            sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
             self.mean_Q2Q3 = np.mean(Q2Q3)
@@ -655,7 +655,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
 
 
 def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
-                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False,
+                                     none_value=''):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -673,6 +674,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         A file object ot write (instead of the output file path)
     key_header: string
         The header for the first column ('key' if None)
+    keys_order: list
+        The order in which to write the rows (if None, first order keys will be sorted to get the row order)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
@@ -680,6 +683,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     do_not_write_key_column: boolean
         If True, the first column (keys of the dictionary) will not be written to the file. For use in
         instances when the key is meaningless or arbitrary.
+    none_value : string
+        What value to write for entries that are None. Default is empty string ('').
 
     Returns
     =======
@@ -753,7 +758,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                    "as a TAB-delimited file :/ You ask for '%s', but it is not "
                                    "even a key in the dictionary" % (header))
 
-            line.append(str(val) if not isinstance(val, type(None)) else '')
+            line.append(str(val) if not isinstance(val, type(None)) else none_value)
 
         if anvio.AS_MARKDOWN:
             f.write(f"|{'|'.join(map(str, line))}|\n")
@@ -822,59 +827,54 @@ def add_to_2D_numeric_array(x, y, a, count=1):
     return a
 
 
-def is_all_submodules_present():
-    """A function to test whether all anvi'o submodules are present.
+def is_all_columns_present_in_TAB_delim_file(columns, file_path, including_first_column=False):
+    columns_in_file = get_columns_of_TAB_delim_file(file_path, include_first_column=including_first_column)
+    return False if len([False for c in columns if c not in columns_in_file]) else True
 
-    This check is particularly important for those who run anvi'o from a git clone
-    rather than using it via a regular installation.
+
+def is_all_npm_packages_installed():
+    """A function to test whether all npm packages are installed in the interactive directory.
+
+    This check is for ensuring that necessary npm packages are installed in the 
+    anvio/data/interactive directory.
     """
 
     # find the root directory of anvi'o module
     anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+    interactive_dir_path = os.path.join(anvio_module_path, 'data', 'interactive')
 
-    gitmodules_path = os.path.join(anvio_module_path, '../.gitmodules')
+    if not os.path.exists(interactive_dir_path):
+        raise ConfigError("The interactive directory does not exist in the anvi'o module. "
+                          "Please ensure the directory is present.")
 
-    if not os.path.exists(gitmodules_path):
-        # if this file does not exist, we are likely looking at a case where anvi'o is
-        # installed on the user's computer, so we will let them go.
-        return True
+    # Check if Node.js is installed
+    if shutil.which("node") is None:
+        run.warning("It seems your installation is missing Node.js, a recent requirement of anvi'o "
+                    "environments. Please run the following command in your terminal, and you should "
+                    "be good to go:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        run.info_single("      conda install -c conda-forge nodejs", level=0, overwrite_verbose=True, nl_before=1)
+        raise ConfigError("Node.js is not installed. Please install it using conda and try again.")
 
-    gitmodules = configparser.ConfigParser()
+    # Check if node_modules exists and is not empty
+    node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
 
-    try:
-        gitmodules.read(gitmodules_path)
-    except Exception:
-        raise ConfigError("The config file here does not look like a config file :/ Anvi'o "
-                          "needs an adult :(")
-
-    # figure out missing modules
-    missing_gitmodules = []
-    for gitmodule in gitmodules.sections():
-        for key, value in gitmodules.items(gitmodule):
-            if key == 'path':
-                gitmodule_path = os.path.join(anvio_module_path, '..', value)
-
-                if not os.path.exists(gitmodule_path) or not len(os.listdir(gitmodule_path)):
-                    missing_gitmodules.append(value)
-
-    if len(missing_gitmodules):
-        run.warning("Please read the error below, and then run the commands shown below in your terminal, "
-                    "and you will be fine :)", header="⚠️  ANVI'O WANTS YOU TO DO SOMETHING ⚠️", overwrite_verbose=True,
+    if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
+        run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
+                    "from git submodules to npm packages. Your current setup does not seem to have the "
+                    "necessary files in place, so the purpose of this warning is to help you match your "
+                    "setup to most up-to-date anvi'o code. If you run the commands below in your terminal, "
+                    "you will most likely be fine :) But if things don't work out, please reach out to us "
+                    "on GitHub or Discord since this is a new feature and some hiccups may occur.",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
                     lc='yellow')
-        run.info_single(f"1) cd {anvio_module_path}", level=0, overwrite_verbose=True)
-        run.info_single("2) git submodule update --init", level=0, overwrite_verbose=True)
+        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) npm install", level=0, overwrite_verbose=True)
         run.info_single("3) cd -", level=0, overwrite_verbose=True)
 
-        raise ConfigError("Some of the git modules anvi'o depends upon seem to be missing in your anvi'o "
-                          "codebase. If you run the commands shown above, you should be golden to try "
-                          "again.")
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
     else:
         return True
-
-
-def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    columns = get_columns_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in columns]) else True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
@@ -1753,6 +1753,43 @@ def get_cmd_line():
         else:
             c_argv.append(i)
     return ' '.join(c_argv)
+
+
+def get_f_string_evaluated_by_dict(f_string, d):
+    """A function to evaluate the contents of an f-string given a dictionary.
+
+    This simple function enables the following, even when the variables in the f-string
+    are not defined in a given context, but appear as keys in a dictionary:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> f_string = "{num}_{bar}_or_{foo}"
+        >>> print(f"{get_f_string_evaluated_by_dict(f_string, d)}")
+            "5_apple_or_pear"
+
+    This functionality enables to receive a user-defined f-string from the commandline,
+    and interpret it into a meaningful string using a dictionary. This is similar to the
+    following use from earlier days of Python, but it doesn't bother the user to know
+    about variable types and deal with an annoying syntax:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> print("%(num)d_%(bar)s_or_%(foo)s" % d)
+            "5_apple_or_pear"
+    """
+
+    stringlets = [p.split('}') for p in f_string.split('{')]
+
+    if any([len(s) == 1 or len(s[0]) == 0 for s in stringlets[1:]]):
+        raise ConfigError("Your f-string syntax is not working for anvi'o :/ Perhaps you "
+                          "forgot to open or close a curly bracket?")
+
+    unrecognized_vars = [s[0] for s in stringlets[1:] if s[0] not in d]
+    if len(unrecognized_vars):
+        raise ConfigError(f"Some of the variables in your f-string does not occur in the source "
+                          f"dictionary :/ Here is the list of those that are not matching to anything: "
+                          f"{', '.join(unrecognized_vars)}. In the meantime, these are the known keys: "
+                          f"{', '.join(d.keys())}.")
+
+    return stringlets[0][0] + ''.join([f"{d[s[0]]}{s[1]}" for s in stringlets[1:]])
 
 
 def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
@@ -2991,6 +3028,22 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+
+        # make sure every entry in the fasta_txt has a path that exists
+        genomes_missing_fasta_files = [g for g, e in fastas.items() if not os.path.exists(e['path'])]
+
+        if len(genomes_missing_fasta_files):
+            if len(genomes_missing_fasta_files) == 1:
+                msg = (f"One of the genome entries in your fasta-txt file, namely '{genomes_missing_fasta_files[0]}' does "
+                       f"not seem to have its FASTA file at the location it is mentioned in the file :/ ")
+            else:
+                msg = (f"Multiple genome entries in your fasta-txt file have a FASTA file path that don't match to an "
+                       f"existing FASTA file :/ Here are the list of offenders: {', '.join(genomes_missing_fasta_files)}. ")
+
+            msg += "Please correct your fasta-txt, and try again."
+
+            raise ConfigError(f"{msg}")
+
         for name in fastas.keys():
             genome_names.add(name)
             hash_for_output_file = hashlib.sha256(name.encode('utf-8')).hexdigest()

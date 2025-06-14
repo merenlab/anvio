@@ -312,7 +312,7 @@ class HMMer:
                         append_function = self.append_to_main_standard_file
                     elif file_type == 'domtable':
                         append_function = self.append_to_main_table_file
-
+                    
                     append_function(main_file_buffer, worker_file, main_file_lock)
 
             except KeyboardInterrupt:
@@ -428,36 +428,61 @@ class HMMer:
                 merged_file_buffer.write(f.read())
 
 
-    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
+    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock, lines_per_chunk=1000000):
         """Append table output to the main file.
 
-        Lines starting with '#' (ie, header lines) are ignored.
+        Lines starting with '#' (i.e., header lines) are ignored.
         """
-
+        
         detected_non_ascii = False
         lines_with_non_ascii = []
+        output_lines = []
+        line_number = 0
 
+        def process_batch(line_batch, base_line_number):
+            nonlocal detected_non_ascii
+            local_output = []
+            for i, line_bytes in enumerate(line_batch):
+                line_number_actual = base_line_number + i
+                try:
+                    line = line_bytes.decode('ascii')
+                except UnicodeDecodeError:
+                    decoded = line_bytes.decode('ascii', 'ignore')
+                    if len(decoded) != len(line_bytes):
+                        detected_non_ascii = True
+                        lines_with_non_ascii.append(line_number_actual)
+                    line = decoded
+                if not line.startswith('#'):
+                    local_output.append(line.rstrip())
+            return local_output
+            
         with open(table_output_file, 'rb') as hmm_hits_file:
-            line_counter = 0
+            batch = []
+            base_line_number = 1
+
             for line_bytes in hmm_hits_file:
-                line_counter += 1
-                line = line_bytes.decode('ascii', 'ignore')
+                batch.append(line_bytes)
+                if len(batch) >= lines_per_chunk:
+                    output_lines.extend(process_batch(batch, base_line_number))
+                    base_line_number += len(batch)
+                    batch = []
 
-                if not len(line) == len(line_bytes):
-                    lines_with_non_ascii.append(line_counter)
-                    detected_non_ascii = True
+            if batch:
+                filtered_lines = process_batch(batch, base_line_number)
+                if filtered_lines:
+                    filtered_text = "\n".join(filtered_lines) + "\n"
+                    with buffer_write_lock:
+                        merged_file_buffer.write(filtered_text)
 
-                if line.startswith('#'):
-                    continue
-
-                with buffer_write_lock:
-                    merged_file_buffer.write(line)
-
+        # Log warning if non-ASCII characters were detected
         if detected_non_ascii:
-            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
-                             "the file '%s' and cleared them. Here are the line numbers with non-ascii characters: %s. "
-                             "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                                                 (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
+            self.run.warning(
+                "Just a heads-up, Anvi'o HMMer parser detected non-ASCII characters while processing "
+                f"the file '{table_output_file}' and cleared them. Here are the line numbers with non-ASCII characters: "
+                f"{', '.join(map(str, lines_with_non_ascii))}. You may want to check those lines with a command like "
+                "\"awk 'NR==<line number>' <file path> | cat -vte\"."
+            )
+
 
 
     def clean_tmp_dirs(self):
