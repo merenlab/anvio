@@ -10,10 +10,6 @@ dir_path = os.path.dirname(os.path.abspath(__file__))
 sources = u.get_HMM_sources_dictionary([s for s in glob.glob(os.path.join(dir_path, '*')) if not s.endswith('.py') and s.find('.txt') < 0 and not os.path.basename(s).startswith('__')])
 scg_domain_to_source = dict([(sources[s]['domain'], s) for s in sources if sources[s]['kind'] == 'singlecopy']) 
 
-# lets make sure stuff we need is installed on this system
-# to perform an HMM search
-missing_programs = u.get_missing_programs_for_hmm_analysis()
-
 if len(sources):
     if len(missing_programs):
         run.warning("Anvi'o found one or more databases to perform single-copy gene analysis "
