@@ -592,6 +592,14 @@ D = {
                      "must match to those in other input files. If there is a problem anvi'o will gracefully "
                      "complain about it."}
                 ),
+    'allow-amino-acid-contig-db': (
+            ['--allow-amino-acid-contig-db'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "There may come a time when you want to use animo acids to make a contig database. We recommend you use nucleotides to "
+                    "for your starting sequence and let us do the work for you. But if you would rather use your own translated sequences, "
+                    "then you can by running this flag."}
+                ),
     'view-data': (
             ['-d', '--view-data'],
             {'metavar': 'VIEW_DATA',
