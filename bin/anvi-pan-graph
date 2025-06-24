@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
     groupC.add_argument('--import-values', default='', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
-    groupC.add_argument('--min-contig-size', default=5, type=int, help = "Description.")
+    groupC.add_argument('--min-contig-chain', default=10, type=int, help = "Description.")
     groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
     groupC.add_argument('--gene-cluster-grouping-threshold', default=2, type=int, help = "Description.")
     groupC.add_argument('--grouping-compression', default=0.05, type=float, help = "Description.")

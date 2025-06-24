@@ -141,8 +141,10 @@ def main(args):
 
                     if reoriented_record_hit in original_record_sequence:
                         reoriented_record_sequence = original_record_sequence
+                        # print("lala")
                     elif reoriented_record_hit in reversed_record_sequence:
                         reoriented_record_sequence = reversed_record_sequence
+                        # print("lulu")
                     else:
                         pass
 

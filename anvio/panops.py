@@ -2002,7 +2002,9 @@ class PangenomeGraph():
             regions_dict |= {pos:0 for pos in overlap}
             regions_id = 1
 
-            regions_dict = {pos:-1 for pos in core_positions}
+            # print(overlap)
+
+            regions_dict |= {pos:-1 for pos in core_positions}
 
             core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
         else:
@@ -3491,7 +3493,7 @@ class PangenomeGraphMaster():
         # ANVI'O FLAGS
         self.start_node = []
         self.start_gene = A('start_gene')
-        self.min_contig_size = A('min_contig_size')
+        self.min_contig_chain = A('min_contig_chain')
                 
         self.n = A('n')
         self.alpha = A('alpha')
@@ -3813,7 +3815,7 @@ class PangenomeGraphMaster():
                 else:
                     add_weight = 0
 
-                if len(syn_cluster_tuples) >= self.min_contig_size:
+                if len(syn_cluster_tuples) >= self.min_contig_chain:
 
                     extra_connections += [syn_cluster_tuples[0], syn_cluster_tuples[-1]]
                     add_weight += decisison_making[genome]
