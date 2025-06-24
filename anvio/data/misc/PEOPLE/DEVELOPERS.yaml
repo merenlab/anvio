@@ -134,10 +134,14 @@
   twitter: mschecht_bio
   bio: "Microbiologist interested in combining comparative genomics and environmental metagenomics to identify genetic determinants of fitness in microbial populations in the human gut and ocean microbiome."
   affiliations:
+    - title: Post-doctoral Researcher
+      inst: Department of Medicine, University of Chicago
+      inst_link: http://uchicago.edu/
+      current: true
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
-      current: true
+      current: false
 
 - github: ivagljiva
   name: Iva Veseli
@@ -172,6 +176,7 @@
   email: moritz.buck@slu.se
   git_records:
     - moritz.buck@slu.se
+    - mrtz.buck@gmail.com
   twitter: MetaMoritz
   affiliations:
     - title: Researcher

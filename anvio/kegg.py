@@ -9619,7 +9619,15 @@ class ModulesDatabase(KeggContext):
             d = d.strip()
             combined_def_line += d + " "
         combined_def_line = combined_def_line.strip()
-        def_line_paths = self.recursive_definition_unroller(combined_def_line)
+        
+        try:
+            def_line_paths = self.recursive_definition_unroller(combined_def_line)
+        except RecursionError as re:
+            raise ConfigError(f"Uh oh. While unrolling the definition of module {mnum}, we got an error. "
+                              f"Unfortunately, we don't know much at this point, but here is the error message: '{re}'. "
+                              f"At this point, our best guess is that something is wrong with the module defintion, so please "
+                              f"take a look at the following DEFINITION lines and see if anything looks fishy (like stray "
+                              f"spaces, missing spaces, or unbalanced parentheses): {combined_def_line}")
 
         return def_line_paths
 
@@ -9682,7 +9690,7 @@ class ModulesDatabase(KeggContext):
                             for a in alts:
                                 if len(a) > 1:
                                     raise ConfigError("Uh oh. recursive_definition_unroller() speaking. We found a protein complex with more "
-                                                      "than one KO per alternative option here: %s" % s)
+                                                    "than one KO per alternative option here: %s" % s)
                                 for cs in complex_strs:
                                     extended_complex = cs + a[0]
                                     new_complex_strs.append(extended_complex)
