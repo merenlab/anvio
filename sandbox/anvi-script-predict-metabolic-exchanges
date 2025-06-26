@@ -83,6 +83,7 @@ def main(args):
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
     # set up some important data structures
+    kegg_id_to_modelseed_id = map_kegg_ids_to_modelseed_ids(merged)
     kegg_id_to_compound_name = map_kegg_ids_to_compound_names(merged)
     all_pathway_maps = merged._get_pathway_map_set(map_ids_to_exclude=MAPS_TO_EXCLUDE, id_selection_prefix = "00")
     compound_to_pathway_walk_chains = defaultdict(dict) # we will fill this dict in as we process each compound
@@ -97,18 +98,9 @@ def main(args):
             walker.compound_fate = 'consume'
             consumption_chains = walker.get_chains()
             for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
-                # we need to find the compound's modelseed ID to use for the dictionary keys
-                compound_modelseed_object = None
-                chains_to_look_through = production_chains if compound in production_chains else consumption_chains
-                # there is at least one chain, and the current compound is always the first thing in the chain
-                # exception: generic compounds like C00685 sometimes have a more specific compound first in the chain
-                for modelseed_object in chains_to_look_through[compound][0].aliased_modelseed_compounds[0]:
-                    if compound in modelseed_object.kegg_aliases:
-                        compound_modelseed_object = modelseed_object
-                        break
-                if not compound_modelseed_object:
+                if compound not in kegg_id_to_modelseed_id:
                     raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
-                modelseed_id = compound_modelseed_object.modelseed_id
+                modelseed_id = kegg_id_to_modelseed_id[compound]
                 
                 if pm not in compound_to_pathway_walk_chains[modelseed_id]:
                     compound_to_pathway_walk_chains[modelseed_id][pm] = {}
@@ -365,6 +357,16 @@ def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=
         run.info("File of equivalent amino acid compound IDs", output_file_name)
 
     return equivalent_AAs
+
+def map_kegg_ids_to_modelseed_ids(network):
+    """Returns a dictionary where the keys are KEGG compound IDs and the values are ModelSEED IDs
+    for all compounds in the provided network"""
+
+    kegg_to_modelseed = {}
+    for mid, compound in network.metabolites.items():
+        for kid in compound.kegg_aliases:
+            kegg_to_modelseed[kid] = mid
+    return kegg_to_modelseed
 
 def map_kegg_ids_to_compound_names(network):
     """Returns a dictionary where the keys are KEGG compound IDs and the values are compound names
