@@ -27,6 +27,12 @@ __description__ = "Predicts metabolic exchanges between microbes based on the re
 run = terminal.Run()
 progress = terminal.Progress()
 
+MAPS_TO_EXCLUDE = set(["00470", # D-amino acid biosynthesis. This map mostly connects other maps.
+                       "00195", # Photosynthesis. This map describes photosystems and complexes rather than reactions.
+                       "00190", # Oxidative Phosphorylation. This map describes enzyme complexes rather than reactions.
+                       "00543", # Exopolysaccharide biosynthesis. Does not have a RN-type KGML file.
+])
+
 @time_program
 def main(args):
 
