@@ -96,6 +96,19 @@ def main(args):
             production_chains = walker.get_chains()
             walker.compound_fate = 'consume'
             consumption_chains = walker.get_chains()
+            for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
+                # we need to find the compound's modelseed ID to use for the dictionary keys
+                compound_modelseed_object = None
+                chains_to_look_through = production_chains if compound in production_chains else consumption_chains
+                # there is at least one chain, and the current compound is always the first thing in the chain
+                # exception: generic compounds like C00685 sometimes have a more specific compound first in the chain
+                for modelseed_object in chains_to_look_through[compound][0].aliased_modelseed_compounds[0]:
+                    if compound in modelseed_object.kegg_aliases:
+                        compound_modelseed_object = modelseed_object
+                        break
+                if not compound_modelseed_object:
+                    raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
+                modelseed_id = compound_modelseed_object.modelseed_id
 
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
