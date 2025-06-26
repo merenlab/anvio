@@ -139,7 +139,7 @@ class Inversions:
 
         # skip learning about the genomic context that surrounds inversions?
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
-        self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
+        self.gene_caller_to_consider_in_context = A('gene_caller') or 'pyrodigal-gv'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
 
         # parameters for motif search
