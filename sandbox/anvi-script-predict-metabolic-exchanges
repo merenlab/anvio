@@ -88,6 +88,14 @@ def main(args):
     compound_to_pathway_walk_chains = defaultdict(dict) # we will fill this dict in as we process each compound
     """Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}"""
 
+    # TODO multithread: split pathway maps between workers
+    for pm in all_pathway_maps:
+        for organism in [net_1, net_2]: 
+            wargs = get_args_for_pathway_walker(organism, pm, fate='produce', gaps=args.maximum_gaps)
+            walker = nw.KGMLNetworkWalker(wargs)
+            production_chains = walker.get_chains()
+            walker.compound_fate = 'consume'
+            consumption_chains = walker.get_chains()
 
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
