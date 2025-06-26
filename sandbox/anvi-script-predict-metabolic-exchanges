@@ -459,6 +459,56 @@ def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compoun
         print(f"Got AssertionError from pathway walker for {compound_id} in map {pathway_map_id}: {a}")
         return None
 
+def producer_consumer_decision_tree(genomes_can_produce, genomes_can_consume):
+    """Given two genomes, decides which genome is the predicted producer/consumer of the current compound.
+    If the compound is neither potentially-exchanged or unique to one genome, returns None so we can move on with our lives.
+    """
+
+    producer = None
+    consumer = None
+    if len(genomes_can_produce) == 1 or len(genomes_can_consume) == 1:
+            # when the same genome produces and/or consumes, compound is unique to one genome
+            if genomes_can_produce == genomes_can_consume:
+                producer = genomes_can_produce.pop()
+                consumer = genomes_can_consume.pop()
+            elif len(genomes_can_produce) == 0: # only one can consume
+                consumer = genomes_can_consume.pop()
+            elif len(genomes_can_consume) == 0: # only one can produce
+                producer = genomes_can_produce.pop()
+            else: # potentially-exchanged
+                if len(genomes_can_produce) == 2:
+                    consumer = genomes_can_consume.pop()
+                    genomes_can_produce.remove(consumer)
+                    producer = genomes_can_produce.pop()
+                elif len(genomes_can_consume) == 2:
+                    producer = genomes_can_produce.pop()
+                    genomes_can_consume.remove(producer)
+                    consumer = genomes_can_consume.pop()
+                else:
+                    producer = genomes_can_produce.pop()
+                    consumer = genomes_can_consume.pop()
+
+    return producer, consumer
+
+def predict_exchange_from_pathway_walk(chains_for_all_equivalent_compounds):
+    """Determines whether a compound is unique or potentially-exchanged, and if so returns the internal IDs of 
+    the producer/consumer genome (or None, otherwise). Only works for 2 genomes.
+    """
+
+    genomes_produce = set()
+    genomes_consume = set()
+    for cid, map_dict in chains_for_all_equivalent_compounds.items():
+        for pm, genome_dict in map_dict.items():
+            for g in genome_dict:
+                if genome_dict[g]['produce']: # if this is not None, there is at least one production chain
+                    genomes_produce.add(g)
+                if genome_dict[g]['consume']: # if this is not None, there is at least one production chain
+                    genomes_consume.add(g)
+
+    prod, cons = producer_consumer_decision_tree(genomes_produce, genomes_consume)
+
+    return prod, cons
+
 
 def get_longest_chains(chain_list):
     max_length = None
