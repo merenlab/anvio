@@ -109,7 +109,16 @@ def main(args):
                 if not compound_modelseed_object:
                     raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
                 modelseed_id = compound_modelseed_object.modelseed_id
+                
+                if pm not in compound_to_pathway_walk_chains[modelseed_id]:
+                    compound_to_pathway_walk_chains[modelseed_id][pm] = {}
+                compound_to_pathway_walk_chains[modelseed_id][pm][organism] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                                                                           'consume': consumption_chains[compound] if compound in consumption_chains else None}
 
+    compounds_not_in_maps = set(merged.metabolites.keys()).difference(set(compound_to_pathway_walk_chains.keys()))
+    run.info("Number of Pathway Maps processed", len(all_pathway_maps))
+    run.info("Number of compounds processed from Pathway Maps", len(compound_to_pathway_walk_chains.keys()))
+    run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
         return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
