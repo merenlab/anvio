@@ -162,13 +162,7 @@ def main(args):
         if kid in kegg_id_to_compound_name:
             return kegg_id_to_compound_name[kid]
         else:
-            return "None"
-
-    # dictionaries to store output
-    potentially_exchanged_compounds = {}
-    unique_compounds = {}
-    pathway_walk_evidence = {}
-    pathway_walk_dict_key = 0
+            return "None"    
 
      # loop over all metabolites
     num_compounds_to_process = len(merged.metabolites)
