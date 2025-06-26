@@ -73,13 +73,15 @@ def main(args):
 
     run.info("Doing pathway walks for additional evidence", not args.no_pathway_walk)
 
+    genomes_to_compare = {'A': {'contigs_db_path': args.contigs_db_1},
+                          'B': {'contigs_db_path': args.contigs_db_2}}
     constructor = rn.Constructor()
-    run.info("Loading reaction network from database", args.contigs_db_1)
-    net_1 = constructor.load_network(contigs_db=args.contigs_db_1, quiet=True)
-    run.info("Loading reaction network from database", args.contigs_db_2)
-    net_2 = constructor.load_network(contigs_db=args.contigs_db_2, quiet=True)
-
-    merged, db_names = net_1._merge_two_genome_networks(net_2)
+    for g in genomes_to_compare:
+        run.info("Loading reaction network from database", args.contigs_db_1)
+        genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=genomes_to_compare[g]['contigs_db_path'], quiet=True)
+    merged, db_names = genomes_to_compare['A']['network']._merge_two_genome_networks(genomes_to_compare['B']['network'])
+    genomes_to_compare['A']['name'] = db_names[0]
+    genomes_to_compare['B']['name'] = db_names[1]
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
 
     # set up some important data structures
@@ -91,8 +93,8 @@ def main(args):
 
     # TODO multithread: split pathway maps between workers
     for pm in all_pathway_maps:
-        for organism in [net_1, net_2]: 
-            wargs = get_args_for_pathway_walker(organism, pm, fate='produce', gaps=args.maximum_gaps)
+        for g in genomes_to_compare: 
+            wargs = get_args_for_pathway_walker(genomes_to_compare[g]['network'], pm, fate='produce', gaps=args.maximum_gaps)
             walker = nw.KGMLNetworkWalker(wargs)
             production_chains = walker.get_chains()
             walker.compound_fate = 'consume'
@@ -104,7 +106,7 @@ def main(args):
                 
                 if pm not in compound_to_pathway_walk_chains[modelseed_id]:
                     compound_to_pathway_walk_chains[modelseed_id][pm] = {}
-                compound_to_pathway_walk_chains[modelseed_id][pm][organism] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
                                                                            'consume': consumption_chains[compound] if compound in consumption_chains else None}
 
     compounds_not_in_maps = set(merged.metabolites.keys()).difference(set(compound_to_pathway_walk_chains.keys()))
