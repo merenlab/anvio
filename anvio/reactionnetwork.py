@@ -2769,6 +2769,31 @@ class ReactionNetwork:
 
         return reaction_pathways
 
+    def _get_pathway_map_set(self, map_ids_to_exclude: set[str] = None, 
+            id_selection_prefix: str = None) -> set[str]:
+        """Returns a set of KEGG Pathway Maps associated with the KOs in the network.
+        
+        Parameters
+        ==========
+        map_ids_to_exclude : set[str]
+            A set of pathway map id numbers to exclude from the returned dictionary values
+        id_selection_prefix : str
+            A 2-number prefix for sub-selecting particular pathway map types based on the start of their id numbers.
+            For example, pass "01" to keep global/overview maps, or "00" for regular metabolism maps
+        """
+
+        pathway_maps = set()
+        for ko in self.kos.values():
+            maps_of_ko = set([x[3:] for x in set(ko.pathway_ids)])
+            if id_selection_prefix:
+                maps_of_ko = set([i for i in maps_of_ko if i[:2] == id_selection_prefix])
+            pathway_maps.update(maps_of_ko)
+
+        if map_ids_to_exclude:
+            pathway_maps = pathway_maps.difference(map_ids_to_exclude)
+
+        return pathway_maps
+
     def _print_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
