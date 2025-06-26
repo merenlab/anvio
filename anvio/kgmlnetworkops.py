@@ -425,7 +425,7 @@ class KGMLNetworkWalker:
             kegg_pathway_number=self.kegg_pathway_number, kegg_context=self.kegg_context
         ):
             raise ConfigError(
-                "The KEGG pathway must have a reaction (RN) type KGML file available in the anvi'o "
+                f"The KEGG pathway ({self.kegg_pathway_number}) must have a reaction (RN) type KGML file available in the anvi'o "
                 "KEGG installation. Valid pathways are in categories 1.0 - 1.11 as of the March 3, "
                 "2025 release of KEGG (see https://www.genome.jp/kegg/pathway.html)."
             )
