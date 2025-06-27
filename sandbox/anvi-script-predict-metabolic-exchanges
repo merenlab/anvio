@@ -335,6 +335,14 @@ def main(args):
                                                                     }
                     add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
                     exchange_from_reaction_subset+=1
+                    # fill these in with blanks to avoid issues later
+                    potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['production_overlap_length'] = None
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = None
+                    potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = None
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
 
             processed_compound_ids.add(compound_id)
             processed_count += 1
