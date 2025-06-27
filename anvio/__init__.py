@@ -3345,6 +3345,42 @@ D = {
                      "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
                      "so if you want amino acid equivalents to be used, include them in this file."}
                 ),
+    'maximum-gaps': (
+            ['--maximum-gaps'], 
+            {'default': 0,
+             'type': int,
+             'metavar': 'INT',
+             'required': False, 
+             'help': "We'll look for the longest chain of reactions surrounding each potentially-exchanged "
+                     "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
+                     "you to choose how many gaps there can be in the chain on either side of the metabolite in "
+                     "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'add-reactions-to-output': (
+            ['--add-reactions-to-output'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
+                ),
+    'no-pathway-walk': (
+            ['--no-pathway-walk'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Skip walking KEGG Pathway Maps and instead predict exchanges entirely from the reaction network. "
+                     "This is not recommended, since Pathway Maps are much more curated and lead to more accurate predictions. "
+                     "But they also could be time-consuming, so, you do you, I guess."}
+                ),
+    'pathway-walk-only': (
+            ['--pathway-walk-only'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't predict anything from the "
+                     "reaction network alone -- these predictions are less confident anyway. The downside is that "
+                     "you'll miss any predictions for compounds not in Pathway Maps."}
+                ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
