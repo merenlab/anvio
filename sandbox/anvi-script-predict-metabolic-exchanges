@@ -46,6 +46,8 @@ def main(args):
                         "want to equate L- and non-stereo-specific amino acid IDs, you should include them in your custom equivalents file. "
                         "(Pro tip: the easiest way to do that is to run this program once with just `--use-equivalent-amino-acids` to get the "
                         "AA equivalents file, and modify from there)")
+    if args.no_pathway_walk and args.pathway_walk_only:
+        raise ConfigError("The parameters --no-pathway-walk and --pathway-walk-only are mutually exclusive.")
 
     eq_compounds = {}
     run.info("Using equivalent L- and non-stereo-specific amino acid compound IDs", args.use_equivalent_amino_acids)
@@ -72,6 +74,7 @@ def main(args):
                                     header="DEBUG", lc="yellow")
 
     run.info("Predicting exchanges from KEGG Pathway Map walks", not args.no_pathway_walk)
+    run.info("Predicting exchanges from merged Reaction Network", not args.pathway_walk_only)
 
     genomes_to_compare = {'A': {'contigs_db_path': args.contigs_db_1},
                           'B': {'contigs_db_path': args.contigs_db_2}}
@@ -247,97 +250,98 @@ def main(args):
     run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
 
     # loop over metabolites not processed in pathway maps
-    num_compounds_to_process = len(compounds_not_in_maps)
     unique_from_reaction_subset = 0 # a couple of counters to keep track of what this part of the code found
     exchange_from_reaction_subset = 0
-    processed_count=0
-    progress.new('Processing compounds in reaction network', progress_total_items=num_compounds_to_process)
-    for compound_id in compounds_not_in_maps:
-        if compound_id in processed_compound_ids:
-            continue
-        compound_name = merged.metabolites[compound_id].modelseed_name
-        if anvio.DEBUG:
-            progress.reset()
-            run.info_single(f"Working on compound {compound_id} ({compound_name})")
-        sub_ids = [compound_id]
-        if compound_id in eq_compounds:
-            eq_comp = eq_compounds[compound_id]['equivalent_id']
-            sub_ids.append(eq_compounds[compound_id]['equivalent_id'])
-            processed_compound_ids.add(eq_compounds[compound_id]['equivalent_id'])
-        sub_network = merged.subset_network(metabolites_to_subset=sub_ids)
-
-        genomes_produce = set([])
-        genomes_consume = set([])
-        production_reactions = {g: {} for g in genomes_to_compare}
-        consumption_reactions = {g: {} for g in genomes_to_compare}
-        for rid, reaction in sub_network.reactions.items():
-            # replace all equivalent IDs with the compound ID we are currently working on in the network
+    if not args.pathway_walk_only:
+        num_compounds_to_process = len(compounds_not_in_maps)
+        processed_count=0
+        progress.new('Processing compounds in reaction network', progress_total_items=num_compounds_to_process)
+        for compound_id in compounds_not_in_maps:
+            if compound_id in processed_compound_ids:
+                continue
+            compound_name = merged.metabolites[compound_id].modelseed_name
+            if anvio.DEBUG:
+                progress.reset()
+                run.info_single(f"Working on compound {compound_id} ({compound_name})")
+            sub_ids = [compound_id]
             if compound_id in eq_compounds:
                 eq_comp = eq_compounds[compound_id]['equivalent_id']
-                reaction.compound_ids = [compound_id if x == eq_comp else x for x in reaction.compound_ids]
+                sub_ids.append(eq_compounds[compound_id]['equivalent_id'])
+                processed_compound_ids.add(eq_compounds[compound_id]['equivalent_id'])
+            sub_network = merged.subset_network(metabolites_to_subset=sub_ids)
 
-            idx = reaction.compound_ids.index(compound_id)
-            #TODO: make a dict of compounds with transport reactions and use as evidence in final output
-            if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
-                if anvio.DEBUG:
-                    run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
-                                    header="DEBUG", lc="yellow")
-                continue
-            # which genomes produce this compound?
-            elif reaction.coefficients[idx] > 0:
-                for g, genome_info in genomes_to_compare.items():
-                    if genome_info['name'] in reaction.genomes_of_origin:
-                        genomes_produce.add(g)
-                        production_reactions[g][rid] = get_reaction_equation(reaction)
+            genomes_produce = set([])
+            genomes_consume = set([])
+            production_reactions = {g: {} for g in genomes_to_compare}
+            consumption_reactions = {g: {} for g in genomes_to_compare}
+            for rid, reaction in sub_network.reactions.items():
+                # replace all equivalent IDs with the compound ID we are currently working on in the network
+                if compound_id in eq_compounds:
+                    eq_comp = eq_compounds[compound_id]['equivalent_id']
+                    reaction.compound_ids = [compound_id if x == eq_comp else x for x in reaction.compound_ids]
 
-            # which genomes utilize this compound?
-            elif reaction.coefficients[idx] < 0:
-                for g, genome_info in genomes_to_compare.items():
-                    if genome_info['name'] in reaction.genomes_of_origin:
-                        genomes_consume.add(g)
-                        consumption_reactions[g][rid] = get_reaction_equation(reaction)
+                idx = reaction.compound_ids.index(compound_id)
+                #TODO: make a dict of compounds with transport reactions and use as evidence in final output
+                if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
+                    if anvio.DEBUG:
+                        run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
+                                        header="DEBUG", lc="yellow")
+                    continue
+                # which genomes produce this compound?
+                elif reaction.coefficients[idx] > 0:
+                    for g, genome_info in genomes_to_compare.items():
+                        if genome_info['name'] in reaction.genomes_of_origin:
+                            genomes_produce.add(g)
+                            production_reactions[g][rid] = get_reaction_equation(reaction)
 
-        def add_reactions_to_dict_for_compound(compound_dict):
-            """Modifies the compound dictionary in place to add production and consumption reaction output"""
-            for g in genomes_to_compare:
-                prod_rxn_ids = sorted(production_reactions[g].keys())
-                cons_rxn_ids = sorted(consumption_reactions[g].keys())
-                prod_rxn_eqs = [production_reactions[g][rid] for rid in prod_rxn_ids]
-                cons_rxn_eqs = [consumption_reactions[g][rid] for rid in cons_rxn_ids]
-                compound_dict[f"production_rxn_ids_{g}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
-                compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
-                compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
-                compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
-        
-        producer,consumer = producer_consumer_decision_tree(genomes_produce, genomes_consume)
-        if producer or consumer:
-            producer_name = genomes_to_compare[producer]['name'] if producer else None
-            consumer_name = genomes_to_compare[consumer]['name'] if consumer else None
-            if producer == consumer or (not producer) or (not consumer): # unique to one genome
-                unique_compounds[compound_id] = {'compound_name': compound_name, 
-                                                 'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
-                                                 'produced_by': producer_name,
-                                                 'consumed_by': consumer_name,
-                                                 'prediction_method': 'Reaction_Network_Subset',
-                                                }
-                add_reactions_to_dict_for_compound(unique_compounds[compound_id])
-                unique_from_reaction_subset+=1
-            else: # potentially-exchanged
-                potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                'genomes': ",".join([producer_name,consumer_name]),
-                                                                'produced_by': producer_name,
-                                                                'consumed_by': consumer_name,
-                                                                'prediction_method': 'Reaction_Network_Subset',
-                                                                }
-                add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
-                exchange_from_reaction_subset+=1
+                # which genomes utilize this compound?
+                elif reaction.coefficients[idx] < 0:
+                    for g, genome_info in genomes_to_compare.items():
+                        if genome_info['name'] in reaction.genomes_of_origin:
+                            genomes_consume.add(g)
+                            consumption_reactions[g][rid] = get_reaction_equation(reaction)
 
-        processed_compound_ids.add(compound_id)
-        processed_count += 1
-        progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
-        progress.increment(increment_to=processed_count)
+            def add_reactions_to_dict_for_compound(compound_dict):
+                """Modifies the compound dictionary in place to add production and consumption reaction output"""
+                for g in genomes_to_compare:
+                    prod_rxn_ids = sorted(production_reactions[g].keys())
+                    cons_rxn_ids = sorted(consumption_reactions[g].keys())
+                    prod_rxn_eqs = [production_reactions[g][rid] for rid in prod_rxn_ids]
+                    cons_rxn_eqs = [consumption_reactions[g][rid] for rid in cons_rxn_ids]
+                    compound_dict[f"production_rxn_ids_{g}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
+                    compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
+                    compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
+                    compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
+            
+            producer,consumer = producer_consumer_decision_tree(genomes_produce, genomes_consume)
+            if producer or consumer:
+                producer_name = genomes_to_compare[producer]['name'] if producer else None
+                consumer_name = genomes_to_compare[consumer]['name'] if consumer else None
+                if producer == consumer or (not producer) or (not consumer): # unique to one genome
+                    unique_compounds[compound_id] = {'compound_name': compound_name, 
+                                                    'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
+                                                    'produced_by': producer_name,
+                                                    'consumed_by': consumer_name,
+                                                    'prediction_method': 'Reaction_Network_Subset',
+                                                    }
+                    add_reactions_to_dict_for_compound(unique_compounds[compound_id])
+                    unique_from_reaction_subset+=1
+                else: # potentially-exchanged
+                    potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
+                                                                    'genomes': ",".join([producer_name,consumer_name]),
+                                                                    'produced_by': producer_name,
+                                                                    'consumed_by': consumer_name,
+                                                                    'prediction_method': 'Reaction_Network_Subset',
+                                                                    }
+                    add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+                    exchange_from_reaction_subset+=1
 
-    progress.end()
+            processed_compound_ids.add(compound_id)
+            processed_count += 1
+            progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
+            progress.increment(increment_to=processed_count)
+
+        progress.end()
 
     run.info("Number of exchanged compounds predicted from Reaction Network subset approach", exchange_from_reaction_subset)
     run.info("Number of unique compounds predicted from Reaction Network subset approach", unique_from_reaction_subset)
@@ -604,6 +608,9 @@ if __name__ == '__main__':
     groupE.add_argument('--no-pathway-walk', required=False, action='store_true', help="Skip walking KEGG Pathway Maps and instead predict exchanges entirely "
                                                             "from the reaction network. This is not recommended, since Pathway Maps are much more curated and "
                                                             "lead to more accurate predictions. But they also could be time-consuming, so, you do you, I guess.")
+    groupE.add_argument('--pathway-walk-only', required=False, action='store_true', help="ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't "
+                                                            "predict anything from the reaction network alone -- these predictions are less confident anyway. The "
+                                                            "only downside is that you'll miss any predictions for compounds not in Pathway Maps.")
 
     args = parser.get_args(parser)
 
