@@ -432,39 +432,6 @@ def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     walker_args.verbose = False
     return walker_args
 
-def walk_pathway_map_for_compound(compound_id, pathway_map_id, organism, compound_fate='produce'):
-    """Walks a KEGG Pathway Map to identify reactions leading to a compound in an organism.
-
-    Returns the reaction chains of either, (1) prior reactions that 'produce' a compound OR
-    (2) posterior reactions that 'consume' a compound in the provided organism's reaction network.
-
-    Parameters
-    ==========
-    compound_id : str
-        The ModelSEED ID for the compound of interest
-    pathway_map_id : str
-        The KEGG Pathway Map to walk through. Should include this compound.
-    organism : ReactionNetwork
-        Loaded reaction network of the organism that can produce/consume this compound.
-    compound_fate : str
-        One of 'produce' or 'consume'. 'produce' is the default
-    """
-
-    try:
-        wargs = get_args_for_pathway_walker(organism, pathway_map_id, compound_fate, args.maximum_gaps)
-        walker = nw.KGMLNetworkWalker(wargs)
-        reaction_chains = walker.get_chains(modelseed_compound_ids=compound_id)
-        if not reaction_chains:
-            return []
-        return reaction_chains[compound_id]
-
-    except ConfigError as c: # this is redundant for now, but useful for debugging
-        print(f"Got ConfigError from pathway walker for {compound_id} in map {pathway_map_id}: {c}")
-        return None
-    except AssertionError as a:
-        print(f"Got AssertionError from pathway walker for {compound_id} in map {pathway_map_id}: {a}")
-        return None
-
 def producer_consumer_decision_tree(genomes_can_produce, genomes_can_consume):
     """Given two genomes, decides which genome is the predicted producer/consumer of the current compound.
     If the compound is neither potentially-exchanged or unique to one genome, returns None so we can move on with our lives.
@@ -514,7 +481,6 @@ def predict_exchange_from_pathway_walk(chains_for_all_equivalent_compounds):
     prod, cons = producer_consumer_decision_tree(genomes_produce, genomes_consume)
 
     return prod, cons
-
 
 def get_longest_chains(chain_list):
     max_length = None
