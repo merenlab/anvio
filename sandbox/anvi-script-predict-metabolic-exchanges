@@ -126,9 +126,9 @@ def main(args):
             continue
         compound_reaction_chains = {compound_id: compound_to_pathway_walk_chains[compound_id]}
         if compound_id in eq_compounds:
-            for eq_comp in eq_compounds[compound_id]['equivalent_id']:
-                if eq_comp in compound_to_pathway_walk_chains:
-                    compound_reaction_chains[eq_comp] = compound_to_pathway_walk_chains[eq_comp]
+            eq_comp = eq_compounds[compound_id]['equivalent_id']
+            if eq_comp in compound_to_pathway_walk_chains:
+                compound_reaction_chains[eq_comp] = compound_to_pathway_walk_chains[eq_comp]
             processed_compound_ids.add(eq_comp)
         
         producer,consumer = predict_exchange_from_pathway_walk(compound_reaction_chains)
