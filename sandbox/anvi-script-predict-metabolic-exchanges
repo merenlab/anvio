@@ -356,7 +356,7 @@ def main(args):
     run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.",
                 header='OVERALL RESULTS', lc='green')
 
-    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
+    output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
     if args.add_reactions_to_output:
         output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
         [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
