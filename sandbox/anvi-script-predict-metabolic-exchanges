@@ -71,7 +71,7 @@ def main(args):
                                     f"These have been added to the dictionary of equivalent compounds. Here is the set of missing pairs: {pairs_to_add}. ",
                                     header="DEBUG", lc="yellow")
 
-    run.info("Doing pathway walks for additional evidence", not args.no_pathway_walk)
+    run.info("Predicting exchanges from KEGG Pathway Map walks", not args.no_pathway_walk)
 
     genomes_to_compare = {'A': {'contigs_db_path': args.contigs_db_1},
                           'B': {'contigs_db_path': args.contigs_db_2}}
@@ -102,144 +102,150 @@ def main(args):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
         return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
 
-    # TODO multithread: split pathway maps between workers
-    num_pms_to_process = len(all_pathway_maps)
-    processed_count = 0
-    progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
-    for pm in all_pathway_maps:
-        for g in genomes_to_compare: 
-            wargs = get_args_for_pathway_walker(genomes_to_compare[g]['network'], pm, fate='produce', gaps=args.maximum_gaps)
-            walker = nw.KGMLNetworkWalker(wargs)
-            production_chains = walker.get_chains()
-            walker.compound_fate = 'consume'
-            consumption_chains = walker.get_chains()
-            for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
-                if compound not in kegg_id_to_modelseed_id:
-                    raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
-                modelseed_id = kegg_id_to_modelseed_id[compound]
-                
-                if pm not in compound_to_pathway_walk_chains[modelseed_id]:
-                    compound_to_pathway_walk_chains[modelseed_id][pm] = {}
-                compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
-                                                                           'consume': consumption_chains[compound] if compound in consumption_chains else None}
-        processed_count += 1
-        progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
-        progress.increment(increment_to=processed_count)
-    progress.end()
-    compounds_not_in_maps = set(merged.metabolites.keys()).difference(set(compound_to_pathway_walk_chains.keys()))
-    run.info("Number of Pathway Maps processed", len(all_pathway_maps))
-    run.info("Number of compounds processed from Pathway Maps", len(compound_to_pathway_walk_chains.keys()))
-    run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
-    
     # dictionaries to store output
     potentially_exchanged_compounds = {}
     unique_compounds = {}
     pathway_walk_evidence = {}
     pathway_walk_dict_key = 0
+    compounds_not_in_maps = set()
     processed_compound_ids = set() # this is how we'll make sure we don't process equivalent compounds twice
-    num_compounds_to_process = len(compound_to_pathway_walk_chains)
-    processed_count = 0
-    progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
-    # TODO multithread: split compounds between workers
-    for compound_id in compound_to_pathway_walk_chains:
-        if compound_id in processed_compound_ids:
-            continue
-        compound_reaction_chains = {compound_id: compound_to_pathway_walk_chains[compound_id]}
-        if compound_id in eq_compounds:
-            eq_comp = eq_compounds[compound_id]['equivalent_id']
-            if eq_comp in compound_to_pathway_walk_chains:
-                compound_reaction_chains[eq_comp] = compound_to_pathway_walk_chains[eq_comp]
-            processed_compound_ids.add(eq_comp)
+
+    if not args.no_pathway_walk:
+        # step 1: do all pathway walks (TODO multithread: split pathway maps between workers)
+        num_pms_to_process = len(all_pathway_maps)
+        processed_count = 0
+        progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
+        for pm in all_pathway_maps:
+            for g in genomes_to_compare: 
+                wargs = get_args_for_pathway_walker(genomes_to_compare[g]['network'], pm, fate='produce', gaps=args.maximum_gaps)
+                walker = nw.KGMLNetworkWalker(wargs)
+                production_chains = walker.get_chains()
+                walker.compound_fate = 'consume'
+                consumption_chains = walker.get_chains()
+                for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
+                    if compound not in kegg_id_to_modelseed_id:
+                        raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
+                    modelseed_id = kegg_id_to_modelseed_id[compound]
+                    
+                    if pm not in compound_to_pathway_walk_chains[modelseed_id]:
+                        compound_to_pathway_walk_chains[modelseed_id][pm] = {}
+                    compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                                                                            'consume': consumption_chains[compound] if compound in consumption_chains else None}
+            processed_count += 1
+            progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
+            progress.increment(increment_to=processed_count)
+        progress.end()
+        compounds_not_in_maps = set(merged.metabolites.keys()).difference(set(compound_to_pathway_walk_chains.keys()))
+        run.info("Number of Pathway Maps processed", len(all_pathway_maps))
+        run.info("Number of compounds processed from Pathway Maps", len(compound_to_pathway_walk_chains.keys()))
         
-        producer,consumer = predict_exchange_from_pathway_walk(compound_reaction_chains)
-        if producer or consumer:
-            compound_name = merged.metabolites[compound_id].modelseed_name
-            producer_name = genomes_to_compare[producer]['name'] if producer else None
-            consumer_name = genomes_to_compare[consumer]['name'] if consumer else None
-            if producer == consumer or (not producer) or (not consumer): # unique to one genome
-                unique_compounds[compound_id] = {'compound_name': compound_name, 
-                                                 'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
-                                                 'produced_by': producer_name,
-                                                 'consumed_by': consumer_name,
-                                                 'prediction_method': 'Pathway_Map_Walk',
-                                                }
-            else: # potentially-exchanged
-                potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                'genomes': ",".join([producer_name,consumer_name]),
-                                                                'produced_by': producer_name,
-                                                                'consumed_by': consumer_name,
-                                                                'prediction_method': 'Pathway_Map_Walk',
-                                                                }
+        # step 2: predict exchanges using pathway walk evidence
+        num_compounds_to_process = len(compound_to_pathway_walk_chains)
+        processed_count = 0
+        progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
+        # TODO multithread: split compounds between workers
+        for compound_id in compound_to_pathway_walk_chains:
+            if compound_id in processed_compound_ids:
+                continue
+            compound_reaction_chains = {compound_id: compound_to_pathway_walk_chains[compound_id]}
+            if compound_id in eq_compounds:
+                eq_comp = eq_compounds[compound_id]['equivalent_id']
+                if eq_comp in compound_to_pathway_walk_chains:
+                    compound_reaction_chains[eq_comp] = compound_to_pathway_walk_chains[eq_comp]
+                processed_compound_ids.add(eq_comp)
+            
+            producer,consumer = predict_exchange_from_pathway_walk(compound_reaction_chains)
+            if producer or consumer:
+                compound_name = merged.metabolites[compound_id].modelseed_name
+                producer_name = genomes_to_compare[producer]['name'] if producer else None
+                consumer_name = genomes_to_compare[consumer]['name'] if consumer else None
+                if producer == consumer or (not producer) or (not consumer): # unique to one genome
+                    unique_compounds[compound_id] = {'compound_name': compound_name, 
+                                                    'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
+                                                    'produced_by': producer_name,
+                                                    'consumed_by': consumer_name,
+                                                    'prediction_method': 'Pathway_Map_Walk',
+                                                    }
+                else: # potentially-exchanged
+                    potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
+                                                                    'genomes': ",".join([producer_name,consumer_name]),
+                                                                    'produced_by': producer_name,
+                                                                    'consumed_by': consumer_name,
+                                                                    'prediction_method': 'Pathway_Map_Walk',
+                                                                    }
 
-                per_map_evidence_for_compound = get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
-                overall_max_prior = None
-                overall_max_posterior = None
-                overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
-                overall_overlap_posterior = None
-                prop_overlap_prior = None
-                prop_overlap_posterior = None
-                for map_id, map_evidence in per_map_evidence_for_compound.items():
-                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                    'compound_name': compound_name,
-                                                                    'type': "production",
-                                                                    'organism': producer_name,
-                                                                    'pathway_map': map_id,
-                                                                    'longest_reaction_chain_length': map_evidence["max_production_length"],
-                                                                    'maximum_overlap': map_evidence["max_production_overlap"],
-                                                                    'proportion_overlap': map_evidence["prop_production_overlap"],
-                                                                    'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
-                                                                    'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
-                                                                    'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
-                    pathway_walk_dict_key += 1
-                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                    'compound_name': compound_name,
-                                                                    'type': "consumption",
-                                                                    'organism': consumer_name,
-                                                                    'pathway_map': map_id,
-                                                                    'longest_reaction_chain_length': map_evidence["max_consumption_length"],
-                                                                    'maximum_overlap': map_evidence["max_consumption_overlap"],
-                                                                    'proportion_overlap': map_evidence["prop_consumption_overlap"],
-                                                                    'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
-                                                                    'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
-                                                                    'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
-                    pathway_walk_dict_key += 1
+                    per_map_evidence_for_compound = get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
+                    overall_max_prior = None
+                    overall_max_posterior = None
+                    overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
+                    overall_overlap_posterior = None
+                    prop_overlap_prior = None
+                    prop_overlap_posterior = None
+                    for map_id, map_evidence in per_map_evidence_for_compound.items():
+                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                        'compound_name': compound_name,
+                                                                        'type': "production",
+                                                                        'organism': producer_name,
+                                                                        'pathway_map': map_id,
+                                                                        'longest_reaction_chain_length': map_evidence["max_production_length"],
+                                                                        'maximum_overlap': map_evidence["max_production_overlap"],
+                                                                        'proportion_overlap': map_evidence["prop_production_overlap"],
+                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
+                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
+                                                                        'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
+                        pathway_walk_dict_key += 1
+                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                        'compound_name': compound_name,
+                                                                        'type': "consumption",
+                                                                        'organism': consumer_name,
+                                                                        'pathway_map': map_id,
+                                                                        'longest_reaction_chain_length': map_evidence["max_consumption_length"],
+                                                                        'maximum_overlap': map_evidence["max_consumption_overlap"],
+                                                                        'proportion_overlap': map_evidence["prop_consumption_overlap"],
+                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
+                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
+                                                                        'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
+                        pathway_walk_dict_key += 1
 
-                    # we want to find the longest chain of production reactions + the longest chain of consumption reactions
-                    if (not overall_max_prior and map_evidence["max_production_length"]) or \
-                        (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
-                        overall_max_prior = map_evidence["max_production_length"]
-                        overall_overlap_prior = map_evidence["max_production_overlap"]
-                        prop_overlap_prior = map_evidence["prop_production_overlap"]
-                    if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
-                        (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
-                        overall_max_posterior = map_evidence["max_consumption_length"]
-                        overall_overlap_posterior = map_evidence["max_consumption_overlap"]
-                        prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
+                        # we want to find the longest chain of production reactions + the longest chain of consumption reactions
+                        if (not overall_max_prior and map_evidence["max_production_length"]) or \
+                            (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
+                            overall_max_prior = map_evidence["max_production_length"]
+                            overall_overlap_prior = map_evidence["max_production_overlap"]
+                            prop_overlap_prior = map_evidence["prop_production_overlap"]
+                        if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
+                            (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
+                            overall_max_posterior = map_evidence["max_consumption_length"]
+                            overall_overlap_posterior = map_evidence["max_consumption_overlap"]
+                            prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
 
-                longest_overall_chain = None
-                if overall_max_prior and overall_max_posterior:
-                    longest_overall_chain = overall_max_prior + overall_max_posterior
-                elif overall_max_prior:
-                    longest_overall_chain = overall_max_prior
-                elif overall_max_posterior:
-                    longest_overall_chain = overall_max_posterior
-                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
-                potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = overall_max_prior
-                potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = overall_max_posterior
-                potentially_exchanged_compounds[compound_id]['production_overlap_length'] = overall_overlap_prior
-                potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = overall_overlap_posterior
-                potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = prop_overlap_prior
-                potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
-        processed_compound_ids.add(compound_id)
-        processed_count += 1
-        progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
-        progress.increment(increment_to=processed_count)
+                    longest_overall_chain = None
+                    if overall_max_prior and overall_max_posterior:
+                        longest_overall_chain = overall_max_prior + overall_max_posterior
+                    elif overall_max_prior:
+                        longest_overall_chain = overall_max_prior
+                    elif overall_max_posterior:
+                        longest_overall_chain = overall_max_posterior
+                    potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
+                    potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = overall_max_prior
+                    potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = overall_max_posterior
+                    potentially_exchanged_compounds[compound_id]['production_overlap_length'] = overall_overlap_prior
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = overall_overlap_posterior
+                    potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = prop_overlap_prior
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
+            processed_compound_ids.add(compound_id)
+            processed_count += 1
+            progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
+            progress.increment(increment_to=processed_count)
 
-    progress.end()
+        progress.end()
+    else:
+        compounds_not_in_maps = set(merged.metabolites.keys())
     run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
     run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
+    run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
 
-     # loop over remaining metabolites (not in pathway maps)
+    # loop over metabolites not processed in pathway maps
     num_compounds_to_process = len(compounds_not_in_maps)
     unique_from_reaction_subset = 0 # a couple of counters to keep track of what this part of the code found
     exchange_from_reaction_subset = 0
@@ -628,8 +634,9 @@ if __name__ == '__main__':
 
     groupE = parser.add_argument_group('PERFORMANCE', "Because ain't nobody got time for that")
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupE.add_argument('--no-pathway-walk', required=False, action='store_true', help="Skip walking KEGG pathways in the network upstream and downstream of "
-                                                            "predicted exchanges for additional evidence to rank predictions (a time-consuming step).")
+    groupE.add_argument('--no-pathway-walk', required=False, action='store_true', help="Skip walking KEGG Pathway Maps and instead predict exchanges entirely "
+                                                            "from the reaction network. This is not recommended, since Pathway Maps are much more curated and "
+                                                            "lead to more accurate predictions. But they also could be time-consuming, so, you do you, I guess.")
 
     args = parser.get_args(parser)
 
