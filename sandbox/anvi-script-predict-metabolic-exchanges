@@ -544,13 +544,28 @@ def get_max_overlap(starting_chains, comparison_chains):
 
     return max_overlap, longest_with_max_overlap
 
-def get_pathway_walk_evidence(compound, map_id, producer, consumer):
-    """Calls the pathway walk in both organisms. Compares the output to compute max reaction chain length, overlap, etc"""
+def get_pathway_walk_evidence(reaction_chains_for_compound, producer, consumer):
+    """Loops over all equivalent compounds and all pathway walk output to obtain per-map evidence."""
 
-    production_chains_in_producer = walk_pathway_map_for_compound(compound, map_id, producer, 'produce')
-    production_chains_in_consumer = walk_pathway_map_for_compound(compound, map_id, consumer, 'produce')
-    consumption_chains_in_producer = walk_pathway_map_for_compound(compound, map_id, producer, 'consume')
-    consumption_chains_in_consumer = walk_pathway_map_for_compound(compound, map_id, consumer, 'consume')
+    all_evidence_for_compound = {}
+    for cid, map_dict in reaction_chains_for_compound.items():
+        for pm, organism_dict in map_dict.items():
+            prod_chains_in_producer = organism_dict[producer]['produce'] if producer in organism_dict else []
+            prod_chains_in_consumer = organism_dict[consumer]['produce'] if consumer in organism_dict else []
+            cons_chains_in_producer = organism_dict[producer]['consume'] if producer in organism_dict else []
+            cons_chains_in_consumer = organism_dict[consumer]['consume'] if consumer in organism_dict else []
+            if pm in all_evidence_for_compound:
+                raise ConfigError(f"While processing pathway walk compound {cid}, we noticed that the pathway map {pm} was already "
+                                  f"processed, which means that an equivalent compound was also present in this pathway map. Not "
+                                  f"how to handle this yet, so instead we say bye-bye :(")
+            all_evidence_for_compound[pm] = get_pathway_walk_evidence_for_compound_in_map(prod_chains_in_producer, 
+                                                        prod_chains_in_consumer, cons_chains_in_producer, cons_chains_in_consumer)
+
+    return all_evidence_for_compound
+
+def get_pathway_walk_evidence_for_compound_in_map(production_chains_in_producer, production_chains_in_consumer, 
+        consumption_chains_in_producer, consumption_chains_in_consumer):
+    """Compares the pathway walk output to compute max reaction chain length, overlap, etc"""
 
     max_production_length, longest_producer_chains = get_longest_chains(production_chains_in_producer)
     max_production_overlap, longest_with_max_overlap = get_max_overlap(longest_producer_chains, production_chains_in_consumer)
