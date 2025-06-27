@@ -92,6 +92,9 @@ def main(args):
     """Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}"""
 
     # TODO multithread: split pathway maps between workers
+    num_pms_to_process = len(all_pathway_maps)
+    processed_count = 0
+    progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
     for pm in all_pathway_maps:
         for g in genomes_to_compare: 
             wargs = get_args_for_pathway_walker(genomes_to_compare[g]['network'], pm, fate='produce', gaps=args.maximum_gaps)
@@ -108,7 +111,10 @@ def main(args):
                     compound_to_pathway_walk_chains[modelseed_id][pm] = {}
                 compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
                                                                            'consume': consumption_chains[compound] if compound in consumption_chains else None}
-
+        processed_count += 1
+        progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
+        progress.increment(increment_to=processed_count)
+    progress.end()
     compounds_not_in_maps = set(merged.metabolites.keys()).difference(set(compound_to_pathway_walk_chains.keys()))
     run.info("Number of Pathway Maps processed", len(all_pathway_maps))
     run.info("Number of compounds processed from Pathway Maps", len(compound_to_pathway_walk_chains.keys()))
@@ -120,6 +126,9 @@ def main(args):
     pathway_walk_evidence = {}
     pathway_walk_dict_key = 0
     processed_compound_ids = set() # this is how we'll make sure we don't process equivalent compounds twice
+    num_compounds_to_process = len(compound_to_pathway_walk_chains)
+    processed_count = 0
+    progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
     # TODO multithread: split compounds between workers
     for compound_id in compound_to_pathway_walk_chains:
         if compound_id in processed_compound_ids:
@@ -141,18 +150,24 @@ def main(args):
                                                  'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
                                                  'produced_by': producer_name,
                                                  'consumed_by': consumer_name,
+                                                 'prediction_method': 'Pathway_Map_Walk',
                                                 }
             else: # potentially-exchanged
                 potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
                                                                 'genomes': ",".join([producer_name,consumer_name]),
-                                                                'produced_by': ",".join(producer_name),
-                                                                'consumed_by': ",".join(consumer_name),
+                                                                'produced_by': producer_name,
+                                                                'consumed_by': consumer_name,
+                                                                'prediction_method': 'Pathway_Map_Walk',
                                                                 }
                 #TODO add pathway walk evidence
         processed_compound_ids.add(compound_id)
+        processed_count += 1
+        progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
+        progress.increment(increment_to=processed_count)
 
-    run.info("Number of exchanged compounds predicted from Pathway Maps", len(potentially_exchanged_compounds))
-    run.info("Number of unique compounds predicted from Pathway Maps", len(unique_compounds))
+    progress.end()
+    run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
+    run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
 
     def get_reaction_equation(reaction_value):
         name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
@@ -335,8 +350,11 @@ def main(args):
         progress.increment(increment_to=processed_count)
 
     progress.end()
+
+    run.info("Number of exchanged compounds predicted from Reaction Network subset approach", exchange_from_reaction_subset)
+    run.info("Number of unique compounds predicted from Reaction Network subset approach", unique_from_reaction_subset)
     run.warning(f"Identified {len(potentially_exchanged_compounds)} potentially exchanged compounds and {len(unique_compounds)} compounds unique to one genome.",
-                header='RESULTS', lc='green')
+                header='OVERALL RESULTS', lc='green')
 
     output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
     if args.add_reactions_to_output:
