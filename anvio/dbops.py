@@ -175,7 +175,7 @@ class ContigsSuperclass(object):
         ####################################################################################
         # read SPLITS and GENES basic information.
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split', self.split_names_of_interest, progress=self.progress)
-        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress)
+        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress, error_if_no_data=False)
 
         # if there are no splits names of interest, contig names of interest will be an empty set.
         # that's OK, because `smart_get` will take care of it.
@@ -183,7 +183,7 @@ class ContigsSuperclass(object):
 
         # read CONTIGS and GENES basic information.
         self.contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
-        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress)
+        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress, error_if_no_data=False)
 
         # because this table is as dumb as Eric, it needs some special attention
         if self.split_names_of_interest:
@@ -318,7 +318,7 @@ class ContigsSuperclass(object):
         # know which gene caller ids they represent if only a subset of contigs
         # were requested:
         if subset_provided:
-            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress, error_if_no_data=False).keys())
         else:
             self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
 
