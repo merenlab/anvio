@@ -30,7 +30,7 @@ __version__ = anvio.__version__
 __authors__ = ["katysloz"]
 __requires__ = ["fasta", "contigs-db", 'profile-db']
 __provides__ = []
-__description__ = "A program designed to find Diversity Generating Retroelements based on nucleotide similarity"
+__description__ = "A program designed to find Diversity-generating retroelements based on high single nucleotide variants and  nucleotide similarity"
 
 run = Run()
 
