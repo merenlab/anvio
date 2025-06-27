@@ -83,6 +83,7 @@ def main(args):
     genomes_to_compare['A']['name'] = db_names[0]
     genomes_to_compare['B']['name'] = db_names[1]
     run.info_single(f"Created a merged network with {len(merged.genes)} genes.")
+    run.info("Number of metabolites in merged network to process", len(merged.metabolites))
 
     # set up some important data structures
     kegg_id_to_modelseed_id = map_kegg_ids_to_modelseed_ids(merged)
