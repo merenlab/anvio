@@ -2350,7 +2350,7 @@ class DGR_Finder:
                         ])
         else:
             primers_dict = self.sample_primers_dict
-            ## Define the header for the CSV file
+            # Define the header for the CSV file
             csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
 
             # Open the CSV file in write mode
@@ -2542,7 +2542,7 @@ class DGR_Finder:
                         dgr_vr_key = f'{dgr_id}_{vr_key}'
                         original_primer_key = f'{dgr_id}_{vr_key}_Primer'
                         if dgr_vr_key not in self.sample_primers_dict:
-                                self.sample_primers_dict[dgr_vr_key] = {}
+                            self.sample_primers_dict[dgr_vr_key] = {}
 
                         print(primers_dict[original_primer_key])
                         print(primers_dict)
