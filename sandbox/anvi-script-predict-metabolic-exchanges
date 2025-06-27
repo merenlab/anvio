@@ -91,6 +91,17 @@ def main(args):
     compound_to_pathway_walk_chains = defaultdict(dict) # we will fill this dict in as we process each compound
     """Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}"""
 
+    # a couple of helper functions that should probably eventually be class functions
+    def get_compound_name_from_kegg_id(kid):
+        if kid in kegg_id_to_compound_name:
+            return kegg_id_to_compound_name[kid]
+        else:
+            return "None"
+
+    def get_reaction_equation(reaction_value):
+        name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
+        return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
+
     # TODO multithread: split pathway maps between workers
     num_pms_to_process = len(all_pathway_maps)
     processed_count = 0
@@ -168,16 +179,6 @@ def main(args):
     progress.end()
     run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
     run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
-
-    def get_reaction_equation(reaction_value):
-        name_list = [merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
-        return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
-
-    def get_compound_name_from_kegg_id(kid):
-        if kid in kegg_id_to_compound_name:
-            return kegg_id_to_compound_name[kid]
-        else:
-            return "None"    
 
      # loop over remaining metabolites (not in pathway maps)
     num_compounds_to_process = len(compounds_not_in_maps)
