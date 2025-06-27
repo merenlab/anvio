@@ -130,7 +130,7 @@ def main(args):
     run.info("Number of Pathway Maps processed", len(all_pathway_maps))
     run.info("Number of compounds processed from Pathway Maps", len(compound_to_pathway_walk_chains.keys()))
     run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
-
+    
     # dictionaries to store output
     potentially_exchanged_compounds = {}
     unique_compounds = {}
@@ -170,7 +170,66 @@ def main(args):
                                                                 'consumed_by': consumer_name,
                                                                 'prediction_method': 'Pathway_Map_Walk',
                                                                 }
-                #TODO add pathway walk evidence
+
+                per_map_evidence_for_compound = get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
+                overall_max_prior = None
+                overall_max_posterior = None
+                overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
+                overall_overlap_posterior = None
+                prop_overlap_prior = None
+                prop_overlap_posterior = None
+                for map_id, map_evidence in per_map_evidence_for_compound.items():
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'compound_name': compound_name,
+                                                                    'type': "production",
+                                                                    'organism': producer_name,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': map_evidence["max_production_length"],
+                                                                    'maximum_overlap': map_evidence["max_production_overlap"],
+                                                                    'proportion_overlap': map_evidence["prop_production_overlap"],
+                                                                    'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
+                                                                    'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
+                                                                    'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
+                    pathway_walk_dict_key += 1
+                    pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
+                                                                    'compound_name': compound_name,
+                                                                    'type': "consumption",
+                                                                    'organism': consumer_name,
+                                                                    'pathway_map': map_id,
+                                                                    'longest_reaction_chain_length': map_evidence["max_consumption_length"],
+                                                                    'maximum_overlap': map_evidence["max_consumption_overlap"],
+                                                                    'proportion_overlap': map_evidence["prop_consumption_overlap"],
+                                                                    'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
+                                                                    'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
+                                                                    'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
+                    pathway_walk_dict_key += 1
+
+                    # we want to find the longest chain of production reactions + the longest chain of consumption reactions
+                    if (not overall_max_prior and map_evidence["max_production_length"]) or \
+                        (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
+                        overall_max_prior = map_evidence["max_production_length"]
+                        overall_overlap_prior = map_evidence["max_production_overlap"]
+                        prop_overlap_prior = map_evidence["prop_production_overlap"]
+                    if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
+                        (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
+                        overall_max_posterior = map_evidence["max_consumption_length"]
+                        overall_overlap_posterior = map_evidence["max_consumption_overlap"]
+                        prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
+
+                longest_overall_chain = None
+                if overall_max_prior and overall_max_posterior:
+                    longest_overall_chain = overall_max_prior + overall_max_posterior
+                elif overall_max_prior:
+                    longest_overall_chain = overall_max_prior
+                elif overall_max_posterior:
+                    longest_overall_chain = overall_max_posterior
+                potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
+                potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = overall_max_prior
+                potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = overall_max_posterior
+                potentially_exchanged_compounds[compound_id]['production_overlap_length'] = overall_overlap_prior
+                potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = overall_overlap_posterior
+                potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = prop_overlap_prior
+                potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
         processed_compound_ids.add(compound_id)
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -267,85 +326,6 @@ def main(args):
                 exchange_from_reaction_subset+=1
 
         processed_compound_ids.add(compound_id)
-
-                # look for additional evidence by walking through the reaction networks using Pathway Maps
-                if not args.no_pathway_walk:
-                    producer_network = net_1
-                    producer_name = db_names[0]
-                    consumer_network = net_2
-                    consumer_name = db_names[1]
-                    if db_names[0] not in genomes_produce or (db_names[0] in genomes_consume and len(genomes_consume) == 1):
-                        producer_network = net_2
-                        producer_name = db_names[1]
-                        consumer_network = net_1
-                        consumer_name = db_names[0]
-
-                    overall_max_prior = None
-                    overall_max_posterior = None
-                    overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
-                    overall_overlap_posterior = None
-                    prop_overlap_prior = None
-                    prop_overlap_posterior = None
-                    for map_id in compound_to_pathways[compound_id]:
-                        map_evidence = get_pathway_walk_evidence(compound_id, map_id, producer_network, consumer_network)
-
-                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                        'compound_name': compound_name,
-                                                                        'type': "production",
-                                                                        'organism': producer_name,
-                                                                        'pathway_map': map_id,
-                                                                        'longest_reaction_chain_length': map_evidence["max_production_length"],
-                                                                        'maximum_overlap': map_evidence["max_production_overlap"],
-                                                                        'proportion_overlap': map_evidence["prop_production_overlap"],
-                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
-                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
-                                                                        'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
-                        pathway_walk_dict_key += 1
-                        pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
-                                                                        'compound_name': compound_name,
-                                                                        'type': "consumption",
-                                                                        'organism': consumer_name,
-                                                                        'pathway_map': map_id,
-                                                                        'longest_reaction_chain_length': map_evidence["max_consumption_length"],
-                                                                        'maximum_overlap': map_evidence["max_consumption_overlap"],
-                                                                        'proportion_overlap': map_evidence["prop_consumption_overlap"],
-                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
-                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
-                                                                        'longest_chain_compound_names': ",".join([get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
-                        pathway_walk_dict_key += 1
-                        if anvio.DEBUG:
-                            progress.reset()
-                            run.info_single(f"Walked through pathway map {map_id} for compound {compound_name} ({compound_id}); "
-                                            f"found max of {map_evidence['max_production_length']} prior reactions in producer and "
-                                            f"{map_evidence['max_consumption_length']} posterior reactions in consumer")
-
-                        # we want to find the longest chain of production reactions + the longest chain of consumption reactions
-                        if (not overall_max_prior and map_evidence["max_production_length"]) or \
-                            (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
-                            overall_max_prior = map_evidence["max_production_length"]
-                            overall_overlap_prior = map_evidence["max_production_overlap"]
-                            prop_overlap_prior = map_evidence["prop_production_overlap"]
-                        if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
-                            (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
-                            overall_max_posterior = map_evidence["max_consumption_length"]
-                            overall_overlap_posterior = map_evidence["max_consumption_overlap"]
-                            prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
-
-                    longest_overall_chain = None
-                    if overall_max_prior and overall_max_posterior:
-                        longest_overall_chain = overall_max_prior + overall_max_posterior
-                    elif overall_max_prior:
-                        longest_overall_chain = overall_max_prior
-                    elif overall_max_posterior:
-                        longest_overall_chain = overall_max_posterior
-                    potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = longest_overall_chain
-                    potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = overall_max_prior
-                    potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = overall_max_posterior
-                    potentially_exchanged_compounds[compound_id]['production_overlap_length'] = overall_overlap_prior
-                    potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = overall_overlap_posterior
-                    potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = prop_overlap_prior
-                    potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
-
         processed_count += 1
         progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
         progress.increment(increment_to=processed_count)
