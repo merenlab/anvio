@@ -284,15 +284,15 @@ def main(args):
                 continue
             # which genomes produce this compound?
             elif reaction.coefficients[idx] > 0:
-                for g in genomes_to_compare:
-                    if g in reaction.genomes_of_origin:
+                for g, genome_info in genomes_to_compare.items():
+                    if genome_info['name'] in reaction.genomes_of_origin:
                         genomes_produce.add(g)
                         production_reactions[g][rid] = get_reaction_equation(reaction)
 
             # which genomes utilize this compound?
             elif reaction.coefficients[idx] < 0:
-                for g in genomes_to_compare:
-                    if g in reaction.genomes_of_origin:
+                for g, genome_info in genomes_to_compare.items():
+                    if genome_info['name'] in reaction.genomes_of_origin:
                         genomes_consume.add(g)
                         consumption_reactions[g][rid] = get_reaction_equation(reaction)
 
