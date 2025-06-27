@@ -441,6 +441,7 @@ def get_args_for_pathway_walker(net, pathway_map, fate, gaps):
     walker_args.kegg_pathway_number = pathway_map
     walker_args.compound_fate = fate
     walker_args.max_gaps = gaps
+    walker_args.keep_intermediate_chains = True
     walker_args.verbose = False
     return walker_args
 
