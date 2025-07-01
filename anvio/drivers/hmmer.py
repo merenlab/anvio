@@ -312,7 +312,7 @@ class HMMer:
                         append_function = self.append_to_main_standard_file
                     elif file_type == 'domtable':
                         append_function = self.append_to_main_table_file
-                    
+
                     append_function(main_file_buffer, worker_file, main_file_lock)
 
             except KeyboardInterrupt:
@@ -433,11 +433,10 @@ class HMMer:
 
         Lines starting with '#' (i.e., header lines) are ignored.
         """
-        
+
         detected_non_ascii = False
         lines_with_non_ascii = []
         output_lines = []
-        line_number = 0
 
         def process_batch(line_batch, base_line_number):
             nonlocal detected_non_ascii
@@ -455,7 +454,7 @@ class HMMer:
                 if not line.startswith('#'):
                     local_output.append(line.rstrip())
             return local_output
-            
+
         with open(table_output_file, 'rb') as hmm_hits_file:
             batch = []
             base_line_number = 1
