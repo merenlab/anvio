@@ -2948,6 +2948,7 @@ class RunKOfams(KeggContext):
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
+        self.no_hmmer_prefiltering = True if A('no_hmmer_prefiltering') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
