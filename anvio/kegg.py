@@ -1331,8 +1331,6 @@ class KeggSetup(KeggContext):
 
             fields = re.split('\s{2,}', line)
             data_vals = None
-            data_def = None
-            line_entries = []
 
             # when data name unknown, parse from first field
             if line[0] != ' ':
@@ -2043,13 +2041,13 @@ class KOfamDownload(KeggSetup):
         thresholds_not_none = 0
         with open(self.stray_ko_thresholds_file, 'w') as out:
             out.write("knum\tthreshold\tscore_type\tdefinition\n")
-            for k, t in threshold_dict.items():
-                if t:
+            for k, thr in threshold_dict.items():
+                if thr:
                     model_name = k
                     if k in models_with_anvio_version:
                         model_name = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
                     ko_definition = self.ko_dict[k]['definition']
-                    out.write(f"{model_name}\t{t}\tfull\t{ko_definition}\n")
+                    out.write(f"{model_name}\t{thr}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
         self.run.info("File with estimated bit score thresholds", self.stray_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
@@ -5245,7 +5243,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
-        was_already_complete = meta_dict_for_bin[mnum]["stepwise_is_complete"]
         now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
 
@@ -5317,7 +5314,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
         now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
 
@@ -5760,8 +5756,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # handle anything following parentheses
             if close_parens_idx < len(step_string) - 1:
-                post_str = step_string[close_parens_idx+1:]
-
                 post_steps = step_string[close_parens_idx+2:]
                 post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
 
@@ -6194,8 +6188,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
         if ('USER' in kegg_metabolism_superdict['data_sources'] and not self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from USER data, but you "
-                              f"did not specify which data directory to use with the `--user-modules` flag.")
+            raise ConfigError("You provided a JSON file generated from USER data, but you "
+                              "did not specify which data directory to use with the `--user-modules` flag.")
         if (kegg_metabolism_superdict['data_sources'] == 'KEGG' and self.user_input_dir):
             raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data only, but then "
                               f"you provided us with a USER metabolism data directory. You should not use the `--user-modules` flag for this file.")
@@ -9387,7 +9381,6 @@ class ModulesDatabase(KeggContext):
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
-                    num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
                         if level == topdown_level_cutoff:
                             try:
@@ -9410,7 +9403,6 @@ class ModulesDatabase(KeggContext):
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
-                    num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
                         if level == topdown_level_cutoff:
                             try:
@@ -10164,7 +10156,7 @@ def _download_worker(
                 utils.download_file(url, path)
                 output = True
                 break
-            except (ConfigError, ConnectionResetError) as e:
+            except (ConfigError, ConnectionResetError):
                 num_tries += 1
                 if num_tries > max_num_tries:
                     output = path
