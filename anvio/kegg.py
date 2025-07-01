@@ -3479,7 +3479,7 @@ class RunKOfams(KeggContext):
         stray_hits_file = None
         if self.include_stray_kos:
             ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, None)
+            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, noise_cutoff_terms)
             has_stray_hits = True if stray_hits_file else False
 
         if not hmm_hits_file and not has_stray_hits:
