@@ -3467,9 +3467,13 @@ class RunKOfams(KeggContext):
                                                       simple_headers=True,
                                                       report_aa_sequences=True)
 
+        # turn off HMMER's default reporting thresholds if requested. We use an extremely low bitscore threshold instead.
+        noise_cutoff_terms = None
+        if self.no_hmmer_prefiltering:
+            noise_cutoff_terms = "-T -20 --domT -20"
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, noise_cutoff_terms)
 
         has_stray_hits = False
         stray_hits_file = None

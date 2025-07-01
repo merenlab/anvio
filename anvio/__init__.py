@@ -3212,10 +3212,11 @@ D = {
              'help': "By default, the initial set of hits we get back from HMMER are subject to its default e-value "
                      "threshold of 10. However, if you are working with a very large dataset, this pre-filtering based "
                      "on e-value might be too stringent and lead to missing some legitimate hits. If this is your case, "
-                     "you can use this flag to turn off the HMMER pre-filtering based on e-value. All hits we get from "
-                     "HMMER will still be subject to later bitscore-based filtering and the annotation heuristic to ensure "
-                     "we don't let in any garbage annotations (unless you use the `--keep-all-hits` or the `--skip-bitscore-heuristic` "
-                     "flags, respectively). See https://github.com/merenlab/anvio/issues/2446 for more details."}
+                     "you can use this flag to turn off the HMMER pre-filtering based on e-value (instead we will use `-T "
+                     "-20` and `-domT -20`). All hits we get from HMMER will still be subject to later bitscore-based "
+                     "filtering and the annotation heuristic to ensure we don't let in any garbage annotations (unless you "
+                     "use the `--keep-all-hits` or the `--skip-bitscore-heuristic` flags, respectively). See "
+                     "https://github.com/merenlab/anvio/issues/2446 for more details."}
                 ),
     'skip-binary-relations': (
             ['--skip-binary-relations'],
