@@ -215,10 +215,9 @@ class ContigsSuperclass(object):
 
         # Initialize minimal required attributes
         self.a_meta = {}
-        self._initialize_minimal_data()
 
-        # Initialize lazy loading containers (will be populated when needed)
-        self._lazy_loaded_data = {}
+
+        self._initialize_minimal_data()
 
         # now all items are initialized, we will check whether we are being initialized from within
         # an object that is in `pan` or `manual` mode, neither of which will have a contigs database
@@ -267,21 +266,9 @@ class ContigsSuperclass(object):
 
         contigs_db.disconnect()
 
-        # Initialize _lazy_loaded_data dictionary with empty containers
-        self._lazy_loaded_data = {
-            'genes_in_splits': {},
-            'genes_in_contigs_dict': {},
-            'contigs_basic_info': {},
-            'splits_basic_info': {},
-            'nt_positions_info': {},
-            'gene_lengths': {},
-            'contig_name_to_genes': {},
-            'split_name_to_genes_in_splits_entry_ids': {},
-            'gene_callers_id_to_split_name_dict': {},
-            'hmm_sources_info': {},
-            'singlecopy_gene_hmm_sources': set([]),
-            'non_singlecopy_gene_hmm_sources': set([])
-        }
+        # initialize the container for attributes that will be lazy loaded by LazyProperty descriptors
+        # when needed
+        self._lazy_loaded_data = {}
 
         # Initialize other directly accessible attributes
         self.split_sequences = {}
