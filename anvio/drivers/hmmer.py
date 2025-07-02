@@ -52,6 +52,7 @@ class HMMer:
 
         self.tmp_dirs = []
         self.target_files_dict = {}
+        self.number_of_sequences = {}
 
         acceptable_programs = ["hmmscan", "hmmsearch"]
         if self.program_to_use not in acceptable_programs:
@@ -61,11 +62,17 @@ class HMMer:
         for source in target_files_dict:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
-
+            
+            print(type(target_files_dict[source]))
+            
             # create splitted fasta files inside tmp directory
-            self.target_files_dict[source] = utils.split_fasta(target_files_dict[source],
+            split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
-                                                               output_dir=tmp_dir)
+                                                               output_dir=tmp_dir,
+                                                               return_number_of_sequences=True)
+            
+            self.target_files_dict[source] = split_fastas
+            self.number_of_sequences[source] = number_of_sequences
 
     def verify_hmmpress_output(self, hmm_path):
         """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
@@ -167,7 +174,8 @@ class HMMer:
                                           "to overwrite things. Please either remove the file or rename your "
                                           "desired output.")
 
-
+        number_of_sequences = self.number_of_sequences[target]
+        
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')
@@ -176,6 +184,7 @@ class HMMer:
         self.run.info('Domain', domain if domain else 'N/A')
         self.run.info('HMM model path', hmm)
         self.run.info('Number of genes in HMM model', num_genes_in_model or 'unknown')
+        self.run.info('Number of sequences in database', number_of_sequences or 'unknown')
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
         if alphabet in ['DNA', 'RNA']:
@@ -225,7 +234,7 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
-
+        
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
@@ -246,12 +255,14 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
+                                '-Z', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                                 '-o', output_file, *noise_cutoff_terms.split(),
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
+                                '-Z', number_of_sequences,
                                 hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 if 'domtable' in desired_output:
@@ -260,12 +271,14 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
+                                '-Z', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                                 '-o', output_file,
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
+                                '-Z', number_of_sequences,
                                 hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
