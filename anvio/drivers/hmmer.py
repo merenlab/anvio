@@ -63,8 +63,6 @@ class HMMer:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
             
-            print(type(target_files_dict[source]))
-            
             # create splitted fasta files inside tmp directory
             split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
@@ -234,7 +232,6 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
-        
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
