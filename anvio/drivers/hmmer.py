@@ -256,6 +256,7 @@ class HMMer:
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
                                 '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
@@ -263,6 +264,7 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 if 'domtable' in desired_output:
@@ -272,6 +274,7 @@ class HMMer:
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
                                 '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
@@ -279,6 +282,7 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
