@@ -909,7 +909,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None, return_number_of_sequences=False):
     """Splits a given FASTA file into multiple parts.
 
     Please note that this function will not clean after itself. You need to take care of the
@@ -929,12 +929,15 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     output_dir : str, path
         Output directory. By default, anvi'o will store things in a new directory under
         the system location for temporary files
+    return_number_of_sequences : bool
+        Whether to return the number of sequences in the original fasta file
 
     Returns
     =======
     output_file_paths : list
         Array with `parts` number of elements where each item is an output file path
-
+    length : int, optional
+        The number of sequences in the original fasta file. Only returnd if 'return_number_of_sequences' is True
     """
     if not file_name_prefix:
         file_name_prefix = os.path.basename(input_file_path)
@@ -999,7 +1002,11 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     source.close()
 
-    return output_file_paths
+    if return_number_of_sequences:
+        return output_file_paths, length
+    
+    else:
+        return output_file_paths
 
 
 def get_random_colors_dict(keys):
