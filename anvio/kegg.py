@@ -2948,6 +2948,7 @@ class RunKOfams(KeggContext):
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
+        self.no_hmmer_prefiltering = True if A('no_hmmer_prefiltering') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
@@ -3466,15 +3467,19 @@ class RunKOfams(KeggContext):
                                                       simple_headers=True,
                                                       report_aa_sequences=True)
 
+        # turn off HMMER's default reporting thresholds if requested. We use an extremely low bitscore threshold instead.
+        noise_cutoff_terms = None
+        if self.no_hmmer_prefiltering:
+            noise_cutoff_terms = "-T -20 --domT -20"
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, noise_cutoff_terms)
 
         has_stray_hits = False
         stray_hits_file = None
         if self.include_stray_kos:
             ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, None)
+            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, noise_cutoff_terms)
             has_stray_hits = True if stray_hits_file else False
 
         if not hmm_hits_file and not has_stray_hits:
