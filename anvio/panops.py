@@ -1977,21 +1977,22 @@ class PangenomeGraph():
         all_positions_min = min(all_positions)
         all_positions_max = max(all_positions)
 
-        # FIXME 0.95 hardcoded
-        reversed_edges = [(edge_i, edge_j) for edge_i, edge_j, data in self.graph.edges(data=True) if 'L' in set(data['directions'].values())]
-        reversed_positions = []
-        for (edge_i, edge_j) in reversed_edges:
-            reverse_start = min(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
-            reverse_end = max(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
+        # reversed_edges = [(edge_i, edge_j) for edge_i, edge_j, data in self.graph.edges(data=True) if 'L' in set(data['directions'].values())]
+        # reversed_positions = []
+        # for (edge_i, edge_j) in reversed_edges:
+        #     reverse_start = min(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
+        #     reverse_end = max(self.graph.nodes()[edge_i]['position'][0], self.graph.nodes()[edge_j]['position'][0])
 
-            if (reverse_end - reverse_start) / all_positions_max < 0.90:
-                reversed_positions += list(range(reverse_start, reverse_end + 1))
+        #     if (reverse_end - reverse_start) / all_positions_max < 0.90:
+        #         reversed_positions += list(range(reverse_start, reverse_end + 1))
 
-        # print(sorted(set(reversed_positions)))
         # non_core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) != len(genome_names)]) | set(reversed_positions))
-        core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]) - set(reversed_positions))
-        # print(core_positions)
+        
+        # SHOULD CORE GCS THAT RESOLVE INSIDE REARRANGEMENTS BE NON-CORE?!
+        # core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]) - set(reversed_positions))
 
+        core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]))
+        
         regions_dict = {}
 
         if core_positions:
@@ -2643,24 +2644,28 @@ class DirectedForce():
             raise ConfigError("Looped graphs are not implemented in the algorithm please run remove edges from the networkx package first.")
 
         if max_iterations == 1 and not start_node:
-            self.run.info_single("Low ressource mode: No start node was picked and the maximum number of iterations was set to 1.")
-            # Suboptimal run, trying to find a sufficient starting point without a lot of ressources.
-            G = nx.DiGraph(H)
-            add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0]
-            
-            if not add_start:
-                G, M = self.find_maximum_branching(G)
-                add_start = [node for node in M.nodes() if len(list(M.predecessors(node))) == 0]
-                G = self.add_node_to_connector('START', add_start, G, max_weight)
-                M = self.add_node_to_connector('START', add_start, M, max_weight)
-            else:
-                G = self.add_node_to_connector('START', add_start, G, max_weight)
-                # G, M, removed_nodes, removed_edges = self.find_maximum_branching(G)
-                G, M = self.find_maximum_branching(G)
+            try:
+                self.run.info_single("Low ressource mode: No start node was picked and the maximum number of iterations was set to 1.")
+                # Suboptimal run, trying to find a sufficient starting point without a lot of ressources.
+                G = nx.DiGraph(H)
+                add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0]
+                
+                if not add_start:
+                    G, M = self.find_maximum_branching(G)
+                    add_start = [node for node in M.nodes() if len(list(M.predecessors(node))) == 0]
+                    G = self.add_node_to_connector('START', add_start, G, max_weight)
+                    M = self.add_node_to_connector('START', add_start, M, max_weight)
+                else:
+                    G = self.add_node_to_connector('START', add_start, G, max_weight)
+                    # G, M, removed_nodes, removed_edges = self.find_maximum_branching(G)
+                    G, M = self.find_maximum_branching(G)
 
-            self.run.info_single("Solving complex graph.")
-            changed_edges = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
-            # return(changed_edges, removed_nodes, removed_edges)
+                self.run.info_single("Solving complex graph.")
+                changed_edges = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
+                # return(changed_edges, removed_nodes, removed_edges)
+            except Exception as error:
+                self.run.info_single("An error occured, we will try to continue anyway.")
+
             return(changed_edges)
 
         else:
@@ -2685,30 +2690,33 @@ class DirectedForce():
             iteration = 0
             self.run.info_single("Solving complex graph.")
             for start in starting_list:
+                try:
+                    self.run.info_single(f"Iteration {iteration}.")
 
-                self.run.info_single(f"Iteration {iteration}.")
+                    G = nx.DiGraph(H)
 
-                G = nx.DiGraph(H)
+                    # I Changed this for testing!
+                    ebunch = [(node, start) for node in list(G.predecessors(start))]
+                    G.remove_edges_from(ebunch)
 
-                # I Changed this for testing!
-                ebunch = [(node, start) for node in list(G.predecessors(start))]
-                G.remove_edges_from(ebunch)
+                    add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0] + [start]
+                    G = self.add_node_to_connector('START', add_start, G, max_weight)
+                    G['START'][start]['weight'] = max_weight+10
 
-                add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0] + [start]
-                G = self.add_node_to_connector('START', add_start, G, max_weight)
-                G['START'][start]['weight'] = max_weight+10
+                    # G, M, removed_nodes_remp, removed_edges_temp = self.find_maximum_branching(G)
+                    G, M = self.find_maximum_branching(G)
+                    changed_edges_temp = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
 
-                # G, M, removed_nodes_remp, removed_edges_temp = self.find_maximum_branching(G)
-                G, M = self.find_maximum_branching(G)
-                changed_edges_temp = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
+                    complexity = len(changed_edges_temp)
 
-                complexity = len(changed_edges_temp)
+                    if complexity < min_complexity:
+                        min_complexity = complexity
+                        changed_edges = changed_edges_temp + ebunch
+                        # removed_nodes = removed_nodes_remp
+                        # removed_edges = removed_edges_temp
 
-                if complexity < min_complexity:
-                    min_complexity = complexity
-                    changed_edges = changed_edges_temp + ebunch
-                    # removed_nodes = removed_nodes_remp
-                    # removed_edges = removed_edges_temp
+                except Exception as error:
+                    self.run.info_single("An error occured, we will try to continue anyway.")
 
                 iteration += 1
 
@@ -2746,7 +2754,7 @@ class DirectedForce():
             new_data['weight'] += old_data['weight']
             new_data['direction'] = 'B'
 
-            print('Both directed edge case!')
+            # print('Both directed edge case!')
 
         return(new_data)
 
@@ -3080,7 +3088,7 @@ class TopologicalLayout():
         nx.set_node_attributes(L, {k: {'genomes': list(d.keys())} for k, d in L.nodes(data='gene_calls')})
 
         if not nx.is_directed_acyclic_graph(L):
-            raise ConfigError(f"Cyclic graphs, are not implemented.")
+            raise ConfigError(f"Cyclic graphs, are not implemented, sorry.")
 
         x_list = {}
         positions = {}
@@ -3923,5 +3931,7 @@ class PangenomeGraphMaster():
 
         # self.db_mining_df.drop(self.db_mining_df.loc[self.db_mining_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
         self.run.info_single(f"{len(changed_edges)} edges reversed to capture maximum force on pangenome graph.")
-        self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
+        # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
+        if len(changed_edges) == 0:
+            self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
         self.run.info_single("Done.")
