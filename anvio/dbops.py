@@ -4896,7 +4896,7 @@ class ContigsDatabase:
                                   "k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short "
                                   "contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
 
-            if not bool(character_regex.search(fasta.seq)):
+            if not bool(character_regex.search(fasta.seq)) and not args.allow_amino_acid_contig_db:
                 raise ConfigError(f"Tough. {fasta.id} contains characters that are not any of A, C, T, G, N, a, c, t, g, n. To "
                                   f"save you from later headaches, anvi'o will not make a database. We recommend you identify "
                                   f"what's up with your sequences. If you want to continue, first reformat the FASTA file "
@@ -5063,7 +5063,7 @@ class ContigsDatabase:
 
             self.progress.append('and %d nts. Now computing: auxiliary ... ' % contig_length)
             if genes_in_contig:
-                nt_position_info_list = self.compress_nt_position_info(contig_name, contig_length, genes_in_contig, genes_in_contigs_dict)
+                nt_position_info_list = self.compress_nt_position_info(contig_name, contig_length, genes_in_contig, genes_in_contigs_dict, args.allow_amino_acid_contig_db)
                 nt_positions_table.append(contig_name, nt_position_info_list)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
@@ -5133,7 +5133,7 @@ class ContigsDatabase:
                                                                             else "(Anvi'o did not create any splits)", quiet=self.quiet)
 
 
-    def compress_nt_position_info(self, contig_name, contig_length, genes_in_contig, genes_in_contigs_dict):
+    def compress_nt_position_info(self, contig_name, contig_length, genes_in_contig, genes_in_contigs_dict, allow_amino_acid_contig_db):
         """Compress info regarding each nucleotide position in a given contig into a small int
 
         Every nucleotide position is represented by four bits depending on whether they occur in a
@@ -5240,7 +5240,7 @@ class ContigsDatabase:
                 # and move on to the next gene on the contig
                 continue
 
-        if len(gene_caller_ids_that_failed):
+        if len(gene_caller_ids_that_failed) and not allow_amino_acid_contig_db:
             progress.reset()
             run.warning(f"There were some problmes while anvi'o was trying to identify which nucleotides occur in which codon "
                         f"positions. These problems occurred in the following gene calls: {', '.join([str(g) for g in gene_caller_ids_that_failed])}. "
