@@ -38,6 +38,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
+                           'anvi_run_scg_taxonomy',
                            'filter_hmm_hits_by_model_coverage',
                            'process_hmm_hits',
                            'combine_sequence_data',
@@ -60,7 +61,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_misc_data',
-                           'anvi_scg_taxonomy',
+                           'anvi_estimate_scg_taxonomy',
                            'make_anvio_state_file',
                            'anvi_import_everything'
                            ])
@@ -78,6 +79,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
+        rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', 'additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--min-model-coverage', '--min-gene-coverage', '--filter-out-partial-gene-calls', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode', 'additional_params']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
@@ -97,6 +99,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
+            'anvi_run_scg_taxonomy': {'run': True, 'threads': 2},
+            'anvi_estimate_scg_taxonomy': {'threads': 5},
             'filter_hmm_hits_by_model_coverage': {'--min-model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
@@ -119,7 +123,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 1},
             'make_misc_data': {'threads': 2},
-            'anvi_scg_taxonomy': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
             'anvi_import_everything': {'threads': 2},
             'run_genomes_sanity_check': True,
@@ -140,7 +143,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
     def init(self):
         """This function is called from within the Snakefile to initialize parameters."""
-        
+
         super().init()
         #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
         self.dirs_dict.update({"LOGS_DIR": os.path.join(self.dirs_dict['HOME'],"00_LOGS")})
@@ -220,11 +223,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         else:
             self.metagenomes_name_list = []
-        
+
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
-            
+
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_genomes_file):
                     # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
@@ -278,7 +281,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         else:
             self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
                              f"to profile the ecology of your proteins and will just be making trees for now!")
-        
+
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
@@ -307,7 +310,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             if jobs_param == False:
                 raise ConfigError("The EcoPhylo workflow did not detect the parameter '--jobs' in `snakemake_additional_params`. "
                                   "Please include '--jobs'. You can read about it with snakemake -h")
-            
+
             if self.metagenomics_workflow_HPC_string:
                 raise ConfigError("You can't clusterize and provide an HPC_string for the metagenomics workflow at the same time. "
                                   "Please choose one or the other. ")
@@ -338,12 +341,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clustering_param_space_list_strings = [str(format(clustering_threshold, '.2f')).split(".")[1] + "_percent" for clustering_threshold in self.clustering_param_space]
         self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
 
+        # global target files
         self.target_files = self.get_target_files()
-
 
     def get_target_files(self):
         """This function creates a list of target files for Snakemake
-        
+
         RETURNS
         =======
         target_files: list
@@ -352,49 +355,78 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        for hmm in self.hmm_dict.keys():
-
-            # Clustering parameter space
-            for clustering_threshold in self.clustering_param_space_list_strings:
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta")
-                target_files.append(target_file)
-
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
-                target_files.append(target_file)
+        for hmm, value in self.hmm_dict.items():
+            group = value['group']
+            hmm_source = value['source']
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{group}", f"{group}_stats.tsv")
+            target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{group}", "state_imported_tree.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_tree.done")
-                target_files.append(target_file)
-            
             else:
                 # PROFILE-MODE
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{hmm}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", f"{group}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
-                target_files.append(target_file)
-                
-                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{group}_summarize.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
-                target_files.append(target_file)
-
-                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
-                target_files.append(target_file)
-        
         return target_files
-    
+
+    def get_target_files_make_anvio_state_file(self):
+        """This function creates a list of target files for make_anvio_state_file
+
+        RETURNS
+        =======
+        target_files: list
+            list of target files for snakemake
+        """
+
+        target_files = []
+
+        target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "{group}_misc.tsv")
+        target_files.append(target_file)
+
+        run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
+        if run_scg_taxonomy:
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
+            target_files.append(target_file)
+
+        return target_files
+
+    def get_input_files_fasta_txt(self):
+        """This function return a list of input file for the rule that makes the fasta-txt file"""
+
+        input_files = []
+
+        for hmm, value in self.hmm_dict.items():
+            group = value['group']
+            input_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'],  f"{group}", f"{group}-external_gene_calls_subset.tsv")
+            input_files.append(input_file)
+
+        return input_files
+
+    def get_input_files_combine_sequence_data(self, group):
+        """This function return a list of input file for the rule combine_sequence_data"""
+
+        input_files = []
+        hmm_source_name = []
+
+        # get list of unique hmm sources
+        for hmm, value in self.hmm_dict.items():
+            if value['group'] == group:
+                hmm_source_name.append((value['source'], value['name']))
+
+        # for samples and unique hmm_source, get the input files
+        for hmm_source, hmm_name in hmm_source_name:
+            input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, hmm_source, hmm_name, f"{sample_name}-{hmm_name}-processed.done") for sample_name in self.names_list]
+            input_files.extend(input_file)
+
+        return input_files
+
     def init_hmm_list_txt(self):
         """This function will sanity check hmm-list.txt
 
@@ -406,11 +438,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         RETURNS
         =======
         self.hmm_dict : dict
-            Dict with hmm as primary key and values: hmm_source, PATH
+            Dict with hmm (source and name) as primary key and values: hmm_name, hmm_source, PATH, group (optional)
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
-        
+
         try:
             hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
         except AttributeError as e:
@@ -425,61 +457,95 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                   f"We are not sure what's wrong, but we can't find a column with title '{column_name}'."
                                   f"Please make sure you have a tsv with the column names: {hmm_list_txt_columns}")
 
-        self.hmm_dict = hmm_df.set_index('name').to_dict('index')
-
-        if any("-" in s for s in self.hmm_dict.keys()):
+        if any("-" in s for s in hmm_df['name']):
             raise ConfigError(f"Please do not use '-' in your external hmm names in: "
                               f"{self.hmm_list_path}. It will make our lives "
                               f"easier with Snakemake wildcards :)")
 
+        # create a unique name based on the hmm source and hmm name
+        hmm_df['id'] = hmm_df['source'] + '_' + hmm_df['name']
+
+        # the group column is optional and used to combine sequences
+        # from multiple HMM source/genes.
+        # if no group provided, group name is hmm id (source + name).
+        # This "group" will be the main hmm wildcards, similarly to the metagenomics workflow
+        if 'group' not in hmm_df:
+            hmm_df['group'] = hmm_df['id']
+
+        # to dict
+        self.hmm_dict = hmm_df.set_index('id').to_dict('index')
+
         # FIXME: this line prints the list of hmm_sources to stdout and I don't want that
         self.internal_hmm_sources = list(anvio.data.hmm.sources.keys())
 
-        for hmm in self.hmm_dict.keys():
-            hmm_source = self.hmm_dict[hmm]['source']
-            hmm_path = self.hmm_dict[hmm]['path']
+        # make a list of unique hmm source
+        self.unique_hmm_source = {}
+
+        # make a list of group id for sanity check
+        unique_group = []
+
+        for hmm, value in self.hmm_dict.items():
+            hmm_name = value['name']
+            hmm_source = value['source']
+            hmm_path = value['path']
 
             if hmm_path == "INTERNAL":
                 if hmm_source not in self.internal_hmm_sources:
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
-                if hmm not in constants.default_scgs_for_taxonomy:
-                    raise ConfigError(f"EcoPhylo currently does not support the HMM {hmm} in {hmm_source} because it is incompatible with anvi-estimate-scg-taxonomy. "
-                                      f"anvi'o is really sorry about this and hopes one of these other HMMs in {hmm_source} will be adequate to profile "
-                                      f"your dataset: {constants.default_scgs_for_taxonomy}")
+                if hmm_name not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+                    raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm_name} in {hmm_source} is not compatible. "
+                                      f"You can either turn off anvi-estimate-scg-taxonomy in the config file, or choose a compatible gene in this set: "
+                                      f"{constants.default_scgs_for_taxonomy}")
 
             if not filesnpaths.is_file_exists(hmm_path, dont_raise=True):
                 if hmm_path == 'INTERNAL':
                     pass
                 else:
-                    raise ConfigError(f"The path to your hmm {hmm} does not exist: {hmm_path}. "
+                    raise ConfigError(f"The path to your hmm {hmm_name} does not exist: {hmm_path}. "
                                       f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
                                       f"If the hmm you want to use is in an internal anvi'o hmm collection e.g. Bacteria_71 "
                                       f"please put 'INTERNAL' for the path.")
-            
+
             if hmm_path != "INTERNAL":
                 sources = u.get_HMM_sources_dictionary([hmm_path])
-                
+
                 for source,value in sources.items():
                     gene = value['genes']
                     if hmm_source != source:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm} to this: {source}")
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm_name} to this: {source}")
                     if len(gene) > 1:
                         raise ConfigError("EcoPhylo can only work with one gene at a time in a hmm directory (at the moment)")
-                    if hmm != gene[0]:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
+                    if hmm_name != gene[0]:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm_name} to this: {gene[0]}")
+
+            if hmm_source not in self.unique_hmm_source:
+                self.unique_hmm_source[hmm_source] = hmm_path
+
+            if value['group'] not in unique_group:
+                unique_group.append(value['group'])
+
+        # if groups combine two or more hmm, then anvi-scg-taxonomy is not compatible with the workflow
+        # TODO: I hope we can change that in the future, probably by making a contigs.db for the representative sequence,
+        # in tree mode or not.
+        if len(unique_group) < len(self.hmm_dict) and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+            raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
+                              f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
+                              f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
+
+
 
     def sanity_check_samples_txt(self):
-        """This function will sanity check the samples.txt file. 
-        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the 
-        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit 
-        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is 
-        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo 
-        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus, 
-        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is 
+        """This function will sanity check the samples.txt file.
+        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the
+        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit
+        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is
+        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo
+        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus,
+        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is
         not exited pre-maturely.
-       
+
         FIXME: This is a temporary solution and should moved into a utils so it can be shared by all anvio workflows.
 
         PARAMETERS
@@ -489,14 +555,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """
         filesnpaths.is_file_exists(self.samples_txt_file)
         filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-        
+
         samples_txt_web_string = "Please read more about the samples.txt file here: https://anvio.org/help/main/artifacts/samples-txt/"
         try:
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
         except AttributeError as e:
             raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
                               f"This is what we know: {self.samples_txt_file}\n samples_txt_web_string")
-        
+
         if 'sample' not in list(self.samples_information.columns):
             raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
                               f"We are not sure what's wrong, but we can't find a column with title 'sample'.{samples_txt_web_string}")
