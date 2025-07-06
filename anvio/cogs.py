@@ -389,17 +389,20 @@ class COGs:
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
                              'were among the ones that were not described in the raw data. Here is the list of %d COG IDs that '
-                             'were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
+                             'were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)), lc='yellow')
 
         if len(missing_ncbi_protein_ids_found):
+            missing_ncbi_protein_ids_msg = ', '.join([str(s) for s in missing_ncbi_protein_ids_found])
             self.run.warning("Well. Your COGs were successfully added to the database, but there were some things anvi'o brushed "
                              "off under the rug. There were %d genes in your database that hit %d protein IDs in NCBIs COGs database, "
                              "but those protein IDs were not described in the table that associates protein IDs to COG IDs. Our manual "
                              "inspections before suggested that these hits are usually matching to very poorly described functions that "
                              "are not mature enough to warrant a new COG id, or to be associated with an existing one. While that is "
                              "our interpretation, we may be totally wrong, and we welcome you to double-check these. Here are the "
-                             "offending protein IDs if you would like to dig deeper: '%s'." % \
-                                        (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found), ', '.join([str(s) for s in missing_ncbi_protein_ids_found])))
+                             "offending protein IDs if you would like to dig deeper: " % \
+                                        (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found)), lc='yellow')
+
+            self.run.info_single(missing_ncbi_protein_ids_msg, nl_after=1, level=0, cut_after=0)
 
         if len(in_proteins_FASTA_not_in_cogs_CSV):
             # so some of the hits represented in the FASTA file from the NCBI were not put in the
