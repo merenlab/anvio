@@ -13,7 +13,7 @@ These terms are explained on the [anvi'o vocabulary page.](http://merenlab.org/v
 This information is necessary to run anvi'o programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s. You can also interact with a profile database using programs like %(anvi-interactive)s.
 
 Technically, "profile-db" refers to a profile database that contains the data from several samples -- in other words, the result of running %(anvi-merge)s on several %(single-profile-db)s. However, since a %(single-profile-db)s has a lot of the functionality of a profile-db, it might be easier to think of a profile database as a header referring to both single-profile-dbs and profile-dbs (which can also be called a merged-profile-dbs). For simplicity's sake, since most users are dealing with multiple samples, the name was shortened to just profile-db. The following are a list of differences in functionality between a single profile database and a merged profile database:
-* You can run %(anvi-cluster-contigs)s or %(anvi-mcg-classifier)s on only a merged profile database (or profile-db), since they look at the allignment data in many samples
+* You can run %(anvi-cluster-contigs)s on only a merged profile database (or profile-db), since they look at the allignment data in many samples
 * You cannot run %(anvi-merge)s or %(anvi-import-taxonomy-for-layers)s on a merged profile database, only on a %(single-profile-db)s.
 
 ## How to make a profile database

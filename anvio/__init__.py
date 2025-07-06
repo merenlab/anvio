@@ -1269,6 +1269,14 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
+                ),
     'unique-genes': (
             ['--unique-genes'],
             {'default': False,
@@ -2171,8 +2179,9 @@ D = {
             ['-O', '--output-file-prefix'],
             {'metavar': 'FILENAME_PREFIX',
              'type': str,
-             'help': "A prefix to be used while naming the output files (no file type "
-                     "extensions please; just a prefix)."}
+             'help': "A prefix to be used while naming the output files. No file type "
+                     "extensions please; just a prefix -- all ouptut file names and "
+                     "extensions will be appended to this prefix."}
                 ),
     'long-format': (
             ['--long-format'],
@@ -3195,6 +3204,19 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'no-hmmer-prefiltering': (
+            ['--no-hmmer-prefiltering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the initial set of hits we get back from HMMER are subject to its default e-value "
+                     "threshold of 10. However, if you are working with a very large dataset, this pre-filtering based "
+                     "on e-value might be too stringent and lead to missing some legitimate hits. If this is your case, "
+                     "you can use this flag to turn off the HMMER pre-filtering based on e-value (instead we will use `-T "
+                     "-20` and `-domT -20`). All hits we get from HMMER will still be subject to later bitscore-based "
+                     "filtering and the annotation heuristic to ensure we don't let in any garbage annotations (unless you "
+                     "use the `--keep-all-hits` or the `--skip-bitscore-heuristic` flags, respectively). See "
+                     "https://github.com/merenlab/anvio/issues/2446 for more details."}
                 ),
     'skip-binary-relations': (
             ['--skip-binary-relations'],
