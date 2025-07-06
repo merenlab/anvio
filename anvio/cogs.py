@@ -670,13 +670,6 @@ class COGsSetup:
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
 
-        # citation, if possible
-        if self.COG_version in COG_REFERENCES:
-            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
-            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
-                             f"We recommend citing the following reference for this database when you publish your findings : "
-                             f"{ref_str}", lc='green', header="CITATION")
-
 
     def get_formatted_db_paths(self):
         formatted_db_paths = {}
@@ -742,6 +735,13 @@ class COGsSetup:
         if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read().strip() != COG_DATA_VERSION:
             raise ConfigError("The version of your COG data directory is different than what anvi'o hoping to see. "
                                "It seems you need to (re)run anvi'o script to download and format COG data from NCBI.")
+
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
 
         # get raw files
         self.get_raw_data()
