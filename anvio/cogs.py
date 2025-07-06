@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Making sense of COGs.
+    Making sense of COGs
 """
 
 import os
@@ -700,7 +700,7 @@ class COGsSetup:
 
         for file_name in essential_files:
             if not os.path.exists(essential_files[file_name]):
-                raise ConfigError("At least one essential formatted file that is necesary for COG operations is not where it should "
+                raise ConfigError("At least one essential formatted file that is necessary for COG operations is not where it should "
                                    "be ('%s'). You should run COG setup, with the flag `--reset` if necessary, to make sure things "
                                    "are in order." % essential_files[file_name])
 
@@ -864,8 +864,7 @@ class COGsSetup:
             lines = open(input_file_path, encoding='ISO-8859-1').readlines()
 
         # some lines may not have the expected number of columns, and it is a good idea to
-        # keep track of them explicilty so the careful users have an idea about what is
-        # goin on
+        # keep track of them explicitly so the careful users have an idea about what is going on
         bad_lines = []
         line_counter = 0
 
@@ -1065,7 +1064,7 @@ class COGsSetup:
 
 
     def check_raw_data_hash_and_existence(self, input_file_path, output_file_path):
-        """Checks the cheksum of each downloaded file to ensure succesful download."""
+        """Checks the checksum of each downloaded file to ensure successful download."""
         progress.new('Checking checksums and file existence')
 
         # Checksum file either provided by NCBI or us
@@ -1082,7 +1081,7 @@ class COGsSetup:
                              f"danger since failed downloads often lead to catastrophic errors instead of "
                              f"quiet omission of such problems :)")
 
-        # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
+        # Get a dictionary of checksums, the file is formatted as "checksum filename" per line
         checksums = {}
         for line in open(input_file_path, 'r').readlines():
             stripped = line.strip('\n').split(' ')
@@ -1098,7 +1097,7 @@ class COGsSetup:
             if not os.path.exists(file_path):
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
-            # Check file present in checksum
+            # Check file present in checksum file
             if file_name not in checksums.keys() and file_name != "checksum.md5.txt" and file_name != 'CHECKSUMS-FOR-COG-DATA.txt':
                 self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
                                  f"continue despite this, but this is unexpected.")
