@@ -459,7 +459,11 @@ class DB:
 
 
     def execute_safely(self, func, *args):
-        """Execute an SQLite instruction safely and by handlng database locked errors gracefully"""
+        """Execute an SQLite instruction safely and by handlng database locked errors gracefully
+
+        See https://github.com/merenlab/anvio/pull/2414 for details and example code to test this
+        functionality.
+        """
 
         retries = 0
         while retries <= self.max_retries:
