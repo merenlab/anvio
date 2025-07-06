@@ -33,7 +33,7 @@ def main(args):
 
         line_counter += 1
 
-        fields = line.strip('\n').split('\t')
+        fields = [f.strip() for f in line.strip('\n').split('\t')]
 
         if line_counter == 1:
             if args.exclude_columns:
@@ -43,8 +43,11 @@ def main(args):
                 field_indices_to_include = range(0, len(fields))
 
             if args.code_columns:
-                field_names_for_code_columns = [n.strip() for n in args.code_columns.split(',')]
-                field_indices_for_code_columns = [i for i in range(0, len(fields)) if fields[i] in field_names_for_code_columns]
+                if args.code_columns == 'ALL-COLUMNS':
+                    field_indices_for_code_columns = [i for i in range(0, len(fields))]
+                else:
+                    field_names_for_code_columns = [n.strip() for n in args.code_columns.split(',')]
+                    field_indices_for_code_columns = [i for i in range(0, len(fields)) if fields[i] in field_names_for_code_columns]
 
         if not num_fields:
             num_fields = len(fields)
@@ -55,7 +58,7 @@ def main(args):
                                   f"line {line_counter} had {len(fields)} of them :/")
 
         if line_counter == 1:
-            print("|" + "|".join([f"**{fields[i]}**" for i in field_indices_to_include]) + "|")
+            print("|" + "|".join([f"**`{fields[i]}`**" for i in field_indices_to_include]) + "|")
             print("|" + "|".join([":--"] * len(field_indices_to_include)) + "|")
         else:
             output = []
@@ -79,7 +82,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
     parser.add_argument('--max-num-lines-to-show', type=int, default=None, help="Maximum number of lines to show.")
     parser.add_argument('--exclude-columns', type=str, default=None, help="Comma-separated list of column names to exclude from the output.")
-    parser.add_argument('--code-columns', type=str, default=None, help="Comma-separated list of column names to be wrapped with '`' characters.")
+    parser.add_argument('--code-columns', type=str, default=None, help="Comma-separated list of column names to be wrapped with '`' characters. "
+                "If you pass 'ALL-COLUMNS' as a parameter rather than individual ones, all columns will be wrapped with '`' characters because "
+                "you're welcome.")
     args = parser.get_args(parser)
 
     try:
