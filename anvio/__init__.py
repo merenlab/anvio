@@ -443,13 +443,14 @@ D = {
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'default': constants.default_gene_caller,
-             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
-                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
-                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
-                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
-                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
+             'default': None,
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     "may require an explicit mentioning of which one to use. The default gene caller is identified automatically "
+                     "in most cases (based on whether the most frequent gene calls match to a known gene caller in anvi'o), but if "
+                     "you have a contigs-db generated with `--external-gene-callers` or something, you may have to pay extra "
+                     "attention here. Also, some HMM collections may add new gene calls into a given contigs-db as an ad-hoc fashion, "
+                     "so if you want to see all the options available to you in a given contigs database, please run the program "
+                     "`anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
