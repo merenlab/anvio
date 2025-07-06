@@ -90,8 +90,8 @@ def main(args):
     gene_coverages_file = open(gene_coverages_path, 'w')
     gene_detection_file = open(gene_detection_path, 'w')
 
-    header_coverages = ['key'] + profile_db.p_meta['samples']
-    header_detection = ['key'] + profile_db.p_meta['samples']
+    header_coverages = ['gene_callers_id'] + profile_db.p_meta['samples']
+    header_detection = ['gene_callers_id'] + profile_db.p_meta['samples']
 
     gene_coverages_file.write('\t'.join(header_coverages) + '\n')
     gene_detection_file.write('\t'.join(header_detection) + '\n')

@@ -38,6 +38,7 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('keep-all-hits'), **anvio.K('keep-all-hits'))
     groupO.add_argument(*anvio.A('log-bitscores'), **anvio.K('log-bitscores'))
     groupO.add_argument(*anvio.A('skip-brite-hierarchies'), **anvio.K('skip-brite-hierarchies'))
+    groupO.add_argument(*anvio.A('no-hmmer-prefiltering'), **anvio.K('no-hmmer-prefiltering'))
     groupO.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupH = parser.add_argument_group('BITSCORE RELAXATION HEURISTIC', "Sometimes, KEGG-provided bitscore thresholds "
