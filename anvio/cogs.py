@@ -40,8 +40,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 P = terminal.pluralize
 
-J = lambda x, y: os.path.join(x, y)
-
 # if you add a new database version, please do not forget to add its reference here
 COG_REFERENCES = {'COG24': {
                             'ref_text': 'Galperin et al. 2025',
@@ -251,7 +249,7 @@ class COGs:
 
 
         if not aa_sequences_file_path:
-            aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
+            aa_sequences_file_path = os.path.join(self.temp_dir_path, 'aa_sequences.fa')
             dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
                                                                                   report_aa_sequences=True,
                                                                                   simple_headers=True)
@@ -427,9 +425,9 @@ class COGs:
         diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
         diamond.target_fasta = self.available_db_search_program_targets['diamond']
-        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
-        diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
-        diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
+        self.run.log_file_path = self.log_file_path or os.path.join(self.temp_dir_path, 'log.txt')
+        diamond.search_output_path = os.path.join(self.temp_dir_path, 'diamond-search-results')
+        diamond.tabular_output_path = os.path.join(self.temp_dir_path, 'diamond-search-results.txt')
 
         diamond.max_target_seqs = 1
 
@@ -443,8 +441,8 @@ class COGs:
         blast = BLAST(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
         blast.target_fasta = self.available_db_search_program_targets['blastp']
-        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
-        blast.search_output_path = J(self.temp_dir_path, 'blast-search-results.txt')
+        self.run.log_file_path = self.log_file_path or os.path.join(self.temp_dir_path, 'log.txt')
+        blast.search_output_path = os.path.join(self.temp_dir_path, 'blast-search-results.txt')
         blast.max_target_seqs = 1
 
         blast.blast()
@@ -655,7 +653,7 @@ class COGsSetup:
             self.COG_base_dir = os.environ['ANVIO_COG_DATA_DIR']
             self.COG_data_source = 'The environmental variable.'
         else:
-            self.COG_base_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+            self.COG_base_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/COG')
             self.COG_data_source = "The anvi'o default."
 
         self.COG_base_dir = os.path.abspath(os.path.expanduser(self.COG_base_dir))
@@ -665,8 +663,8 @@ class COGsSetup:
         self.run.info('COG data source', self.COG_data_source)
         self.run.info('COG base directory', self.COG_base_dir)
 
-        self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
-        self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
+        self.COG_data_dir_version = os.path.join(self.COG_data_dir, '.VERSION')
+        self.raw_NCBI_files_dir = os.path.join(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
 
         self.files = self.cog_files[self.COG_version]
 
@@ -677,13 +675,13 @@ class COGsSetup:
     def get_formatted_db_paths(self):
         formatted_db_paths = {}
 
-        diamond_db_path = J(self.COG_data_dir, 'DB_DIAMOND')
+        diamond_db_path = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
         if os.path.exists(diamond_db_path):
-            formatted_db_paths['diamond'] = J(diamond_db_path, 'COG')
+            formatted_db_paths['diamond'] = os.path.join(diamond_db_path, 'COG')
 
-        blast_db_path = J(self.COG_data_dir, 'DB_BLAST')
+        blast_db_path = os.path.join(self.COG_data_dir, 'DB_BLAST')
         if os.path.exists(blast_db_path):
-            formatted_db_paths['blastp'] = J(blast_db_path, 'COG/COG.fa')
+            formatted_db_paths['blastp'] = os.path.join(blast_db_path, 'COG/COG.fa')
 
         return formatted_db_paths
 
@@ -696,10 +694,10 @@ class COGsSetup:
         essential_files = {}
         for v in list(self.files.values()):
             if v['type'] == 'essential':
-                essential_files[v['formatted_file_name']] = J(self.COG_data_dir, v['formatted_file_name'])
+                essential_files[v['formatted_file_name']] = os.path.join(self.COG_data_dir, v['formatted_file_name'])
 
         # add the missing COG IDs file into the list:
-        essential_files['MISSING_COG_IDs.cPickle'] = J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle')
+        essential_files['MISSING_COG_IDs.cPickle'] = os.path.join(self.COG_data_dir, 'MISSING_COG_IDs.cPickle')
 
         for file_name in essential_files:
             if not os.path.exists(essential_files[file_name]):
@@ -766,7 +764,7 @@ class COGsSetup:
                              "be fully compatible. Anvi'o thanks everyone for their contributions." % \
                                                         (len(missing_cog_ids), len(self.cogs_found_in_proteins_fasta)))
 
-        dictio.write_serialized_object(missing_cog_ids, J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
+        dictio.write_serialized_object(missing_cog_ids, os.path.join(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
 
 
     def format_p_id_to_cog_id_cPickle(self, input_file_path, output_file_path):
@@ -997,14 +995,14 @@ class COGsSetup:
         progress.end()
 
         if utils.is_program_exists('diamond', dont_raise=True):
-            output_dir = J(self.COG_data_dir, 'DB_DIAMOND')
+            output_dir = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COG')
-            log_file_path = J(output_dir, 'log.txt')
+            output_db_path = os.path.join(output_dir, 'COG')
+            log_file_path = os.path.join(output_dir, 'log.txt')
 
             self.run.info('Diamond log', log_file_path)
 
@@ -1017,14 +1015,14 @@ class COGsSetup:
                              "generate a search database for it. Remember this when/if things go South.")
 
         if utils.is_program_exists('makeblastdb', dont_raise=True) and utils.is_program_exists('blastp', dont_raise=True):
-            output_dir = J(self.COG_data_dir, 'DB_BLAST')
+            output_dir = os.path.join(self.COG_data_dir, 'DB_BLAST')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COG')
-            log_file_path = J(output_dir, 'log.txt')
+            output_db_path = os.path.join(output_dir, 'COG')
+            log_file_path = os.path.join(output_dir, 'log.txt')
 
             self.run.info('BLAST log', log_file_path)
 
@@ -1048,7 +1046,7 @@ class COGsSetup:
             if not 'url' in self.files[file_name]:
                 continue
 
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
             if not os.path.exists(file_path):
                 utils.download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
 
@@ -1058,12 +1056,12 @@ class COGsSetup:
         self.check_raw_data_hash_and_existence(None, None)
 
         for file_name in self.files:
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
 
             if not 'func' in self.files[file_name]:
                 continue
 
-            self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
+            self.files[file_name]['func'](file_path, os.path.join(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
 
     def check_raw_data_hash_and_existence(self, input_file_path, output_file_path):
@@ -1072,11 +1070,11 @@ class COGsSetup:
 
         # Checksum file either provided by NCBI or us
         if self.COG_version in ['COG20', 'COG24']:
-            input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
+            input_file_path = os.path.join(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
         elif self.COG_version in ['COG14', 'arCOG14']:
             # Get check_.md5.txt file from anvio/misc
-            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
+            input_file_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
 
         else:
             self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
@@ -1094,7 +1092,7 @@ class COGsSetup:
 
         # For each file, check existence and check checksum
         for file_name in self.files:
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
 
             # Check file exists
             if not os.path.exists(file_path):
