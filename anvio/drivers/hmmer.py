@@ -52,6 +52,7 @@ class HMMer:
 
         self.tmp_dirs = []
         self.target_files_dict = {}
+        self.number_of_sequences = {}
 
         acceptable_programs = ["hmmscan", "hmmsearch"]
         if self.program_to_use not in acceptable_programs:
@@ -61,11 +62,15 @@ class HMMer:
         for source in target_files_dict:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
-
+            
             # create splitted fasta files inside tmp directory
-            self.target_files_dict[source] = utils.split_fasta(target_files_dict[source],
+            split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
-                                                               output_dir=tmp_dir)
+                                                               output_dir=tmp_dir,
+                                                               return_number_of_sequences=True)
+            
+            self.target_files_dict[source] = split_fastas
+            self.number_of_sequences[source] = number_of_sequences
 
     def verify_hmmpress_output(self, hmm_path):
         """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
@@ -167,7 +172,8 @@ class HMMer:
                                           "to overwrite things. Please either remove the file or rename your "
                                           "desired output.")
 
-
+        number_of_sequences = self.number_of_sequences[target]
+        
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')
@@ -176,6 +182,7 @@ class HMMer:
         self.run.info('Domain', domain if domain else 'N/A')
         self.run.info('HMM model path', hmm)
         self.run.info('Number of genes in HMM model', num_genes_in_model or 'unknown')
+        self.run.info('Number of sequences in database', number_of_sequences or 'unknown')
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
         if alphabet in ['DNA', 'RNA']:
@@ -225,7 +232,6 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
-
         thread_num = 0
         for partial_input_file in self.target_files_dict[target]:
             log_file = partial_input_file + '_log'
@@ -246,12 +252,16 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
+                                '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                                 '-o', output_file, *noise_cutoff_terms.split(),
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
+                                '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 if 'domtable' in desired_output:
@@ -260,12 +270,16 @@ class HMMer:
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
                                 '--domtblout', domtable_file,
+                                '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
                 else:
                     cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                                 '-o', output_file,
                                 '--cpu', cores_per_process,
                                 '--tblout', table_file,
+                                '-Z', number_of_sequences,
+                                '--domZ', number_of_sequences,
                                 hmm, partial_input_file]
 
             t = multiprocessing.Process(target=self.hmmer_worker, args=(partial_input_file,
@@ -428,36 +442,60 @@ class HMMer:
                 merged_file_buffer.write(f.read())
 
 
-    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
+    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock, lines_per_chunk=1000000):
         """Append table output to the main file.
 
-        Lines starting with '#' (ie, header lines) are ignored.
+        Lines starting with '#' (i.e., header lines) are ignored.
         """
 
         detected_non_ascii = False
         lines_with_non_ascii = []
+        output_lines = []
+
+        def process_batch(line_batch, base_line_number):
+            nonlocal detected_non_ascii
+            local_output = []
+            for i, line_bytes in enumerate(line_batch):
+                line_number_actual = base_line_number + i
+                try:
+                    line = line_bytes.decode('ascii')
+                except UnicodeDecodeError:
+                    decoded = line_bytes.decode('ascii', 'ignore')
+                    if len(decoded) != len(line_bytes):
+                        detected_non_ascii = True
+                        lines_with_non_ascii.append(line_number_actual)
+                    line = decoded
+                if not line.startswith('#'):
+                    local_output.append(line.rstrip())
+            return local_output
 
         with open(table_output_file, 'rb') as hmm_hits_file:
-            line_counter = 0
+            batch = []
+            base_line_number = 1
+
             for line_bytes in hmm_hits_file:
-                line_counter += 1
-                line = line_bytes.decode('ascii', 'ignore')
+                batch.append(line_bytes)
+                if len(batch) >= lines_per_chunk:
+                    output_lines.extend(process_batch(batch, base_line_number))
+                    base_line_number += len(batch)
+                    batch = []
 
-                if not len(line) == len(line_bytes):
-                    lines_with_non_ascii.append(line_counter)
-                    detected_non_ascii = True
+            if batch:
+                filtered_lines = process_batch(batch, base_line_number)
+                if filtered_lines:
+                    filtered_text = "\n".join(filtered_lines) + "\n"
+                    with buffer_write_lock:
+                        merged_file_buffer.write(filtered_text)
 
-                if line.startswith('#'):
-                    continue
-
-                with buffer_write_lock:
-                    merged_file_buffer.write(line)
-
+        # Log warning if non-ASCII characters were detected
         if detected_non_ascii:
-            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
-                             "the file '%s' and cleared them. Here are the line numbers with non-ascii characters: %s. "
-                             "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                                                 (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
+            self.run.warning(
+                "Just a heads-up, Anvi'o HMMer parser detected non-ASCII characters while processing "
+                f"the file '{table_output_file}' and cleared them. Here are the line numbers with non-ASCII characters: "
+                f"{', '.join(map(str, lines_with_non_ascii))}. You may want to check those lines with a command like "
+                "\"awk 'NR==<line number>' <file path> | cat -vte\"."
+            )
+
 
 
     def clean_tmp_dirs(self):

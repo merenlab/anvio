@@ -909,7 +909,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None, return_number_of_sequences=False):
     """Splits a given FASTA file into multiple parts.
 
     Please note that this function will not clean after itself. You need to take care of the
@@ -929,12 +929,15 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     output_dir : str, path
         Output directory. By default, anvi'o will store things in a new directory under
         the system location for temporary files
+    return_number_of_sequences : bool
+        Whether to return the number of sequences in the original fasta file
 
     Returns
     =======
     output_file_paths : list
         Array with `parts` number of elements where each item is an output file path
-
+    length : int, optional
+        The number of sequences in the original fasta file. Only returnd if 'return_number_of_sequences' is True
     """
     if not file_name_prefix:
         file_name_prefix = os.path.basename(input_file_path)
@@ -999,7 +1002,11 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     source.close()
 
-    return output_file_paths
+    if return_number_of_sequences:
+        return output_file_paths, length
+    
+    else:
+        return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -3548,11 +3555,21 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     for sample_name in samples_txt:
         check_sample_id(sample_name)
 
-        if not os.path.exists(samples_txt[sample_name]['r1']) or not os.path.exists(samples_txt[sample_name]['r2']):
-            samples_with_missing_files.append(sample_name)
+        r1_sample_paths = samples_txt[sample_name]['r1'].split(',')
+        r2_sample_paths = samples_txt[sample_name]['r2'].split(',')
 
-        if samples_txt[sample_name]['r1'] == samples_txt[sample_name]['r2']:
-            samples_with_identical_r1_r2_files.append(sample_name)
+        if len(r1_sample_paths) != len(r2_sample_paths):
+            raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
+                              f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
+                              f"fix this in your samples-txt file.")
+        
+        for path in r1_sample_paths + r2_sample_paths:
+            if not os.path.exists(path):
+                samples_with_missing_files.append(sample_name)
+
+        for i in range(len(r1_sample_paths)):
+            if r1_sample_paths[i] == r2_sample_paths[i]:
+                samples_with_identical_r1_r2_files.append(sample_name)
 
     if len(samples_with_missing_files):
         raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
@@ -3562,7 +3579,6 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     if len(samples_with_identical_r1_r2_files):
         raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
                           f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
-
 
     return samples_txt
 
