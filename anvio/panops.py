@@ -24,8 +24,11 @@ from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree, set_
 from scipy.spatial.distance import cdist, squareform
 import random
 
-from itertools import chain
-
+import sys
+import subprocess
+import anvio.fastalib as f
+from Bio import SeqIO, SearchIO
+from Bio.SeqRecord import SeqRecord
 from itertools import chain
 from scipy.optimize import curve_fit
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -1337,12 +1340,15 @@ class SyntenyGeneCluster():
         self.external_genomes = A('external_genomes')
         self.genomes_storage = A('genomes_storage')
         self.pan_graph_yaml = A('pan_graph_yaml')
+        self.output_dir = A('output_dir')
 
         if self.pan_graph_yaml:
             with open(self.pan_graph_yaml) as file:
                 self.yaml_file = yaml.safe_load(file)
         else:
             self.yaml_file = {}
+
+        self.genome_reverse = []
 
         if A('genome_names'):
             self.genome_names = A('genome_names').split(',')
@@ -1358,6 +1364,118 @@ class SyntenyGeneCluster():
         else:
             self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources()
         # self.db_mining_df = pd.DataFrame()
+
+
+    def get_num_contigs_and_genome_length(self, file_path):
+        fasta = f.SequenceSource(file_path)
+
+        num_contigs = 0
+        length = 0
+
+        while next(fasta):
+            num_contigs += 1
+            length += len(fasta.seq)
+
+        return(num_contigs, length)
+
+
+    def reorient_contigs(self, prioritize='genome_size', reference_fasta = None):
+
+        self.run.warning(None, header="Reorient contigs data", lc="green")
+
+        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
+        external_genomes.set_index("name", inplace=True)
+
+        if not self.genome_names:
+            self.genome_names = [genome for genome, contigs_db_path in external_genomes.iterrows()]
+
+        input_fasta_files = []
+        for genome, contigs_db_path in external_genomes.iterrows():
+            if genome in self.genome_names:
+                fasta_file = self.output_dir + '/' + genome + '.fa'
+                utils.export_sequences_from_contigs_db(contigs_db_path.item(), fasta_file)
+                input_fasta_files += [fasta_file]
+
+        genome_properties = {}
+
+        best_length = 0
+        best_num_contigs = sys.maxsize
+
+        for fasta_file in input_fasta_files:
+            num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
+            genome_properties[fasta_file] = {'num_contigs': num_contigs, 'length': length}
+
+            self.run.info_single(f"{os.path.basename(fasta_file)} ({('contig', num_contigs)}; {('nt', length)})")
+
+            if prioritize == 'genome_size' and length > best_length:
+                reference_fasta = fasta_file
+                best_length = length
+            elif prioritize == 'number_of_contigs' and num_contigs < best_num_contigs:
+                reference_fasta = fasta_file
+                best_num_contigs = num_contigs
+            elif prioritize == 'number_of_contigs' and num_contigs == best_num_contigs:
+                if length > best_length:
+                    reference_fasta = fasta_file
+                    best_length = length
+            else:
+                # wtf case
+                pass
+
+        self.run.info_single(f"Method to select reference {'Minimum number of contigs' if prioritize == 'number_of_contigs' else 'Maximum length'}")
+        self.run.info_single(f"Reference FASTA is {reference_fasta}")
+
+        if genome_properties[reference_fasta]['num_contigs'] != 1:
+            if prioritize == 'genome_size':
+                raise ConfigError("Sadly, the reference genome anvi'o chose for you based on geonome size priority seems to have multiple contigs, "
+                                "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
+                                "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
+                                "flag if you have a complete genome.")
+            elif prioritize == 'number_of_contigs':
+                raise ConfigError("The genome in your collection with the smallest number of contigs is still not a complete genome :( There is nothing "
+                                "this program can do for you at this point. Sorry!")
+            else:
+                # wtf case
+                pass
+
+
+        for fasta_file in input_fasta_files:
+            blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
+            num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
+            
+            if fasta_file != reference_fasta:
+                cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
+                subprocess.run(cmd_line, text=True, capture_output=True)
+
+                qresult = SearchIO.read(blast_result_file, 'blast-xml')
+                fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
+
+                hits = 0
+                for contig in qresult:
+
+                    original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
+
+                    original_record_sequence = original_record.seq
+                    reversed_record_sequence = original_record.seq.reverse_complement()
+
+                    reoriented_record_hit = contig[0].hit.seq.replace("-", "")
+                    reoriented_record_sequence = ""
+
+                    if reoriented_record_hit in original_record_sequence:
+                        reoriented_record_sequence = original_record_sequence
+                    elif reoriented_record_hit in reversed_record_sequence:
+                        reoriented_record_sequence = reversed_record_sequence
+                        self.genome_reverse += [contig.id]
+                        hits += 1
+                    else:
+                        pass
+
+                    if reoriented_record_sequence:
+                        self.run.info_single(f"Reversed {hits} out of {num_contigs} contigs for fasta {fasta_file}")
+
+            else:
+                self.run.info_single(f"Reversed 0 out of {num_contigs} contigs for reference fasta {fasta_file}")
+            
+        self.run.info_single(f"Done.")
 
 
     def yaml_mining(self):
@@ -1403,6 +1521,8 @@ class SyntenyGeneCluster():
             Dataframe containing gene call informations present in the anvi'o dbs.
         """
 
+        self.reorient_contigs()
+
         self.run.warning(None, header="Loading data from database", lc="green")
 
         filesnpaths.is_file_tab_delimited(self.external_genomes)
@@ -1425,21 +1545,24 @@ class SyntenyGeneCluster():
         if not self.genome_names:
             self.genome_names = [genome for genome, contigs_db_path in external_genomes.iterrows()]
 
+        # TODO trna and rrna gene cluster update also include more types and split trna and rrna in individual sets
+        # TODO Should the reversed once also have reversed gene call orientation
         db_mining_list = []
         for genome, contigs_db_path in external_genomes.iterrows():
             if genome in self.genome_names:
                 args = argparse.Namespace(contigs_db=contigs_db_path.item())
                 contigs_db = dbops.ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-
                 contigs_db.init_functions()
+
                 gene_function_calls_df = pd.DataFrame.from_dict(contigs_db.gene_function_calls_dict, orient="index").rename_axis("gene_caller_id").reset_index()
 
                 # all_gene_calls = caller_id_cluster_df['gene_caller_id'].values.tolist()
                 # genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.get_sequences_for_gene_callers_ids(all_gene_calls, include_aa_sequences=True, simple_headers=True)[1], orient="index").rename_axis("gene_caller_id").reset_index()
                 genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.genes_in_contigs_dict, orient="index").rename_axis("gene_caller_id").reset_index()
-                trnas = genes_in_contigs_df.query("source == 'Transfer_RNAs' | source == 'Ribosomal_RNA_16S' | source == 'Ribosomal_RNA_23S'").index.tolist() 
 
+                trnas = genes_in_contigs_df.query("source == 'Transfer_RNAs' | source == 'Ribosomal_RNA_16S' | source == 'Ribosomal_RNA_23S'")['gene_caller_id'].tolist() 
                 caller_id_cluster = {**gene_cluster_dict[genome], **{trna:"GC_00000000" for trna in trnas}}
+
                 caller_id_cluster_df = pd.DataFrame.from_dict(caller_id_cluster, orient="index", columns=["gene_cluster"]).rename_axis("gene_caller_id").reset_index()
                 # caller_id_cluster_df["syn_cluster"] = ""
 
@@ -1447,7 +1570,7 @@ class SyntenyGeneCluster():
                 additional_info_df.drop(self.functional_annotation_sources_available, axis=1, errors='ignore', inplace=True)
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster", how="left")
-                joined_contigs_df.sort_values(["contig", "start", "stop"], axis=0, ascending=True, inplace=True)
+
                 joined_contigs_df.fillna("None", inplace=True)
                 joined_contigs_df['genome'] = genome
                 joined_contigs_df.set_index(["genome", "gene_caller_id"], inplace=True)
@@ -1457,10 +1580,19 @@ class SyntenyGeneCluster():
                     joined_contigs_df[[source + '_ID', source + 'TEXT', source + '_E_VALUE']] = pd.DataFrame(joined_contigs_df[source].values.tolist(), index=joined_contigs_df.index)
                     joined_contigs_df.drop(source, inplace=True, axis=1)
 
-                # return(caller_id_cluster_df, gene_function_calls_df, genes_in_contigs_df, additional_info_df)
-                # return(joined_contigs_df)
+                joined_contigs_df.reset_index(drop=False, inplace=True)
 
-                db_mining_list += [joined_contigs_df]
+                for contig, group in joined_contigs_df.groupby(["contig"]):
+
+                    if contig in self.genome_reverse:
+                        group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, False, False], ignore_index=True, inplace=True)
+                    else:
+                        group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, True, True], ignore_index=True, inplace=True)
+
+                    group.rename_axis("position", inplace=True)
+                    group.reset_index(drop=False, inplace=True)
+
+                    db_mining_list += [group]
                 self.run.info_single(f"Successfully mined data from genome {genome}.")
             else:
                 self.run.info_single(f"Skipped genome {genome} on users request.")
@@ -1704,7 +1836,7 @@ class SyntenyGeneCluster():
             genome, contig = name
 
             group.reset_index(drop=False, inplace=True)
-            group.sort_values(["start", "stop"], axis=0, ascending=True, inplace=True)
+            group.sort_values('position', axis=0, ascending=True, inplace=True)
             gene_cluster_info = group[['gene_cluster', 'gene_caller_id']].values.tolist()
             gene_cluster_contig_order[(genome, contig)] = [gene_cluster for gene_cluster, gene_caller_id in gene_cluster_info]
 
@@ -1717,7 +1849,8 @@ class SyntenyGeneCluster():
                     gene_cluster_positions[gene_cluster][(genome, contig)] += [(i, gene_caller_id)]
 
         j = 0
-        for gene_cluster, genome_contig_gene_cluster_positions in gene_cluster_positions.items():
+        self.progress.new("Contextualize gene clusters")
+        for z, (gene_cluster, genome_contig_gene_cluster_positions) in enumerate(gene_cluster_positions.items()):
             k = 0
             while True:
                 gene_cluster_k_mer_genome_frequency = {}
@@ -1751,7 +1884,9 @@ class SyntenyGeneCluster():
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
                         j += 1
                     break
+            self.progress.update(f"{str(z+1).rjust(len(str(len(gene_cluster_positions))), ' ')} / {len(gene_cluster_positions)}")
 
+        self.progress.end()
         gene_cluster_id_contig_positions_df = pd.DataFrame.from_dict(gene_cluster_id_contig_positions, orient='index')
         db_mining_df = db_mining_df.merge(gene_cluster_id_contig_positions_df, on=['genome', 'contig', 'gene_caller_id'], how='inner')
 
@@ -1765,9 +1900,11 @@ class SyntenyGeneCluster():
         self.run.info_single(f'{value_counts.get("rearranged", 0)} rearranged synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
-
         self.run.info_single(f'{len(db_mining_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
-        self.run.info_single("Done.")
+        self.run.info_single("Done.")        
+
+        if len(db_mining_df["syn_cluster"].unique()) > 2 * len(db_mining_df["gene_cluster"].unique()):
+            raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something went wrong here...")
 
         db_mining_df.to_csv(output_dir + '/synteny_cluster.tsv', sep='\t')
         self.run.info_single(f"Exported mining table to {output_dir + '/synteny_cluster.tsv'}.")
@@ -2884,7 +3021,15 @@ class DirectedForce():
         M_predecessors = {M_node: list(M.predecessors(M_node))[0] for M_node in M_nodes if M_node != 'START'}
         M_successors = {M_node: list(M.successors(M_node)) for M_node in M_nodes}
         G_successors = {G_node: list(G.successors(G_node)) for G_node in G_nodes}
-        M_distances = {M_node: self.mean_M_path_weight(M, 'START', M_node) for M_node in M_nodes}
+        
+        self.progress.new("Calculating initial distances")
+        M_distances = {}
+        for z, M_node in enumerate(M_nodes):
+
+            M_distances[M_node] = self.mean_M_path_weight(M, 'START', M_node)
+            self.progress.update(f"{str(z+1).rjust(len(str(len(M_nodes))), ' ')} / {len(M_nodes)}")
+
+        self.progress.end()
 
         i = 0
         resolved_nodes = set(['STOP'])
@@ -3478,10 +3623,10 @@ class PangenomeGraphMaster():
         else:
             self.yaml_file = {}
 
-        if A('genome_reverse'):
-            self.genome_reverse = A('genome_reverse').split(',')
-        else:
-            self.genome_reverse = []
+        #if A('genome_reverse'):
+        #   self.genome_reverse = A('genome_reverse').split(',')
+        # else:
+        # self.genome_reverse = []
 
         if A('genome_names'):
             self.genome_names = A('genome_names').split(',')
@@ -3587,6 +3732,7 @@ class PangenomeGraphMaster():
             self.import_pangenome_graph()        
         else:
             self.sanity_check()
+
             # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
             SynGC = SyntenyGeneCluster(self.args)
 
@@ -3769,6 +3915,7 @@ class PangenomeGraphMaster():
             self.pangenome_graph.graph.add_edge(edge_i, edge_j, **data)
         self.run.info_single("Done")
 
+
     def create_pangenome_graph(self):
         """
         Here the pangenome graph is created. The initial graph is a cyclic graph holding the
@@ -3790,8 +3937,8 @@ class PangenomeGraphMaster():
         factor = 1.0 / 2
         decisison_making = {}
 
+        # TODO I guess it would be better to only use this on sigle edges not in general
         # Unfortunately this part here is very arbitiary but necessary. Find better way later!
-
         # INCLUDE CORE AND NOT CORE INFORMATION HERE!
         for genome in self.genome_names:
             decisison_making[genome] = factor
@@ -3809,12 +3956,9 @@ class PangenomeGraphMaster():
 
             for contig, group in genome_group.groupby(["contig"]):
                 group.reset_index(drop=False, inplace=True)
-                group.sort_values(["start", "stop"], axis=0, ascending=True, inplace=True)
+                group.sort_values(["position"], axis=0, ascending=True, inplace=True)
 
-                if genome in self.genome_reverse:
-                    syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))[::-1]
-                else:
-                    syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
+                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
 
                 group.set_index('index', inplace=True)
 
