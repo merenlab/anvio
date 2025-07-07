@@ -122,6 +122,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info_single(f"Created a merged network with {len(self.merged.genes)} genes.")
         self.run.info("Number of metabolites in merged network to process", len(self.merged.metabolites))
 
+        # SETUP DICTIONARIES
+        self.map_kegg_ids_to_modelseed_ids()
+        self.map_kegg_ids_to_compound_names()
+        self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=MAPS_TO_EXCLUDE, id_selection_prefix = "00")
+        # this will store the output of the KEGG Pathway Map walks
+        # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
+        self.compound_to_pathway_walk_chains = defaultdict(dict)
+        
+
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
 
@@ -193,3 +202,23 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         for g in self.genomes_to_compare:
             self.run.info("Loading reaction network from database", self.genomes_to_compare[g]['contigs_db_path'])
             self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
+
+    def map_kegg_ids_to_modelseed_ids(self):
+        """Creates the self.kegg_id_to_modelseed_id dictionary. 
+        The keys are KEGG compound IDs and the values are ModelSEED IDs for all compounds in the provided network.
+        """
+
+        self.kegg_id_to_modelseed_id = {}
+        for mid, compound in self.merged.metabolites.items():
+            for kid in compound.kegg_aliases:
+                self.kegg_id_to_modelseed_id[kid] = mid
+        
+    def map_kegg_ids_to_compound_names(self):
+        """Creates the self.id_to_name_dict dictionary.
+        The keys are KEGG compound IDs and the values are compound names for all compounds in the provided network.
+        """
+
+        self.kegg_id_to_compound_name = {}
+        for mid, compound in self.merged.metabolites.items():
+            for kid in compound.kegg_aliases:
+                self.kegg_id_to_compound_name[kid] = compound.modelseed_name
