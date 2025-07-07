@@ -113,6 +113,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.run.info("Custom equivalent compounds file", self.custom_equivalent_compounds_file)
             eq_compounds = self.load_equivalent_compounds()
 
+        self.load_reaction_networks()
+        
+        # MERGE NETWORKS
+        self.merged, db_names = self.genomes_to_compare['A']['network']._merge_two_genome_networks(self.genomes_to_compare['B']['network'])
+        self.genomes_to_compare['A']['name'] = db_names[0]
+        self.genomes_to_compare['B']['name'] = db_names[1]
+        self.run.info_single(f"Created a merged network with {len(self.merged.genes)} genes.")
+        self.run.info("Number of metabolites in merged network to process", len(self.merged.metabolites))
+
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
 
@@ -174,3 +183,13 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                     header="DEBUG", lc="yellow")
 
         return eq_comp_dict
+
+    def load_reaction_networks(self):
+        """Loads the reaction network for each genome and establishes the self.genomes_to_compare attribute of genome information."""
+
+        self.genomes_to_compare = {'A': {'contigs_db_path': self.contigs_db_1},
+                       'B': {'contigs_db_path': self.contigs_db_2}}
+        constructor = rn.Constructor()
+        for g in self.genomes_to_compare:
+            self.run.info("Loading reaction network from database", self.genomes_to_compare[g]['contigs_db_path'])
+            self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
