@@ -3,17 +3,8 @@
 
 import sys
 import anvio
-import anvio.utils as utils
-import anvio.kgml as kgml
-import anvio.terminal as terminal
-import anvio.reactionnetwork as rn
-import anvio.kgmlnetworkops as nw
+import anvio.metabolicexchanges as me
 
-from copy import deepcopy
-from argparse import Namespace
-from collections import defaultdict
-
-from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 
@@ -25,57 +16,14 @@ __requires__ = ['contigs-db'] #TODO: add equivalent-compounds-txt as new artifac
 __provides__ = []
 __description__ = "Predicts metabolic exchanges between microbes based on the reaction network"
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-MAPS_TO_EXCLUDE = set(["00470", # D-amino acid biosynthesis. This map mostly connects other maps.
-                       "00195", # Photosynthesis. This map describes photosystems and complexes rather than reactions.
-                       "00190", # Oxidative Phosphorylation. This map describes enzyme complexes rather than reactions.
-                       "00543", # Exopolysaccharide biosynthesis. Does not have a RN-type KGML file.
-])
 
 @time_program
 def main(args):
 
-    #input sanity checks
-    if args.contigs_db_1 or args.contigs_db_2:
-        if not args.contigs_db_2 or not args.contigs_db_1:
-            raise ConfigError("You need two contigs databases for this to work.")
-    if args.use_equivalent_amino_acids and args.custom_equivalent_compounds_file:
-        raise ConfigError("You can only provide one of `--use-equivalent-amino-acids` and `--custom-equivalent-compounds-file`. If you "
-                        "want to equate L- and non-stereo-specific amino acid IDs, you should include them in your custom equivalents file. "
-                        "(Pro tip: the easiest way to do that is to run this program once with just `--use-equivalent-amino-acids` to get the "
-                        "AA equivalents file, and modify from there)")
-    if args.no_pathway_walk and args.pathway_walk_only:
-        raise ConfigError("The parameters --no-pathway-walk and --pathway-walk-only are mutually exclusive.")
-
-    eq_compounds = {}
-    run.info("Using equivalent L- and non-stereo-specific amino acid compound IDs", args.use_equivalent_amino_acids)
-    if args.use_equivalent_amino_acids:
-        eq_compounds = find_equivalent_amino_acids(args)
-    elif args.custom_equivalent_compounds_file:
-        run.info("Custom equivalent compounds file", args.custom_equivalent_compounds_file)
-        eq_compounds = utils.get_TAB_delimited_file_as_dictionary(args.custom_equivalent_compounds_file, expected_fields=['compound_id','equivalent_id'])
-        # make sure each match is in there twice for easy lookups from either direction
-        pairs_to_add = {}
-        for c, match in eq_compounds.items():
-            c2 = match['equivalent_id']
-            if c2 not in eq_compounds:
-                pairs_to_add[c2] = {'equivalent_id': c}
-            elif eq_compounds[c2]['equivalent_id'] != c:
-                raise ConfigError(f"While parsing your file of custom equivalent compound IDs, we found a pair of equivalents that don't match: "
-                                    f"compound {c} is paired with {c2}, while {c2} is paired with {eq_compounds[c2]['equivalent_id']}. You should probably "
-                                    f"fix that.")
-        if pairs_to_add:
-            eq_compounds.update(pairs_to_add)
-            if anvio.DEBUG:
-                run.warning(f"Found {len(pairs_to_add)} inverse pairs of equivalent compounds that were not in the equivalent compounds file. "
-                                    f"These have been added to the dictionary of equivalent compounds. Here is the set of missing pairs: {pairs_to_add}. ",
-                                    header="DEBUG", lc="yellow")
-
-    run.info("Predicting exchanges from KEGG Pathway Map walks", not args.no_pathway_walk)
-    run.info("Predicting exchanges from merged Reaction Network", not args.pathway_walk_only)
-
+    predictor = me.ExchangePredictorSingle(args)
+    predictor.predict_exchanges()
+    sys.exit(0)
+    
     genomes_to_compare = {'A': {'contigs_db_path': args.contigs_db_1},
                           'B': {'contigs_db_path': args.contigs_db_2}}
     constructor = rn.Constructor()
@@ -373,45 +321,6 @@ def main(args):
         utils.store_dict_as_TAB_delimited_file(pathway_walk_evidence, f"{args.output_file_prefix}-evidence.txt",
                     do_not_write_key_column=True, none_value="None")
 
-
-def find_equivalent_amino_acids(args, run=run, progress=progress, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
-    """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
-
-    Returns a dictionary in which keys are compound IDs matched to their names and the equivalent compound ID. Each match is
-    in the dictionary twice to enable O(1) lookups with either compound ID.
-
-    Parameters
-    ==========
-    print_to_file : Boolean
-        if True, the dictionary of equivalent compounds will be written to a tab-delimited output file
-    output_file_name : string
-        the name of the output file to print to (if desired)
-    """
-
-    MS_db = rn.ModelSEEDDatabase(modelseed_dir=args.modelseed_data_dir)
-    comps = MS_db.compounds_table.dropna(subset="name")
-
-    aa_list = anvio.constants.amino_acids_long + ["Selenocysteine", "Pyrrolysine"]
-    equivalent_AAs = {}
-    for a in aa_list:
-        eqs = comps[(comps.name == a) | (comps.name == f"L-{a}")]['name']
-        id_list = eqs.index.to_list()
-        if not len(id_list) == 2:
-            if anvio.DEBUG:
-                compound_list = [f"{i} ({eqs.loc[i]})" for i in id_list]
-                run.warning(f"While looking for equivalent compound IDs for the amino acid {a}, we didn't find the "
-                            f"expected 2 matching compounds '{a}' and 'L-{a}'. Instead, here is what we found: "
-                            f"{', '.join(compound_list)}. No equivalencies will be stored for this amino acid.", header='DEBUG', lc='yellow')
-            continue
-        equivalent_AAs[id_list[0]] = {'equivalent_id': id_list[1], 'name': eqs.loc[id_list[0]], 'equivalent_name': eqs.loc[id_list[1]]}
-        equivalent_AAs[id_list[1]] = {'equivalent_id': id_list[0], 'name': eqs.loc[id_list[1]], 'equivalent_name': eqs.loc[id_list[0]]}
-
-    if print_to_file:
-        utils.store_dict_as_TAB_delimited_file(equivalent_AAs, output_file_name, key_header='compound_id',
-                    headers = ['compound_id', 'equivalent_id', 'name', 'equivalent_name'])
-        run.info("File of equivalent amino acid compound IDs", output_file_name)
-
-    return equivalent_AAs
 
 def map_kegg_ids_to_modelseed_ids(network):
     """Returns a dictionary where the keys are KEGG compound IDs and the values are ModelSEED IDs
