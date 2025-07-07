@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Compute a graph representation of a pangenome"""
+
+import sys
+
+import anvio
+import anvio.panops as panops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['ahenoch']
+__requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
+__provides__ = ['pan-graph-json']
+__description__ = ("An anvi'o program to compute a graph representation of pangenomes. It will do its magic, and store it into your "
+                   "pan-db, or report a JSON formatted graph file, for downstream visualization and analyses with `anvi-display-pan-graph`")
+__resources__ = []
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT', "Anvi'o artifacts for the pan graph to be computed.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-json', {'required': False}))
+
+    groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
+                                "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
+                                "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
+                                "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
+                                "to the pan-db.")
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    # groupB.add_argument('--output-pangenome-graph-summary', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
+    # groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-hybrid-genome', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes or ORDERED draft genomes.")
+
+    groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
+                                "of the gene clusters, and edges between them.")
+    
+
+    groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
+    groupC.add_argument('--load-state', default='default', type=str, help="Description.")
+    # groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
+    # groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
+    groupC.add_argument('--import-values', default='', type=str, help = "Description.")
+    groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
+    groupC.add_argument('--min-contig-chain', default=10, type=int, help = "Description.")
+    groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
+    groupC.add_argument('--gene-cluster-grouping-threshold', default=2, type=int, help = "Description.")
+    groupC.add_argument('--grouping-compression', default=0.05, type=float, help = "Description.")
+    groupC.add_argument('--start-gene', default='', type=str, help = "Description.")
+    groupC.add_argument('--alpha', default=0.75, type=float, help = "Description.")
+    groupC.add_argument('--n', default=100, type=int, help = "Description.")
+    groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
+    groupC.add_argument('--gamma', default=0.0, type=float, help = "Description.")
+
+
+    args = parser.get_args(parser)
+
+    try:
+        graph = panops.PangenomeGraphMaster(args, run, progress)
+        graph.process_pangenome_graph()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
