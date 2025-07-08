@@ -1260,13 +1260,6 @@ class DGR_Finder:
                         # Currently the code (30.04.2025) adds a column to the DGR_looks_snv_false if there is ONE single SNV at a non-mutagenesis match site.
                         # Going to look and create a threshold - for populations etc
 
-                        profile_db = dbops.ProfileDatabase(self.profile_db_path)
-
-                        #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-                        self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                        self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
-                        profile_db.disconnect()
-
                         #subset snv df by query contig (vr contig) and VR range
                         matching_snv_rows = self.snv_panda_bin[(self.snv_panda_bin['contig_name'] == query_contig) &
                         (self.snv_panda_bin['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
