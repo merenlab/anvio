@@ -62,8 +62,8 @@ class ExchangePredictorArgs():
         self.sanity_check_args()
 
         # PRINT INFO for arguments common to subclasses
-        self.run.info("Predicting exchanges from KEGG Pathway Map walks", not args.no_pathway_walk)
-        self.run.info("Predicting exchanges from merged Reaction Network", not args.pathway_walk_only)
+        self.run.info("Predicting exchanges from KEGG Pathway Map walks", not self.no_pathway_walk)
+        self.run.info("Predicting exchanges from merged Reaction Network", not self.pathway_walk_only)
 
     def sanity_check_args(self):
         """Here we sanity check all the common arguments to make sure they are sensibly set."""
