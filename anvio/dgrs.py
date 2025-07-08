@@ -2232,15 +2232,16 @@ class DGR_Finder:
                     TR_frame = vr_data['TR_frame'] * -1
                     TR_sequence = utils.rev_comp(vr_data['TR_sequence'])
 
-                print(f"After TR Reverse Complementary Check:{dgr_id} "
-                    f"TR sequence: {TR_sequence} "
-                    f"TR frame {TR_frame}")
+                if anvio.DEBUG:
+                    self.run.info_single(f"After TR Reverse Complementary Check:{dgr_id} "
+                        f"TR sequence: {TR_sequence} "
+                        f"TR frame {TR_frame}")
 
-                print(f"After VR Reverse Complementary Check: {vr_id} "
-                    f"VR sequence: {VR_sequence} "
-                    f"VR frame {VR_frame}")
+                    self.run.info_single(f"After VR Reverse Complementary Check: {vr_id} "
+                        f"VR sequence: {VR_sequence} "
+                        f"VR frame {VR_frame}")
 
-                print('\n')
+                    print('\n')
 
                 #make every frame positive so that the initial primer is always on the left and then both the vr and tr are being compared on the same strand.
                 #Always make the VR strand +1 so that you can compare the primer to the fasta file by definition
@@ -2254,13 +2255,15 @@ class DGR_Finder:
                     TR_frame = TR_frame * -1
                     vr_data['TR_reverse_comp_for_primer'] = True
                     TR_sequence = str(vr_data['rev_comp_TR_seq'])
-                    print(f"AFTER VR + TR = -1:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
-                    print(f"AFTER VR + TR = -1:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
-                    print('\n')
+                    if anvio.DEBUG:
+                        self.run.info_single(f"AFTER VR + TR = -1:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
+                        self.run.info_single(f"AFTER VR + TR = -1:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+                        print('\n')
 
-                print(f"FINAL:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
-                print(f"FINAL:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
-                print('\n')
+                if anvio.DEBUG:
+                    self.run.info_single(f"FINAL:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
+                    self.run.info_single(f"FINAL:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
+                    print('\n')
 
                 #check the TR and VR sequence are the same length
                 if len(TR_sequence) == len(VR_sequence):
@@ -2537,8 +2540,10 @@ class DGR_Finder:
                         if dgr_vr_key not in self.sample_primers_dict:
                             self.sample_primers_dict[dgr_vr_key] = {}
 
-                        print(primers_dict[original_primer_key])
-                        print(primers_dict)
+                        if anvio.DEBUG:
+                            self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}")
+                            print(primers_dict[original_primer_key])
+                            print(primers_dict)
                         if not primer_snvs.empty:
                             # Get the original primer sequence
                             original_primer_sequence = (primers_dict[original_primer_key]['initial_primer_sequence'] + primers_dict[original_primer_key]['vr_anchor_primer'])
@@ -2568,7 +2573,8 @@ class DGR_Finder:
                             self.run.warning(f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, skipping sample consensus.")
                             continue
 
-                print(f"Finished updating primers for sample {sample_name}. Sample-specific primers dict: {self.sample_primers_dict}")
+                if anvio.DEBUG:
+                    self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}")
 
                 # Update the sample-specific primers dictionary with the new primer sequence
                 for dgr_vr_key, samples in self.sample_primers_dict.items():
@@ -2584,8 +2590,9 @@ class DGR_Finder:
                         # Add the combined primer sequence to the sample data
                         primer_data['primer_sequence'] = primer_sequence
 
-                        print(f"Updated primer sequence for sample {sample_name} in DGR {dgr_vr_key}: {primer_sequence}")
-
+                        if anvio.DEBUG:
+                            # Print the updated primer sequence for debugging
+                            self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}")
 
             # Final processing to ensure primer sequence consistency and length restrictions
             for dgr_id, dgr_data in dgrs_dict.items():
@@ -2600,18 +2607,19 @@ class DGR_Finder:
                         print(f"The primer for {sample_name} {dgr_id} {vr_id} is above the desired length. Trimming to {self.whole_primer_length}.")
                         primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.whole_primer_length]
 
+            if anvio.DEBUG:
+                self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}")
             # Output the final primers dictionary
-            print(f"Updated sample primers dictionary: {self.sample_primers_dict}")
             self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.csv' file.")
             self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
 
             if not self.skip_primer_variability:
-                print("Primer variability analysis is enabled. Using sample-specific primers.")
+                self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.")
 
                 # Ensure `sample_primers_dict` is updated and passed during computation
                 use_sample_primers = True
             else:
-                print("Skipping primer variability analysis. Using default primers.")
+                self.run.info_single("Skipping primer variability analysis. Using default primers.")
                 use_sample_primers = False
         ##################
         # MULTITHREADING #
