@@ -1182,6 +1182,13 @@ class DGR_Finder:
         #possible DGR dictionary
         self.DGRs_found_dict = {}
 
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
+        #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
+        self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+        self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
+        profile_db.disconnect()
+
         if self.only_a_bases:
                 #This is here so that every potential VR doesn't get a new warning and clog up the terminal
                 self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
