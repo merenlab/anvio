@@ -129,6 +129,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         # this will store the output of the KEGG Pathway Map walks
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
         self.compound_to_pathway_walk_chains = defaultdict(dict)
+
+        # dictionaries to store output
+        pot_exchanged_dict = {}
+        uniq_dict = {}
+        walk_evidence_dict = {}
         compounds_not_in_maps = set()
         self.processed_compound_ids = set() # this is how we'll make sure we don't process equivalent compounds twice
 
@@ -138,7 +143,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             compounds_not_in_maps = set(self.merged.metabolites.keys()).difference(set(self.compound_to_pathway_walk_chains.keys()))
 
             # STEP 2: PREDICT EXCHANGES using pathway walk evidence
-            pot_exchanged_dict, uniq_dict, walk_evidence_dict = self.predict_from_pathway_walks()
+            pot_exchanged_pw, uniq_pw, walk_evidence_dict = self.predict_from_pathway_walks()
+            pot_exchanged_dict.update(pot_exchanged_pw)
+            uniq_dict.update(uniq_pw)
             
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
