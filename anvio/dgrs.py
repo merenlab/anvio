@@ -131,10 +131,10 @@ class DGR_Finder:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
         #computing variability profiling for every VR in every DGR by searching through raw reads?
         if not self.skip_compute_DGR_variability_profiling:
-            self.run.info('Variable Region Primer Length', self.whole_primer_length)
             self.run.info('Samples.txt', self.samples_txt)
+            self.run.info('Initial Primer Length', self.initial_primer_length)
+            self.run.info('Variable Region Primer Length', self.whole_primer_length)
             #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
-            self.run.info('Initial Primer Base', self.initial_primer_length)
 
 
 
@@ -831,7 +831,7 @@ class DGR_Finder:
                 for hit_identity, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity, []).append(hit_data)
 
-            print(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
+            self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
 
         #run in normal none collections mode
@@ -1288,10 +1288,10 @@ class DGR_Finder:
                             # Apply threshold of 66% because we want less than a third of snvs to be at the third codon position
                             is_3_over_a_third = percent_3 > 33
                             if is_3_over_a_third:
-                                print(f"3rd codon position is over a third of the total VR SNVs, so we remove you")
+                                self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}")
                                 snv_at_3_codon_over_a_third = True
                             else:
-                                print(f"3rd codon position is the minority of the SNVs")
+                                self.run.info_single(f"3rd codon position is the minority of the SNVs")
                                 snv_at_3_codon_over_a_third = False
 
                             #look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
@@ -1817,7 +1817,7 @@ class DGR_Finder:
 
             if not len(gene_calls_in_TR_contig):
                 trs_with_no_gene_calls_around.add(dgr_id)
-                print(f'No gene calls found around TR {dgr_id}')
+                self.run.info_single(f'No gene calls found around TR {dgr_id}')
                 continue
 
             # Process TR gene calls
@@ -1900,7 +1900,7 @@ class DGR_Finder:
 
                 if not len(gene_calls_in_VR_contig):
                     vrs_with_no_gene_calls_around.add(vr_id)
-                    print(f'No gene calls found around DGR {dgr_id} VR {vr_id}')
+                    self.run.info_single(f'No gene calls found around DGR {dgr_id} VR {vr_id}')
                     continue
 
                 min_distance_to_VR_start, min_distance_to_VR_end = float('inf'), float('inf')
@@ -2054,7 +2054,7 @@ class DGR_Finder:
                                 tr_functions_output.write(f"{dgr_id}_TR\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
                             # Log if gene_call is not a dictionary
-                            print(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})")
+                            self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})")
 
                 # Log information about the reporting files
                 self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
@@ -2105,7 +2105,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
+    def compute_dgr_variability_profiling_per_vr(self, input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -2131,12 +2131,12 @@ class DGR_Finder:
         """
         while True:
             sample_name = input_queue.get(True)
-            print(f"(I am in compute per sample func) Processing sample: {sample_name}")
+            self.run.info_single(f"(I am in compute per sample func) Processing sample: {sample_name}")
             if sample_name is None:
-                print('Sample is none, loop will be broken.')
+                self.run.warning('Sample {sample_name} is none, loop will be broken.')
                 break
 
-            print(f"Processing sample: {sample_name}")
+            self.run.single_info(f"Processing sample: {sample_name}")
             #Extract sample-specific primers if the flag is set
             if use_sample_primers and sample_primers_dict:
                 primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
@@ -2245,7 +2245,7 @@ class DGR_Finder:
                 #make every frame positive so that the initial primer is always on the left and then both the vr and tr are being compared on the same strand.
                 #Always make the VR strand +1 so that you can compare the primer to the fasta file by definition
                 if vr_data['VR_frame'] == -1:
-                    print(f"I am reverse complementing {dgr_id} {vr_id} AND THE TR because both are -1")
+                    self.run.info_single(f"I am reverse complementing {dgr_id} {vr_id} AND THE TR because both are -1")
                     vr_data['rev_comp_VR_seq'] = utils.rev_comp(vr_data['VR_sequence'])
                     VR_frame = VR_frame * -1
                     vr_data['VR_reverse_comp_for_primer'] = True
@@ -2306,7 +2306,7 @@ class DGR_Finder:
                     vr_data['vr_anchor_primer'] = vr_anchor_primer
 
                 elif len(TR_sequence) != len(VR_sequence):
-                    print(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an anchor primer sequence")
+                    self.run.warning(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an anchor primer sequence")
 
         ###########################################
         # UPDATED DGRs dict with Primer Sequences #
@@ -2399,7 +2399,6 @@ class DGR_Finder:
         #TODO: Double check if these are already checked in sanity check
         if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
             return
-        print(f'self.samples_txt_dict:', self.samples_txt_dict)
 
         #if self.collections_mode:
             #dgrs_dict = self.dgrs_in_collections
@@ -2412,9 +2411,6 @@ class DGR_Finder:
 
         sample_names = list(self.samples_txt_dict.keys())
         num_samples = len(sample_names)
-
-        print('sample names below')
-        print(sample_names)
 
         # let the user know what is going on
         msg = (f"Now anvi'o will compute in-sample activity of {PL('DGR VR', len(self.DGRs_found_dict))} "
@@ -2499,11 +2495,8 @@ class DGR_Finder:
 
             # Sanity check for mismatch between samples given and samples in SNV table
             sample_names_given = set(sample_names)
-            print(f"Sample names given from samples.txt: {sample_names_given}")
             sample_names_in_snv_table = set(snvs_table['sample_id'])
-            print(f"Sample names in SNV table: {sample_names_in_snv_table}")
             samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
-            print(f"Samples missing in SNV table: {samples_missing_in_snv_table}")
 
             if anvio.DEBUG:
                 self.run.info("Samples given", ", ".join(list(sample_names_given)))
@@ -2640,7 +2633,7 @@ class DGR_Finder:
         # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
-            print(f"starting worker {i}")
+            self.run.info_single(f"starting worker {i}")
             worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
@@ -2716,8 +2709,6 @@ class DGR_Finder:
                                 # if it works, it works
                                 'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
         contigs_db.disconnect()
-
-        #print("Configured Summary Type:", self.summary['meta']['summary_type'])
 
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
