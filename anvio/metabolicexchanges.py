@@ -40,7 +40,7 @@ class ExchangePredictorArgs():
     def __init__(self, args, format_args_for_single_estimator=False, run=run, progress=progress):
         """A base class to assign arguments to attributes for ExchangePredictor classes.
         
-        Parameters
+        PARAMETERS
         ==========
         format_args_for_single_estimator: bool
             This is a special case where an args instance is generated to be passed to the
@@ -106,7 +106,8 @@ class ExchangePredictorArgs():
 
 class ExchangePredictorSingle(ExchangePredictorArgs):
     """Class for predicting exchanges between a single pair of genomes.
-
+    
+    PARAMETERS
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-predict-metabolic-exchanges
@@ -120,7 +121,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_1 = A('contigs_db_1')
         self.contigs_db_2 = A('contigs_db_2')
-
+        
         # INIT BASE CLASS to format common arguments
         ExchangePredictorArgs.__init__(self, self.args)
 
@@ -223,7 +224,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         Returns a dictionary in which keys are compound IDs matched to their names and the equivalent compound ID. Each match is
         in the dictionary twice to enable O(1) lookups with either compound ID.
 
-        Parameters
+        PARAMETERS
         ==========
         print_to_file : Boolean
             if True, the dictionary of equivalent compounds will be written to a tab-delimited output file
@@ -366,7 +367,26 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def producer_consumer_decision_tree(self, genomes_can_produce, genomes_can_consume):
         """Given two genomes, decides which genome is the predicted producer/consumer of the current compound.
-        If the compound is neither potentially-exchanged or unique to one genome, returns None so we can move on with our lives.
+        If the compound is neither potentially-exchanged or unique to one genome, returns None so we can move on.
+
+        Note that having a 'primary' producer genome doesn't mean the other genome cannot produce the compound 
+        (and likewise for consumption), because we accept "2 producers, 1 consumer" or "1 producer, 2 consumers"
+        as potential exchange scenarios. And in these cases, the genome that is alone in its role gets assigned
+        as primary, and the other genome by default takes the other role even though there are technically 2 of them.
+
+        PARAMETERS
+        ==========
+        genomes_can_produce : set of str
+            which genome(s) have the capacity to produce the compound (how we figured that out doesn't matter at this point)
+        genomes_can_consume : set of str
+            which genome(s) have the capacity to consume the compound (again, how we know doesn't matter)
+
+        RETURNS
+        =======
+        producer : str
+            the 'primary' producer of the compound, if it is unique or potentially-exchanged. is None otherwise
+        consumer : str
+            the 'primary' consumer of the compound, if it is unique or potentially-exchanged. is None otherwise
         """
 
         producer = None
@@ -398,6 +418,19 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
     def predict_exchange_from_pathway_walk(self, chains_for_all_equivalent_compounds):
         """Determines whether a compound is unique or potentially-exchanged, and if so returns the internal IDs of 
         the producer/consumer genome (or None, otherwise). Only works for 2 genomes.
+
+        PARAMETERS
+        ==========
+        chains_for_all_equivalent_compounds : dictionary
+            A subset of self.compound_to_pathway_walk_chains. Reminder of dict structure:
+            {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
+
+        RETURNS
+        =======
+        prod : str
+            ID of the 'primary' producer. See producer_consumer_decision_tree().
+        cons : str
+            ID of the 'primary' consumer. See producer_consumer_decision_tree().
         """
 
         genomes_produce = set()
@@ -415,7 +448,20 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         return prod, cons
 
     def get_longest_chains(self, chain_list):
-        """Loops over all chains in provided list, computes length, and returns the maximum length and longest chain."""
+        """Loops over all chains in provided list, computes length, and returns the maximum length and longest chain.
+        
+        PARAMETERS
+        ==========
+        chain_list : list of Chain objects (a class from kgmlnetworkops)
+            Reaction chains from Pathway Map walk within a given reaction network.
+
+        RETURNS
+        =======
+        max_length : int
+            Length of the longest Chain
+        longest : list of Chain objects
+            all Chains with length max_length in the provided list
+        """
 
         max_length = None
         longest = []
@@ -427,16 +473,32 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         return max_length, longest
 
-    def get_max_overlap(self, starting_chains, comparison_chains):
-        """Returns the longest reaction overlap between two lists of reaction chains. 
-        Also returns the chain in starting chain with that maximum overlap. Note that if 
-        there are multiple solutions with the same max overlap, we only report the first 
-        'longest' chain with that overlap value.
+    def get_max_overlap(self, reference_chains, comparison_chains):
+        """Computes the longest reaction overlap between two lists of reaction chains.
+        Also returns the reference chain that exhibits the maximum overlap with the comparison chains. Note 
+        that if there are multiple solutions with the same max overlap, we only report the first 'longest' 
+        chain with that overlap value.
+
+        PARAMETERS
+        ==========
+        reference_chains : list of Chain objects (a class from kgmlnetworkops)
+            The Chains we are using as our reference.
+        comparison_chains : list of Chain objects
+            The Chains we are comparing to the reference.
+
+        RETURNS
+        =======
+        max_overlap : int
+            Length of the longest overlap (highest number of shared reactions) between a reference chain 
+            and a comparison chain
+        longest_with_max_overlap : Chain object
+            the first reference Chain (from the reference_chains list) that exhibits the maximum overlap with 
+            a comparison chain.
         """
 
         max_overlap = None
         longest_with_max_overlap = None
-        for sc in starting_chains:
+        for sc in reference_chains:
             reaction_chain = [r.name for r in sc.kgml_reactions]
             for c in comparison_chains:
                 compare_chain = [r.name for r in c.kgml_reactions]
@@ -456,7 +518,25 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def get_pathway_walk_evidence_for_compound_in_map(self, production_chains_in_producer, production_chains_in_consumer, 
         consumption_chains_in_producer, consumption_chains_in_consumer):
-        """Compares the pathway walk output to compute max reaction chain length, overlap, etc"""
+        """Compares the pathway walk output to compute max reaction chain length, overlap, etc.
+        
+        PARAMETERS
+        ==========
+        production_chains_in_producer : list of Chain objects (a class from kgmlnetworkops)
+            Reaction Chains to produce a compound in one Pathway Map in the primary producer
+        production_chains_in_consumer : list of Chain objects
+            Reaction Chains to produce a compound in one Pathway Map in the primary consumer
+        consumption_chains_in_producer : list of Chain objects
+            Reaction Chains to consume a compound in one Pathway Map in the primary producer
+        consumption_chains_in_consumer : list of Chain objects
+            Reaction Chains to consume a compound in one Pathway Map in the primary consumer
+
+        RETURNS
+        =======
+        results : dict
+            Contains evidence supporting the potential exchange of the compound, including length of
+            reaction chains and length of overlap between the producer and consumer
+        """
 
         max_production_length, longest_producer_chains = self.get_longest_chains(production_chains_in_producer)
         max_production_overlap, longest_with_max_overlap = self.get_max_overlap(longest_producer_chains, production_chains_in_consumer)
@@ -489,7 +569,18 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         return results
 
     def get_pathway_walk_evidence(self, reaction_chains_for_compound, producer, consumer):
-        """Loops over all equivalent compounds and all pathway walk output to obtain per-map evidence."""
+        """Loops over all equivalent compounds and all pathway walk output to obtain per-map evidence.
+        
+        PARAMETERS
+        ==========
+        reaction_chains_for_compound : dict
+            A subset of self.compound_to_pathway_walk_chains. Reminder of dict structure:
+            {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
+        producer : str
+            ID of the organism predicted to be the 'primary' producer in a potential exchange
+        consumer : str
+            ID of the organism predicted to be the 'primary' consumer in a potential exchange
+        """
 
         all_evidence_for_compound = {}
         for cid, map_dict in reaction_chains_for_compound.items():
@@ -509,7 +600,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def predict_from_pathway_walks(self):
         """Loops over each compound in KEGG Pathway Maps and predicts whether it is potentially-exchanged or unique.
-        Returns 3 dictionaries: 
+
+        RETURNS
+        =======
+        3 dictionaries: 
             potentially-exchanged compounds
             unique compounds
             evidence from Pathway Walk for potentially-exchanged compounds
@@ -625,7 +719,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def predict_from_reaction_network(self, compound_set):
         """For each compound in the provided set, predicts whether it is potentially-exchanged or unique from the reaction network.
-        Returns 2 dictionaries: 
+
+        RETURNS
+        =======
+        2 dictionaries: 
             potentially-exchanged compounds
             unique compounds
         """
@@ -736,6 +833,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
     def append_output_from_dicts(self, output_dicts):
         """This function appends the output dictionaries to initialized AppendableFile objects in self.output_file_dict.
         
+        PARAMETERS
+        ==========
         output_dicts : dictionary of dictionaries
             Key is output type, and value is the data dictionary associated with that output type
         """
