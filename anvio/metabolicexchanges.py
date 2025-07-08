@@ -67,6 +67,11 @@ class ExchangePredictorArgs():
         self.run.info("Predicting exchanges from KEGG Pathway Map walks", not self.no_pathway_walk)
         self.run.info("Predicting exchanges from merged Reaction Network", not self.pathway_walk_only)
 
+        # establish expected outputs based on provided arguments
+        self.output_types = ['potentially-exchanged-compounds', 'unique-compounds']
+        if not self.no_pathway_walk:
+            self.output_types.append('evidence')
+
     def sanity_check_args(self):
         """Here we sanity check all the common arguments to make sure they are sensibly set."""
 
