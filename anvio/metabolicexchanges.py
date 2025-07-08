@@ -54,7 +54,7 @@ class ExchangePredictorArgs():
         self.num_threads = A('num_threads')
         self.use_equivalent_amino_acids = A('use_equivalent_amino_acids')
         self.custom_equivalent_compounds_file = A('custom_equivalent_compounds_file')
-        self.maximum_gaps = A('maximum-gaps')
+        self.maximum_gaps = A('maximum_gaps')
         self.add_reactions_to_output = A('add_reactions_to_output')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
