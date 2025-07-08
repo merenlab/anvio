@@ -222,3 +222,29 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         for mid, compound in self.merged.metabolites.items():
             for kid in compound.kegg_aliases:
                 self.kegg_id_to_compound_name[kid] = compound.modelseed_name
+
+    def get_compound_name_from_kegg_id(self, kid):
+        """A safer dictionary access that returns None if a given compound is not in self.kegg_id_to_compound_name"""
+
+        if kid in self.kegg_id_to_compound_name:
+            return self.kegg_id_to_compound_name[kid]
+        else:
+            return "None"
+
+    def get_reaction_equation(self, reaction_value):
+        """Looks up all compound names in the merged network and returns an equation for the chemical reaction with those names."""
+
+        name_list = [self.merged.metabolites[c].modelseed_name for c in reaction_value.compound_ids]
+        return rn.get_chemical_equation(reaction_value, use_compound_names=name_list, ignore_compartments = True)
+
+    def get_args_for_pathway_walker(self, net, pathway_map, fate, gaps):
+        """Returns a Namespace with arguments for KGMLNetworkWalker"""
+
+        walker_args = Namespace()
+        walker_args.network = net
+        walker_args.kegg_pathway_number = pathway_map
+        walker_args.compound_fate = fate
+        walker_args.max_gaps = gaps
+        walker_args.keep_intermediate_chains = True
+        walker_args.verbose = False
+        return walker_args
