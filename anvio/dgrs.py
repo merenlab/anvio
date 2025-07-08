@@ -83,7 +83,7 @@ class DGR_Finder:
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
         self.samples_txt = A('samples_txt')
         self.whole_primer_length = A('whole_primer_length') or 65
-        self.initial_primer_length = A('initial_primer_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
+        self.initial_primer_length = A('initial_variable_primer_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
