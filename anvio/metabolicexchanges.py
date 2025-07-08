@@ -105,13 +105,13 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         """This is the driver function to predict metabolic exchanges between two genomes."""
 
         # LOAD DATA
-        eq_compounds = {}
+        self.eq_compounds = {}
         self.run.info("Using equivalent L- and non-stereo-specific amino acid compound IDs", self.use_equivalent_amino_acids)
         if self.use_equivalent_amino_acids:
-            eq_compounds = self.find_equivalent_amino_acids()
+            self.eq_compounds = self.find_equivalent_amino_acids()
         elif self.custom_equivalent_compounds_file:
             self.run.info("Custom equivalent compounds file", self.custom_equivalent_compounds_file)
-            eq_compounds = self.load_equivalent_compounds()
+            self.eq_compounds = self.load_equivalent_compounds()
 
         self.load_reaction_networks()
         
