@@ -1272,7 +1272,7 @@ class DGR_Finder:
 
                         if matching_snv_rows.empty:
                             #skip because you are useless to us
-                            #i.e. there are no SNVs in the VR
+                            #i.e. there are no SNVs in the VR)
                             continue
                         else:
                             # first check majority of SNVs come from 1&2 codon pos
