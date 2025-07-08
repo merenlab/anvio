@@ -1323,16 +1323,41 @@ class DGR_Finder:
                             #if over 30 SNVs then have a higher threshold of 30%?
                             #delete third codon pos SNVs
 
+                            # Report proportion of non-mutagenesis SNVs vs all SNVs
+                            if numb_of_SNVs > 0:
+                                prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base / numb_of_SNVs
+                            else:
+                                prop_non_mutagen_snv = 0
+
+                            # Flag to store final DGR-like decision based on SNVs
+                            DGR_looks_snv_false = False
+
+                            # Apply filters based on SNV count and thresholds
+                            if numb_of_SNVs >= 5:
+                                if numb_of_SNVs >= 30:
+                                    max_allowed_bad_snv_fraction = 0.30  # 30%
+                                elif numb_of_SNVs >= 12:
+                                    max_allowed_bad_snv_fraction = 0.25  # 25%
+                                else:
+                                    max_allowed_bad_snv_fraction = 1.0  # allow anything if just over 5
+
+                                # Evaluate
+                                if prop_non_mutagen_snv >= max_allowed_bad_snv_fraction:
+                                    DGR_looks_snv_false = True
+                                    self.run.info_single(f"DGR-like SNV pattern: {numb_of_SNVs} SNVs, {numb_of_snv_in_matches_not_mutagen_base} good ones ({prop_non_mutagen_snv:.2%})")
+                                else:
+                                    self.run.info_single(f"Rejected: SNV pattern does not meet threshold - {numb_of_snv_in_matches_not_mutagen_base} good SNVs out of {numb_of_SNVs} ({prop_non_mutagen_snv:.2%})")
 
                             #if there is a SNV in a matching none mutagenesis base then record it
                             #HERE ADD THRESHOLD - 30.04.2025
-                            if numb_of_snv_in_matches_not_mutagen_base > 2:
-                                print(f"More than 2 SNVs are at VR match not at mutagenesis base")
-                                DGR_looks_snv_false = True
-                            else:
+                            #if numb_of_snv_in_matches_not_mutagen_base > 2:
+                                #print(f"More than 2 SNVs are at VR match not at mutagenesis base")
+                                #DGR_looks_snv_false = True
+                            #else:
                                 #NO SNV in matching none mutagenesis base
-                                DGR_looks_snv_false = False
-                                print(f"NO more than 2 SNVS at match of VR not at mutagenesis base")
+                                #DGR_looks_snv_false = False
+                                #print(f"NO more than 2 SNVS at match of VR not at mutagenesis base")
+
 
                         #to test for VR diversity of base types in the protein sequence
                         for letter, count in query_mismatch_counts.items():
@@ -1357,8 +1382,6 @@ class DGR_Finder:
                             continue
 
                         if self.only_a_bases:
-                            #THIS WARNIGN SHOULD GO AT THE top of fuc so not run for every check
-                            #self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
                             # Filter out bases with count > 0 before checking
                             nonzero_mismatch_bases = [base for base, count in subject_mismatch_counts.items() if count > 0]
 
@@ -1371,6 +1394,12 @@ class DGR_Finder:
                             # Skip if any mismatching base is not valid
                             if not all_mismatches_are_A:
                                 continue
+
+                        # Here we dont add VR candidates based on SNV parameters.
+                        # Skip DGR if flagged due to SNV-based filters
+                        if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
+                            self.run.info_single("Skipping candidate DGR due to SNV filters (3rd codon bias or SNVs in VR match)")
+                            continue
 
                         #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
