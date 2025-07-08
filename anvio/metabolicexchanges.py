@@ -149,9 +149,31 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
-        
         self.run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
-            
+
+        if not self.pathway_walk_only:
+            # STEP 3: PREDICT EXCHANGES using reaction network
+            pot_exchanged_rn, uniq_rn = self.predict_from_reaction_network(compounds_not_in_maps)
+            compounds_in_both_dicts = set(pot_exchanged_dict.keys()).intersection(pot_exchanged_rn.keys())
+            if compounds_in_both_dicts:
+                raise ConfigError(f"We found the following compound IDs that were found to be potentially-exchanged "
+                            f"both by Pathway Walk and Reaction Network. Normally this shouldn't happen, and it means "
+                            f"there is something weird with the set of compounds we gave to the reaction network. Regardless, "
+                            f"we don't want to overwrite any of the Pathway Walk results, so we are stopping the show. Here "
+                            f"are the affected compounds for debugging purposes: {compounds_in_both_dicts}")
+            pot_exchanged_dict.update(pot_exchanged_rn)
+            compounds_in_both_dicts = set(uniq_dict.keys()).intersection(uniq_rn.keys())
+            if compounds_in_both_dicts:
+                raise ConfigError(f"We found the following compound IDs that were found to be unique "
+                            f"both by Pathway Walk and Reaction Network. Normally this shouldn't happen, and it means "
+                            f"there is something weird with the set of compounds we gave to the reaction network. Regardless, "
+                            f"we don't want to overwrite any of the Pathway Walk results, so we are stopping the show. Here "
+                            f"are the affected compounds for debugging purposes: {compounds_in_both_dicts}")
+            uniq_dict.update(uniq_rn)
+
+        self.run.warning(f"Identified {len(pot_exchanged_dict)} potentially exchanged compounds and "
+                         f"{len(uniq_dict)} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
+                
 
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
@@ -558,3 +580,113 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
 
         return potentially_exchanged_compounds, unique_compounds, pathway_walk_evidence
+
+    def predict_from_reaction_network(self, compound_set):
+        """For each compound in the provided set, predicts whether it is potentially-exchanged or unique from the reaction network.
+        Returns 2 dictionaries: 
+            potentially-exchanged compounds
+            unique compounds
+        """
+
+        unique_compounds = {}
+        potentially_exchanged_compounds = {}
+        num_compounds_to_process = len(compound_set)
+        processed_count=0
+        self.progress.new('Processing compounds in reaction network', progress_total_items=num_compounds_to_process)
+        for compound_id in compound_set:
+            if compound_id in self.processed_compound_ids:
+                continue
+            compound_name = self.merged.metabolites[compound_id].modelseed_name
+            if anvio.DEBUG:
+                self.progress.reset()
+                run.info_single(f"Working on compound {compound_id} ({compound_name})")
+            sub_ids = [compound_id]
+            if compound_id in self.eq_compounds:
+                eq_comp = self.eq_compounds[compound_id]['equivalent_id']
+                sub_ids.append(self.eq_compounds[compound_id]['equivalent_id'])
+                self.processed_compound_ids.add(self.eq_compounds[compound_id]['equivalent_id'])
+            sub_network = self.merged.subset_network(metabolites_to_subset=sub_ids)
+
+            genomes_produce = set([])
+            genomes_consume = set([])
+            production_reactions = {g: {} for g in self.genomes_to_compare}
+            consumption_reactions = {g: {} for g in self.genomes_to_compare}
+            for rid, reaction in sub_network.reactions.items():
+                # replace all equivalent IDs with the compound ID we are currently working on in the network
+                if compound_id in self.eq_compounds:
+                    eq_comp =self.eq_compounds[compound_id]['equivalent_id']
+                    reaction.compound_ids = [compound_id if x == eq_comp else x for x in reaction.compound_ids]
+
+                idx = reaction.compound_ids.index(compound_id)
+                #TODO: make a dict of compounds with transport reactions and use as evidence in final output
+                if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
+                    if anvio.DEBUG:
+                        run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
+                                        header="DEBUG", lc="yellow")
+                    continue
+                # which genomes produce this compound?
+                elif reaction.coefficients[idx] > 0:
+                    for g, genome_info in self.genomes_to_compare.items():
+                        if genome_info['name'] in reaction.genomes_of_origin:
+                            genomes_produce.add(g)
+                            production_reactions[g][rid] = self.get_reaction_equation(reaction)
+
+                # which genomes utilize this compound?
+                elif reaction.coefficients[idx] < 0:
+                    for g, genome_info in self.genomes_to_compare.items():
+                        if genome_info['name'] in reaction.genomes_of_origin:
+                            genomes_consume.add(g)
+                            consumption_reactions[g][rid] = self.get_reaction_equation(reaction)
+
+            def add_reactions_to_dict_for_compound(compound_dict):
+                """Modifies the compound dictionary in place to add production and consumption reaction output"""
+                for g in self.genomes_to_compare:
+                    prod_rxn_ids = sorted(production_reactions[g].keys())
+                    cons_rxn_ids = sorted(consumption_reactions[g].keys())
+                    prod_rxn_eqs = [production_reactions[g][rid] for rid in prod_rxn_ids]
+                    cons_rxn_eqs = [consumption_reactions[g][rid] for rid in cons_rxn_ids]
+                    compound_dict[f"production_rxn_ids_{g}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
+                    compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
+                    compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
+                    compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
+            
+            producer,consumer = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
+            if producer or consumer:
+                producer_name = self.genomes_to_compare[producer]['name'] if producer else None
+                consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
+                if producer == consumer or (not producer) or (not consumer): # unique to one genome
+                    unique_compounds[compound_id] = {'compound_name': compound_name, 
+                                                    'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
+                                                    'produced_by': producer_name,
+                                                    'consumed_by': consumer_name,
+                                                    'prediction_method': 'Reaction_Network_Subset',
+                                                    }
+                    add_reactions_to_dict_for_compound(unique_compounds[compound_id])
+                else: # potentially-exchanged
+                    potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
+                                                                    'genomes': ",".join([producer_name,consumer_name]),
+                                                                    'produced_by': producer_name,
+                                                                    'consumed_by': consumer_name,
+                                                                    'prediction_method': 'Reaction_Network_Subset',
+                                                                    }
+                    add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+
+                    # fill these in with blanks to avoid issues later
+                    potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['max_production_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['max_consumption_chain_length'] = None
+                    potentially_exchanged_compounds[compound_id]['production_overlap_length'] = None
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = None
+                    potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = None
+                    potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
+
+            self.processed_compound_ids.add(compound_id)
+            processed_count += 1
+            self.progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
+            self.progress.increment(increment_to=processed_count)
+
+        self.progress.end()
+        self.run.info("Number of exchanged compounds predicted from Reaction Network subset approach", len(potentially_exchanged_compounds))
+        self.run.info("Number of unique compounds predicted from Reaction Network subset approach", len(unique_compounds))
+
+        return potentially_exchanged_compounds, unique_compounds
