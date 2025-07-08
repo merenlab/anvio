@@ -123,8 +123,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         if not self.contigs_db_1 or not self.contigs_db_2:
             raise ConfigError("The ExchangePredictorSingle class needs two contigs databases to work with.")
 
-    def predict_exchanges(self):
-        """This is the driver function to predict metabolic exchanges between two genomes."""
+    def predict_exchanges(self, output_files_dictionary=None):
+        """This is the driver function to predict metabolic exchanges between two genomes.
+        
+        PARAMETERS
+        ==========
+        output_files_dictionary : dictionary of output type (str), AppendableFile object pairs
+            contains an initialized AppendableFile object to append output to for each output type
+            (used in multi-mode to direct all output from several estimators to the same files)
+        """
 
         # LOAD DATA
         self.eq_compounds = {}
@@ -135,6 +142,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.run.info("Custom equivalent compounds file", self.custom_equivalent_compounds_file)
             self.eq_compounds = self.load_equivalent_compounds()
 
+        if output_files_dictionary:
+            self.output_file_dict = output_files_dictionary
+        else:
+            self.output_file_dict = self.setup_output_for_appending()
+
         self.load_reaction_networks()
         
         # MERGE NETWORKS
@@ -144,7 +156,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info_single(f"Created a merged network with {len(self.merged.genes)} genes.")
         self.run.info("Number of metabolites in merged network to process", len(self.merged.metabolites))
 
-        # SETUP DICTIONARIES
+        # SET UP DICTIONARIES
         self.map_kegg_ids_to_modelseed_ids()
         self.map_kegg_ids_to_compound_names()
         self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=MAPS_TO_EXCLUDE, id_selection_prefix = "00")
@@ -153,9 +165,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.compound_to_pathway_walk_chains = defaultdict(dict)
 
         # dictionaries to store output
-        pot_exchanged_dict = {}
-        uniq_dict = {}
-        walk_evidence_dict = {}
+        data_dicts = {t: {} for t in self.output_types}
         compounds_not_in_maps = set()
         self.processed_compound_ids = set() # this is how we'll make sure we don't process equivalent compounds twice
 
@@ -165,9 +175,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             compounds_not_in_maps = set(self.merged.metabolites.keys()).difference(set(self.compound_to_pathway_walk_chains.keys()))
 
             # STEP 2: PREDICT EXCHANGES using pathway walk evidence
-            pot_exchanged_pw, uniq_pw, walk_evidence_dict = self.predict_from_pathway_walks()
-            pot_exchanged_dict.update(pot_exchanged_pw)
-            uniq_dict.update(uniq_pw)
+            pot_exchanged_pw, uniq_pw, data_dicts['evidence'] = self.predict_from_pathway_walks()
+            data_dicts['potentially-exchanged-compounds'].update(pot_exchanged_pw)
+            data_dicts['unique-compounds'].update(uniq_pw)
             
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
@@ -176,26 +186,31 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         if not self.pathway_walk_only:
             # STEP 3: PREDICT EXCHANGES using reaction network
             pot_exchanged_rn, uniq_rn = self.predict_from_reaction_network(compounds_not_in_maps)
-            compounds_in_both_dicts = set(pot_exchanged_dict.keys()).intersection(pot_exchanged_rn.keys())
+            compounds_in_both_dicts = set(data_dicts['potentially-exchanged-compounds'].keys()).intersection(pot_exchanged_rn.keys())
             if compounds_in_both_dicts:
                 raise ConfigError(f"We found the following compound IDs that were found to be potentially-exchanged "
                             f"both by Pathway Walk and Reaction Network. Normally this shouldn't happen, and it means "
                             f"there is something weird with the set of compounds we gave to the reaction network. Regardless, "
                             f"we don't want to overwrite any of the Pathway Walk results, so we are stopping the show. Here "
                             f"are the affected compounds for debugging purposes: {compounds_in_both_dicts}")
-            pot_exchanged_dict.update(pot_exchanged_rn)
-            compounds_in_both_dicts = set(uniq_dict.keys()).intersection(uniq_rn.keys())
+            data_dicts['potentially-exchanged-compounds'].update(pot_exchanged_rn)
+            compounds_in_both_dicts = set(data_dicts['unique-compounds'].keys()).intersection(uniq_rn.keys())
             if compounds_in_both_dicts:
                 raise ConfigError(f"We found the following compound IDs that were found to be unique "
                             f"both by Pathway Walk and Reaction Network. Normally this shouldn't happen, and it means "
                             f"there is something weird with the set of compounds we gave to the reaction network. Regardless, "
                             f"we don't want to overwrite any of the Pathway Walk results, so we are stopping the show. Here "
                             f"are the affected compounds for debugging purposes: {compounds_in_both_dicts}")
-            uniq_dict.update(uniq_rn)
+            data_dicts['unique-compounds'].update(uniq_rn)
 
-        self.run.warning(f"Identified {len(pot_exchanged_dict)} potentially exchanged compounds and "
-                         f"{len(uniq_dict)} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
-                
+        self.run.warning(f"Identified {len(data_dicts['potentially-exchanged-compounds'])} potentially exchanged compounds and "
+                         f"{len(data_dicts['unique-compounds'])} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
+        
+        # STEP 4: OUTPUT
+        self.append_output_from_dicts(data_dicts)
+        for typ, file_object in self.output_file_dict.items():
+            self.run.info(f"Output with {typ}", file_object.path)
+            file_object.close()       
 
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
