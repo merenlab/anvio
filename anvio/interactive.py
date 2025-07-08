@@ -205,11 +205,51 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.split_names_of_interest = set([self.inspect_split_name])
             self.skip_check_names = True
 
+        if self.mode in ['full', 'collection', 'trnaseq', 'gene'] and not self.profile_db_path:
+            raise ConfigError("You must declare a profile database for this to work :(")
+
         if self.contigs_db_path:
             self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
+
+            # initialize ContigsSuperclass
+            ContigsSuperclass.__init__(self, self.args)
+            self.init_splits_taxonomy(self.taxonomic_level)
+
+            # while we are here, let's make sure we are not working with apples and oranges here if there
+            # also a profile-db defined in this context.
+            if self.profile_db_path:
+                utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         else:
+            # Why do we have these here? This question has somewhat a convoluted answer. In the previous
+            # iterations of the code, we would initialize the ContigsSuperclass regardless of whether we
+            # had a contigs_db_path or not. Since if there were no contigs_db_path, the ContigsSuperclass
+            # would initialize its member variables (which then would become the member variables of the
+            # Interactive class thorugh inheritcance), and would not complain about the absence of a
+            # contigs-db, and life would move on. BUT THEN, we changed the ContigsSuperclass to load
+            # data from its tables upon the 'first' access to its member variables for lazy loading.
+            # in this case, there were no empty variable names, but functions that are listening for these
+            # variables to be called upon. In the original version, the occurrence of these variables
+            # in the code below did not change anything. Since they were all None, [], or {}. But with
+            # lazy loading, they were place holders. So the when the downstream code accessed to a
+            # variable, it was no longer None, [], or {}, but it was something ContigsSuperclass
+            # designed to 'load'. And when it tried to load in cases where there were no contigs-db,
+            # such as in pan mode, became a real issue. That's why we are conditionally inheriting
+            # from the ContigsSuperclass here, and in instances where we are not, we are creating
+            # these variables and setting them to appropriate default values. This of course is a
+            # result of a bad design. The interactive.py was here before all the other modes, and when
+            # all modes of operation required a contigs-db. When other modes came, we did not have to
+            # reimplement everything because actually the code was written well enough to support
+            # additional modes. But introducing lazy loading caused other problems that we could not
+            # have foreseen since we have reasonable intelligence and not Godlike intelligence. YKWIM?
+            self.run = terminal.Run()
+            self.progress = terminal.Progress()
+            self.splits_basic_info = None
+            self.hmm_searches_dict = None
+            self.splits_taxonomy_dict = {}
+            self.split_sequences = None
+            self.gene_function_calls_initiated = False
             self.contigs_db_variant = None
             self.completeness = None
 
@@ -227,16 +267,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'trnaseq'
             else:
                 self.mode = 'full'
-
-        if self.mode in ['full', 'collection', 'trnaseq', 'gene'] and not self.profile_db_path:
-            raise ConfigError("You must declare a profile database for this to work :(")
-
-        ContigsSuperclass.__init__(self, self.args)
-        self.init_splits_taxonomy(self.taxonomic_level)
-
-        # make sure we are not dealing with apples and oranges here.
-        if self.contigs_db_path and self.profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
@@ -1242,6 +1272,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is "
                                "confused :/")
 
+        # initialize PanSuperclass
         PanSuperclass.__init__(self, self.args)
 
         self.init_gene_clusters()
