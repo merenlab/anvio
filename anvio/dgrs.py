@@ -1768,7 +1768,7 @@ class DGR_Finder:
                         vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
                         tr['base'], vr_data['TR_reverse_complement'],
                         vr_data['TR_start_position'], vr_data['TR_end_position'],
-                        tr.get('TR_bin', 'N/A'),tr['TR_in_gene'], tr['HMM_source'], tr["distance_to_HMM"],
+                        tr.get('TR_bin', 'N/A'),tr.get('TR_in_gene', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
                         tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
                         tr["HMM_stop"], tr["HMM_gene_callers_id"], vr_data["DGR_looks_snv_false"],
                         vr_data["snv_at_3_codon_over_a_third"], vr_data["numb_of_snv_in_matches_not_mutagen_base"],
