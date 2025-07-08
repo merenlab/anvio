@@ -129,6 +129,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         # this will store the output of the KEGG Pathway Map walks
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
         self.compound_to_pathway_walk_chains = defaultdict(dict)
+
+        if not self.no_pathway_walk:
+            # STEP 1: PATHWAY MAP WALKS (TODO multithread: split pathway maps between workers)
+            self.walk_all_pathway_maps()
         
 
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
@@ -248,3 +252,30 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         walker_args.keep_intermediate_chains = True
         walker_args.verbose = False
         return walker_args
+
+    def walk_all_pathway_maps(self):
+        """Loops over all KEGG Pathway Maps in the merged network and fills self.compound_to_pathway_walk_chains."""
+
+        num_pms_to_process = len(self.all_pathway_maps)
+        processed_count = 0
+        self.progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
+        for pm in self.all_pathway_maps:
+            for g in self.genomes_to_compare: 
+                wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
+                walker = nw.KGMLNetworkWalker(wargs)
+                production_chains = walker.get_chains()
+                walker.compound_fate = 'consume'
+                consumption_chains = walker.get_chains()
+                for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
+                    if compound not in self.kegg_id_to_modelseed_id:
+                        raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
+                    modelseed_id = self.kegg_id_to_modelseed_id[compound]
+                    
+                    if pm not in self.compound_to_pathway_walk_chains[modelseed_id]:
+                        self.compound_to_pathway_walk_chains[modelseed_id][pm] = {}
+                    self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                                                                            'consume': consumption_chains[compound] if compound in consumption_chains else None}
+            processed_count += 1
+            self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
+            self.progress.increment(increment_to=processed_count)
+        self.progress.end()
