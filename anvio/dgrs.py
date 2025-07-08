@@ -2242,7 +2242,7 @@ class DGR_Finder:
                     self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}, is going to fall off the start of the Contig. This is the pesky VR contig: {vr_data['VR_contig']}.")
 
                 contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
-                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end]
+                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end + 1]
                 #add every primer sequence to the dgrs_dict
                 vr_data['vr_primer_region'] = vr_primer_region
 
@@ -2574,30 +2574,36 @@ class DGR_Finder:
                             print(primers_dict[original_primer_key])
                             print(primers_dict)
                         if not primer_snvs.empty:
-                            # Get the original primer sequence
-                            original_primer_sequence = (primers_dict[original_primer_key]['initial_primer_sequence'] + primers_dict[original_primer_key]['vr_anchor_primer'])
-                            new_primer_sequence = list(original_primer_sequence)
+                            # Get original sequences separately
+                            original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
+                            vr_anchor_primer = primers_dict[original_primer_key]['vr_anchor_primer']
+
+                            # Work on a copy of the initial primer sequence only
+                            new_initial_primer = list(original_initial_primer)
 
                             # Vectorized operation to find consensus SNVs and update the primer sequence
+                            # TODO: make departure from ref a parameter?
                             consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
                             positions_in_primer = (vr_start - self.initial_primer_length) - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
 
                             for position, consensus_base in zip(positions_in_primer, consensus_snvs):
-                                if consensus_base and 0 <= position and position < len(new_primer_sequence):
-                                    new_primer_sequence[position] = consensus_base
+                                if consensus_base and 0 <= position < len(new_initial_primer):
+                                    new_initial_primer[position] = consensus_base
 
-                            # Update the sample-specific primers dictionary with the new primer sequence
+                            # Store the initial + anchor separately, combine only later
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
-                                'initial_primer_sequence': ''.join(new_primer_sequence),
+                                'initial_primer_sequence': ''.join(new_initial_primer),
+                                'vr_anchor_primer': vr_anchor_primer,
                                 'used_original_primer': False,
                             }
 
-                            print(f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_primer_sequence)}")
+                            self.run.info_single(f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}")
                         else:
                             # Use the original primer sequence since no SNVs were found
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
-                                'initial_primer_sequence': primers_dict[original_primer_key]['initial_primer_sequence'],
-                                'used_original_primer': True,  # Flag to indicate no SNVs were used
+                                'initial_primer_sequence': original_initial_primer,
+                                'vr_anchor_primer': vr_anchor_primer,
+                                'used_original_primer': True,
                             }
                             self.run.warning(f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, skipping sample consensus.")
                             continue
@@ -2614,6 +2620,7 @@ class DGR_Finder:
 
                         # Combine the initial primer sequence and vr_anchor_primer for each sample
                         initial_primer = primer_data['initial_primer_sequence']
+                        vr_anchor_primer = primer_data['vr_anchor_primer']
                         primer_sequence = initial_primer + vr_anchor_primer
 
                         # Add the combined primer sequence to the sample data
