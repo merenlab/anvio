@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
+import os
 from copy import deepcopy
 from argparse import Namespace
 from collections import defaultdict
@@ -12,6 +13,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
+import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
@@ -75,6 +77,26 @@ class ExchangePredictorArgs():
                         "AA equivalents file, and modify from there)")
         if self.no_pathway_walk and self.pathway_walk_only:
             raise ConfigError("The parameters --no-pathway-walk and --pathway-walk-only are mutually exclusive.")
+
+    def setup_output_for_appending(self):
+        """Initializes and returns a dictionary of AppendableFile objects, one for each output type"""
+
+        output_dict = {}
+        for typ in self.output_types:
+            output_path = self.output_file_prefix + "-" + typ + ".txt"
+            if filesnpaths.is_file_exists(output_path, dont_raise=True) and not anvio.FORCE_OVERWRITE:
+                raise ConfigError(f"It seems like output files with your requested prefix already exist, for "
+                                  f"example: {output_path}. Please delete the existing files or provide a "
+                                  f"different output prefix, OR add the --force-overwrite flag to your command "
+                                  f"(in which case, we will delete the existing files before starting a new one "
+                                  f"to append to).")
+            if filesnpaths.is_file_exists(output_path, dont_raise=True) and anvio.FORCE_OVERWRITE:
+                os.remove(output_path)
+                self.run.info_single(f"Removed existing output file at {output_path}")
+            output_file_for_type = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=True)
+            output_dict[typ] = output_file_for_type
+
+        return output_dict
         
 
 class ExchangePredictorSingle(ExchangePredictorArgs):
@@ -690,3 +712,39 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info("Number of unique compounds predicted from Reaction Network subset approach", len(unique_compounds))
 
         return potentially_exchanged_compounds, unique_compounds
+
+    def append_output_from_dicts(self, output_dicts):
+        """This function appends the output dictionaries to initialized AppendableFile objects in self.output_file_dict.
+        
+        output_dicts : dictionary of dictionaries
+            Key is output type, and value is the data dictionary associated with that output type
+        """
+
+        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
+        if self.add_reactions_to_output:
+            output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
+            [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+        exchange_header = deepcopy(output_header)
+        if not self.no_pathway_walk:
+            exchange_header += ['max_reaction_chain_length', 'max_production_chain_length', 'max_consumption_chain_length',
+                                'production_overlap_length', 'consumption_overlap_length', 
+                                'production_overlap_proportion', 'consumption_overlap_proportion']
+
+        for mode, file_obj in self.output_file_dict.items():  
+            if mode not in output_dicts:
+                raise ConfigError(f"Uh oh. You've requested to generate output of type '{mode}' but we don't "
+                                  f"have a data dictionary associated with that type.")
+
+            header_list = output_header
+            if mode == 'potentially-exchanged-compounds':
+                exchange_header = deepcopy(output_header)
+                if not self.no_pathway_walk:
+                    exchange_header += ['max_reaction_chain_length', 'max_production_chain_length', 'max_consumption_chain_length',
+                                        'production_overlap_length', 'consumption_overlap_length', 
+                                        'production_overlap_proportion', 'consumption_overlap_proportion']
+                header_list = exchange_header
+
+            if mode == 'evidence':
+                file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
+            else:
+                file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
