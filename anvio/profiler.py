@@ -68,6 +68,9 @@ class BAMProfilerQuick:
         self.gene_caller = A('gene_caller')
         self.report_minimal = A('report_minimal')
 
+        if not self.gene_caller:
+            self.gene_caller = utils.get_default_gene_caller(self.contigs_db_path)
+
         if not skip_sanity_check:
             self.sanity_check()
 
