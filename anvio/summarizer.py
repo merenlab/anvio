@@ -977,7 +977,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
@@ -1105,8 +1105,9 @@ class ContigSummarizer(SummarizerSuperClass):
 
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
+
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         self.progress.new('Generating contigs db summary')
 
@@ -1657,9 +1658,10 @@ class Bin:
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
                     self.contig_name_conversion_dict[contig_name] = {'reformatted_contig_name': reformatted_contig_name}
-                    contig_name = reformatted_contig_name
+                else:
+                    reformatted_contig_name = contig_name
 
-                fasta_id = contig_name + appendix
+                fasta_id = reformatted_contig_name + appendix
                 self.contig_lengths.append(len(sequence))
 
                 output += '>%s\n' % fasta_id

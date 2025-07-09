@@ -14,7 +14,7 @@ ANVIO_WORKFLOWS = {
         "artifacts_accepted": ['fasta-txt'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
-            ('Gene calling', ['prodigal']),
+            ('Gene calling', ['pyrodigal-gv']),
             ('HMM search', ['HMMER']),
             ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Sequence search against various databases', ['DIAMOND'])
@@ -35,7 +35,7 @@ ANVIO_WORKFLOWS = {
             ('Quality control of short reads', ['illumina-utils']),
             ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
             ('BAM file manipulations', ['samtools']),
-            ('Gene calling', ['prodigal']),
+            ('Gene calling', ['pyrodigal-gv']),
             ('HMM search', ['HMMER']),
             ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Read recruitment', ['Bowtie2'])
@@ -116,7 +116,7 @@ THIRD_PARTY_PROGRAMS = {
     'metaSPAdes': {'link': "https://cab.spbu.ru/software/meta-spades/"},
     'MEGAHIT': {'link': 'https://github.com/voutcn/megahit'},
     'samtools': {'link': 'http://www.htslib.org/'},
-    'prodigal': {'link': 'https://github.com/hyattpd/Prodigal'},
+    'pyrodigal-gv': {'link': 'https://github.com/althonos/pyrodigal-gv'},
     'HMMER': {'link': 'http://hmmer.org/'},
     'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
     'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},

@@ -14,6 +14,7 @@ import numpy
 import random
 import argparse
 import textwrap
+import threading
 import itertools
 import scipy.signal
 
@@ -26,6 +27,7 @@ import scipy.signal
 import multiprocess as multiprocessing
 
 from io import StringIO
+from functools import wraps
 from collections import Counter
 
 import anvio
@@ -93,7 +95,107 @@ class DBClassFactory:
         return anvio_db_class(db_path)
 
 
+class LazyProperty:
+    """A descriptor that implements lazy-loading property pattern.
+
+    It will only load data when the property is accessed for the first time,
+    then caches the result for future accesses.
+    """
+
+    def __init__(self, loader_method):
+        self.loader_method = loader_method
+        self.attr_name = loader_method.__name__
+        self._lock = threading.Lock()
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        if not hasattr(instance, '_lazy_loaded_data'):
+            with self._lock:
+                if not hasattr(instance, '_lazy_loaded_data'):
+                    instance._lazy_loaded_data = {}
+
+        if self.attr_name not in instance._lazy_loaded_data:
+            with self._lock:
+                if self.attr_name not in instance._lazy_loaded_data:
+                    instance._lazy_loaded_data[self.attr_name] = self.loader_method(instance)
+
+        return instance._lazy_loaded_data[self.attr_name]
+
+
+def LazyProgress(message):
+    """Decorator to wrap functions with progress handling (please fasten your seatbelt).
+
+    This is a necessary function since lazy loading the code does not always follow a linear
+    path. For instance a progress instance starts, then the code reaches to a variable that
+    needs to be load lazily, and in the function it loads it there is a `self.progress.new`
+    call that really complicates everything. With this decorator + wrapper solution we are
+    reaching in new depths in anvi'o codebase with technically sound hacks, and implement
+    a logic that can work with every case of 'progress'. Well, fingers crossed.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Pre-call logic that prepares to 'append' to the existing progress,
+            # or creating a new one depending on what is going on in this context.
+            existing_progress_message = None
+            started_new = False
+
+            if hasattr(self.progress, 'pid') and self.progress.pid:
+                existing_progress_message = self.progress.msg
+                self.progress.update(f' [Lazy loading {message}]')
+            else:
+                self.progress.new(f'Loading {message}')
+                self.progress.update('...')
+                started_new = True
+
+            try:
+                result = func(self, *args, **kwargs)
+            finally:
+                # Post-call logic to finalize things by either ending a new
+                # progress item, or returning the old progress message to its
+                # rightful owner
+                if existing_progress_message:
+                    self.progress.update(existing_progress_message)
+                elif started_new:
+                    self.progress.end()
+
+            return result
+        return wrapper
+    return decorator
+
+
 class ContigsSuperclass(object):
+    """A superclass for operations on contigs databases with lazy loading optimization.
+
+    This class provides access to various data structures from anvi'o contigs databases.
+    To improve its performance, most data is loaded lazily (as in, only retrieved from
+    the database when first accessed, then cached in memory for subsequent use).
+
+    At the time of writing this comment, lazy-loaded properties of the class included:
+        - splits_basic_info: Basic information about splits
+        - genes_in_splits: Gene-to-split mappings
+        - contigs_basic_info: Basic information about contigs
+        - genes_in_contigs_dict: Gene-to-contig mappings
+        - nt_positions_info: Nucleotide position information
+        - hmm_sources_info: HMM search source information
+        - And several others (not going through all here since there will be more over time)
+
+    Usage:
+        >>> contigs = ContigsSuperclass(args)
+        >>> # Data is loaded only when accessed:
+        >>> splits = contigs.splits_basic_info  # Triggers database query
+        >>> splits_again = contigs.splits_basic_info  # Uses cached data
+
+    Note:
+        The first access to any lazy-loaded property will trigger a database query
+        and may take some time depending on the size of your database and the
+        complexity of the data being loaded. We have progress bars to help both programmers
+        and users to track that, but more may be needed.
+
+    """
     def __init__(self, args, r=run, p=progress):
         self.args = args
         self.run = r
@@ -111,34 +213,11 @@ class ContigsSuperclass(object):
         if hasattr(self.args, 'split_names_of_interest'):
             self.split_names_of_interest = set(self.args.split_names_of_interest)
 
+        # Initialize minimal required attributes
         self.a_meta = {}
 
-        self.splits_basic_info = {}
-        self.splits_taxonomy_dict = {}
-        self.split_sequences = {}
-        self.contigs_basic_info = {}
-        self.nt_positions_info = {}
 
-        self.contig_sequences = {}
-        self.gene_caller_ids_included_in_contig_sequences_initialized = set([])
-
-        self.genes_in_contigs_dict = {}
-        self.gene_lengths = {}
-        self.contig_name_to_genes = {}
-        self.genes_in_splits = {} # keys of this dict are NOT gene caller ids. they are ids for each entry.
-        self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
-        self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
-
-        self.gene_function_call_sources = []
-        self.gene_function_calls_dict = {}
-        self.gene_function_calls_initiated = False
-
-        self.hmm_sources_info = {}
-        self.hmm_searches_dict = {}   # <--- upon initiation, this dict only keeps hmm hits for non-singlecopy
-        self.hmm_searches_header = [] #      gene searches... single-copy gene info is accessed through completeness.py
-
-        self.singlecopy_gene_hmm_sources = set([])
-        self.non_singlecopy_gene_hmm_sources = set([])
+        self._initialize_minimal_data()
 
         # now all items are initialized, we will check whether we are being initialized from within
         # an object that is in `pan` or `manual` mode, neither of which will have a contigs database
@@ -148,100 +227,268 @@ class ContigsSuperclass(object):
         if D('mode') == 'pan' or D('mode') == 'functional' or D('mode') == 'manual':
             return
 
+
+    def _initialize_minimal_data(self):
+        """Initialize only the essential data needed for basic functionality.
+
+           This method loads only the most basic metadata required for the class
+           to function. All other data structures are loaded lazily when first
+           accessed to improve initialization performance.
+
+           Loads:
+               - Basic database metadata
+               - Database connection verification
+               - Essential configuration values
+               - AND THAT'S IT.
+        """
+        # Basic metadata that's always needed
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path. "
-                              "There are many ways this can happen, but .. do you think you were trying to run anvio-interactive in "
-                              "manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created "
-                              "an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we "
-                              "may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag, "
-                              "and send us an e-mail :(")
+                            "There are many ways this can happen, but .. do you think you were trying to run anvio-interactive in "
+                            "manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created "
+                            "an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we "
+                            "may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag, "
+                            "and send us an e-mail :(")
 
         filesnpaths.is_file_exists(self.contigs_db_path)
 
-        self.progress.new('Loading the contigs DB')
-        self.progress.update('...')
-
+        # Load basic meta information
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-
         self.a_meta = contigs_db.meta
 
-        self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
-
-        ####################################################################################
-        # MINDFULLY READING STUFF FROM THE DATABASE
-        ####################################################################################
-        # read SPLITS and GENES basic information.
-        self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split', self.split_names_of_interest, progress=self.progress)
-        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress)
-
-        # if there are no splits names of interest, contig names of interest will be an empty set.
-        # that's OK, because `smart_get` will take care of it.
-        contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
-
-        # read CONTIGS and GENES basic information.
-        self.contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
-        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress)
-
-        # because this table is as dumb as Eric, it needs some special attention
-        if self.split_names_of_interest:
-            self.progress.update('Reading **SOME** entries in the nucleotide positions info table :)')
-            where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
-            for contig_name, nt_positions_info in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
-                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
+        if 'creation_date' in self.a_meta:
+            self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date'])
         else:
-            self.progress.update('Reading **ALL** entries in the nucleotide positions info table :(')
-            for contig_name, nt_positions_info in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
-                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
-        ####################################################################################
-        # /MINDFULLY READING STUFF FROM THE DATABASE
-        ####################################################################################
-
-        self.progress.update('Populating gene lengths dict')
-        self.gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start'])) for g in self.genes_in_contigs_dict])
-
-        self.progress.update('Populating contig name to gene IDs dict')
-        for contig_name in self.contigs_basic_info:
-            self.contig_name_to_genes[contig_name] = set([])
-        for gene_unique_id in self.genes_in_contigs_dict:
-            e = self.genes_in_contigs_dict[gene_unique_id]
-            self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
-
-
-        self.progress.update('Identifying HMM searches for single-copy genes and others')
-        self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
-        for hmm_source in self.hmm_sources_info:
-            self.hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in self.hmm_sources_info[hmm_source]['genes'].split(',')])
-
-        self.singlecopy_gene_hmm_sources = set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
-        self.non_singlecopy_gene_hmm_sources = set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
-
-        self.progress.update('Generating "split name" to "gene entry ids" mapping dict')
-        for entry_id in self.genes_in_splits:
-            split_name = self.genes_in_splits[entry_id]['split']
-            if split_name in self.split_name_to_genes_in_splits_entry_ids:
-                self.split_name_to_genes_in_splits_entry_ids[split_name].add(entry_id)
-            else:
-                self.split_name_to_genes_in_splits_entry_ids[split_name] = set([entry_id])
-
-        for split_name in self.splits_basic_info:
-            if split_name not in self.split_name_to_genes_in_splits_entry_ids:
-                self.split_name_to_genes_in_splits_entry_ids[split_name] = set([])
-
-        self.progress.update('Generating "gene caller id" to "split name" mapping dict')
-        for entry in list(self.genes_in_splits.values()):
-            self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
-
-        self.progress.end()
+            self.a_meta['creation_date'] = 'unknown'
 
         contigs_db.disconnect()
+
+        # initialize the container for attributes that will be lazy loaded by LazyProperty descriptors
+        # when needed
+        self._lazy_loaded_data = {}
+
+        # Initialize other directly accessible attributes
+        self.split_sequences = {}
+        self.contig_sequences = {}
+        self.gene_caller_ids_included_in_contig_sequences_initialized = set([])
+        self.splits_taxonomy_dict = {}
+        self.gene_function_call_sources = []
+        self.gene_function_calls_dict = {}
+        self.gene_function_calls_initiated = False
+        self.hmm_searches_dict = {}
+        self.hmm_searches_header = []
 
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
+    @LazyProperty
+    @LazyProgress('splits basic info')
+    def splits_basic_info(self):
+        """Lazily load basic information about splits."""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read SPLITS basic information
+        splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split',
+                                                 self.split_names_of_interest, progress=self.progress)
+
+        contigs_db.disconnect()
+
+        return splits_basic_info
+
+
+    @LazyProperty
+    @LazyProgress('genes in splits')
+    def genes_in_splits(self):
+        """Lazily load information about genes in splits."""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read GENES in splits information
+        genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split',
+                                               self.split_names_of_interest, progress=self.progress)
+
+        contigs_db.disconnect()
+
+        return genes_in_splits
+
+
+    @LazyProperty
+    @LazyProgress('contigs basic info')
+    def contigs_basic_info(self):
+        """Lazily load basic information about contigs."""
+
+        # Determine contigs of interest based on splits (if any)
+        if self.split_names_of_interest:
+            contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
+        else:
+            # When no splits are specified, we want all contigs
+            contig_names_of_interest = set([])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read CONTIGS basic information
+        contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig',
+                                                  contig_names_of_interest, string_the_key=True,
+                                                  progress=self.progress)
+
+        contigs_db.disconnect()
+
+        return contigs_basic_info
+
+
+    @LazyProperty
+    @LazyProgress('genes in contigs')
+    def genes_in_contigs_dict(self):
+        """Lazily load information about genes in contigs."""
+
+        # Determine contigs of interest based on splits (if any)
+        if self.split_names_of_interest:
+            contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
+        else:
+            # When no splits are specified, we want all contigs
+            contig_names_of_interest = set([])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Read GENES in contigs information
+        genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
+                                                     contig_names_of_interest, progress=self.progress)
+
+        contigs_db.disconnect()
+
+        return genes_in_contigs_dict
+
+
+    @LazyProperty
+    @LazyProgress('nucleotide positions info')
+    def nt_positions_info(self):
+        """Lazily load nucleotide positions info."""
+
+        nt_positions_info = {}
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Get the list of contig names we're interested in
+        contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest]) if self.split_names_of_interest else set([])
+
+        if contig_names_of_interest:
+            where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
+            for contig_name, nt_positions_info_data in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
+                nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
+        else:
+            for contig_name, nt_positions_info_data in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
+                nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
+
+        contigs_db.disconnect()
+
+        return nt_positions_info
+
+
+    @LazyProperty
+    @LazyProgress('gene lengths info')
+    def gene_lengths(self):
+        """Lazily calculate gene lengths from genes_in_contigs_dict."""
+
+        gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start']))
+                           for g in self.genes_in_contigs_dict])
+
+        return gene_lengths
+
+
+    @LazyProperty
+    @LazyProgress('contig name to genes mapping')
+    def contig_name_to_genes(self):
+        """Lazily build contig_name_to_genes mapping."""
+
+        contig_name_to_genes = {}
+
+        for contig_name in self.contigs_basic_info:
+            contig_name_to_genes[contig_name] = set([])
+
+        for gene_unique_id in self.genes_in_contigs_dict:
+            e = self.genes_in_contigs_dict[gene_unique_id]
+            contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
+
+        return contig_name_to_genes
+
+
+    @LazyProperty
+    @LazyProgress('split names to genes mapping')
+    def split_name_to_genes_in_splits_entry_ids(self):
+        """Lazily build split_name_to_genes_in_splits_entry_ids mapping."""
+
+        split_name_to_genes_in_splits_entry_ids = {}
+
+        for entry_id in self.genes_in_splits:
+            split_name = self.genes_in_splits[entry_id]['split']
+            if split_name in split_name_to_genes_in_splits_entry_ids:
+                split_name_to_genes_in_splits_entry_ids[split_name].add(entry_id)
+            else:
+                split_name_to_genes_in_splits_entry_ids[split_name] = set([entry_id])
+
+        for split_name in self.splits_basic_info:
+            if split_name not in split_name_to_genes_in_splits_entry_ids:
+                split_name_to_genes_in_splits_entry_ids[split_name] = set([])
+
+        return split_name_to_genes_in_splits_entry_ids
+
+
+    @LazyProperty
+    @LazyProgress('gene caller id to split name mapping')
+    def gene_callers_id_to_split_name_dict(self):
+        """Lazily build gene_callers_id_to_split_name_dict mapping."""
+
+        gene_callers_id_to_split_name_dict = {}
+
+        for entry in list(self.genes_in_splits.values()):
+            gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
+
+        return gene_callers_id_to_split_name_dict
+
+
+    @LazyProperty
+    @LazyProgress('HMM sources info')
+    def hmm_sources_info(self):
+        """Lazily load HMM sources info."""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+
+        for hmm_source in hmm_sources_info:
+            hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in hmm_sources_info[hmm_source]['genes'].split(',')])
+
+        contigs_db.disconnect()
+
+        return hmm_sources_info
+
+
+    @LazyProperty
+    @LazyProgress('SCG HMM sources')
+    def singlecopy_gene_hmm_sources(self):
+        """Lazily identify singlecopy gene HMM sources."""
+        # If hmm_sources_info isn't loaded yet, we can't identify sources, and this is our way
+        # to explicitly esnure the dependency is loaded:
+        _ = self.hmm_sources_info
+
+        return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] == 'singlecopy'])
+
+
+    @LazyProperty
+    @LazyProgress('Non-SCG HMM sources')
+    def non_singlecopy_gene_hmm_sources(self):
+        """Lazily identify non-singlecopy gene HMM sources."""
+        # If hmm_sources_info isn't loaded yet, we can't identify sources, and this is our way
+        # to explicitly esnure the dependency is loaded:
+        _ = self.hmm_sources_info
+
+        return set([s for s in list(self.hmm_sources_info.keys()) if self.hmm_sources_info[s]['search_type'] != 'singlecopy'])
+
+
     def init_splits_taxonomy(self, t_level='t_genus'):
+        """Initialize splits taxonomy for the given level."""
         if not self.contigs_db_path:
             return
 
@@ -270,6 +517,7 @@ class ContigsSuperclass(object):
 
 
     def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([]), contig_names_of_interest=set([])):
+        """Load contig sequences into memory."""
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
         if not len(split_names_of_interest) and not len(gene_caller_ids_of_interest) and not len(contig_names_of_interest):
@@ -318,11 +566,9 @@ class ContigsSuperclass(object):
         # know which gene caller ids they represent if only a subset of contigs
         # were requested:
         if subset_provided:
-            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress).keys())
+            self.gene_caller_ids_included_in_contig_sequences_initialized = set(contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, string_the_key=False, progress=self.progress, error_if_no_data=False).keys())
         else:
             self.gene_caller_ids_included_in_contig_sequences_initialized = set(self.genes_in_contigs_dict.keys())
-
-        self.progress.end()
 
         if subset_provided:
             self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
@@ -330,10 +576,13 @@ class ContigsSuperclass(object):
                              f"you. Just FYI, this class will only know about {P('contig sequence', len(contig_names_of_interest))} "
                              f"instead of all the things in the database.", header="THE MORE YOU KNOW 🌈", lc='yellow')
 
+        self.progress.end()
         contigs_db.disconnect()
+
 
         self.progress.new('Filtering contig sequences')
         self.progress.update('Identifying contigs shorter than M')
+
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
 
         self.progress.update('Filtering out shorter contigs')
@@ -381,6 +630,9 @@ class ContigsSuperclass(object):
                 raise ConfigError("If you are sending a data dictionary to expand with function summaries "
                                   "per split, then you also need to send a keys dictionary to be expanded.")
 
+        # Make sure split_name_to_genes_in_splits_entry_ids is loaded
+        _ = self.split_name_to_genes_in_splits_entry_ids
+
         # learn the number of categories for the function source
         function_source_categories = set([])
         for entry in self.gene_function_calls_dict.values():
@@ -427,6 +679,7 @@ class ContigsSuperclass(object):
 
 
     def init_split_sequences(self, min_contig_length=0, split_names_of_interest=set([])):
+        """Initialize split sequences by extracting them from contig sequences."""
         if not len(split_names_of_interest):
             split_names_of_interest = self.split_names_of_interest
 
@@ -496,14 +749,21 @@ class ContigsSuperclass(object):
 
 
     def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=set([]), return_each_gene_as_a_layer=False):
+        """Initialize HMM sources for non-singlecopy genes."""
         if not len(split_names_of_interest):
             split_names_of_interest = self.split_names_of_interest
+
+        # Make sure non_singlecopy_gene_hmm_sources is loaded
+        _ = self.non_singlecopy_gene_hmm_sources
 
         if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
         self.progress.new('Initializing non-single-copy HMM sources')
         self.progress.update('...')
+
+        # Make sure hmm_sources_info is loaded
+        _ = self.hmm_sources_info
 
         non_singlecopy_gene_hmm_info_dict = {}
         for source in self.non_singlecopy_gene_hmm_sources:
@@ -554,6 +814,7 @@ class ContigsSuperclass(object):
                 # populate hmm_searches_dict with hmm_hit and unique identifier (see #180):
                 self.hmm_searches_dict[e['split']][hmm_source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
+        contigs_db.disconnect()
         self.progress.end()
 
 
@@ -567,6 +828,9 @@ class ContigsSuperclass(object):
         =====
         - If you plan on calling this function many times, consider instead `self.get_gene_info_for_each_position`
         """
+
+        # Make sure nt_positions_info is loaded
+        _ = self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or \
            (not contig_name in self.nt_positions_info) or \
@@ -591,21 +855,7 @@ class ContigsSuperclass(object):
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
-        """This method initializes a dictionary of function calls.
-
-        It establishes the following attributes:
-            self.gene_function_call_sources     a list of functional annotation sources
-            self.gene_function_calls_dict       a dictionary of structure (accession, function, evalue) = self.gene_function_calls_dict[gene_callers_id][source]
-                                                (the tuple can be None if there is no annotation from that source for the gene call)
-
-        If requested_sources are provided, the dictionary only includes gene calls from those sources.
-        If self.split_names_of_interest has a value, the dictionary only includes gene calls from those splits.
-
-        Afterwards, it sets self.gene_function_calls_initiated to True.
-
-        Note: the global argument RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE affects the behavior of this function. If False, we get 
-        the best hit per gene (lowest e-value) for a given annotation source. If True, we get all hits.
-        """
+        """Initialize gene functions dictionary."""
         if not self.contigs_db_path:
             return
 
@@ -624,7 +874,10 @@ class ContigsSuperclass(object):
         else:
             self.gene_function_call_sources = gene_function_sources_in_db
 
+        # Make sure we have gene_callers_id_to_split_name_dict if needed
         if self.split_names_of_interest:
+            _ = self.gene_callers_id_to_split_name_dict
+
             gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
             where_clauses.append('''gene_callers_id IN (%s)''' % (', '.join([f"{g}" for g in gene_caller_ids_of_interest])))
         else:
@@ -671,6 +924,7 @@ class ContigsSuperclass(object):
 
 
     def list_function_sources(self):
+        """List function sources in the contigs database."""
         ContigsDatabase(self.contigs_db_path).list_function_sources()
 
 
@@ -705,6 +959,7 @@ class ContigsSuperclass(object):
 
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False):
+        """Search for gene functions matching the given terms."""
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
 
@@ -735,6 +990,9 @@ class ContigsSuperclass(object):
         full_report = []
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        # Make sure gene_callers_id_to_split_name_dict is loaded
+        _ = self.gene_callers_id_to_split_name_dict
 
         for search_term in search_terms:
             self.progress.new('Search functions')
@@ -785,7 +1043,7 @@ class ContigsSuperclass(object):
                         else:
                             self.run.info_single(f"{'; '.join(entry[3].split('!!!'))} :: {'; '.join(entry[2].split('!!!'))} within '{entry[1]}'", mc='cyan', cut_after=0)
 
-                        observed_functions.add(entry[3]) 
+                        observed_functions.add(entry[3])
 
                         if len(observed_functions) == 25:
                             break
@@ -855,6 +1113,7 @@ class ContigsSuperclass(object):
         if not isinstance(gene_caller_id, int):
             raise ConfigError("get_corresponding_codon_order_in_gene :: gene_caller_id must be of type 'int'")
 
+
         gene_call = self.genes_in_contigs_dict[gene_caller_id]
 
         if contig_name != gene_call['contig']:
@@ -881,6 +1140,9 @@ class ContigsSuperclass(object):
 
     def get_gene_start_stops_in_contig(self, contig_name):
         """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring in contig_name"""
+        # Make sure contig_name_to_genes is loaded
+        _ = self.contig_name_to_genes
+
         return self.contig_name_to_genes[contig_name]
 
 
@@ -907,11 +1169,18 @@ class ContigsSuperclass(object):
         # a collection, or it could be everything in the contigs database, etc
         gene_calls_of_interest = set([])
 
+        # Load necessary data if split_names or contig_names are provided
         if split_names:
+            # Make sure split_name_to_genes_in_splits_entry_ids and genes_in_splits are loaded
+            _ = self.split_name_to_genes_in_splits_entry_ids
+
             for split_name in split_names:
                 for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
                     gene_calls_of_interest.add(self.genes_in_splits[entry_id]['gene_callers_id'])
         elif contig_names:
+            # Make sure contig_name_to_genes is loaded
+            _ = self.contig_name_to_genes
+
             for contig_name in contig_names:
                 for gene_call_id in [t[0] for t in self.contig_name_to_genes[contig_name]]:
                     gene_calls_of_interest.add(gene_call_id)
@@ -958,6 +1227,9 @@ class ContigsSuperclass(object):
         - If you're calling this function many times, consider using
           self.get_gene_info_for_each_position
         """
+
+        # Make sure contig_name_to_genes is loaded
+        _ = self.contig_name_to_genes
 
         gene_start_stops_in_contig = self.get_gene_start_stops_in_contig(contig_name)
 
@@ -1032,6 +1304,10 @@ class ContigsSuperclass(object):
             column_names = info
 
         output = {}
+
+        if not len(self.contig_sequences):
+            self.init_contig_sequences()
+
         contig_length = len(self.contig_sequences[contig_name]['sequence'])
         data_shape = (contig_length, len(available_info))
 
@@ -1043,7 +1319,12 @@ class ContigsSuperclass(object):
         # 'in_coding_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
         # accessing self.nt_positions_info
 
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+        # Make sure nt_positions_info is loaded
+        _ = self.nt_positions_info
+
+        if (not self.a_meta['genes_are_called']) or \
+           (not contig_name in self.nt_positions_info) or \
+           (not len(self.nt_positions_info[contig_name])):
             # In these cases everything gets 0
             pass
         else:
@@ -1055,6 +1336,9 @@ class ContigsSuperclass(object):
         # Next, we calculte the next 5 columns. As a first pass, we populate the splice of `data`
         # corresponding to each gene call and set the "gene_caller_id" and "codon_order_in_gene"
         # columns. This first ignores the fact that gene calls may overlap.
+
+        # Make sure contig_name_to_genes is loaded
+        _ = self.contig_name_to_genes
 
         gene_calls = self.get_gene_start_stops_in_contig(contig_name)
 
@@ -1135,7 +1419,7 @@ class ContigsSuperclass(object):
                                            include_aa_sequences=False, flank_length=0, output_file_path_external_gene_calls=None,
                                            simple_headers=False, list_defline_variables=False, defline_format='{gene_caller_id}',
                                            report_aa_sequences=False, wrap=120, rna_alphabet=False):
-
+        """Get DNA/AA sequences for a list of gene caller IDs."""
         ##################################################################################################
         #
         # DEFLIINE FORMATTING REPORTING RELATED PRE-CHECKS
@@ -1321,7 +1605,7 @@ class ContigsSuperclass(object):
                                  'stop': gene_call['stop'],
                                  'direction': gene_call['direction'],
                                  'length': gene_call['length'],
-                                 'contigs_db_project_name': self.a_meta['project_name_str']} 
+                                 'contigs_db_project_name': self.a_meta['project_name_str']}
 
             if output_file_path_external_gene_calls:
                 # if the user is asking for an external gene calls file, the FASTA file for sequences
@@ -1403,6 +1687,7 @@ class ContigsSuperclass(object):
 
 
     def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, gene_annotation_source=None):
+        """Generate a GFF3 file for the genes with the given gene caller IDs."""
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
 
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
@@ -1448,16 +1733,26 @@ class ContigsSuperclass(object):
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
                     if gene_callers_id in self.gene_function_calls_dict:
-                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
-                        accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+                        accession_str, function_str, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
+                        accessions = accession_str.split('!!!')
+                        functions = function_str.split('!!!')
 
-                        # now we have the function text, but it may contain characters that are offensive to the GFF3
-                        # specifications, so we will simply replace them with space character. for more information
-                        # please see https://github.com/merenlab/anvio/issues/2070
-                        for character in [':', ';', ',', '&', '\t']:
-                            function = function.replace(character, ' ')
+                        # Clean functions for GFF3 compliance
+                        cleaned_functions = []
+                        for function in functions:
+                            # now we have the function text, but it may contain characters that are offensive to the GFF3
+                            # specifications, so we will simply replace them with space character. for more information
+                            # please see https://github.com/merenlab/anvio/issues/2070
+                            for character in [':', ';', ',', '&', '\t']:
+                                function = function.replace(character, ' ')
+                            cleaned_functions.append(function)
 
-                        attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
+                        # Build attribute fields
+                        name_field = ",".join(accessions) # Not strictly correct for gff3 as only meant to have 1 entry for Name
+                        dbxref_field = f"{gene_annotation_source}:" + ",".join(accessions)
+                        product_field = ",".join(cleaned_functions)
+
+                        attributes += f";Name={name_field};db_xref={dbxref_field};product={product_field}"
 
                 output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
@@ -1468,11 +1763,11 @@ class ContigsSuperclass(object):
 
 
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
+        """Generate a tab-delimited file containing taxonomic assignments for each split."""
         filesnpaths.is_output_file_writable(output_file_path)
 
         if not self.a_meta['gene_level_taxonomy_source']:
             raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
-
 
         self.progress.new('Initializing splits taxonomy')
         self.progress.update('...')
@@ -1485,6 +1780,7 @@ class ContigsSuperclass(object):
         column_list = ['split_name'] + [k for k in taxon_names_table[list(taxon_names_table.keys())[0]].keys()]
         header = "\t".join(column_list)
         output.write(f"{header}\n")
+
         for split_name in self.splits_basic_info:
             if split_name in splits_taxonomy_table:
                 taxon_id = splits_taxonomy_table[split_name]['taxon_id']
@@ -1721,7 +2017,7 @@ class PanSuperclass(object):
             matches = sum(r1 == r2 for r1, r2 in zip(s1, s2))
             identity = matches / len(s1)
             return identity
-    
+
         # turn the sequences dict into a more useful format for this
         # step
         d = {}
@@ -1729,14 +2025,14 @@ class PanSuperclass(object):
             for genome_name in gene_cluster[gene_cluster_name]:
                 for gene_call in gene_cluster[gene_cluster_name][genome_name]:
                     d[f"{genome_name}_{gene_call}"] = gene_cluster[gene_cluster_name][genome_name][gene_call]
-    
+
         # if there is only one sequence, then there is nothing to do here.
         if len(d) == 1:
             return (0.0, 0.0, 0.0)
-    
+
         # get all pairs of sequences
         pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
-    
+
         # FIXME: we need a smart strategy here to deal with gaps, but meren is old and it is 11pm.
 
         # calculate pairwise identities
@@ -1744,7 +2040,7 @@ class PanSuperclass(object):
         for s1, s2 in pairs_of_sequences:
             identity = calculate_sequence_identity(d[s1], d[s2])
             identities.append(identity)
-    
+
         # calculate AAI values
         AAI_min = min(identities)
         AAI_max = max(identities)
@@ -2008,13 +2304,7 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
-    def get_gene_cluster_function_summary(
-        self,
-        gene_cluster_id,
-        functional_annotation_source,
-        discard_ties: bool = False,
-        consensus_threshold: float = None
-    ):
+    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source, discard_ties: bool = False, consensus_threshold: float = None):
         """
         Returns the most frequently occurring functional annotation across genes in a gene cluster
         for a given functional annotation source.
@@ -2143,7 +2433,7 @@ class PanSuperclass(object):
                              "on without any summary dict for functions and/or drama about it to let the downstream analyses "
                              "decide how to punish the unlucky.")
             return
-        
+
         gene_clusters_to_init = self.gene_clusters_functions_dict.keys()
         if gene_clusters_of_interest:
             gene_clusters_to_init = gene_clusters_of_interest
@@ -3869,7 +4159,7 @@ class ProfileSuperclass(object):
 
         # get trimmed collection and bins_info dictionaries
         collection, bins_info, self.split_names_in_profile_db_but_not_binned \
-                    = self.collections.get_trimmed_dicts(collection_name, self.split_names)
+                    = self.collections.get_trimmed_dicts(collection_name, self.split_names_of_interest if len(self.split_names_of_interest) else self.split_names)
 
         for bin_id in collection:
             self.collection_profile[bin_id] = {}
@@ -4538,7 +4828,7 @@ class ContigsDatabase:
                               "skipped. Please make up your mind.")
 
         if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
-            raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
+            raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for pyrodigal-gv. These "
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
@@ -4731,7 +5021,7 @@ class ContigsDatabase:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
             self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
         else:
-            self.run.info('Is prodigal run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
+            self.run.info('Is pyrodigal-gv run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))

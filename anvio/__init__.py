@@ -306,13 +306,12 @@ D = {
             ['--prodigal-translation-table'],
             {'metavar': 'INT',
              'default': None,
-             'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter "
+             'help': "This is a parameter to pass to the Pyrodigal-gv for a specific translation table. This parameter "
                      "corresponds to the parameter `-g` in Prodigal, the default value of which is 11 (so if you do "
-                     "not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal "
+                     "not set anything, it will be set to 11 in Pyrodigal-gv runtime. Please refer to the Prodigal "
                      "documentation to determine what is the right translation table for you if you think you need "
                      "it.)"}
                 ),
-
     'skip-gene-calling': (
             ['--skip-gene-calling'],
             {'default': False,
@@ -325,15 +324,22 @@ D = {
             ['--prodigal-single-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
-                     "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
-                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. Use this flag to run prodigal "
-                     "in 'normal mode'. In some rare cases, for a given set of contigs prodigal will yield a segmentation fault "
-                     "error due to one or more genes in your collections confusing the program when it is used with the "
-                     "`-p meta` flag. While anvi'o developers are not quite sure under what circumstances this happens, we "
-                     "realized that removal of this flag often solves this issue. If you are dealing with such cyrptic errors, "
-                     "the inclusion of `--prodigal-single-mode` will instruct anvi'o to run prodigal without the `-meta` flag, "
-                     "and may resolve this issue for you."}
+             'help': "By default, anvi'o will use pyrodigal-gv for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in pyrodigal-gv run is `-p meta`, which "
+                     "optimizes pyrodigal-gv's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs pyrodigal-gv will yield a segmentation fault error due to one or more genes in your "
+                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
+                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
+                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
+                     "will instruct anvi'o to run pyrodigal-gv without the `-meta` flag, and may resolve this issue for you."}
+                ),
+    'full-gene-calling-report': (
+            ['--full-gene-calling-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "When anvi'o is done with gene calling using pyrodigal, it only stores some data about individual gene "
+                     "calls. Using this parameter you can pass an output file to report most comprehensive data on gene calls "
+                     "as a TAB-delimited text file with gene caller ids matching to those that are stored in the contigs-db."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -445,13 +451,14 @@ D = {
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'default': constants.default_gene_caller,
-             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
-                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
-                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
-                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
-                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
+             'default': None,
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     "may require an explicit mentioning of which one to use. The default gene caller is identified automatically "
+                     "in most cases (based on whether the most frequent gene calls match to a known gene caller in anvi'o), but if "
+                     "you have a contigs-db generated with `--external-gene-callers` or something, you may have to pay extra "
+                     "attention here. Also, some HMM collections may add new gene calls into a given contigs-db as an ad-hoc fashion, "
+                     "so if you want to see all the options available to you in a given contigs database, please run the program "
+                     "`anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
@@ -938,11 +945,12 @@ D = {
             ['--cog-version'],
             {'default': None,
              'type': str,
-             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
-                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
-                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
-                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
-                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
+             'help': "COG version. The default is the latest version, which is COG24, meaning that anvi'o will "
+                     "use the NCBI's 2024 release of COGs to setup the database and run it on contigs databases. "
+                     "Alternatively you can pass any of these as a parameter: 'COG20' (2020 release of the database), "
+                     "or 'COG14' (the 2014 release of the database). You can have multiple databases on your "
+                     "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
+                     "The anvi'o way."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
@@ -1276,6 +1284,14 @@ D = {
                      "be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of "
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
                 ),
     'unique-genes': (
             ['--unique-genes'],
@@ -3272,6 +3288,19 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'no-hmmer-prefiltering': (
+            ['--no-hmmer-prefiltering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the initial set of hits we get back from HMMER are subject to its default e-value "
+                     "threshold of 10. However, if you are working with a very large dataset, this pre-filtering based "
+                     "on e-value might be too stringent and lead to missing some legitimate hits. If this is your case, "
+                     "you can use this flag to turn off the HMMER pre-filtering based on e-value (instead we will use `-T "
+                     "-20` and `-domT -20`). All hits we get from HMMER will still be subject to later bitscore-based "
+                     "filtering and the annotation heuristic to ensure we don't let in any garbage annotations (unless you "
+                     "use the `--keep-all-hits` or the `--skip-bitscore-heuristic` flags, respectively). See "
+                     "https://github.com/merenlab/anvio/issues/2446 for more details."}
                 ),
     'skip-binary-relations': (
             ['--skip-binary-relations'],

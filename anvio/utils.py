@@ -909,7 +909,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None, return_number_of_sequences=False):
     """Splits a given FASTA file into multiple parts.
 
     Please note that this function will not clean after itself. You need to take care of the
@@ -929,12 +929,15 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     output_dir : str, path
         Output directory. By default, anvi'o will store things in a new directory under
         the system location for temporary files
+    return_number_of_sequences : bool
+        Whether to return the number of sequences in the original fasta file
 
     Returns
     =======
     output_file_paths : list
         Array with `parts` number of elements where each item is an output file path
-
+    length : int, optional
+        The number of sequences in the original fasta file. Only returnd if 'return_number_of_sequences' is True
     """
     if not file_name_prefix:
         file_name_prefix = os.path.basename(input_file_path)
@@ -999,7 +1002,11 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     source.close()
 
-    return output_file_paths
+    if return_number_of_sequences:
+        return output_file_paths, length
+    
+    else:
+        return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -2134,6 +2141,63 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def get_default_gene_caller(contigs_db_path):
+    """Returns the default gene caller, but in a smart way.
+
+    Well. Smart is not a very accurate way to say this. Here is some history. For the longest time,
+    anvi'o used `prodigal` as its default gene caller. So we had this one entry in anvio/constants.py
+    that said `default_gene_caller = 'prodigal'`, and life was simple. Then it became clear that
+    we needed to switch to pyrodigal-gv, which was an effort to maintain the stale repository of
+    prodigal, but also included some models for giant viruses. But we couldn't simply change
+    `default_gene_caller` to `pyrodigal-gv`, since there were many contigs-db files out there with
+    prodigal gene calls, which are equally fine. But why is this a problem?
+
+    It is a problem when the user wants to build a pangenome, or export amino acid sequences for
+    a given contigs-db file. In those cases, anvi'o needs to know which default gene caller it
+    should use, and only if it can't find that should it ask the user to choose a gene caller
+    explicitly. Removing `prodigal` from the constants file was going to make users' life very
+    difficult when they were using a newer version of anvi'o (with `pyrodigal-gv` as the default
+    gene caller in the constants.py) but using contigs-db files generated with older versions.
+
+    The purpose of this function is to solve that problem by retrieving the 'default' gene caller
+    by considering all gene callers listed in constants.py, and taking a look at the most
+    frequent source of gene calls in the contigs-db file. If `prodigal` is the most frequent
+    gene caller, and if it is still in the list of default gene callers in constants.py, then
+    this function would return `prodigal`. The same for `pyrodigal-gv`. Only after checking
+    for all recognized default gene callers would the relevant context ask the user to provide
+    a gene caller for downstream operations.
+
+    Parameters
+    ==========
+    contigs_db_path : str
+        Path to an anvi'o contigs-db file
+
+    Returns
+    =======
+    value : str
+        None if most frequent gene caller source in contigs_db is not in constants.py, else
+        the gene caller source as default
+    """
+
+    is_contigs_db(contigs_db_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+
+    gene_call_sources_in_contigs_db = contigs_db.get_single_column_from_table(t.genes_in_contigs_table_name, 'source')
+
+    try:
+        most_frequent_gene_caller = Counter(gene_call_sources_in_contigs_db).most_common(1)[0][0]
+    except IndexError:
+        most_frequent_gene_caller = None
+
+    contigs_db.disconnect()
+
+    if most_frequent_gene_caller in constants.default_gene_callers:
+        return most_frequent_gene_caller
+    else:
+        return None
 
 
 def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
@@ -3548,11 +3612,21 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     for sample_name in samples_txt:
         check_sample_id(sample_name)
 
-        if not os.path.exists(samples_txt[sample_name]['r1']) or not os.path.exists(samples_txt[sample_name]['r2']):
-            samples_with_missing_files.append(sample_name)
+        r1_sample_paths = samples_txt[sample_name]['r1'].split(',')
+        r2_sample_paths = samples_txt[sample_name]['r2'].split(',')
 
-        if samples_txt[sample_name]['r1'] == samples_txt[sample_name]['r2']:
-            samples_with_identical_r1_r2_files.append(sample_name)
+        if len(r1_sample_paths) != len(r2_sample_paths):
+            raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
+                              f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
+                              f"fix this in your samples-txt file.")
+        
+        for path in r1_sample_paths + r2_sample_paths:
+            if not os.path.exists(path):
+                samples_with_missing_files.append(sample_name)
+
+        for i in range(len(r1_sample_paths)):
+            if r1_sample_paths[i] == r2_sample_paths[i]:
+                samples_with_identical_r1_r2_files.append(sample_name)
 
     if len(samples_with_missing_files):
         raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
@@ -3562,7 +3636,6 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     if len(samples_with_identical_r1_r2_files):
         raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
                           f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
-
 
     return samples_txt
 
@@ -4148,16 +4221,6 @@ def sanity_check_pfam_accessions(pfam_accession_ids):
     if len(not_pfam_accession_ids):
         raise ConfigError(f"The following accessions do not appear to be from Pfam because they do not "
                           f"start with \"PF\", please double check the following: {','.join(not_pfam_accession_ids)}")
-
-
-def get_missing_programs_for_hmm_analysis():
-    missing_programs = []
-    for p in ['prodigal', 'hmmscan']:
-        try:
-            is_program_exists(p)
-        except ConfigError:
-            missing_programs.append(p)
-    return missing_programs
 
 
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):

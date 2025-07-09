@@ -54,6 +54,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('skip-gene-calling'), **anvio.K('skip-gene-calling'))
     groupD.add_argument(*anvio.A('prodigal-single-mode'), **anvio.K('prodigal-single-mode'))
     groupD.add_argument(*anvio.A('prodigal-translation-table'), **anvio.K('prodigal-translation-table'))
+    groupD.add_argument(*anvio.A('full-gene-calling-report'), **anvio.K('full-gene-calling-report'))
     groupD.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls'))
     groupD.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupD.add_argument(*anvio.A('skip-predict-frame'), **anvio.K('skip-predict-frame'))
