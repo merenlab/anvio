@@ -977,7 +977,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
@@ -1105,8 +1105,9 @@ class ContigSummarizer(SummarizerSuperClass):
 
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
+
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         self.progress.new('Generating contigs db summary')
 

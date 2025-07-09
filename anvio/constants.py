@@ -114,7 +114,8 @@ merged_default = "tnf-cov"
 pan_default = "presence-absence"
 trnaseq_default = "cov"
 
-default_gene_caller = "prodigal"
+legacy_default_gene_caller = "prodigal"
+default_gene_callers = ['pyrodigal-gv', legacy_default_gene_caller]
 
 # see https://github.com/merenlab/anvio/issues/1358
 gene_call_types = {'CODING': 1,
