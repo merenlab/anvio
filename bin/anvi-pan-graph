@@ -72,7 +72,7 @@ if __name__ == '__main__':
     groupC.add_argument('--n', default=100, type=int, help = "Description.")
     groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
     groupC.add_argument('--gamma', default=0.0, type=float, help = "Description.")
-
+    groupC.add_argument('--delta', default=0.5, type=float, help = "Description.")
 
     args = parser.get_args(parser)
 
