@@ -23,7 +23,7 @@ snakemake
 multiprocess
 plotext
 networkx
-pyrodigal
+pyrodigal_gv
 pulp==2.7.0
 biopython
 reportlab
