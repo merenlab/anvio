@@ -663,12 +663,16 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                     }
 
                     per_map_evidence_for_compound = self.get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
+                    # set up some variables to find the longest chain of reactions to use as the summary evidence for an exchange
+                    # if there are multiple 'longest chains', we'll report the one with not-None or smallest overlap
                     overall_max_prior = None
                     overall_max_posterior = None
-                    overall_overlap_prior = None # the overlaps will be set based on the longest chain of reactions prior/posterior
+                    overall_overlap_prior = None
                     overall_overlap_posterior = None
                     prop_overlap_prior = None
                     prop_overlap_posterior = None
+                    reported_map_prior = None
+                    reported_map_posterior = None
                     for map_id, map_evidence in per_map_evidence_for_compound.items():
                         pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
                                                                         'compound_name': compound_name,
@@ -851,6 +855,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_length'] = None
                     potentially_exchanged_compounds[compound_id]['production_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
+                    potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
+                    potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
 
             self.processed_compound_ids.add(compound_id)
             processed_count += 1
@@ -878,9 +884,12 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
         exchange_header = deepcopy(output_header)
         if not self.no_pathway_walk:
-            exchange_header += ['max_reaction_chain_length', 'max_production_chain_length', 'max_consumption_chain_length',
-                                'production_overlap_length', 'consumption_overlap_length', 
-                                'production_overlap_proportion', 'consumption_overlap_proportion']
+            exchange_header += ['max_reaction_chain_length', 
+                                'max_production_chain_length', 'production_overlap_length', 'production_overlap_proportion', 
+                                'production_chain_pathway_map',
+                                'max_consumption_chain_length', 'consumption_overlap_length', 'consumption_overlap_proportion', 
+                                'consumption_chain_pathway_map'
+                                ]
 
         for mode, file_obj in self.output_file_dict.items():  
             if mode not in output_dicts:
