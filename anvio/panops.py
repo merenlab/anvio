@@ -4106,7 +4106,7 @@ class PangenomeGraphMaster():
 
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
         self.run.warning(None, header="Initalizing pangenome graph and filling with nodes and edges.", lc="green")
-        factor = 1.0 / 2
+        factor = 0.00000001 / 2
         decisison_making = {}
 
         # TODO I guess it would be better to only use this on sigle edges not in general, like find nodes with equal edges and then give a smallest numpy number bonus.
