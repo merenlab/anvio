@@ -360,6 +360,8 @@ class KGMLNetworkWalker:
         self.rn_pathway_keggcpd_ids_in_kgml_reactions = \
             self._get_kgml_reaction_keggcpd_ids_in_pathway()
 
+        self.rn_pathway_kegg_rxn_ids = self._get_kegg_reaction_ids_in_pathway()
+
         # Make attributes storing key reaction network data.
         if self.network:
             self.network_keggrn_id_to_modelseed_reactions: dict[
@@ -443,6 +445,23 @@ class KGMLNetworkWalker:
             raise ConfigError(
                 "'compound_fate' must have a value of 'consume', 'produce', or 'both'."
             )
+
+    def _get_kegg_reaction_ids_in_pathway(self) -> list[str]:
+        """
+        Get KEGG Reaction IDs from the pathway KGML reactions.
+
+        Returns
+        =======
+        list[str]
+            KEGG reaction IDs.
+        """
+        rn_pathway_kegg_rxn_ids = []
+        for reaction_uuid in self.kgml_rn_pathway.children['reaction']:
+            kgml_reaction = self.kgml_rn_pathway.uuid_element_lookup[reaction_uuid]
+            names = kgml_reaction.name.split(' ')
+            kegg_reaction_ids = [rid[3:] for rid in names]
+            rn_pathway_kegg_rxn_ids += kegg_reaction_ids
+        return rn_pathway_kegg_rxn_ids
 
     def _get_kgml_reaction_keggcpd_ids_in_pathway(self) -> list[str]:
         """
