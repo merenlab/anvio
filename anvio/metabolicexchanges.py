@@ -715,7 +715,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior = update_reported_pathway_evidence_for_prior()
                         # if we found a production chain of the same max length, report the one with smaller (or not None) overlap proportion
                         elif overall_max_prior and map_evidence["max_production_length"] and overall_max_prior == map_evidence["max_production_length"]:
-                            if not overall_overlap_prior and map_evidence["max_production_overlap"] or \
+                            if overall_overlap_prior is None and map_evidence["max_production_overlap"] is not None or \
+                              prop_overlap_prior is None and map_evidence["prop_production_overlap"] is not None or \
                              (prop_overlap_prior and map_evidence["prop_production_overlap"] and prop_overlap_prior > map_evidence["prop_production_overlap"]):
                                 overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior = update_reported_pathway_evidence_for_prior()
                         if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
@@ -723,7 +724,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior = update_reported_pathway_evidence_for_posterior()
                         # if we found a consumption chain of the same max length, report the one with smaller (or not None) overlap proportion
                         elif overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior == map_evidence["max_consumption_length"]:
-                            if not overall_overlap_posterior and map_evidence["max_consumption_overlap"] or \
+                            if overall_overlap_posterior is None and map_evidence["max_consumption_overlap"] is not None or \
+                             prop_overlap_posterior is None and map_evidence["prop_consumption_overlap"] is not None or \
                              (prop_overlap_posterior and map_evidence["prop_consumption_overlap"] and prop_overlap_posterior > map_evidence["prop_consumption_overlap"]):
                                 overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior = update_reported_pathway_evidence_for_posterior()
 
