@@ -168,7 +168,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=MAPS_TO_EXCLUDE, id_selection_prefix = "00")
         # this will store the output of the KEGG Pathway Map walks
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
-        self.compound_to_pathway_walk_chains = defaultdict(dict)
+        self.compound_to_pathway_walk_chains = {}
 
         # dictionaries to store output
         data_dicts = {t: {} for t in self.output_types}
@@ -349,14 +349,28 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 production_chains = walker.get_chains()
                 walker.compound_fate = 'consume'
                 consumption_chains = walker.get_chains()
-                for compound in set(production_chains.keys()).union(set(consumption_chains.keys())):
+                all_compounds_in_map = list(set(production_chains.keys()).union(set(consumption_chains.keys())))
+                for compound in all_compounds_in_map:
                     if compound not in self.kegg_id_to_modelseed_id:
-                        raise ConfigError(f"We didn't find a modelseed compound associated with {compound} in pathway map {pm}")
+                        raise ConfigError(f"The merged reaction network doesn't contain a modelseed compound associated with {compound} in pathway map {pm}")
                     modelseed_id = self.kegg_id_to_modelseed_id[compound]
-                    
+                    if modelseed_id in self.compound_to_pathway_walk_chains:
+                        if anvio.DEBUG:
+                            self.progress.reset()
+                            all_kegg_compounds_with_same_modelseed_id = [x for x in self.kegg_id_to_modelseed_id if self.kegg_id_to_modelseed_id[x] == modelseed_id]
+                            if len(all_kegg_compounds_with_same_modelseed_id) > 1:
+                                self.run.warning(f"While processing KEGG compound {compound} in Pathway Map {pm}, we found that the associated "
+                                                f"ModelSEED compound ID ({modelseed_id}) was already in the pathway walk dictionary. These are "
+                                                f"all the KEGG compounds with that same ModelSEED ID: {','.join(all_kegg_compounds_with_same_modelseed_id)}")
+                    else:
+                        self.compound_to_pathway_walk_chains[modelseed_id] = {}
                     if pm not in self.compound_to_pathway_walk_chains[modelseed_id]:
                         self.compound_to_pathway_walk_chains[modelseed_id][pm] = {}
-                    self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                    if g in self.compound_to_pathway_walk_chains[modelseed_id][pm]:
+                        self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['produce'] += production_chains[compound]
+                        self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['consume'] += consumption_chains[compound]
+                    else:
+                        self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
                                                                             'consume': consumption_chains[compound] if compound in consumption_chains else None}
             processed_count += 1
             self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
