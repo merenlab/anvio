@@ -491,7 +491,7 @@ class KGMLNetworkWalker:
 
         return rn_pathway_keggcpd_ids_in_kgml_reactions
 
-    def _get_reaction_network_keggcpd_ids_in_pathway(self) -> list[str]:
+    def _get_reaction_network_keggcpd_ids_in_pathway(self, enforce_match_to_kgml_reactions: bool = True) -> list[str]:
         """
         Get KEGG compound IDs in the pathway from the reaction network.
 
@@ -499,6 +499,14 @@ class KGMLNetworkWalker:
         annotations by ModelSEED reactions with KEGG reaction aliases, not EC number aliases, since
         EC numbers associated with KOs can alias a large number of reactions of questionable
         validity for the enzyme.
+
+        Parameters
+        ==========
+        enforce_match_to_kgml_reactions : bool, True
+            If True, the KEGG compounds are required to participate in at least one KEGG reaction
+            that explicitly belongs to the pathway (stored in `self.rn_pathway_kegg_rxn_ids`). This
+            avoids contaminating the list with compounds from other pathways that are associated with
+            a KO participating in multiple pathways (including this one).
 
         Returns
         =======
@@ -514,6 +522,13 @@ class KGMLNetworkWalker:
                 modelseed_reaction = self.network.reactions[modelseed_reaction_id]
                 if not modelseed_reaction.kegg_aliases:
                     continue
+                if enforce_match_to_kgml_reactions:
+                    kegg_rxn_found_in_pathway = False
+                    for kegg_rxn_id in modelseed_reaction.kegg_aliases:
+                        if kegg_rxn_id in self.rn_pathway_kegg_rxn_ids:
+                            kegg_rxn_found_in_pathway = True
+                    if not kegg_rxn_found_in_pathway:
+                        continue
                 for modelseed_compound_id in modelseed_reaction.compound_ids:
                     modelseed_compound = self.network.metabolites[modelseed_compound_id]
                     keggcpd_id_aliases = list(modelseed_compound.kegg_aliases)
