@@ -1322,6 +1322,7 @@ class Pangenome(object):
 
         self.run.quit()
 
+# TODO implement multithreading here. This will speed up the SynCluster Algorithm
 # ANCHOR - SyntenyGeneCluster
 class SyntenyGeneCluster():
     """A class to mine a dataframe containing all the information related to gene calls
@@ -1562,7 +1563,7 @@ class SyntenyGeneCluster():
                 # genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.get_sequences_for_gene_callers_ids(all_gene_calls, include_aa_sequences=True, simple_headers=True)[1], orient="index").rename_axis("gene_caller_id").reset_index()
                 genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.genes_in_contigs_dict, orient="index").rename_axis("gene_caller_id").reset_index()
 
-                trnas = genes_in_contigs_df.query("source == 'Transfer_RNAs' | source == 'Ribosomal_RNA_16S' | source == 'Ribosomal_RNA_23S'")['gene_caller_id'].tolist() 
+                trnas = genes_in_contigs_df.query("source.str.contains('RNA')", engine='python')['gene_caller_id'].tolist() 
                 caller_id_cluster = {**gene_cluster_dict[genome], **{trna:"GC_00000000" for trna in trnas}}
 
                 caller_id_cluster_df = pd.DataFrame.from_dict(caller_id_cluster, orient="index", columns=["gene_cluster"]).rename_axis("gene_caller_id").reset_index()
@@ -1636,10 +1637,10 @@ class SyntenyGeneCluster():
                         if X[i][j] == 1.0:
                             valid = False
                             if gene_cluster_k_mer_contig_dict_i[i] == gene_cluster_k_mer_contig_dict_j[j]:
-                                synteny_gene_cluster_type = 'paralog'
+                                synteny_gene_cluster_type = 'duplication'
                             else:
                                 if not synteny_gene_cluster_type:
-                                    synteny_gene_cluster_type = 'rearranged'
+                                    synteny_gene_cluster_type = 'rearrangement'
 
                 if valid is True:
                     if not synteny_gene_cluster_type:
@@ -1650,7 +1651,7 @@ class SyntenyGeneCluster():
                     break
 
         if gene_cluster == "GC_00000000":
-            synteny_gene_cluster_type = 'trna'
+            synteny_gene_cluster_type = 'rna'
 
         labels = []
         synteny_gene_cluster_id_contig_positions = []
@@ -2238,7 +2239,7 @@ class PangenomeGraph():
             return(False)
 
 
-    def summarize_pangenome_graph(self):
+    def summarize(self):
         """This is the main summary function for pangenome graphs. Input is the self
 
         Parameters
@@ -2329,7 +2330,7 @@ class PangenomeGraph():
         # print(node_regions_dict)
         # all_ghost_max_y_positions = {}
 
-        # FIXME height depends on the position of empty edges
+        # TODO height depends on the position of empty edges (should be fixed already)
         i = 0
         regions_summary_dict = {}
         for region_id, values_list in regions_info_dict.items():
@@ -2354,6 +2355,8 @@ class PangenomeGraph():
                 if height <= 1:
                     if weight < len(genome_names)*0.5:
                         motif = 'INS'
+                    elif weight == len(genome_names)*0.5:
+                        motif = 'INDEL'
                     else:
                         motif = 'DEL'
                 else:
@@ -2377,7 +2380,7 @@ class PangenomeGraph():
                     'height': 1,
                     'length': -1,
                     'weight': len(genome_names),
-                    'motif': 'SynCGC',
+                    'motif': 'BB',
                     'x_min': -1,
                     'x_max': -1,
                     'quantity': -1,
@@ -2398,7 +2401,7 @@ class PangenomeGraph():
 
         return(region_sides_df, nodes_df, gene_calls_df)
 
-    def summarize_pangenome_graph_depreciated(self):
+    def summarize_depreciated(self):
         """This is the main summary function for pangenome graphs. Input is the self
 
         Parameters
@@ -3831,16 +3834,24 @@ class PangenomeGraphMaster():
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
         self.pangenome_graph.set_node_positions(node_positions)
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize_pangenome_graph()
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         # nodes_db_mining_df = pd.merge(nodes_df, self.db_mining_df, how='left', on=['syn_cluster', 'genome'], copy=False)
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
         for index, line in additional_info.iterrows():
-            self.pangenome_graph.graph.nodes()[index]['layer']['backbone'] = True if line["motif"] == "SynCGC" else False
+            self.pangenome_graph.graph.nodes()[index]['layer']['backbone'] = True if line["motif"] == "BB" else False
 
         gene_calls_df.to_csv(os.path.join(self.output_dir, 'gene_calls_df.tsv'), sep='\t')
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
+
+        V = len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates().query('syn_cluster_type == "core"')) / len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates())
+        W = len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates().query('syn_cluster_type != "core"')) / len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates())
+        X = len(nodes_df[['x', 'region_id']].drop_duplicates().query('region_id == "-1"')) / len(nodes_df[['x', 'region_id']].drop_duplicates())
+        Y = len(nodes_df[['x', 'region_id']].drop_duplicates().query('region_id != "-1"')) / len(nodes_df[['x', 'region_id']].drop_duplicates())
+        complexity_value = (X + V) / 2 - (Y + W) / 2
+
+        self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
 
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
         self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
