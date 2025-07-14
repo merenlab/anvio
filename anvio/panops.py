@@ -2041,9 +2041,9 @@ class SyntenyGeneCluster():
 
         value_counts = db_mining_df["syn_cluster_type"].value_counts()
         self.run.info_single(f'{value_counts.get("core", 0)} core synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("paralog", 0)} paralog synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("trna", 0)} trna synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("rearranged", 0)} rearranged synteny gene caller entries.')
+        self.run.info_single(f'{value_counts.get("duplication", 0)} paralog synteny gene caller entries.')
+        self.run.info_single(f'{value_counts.get("rna", 0)} rna synteny gene caller entries.')
+        self.run.info_single(f'{value_counts.get("rearrangement", 0)} rearranged synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
         self.run.info_single(f'{len(db_mining_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
@@ -2052,7 +2052,7 @@ class SyntenyGeneCluster():
         if len(db_mining_df["syn_cluster"].unique()) > 2 * len(db_mining_df["gene_cluster"].unique()):
             raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something went wrong here...")
 
-        db_mining_df.to_csv(os.path.join(output_dir, 'synteny_cluster.tsv'), sep='\t')
+        db_mining_df.set_index('position').to_csv(os.path.join(output_dir, 'synteny_cluster.tsv'), sep='\t')
         self.run.info_single(f"Exported mining table to {os.path.join(output_dir, 'synteny_cluster.tsv')}.")
         self.run.info_single("Done.")
 
@@ -2251,7 +2251,7 @@ class PangenomeGraph():
         pd.DataFrame
         """
 
-        self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
+        # self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
 
         genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
 
@@ -3172,6 +3172,7 @@ class DirectedForce():
         M_successors = {M_node: list(M.successors(M_node)) for M_node in M_nodes}
         G_successors = {G_node: list(G.successors(G_node)) for G_node in G_nodes}
 
+        # TODO multithreading?
         self.progress.new("Calculating initial distances")
         M_distances = {}
         for z, M_node in enumerate(M_nodes):
@@ -3845,11 +3846,13 @@ class PangenomeGraphMaster():
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
 
-        V = len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates().query('syn_cluster_type == "core"')) / len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates())
-        W = len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates().query('syn_cluster_type != "core"')) / len(self.db_mining_df[['syn_cluster', 'syn_cluster_type']].drop_duplicates())
-        X = len(nodes_df[['x', 'region_id']].drop_duplicates().query('region_id == "-1"')) / len(nodes_df[['x', 'region_id']].drop_duplicates())
-        Y = len(nodes_df[['x', 'region_id']].drop_duplicates().query('region_id != "-1"')) / len(nodes_df[['x', 'region_id']].drop_duplicates())
-        complexity_value = (X + V) / 2 - (Y + W) / 2
+        # V = len(set(self.db_mining_df.query('syn_cluster_type == "core"')['syn_cluster'].tolist())) / len(set(self.db_mining_df['syn_cluster'].tolist()))
+        # W = len(set(self.db_mining_df.query('syn_cluster_type != "core"')['syn_cluster'].tolist())) / len(set(self.db_mining_df['syn_cluster'].tolist()))
+        X = len(set(nodes_df.reset_index().query('region_id == -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
+        Y = len(set(nodes_df.reset_index().query('region_id != -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
+        A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
+        B = len(set(nodes_df.reset_index().query('region_id != -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
+        complexity_value = (X + A) / 2 - (Y + B) / 2
 
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
 
@@ -3945,7 +3948,7 @@ class PangenomeGraphMaster():
 
     # TODO this function is currently empty...
     def sanity_check(self):
-        pass
+        filesnpaths.is_output_dir_writable(self.output_dir)
 
 
     # TODO this is empty to...
