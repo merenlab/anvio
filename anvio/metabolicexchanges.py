@@ -694,18 +694,37 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                         'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
                                                                         'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
                         pathway_walk_dict_key += 1
+                        
+                        def update_reported_pathway_evidence_for_prior():
+                            """Updates variables like overall_max_prior with values from the current pathway map as the new 'best' 
+                            evidence for an exchange."""
+                            overall_max_prior = map_evidence["max_production_length"]
+                            overall_overlap_prior = map_evidence["max_production_overlap"]
+                            prop_overlap_prior = map_evidence["prop_production_overlap"]
+                        def update_reported_pathway_evidence_for_posterior():
+                            """Updates variables like overall_max_posterior with values from the current pathway map as the new 'best' 
+                            evidence for an exchange."""
+                            overall_max_posterior = map_evidence["max_consumption_length"]
+                            overall_overlap_posterior = map_evidence["max_consumption_overlap"]
+                            prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
 
                         # we want to find the longest chain of production reactions + the longest chain of consumption reactions
                         if (not overall_max_prior and map_evidence["max_production_length"]) or \
                             (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
-                            overall_max_prior = map_evidence["max_production_length"]
-                            overall_overlap_prior = map_evidence["max_production_overlap"]
-                            prop_overlap_prior = map_evidence["prop_production_overlap"]
+                            update_reported_pathway_evidence_for_prior()
+                        # if we found a production chain of the same max length, report the one with smaller (or not None) overlap proportion
+                        elif overall_max_prior and map_evidence["max_production_length"] and overall_max_prior == map_evidence["max_production_length"]:
+                            if not overall_overlap_prior and map_evidence["max_production_overlap"] or \
+                             (prop_overlap_prior and map_evidence["prop_production_overlap"] and prop_overlap_prior > map_evidence["prop_production_overlap"]):
+                                update_reported_pathway_evidence_for_prior()
                         if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
                             (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
-                            overall_max_posterior = map_evidence["max_consumption_length"]
-                            overall_overlap_posterior = map_evidence["max_consumption_overlap"]
-                            prop_overlap_posterior = map_evidence["prop_consumption_overlap"]
+                            update_reported_pathway_evidence_for_posterior()
+                        # if we found a consumption chain of the same max length, report the one with smaller (or not None) overlap proportion
+                        elif overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior == map_evidence["max_consumption_length"]:
+                            if not overall_overlap_posterior and map_evidence["max_consumption_overlap"] or \
+                             (prop_overlap_posterior and map_evidence["prop_consumption_overlap"] and prop_overlap_posterior > map_evidence["prop_consumption_overlap"]):
+                                update_reported_pathway_evidence_for_posterior()
 
                     longest_overall_chain = None
                     if overall_max_prior and overall_max_posterior:
