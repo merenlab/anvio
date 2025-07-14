@@ -66,11 +66,6 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
 
             output_queue.put((contig, length, coverage, clipping))
 
-            # Clean up memory
-            del coverage[:]
-            del clipping
-            gc.collect()
-
         except Exception as e:
             output_queue.put(e)
 
