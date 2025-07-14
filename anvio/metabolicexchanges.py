@@ -899,11 +899,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
             header_list = output_header
             if mode == 'potentially-exchanged-compounds':
-                exchange_header = deepcopy(output_header)
-                if not self.no_pathway_walk:
-                    exchange_header += ['max_reaction_chain_length', 'max_production_chain_length', 'max_consumption_chain_length',
-                                        'production_overlap_length', 'consumption_overlap_length', 
-                                        'production_overlap_proportion', 'consumption_overlap_proportion']
                 header_list = exchange_header
 
             if mode == 'evidence':
