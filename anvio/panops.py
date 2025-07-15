@@ -3852,7 +3852,8 @@ class PangenomeGraphMaster():
         Y = len(set(nodes_df.reset_index().query('region_id != -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
         A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
         B = len(set(nodes_df.reset_index().query('region_id != -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
-        complexity_value = (X + A) / 2 - (Y + B) / 2
+        # complexity_value = (X + A) / 2 - (Y + B) / 2
+        complexity_value = (X + A) / 2
 
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
 
