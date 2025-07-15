@@ -3345,6 +3345,63 @@ D = {
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
                     "pathwise vs stepwise completeness."}
                 ),
+    'use-equivalent-amino-acids': (
+            ['--use-equivalent-amino-acids'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Some amino acid metabolic interactions can be missed because there are different "
+                     "compound IDs in the ModelSEED database for L- and non-stereo-specific versions of amino acids (like "
+                     "'Valine' vs 'L-Valine'. If you choose this option, anvi'o will find these pairs of equivalent amino acid "
+                     "compounds and use them interchangeably for identifying potential interactions. You will get an output file "
+                     "showing you which compounds were considered equivalent, so that you can complain if you don't agree with them."}
+                ),
+     'custom-equivalent-compounds-file': (
+            ['--custom-equivalent-compounds-file'], 
+            {'default': False,
+             'metavar': 'FILE',
+             'required': False, 
+             'help': "If you have your own set of equivalent ModelSEED compound IDs, you can make sure "
+                     "we use them by providing them in a tab-delimited file to this parameter. The file should have at least the following "
+                     "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
+                     "so if you want amino acid equivalents to be used, include them in this file."}
+                ),
+    'maximum-gaps': (
+            ['--maximum-gaps'], 
+            {'default': 0,
+             'type': int,
+             'metavar': 'INT',
+             'required': False, 
+             'help': "We'll look for the longest chain of reactions surrounding each potentially-exchanged "
+                     "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
+                     "you to choose how many gaps there can be in the chain on either side of the metabolite in "
+                     "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'add-reactions-to-output': (
+            ['--add-reactions-to-output'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
+                ),
+    'no-pathway-walk': (
+            ['--no-pathway-walk'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Skip walking KEGG Pathway Maps and instead predict exchanges entirely from the reaction network. "
+                     "This is not recommended, since Pathway Maps are much more curated and lead to more accurate predictions. "
+                     "But they also could be time-consuming, so, you do you, I guess."}
+                ),
+    'pathway-walk-only': (
+            ['--pathway-walk-only'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't predict anything from the "
+                     "reaction network alone -- these predictions are less confident anyway. The downside is that "
+                     "you'll miss any predictions for compounds not in Pathway Maps."}
+                ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
