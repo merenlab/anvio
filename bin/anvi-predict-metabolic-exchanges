@@ -12,8 +12,8 @@ __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ['contigs-db'] #TODO: add equivalent-compounds-txt as new artifact
-__provides__ = []
+__requires__ = ['contigs-db', 'equivalent-compounds-txt']
+__provides__ = ['metabolite-exchange-predictions']
 __description__ = "Predicts metabolic exchanges between microbes based on the reaction network"
 
 
