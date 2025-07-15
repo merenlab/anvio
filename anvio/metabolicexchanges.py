@@ -649,7 +649,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name, 
-                                                    'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
+                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Pathway_Map_Walk',
@@ -833,7 +833,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name, 
-                                                    'genomes': ",".join([x for x in [producer_name,consumer_name] if x]),
+                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name])if x]),
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Reaction_Network_Subset',
