@@ -472,7 +472,8 @@ class GenomeStorage(object):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         total_num_aa_sequences = 0
-        total_num_excluded_aa_sequences = 0
+        total_num_partial_gene_calls = 0
+        total_gene_calls_with_no_aa_sequence = 0
 
         fasta_output = fastalib.FastaOutput(output_file_path)
 
@@ -488,10 +489,16 @@ class GenomeStorage(object):
                 is_partial = self.is_partial_gene_call(genome_name, gene_caller_id)
 
                 if exclude_partial_gene_calls and is_partial:
-                    total_num_excluded_aa_sequences += 1
+                    total_num_partial_gene_calls += 1
                     continue
 
                 aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
+
+                # there is absolutely no reason to include genes without amino acid sequences
+                # when the name of the functio is 'gen_combined_aa_sequences_FASTA'.
+                if not len(aa_sequence):
+                    total_gene_calls_with_no_aa_sequence += 1
+                    continue
 
                 if report_with_genome_name:
                     fasta_output.write_id('%s_%d' % (genome_name, int(gene_caller_id)))
@@ -505,11 +512,15 @@ class GenomeStorage(object):
 
         fasta_output.close()
 
+        total_num_excluded_genes = total_num_partial_gene_calls + total_gene_calls_with_no_aa_sequence
+
         self.run.info('AA sequences FASTA', output_file_path)
         self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
-        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
+        self.run.info('Num partial gene calls excluded', '%s' % pp(total_num_partial_gene_calls))
+        if total_gene_calls_with_no_aa_sequence:
+            self.run.info('Num non-coding genes excluded', '%s' % pp(total_gene_calls_with_no_aa_sequence), mc='red')
 
-        return total_num_aa_sequences, total_num_excluded_aa_sequences
+        return total_num_aa_sequences, total_num_excluded_genes
 
 
     def close(self):
