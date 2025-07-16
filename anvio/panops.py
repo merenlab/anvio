@@ -1367,6 +1367,8 @@ class SyntenyGeneCluster():
         # self.db_mining_df = pd.DataFrame()
         self.contig_identifiers = {}
 
+        self.just_do_it = A('just_do_it')
+
 
     def get_num_contigs_and_genome_length(self, file_path):
         fasta = f.SequenceSource(file_path)
@@ -1878,7 +1880,7 @@ class SyntenyGeneCluster():
         return(syn_packages_labels)
 
 
-    def run_contextualize_paralogs_algorithm(self, db_mining_df, output_dir, n=100, alpha=0.5, beta=0.5, gamma=0.25, delta=0.5, output_synteny_gene_cluster_dendrogram=False):
+    def run_contextualize_paralogs_algorithm(self, db_mining_df, output_dir, n=100, alpha=0.5, beta=0.5, gamma=0.25, delta=0.5, min_k=0, output_synteny_gene_cluster_dendrogram=False):
         """A function that resolves the graph context of paralogs based on gene synteny
         information across genomes and adds this information to the db_mining_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
@@ -1994,7 +1996,7 @@ class SyntenyGeneCluster():
         j = 0
         self.progress.new("Contextualize gene clusters")
         for z, (gene_cluster, genome_contig_gene_cluster_positions) in enumerate(gene_cluster_positions.items()):
-            k = 0
+            k = min_k
             while True:
                 gene_cluster_k_mer_genome_frequency = {}
                 gene_cluster_k_mer_contig_positions = []
@@ -2050,7 +2052,10 @@ class SyntenyGeneCluster():
         self.run.info_single("Done.")
 
         if len(db_mining_df["syn_cluster"].unique()) > 2 * len(db_mining_df["gene_cluster"].unique()):
-            raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something went wrong here...")
+            if self.just_do_it:
+                self.run.info_single("We wanted to inform you, that the number of gene to syn clusters doesn't really line up but you choosed just-do-it so either you hate us, yourself, or you are very sure about what you are doint. GOOD LUCK")
+            else:
+                raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something might have gone wrong.")
 
         db_mining_df.set_index('position').to_csv(os.path.join(output_dir, 'synteny_cluster.tsv'), sep='\t')
         self.run.info_single(f"Exported mining table to {os.path.join(output_dir, 'synteny_cluster.tsv')}.")
@@ -3017,8 +3022,14 @@ class DirectedForce():
             G_edge_data = G.get_edge_data(node_i, node_j)
             return(node_i, node_j, G_edge_data, changed_edges)
         else:
-            G_edge_data = {y:z if y != 'direction' else 'L' for y,z in G.get_edge_data(node_i, node_j).items()}
-            changed_edges += [(node_i, node_j)]
+            if (node_i, node_j) in changed_edges:
+                G_edge_data = {y:z if y != 'direction' else 'R' for y,z in G.get_edge_data(node_i, node_j).items()}
+                changed_edges -= [(node_i, node_j)]
+                print('hi')
+            else:
+                G_edge_data = {y:z if y != 'direction' else 'L' for y,z in G.get_edge_data(node_i, node_j).items()}
+                changed_edges += [(node_i, node_j)]
+            
             return(node_j, node_i, G_edge_data, changed_edges)
 
 
@@ -3138,7 +3149,7 @@ class DirectedForce():
         return(G)
 
 
-    # There is a bug somewhere, that breaks the graph with a node coming from reversing that is not connected to the start anymore. Is it time for a reimplementation already?
+    # TODO There is a bug somewhere, that breaks the graph with a node coming from reversing that is not connected to the start anymore. Is it time for a reimplementation already?
     def run_tree_to_flow_network_algorithm(self, G, M, max_weight):
         """Main algorithm function. It used the Maxmimum aborescence graph M and the original
         graph G to find the optimal edges to reverse. More documentation on this algoritm will
@@ -3152,6 +3163,8 @@ class DirectedForce():
         =======
         list
         """
+
+        T = G.copy()
 
         changed_edges = []
 
@@ -3225,7 +3238,7 @@ class DirectedForce():
                 else:
                     connected = False
 
-                if connected != True or x == 1:
+                if connected != True or x > 0:
                     for current_node_successor in G_successors[current_node]:
 
                         if current_node_successor in resolved_nodes:
@@ -3283,32 +3296,37 @@ class DirectedForce():
 
                                 # print(next_node, current_connector)
 
-                                current_node = next_node
+                                if G.has_edge(M_predecessors[current_node], current_node): 
 
-                                node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_connector, changed_edges, reverse = True)
-                                M.remove_edge(M_predecessors[current_node], current_node)
+                                    current_node = next_node
 
-                                new_data = self.edge_check(M, node_i, node_j, data)
-                                M.add_edge(node_i, node_j, **new_data)
+                                    node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_connector, changed_edges, reverse = True)
+                                    M.remove_edge(M_predecessors[current_node], current_node)
 
-                                M_removed_edges.remove((current_node, current_connector))
-                                M_removed_edges.add((M_predecessors[current_node], current_node))
+                                    new_data = self.edge_check(M, node_i, node_j, data)
+                                    M.add_edge(node_i, node_j, **new_data)
 
-                                M_successors[M_predecessors[current_node]].remove(current_node)
-                                M_successors[current_connector] += [current_node]
+                                    M_removed_edges.remove((current_node, current_connector))
+                                    M_removed_edges.add((M_predecessors[current_node], current_node))
 
-                                next_node = M_predecessors[current_node]
+                                    M_successors[M_predecessors[current_node]].remove(current_node)
+                                    M_successors[current_connector] += [current_node]
 
-                                M_predecessors.pop(current_node, None)
-                                M_predecessors[current_node] = current_connector
+                                    next_node = M_predecessors[current_node]
 
-                                M_distances[current_node] = self.mean_M_path_weight(M, 'START', current_node)
+                                    M_predecessors.pop(current_node, None)
+                                    M_predecessors[current_node] = current_connector
 
-                                if current_node in resolved_nodes:
-                                    break
+                                    M_distances[current_node] = self.mean_M_path_weight(M, 'START', current_node)
+
+                                    if current_node in resolved_nodes:
+                                        break
+                                    else:
+                                        resolved_nodes.add(current_node)
+                                        current_connector = current_node
+
                                 else:
-                                    resolved_nodes.add(current_node)
-                                    current_connector = current_node
+                                    break
 
                                 # if M.out_degree(current_node) == 0:
                                 # current_connector = current_node
@@ -3347,11 +3365,40 @@ class DirectedForce():
                             f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
                             f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
                             f"checks in the next version. Sorry :/")
+        else:
+            self.run.info_single(f"No loops. Roger roger and ready to go.")
 
-        for i,j in M.edges():
-            del M[i][j]['direction']
+        v = 0
+        w = 0
+        x = 0
+        y = 0
+        changed_edges_new = []
+        G_all_edges = set(G.edges())
+        for i, j in M.edges():
+            if G.has_edge(i,j) and G.has_edge(j,i):
+                # print('double sided.')
+                G_all_edges.remove((i,j))
+                G_all_edges.remove((j,i))
+                changed_edges_new += [(j,i)]
+                v += 1
+            elif G.has_edge(j,i):
+                # print('reverse sided.')
+                G_all_edges.remove((j,i))
+                changed_edges_new += [(j,i)]
+                w += 1
+            elif G.has_edge(i,j):
+                # print('no change.')
+                G_all_edges.remove((i,j))
+                x += 1
+            else:
+                # print('problem.')
+                y += 1
 
-        return(changed_edges)
+        self.run.info_single(f"{x} edges can be kept in the original direction.")
+        self.run.info_single(f"{w} edges have to reversed to capture maximum force.")
+        self.run.info_single(f"{v} edges seem to be double sided. Are there inversions in the dataset?")
+        
+        return(changed_edges_new)
 
 
 # ANCHOR - TopologicalLayout
@@ -3795,6 +3842,7 @@ class PangenomeGraphMaster():
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
+        self.just_do_it = A('just_do_it')
 
         # ANVI'O FLAGS
         self.start_node = []
@@ -3806,6 +3854,7 @@ class PangenomeGraphMaster():
         self.beta = A('beta')
         self.gamma = A('gamma')
         self.delta = A('delta')
+        self.min_k = A('min_k')
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
@@ -3824,7 +3873,6 @@ class PangenomeGraphMaster():
         self.db_mining_df = pd.DataFrame()
 
         self.newick = ''
-
         self.meta = {}
         self.bins = {}
         self.states = {}
@@ -3926,10 +3974,18 @@ class PangenomeGraphMaster():
             else:
                 db_mining_df = SynGC.db_mining()
 
-            self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.output_dir, self.n, self.alpha, self.beta, self.gamma, self.delta, self.output_synteny_gene_cluster_dendrogram)
+            self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.output_dir, self.n, self.alpha, self.beta, self.gamma, self.delta, self.min_k, self.output_synteny_gene_cluster_dendrogram)
 
             if self.start_gene:
-                self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
+                start_syn_cluster = list(set(self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
+                start_syn_type = list(set(self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
+                self.start_node += start_syn_cluster
+
+                if len(start_syn_cluster) > 1:
+                    self.run.info_single("There is more than one occurance of your start gene of preference, I really hope you know what you are doing.")
+
+                if any(node != 'core' for node in start_syn_type):
+                    self.run.info_single("At least one occurence of a start gene is NOT a core synteny cluster...")
 
             self.create_pangenome_graph()
 
@@ -4262,7 +4318,6 @@ class PangenomeGraphMaster():
         # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
 
         # self.db_mining_df.drop(self.db_mining_df.loc[self.db_mining_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
-        self.run.info_single(f"{len(changed_edges)} edges reversed to capture maximum force on pangenome graph.")
         # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
         if len(changed_edges) == 0:
             self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")

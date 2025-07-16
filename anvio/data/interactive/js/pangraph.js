@@ -411,15 +411,15 @@ function marknode(e, data, binid, bins, genome_size, group_dict){
 
   if (node_type == 'core'){
     var node_color = core_color
-  } else if (node_type == 'rearranged') {
+  } else if (node_type == 'rearrangement') {
     var node_color = rearranged_color
   } else if (node_type == 'accessory') {
     var node_color = accessory_color
-  } else if (node_type == 'paralog') {
+  } else if (node_type == 'duplication') {
     var node_color = paralog_color
   } else if (node_type == 'singleton') {
     var node_color = singleton_color
-  } else if (node_type == 'trna') {
+  } else if (node_type == 'rna') {
     var node_color = trna_color
   }
 
@@ -1097,9 +1097,9 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
               var dir_set = Object.values(edge['directions'])
 
               if (dir_set.includes('L') && dir_set.includes('R')) {
-                var stroke = ' stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" '
+                var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
               } else if (dir_set.includes('L')) {
-                var stroke = ' stroke-dasharray="' + line_thickness * 20 + ',' + line_thickness * 5 + '" '
+                var stroke = ' stroke-dasharray="' + line_thickness + '" '
               } else {
                 var stroke = ''
               }
@@ -1268,15 +1268,15 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
       if (node_type == 'core'){
         var node_color = core_color
-      } else if (node_type == 'rearranged') {
+      } else if (node_type == 'rearrangement') {
         var node_color = rearranged_color
       } else if (node_type == 'accessory') {
         var node_color = accessory_color
-      } else if (node_type == 'paralog') {
+      } else if (node_type == 'duplication') {
         var node_color = paralog_color
       } else if (node_type == 'singleton') {
         var node_color = singleton_color
-      } else if (node_type == 'trna') {
+      } else if (node_type == 'rna') {
         var node_color = trna_color
       } else {
         console.log(node_type)
@@ -1385,15 +1385,15 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
     if (group_type == 'core'){
       var group_color = core_color
-    } else if (group_type == 'rearranged') {
+    } else if (group_type == 'rearrangement') {
       var group_color = rearranged_color
     } else if (group_type == 'accessory') {
       var group_color = accessory_color
-    } else if (group_type == 'paralog') {
+    } else if (group_type == 'duplication') {
       var group_color = paralog_color
     } else if (group_type == 'singleton') {
       var group_color = singleton_color
-    } else if (group_type == 'trna') {
+    } else if (group_type == 'rna') {
       var group_color = trna_color
     }
 
@@ -2527,7 +2527,7 @@ $(document).ready(function() {
           var set = {}
           var bin_keys = Object.keys(bins)
 
-          var selection = 'COG20_FUNCTION'
+          var selection = 'COG24_FUNCTION'
           set['selection'] = selection
 
           for (var binid of bin_keys) {
