@@ -1627,7 +1627,7 @@ class SyntenyGeneCluster():
 
             np.fill_diagonal(X, 0.0)
             condensed_X = squareform(X)
-            Z = linkage(condensed_X, 'ward')
+            Z = linkage(condensed_X, 'complete')
 
             # Maye the Z.tolist is not the best way to estimate the steps
             for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
@@ -1658,9 +1658,10 @@ class SyntenyGeneCluster():
         labels = []
         synteny_gene_cluster_id_contig_positions = []
         for cluster, (genome, contig, position, gene_caller_id, gene_cluster_kmer) in zip(clusters, gene_cluster_k_mer_contig_positions):
-            gene_cluster_id = gene_cluster_kmer[int(len(gene_cluster_kmer)/2)] + '_' + str(cluster)
+            k = int(len(gene_cluster_kmer)/2)
+            gene_cluster_id = gene_cluster_kmer[k] + '_' + str(cluster)
             synteny_gene_cluster_id_contig_positions += [(genome, contig, position, gene_caller_id, gene_cluster_id)]
-            labels += [gene_cluster_id + ',' + str(gene_cluster_kmer)]
+            labels += [gene_cluster_id + ' ' + str(gene_cluster_kmer)]
 
         num_cluster = len(set(clusters.tolist()))
         if output_synteny_gene_cluster_dendrogram and num_cluster > 1:
@@ -1670,21 +1671,21 @@ class SyntenyGeneCluster():
             colors = ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(num_cluster)]
             label_colors = {label: colors[cluster-1] for label, cluster in zip(labels, clusters)}
 
-            fig = plt.figure(figsize=(25, 10))
+            fig = plt.figure(figsize=(15+1+k*8, len(label_colors)))
             ax = plt.gca()
             dn = dendrogram(Z, ax=ax, labels=labels, orientation='right')
 
-            new_labels = []
+            #new_labels = []
             y_tick_labels = ax.get_ymajorticklabels()
             for label in y_tick_labels:
                 label_text = label.get_text()
                 label.set_color(label_colors[label_text])
 
-                label_match = re.search(r'\((.+)\)', label_text)
-                new_label = label_match.group(0)
-                new_labels += [new_label]
+                #label_match = re.search(r'\((.+)\)', label_text)
+                #new_label = label_match.group(0)
+                #new_labels += [new_label]
 
-            ax.set_yticklabels(new_labels)
+            # ax.set_yticklabels(new_labels)
             plt.tight_layout()
             fig.savefig(os.path.join(output_dir, gene_cluster + '.svg'))
             plt.close(fig)
