@@ -3818,6 +3818,7 @@ class PangenomeGraphMaster():
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
         self.pan_graph_yaml = A('pan_graph_yaml')
+        self.ani_table = A('ani_table')
         self.project_name = A('project_name')
 
         if self.pan_graph_yaml:
@@ -3910,6 +3911,14 @@ class PangenomeGraphMaster():
             file.write(str(complexity_value))
 
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
+
+        if self.ani_table:
+            df_ani = pd.read_csv(self.ani_table, index_col='key', sep='\t')
+            shared_ani = np.triu(df_ani[self.genome_names].loc[self.genome_names], 1).sum() / len(self.genome_names)
+            with open(os.path.join(self.output_dir, 'shared_ani.txt'), 'w') as file:
+                file.write(str(shared_ani))
+
+            self.run.info_single(f"Shared ANI is {round(shared_ani, 3)}.")
 
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
         self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
