@@ -1607,6 +1607,7 @@ class SyntenyGeneCluster():
         return(db_mining_df)
 
 
+    # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
     def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, output_dir, output_synteny_gene_cluster_dendrogram):
 
         synteny_gene_cluster_type = ''
@@ -2881,8 +2882,9 @@ class PangenomeGraph():
 
         return(newick)
 
+    # TODO still empty..
     def generate_hybrid_genome(self, output_dir):
-        pass
+        self.run.info_single("The output hybrid genome function exists on paper but we haven't implemented it yet. sorry.")
 
 
 # ANCHOR - DirectedForce
@@ -3397,7 +3399,7 @@ class DirectedForce():
 
         self.run.info_single(f"{x} edges can be kept in the original direction.")
         self.run.info_single(f"{w} edges have to reversed to capture maximum force.")
-        self.run.info_single(f"{v} edges seem to be double sided. Are there inversions in the dataset?")
+        self.run.info_single(f"{v} edges seem to be double sided. Double sided edges are a sign for potential inversions.")
         
         return(changed_edges_new)
 
@@ -3904,6 +3906,9 @@ class PangenomeGraphMaster():
         # complexity_value = (X + A) / 2 - (Y + B) / 2
         complexity_value = (X + A) / 2
 
+        with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
+            file.write(str(complexity_value))
+
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
 
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
@@ -3978,15 +3983,18 @@ class PangenomeGraphMaster():
             self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.output_dir, self.n, self.alpha, self.beta, self.gamma, self.delta, self.min_k, self.output_synteny_gene_cluster_dendrogram)
 
             if self.start_gene:
-                start_syn_cluster = list(set(self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
-                start_syn_type = list(set(self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
-                self.start_node += start_syn_cluster
+                start_syn_cluster = self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()
+                start_syn_type = self.db_mining_df[self.db_mining_df['COG24_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
+                self.start_node += set(start_syn_cluster)
 
-                if len(start_syn_cluster) > 1:
+                if len(set(start_syn_cluster)) > 1:
                     self.run.info_single("There is more than one occurance of your start gene of preference, I really hope you know what you are doing.")
 
+                if len(start_syn_cluster) != len(self.genome_names):
+                    self.run.info_single("The number of genomes in the dataset does not equal the number of occurances of the start gene. Weird.")
+
                 if any(node != 'core' for node in start_syn_type):
-                    self.run.info_single("At least one occurence of a start gene is NOT a core synteny cluster...")
+                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.")
 
             self.create_pangenome_graph()
 
