@@ -810,7 +810,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 #TODO: make a dict of compounds with transport reactions and use as evidence in final output
                 if reaction.compound_ids.count(compound_id) > 1: # likely a transport reaction, ignore
                     if anvio.DEBUG:
-                        run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
+                        self.run.warning(f"Found {compound_id} more than once in {rid}. We are skipping this reaction",
                                         header="DEBUG", lc="yellow")
                     continue
                 # which genomes produce this compound?
