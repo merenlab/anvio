@@ -135,7 +135,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         if not self.contigs_db_1 or not self.contigs_db_2:
             raise ConfigError("The ExchangePredictorSingle class needs two contigs databases to work with.")
 
-    def predict_exchanges(self, output_files_dictionary=None):
+    def predict_exchanges(self, output_files_dictionary=None, return_data_dicts=False):
         """This is the driver function to predict metabolic exchanges between two genomes.
         
         PARAMETERS
@@ -143,6 +143,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         output_files_dictionary : dictionary of output type (str), AppendableFile object pairs
             contains an initialized AppendableFile object to append output to for each output type
             (used in multi-mode to direct all output from several estimators to the same files)
+        return_data_dicts : boolean
+            If True, this function will return the prediction result dictionaries instead of 
+            appending them to the output files
         """
 
         # LOAD DATA
@@ -158,7 +161,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.output_file_dict = output_files_dictionary
         else:
             self.output_file_dict = self.setup_output_for_appending()
-
+        
         self.load_reaction_networks()
         
         # MERGE NETWORKS
@@ -218,11 +221,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.warning(f"Identified {len(data_dicts['potentially-exchanged-compounds'])} potentially exchanged compounds and "
                          f"{len(data_dicts['unique-compounds'])} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
         
-        # STEP 4: OUTPUT
-        self.append_output_from_dicts(data_dicts)
-        for typ, file_object in self.output_file_dict.items():
-            self.run.info(f"Output with {typ}", file_object.path)
-            file_object.close()       
+        # STEP 4: OUTPUT or RETURN
+        if return_data_dicts:
+            return data_dicts
+        else:
+            self.append_output_from_dicts(data_dicts)
+            for typ, file_object in self.output_file_dict.items():
+                self.run.info(f"Output with {typ}", file_object.path)
+                file_object.close()       
 
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
