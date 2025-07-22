@@ -17,6 +17,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.genomedescriptions import GenomeDescriptions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -29,6 +30,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+P = terminal.pluralize
 
 MAPS_TO_EXCLUDE = set(["00470", # D-amino acid biosynthesis. This map mostly connects other maps.
                        "00195", # Photosynthesis. This map describes photosystems and complexes rather than reactions.
@@ -924,3 +926,107 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
             else:
                 file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
+
+class ExchangePredictorMulti(ExchangePredictorArgs):
+    """Class for predicting exchanges between multiple pairs of genomes.
+    
+    PARAMETERS
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-predict-metabolic-exchanges
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.external_genomes_file = A('external_genomes')
+        self.internal_genomes_file = A('internal_genomes')
+        self.genome_pairs = []  # will be a list of tuples describing the pairs of genomes to compare
+        
+        # INIT BASE CLASS to format common arguments
+        ExchangePredictorArgs.__init__(self, self.args, run=self.run)
+
+        # INPUT SANITY CHECKS (for anything that was not already checked by the base class)
+        if args.contigs_db_1 or args.contigs_db_2:
+            raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
+                              "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
+        
+    def init_external_internal_genomes(self):
+        """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
+
+        g = GenomeDescriptions(self.args, run=self.run, progress=self.progress)
+        g.load_genomes_descriptions(skip_functions=False, init=False)
+
+        # sanity check that all dbs contain reaction networks
+        bad_genomes = [v['name'] for v in g.genomes.values() if not v['reaction_network_ko_annotations_hash']]
+        if len(bad_genomes):
+            bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
+            raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your genomes "
+                              f"{P('is', len(bad_genomes), alt='are')} lacking a reaction network. "
+                              f"This means you need to run `anvi-reaction-network` on the corresponding contigs "
+                              f"databases. Here is the list of offenders: {', '.join(bad_genomes_txt)}.")
+        
+        self.databases = deepcopy(g.genomes)
+
+    def get_all_vs_all_genome_pairs(self):
+        """Returns a list of all-vs-all genome comparisons for all genomes in self.databases.
+        
+        RETURNS
+        =======
+        all_pairs : (str,str) 
+            A list of tuples in which each tuple contains two genome names to compare
+        """
+
+        all_pairs = []
+
+        seen = [] # keep track of fully processed genomes so we don't include equal-but-opposite pairings
+        for a in self.databases:
+            for b in self.databases:
+                if a != b and b not in seen:
+                    all_pairs.append((a,b))
+            seen.append(a)
+        return all_pairs
+
+    def one_pair_worker(self, contigs_db_A, contigs_db_B):
+        """This function predicts exchanges for one pair of genomes."""
+
+        args_single = ExchangePredictorArgs(self.args, format_args_for_single_estimator=True)
+        args_single.contigs_db_1 = contigs_db_A
+        args_single.contigs_db_2 = contigs_db_B
+        data_dicts_for_one_pair = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
+                                                            ).predict_exchanges(output_files_dictionary=self.output_file_dict,
+                                                            return_data_dicts=True)
+    def predict_exchanges(self):
+        """This is the driver function to predict metabolic exchanges between multiple pairs of genomes."""
+        
+        if self.external_genomes_file or self.internal_genomes_file:
+            if self.external_genomes_file:
+                self.run.info("External genomes file", self.external_genomes_file)
+            if self.internal_genomes_file:
+                self.run.info("Internal genomes files", self.internal_genomes_file)
+                raise ConfigError("Handling internal genomes hasn't been implemented yet. Sorry :/")
+            self.init_external_internal_genomes()
+
+            self.genome_pairs = self.get_all_vs_all_genome_pairs()
+
+        total_pairs = len(self.genome_pairs)
+        self.output_file_dict = self.setup_output_for_appending()
+        self.run.info("Total number of genomes", len(self.databases))
+        self.run.info("Number of genome pairs we will predict exchanges for", total_pairs)
+        if anvio.DEBUG:
+            pairs_strs = [f"{a} vs {b}" for (a,b) in self.genome_pairs]
+            self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}", 
+                                header='DEBUG OUTPUT', lc='yellow')
+
+        self.progress.new("Predicting for genome pairs", progress_total_items=total_pairs)
+        processed_count = 1
+        for genome_A, genome_B in self.genome_pairs:
+            self.progress.update(f"[{processed_count} of {total_pairs}] {genome_A} vs {genome_B}")
+            self.one_pair_worker(self.databases[genome_A]['contigs_db_path'], self.databases[genome_B]['contigs_db_path'])
+            processed_count += 1
+            self.progress.increment(increment_to=processed_count)
+        self.progress.end()
+            
