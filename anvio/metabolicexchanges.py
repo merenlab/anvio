@@ -129,7 +129,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.contigs_db_2 = A('contigs_db_2')
         
         # INIT BASE CLASS to format common arguments
-        ExchangePredictorArgs.__init__(self, self.args)
+        ExchangePredictorArgs.__init__(self, self.args, run=self.run)
 
         # INPUT SANITY CHECKS (for anything that was not already checked by the base class)
         if not self.contigs_db_1 or not self.contigs_db_2:
@@ -291,7 +291,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         self.genomes_to_compare = {'A': {'contigs_db_path': self.contigs_db_1},
                        'B': {'contigs_db_path': self.contigs_db_2}}
-        constructor = rn.Constructor()
+        constructor = rn.Constructor(run=self.run, progress=self.progress)
         for g in self.genomes_to_compare:
             self.run.info("Loading reaction network from database", self.genomes_to_compare[g]['contigs_db_path'])
             self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
