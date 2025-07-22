@@ -37,7 +37,7 @@ MAPS_TO_EXCLUDE = set(["00470", # D-amino acid biosynthesis. This map mostly con
 ])
 
 class ExchangePredictorArgs():
-    def __init__(self, args, format_args_for_single_estimator=False, run=run, progress=progress):
+    def __init__(self, args, format_args_for_single_estimator=False, run=run_quiet):
         """A base class to assign arguments to attributes for ExchangePredictor classes.
         
         PARAMETERS
@@ -64,13 +64,19 @@ class ExchangePredictorArgs():
         self.sanity_check_args()
 
         # PRINT INFO for arguments common to subclasses
-        self.run.info("Predicting exchanges from KEGG Pathway Map walks", not self.no_pathway_walk)
-        self.run.info("Predicting exchanges from merged Reaction Network", not self.pathway_walk_only)
+        run.info("Predicting exchanges from KEGG Pathway Map walks", not self.no_pathway_walk)
+        run.info("Predicting exchanges from merged Reaction Network", not self.pathway_walk_only)
 
         # establish expected outputs based on provided arguments
         self.output_types = ['potentially-exchanged-compounds', 'unique-compounds']
         if not self.no_pathway_walk:
             self.output_types.append('evidence')
+
+        # to fool a single estimator into passing sanity checks, nullify multi estimator args here
+        if format_args_for_single_estimator:
+            self.databases = None
+            self.external_genomes_file = None
+            self.internal_genomes_file = None
 
     def sanity_check_args(self):
         """Here we sanity check all the common arguments to make sure they are sensibly set."""
