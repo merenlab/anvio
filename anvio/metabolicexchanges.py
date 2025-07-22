@@ -255,7 +255,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             if not len(id_list) == 2:
                 if anvio.DEBUG:
                     compound_list = [f"{i} ({eqs.loc[i]})" for i in id_list]
-                    run.warning(f"While looking for equivalent compound IDs for the amino acid {a}, we didn't find the "
+                    self.run.warning(f"While looking for equivalent compound IDs for the amino acid {a}, we didn't find the "
                                 f"expected 2 matching compounds '{a}' and 'L-{a}'. Instead, here is what we found: "
                                 f"{', '.join(compound_list)}. No equivalencies will be stored for this amino acid.", header='DEBUG', lc='yellow')
                 continue
@@ -788,7 +788,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             compound_name = self.merged.metabolites[compound_id].modelseed_name
             if anvio.DEBUG:
                 self.progress.reset()
-                run.info_single(f"Working on compound {compound_id} ({compound_name})")
+                self.run.info_single(f"Working on compound {compound_id} ({compound_name})")
             sub_ids = [compound_id]
             if compound_id in self.eq_compounds:
                 eq_comp = self.eq_compounds[compound_id]['equivalent_id']
