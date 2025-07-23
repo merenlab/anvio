@@ -1617,7 +1617,8 @@ class SyntenyGeneCluster():
 
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
-    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram):
+    # def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram):
+    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram):
 
         synteny_gene_cluster_type = ''
 
@@ -1633,7 +1634,8 @@ class SyntenyGeneCluster():
                 for j, gene_cluster_k_mer_contig_position_b in enumerate(gene_cluster_k_mer_contig_positions):
                     gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
                     gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
-                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware)
+                    # X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware)
+                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware)
 
             np.fill_diagonal(X, 0.0)
             condensed_X = squareform(X)
@@ -1707,40 +1709,99 @@ class SyntenyGeneCluster():
 
         return(synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type)
 
-    def syn_package_context(self, syn_package_order, position, n):
+    def single_copy_core_context(self, gene_cluster_order, single_copy_core, position, n):
+
         left_side_of_kmer = []
-        l = 1
-        current_syn_package = syn_package_order[position]
+        l = 0
         while True:
-            if len(left_side_of_kmer) == n:
+            if position - l < 0:
                 break
-            elif position - l < 0:
-                break
-            elif syn_package_order[position - l] != current_syn_package:
-                left_side_of_kmer += [syn_package_order[position - l]]
-                current_syn_package = syn_package_order[position - l]
             else:
-                l += 1
+                gene_cluster = gene_cluster_order[position - l]
+
+            if len(left_side_of_kmer) == n:
+                break            
+            elif gene_cluster in single_copy_core:
+                
+                left_side_of_kmer += [gene_cluster]
+            
+            l += 1
 
         right_side_of_kmer = []
-        r = 1
-        current_syn_package = syn_package_order[position]
+        r = 0
         while True:
-            if len(right_side_of_kmer) == n:
+
+            if position + r >= len(gene_cluster_order):
                 break
-            elif position + r >= len(syn_package_order):
-                break
-            elif syn_package_order[position + r] != current_syn_package:
-                right_side_of_kmer += [syn_package_order[position + r]]
-                current_syn_package = syn_package_order[position + r]
             else:
-                r += 1
+                gene_cluster = gene_cluster_order[position + r]
+
+            if len(right_side_of_kmer) == n:
+                break            
+            elif gene_cluster in single_copy_core:
+                
+                right_side_of_kmer += [gene_cluster]
+            
+            r += 1
 
         return(set(left_side_of_kmer), set(right_side_of_kmer))
 
 
+    # def syn_package_context(self, gene_cluster_order, syn_packages_labels, position, n):
+
+    #     left_side_of_kmer = []
+    #     l = 0
+    #     last_syn_package = ''
+
+    #     while True:
+    #         if position - l < 0:
+    #             break
+    #         else:
+    #             gene_cluster = gene_cluster_order[position - l]
+
+    #         if len(left_side_of_kmer) == n:
+    #             break            
+    #         elif gene_cluster in syn_packages_labels.keys():
+                
+    #             syn_package = syn_packages_labels[gene_cluster] 
+
+    #             if syn_package != last_syn_package:
+            
+    #                 left_side_of_kmer += [syn_packages_labels[gene_cluster]]
+    #                 last_syn_package = syn_packages_labels[gene_cluster_order[position - l]]
+            
+    #         l += 1
+
+    #     right_side_of_kmer = []
+    #     r = 0
+    #     last_syn_package = ''
+
+    #     while True:
+
+    #         if position + r >= len(gene_cluster_order):
+    #             break
+    #         else:
+    #             gene_cluster = gene_cluster_order[position + r]
+
+    #         if len(right_side_of_kmer) == n:
+    #             break            
+    #         elif gene_cluster in syn_packages_labels.keys():
+                
+    #             syn_package = syn_packages_labels[gene_cluster] 
+
+    #             if syn_package != last_syn_package:
+            
+    #                 right_side_of_kmer += [syn_packages_labels[gene_cluster]]
+    #                 last_syn_package = syn_packages_labels[gene_cluster_order[position + r]]
+            
+    #         r += 1
+
+    #     return(set(left_side_of_kmer), set(right_side_of_kmer))
+
+
     # TODO was it a wise choice to remove reverse kmer comparison? I guess yes better to create more nodes then removing necessary ones
-    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware):
+    # def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware):
+    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware):
 
         genome_a, contig_a, position_a, gene_caller_id_a, gene_cluster_kmer_a = gene_cluster_k_mer_contig_position_a
         #contig_identifier_a = str(int(contig_a.split('_')[-1]))
@@ -1750,8 +1811,8 @@ class SyntenyGeneCluster():
         #gene_cluster_k_mer_left_context_a = set([gene_cluster_order_a[l] for l in range(position_a - n, position_a) if l >= 0 and l < len(gene_cluster_order_a)])
         #gene_cluster_k_mer_right_context_a = set([gene_cluster_order_a[l] for l in range(position_a - 1, position_a + n + 1) if l >= 0 and l < len(gene_cluster_order_a)])
 
-        syn_package_order_a = [syn_packages_labels[gene_cluster] for gene_cluster in gene_cluster_order_a]
-        gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.syn_package_context(syn_package_order_a, position_a, n)
+        # gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.syn_package_context(gene_cluster_order_a, syn_packages_labels, position_a, n)
+        gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.single_copy_core_context(gene_cluster_order_a, single_copy_core, position_a, n)
 
         genome_b, contig_b, position_b, gene_caller_id_b, gene_cluster_kmer_b = gene_cluster_k_mer_contig_position_b
         #contig_identifier_b = str(int(contig_b.split('_')[-1]))
@@ -1761,8 +1822,8 @@ class SyntenyGeneCluster():
         # gene_cluster_k_mer_left_context_b = set([gene_cluster_order_b[l] for l in range(position_b - n, position_b) if l >= 0 and l < len(gene_cluster_order_b)])
         # gene_cluster_k_mer_right_context_b = set([gene_cluster_order_b[l] for l in range(position_b - 1, position_b + n + 1) if l >= 0 and l < len(gene_cluster_order_b)])
 
-        syn_package_order_b = [syn_packages_labels[gene_cluster] for gene_cluster in gene_cluster_order_b]
-        gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.syn_package_context(syn_package_order_b, position_b, n)
+        # gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.syn_package_context(gene_cluster_order_b, syn_packages_labels, position_b, n)
+        gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.single_copy_core_context(gene_cluster_order_b, single_copy_core, position_b, n)
 
         gene_cluster_k_mer_left_context_min_length = min(len(gene_cluster_k_mer_left_context_a), len(gene_cluster_k_mer_left_context_b))
         gene_cluster_k_mer_right_context_min_length = min(len(gene_cluster_k_mer_right_context_a), len(gene_cluster_k_mer_right_context_b))
@@ -1770,7 +1831,7 @@ class SyntenyGeneCluster():
         gene_cluster_k_mer_left_context_score = len(gene_cluster_k_mer_left_context_a.intersection(gene_cluster_k_mer_left_context_b)) / gene_cluster_k_mer_left_context_min_length if gene_cluster_k_mer_left_context_min_length != 0 else 0.0
         gene_cluster_k_mer_right_context_score = len(gene_cluster_k_mer_right_context_a.intersection(gene_cluster_k_mer_right_context_b)) / gene_cluster_k_mer_right_context_min_length if gene_cluster_k_mer_right_context_min_length != 0 else 0.0
 
-        # if gene_cluster_kmer_a[int(len(gene_cluster_kmer_a) / 2)] == 'GC_00001147':
+        # if gene_cluster_kmer_a[int(len(gene_cluster_kmer_a) / 2)] == 'GC_00004289':
         #     print(
         #         gene_cluster_k_mer_left_context_a,
         #         gene_cluster_k_mer_right_context_a,
@@ -1781,7 +1842,7 @@ class SyntenyGeneCluster():
         #         gene_cluster_k_mer_left_context_score,
         #         gene_cluster_k_mer_right_context_score
         #     )
-
+        
         if genome_a == genome_b:
             return(1.0)
         elif n != 0 and gene_cluster_k_mer_left_context_score < alpha and gene_cluster_k_mer_right_context_score < alpha:
@@ -1829,67 +1890,66 @@ class SyntenyGeneCluster():
     
             return(sim_value if sim_value <= delta else 1.0)
 
-    def calculate_syntenous_packages(self, genomes):
-        gene_cluster_count = {}
-        for (genome, contig), gene_cluster_sequence in genomes.items():
-            for gene_cluster in gene_cluster_sequence:
-                if gene_cluster not in gene_cluster_count:
-                    gene_cluster_count[gene_cluster] = 1
-                else:
-                    gene_cluster_count[gene_cluster] += 1
+    # def calculate_syntenous_packages(self, genomes):
+    #     gene_cluster_count = {}
+    #     for (genome, contig), gene_cluster_sequence in genomes.items():
+    #         for gene_cluster in gene_cluster_sequence:
+    #             if gene_cluster not in gene_cluster_count:
+    #                 gene_cluster_count[gene_cluster] = [genome]
+    #             else:
+    #                 gene_cluster_count[gene_cluster] += [genome]
 
-        syn_packages = {}
-        k = 1
-        while True:
-            kmer_count = {}
-            for (genome, contig), gene_cluster_sequence in genomes.items():
-                i = 0
-                while i <= len(gene_cluster_sequence)-k:
-                    kmer = tuple(gene_cluster_sequence[i:i+k])
+    #     skip = set()
+    #     for gene_cluster, count in gene_cluster_count.items():
+    #         if len(count) == len(self.genome_names) and len(set(count)) == len(self.genome_names):
+    #             pass
+    #         else:
+    #             skip.add(gene_cluster)
 
-                    if kmer in kmer_count:
-                        kmer_count[kmer] += 1
-                    elif kmer[::-1] in kmer_count:
-                        kmer_count[kmer[::-1]] += 1
-                    else:
-                        kmer_count[kmer] = 1
+    #     syn_packages = {}
+    #     k = 1
+    #     while True:
+    #         kmer_count = {}
+    #         for (genome, contig), gene_cluster_sequence in genomes.items():
+    #             i = 0
+    #             gene_cluster_sequence_no_dupl = [gene_cluster for gene_cluster in gene_cluster_sequence if gene_cluster not in skip]
 
-                    i = i + 1
+    #             while i <= len(gene_cluster_sequence_no_dupl)-k:
+    #                 kmer = tuple(gene_cluster_sequence_no_dupl[i:i+k])
 
-            kmer_not_conserved = 0
-            for kmer, count in kmer_count.items():
-                if all([gene_cluster_count[gene_cluster] == count for gene_cluster in kmer]):
-                    for gene_cluster in kmer:
-                        syn_packages[gene_cluster] = kmer
-                else:
-                    kmer_not_conserved += 1
+    #                 if kmer in kmer_count:
+    #                     kmer_count[kmer] += 1
+    #                 elif kmer[::-1] in kmer_count:
+    #                     kmer_count[kmer[::-1]] += 1
+    #                 else:
+    #                     kmer_count[kmer] = 1
 
-            if kmer_not_conserved == len(kmer_count):
-                break
-            else:
-                k += 1
+    #                 i = i + 1
 
-        label = 1
-        syn_packages_labels = {}
-        for syn_package in set(syn_packages.values()):
-            for gene_cluster in syn_package:
-                syn_packages_labels[gene_cluster] = 'SynPG_' + str(label).zfill(8)
-            label += 1
+    #         kmer_not_conserved = 0
+    #         for kmer, count in kmer_count.items():
+    #             if all([len(gene_cluster_count[gene_cluster]) == count for gene_cluster in kmer]):
+    #                 for gene_cluster in kmer:
+    #                     syn_packages[gene_cluster] = kmer
+    #             else:
+    #                 kmer_not_conserved += 1
 
-        # syn_package_contig_order = {}
-        # last_syn_package = ''
-        # for (genome, contig), gene_cluster_order in genomes.items():
-        #     for gene_cluster in gene_cluster_order:
-        #         current_syn_package = syn_packages_labels[gene_cluster]
-        #         if current_syn_package != last_syn_package:
-        #             if (genome, contig) in syn_package_contig_order:
-        #                 syn_package_contig_order[(genome, contig)] += [current_syn_package]
-        #             else:
-        #                 syn_package_contig_order[(genome, contig)] = [current_syn_package]
+    #         if kmer_not_conserved == len(kmer_count):
+    #             break
+    #         else:
+    #             break
+    #             # k += 1
 
-        #         last_syn_package = current_syn_package
+    #     label = 1
+    #     syn_packages_labels = {}
+    #     for syn_package in set(syn_packages.values()):
+    #         for gene_cluster in syn_package:
+    #             syn_packages_labels[gene_cluster] = 'SynPG_' + str(label).zfill(8)
+    #         label += 1
 
-        return(syn_packages_labels)
+    #     print(len(syn_packages_labels))
+
+    #     return(syn_packages_labels)
 
 
     def run_contextualize_paralogs_algorithm(self, db_mining_df, output_dir, n=100, alpha=0.5, beta=0.5, gamma=0.25, delta=0.5, inversion_aware=False, min_k=0, output_synteny_gene_cluster_dendrogram=False):
@@ -1993,7 +2053,23 @@ class SyntenyGeneCluster():
                 else:
                     gene_cluster_positions[gene_cluster][(genome, contig)] += [(i, gene_caller_id)]
 
-        syn_packages_labels = self.calculate_syntenous_packages(gene_cluster_contig_order)
+
+        gene_cluster_count = {}
+        for (genome, contig), gene_cluster_sequence in gene_cluster_contig_order.items():
+            for gene_cluster in gene_cluster_sequence:
+                if gene_cluster not in gene_cluster_count:
+                    gene_cluster_count[gene_cluster] = [genome]
+                else:
+                    gene_cluster_count[gene_cluster] += [genome]
+
+        single_copy_core = set()
+        for gene_cluster, count in gene_cluster_count.items():
+            if len(count) == len(self.genome_names) and len(set(count)) == len(self.genome_names):
+                single_copy_core.add(gene_cluster)
+
+        # syn_packages_labels = self.calculate_syntenous_packages(gene_cluster_contig_order)
+
+
         # for gene_cluster, syn_package in syn_packages_labels.items():
         #     if syn_package in syn_package_positions:
         #         if gene_cluster in syn_package_positions[syn_package]:
@@ -2039,7 +2115,9 @@ class SyntenyGeneCluster():
                         break
 
                 else:
-                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
+                    # synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
+                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
+                    
                     for genome, contig, position, gene_caller_id, gene_cluster_id in synteny_gene_cluster_id_contig_positions:
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
                         j += 1
@@ -2418,366 +2496,366 @@ class PangenomeGraph():
 
         return(region_sides_df, nodes_df, gene_calls_df)
 
-    def summarize_depreciated(self):
-        """This is the main summary function for pangenome graphs. Input is the self
-
-        Parameters
-        ==========
-        self.graph
-
-        Returns
-        =======
-        pd.DataFrame
-        """
-
-        # self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
-
-        if not nx.is_directed_acyclic_graph(self.graph):
-            raise ConfigError(f"Cyclic graphs, are not implemented.")
-
-        genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
-        x_values = set([d[0] for node, d in self.graph.nodes(data='position')])
-        graph_min = min(x_values)
-        graph_max = max(x_values)
-
-        region_id = 0
-        regions = {}
-        region_sides = {}
-
-        for genome in genome_names:
-            G_subset_nodes = [n for n,d in self.graph.nodes(data='gene_calls') if genome not in d]
-            G_subset_edges = [(i,j) for i,j,d in self.graph.edges(data='directions') if genome not in d]
-            G_sub = nx.DiGraph(self.graph)
-            G_sub.remove_nodes_from(G_subset_nodes)
-            G_sub.remove_edges_from(G_subset_edges)
-
-            region_type = {}
-            regions_reverse = []
-            nodes_position_dict = dict(G_sub.nodes(data="position"))
-
-            starting_points = []
-            for node in list(G_sub.nodes()):
-                if len(list(G_sub.successors(node))) <= 1 and len(list(G_sub.predecessors(node))) == 0:
-                    starting_points += [node]
-
-            starting_points = sorted(starting_points, key=lambda x: nodes_position_dict[x][0])
-
-            # Prepare first starting point in data structure
-            node = starting_points[0]
-            starting_points.remove(node)
-
-            node_position_x, node_position_y = nodes_position_dict[node]
-            former_position = node_position_x
-
-            region_id += 1
-
-            # gene cluster core?
-            if self.is_node_core(node, genome_names):
-                # start new core region
-                regions[region_id] = [(node_position_x, node_position_y, node)]
-                is_core = True
-            else:
-                # start new accessory region
-                regions[region_id] = [(node_position_x, node_position_y, node)]
-                is_core = False
-
-            visited = set([node])
-            mode = ''
-
-            while True:
-                node_position_x, node_position_y, node = self.walk_one_step(G_sub, node, nodes_position_dict, visited)
-
-                if node:
-                    mode = ''
-                else:
-                    if starting_points:
-                        node = starting_points[0]
-                        starting_points.remove(node)
-                        node_position_x, node_position_y = nodes_position_dict[node]
-                        direction = ''
-                        mode = 'break'
-                    else:
-                        break
-
-                # extend current region?
-                if node_position_x == former_position + 1 or node_position_x == (former_position - graph_max) + 1:
-                    # extend core region?
-                    if is_core:
-                        # gene cluster core?
-                        if self.is_node_core(node, genome_names):
-                            # extend core region with core gene cluster
-                            regions[region_id] += [(node_position_x, node_position_y, node)]
-                            is_core = True
-                        else:
-                            # end core region
-                            region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
-                            region_id += 1
-
-                            # start accessory region
-                            regions[region_id] = [(node_position_x, node_position_y, node)]
-                            is_core = False
-                    else:
-                        # gene cluster core?
-                        if self.is_node_core(node, genome_names):
-                            # end accessory region
-                            region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
-                            region_id += 1
-
-                            # start core region
-                            regions[region_id] = [(node_position_x, node_position_y, node)]
-                            is_core = True
-                        else:
-                            # extend accessory region
-                            regions[region_id] += [(node_position_x, node_position_y, node)]
-                            is_core = False
-
-                elif node_position_x == former_position:
-                    if is_core:
-                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
-                    else:
-                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
-
-                    region_id += 1
-
-                    if self.is_node_core(node, genome_names):
-                        # start new core region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = True
-                    else:
-                        # start new accessory region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = False
-
-                # new forward bridge region?
-                elif (node_position_x > former_position + 1 and abs(node_position_x - former_position) <= graph_max / 2) or (node_position_x < former_position + 1 and abs(former_position - node_position_x) > graph_max / 2):
-                    # is the region to end core?
-                    if is_core:
-                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
-                    else:
-                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
-
-                    region_id += 1
-
-                    if node_position_x > former_position + 1:
-                        regions[region_id] = [(i, '', '') for i in range(former_position, node_position_x + 1, 1)]
-                    else:
-                        regions[region_id] = [(i, '', '') for i in range(former_position, graph_max + 1, 1)] + [(i, '', '') for i in range(graph_min, node_position_x + 1, 1)]
-
-                    if mode == 'break':
-                        region_type[region_id] = ('break', regions[region_id][0][0], regions[region_id][-1][0])
-                    else:
-                        region_type[region_id] = ('forward', regions[region_id][0][0], regions[region_id][-1][0])
-
-                    region_id += 1
-
-                    # gene cluster core?
-                    if self.is_node_core(node, genome_names):
-                        # start new core region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = True
-                    else:
-                        # start new accessory region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = False
-
-                # new backward bridge region?
-                elif (node_position_x < former_position + 1 and abs(former_position - node_position_x) <= graph_max / 2) or (node_position_x > former_position + 1 and abs(node_position_x - former_position) > graph_max / 2):
-                    # is the region to end core?
-                    if is_core:
-                        region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
-                    else:
-                        region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
-
-                    region_id += 1
-
-                    if node_position_x < former_position + 1:
-                        regions[region_id] = [(i, '', '') for i in range(former_position, node_position_x - 1, -1)]
-                    else:
-                        regions[region_id] = [(i, '', '') for i in range(former_position, graph_min - 1, -1)] + [(i, '', '') for i in range(graph_max, node_position_x - 1, -1)]
-
-                    region_type[region_id] = ('reverse', regions[region_id][0][0], regions[region_id][-1][0])
-
-                    # mark a backward bridge region
-                    regions_reverse += [(regions[region_id][0][0], regions[region_id][-1][0])]
-                    region_id += 1
-
-                    # gene cluster core?
-                    if self.is_node_core(node, genome_names):
-                        # start new core region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = True
-                    else:
-                        # start new accessory region
-                        regions[region_id] = [(node_position_x, node_position_y, node)]
-                        is_core = False
-
-                else:
-                    self.run.info_single('A motif of this type is not yet implemented as we never saw it before.')
-
-                visited.add(node)
-                former_position = node_position_x
-
-            if is_core:
-                region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
-            else:
-                region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
-
-            for region_id_inner, region_tuple in region_type.items():
-                region_sides[region_id_inner] = {'start': region_tuple[1], 'end': region_tuple[2], 'types': region_tuple[0], 'genome': genome, 'consensus': -1, 'motif': ''}
-
-        region_sides_df = pd.DataFrame.from_dict(region_sides, orient='index')
-        region_sides_df.rename_axis("region_id", inplace=True)
-        region_sides_df.sort_values(['start', 'end'], inplace=True)
-
-        drop_rows = []
-        groups = region_sides_df.groupby(['genome', 'types'])
-        # come up with grouping like 0-10, 0-6, 7-10 end up in one group
-        # easy search for all connections from i = 0 -> 5, 8, 10 take the highest
-        # i = 0 ... 10 then pick all fragments inside of 0 and 10 e.g. 0 ... 5, 4 ... 8
-        # then check every position for at most every genome once before combine
-        for name, group in groups:
-
-            i = 0
-            j = i + 1
-            while i < len(group) - 1:
-
-                row_i = group.iloc[i]
-                start_i, end_i, types_i, genome_i, consensus_i, motif_i = row_i
-                index_i = row_i.name
-
-                row_j = group.iloc[j]
-                start_j, end_j, types_j, genome_j, consensus_j, motif_j = row_j
-                index_j = row_j.name
-
-                if (end_i + 1) == start_j:
-                    end_new = max(end_i, end_j)
-
-                    region_sides_df.at[index_i, 'end'] = end_new
-                    drop_rows += [index_j]
-
-                    regions[index_i] += regions[index_j]
-                    regions.pop(index_j)
-                    region_sides_df.drop(index=index_j, inplace=True)
-
-                    j += 1
-
-                else:
-                    i = j + 1
-                    j = i + 1
-
-        region_sides_df.reset_index(drop=False, inplace=True)
-        region_sides_df['motif_id'] = region_sides_df.loc[:, 'region_id']
-
-        groups = region_sides_df.groupby(['start', 'end'])
-        for name, group in groups:
-
-            types_list = list(group['types'])
-
-            if len(set(types_list)) == 1 and len(types_list) <= len(genome_names):
-
-                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
-
-                for index_i, index_j, join_boolean in joining_list:
-                    if join_boolean:
-                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
-                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
-
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-
-                        region_sides_df.at[index_i, 'consensus'] = 1.0
-                        region_sides_df.at[index_j, 'consensus'] = 1.0
-
-                        region_sides_df.at[index_i, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(genome_names) else types_i
-                        region_sides_df.at[index_j, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(genome_names) else types_i
-
-            elif set(types_list) == set(['forward', 'accessory']) and len(types_list) <= len(genome_names):
-
-                forward_group = group[group["types"] == 'forward']
-                accessory_group = group[group["types"] == 'accessory']
-
-                joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
-                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
-
-                for index_i, index_j, join_boolean in joining_list:
-                    if join_boolean:
-                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
-                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
-
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-
-                        if joining_equal:
-                            a = len(forward_group)
-                            b = len(accessory_group)
-                            if a >= b:
-                                consensus = round(a / (a+b), 3)
-                                motif = 'insertion'
-                            else:
-                                consensus = round(b / (a+b), 3)
-                                motif = 'deletion'
-                        else:
-                            consensus = 1.0
-                            motif = 'hypervariability'
-
-                        region_sides_df.at[index_i, 'consensus'] = consensus
-                        region_sides_df.at[index_j, 'consensus'] = consensus
-
-                        region_sides_df.at[index_i, 'motif'] = motif
-                        region_sides_df.at[index_j, 'motif'] = motif
-
-            elif set(types_list) == set(['break', 'accessory']) and len(types_list) <= len(genome_names):
-                joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
-                joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
-
-                for index_i, index_j, join_boolean in joining_list:
-                    if join_boolean:
-                        region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
-                        region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
-
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-                        region_sides_df.at[index_j, 'motif_id'] = motif_id_i
-
-                        if joining_equal:
-                            consensus = 1.0
-                            motif = 'broken core'
-                        else:
-                            consensus = 1.0
-                            motif = 'hypervariability'
-
-                        region_sides_df.at[index_i, 'consensus'] = consensus
-                        region_sides_df.at[index_j, 'consensus'] = consensus
-                        region_sides_df.at[index_i, 'motif'] = motif
-                        region_sides_df.at[index_j, 'motif'] = motif
-            else:
-                continue
-
-        region_sides_df.sort_values(['start', 'end'], inplace=True)
-        region_sides_df.reset_index(drop=True, inplace=True)
-
-        groups = region_sides_df.groupby(['motif_id'])
-        nodes_dict_id = 0
-        nodes_dict = {}
-        for motif_id, group in groups:
-
-            for index, row in group.iterrows():
-
-                region_id = row['region_id']
-                genome = row['genome']
-
-                for region in regions[region_id]:
-                    node_position_x, node_position_y, node = region
-
-                    if node:
-                        nodes_dict[nodes_dict_id] = {'motif_id': motif_id, 'node_position_x': node_position_x, 'node_position_y': node_position_y, 'syn_cluster': node, 'genome': genome, 'core': self.is_node_core(node, genome_names)}
-                        nodes_dict_id += 1
-
-        nodes_df = pd.DataFrame.from_dict(nodes_dict, orient='index').set_index(['syn_cluster', 'genome'])
-
-        region_sides_df.drop(['region_id'], axis=1, inplace=True)
-        region_sides_df.set_index(['motif_id', 'genome'], inplace=True)
-
-        return(region_sides_df, nodes_df)
+    # def summarize_depreciated(self):
+    #     """This is the main summary function for pangenome graphs. Input is the self
+
+    #     Parameters
+    #     ==========
+    #     self.graph
+
+    #     Returns
+    #     =======
+    #     pd.DataFrame
+    #     """
+
+    #     # self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
+
+    #     if not nx.is_directed_acyclic_graph(self.graph):
+    #         raise ConfigError(f"Cyclic graphs, are not implemented.")
+
+    #     genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
+    #     x_values = set([d[0] for node, d in self.graph.nodes(data='position')])
+    #     graph_min = min(x_values)
+    #     graph_max = max(x_values)
+
+    #     region_id = 0
+    #     regions = {}
+    #     region_sides = {}
+
+    #     for genome in genome_names:
+    #         G_subset_nodes = [n for n,d in self.graph.nodes(data='gene_calls') if genome not in d]
+    #         G_subset_edges = [(i,j) for i,j,d in self.graph.edges(data='directions') if genome not in d]
+    #         G_sub = nx.DiGraph(self.graph)
+    #         G_sub.remove_nodes_from(G_subset_nodes)
+    #         G_sub.remove_edges_from(G_subset_edges)
+
+    #         region_type = {}
+    #         regions_reverse = []
+    #         nodes_position_dict = dict(G_sub.nodes(data="position"))
+
+    #         starting_points = []
+    #         for node in list(G_sub.nodes()):
+    #             if len(list(G_sub.successors(node))) <= 1 and len(list(G_sub.predecessors(node))) == 0:
+    #                 starting_points += [node]
+
+    #         starting_points = sorted(starting_points, key=lambda x: nodes_position_dict[x][0])
+
+    #         # Prepare first starting point in data structure
+    #         node = starting_points[0]
+    #         starting_points.remove(node)
+
+    #         node_position_x, node_position_y = nodes_position_dict[node]
+    #         former_position = node_position_x
+
+    #         region_id += 1
+
+    #         # gene cluster core?
+    #         if self.is_node_core(node, genome_names):
+    #             # start new core region
+    #             regions[region_id] = [(node_position_x, node_position_y, node)]
+    #             is_core = True
+    #         else:
+    #             # start new accessory region
+    #             regions[region_id] = [(node_position_x, node_position_y, node)]
+    #             is_core = False
+
+    #         visited = set([node])
+    #         mode = ''
+
+    #         while True:
+    #             node_position_x, node_position_y, node = self.walk_one_step(G_sub, node, nodes_position_dict, visited)
+
+    #             if node:
+    #                 mode = ''
+    #             else:
+    #                 if starting_points:
+    #                     node = starting_points[0]
+    #                     starting_points.remove(node)
+    #                     node_position_x, node_position_y = nodes_position_dict[node]
+    #                     direction = ''
+    #                     mode = 'break'
+    #                 else:
+    #                     break
+
+    #             # extend current region?
+    #             if node_position_x == former_position + 1 or node_position_x == (former_position - graph_max) + 1:
+    #                 # extend core region?
+    #                 if is_core:
+    #                     # gene cluster core?
+    #                     if self.is_node_core(node, genome_names):
+    #                         # extend core region with core gene cluster
+    #                         regions[region_id] += [(node_position_x, node_position_y, node)]
+    #                         is_core = True
+    #                     else:
+    #                         # end core region
+    #                         region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+    #                         region_id += 1
+
+    #                         # start accessory region
+    #                         regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                         is_core = False
+    #                 else:
+    #                     # gene cluster core?
+    #                     if self.is_node_core(node, genome_names):
+    #                         # end accessory region
+    #                         region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+    #                         region_id += 1
+
+    #                         # start core region
+    #                         regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                         is_core = True
+    #                     else:
+    #                         # extend accessory region
+    #                         regions[region_id] += [(node_position_x, node_position_y, node)]
+    #                         is_core = False
+
+    #             elif node_position_x == former_position:
+    #                 if is_core:
+    #                     region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+    #                 else:
+    #                     region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #                 region_id += 1
+
+    #                 if self.is_node_core(node, genome_names):
+    #                     # start new core region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = True
+    #                 else:
+    #                     # start new accessory region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = False
+
+    #             # new forward bridge region?
+    #             elif (node_position_x > former_position + 1 and abs(node_position_x - former_position) <= graph_max / 2) or (node_position_x < former_position + 1 and abs(former_position - node_position_x) > graph_max / 2):
+    #                 # is the region to end core?
+    #                 if is_core:
+    #                     region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+    #                 else:
+    #                     region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #                 region_id += 1
+
+    #                 if node_position_x > former_position + 1:
+    #                     regions[region_id] = [(i, '', '') for i in range(former_position, node_position_x + 1, 1)]
+    #                 else:
+    #                     regions[region_id] = [(i, '', '') for i in range(former_position, graph_max + 1, 1)] + [(i, '', '') for i in range(graph_min, node_position_x + 1, 1)]
+
+    #                 if mode == 'break':
+    #                     region_type[region_id] = ('break', regions[region_id][0][0], regions[region_id][-1][0])
+    #                 else:
+    #                     region_type[region_id] = ('forward', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #                 region_id += 1
+
+    #                 # gene cluster core?
+    #                 if self.is_node_core(node, genome_names):
+    #                     # start new core region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = True
+    #                 else:
+    #                     # start new accessory region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = False
+
+    #             # new backward bridge region?
+    #             elif (node_position_x < former_position + 1 and abs(former_position - node_position_x) <= graph_max / 2) or (node_position_x > former_position + 1 and abs(node_position_x - former_position) > graph_max / 2):
+    #                 # is the region to end core?
+    #                 if is_core:
+    #                     region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+    #                 else:
+    #                     region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #                 region_id += 1
+
+    #                 if node_position_x < former_position + 1:
+    #                     regions[region_id] = [(i, '', '') for i in range(former_position, node_position_x - 1, -1)]
+    #                 else:
+    #                     regions[region_id] = [(i, '', '') for i in range(former_position, graph_min - 1, -1)] + [(i, '', '') for i in range(graph_max, node_position_x - 1, -1)]
+
+    #                 region_type[region_id] = ('reverse', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #                 # mark a backward bridge region
+    #                 regions_reverse += [(regions[region_id][0][0], regions[region_id][-1][0])]
+    #                 region_id += 1
+
+    #                 # gene cluster core?
+    #                 if self.is_node_core(node, genome_names):
+    #                     # start new core region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = True
+    #                 else:
+    #                     # start new accessory region
+    #                     regions[region_id] = [(node_position_x, node_position_y, node)]
+    #                     is_core = False
+
+    #             else:
+    #                 self.run.info_single('A motif of this type is not yet implemented as we never saw it before.')
+
+    #             visited.add(node)
+    #             former_position = node_position_x
+
+    #         if is_core:
+    #             region_type[region_id] = ('core', regions[region_id][0][0], regions[region_id][-1][0])
+    #         else:
+    #             region_type[region_id] = ('accessory', regions[region_id][0][0], regions[region_id][-1][0])
+
+    #         for region_id_inner, region_tuple in region_type.items():
+    #             region_sides[region_id_inner] = {'start': region_tuple[1], 'end': region_tuple[2], 'types': region_tuple[0], 'genome': genome, 'consensus': -1, 'motif': ''}
+
+    #     region_sides_df = pd.DataFrame.from_dict(region_sides, orient='index')
+    #     region_sides_df.rename_axis("region_id", inplace=True)
+    #     region_sides_df.sort_values(['start', 'end'], inplace=True)
+
+    #     drop_rows = []
+    #     groups = region_sides_df.groupby(['genome', 'types'])
+    #     # come up with grouping like 0-10, 0-6, 7-10 end up in one group
+    #     # easy search for all connections from i = 0 -> 5, 8, 10 take the highest
+    #     # i = 0 ... 10 then pick all fragments inside of 0 and 10 e.g. 0 ... 5, 4 ... 8
+    #     # then check every position for at most every genome once before combine
+    #     for name, group in groups:
+
+    #         i = 0
+    #         j = i + 1
+    #         while i < len(group) - 1:
+
+    #             row_i = group.iloc[i]
+    #             start_i, end_i, types_i, genome_i, consensus_i, motif_i = row_i
+    #             index_i = row_i.name
+
+    #             row_j = group.iloc[j]
+    #             start_j, end_j, types_j, genome_j, consensus_j, motif_j = row_j
+    #             index_j = row_j.name
+
+    #             if (end_i + 1) == start_j:
+    #                 end_new = max(end_i, end_j)
+
+    #                 region_sides_df.at[index_i, 'end'] = end_new
+    #                 drop_rows += [index_j]
+
+    #                 regions[index_i] += regions[index_j]
+    #                 regions.pop(index_j)
+    #                 region_sides_df.drop(index=index_j, inplace=True)
+
+    #                 j += 1
+
+    #             else:
+    #                 i = j + 1
+    #                 j = i + 1
+
+    #     region_sides_df.reset_index(drop=False, inplace=True)
+    #     region_sides_df['motif_id'] = region_sides_df.loc[:, 'region_id']
+
+    #     groups = region_sides_df.groupby(['start', 'end'])
+    #     for name, group in groups:
+
+    #         types_list = list(group['types'])
+
+    #         if len(set(types_list)) == 1 and len(types_list) <= len(genome_names):
+
+    #             joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+
+    #             for index_i, index_j, join_boolean in joining_list:
+    #                 if join_boolean:
+    #                     region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
+    #                     region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
+
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+
+    #                     region_sides_df.at[index_i, 'consensus'] = 1.0
+    #                     region_sides_df.at[index_j, 'consensus'] = 1.0
+
+    #                     region_sides_df.at[index_i, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(genome_names) else types_i
+    #                     region_sides_df.at[index_j, 'motif'] = 'hypervariability' if types_i == 'accessory' and len(types_list) == len(genome_names) else types_i
+
+    #         elif set(types_list) == set(['forward', 'accessory']) and len(types_list) <= len(genome_names):
+
+    #             forward_group = group[group["types"] == 'forward']
+    #             accessory_group = group[group["types"] == 'accessory']
+
+    #             joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
+    #             joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+
+    #             for index_i, index_j, join_boolean in joining_list:
+    #                 if join_boolean:
+    #                     region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
+    #                     region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
+
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+
+    #                     if joining_equal:
+    #                         a = len(forward_group)
+    #                         b = len(accessory_group)
+    #                         if a >= b:
+    #                             consensus = round(a / (a+b), 3)
+    #                             motif = 'insertion'
+    #                         else:
+    #                             consensus = round(b / (a+b), 3)
+    #                             motif = 'deletion'
+    #                     else:
+    #                         consensus = 1.0
+    #                         motif = 'hypervariability'
+
+    #                     region_sides_df.at[index_i, 'consensus'] = consensus
+    #                     region_sides_df.at[index_j, 'consensus'] = consensus
+
+    #                     region_sides_df.at[index_i, 'motif'] = motif
+    #                     region_sides_df.at[index_j, 'motif'] = motif
+
+    #         elif set(types_list) == set(['break', 'accessory']) and len(types_list) <= len(genome_names):
+    #             joining_equal = all([True if regions[accessory_group.at[i,'motif_id']] == regions[accessory_group.at[i,'motif_id']] else False for i, j in it.combinations(accessory_group.index, 2)])
+    #             joining_list = sorted([(i, j, True) if regions[group.at[i,'motif_id']] == regions[group.at[i,'motif_id']] else (i, j, False) for i, j in it.combinations(group.index, 2)])
+
+    #             for index_i, index_j, join_boolean in joining_list:
+    #                 if join_boolean:
+    #                     region_id_i, start_i, end_i, types_i, consensus_i, genome_i, motif_i, motif_id_i = region_sides_df.loc[index_i]
+    #                     region_id_j, start_j, end_j, types_j, consensus_j, genome_j, motif_j, motif_id_j = region_sides_df.loc[index_j]
+
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+    #                     region_sides_df.at[index_j, 'motif_id'] = motif_id_i
+
+    #                     if joining_equal:
+    #                         consensus = 1.0
+    #                         motif = 'broken core'
+    #                     else:
+    #                         consensus = 1.0
+    #                         motif = 'hypervariability'
+
+    #                     region_sides_df.at[index_i, 'consensus'] = consensus
+    #                     region_sides_df.at[index_j, 'consensus'] = consensus
+    #                     region_sides_df.at[index_i, 'motif'] = motif
+    #                     region_sides_df.at[index_j, 'motif'] = motif
+    #         else:
+    #             continue
+
+    #     region_sides_df.sort_values(['start', 'end'], inplace=True)
+    #     region_sides_df.reset_index(drop=True, inplace=True)
+
+    #     groups = region_sides_df.groupby(['motif_id'])
+    #     nodes_dict_id = 0
+    #     nodes_dict = {}
+    #     for motif_id, group in groups:
+
+    #         for index, row in group.iterrows():
+
+    #             region_id = row['region_id']
+    #             genome = row['genome']
+
+    #             for region in regions[region_id]:
+    #                 node_position_x, node_position_y, node = region
+
+    #                 if node:
+    #                     nodes_dict[nodes_dict_id] = {'motif_id': motif_id, 'node_position_x': node_position_x, 'node_position_y': node_position_y, 'syn_cluster': node, 'genome': genome, 'core': self.is_node_core(node, genome_names)}
+    #                     nodes_dict_id += 1
+
+    #     nodes_df = pd.DataFrame.from_dict(nodes_dict, orient='index').set_index(['syn_cluster', 'genome'])
+
+    #     region_sides_df.drop(['region_id'], axis=1, inplace=True)
+    #     region_sides_df.set_index(['motif_id', 'genome'], inplace=True)
+
+    #     return(region_sides_df, nodes_df)
 
     def reverse_edges(self, changed_edges):
         for (edge_i, edge_j) in changed_edges:
@@ -3918,7 +3996,7 @@ class PangenomeGraphMaster():
         A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
         B = len(set(nodes_df.reset_index().query('region_id != -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
         # complexity_value = (X + A) / 2 - (Y + B) / 2
-        complexity_value = (X + A) / 2
+        complexity_value = 1 - (X + A) / 2
 
         with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
             file.write(str(complexity_value))
@@ -3927,7 +4005,7 @@ class PangenomeGraphMaster():
 
         if self.ani_table:
             df_ani = pd.read_csv(self.ani_table, index_col='key', sep='\t')
-            shared_ani = np.triu(df_ani[self.genome_names].loc[self.genome_names], 1).sum() / len(self.genome_names)
+            shared_ani = np.triu(df_ani[self.genome_names].loc[self.genome_names], 1).sum() / len(list(it.combinations(self.genome_names, 2)))
             with open(os.path.join(self.output_dir, 'shared_ani.txt'), 'w') as file:
                 file.write(str(shared_ani))
 
@@ -3953,10 +4031,11 @@ class PangenomeGraphMaster():
         x_max = max([x for x,y in node_positions.values()])
         y_max = max([y for x,y in node_positions.values()])
         self.run.info_single(f"Pangenome graph length = {x_max}.")
-        if y_max <= len(self.genome_names):
-            self.run.info_single(f"Pangenome graph height = {y_max}.")
+        self.run.info_single(f"Pangenome graph height = {y_max}.")
+        if y_max <= len(self.genome_names) * 2 :
+            self.run.info_single(f"Pangenome graph height and length, looks fine :)")
         else:
-            self.run.info_single(f"Pangenome graph height = {y_max}, high amount of layering might affect the readability.")
+            self.run.info_single(f"A high amount of layering might affect the readability.")
 
         self.pangenome_graph.set_edge_positions(edge_positions)
         self.pangenome_graph.set_node_positions(node_positions)
@@ -3990,8 +4069,27 @@ class PangenomeGraphMaster():
     def process_pangenome_graph(self):
 
         if self.pan_graph_json:
+            self.run.warning(None, header="Load anvi'o pangenome graph from json file", lc="green")
             self.import_pangenome_graph()
+            self.run.info_single("Done.")
         else:
+            self.run.warning(None, header="Loading settings to create anvi'o pangenome graph from scratch", lc="green")
+            self.run.info_single(f"Circularize genomes: {self.circularize}.")
+            self.run.info_single(f"Graph starting gene: {self.start_gene}.")
+            self.run.info_single(f"Functional annotation source for starting gene: {self.start_column}.")
+            self.run.info_single(f"Minimum number of synteny clusters in contig: {self.min_contig_chain}.")
+            self.run.info_single(f"Maximum number of contigs in fasta: {self.max_contig_num}.")
+            self.run.info_single(f"Global context comparison window size: {self.n}.")
+            self.run.info_single(f"Global context comparison treshold value alpha: {self.alpha}.")
+            self.run.info_single(f"Local context comparison gap to gene value beta: {self.beta}.")
+            self.run.info_single(f"Local context comparison gap to gap value gamma: {self.gamma}.")
+            self.run.info_single(f"General context comparison max treshold dela: {self.delta}.")
+            self.run.info_single(f"Synteny gene cluster min k: {self.min_k}.")
+            self.run.info_single(f"Higher inversion awareness: {self.inversion_aware}.")
+            self.run.info_single(f"Priority genome: {self.priority_genome}.")
+            self.run.info_single(f"The remaining settings are not affecting the pangenome graph core creation.")
+            self.run.info_single("Done.")
+
             self.sanity_check()
 
             # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)

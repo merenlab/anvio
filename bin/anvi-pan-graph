@@ -56,7 +56,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
     
-    groupC.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes.")
+    groupC.add_argument('--circularize', default=True, action="store_true", help = "WARNING: Only useable on single contig genomes.")
     groupC.add_argument('--just-do-it', default=False, action="store_true", help = "Description.")
     groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
@@ -69,14 +69,14 @@ if __name__ == '__main__':
     groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
     groupC.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Description.")
     groupC.add_argument('--grouping-compression', default=1.0, type=float, help = "Description.")
-    groupC.add_argument('--start-gene', default='', type=str, help = "Description.")
+    groupC.add_argument('--start-gene', default='RecA/RadA', type=str, help = "Description.")
     groupC.add_argument('--start-column', default='COG24_FUNCTION_TEXT', type=str, help = "Description.")
-    groupC.add_argument('--alpha', default=0.75, type=float, help = "Description.")
+    groupC.add_argument('--alpha', default=0.5, type=float, help = "Description.")
     groupC.add_argument('--n', default=50, type=int, help = "Description.")
     groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
     groupC.add_argument('--gamma', default=0.25, type=float, help = "Description.")
-    groupC.add_argument('--delta', default=0.5, type=float, help = "Description.")
-    groupC.add_argument('--min-k', default=0, type=int, help = "Description.")
+    groupC.add_argument('--delta', default=0.75, type=float, help = "Description.")
+    groupC.add_argument('--min-k', default=1, type=int, help = "Description.")
     groupC.add_argument('--inversion-aware', default=False, type=bool, help = "Description.")
 
     args = parser.get_args(parser)
