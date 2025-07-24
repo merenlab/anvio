@@ -3906,7 +3906,7 @@ class PangenomeGraphMaster():
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
         self.pan_graph_yaml = A('pan_graph_yaml')
-        self.ani_table = A('ani_table')
+        self.summarize_table = A('summarize_table')
         self.project_name = A('project_name')
 
         if self.pan_graph_yaml:
@@ -4003,13 +4003,16 @@ class PangenomeGraphMaster():
 
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
 
-        if self.ani_table:
-            df_ani = pd.read_csv(self.ani_table, index_col='key', sep='\t')
-            shared_ani = np.triu(df_ani[self.genome_names].loc[self.genome_names], 1).sum() / len(list(it.combinations(self.genome_names, 2)))
-            with open(os.path.join(self.output_dir, 'shared_ani.txt'), 'w') as file:
-                file.write(str(shared_ani))
+        if self.summarize_table:
 
-            self.run.info_single(f"Shared ANI is {round(shared_ani, 3)}.")
+            for table in self.summarize_table:
+                df = pd.read_csv(table, index_col='key', sep='\t')
+                shared_value = np.triu(df[self.genome_names].loc[self.genome_names], 1).sum() / len(list(it.combinations(self.genome_names, 2)))
+                name = os.path.splitext(os.path.basename(table))[0]
+                with open(os.path.join(self.output_dir, 'shared_' + name + '.txt'), 'w') as file:
+                    file.write(str(shared_value))
+
+                self.run.info_single(f"Shared value of {os.path.basename(table)} is {round(shared_value, 3)}.")
 
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
         self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")

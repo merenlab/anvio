@@ -2162,11 +2162,12 @@ D = {
              'type': str,
              'help': "A CSV file containing at least one column with values per genome, contig and gc column."}
                 ),
-     'ani-table': (
-            ['--ani-table'],
+     'summarize-table': (
+            ['--summarize-table'],
             {'metavar': 'CSV',
              'type': str,
-             'help': "The pyANI output table."}
+             'action': 'append',
+             'help': "Additional tables to summarize according to input. E.g. mean coverage."}
                 ),
      'output-pan-graph-json': (
             ['-o', '--output-pan-graph-json'],
