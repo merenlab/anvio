@@ -1752,7 +1752,9 @@ $(document).ready(function() {
       }
 
       for (var [setting, value] of Object.entries(data['states'][state])) {
-        if (value == true || value == false) {
+        if (typeof value === 'number') {
+          $('#' + setting)[0].value = value 
+        } else if (value == true || value == false) {
           $('#' + setting).prop('checked', value);
         } else {
           $('#' + setting)[0].value = value 
@@ -1851,17 +1853,53 @@ $(document).ready(function() {
         }
       }
 
-      // if ($('#condtr')[0].value == -1){
-      //   $('#flexcondtr').prop('checked', false);
-      // }
-  
-      // if ($('#maxlength')[0].value == -1){
-      //   $('#flexmaxlength').prop('checked', false);
-      // }
-  
-      // if ($('#groupcompress')[0].value == -1){
-      //   $('#flexgroupcompress').prop('checked', false);
-      // }
+      if ($('#flexlinear').prop('checked') == false) {
+        $('#distx').prop('disabled', true)
+        $('#inner').prop('disabled', false)
+      } else {
+        $('#distx').prop('disabled', false)
+        $('#inner').prop('disabled', true)
+      }
+
+      if ($('#flexarrow').prop('checked') == false) {
+        $('#arrow').prop('disabled', true)
+      } else {
+        $('#arrow').prop('disabled', false)
+      }
+
+      if ($('#flexbackbone').prop('checked') == false) {
+        $('#backbone').prop('disabled', true)
+      } else {
+        $('#backbone').prop('disabled', false)
+      }
+
+      if ($('#flexcondtr').prop('checked') == false) {
+        $('#condtr').prop('disabled', true)
+      } else {
+        $('#condtr').prop('disabled', false)
+      }
+
+      if ($('#flexmaxlength').prop('checked') == false) {
+        $('#maxlength').prop('disabled', true)
+      } else {
+        $('#maxlength').prop('disabled', false)
+      }
+
+      if ($('#flexgroupcompress').prop('checked') == false) {
+        $('#groupcompress').prop('disabled', true)
+      } else {
+        $('#groupcompress').prop('disabled', false)
+      }
+
+      $('#flexlinear').change(function() {
+        if ($(this).prop('checked') == true){
+          $('#distx').prop('disabled', false)
+          $('#inner').prop('disabled', true)
+        } else {
+          $('#distx').prop('disabled', true)
+          $('#inner').prop('disabled', false)
+        }
+      })
 
       $('#flexbackbone').change(function() {
         if ($(this).prop('checked') == true){
@@ -1912,20 +1950,6 @@ $(document).ready(function() {
           $('#groupcompress').prop('disabled', true)
         }
       })
-  
-      // $('#flexungroup').change(function() {
-      //   if ($(this).prop('checked') == true){
-      //     $('#ungroupfrom')[0].value = 0;
-      //     $('#ungroupfrom').prop('disabled', false)
-      //     $('#ungroupto')[0].value = 0;
-      //     $('#ungroupto').prop('disabled', false)
-      //   } else {
-      //     $('#ungroupfrom')[0].value = -1;
-      //     $('#ungroupfrom').prop('disabled', true)
-      //     $('#ungroupto')[0].value = -1;
-      //     $('#ungroupto').prop('disabled', true)
-      //   }
-      // })
   
       $('#flextree').change(function() {
         if ($(this).prop('checked') == true){
@@ -2109,7 +2133,7 @@ $(document).ready(function() {
     }
 
     if (new_data['groupcompress'] != old_data['groupcompress']) {
-      old_data['groupcompress'] = parseInt($('#groupcompress')[0].value)
+      old_data['groupcompress'] = parseFloat($('#groupcompress')[0].value)
       reiterate = true
     }
 

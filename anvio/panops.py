@@ -4175,7 +4175,32 @@ class PangenomeGraphMaster():
                     'color': '#000000'
                 }
             }}
+
         if not self.states:
+
+            x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+            y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+
+            for i, j, data in self.pangenome_graph.graph.edges(data=True):
+                if data['bended']:
+                    for x, y in data['bended']:
+                        y_max = y if y > y_max else y_max
+
+            full_radius = int(180 * (45 * x_max) / (math.pi * 270))
+            
+            tracks_radius = int((2 * full_radius / 3))
+            inner = int((1 * full_radius / 3))
+            
+            tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
+            
+            inner_margin = int(tracks_layer / 2)
+            backbone = int(tracks_layer / 2)
+            arrow = int(tracks_layer / 2)
+            search = int(tracks_layer / 2)
+            
+            label = int(arrow * 0.25)
+            disty = int(tracks_layer / y_max)
+
             self.states = {'default':{
                 'rearranged_color': '#8FF0A4',
                 'accessory_color': '#DC8ADD',
@@ -4187,36 +4212,37 @@ class PangenomeGraphMaster():
                 'non_back_color': '#F8E45C',
                 'back_color': '#3D70A0',
                 'flexsaturation': True,
-                'arrow': 100,
+                'arrow': arrow,
                 'flexarrow': True,
-                **{layer: 0 for layer in self.import_values},
+                'backbone': backbone,
+                'flexbackbone': True,
                 **{'flex' + layer: False for layer in self.import_values},
-                **{genome + 'layer': 0 for genome in self.genome_names},
+                **{layer: 0 for layer in self.import_values},
+                **{'flex' + genome + 'layer': True for genome in self.genome_names},
+                **{genome + 'layer': tracks_layer for genome in self.genome_names},
                 'flextree': False,
                 'tree_length': 500,
                 'tree_offset': 100,
                 'tree_thickness': 3,
-                'distx': 30,
-                'disty': 30,
-                'size': 10,
-                'circ': 2,
-                'edge': 2,
+                'distx': 45,
+                'disty': disty,
+                'size': 15,
+                'circ': 5,
+                'edge': 5,
                 'flexlinear': False,
-                'line': 1,
-                'label': 20,
-                'search_hit': 200,
-                'inner_margin': 0,
+                'line': 5,
+                'label': label,
+                'search_hit': search,
+                'inner_margin': inner_margin,
                 'outer_margin': 0,
-                'inner': 0,
-                'flexcondtr': True,
+                'inner': inner,
+                'angle' : 270,
+                'flexcondtr': True if self.gene_cluster_grouping_threshold != -1 else False,
                 'condtr': self.gene_cluster_grouping_threshold,
-                'flexmaxlength': True,
+                'flexmaxlength': True if self.max_edge_length_filter != -1 else False,
                 'maxlength': self.max_edge_length_filter,
-                'flexgroupcompress': True,
+                'flexgroupcompress': True if self.groupcompress != 1.0 else False,
                 'groupcompress': self.groupcompress,
-                # 'flexungroup': False,
-                # 'ungroupfrom': ','.join(self.ungroup_open),
-                # 'ungroupto': ','.join(self.ungroup_close),
                 **{'flex' + genome: True for genome in self.genome_names},
                 **{genome: '#000000' for genome in self.genome_names}
             }}
