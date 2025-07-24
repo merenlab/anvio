@@ -933,22 +933,57 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     if (Object.keys(middle_layers).includes(layer_name)){
 
       var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-      for (var x = 1; x < global_x+1; x++) {
+      // for (var x = 1; x < global_x+1; x++) {
 
-        var add_start = 1
-        var add_stop = 0
+      //   var add_start = 1
+      //   var add_stop = 0
 
-        var i_x = x-add_start-0.5
-        var i_y = layer_start
-        var j_x = x+add_stop+0.5
-        var j_y = layer_stop
+      //   var i_x = x-add_start-0.5
+      //   var i_y = layer_start
+      //   var j_x = x+add_stop+0.5
+      //   var j_y = layer_stop
 
-        // console.log(i_x, i_y, j_x, j_y)
+      //   // console.log(i_x, i_y, j_x, j_y)
+
+      //   svg_genome_tracks[genome].push(
+      //     create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, layer_color)
+      //   )
+      // }
+
+      if (linear == 0){
+        var [circle_a_x, circle_a_y] = transform(0-0.5, layer_start, theta)
+        var [circle_b_x, circle_b_y] = transform(0-0.5, layer_stop, theta)
+        var [circle_c_x, circle_c_y] = transform(global_x + 0.5, layer_start, theta)
+        var [circle_d_x, circle_d_y] = transform(global_x + 0.5, layer_stop, theta)
+
+        if ((global_x) * theta > 180) {
+          var arc_flag = 1
+        } else {
+          var arc_flag = 0
+        }
+        
+        svg_genome_tracks[genome].push(
+          $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+          ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
+          ' L ' + circle_b_x + ' ' + circle_b_y +
+          ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
+          ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+        )
+      } else {
+        var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
+        var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
+        var [circle_c_x, circle_c_y] = [(global_x + 0.5) * node_distance_x, -layer_start]
+        var [circle_d_x, circle_d_y] = [(global_x + 0.5) * node_distance_x, -layer_stop]
 
         svg_genome_tracks[genome].push(
-          create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, layer_color)
+          $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+          ' L ' + circle_a_x + ' ' + circle_a_y +
+          ' L ' + circle_b_x + ' ' + circle_b_y +
+          ' L ' + circle_d_x + ' ' + circle_d_y +
+          ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
         )
       }
+
     }
   }
 
@@ -961,7 +996,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
     var arrow_thickness = pointer_height / 4
     var steps = Math.round((30 / theta))
 
-    console.log(middle_layers)
+    // console.log(middle_layers)
 
     if (steps < 1) {
       steps = 1
