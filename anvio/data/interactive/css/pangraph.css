@@ -12,76 +12,76 @@
     backface-visibility: hidden;
     transform: translateZ(0);
   }
-  
+
   .offcanvas-btn {
       visibility: visible;
   }
-  
+
   .offcanvas-btn span:last-child,
   .offcanvas.show .offcanvas-btn span:first-child {
     display: none;
   }
-  
+
   .offcanvas.show .offcanvas-btn span:last-child {
     display: inline;
   }
-  
+
   h5 {
     border-bottom: 1px solid #ccc; /* This is the line replacing the hr*/
     margin-bottom: 10px; /* This is the space below the line */
     margin-top: 20px; /* This is the space below the line */
     padding-bottom: 15px; /* This is the space between the heading text and the line */
   }
-  
+
   #leftoffcanvas-button {
     left: 400px;
   }
-  
+
   #rightoffcanvas-button {
     right: 200px;
   }
-  
+
   #rightoffcanvas {
     width: 200px;
   }
-  
+
   #left {
-    overflow-y: auto; 
+    overflow-y: auto;
     /* max-height: calc(100vh - 128px); */
     height: calc(100vh - 128px);
   }
-  
-  .dropdown-toggle::after { 
-    content: none; 
-  } 
-  
+
+  .dropdown-toggle::after {
+    content: none;
+  }
+
   .offcanvas-body {
     overflow: hidden;
   }
-  
+
   .dropdown-menu {
     max-height: 200px;
     overflow-y: auto;
   }
-  
+
   .modal-dialog,
   .modal-content {
     /* 80% of window height */
     height: 80%;
   }
-  
+
   .modal-body {
     /* 100% = dialog height, 120px = header + footer */
     max-height: calc(100vh - 210px);
     overflow-y: auto;
   }
-  
+
   #right {
     overflow-y: auto;
     max-height: 100%;
   }
-  
-  
+
+
   .btn-bot{
     position: absolute;
     top:0px;
@@ -89,9 +89,9 @@
     -ms-transform: translateX(-50%);
     transform: translateX(-50%);
   }
-  
+
   .right {
-    overflow-y: scroll; 
+    overflow-y: scroll;
   }
 
   #node_basics_table, #node_functions_table, #node_sequence_alignments_table {
@@ -119,7 +119,7 @@
     background: #f2f2f2;
   }
 
-  .gene_cluster_id {  
+  .gene_cluster_id {
     display: inline-block;
     margin: 5px 2px;
     padding: 3px 5px;
@@ -183,15 +183,15 @@
   }
 
   #td-genome-cell{
-    position: sticky; 
-    left: 0; 
-    background-color: #e4e4e4; 
+    position: sticky;
+    left: 0;
+    background-color: #e4e4e4;
     z-index: 2;
     width: min-content;
   }
 
  #td-value-cell{
-    position: sticky; 
+    position: sticky;
     background-color: #e4e4e4;
     z-index: 1;
     display: flex;
@@ -200,13 +200,13 @@
  }
 
 #td-contig-cell{
-  position: sticky; 
+  position: sticky;
   background-color: #e4e4e4;
   z-index: 1;
  }
 
 #td-direction-cell{
-  position: sticky; 
+  position: sticky;
   background-color: #e4e4e4;
   z-index: 1;
   display: flex;
@@ -219,7 +219,7 @@
 }
 
 .td-analysis-cell-1{
-  background-color: green; 
+  background-color: green;
 }
 
 
