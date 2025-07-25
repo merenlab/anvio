@@ -9,6 +9,8 @@
     position: relative;
     height: 100vh;
     width: 100vw;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
   
   .offcanvas-btn {
@@ -137,10 +139,11 @@
 
   #panel-left {
     z-index: 2;
+    will-change: auto;
   }
 
   #toggle-panel-left{
-    z-index: 1;
+    z-index: 10 !important;
   }
 
   #toggle-panel-top{
