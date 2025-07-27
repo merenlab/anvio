@@ -317,11 +317,18 @@ class CAZyme(object):
         functions_dict = {}
         counter = 0
         for hmm_hit in search_results_dict.values():
+            # print(hmm_hit)  # Debugging line, can be removed later
+            accession = hmm_hit['gene_name'].removesuffix('.hmm') # removing the .hmm suffix from CAZyme HMM names
+            if hmm_hit['gene_hmm_id'].startswith('PF'): # expaned function string if from PFAM
+               function = f"{accession} ({hmm_hit['gene_hmm_id']})"
+            else:
+               function = hmm_hit['gene_hmm_id']
+
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'CAZyme',
-                'accession': hmm_hit['gene_hmm_id'],
-                'function': hmm_hit['gene_name'],
+                'accession': accession,
+                'function': function,
                 'e_value': hmm_hit['e_value']
             }
 
