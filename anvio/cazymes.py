@@ -92,7 +92,7 @@ class CAZymeSetup(object):
         if self.args.cazyme_version:
             self.db_version = self.args.cazyme_version.upper()
         else:
-            self.db_version = 'V11'
+            self.db_version = 'V13'
 
         self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
 
@@ -100,7 +100,12 @@ class CAZymeSetup(object):
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
         if os.path.exists(os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")):
-            raise ConfigError(f"It seems you already have CAZyme database installed in the following directory: {self.cazyme_data_dir}"
+            # Try to read the version information if available
+            version_file = os.path.join(self.cazyme_data_dir, "version.txt")
+            with open(version_file, 'r') as f:
+                existing_version = f.readline().strip()
+
+            raise ConfigError(f"It seems you already have CAZyme database {existing_version} installed in the following directory: {self.cazyme_data_dir}. "
                               f"You can use the flag `--reset` to instruct anvi'o to set everything up from scratch at that location, "
                               f"or you can use the parameter `--cazyme-data-dir` to setup the CAZyme databases in a different directory.")
 
