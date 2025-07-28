@@ -309,7 +309,8 @@ class ContigsSuperclass(object):
 
         # Read GENES in splits information
         genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split',
-                                               self.split_names_of_interest, progress=self.progress)
+                                               self.split_names_of_interest, progress=self.progress,
+                                               error_if_no_data=False)
 
         contigs_db.disconnect()
 
@@ -356,7 +357,8 @@ class ContigsSuperclass(object):
 
         # Read GENES in contigs information
         genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
-                                                     contig_names_of_interest, progress=self.progress)
+                                                     contig_names_of_interest, progress=self.progress,
+                                                     error_if_no_data=False)
 
         contigs_db.disconnect()
 
