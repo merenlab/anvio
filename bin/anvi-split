@@ -23,7 +23,20 @@ __resources__ = [("Anvi-split in action in the pangenomics tutorial", "http://me
 __description__ = ("Split an anvi'o pan or profile database into smaller, self-contained projects. Black magic.")
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        splitter.DBSplitter(args).get()(args).process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
@@ -59,13 +72,8 @@ if __name__ == '__main__':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        splitter.DBSplitter(args).get()(args).process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

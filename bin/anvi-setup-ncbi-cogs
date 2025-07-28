@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.cogs import COGsSetup
 from anvio.errors import ConfigError, FilesNPathsError
@@ -18,11 +17,21 @@ __provides__ = ['cogs-data']
 __description__ = "Download and setup NCBI's Clusters of Orthologous Groups database"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    args = get_args()
 
-if __name__ == '__main__':
+    try:
+        setup = COGsSetup(args)
+        setup.create()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -37,15 +46,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
+    return parser.get_args(parser)
 
-    args = parser.get_args(parser)
 
-    try:
-        setup = COGsSetup(args)
-        setup.create()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+if __name__ == '__main__':
+    main()

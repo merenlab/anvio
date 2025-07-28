@@ -23,7 +23,18 @@ __provides__ = ['trnaseq-seed-txt', 'modifications-txt']
 __description__ = "A program to write standardized tab-delimited files of tRNA-seq seed coverage and modification results"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        result_tabulator = trnaseq.ResultTabulator(args)
+        result_tabulator.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('MANDATORY')
@@ -37,10 +48,8 @@ if __name__ == '__main__':
     group2.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     group2.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
-    args = parser.get_args(parser)
-    try:
-        result_tabulator = trnaseq.ResultTabulator(args)
-        result_tabulator.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

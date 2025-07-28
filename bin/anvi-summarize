@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-""""""
+"""Generate summary output from anvi'o datbases"""
 
 import os
 import sys
@@ -8,7 +8,6 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
@@ -30,11 +29,21 @@ __description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this
                    "transparency and reproducibility")
 __resources__ = [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
 
-run = terminal.Run()
-progress = terminal.Progress()
+
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+
     # bad code but a good check early on. Due to multiple inheriteance downstream, there is actually no good
     # place to perform this check before its too much CPU time has already passed (see #1430 for an actual
     # user complaint):
@@ -73,7 +82,7 @@ def main(args):
     summary.process()
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -122,13 +131,8 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

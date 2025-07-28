@@ -27,7 +27,12 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    reactionnetwork.ModelSEEDDatabase.set_up(dir=args.dir, reset=args.reset)
+
+    try:
+        reactionnetwork.ModelSEEDDatabase.set_up(dir=args.dir, reset=args.reset)
+    except ConfigError as e:
+        print(e)
+        exit(-1)
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
@@ -36,13 +41,9 @@ def get_args() -> Namespace:
         help="Directory in which a new subdirectory with the name, 'ModelSEED', is created containing database files."
     )
     parser.add_argument(*A('reset'), **K('reset'))
-    args = parser.get_args(parser)
-    return args
+
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except ConfigError as e:
-        print(e)
-        exit(-1)
+    main()

@@ -20,11 +20,23 @@ __description__ = ("Add or re-run genes from an already existing structure datab
                    "to generate your database will be used in this program")
 
 
-def main(args):
-    structops.StructureSuperclass(args, create=False)._run()
+def main():
+    args = get_args()
+
+    try:
+        structops.StructureSuperclass(args, create=False)._run()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+    except ModellerError as e:
+        print(e)
+        sys.exit(3)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
@@ -59,16 +71,8 @@ if __name__ == '__main__':
     }
     groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(2)
-    except ModellerError as e:
-        print(e)
-        sys.exit(3)
+
+if __name__ == '__main__':
+    main()
