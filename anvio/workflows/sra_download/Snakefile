@@ -1,7 +1,9 @@
 # -*- coding: utf-8
 import os
+import json
 import anvio
 import argparse
+import pandas as pd
 
 from anvio.errors import ConfigError
 from anvio.workflows.sra_download import SRADownloadWorkflow
@@ -15,15 +17,21 @@ __email__ = "mschechter@uchicago.edu"
 
 
 """
-This Snakemake workflow downloads and compresses sequencing data from the NCBI Sequence Read Archive (SRA).
+This Snakemake workflow downloads, verifies, and compresses sequencing data from the NCBI Sequence Read Archive (SRA).
 
 Software requirements:
 - [The SRA toolkit](https://github.com/ncbi/sra-tools): prefetch, fasterq_dump
 - [pigz](https://zlib.net/pigz/)
 
-Briefly, the prefetch rule retrieves data from the SRA and stores it as {accession}.sra files.
-Next, fasterq_dump rule extracts the FASTQ files from the prefetched SRA file.
-Finally, the pigz rule gzips the FASTQ files.
+Workflow Steps:
+---------------
+1. **prefetch**: Retrieves .sra files using the SRA Toolkit's `prefetch` command.
+2. **check_md5sum**: Verifies file integrity by comparing the downloaded file's MD5 hash
+   against the expected hash from the NCBI `locate` API.
+3. **fasterq_dump**: Converts .sra files into FASTQ format using `fasterq-dump`.
+4. **pigz**: Compresses FASTQ files using parallel gzip (pigz).
+5. **generate_samples_txt**: Generates `samples.txt` and `samples_single_reads.txt` files 
+   describing paired-end and single-end reads, respectively.
 
 The input for this workflow is a file of SRA accessions e.g.
 
@@ -68,7 +76,8 @@ rule prefetch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
     output:
-        SRA_TMP = temp(directory(os.path.join(dirs_dict['SRA_prefetch'], "{accession}")))
+        SRA_TMP = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")),
+        prefetch_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done"))
     params:
         SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),
         MAX_SIZE = M.get_param_value_from_config(['prefetch', '--max-size'])
@@ -76,6 +85,39 @@ rule prefetch:
     run:
         shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
+
+rule check_md5sum:
+    """Curl the md5sum file from the SRA FTP site"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_check_md5sum.log")
+    input:
+        prefetch_DONE = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done")
+    params:
+        md5sum = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.json"),
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
+    output:
+        md5sum_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.md5sum.done"))
+    threads: M.T('check_md5sum')
+    run:
+        # Get the md5sum from the SRA FTP site
+        shell("curl 'https://locate.ncbi.nlm.nih.gov/sdl/2/retrieve?filetype=run&location-type=forced&location=s3.us-east-1&accept-charges=aws&acc={wildcards.accession}' --output {params.md5sum} >> {log} 2>&1")
+
+        # Get the expected md5sum hash
+        with open(params.md5sum) as sra_metadata_file:
+            sra_metadata_dict = json.load(sra_metadata_file)
+            expected_md5 = sra_metadata_dict['result'][0]['files'][0]['md5']
+
+        calculated_md5 = M.calculate_md5(file_path=params.sra_file)
+
+        # Compare expected and calculated md5 and log the result
+        log_path = str(log)
+        with open(log_path, 'a') as log_file:   
+            if calculated_md5 == expected_md5:
+                log_file.write(f"Checksums match: {calculated_md5}\n")
+            else:
+                raise ValueError(f"[{wildcards.accession}] MD5 checksum failed: "
+                                 f"expected {expected_md5}, got {calculated_md5} for file {params.sra_file}")
 
 rule fasterq_dump:
     """Use fasterq-dump to extract FASTQ file(s) from an SRA prefetch *.sra
@@ -98,7 +140,9 @@ rule fasterq_dump:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: ancient(rules.prefetch.output.SRA_TMP)
+    input: 
+        ancient(rules.check_md5sum.output.md5sum_DONE),
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
         FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
