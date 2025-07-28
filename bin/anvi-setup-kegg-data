@@ -63,7 +63,19 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
 
 
 @time_program
-def main(args, unknown_args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def run_program():
+    args, unknown_args, subparsers = get_args()
 
     if args.list_modes:
         import anvio.terminal as terminal
@@ -119,7 +131,8 @@ def main(args, unknown_args):
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
 
-if __name__ == '__main__':
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -168,12 +181,8 @@ if __name__ == '__main__':
 
     args, unknown_args = parser.parse_known_args()
 
-    try:
-        main(args, unknown_args)
+    return (args, unknown_args, subparsers)
 
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
