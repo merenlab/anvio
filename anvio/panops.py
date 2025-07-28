@@ -1397,7 +1397,7 @@ class SyntenyGeneCluster():
             if genome in self.genome_names:
                 fasta_file = os.path.join(self.output_dir, genome + '.fa')
                 utils.export_sequences_from_contigs_db(contigs_db_path.item(), fasta_file)
-                
+
                 num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
 
                 if self.max_contig_num and num_contigs > self.max_contig_num:
@@ -1438,12 +1438,12 @@ class SyntenyGeneCluster():
         if genome_properties[reference_fasta]['num_contigs'] != 1:
             if prioritize == 'genome_size':
                 raise ConfigError("Sadly, the reference genome anvi'o chose for you based on geonome size priority seems to have multiple contigs, "
-                                "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
-                                "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
-                                "flag if you have a complete genome.")
+                                  "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
+                                  "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
+                                  "flag if you have a complete genome.")
             elif prioritize == 'number_of_contigs':
                 raise ConfigError("The genome in your collection with the smallest number of contigs is still not a complete genome :( There is nothing "
-                                "this program can do for you at this point. Sorry!")
+                                  "this program can do for you at this point. Sorry!")
             else:
                 # wtf case
                 pass
@@ -1485,9 +1485,9 @@ class SyntenyGeneCluster():
 
                 self.run.info_single(f"Found {hits} / Reversed {reverse} out of {num_contigs} contigs for fasta {fasta_file}")
                 if hits != num_contigs:
-                    self.run.info_single(f"Warning one or more contigs in the file might be created from contamination.")
+                    self.run.info_single("Warning one or more contigs in the file might be created from contamination.")
 
-        self.run.info_single(f"Done.")
+        self.run.info_single("Done.")
 
 
     def yaml_mining(self):
@@ -1516,7 +1516,7 @@ class SyntenyGeneCluster():
 
 
         db_mining_df = pd.DataFrame.from_dict(db_mining_dict, orient='index').set_index(["genome", "gene_caller_id"])
-        self.run.info_single(f"Done.")
+        self.run.info_single("Done.")
         return(db_mining_df)
 
 
@@ -1572,7 +1572,7 @@ class SyntenyGeneCluster():
                 # genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.get_sequences_for_gene_callers_ids(all_gene_calls, include_aa_sequences=True, simple_headers=True)[1], orient="index").rename_axis("gene_caller_id").reset_index()
                 genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.genes_in_contigs_dict, orient="index").rename_axis("gene_caller_id").reset_index()
 
-                trnas = genes_in_contigs_df.query("source.str.contains('RNA')", engine='python')['gene_caller_id'].tolist() 
+                trnas = genes_in_contigs_df.query("source.str.contains('RNA')", engine='python')['gene_caller_id'].tolist()
                 caller_id_cluster = {**gene_cluster_dict[genome], **{trna:"GC_00000000" for trna in trnas}}
 
                 caller_id_cluster_df = pd.DataFrame.from_dict(caller_id_cluster, orient="index", columns=["gene_cluster"]).rename_axis("gene_caller_id").reset_index()
@@ -1610,7 +1610,7 @@ class SyntenyGeneCluster():
                 self.run.info_single(f"Skipped genome {genome} on users request.")
 
         db_mining_df = pd.concat(db_mining_list)
-        self.run.info_single(f"Done.")
+        self.run.info_single("Done.")
         return(db_mining_df, self.genome_names)
 
 
@@ -1718,11 +1718,11 @@ class SyntenyGeneCluster():
                 gene_cluster = gene_cluster_order[position - l]
 
             if len(left_side_of_kmer) == n:
-                break            
+                break
             elif gene_cluster in single_copy_core:
-                
+
                 left_side_of_kmer += [gene_cluster]
-            
+
             l += 1
 
         right_side_of_kmer = []
@@ -1735,11 +1735,11 @@ class SyntenyGeneCluster():
                 gene_cluster = gene_cluster_order[position + r]
 
             if len(right_side_of_kmer) == n:
-                break            
+                break
             elif gene_cluster in single_copy_core:
-                
+
                 right_side_of_kmer += [gene_cluster]
-            
+
             r += 1
 
         return(set(left_side_of_kmer), set(right_side_of_kmer))
@@ -1758,16 +1758,16 @@ class SyntenyGeneCluster():
     #             gene_cluster = gene_cluster_order[position - l]
 
     #         if len(left_side_of_kmer) == n:
-    #             break            
+    #             break
     #         elif gene_cluster in syn_packages_labels.keys():
-                
-    #             syn_package = syn_packages_labels[gene_cluster] 
+
+    #             syn_package = syn_packages_labels[gene_cluster]
 
     #             if syn_package != last_syn_package:
-            
+
     #                 left_side_of_kmer += [syn_packages_labels[gene_cluster]]
     #                 last_syn_package = syn_packages_labels[gene_cluster_order[position - l]]
-            
+
     #         l += 1
 
     #     right_side_of_kmer = []
@@ -1782,16 +1782,16 @@ class SyntenyGeneCluster():
     #             gene_cluster = gene_cluster_order[position + r]
 
     #         if len(right_side_of_kmer) == n:
-    #             break            
+    #             break
     #         elif gene_cluster in syn_packages_labels.keys():
-                
-    #             syn_package = syn_packages_labels[gene_cluster] 
+
+    #             syn_package = syn_packages_labels[gene_cluster]
 
     #             if syn_package != last_syn_package:
-            
+
     #                 right_side_of_kmer += [syn_packages_labels[gene_cluster]]
     #                 last_syn_package = syn_packages_labels[gene_cluster_order[position + r]]
-            
+
     #         r += 1
 
     #     return(set(left_side_of_kmer), set(right_side_of_kmer))
@@ -1840,7 +1840,7 @@ class SyntenyGeneCluster():
         #         gene_cluster_k_mer_left_context_score,
         #         gene_cluster_k_mer_right_context_score
         #     )
-        
+
         if genome_a == genome_b:
             return(1.0)
         elif n != 0 and gene_cluster_k_mer_left_context_score < alpha and gene_cluster_k_mer_right_context_score < alpha:
@@ -1885,7 +1885,7 @@ class SyntenyGeneCluster():
 
             else:
                 sim_value = 1.0 - r_val / div
-    
+
             return(sim_value if sim_value <= delta else 1.0)
 
     # def calculate_syntenous_packages(self, genomes):
@@ -2115,7 +2115,7 @@ class SyntenyGeneCluster():
                 else:
                     # synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
                     synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
-                    
+
                     for genome, contig, position, gene_caller_id, gene_cluster_id in synteny_gene_cluster_id_contig_positions:
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
                         j += 1
@@ -2294,10 +2294,10 @@ class PangenomeGraph():
 
             connectivity = nx.is_connected(self.graph.to_undirected())
             if connectivity == True:
-                self.run.info_single(f"The pangenome graph is now a connected cyclic graph.")
+                self.run.info_single("The pangenome graph is now a connected cyclic graph.")
             else:
-                raise ConfigError(f"Looks like the graph is still fragmented, please check the data"
-                                  f"for at least some level of consistency.")
+                raise ConfigError("Looks like the graph is still fragmented, please check the data"
+                                  "for at least some level of consistency.")
 
         self.run.info_single("Done.")
 
@@ -2349,7 +2349,7 @@ class PangenomeGraph():
         genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
 
         if not nx.is_directed_acyclic_graph(self.graph):
-            raise ConfigError(f"Cyclic graphs, are not implemented.")
+            raise ConfigError("Cyclic graphs, are not implemented.")
 
         all_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True)]))
         all_positions_min = min(all_positions)
@@ -2975,7 +2975,7 @@ class PangenomeGraph():
 
 # ANCHOR - DirectedForce
 class DirectedForce():
-    """The first step is looking for open entrance points into the graph e.g. contigs beginning with singleton genes. Per definition 
+    """The first step is looking for open entrance points into the graph e.g. contigs beginning with singleton genes. Per definition
     of the maximum branching every node has to have a exactly single predecessor, but not necessarily a successor. We can exploit this
     definition by adding a artifical starting point connecting to all nodes in the graph. By adding weight to exactly one edge involving
     this starting point we force the algorithm in the direction of taking a specific node after the start as root, while also artificially
@@ -3118,7 +3118,7 @@ class DirectedForce():
             else:
                 G_edge_data = {y:z if y != 'direction' else 'L' for y,z in G.get_edge_data(node_i, node_j).items()}
                 changed_edges += [(node_i, node_j)]
-            
+
             return(node_j, node_i, G_edge_data, changed_edges)
 
 
@@ -3206,9 +3206,9 @@ class DirectedForce():
                 self.run.info_single(f'{len(removed_nodes)} nodes and {len(removed_edges)} edges removed to capture strongest signal.')
                 G = nx.DiGraph(G.subgraph(M_sub_components))
             else:
-                raise ConfigError(f"I'm very sorry to inform you that your data is not solvable by the current version of"
-                                  f"maximum flow. The fallback mode tried to solve your dataset by sacrificing some"
-                                  f"of the included information, but at this scale it will not lead to a acceptable result :(")
+                raise ConfigError("I'm very sorry to inform you that your data is not solvable by the current version of"
+                                  "maximum flow. The fallback mode tried to solve your dataset by sacrificing some"
+                                  "of the included information, but at this scale it will not lead to a acceptable result :(")
         # else:
         #     removed_nodes = []
         #     removed_edges = []
@@ -3385,7 +3385,7 @@ class DirectedForce():
 
                                 # print(next_node, current_connector)
 
-                                if G.has_edge(M_predecessors[current_node], current_node): 
+                                if G.has_edge(M_predecessors[current_node], current_node):
 
                                     current_node = next_node
 
@@ -3428,10 +3428,10 @@ class DirectedForce():
                 visited_nodes.add(current_node)
 
                 if not nx.is_directed_acyclic_graph(M):
-                    raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
-                                    f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
-                                    f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
-                                    f"checks in the next version. Sorry :/")
+                    raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                                      "therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                                      "sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                                      "checks in the next version. Sorry :/")
 
         self.progress.end()
 
@@ -3450,12 +3450,12 @@ class DirectedForce():
             M_successors[stop] += ['STOP']
 
         if not nx.is_directed_acyclic_graph(M):
-            raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
-                            f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
-                            f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
-                            f"checks in the next version. Sorry :/")
+            raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                              "therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                              "sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                              "checks in the next version. Sorry :/")
         else:
-            self.run.info_single(f"No loops. Roger roger and ready to go.")
+            self.run.info_single("No loops. Roger roger and ready to go.")
 
         v = 0
         w = 0
@@ -3486,7 +3486,7 @@ class DirectedForce():
         self.run.info_single(f"{x} edges can be kept in the original direction.")
         self.run.info_single(f"{w} edges have to reversed to capture maximum force.")
         self.run.info_single(f"{v} edges seem to be double sided. Double sided edges are a sign for potential inversions.")
-        
+
         return(changed_edges_new)
 
 
@@ -3521,7 +3521,7 @@ class TopologicalLayout():
         nx.set_node_attributes(L, {k: {'genomes': list(d.keys())} for k, d in L.nodes(data='gene_calls')})
 
         if not nx.is_directed_acyclic_graph(L):
-            raise ConfigError(f"Cyclic graphs, are not implemented, sorry.")
+            raise ConfigError("Cyclic graphs, are not implemented, sorry.")
 
         x_list = {}
         positions = {}
@@ -3795,8 +3795,8 @@ class TopologicalLayout():
                 stack.remove(current)
 
         if len(set(positions.values())) != len(positions.values()):
-            raise ConfigError(f"No no no no. Something went very wrong here. Some nodes overlap in the UI."
-                              f"We don't want this, we definitely don't want this...")
+            raise ConfigError("No no no no. Something went very wrong here. Some nodes overlap in the UI."
+                              "We don't want this, we definitely don't want this...")
 
         edge_positions = {}
         for edge_i, edge_j in edges.keys():
@@ -4034,9 +4034,9 @@ class PangenomeGraphMaster():
         self.run.info_single(f"Pangenome graph length = {x_max}.")
         self.run.info_single(f"Pangenome graph height = {y_max}.")
         if y_max <= len(self.genome_names) * 2 :
-            self.run.info_single(f"Pangenome graph height and length, looks fine :)")
+            self.run.info_single("Pangenome graph height and length, looks fine :)")
         else:
-            self.run.info_single(f"A high amount of layering might affect the readability.")
+            self.run.info_single("A high amount of layering might affect the readability.")
 
         self.pangenome_graph.set_edge_positions(edge_positions)
         self.pangenome_graph.set_node_positions(node_positions)
@@ -4057,7 +4057,7 @@ class PangenomeGraphMaster():
                     length_info[length_filter] += 1
                     break
 
-        self.run.info_single(f"Summary of edge length distribution:")
+        self.run.info_single("Summary of edge length distribution:")
         for length_filter, number in length_info.items():
             self.run.info_single(f"{length_filter}: {number} edge(s)")
 
@@ -4185,17 +4185,17 @@ class PangenomeGraphMaster():
                         y_max = y if y > y_max else y_max
 
             full_radius = int(180 * (45 * x_max) / (math.pi * 270))
-            
+
             tracks_radius = int((2 * full_radius / 3))
             inner = int((1 * full_radius / 3))
-            
+
             tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
-            
+
             inner_margin = int(tracks_layer / 2)
             backbone = int(tracks_layer / 2)
             arrow = int(tracks_layer / 2)
             search = int(tracks_layer / 2)
-            
+
             label = int(arrow * 0.25)
             disty = int(tracks_layer / y_max)
 
@@ -4277,7 +4277,7 @@ class PangenomeGraphMaster():
         self.import_values = self.meta['layers']
 
         if self.meta['version'] != self.version:
-            raise ConfigError(f"Versions do not match sorry.")
+            raise ConfigError("Versions do not match sorry.")
 
         self.max_edge_length_filter = self.states[self.load_state]['maxlength'] if not self.max_edge_length_filter else self.max_edge_length_filter
         self.states[self.load_state]['maxlength'] = self.max_edge_length_filter
