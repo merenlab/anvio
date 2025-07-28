@@ -1440,7 +1440,7 @@ class SyntenyGeneCluster():
         for fasta_file in input_fasta_files:
             blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
             num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
-            
+
             if fasta_file != reference_fasta:
                 cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
                 subprocess.run(cmd_line, text=True, capture_output=True)
@@ -1473,13 +1473,12 @@ class SyntenyGeneCluster():
 
             else:
                 self.run.info_single(f"Reversed 0 out of {num_contigs} contigs for reference fasta {fasta_file}")
-            
 
         self.run.info_single("Done.")
 
 
     def yaml_mining(self):
-        
+
         i = 0
         db_mining_dict = {}
         for genome in self.genome_names:
@@ -1502,7 +1501,7 @@ class SyntenyGeneCluster():
                     current_pos += 500
                     i += 1
 
-        
+
         db_mining_df = pd.DataFrame.from_dict(db_mining_dict, orient='index').set_index(["genome", "gene_caller_id"])
         self.run.info_single("Done.")
         return(db_mining_df)
@@ -1560,7 +1559,7 @@ class SyntenyGeneCluster():
                 # genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.get_sequences_for_gene_callers_ids(all_gene_calls, include_aa_sequences=True, simple_headers=True)[1], orient="index").rename_axis("gene_caller_id").reset_index()
                 genes_in_contigs_df = pd.DataFrame.from_dict(contigs_db.genes_in_contigs_dict, orient="index").rename_axis("gene_caller_id").reset_index()
 
-                trnas = genes_in_contigs_df.query("source == 'Transfer_RNAs' | source == 'Ribosomal_RNA_16S' | source == 'Ribosomal_RNA_23S'")['gene_caller_id'].tolist() 
+                trnas = genes_in_contigs_df.query("source == 'Transfer_RNAs' | source == 'Ribosomal_RNA_16S' | source == 'Ribosomal_RNA_23S'")['gene_caller_id'].tolist()
                 caller_id_cluster = {**gene_cluster_dict[genome], **{trna:"GC_00000000" for trna in trnas}}
 
                 caller_id_cluster_df = pd.DataFrame.from_dict(caller_id_cluster, orient="index", columns=["gene_cluster"]).rename_axis("gene_caller_id").reset_index()
@@ -1900,7 +1899,7 @@ class SyntenyGeneCluster():
         self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
         self.run.info_single(f'{len(db_mining_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
-        self.run.info_single("Done.")        
+        self.run.info_single("Done.")
 
         if len(db_mining_df["syn_cluster"].unique()) > 2 * len(db_mining_df["gene_cluster"].unique()):
             raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something went wrong here...")
@@ -2123,12 +2122,12 @@ class PangenomeGraph():
         #         reversed_positions += list(range(reverse_start, reverse_end + 1))
 
         # non_core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) != len(genome_names)]) | set(reversed_positions))
-        
+
         # SHOULD CORE GCS THAT RESOLVE INSIDE REARRANGEMENTS BE NON-CORE?!
         # core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]) - set(reversed_positions))
 
         core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]))
-        
+
         regions_dict = {}
 
         if core_positions:
@@ -2241,7 +2240,7 @@ class PangenomeGraph():
             for genome, gene_call in data.items():
                 gene_calls_dict[i] = {'syn_cluster': node, 'genome': genome, 'gene_caller_id': gene_call}
                 i += 1
-    
+
         gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
@@ -2723,7 +2722,7 @@ class PangenomeGraph():
 
 # ANCHOR - DirectedForce
 class DirectedForce():
-    """The first step is looking for open entrance points into the graph e.g. contigs beginning with singleton genes. Per definition 
+    """The first step is looking for open entrance points into the graph e.g. contigs beginning with singleton genes. Per definition
     of the maximum branching every node has to have a exactly single predecessor, but not necessarily a successor. We can exploit this
     definition by adding a artifical starting point connecting to all nodes in the graph. By adding weight to exactly one edge involving
     this starting point we force the algorithm in the direction of taking a specific node after the start as root, while also artificially
@@ -2778,7 +2777,7 @@ class DirectedForce():
                 # Suboptimal run, trying to find a sufficient starting point without a lot of ressources.
                 G = nx.DiGraph(H)
                 add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0]
-                
+
                 if not add_start:
                     G, M = self.find_maximum_branching(G)
                     add_start = [node for node in M.nodes() if len(list(M.predecessors(node))) == 0]
@@ -3367,7 +3366,7 @@ class TopologicalLayout():
                     condense_nodes = [node]
                     label = 'GCG_' + str(group).zfill(8)
                     group += 1
-                    
+
                 former_genome = current_genome
                 former_type = current_type
 
@@ -3391,7 +3390,7 @@ class TopologicalLayout():
                 start = positions[branch[0]][0]
                 length = len(branch)
                 impact = - sum([len(L.nodes()[br]['gene_calls'].keys()) if 'gene_calls' in L.nodes()[br].keys() else 0 for br in branch])
-                
+
                 if start in branches.keys():
                     if length in branches[start].keys():
                         if impact in branches[start][length].keys():
@@ -3420,10 +3419,10 @@ class TopologicalLayout():
                 start = positions[n][0]
                 length = 1
                 impact = - len(L.nodes()[n]['gene_calls'].keys()) if 'gene_calls' in L.nodes()[n].keys() else 0
-                
+
                 if start in branches.keys():
                     if length in branches[start].keys():
-                        if impact in branches[start][length].keys():    
+                        if impact in branches[start][length].keys():
                             if branches[start][length].keys():
                                 num = max(branches[start][length][impact].keys()) + 1
                             else:
@@ -3637,7 +3636,7 @@ class PangenomeGraphMaster():
         self.start_node = []
         self.start_gene = A('start_gene')
         self.min_contig_chain = A('min_contig_chain')
-                
+
         self.n = A('n')
         self.alpha = A('alpha')
         self.beta = A('beta')
@@ -3719,7 +3718,7 @@ class PangenomeGraphMaster():
     def process_pangenome_graph(self):
 
         if self.pan_graph_json:
-            self.import_pangenome_graph()        
+            self.import_pangenome_graph()
         else:
             self.sanity_check()
 
@@ -3730,12 +3729,12 @@ class PangenomeGraphMaster():
                 db_mining_df = SynGC.yaml_mining()
             else:
                 db_mining_df = SynGC.db_mining()
-            
+
             self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.n, self.alpha, self.beta, self.gamma, self.output_dir, self.output_synteny_gene_cluster_dendrogram)
 
             if self.start_gene:
                 self.start_node += list(set(self.db_mining_df[self.db_mining_df['COG20_FUNCTIONTEXT'].str.contains(self.start_gene)]['syn_cluster'].to_list()))
-            
+
             self.create_pangenome_graph()
 
         if len(self.db_mining_df) != 0:
