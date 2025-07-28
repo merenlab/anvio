@@ -110,8 +110,43 @@ class ExchangePredictorArgs():
             output_dict[typ] = output_file_for_type
 
         return output_dict
-        
 
+    def append_output_from_dicts(self, output_dicts):
+        """This function appends the output dictionaries to initialized AppendableFile objects in self.output_file_dict.
+        
+        PARAMETERS
+        ==========
+        output_dicts : dictionary of dictionaries
+            Key is output type, and value is the data dictionary associated with that output type
+        """
+
+        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
+        if self.add_reactions_to_output:
+            output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
+            [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+        exchange_header = deepcopy(output_header)
+        if not self.no_pathway_walk:
+            exchange_header += ['max_reaction_chain_length', 
+                                'max_production_chain_length', 'production_overlap_length', 'production_overlap_proportion', 
+                                'production_chain_pathway_map',
+                                'max_consumption_chain_length', 'consumption_overlap_length', 'consumption_overlap_proportion', 
+                                'consumption_chain_pathway_map'
+                                ]
+
+        for mode, file_obj in self.output_file_dict.items():  
+            if mode not in output_dicts:
+                raise ConfigError(f"Uh oh. You've requested to generate output of type '{mode}' but we don't "
+                                  f"have a data dictionary associated with that type.")
+
+            header_list = output_header
+            if mode == 'potentially-exchanged-compounds':
+                header_list = exchange_header
+
+            if mode == 'evidence':
+                file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
+            else:
+                file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
+        
 class ExchangePredictorSingle(ExchangePredictorArgs):
     """Class for predicting exchanges between a single pair of genomes.
     
@@ -891,41 +926,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         return potentially_exchanged_compounds, unique_compounds
 
-    def append_output_from_dicts(self, output_dicts):
-        """This function appends the output dictionaries to initialized AppendableFile objects in self.output_file_dict.
-        
-        PARAMETERS
-        ==========
-        output_dicts : dictionary of dictionaries
-            Key is output type, and value is the data dictionary associated with that output type
-        """
-
-        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
-        if self.add_reactions_to_output:
-            output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
-            [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
-        exchange_header = deepcopy(output_header)
-        if not self.no_pathway_walk:
-            exchange_header += ['max_reaction_chain_length', 
-                                'max_production_chain_length', 'production_overlap_length', 'production_overlap_proportion', 
-                                'production_chain_pathway_map',
-                                'max_consumption_chain_length', 'consumption_overlap_length', 'consumption_overlap_proportion', 
-                                'consumption_chain_pathway_map'
-                                ]
-
-        for mode, file_obj in self.output_file_dict.items():  
-            if mode not in output_dicts:
-                raise ConfigError(f"Uh oh. You've requested to generate output of type '{mode}' but we don't "
-                                  f"have a data dictionary associated with that type.")
-
-            header_list = output_header
-            if mode == 'potentially-exchanged-compounds':
-                header_list = exchange_header
-
-            if mode == 'evidence':
-                file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
-            else:
-                file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
 
 class ExchangePredictorMulti(ExchangePredictorArgs):
     """Class for predicting exchanges between multiple pairs of genomes.
