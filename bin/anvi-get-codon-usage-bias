@@ -32,11 +32,24 @@ __provides__ = []
 __description__ = ("Get codon usage bias (CUB) statistics of genes and functions")
 
 
-run = terminal.Run()
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
     """Prepare arguments to get codon usage bias."""
+
+    args = get_args()
+    run = terminal.Run()
+
     if not args.output_file:
         raise ConfigError("`--output-file` must be provided.")
     filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
@@ -332,7 +345,7 @@ def parse_select_reference_functions_table(args):
     return reference_function_accessions_dict, reference_function_names_dict
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group(
@@ -571,13 +584,8 @@ if __name__ == '__main__':
              "at least this many codons. This filter applies after excluding codons for individual "
              "amino acids using `--reference-exclude-amino-acid-count`.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

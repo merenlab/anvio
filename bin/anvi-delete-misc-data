@@ -6,6 +6,7 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
@@ -23,31 +24,7 @@ __description__ = ("Remove stuff from 'additional data' or 'order' tables for ei
 __resources__ = [("Working with anvi'o additional data tables", "http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology")]
 
 
-def get_args():
-    parser = ArgumentParser(description=__description__)
-
-    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
-    group2 = parser.add_argument_group('Details', "Everything else.")
-
-    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
-    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-
-    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
-    group2.add_argument('--keys-to-remove', help="A comma-separated list of data keys to remove from the database. If you\
-                                                  do not use this parameter, anvi'o will simply remove everything from the\
-                                                  target data table immediately. Please note that you should not use this\
-                                                  parameter together with `--groups-to-remove` in a single command.")
-    group2.add_argument('--groups-to-remove', help="A comma-separated list of data groups to remove from the database. If you\
-                                                  do not use this parameter, anvi'o will simply remove everything from the\
-                                                  target data table immediately. Please note that you should not use this\
-                                                  parameter together with `--keys-to-remove` in a single command.")
-    group2.add_argument('--list-available-keys', action='store_true', help="Using this flag will list available data keys in\
-                                                  the target data table and quit without doing anything else.")
-    group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    return parser.get_args(parser)
-
-
+@terminal.time_program
 def main(args):
     args = get_args()
 
@@ -78,6 +55,31 @@ def main(args):
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+
+    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
+    group2 = parser.add_argument_group('Details', "Everything else.")
+
+    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    group2.add_argument('--keys-to-remove', help="A comma-separated list of data keys to remove from the database. If you\
+                                                  do not use this parameter, anvi'o will simply remove everything from the\
+                                                  target data table immediately. Please note that you should not use this\
+                                                  parameter together with `--groups-to-remove` in a single command.")
+    group2.add_argument('--groups-to-remove', help="A comma-separated list of data groups to remove from the database. If you\
+                                                  do not use this parameter, anvi'o will simply remove everything from the\
+                                                  target data table immediately. Please note that you should not use this\
+                                                  parameter together with `--keys-to-remove` in a single command.")
+    group2.add_argument('--list-available-keys', action='store_true', help="Using this flag will list available data keys in\
+                                                  the target data table and quit without doing anything else.")
+    group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

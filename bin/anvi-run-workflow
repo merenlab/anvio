@@ -21,39 +21,46 @@ __description__ = ("Execute, manage, parallelize, and troubleshoot entire 'omics
 __requires__ = ["workflow-config"]
 __provides__ = ["workflow"]
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
 
 
-def main(args):
-    workflows_dict = w.get_workflow_module_dict()
+def main():
+    args = get_args()
+    run = terminal.Run()
 
-    if args.list_workflows:
-        run.info("Available workflows", ", ".join(list(workflows_dict.keys())))
-        sys.exit(0)
-
-    # FIXME: Meren and Alon should discuss these next lines
-    # we can't call the snake_file_path from the class so I think
-    # we have to do it this way
-    if (not args.workflow) or (not args.config_file) and (not args.get_default_config):
-        raise ConfigError("You must provide a workflow name AND a config file. You can use --list-workflow "
-                          "to learn what workflows are available, and you can use --get-default-config "
-                          "if you need help writing your config file.")
-
-    if args.workflow not in workflows_dict:
-        raise ConfigError("anvi'o is not familiar with a workflow %s, you can use --list-workflow to "
-                          "learn what workflows are available." % args.workflow)
-
-    M = workflows_dict[args.workflow](args)
-    M.init()
-    M.go(skip_dry_run=args.skip_dry_run)
-
-
-if __name__ == '__main__':
-    run.warning('If you publish results from this workflow, please do not forget to cite snakemake '
+    run.warning('If you publish results from this workflow, please do not forget to cite Snakemake '
                 '(doi:10.1093/bioinformatics/bts480)', lc = 'yellow')
 
+    try:
+        workflows_dict = w.get_workflow_module_dict()
+
+        if args.list_workflows:
+            run.info("Available workflows", ", ".join(list(workflows_dict.keys())))
+            sys.exit(0)
+
+        # FIXME: Meren and Alon should discuss these next lines
+        # we can't call the snake_file_path from the class so I think
+        # we have to do it this way
+        if (not args.workflow) or (not args.config_file) and (not args.get_default_config):
+            raise ConfigError("You must provide a workflow name AND a config file. You can use --list-workflow "
+                              "to learn what workflows are available, and you can use --get-default-config "
+                              "if you need help writing your config file.")
+
+        if args.workflow not in workflows_dict:
+            raise ConfigError("anvi'o is not familiar with a workflow %s, you can use --list-workflow to "
+                              "learn what workflows are available." % args.workflow)
+
+        M = workflows_dict[args.workflow](args)
+        M.init()
+        M.go(skip_dry_run=args.skip_dry_run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -70,13 +77,8 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A("save-workflow-graph"), **anvio.K("save-workflow-graph"))
     groupB.add_argument(*anvio.A("additional-params"), **anvio.K("additional-params"))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -30,11 +30,23 @@ __description__ = "Export splits and the coverage table from database"
 __resources__ = [("Using this program to generate split coverage visualizations across samples", "http://merenlab.org/2019/11/25/visualizing-coverages/#visualize-only-the-coverage-of-a-split-across-samples")]
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     utils.is_profile_db(args.profile_db)
 
     profile_db = dbops.ProfileSuperclass(args)
@@ -208,7 +220,7 @@ def main(args):
     run.info('Output', "%d entries for %d splits in %d samples are stored in %s" % (entry_id, len(target_splits_dict), len(sample_names), args.output_file), mc='green')
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("ESSENTIAL ANVI'O DBs", "You need to provide a profile database, but whether you will need to provide a "
@@ -234,13 +246,8 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

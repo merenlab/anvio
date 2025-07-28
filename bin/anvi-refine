@@ -35,11 +35,64 @@ __description__ = ("Start an anvi'o interactive interactive to manually curate o
                    "whether it is a metagenome-assembled, single-cell, or an isolate genome")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    args = get_args()
+    run = terminal.Run()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    find_from_split_name = A('find_from_split_name')
+    collection_name = A('collection_name')
+
+    try:
+        if not collection_name:
+            raise ConfigError("You need to provide this program with a collection name :/")
+
+        if find_from_split_name and not collection_name:
+            raise ConfigError("If you would like anvi'o to find the bin name for your split, you should "
+                              "also specify a collection name.")
+
+        if find_from_split_name:
+            rows = utils.get_bin_name_from_item_name(args.profile_db, find_from_split_name, collection_name=args.collection_name)
+
+            if not rows:
+                raise ConfigError("The split name you requested was not found in collection %s :/" % collection_name)
+
+            if not len(rows) == 1:
+                raise ConfigError("There is something silly going on here. The split name is found in more "
+                                  "than one collection. Which is not really possible so goodbye.")
+
+            entry_id, collection_name, split_name, bin_name = rows[0]
+            run.warning("Anvi'o found your split, and will set the bin name for your "
+                        "refinement analysis to '%s'." % (bin_name),
+                        header="SPLIT FOUND IN %s!" % (bin_name), lc="green")
+
+            args.bin_id = bin_name
+
+        if not args.bin_id or args.bin_ids_file:
+            raise ConfigError("This program needs to know which bin(s) you wish to refine.")
+
+        args.mode = 'refine'
+        d = interactive.Interactive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+
+    if args.dry_run:
+        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
+        sys.exit()
+
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
@@ -91,56 +144,8 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        find_from_split_name = A('find_from_split_name')
-        collection_name = A('collection_name')
 
-        if not collection_name:
-            raise ConfigError("You need to provide this program with a collection name :/")
-
-        if find_from_split_name and not collection_name:
-            raise ConfigError("If you would like anvi'o to find the bin name for your split, you should "
-                              "also specify a collection name.")
-
-        if find_from_split_name:
-            rows = utils.get_bin_name_from_item_name(args.profile_db, find_from_split_name, collection_name=args.collection_name)
-
-            if not rows:
-                raise ConfigError("The split name you requested was not found in collection %s :/" % collection_name)
-
-            if not len(rows) == 1:
-                raise ConfigError("There is something silly going on here. The split name is found in more "
-                                  "than one collection. Which is not really possible so goodbye.")
-
-            entry_id, collection_name, split_name, bin_name = rows[0]
-            run.warning("Anvi'o found your split, and will set the bin name for your "
-                        "refinement analysis to '%s'." % (bin_name),
-                        header="SPLIT FOUND IN %s!" % (bin_name), lc="green")
-
-            args.bin_id = bin_name
-
-        if not args.bin_id or args.bin_ids_file:
-            raise ConfigError("This program needs to know which bin(s) you wish to refine.")
-
-        args.mode = 'refine'
-        d = interactive.Interactive(args)
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except DictIOError as e:
-        print(e)
-        sys.exit(-3)
-
-    if args.dry_run:
-        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
-        sys.exit()
-
-    app = BottleApplication(d)
-    app.run_application(args.ip_address, args.port_number)
+if __name__ == '__main__':
+    main()

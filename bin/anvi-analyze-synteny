@@ -19,6 +19,7 @@ import sys
 import anvio
 
 from anvio.synteny import NGram
+from anvio.terminal import time_program
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -31,6 +32,21 @@ __authors__ = ['mschecht']
 __requires__ = ['genomes-storage-db', 'functions', 'pan-db']
 __provides__ = ['ngrams']
 __description__ = ("Extract ngrams, as in 'co-occurring genes in synteny', from genomes")
+
+
+@time_program
+def main():
+    args = get_args()
+
+    try:
+        ngram = NGram(args)
+        ngram.report_ngrams_to_user()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
 def get_args():
@@ -66,18 +82,6 @@ def get_args():
 
     return parser.get_args(parser)
 
-def main():
-    args = get_args()
-
-    try:
-        ngram = NGram(args)
-        ngram.report_ngrams_to_user()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
 
 if __name__ == '__main__':
     main()

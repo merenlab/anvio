@@ -3,13 +3,13 @@
 """This program runs inspect page directly"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.interactive as interactive
 
+from anvio.argparse import ArgumentParser
 from anvio.bottleroutes import BottleApplication
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -24,31 +24,9 @@ __description__ = "Start an anvi'o inspect interactive interface"
 __resources__ = [("Visualizing contig coverages", "https://merenlab.org/2019/11/25/visualizing-coverages/")]
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-if __name__ == '__main__':
-    # setup the command line user interface
-    parser = ArgumentParser(description=__description__)
-
-    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
-    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-
-    groupB = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
-                                                           the interface.")
-    groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
-    groupB.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
-
-    groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-    groupC.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupC.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-
-    groupD = parser.add_argument_group('GENERAL CONVENIENCE', "From anvi'o developers to you.")
-    groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    args = parser.get_args(parser)
+def main():
+    args = get_args()
+    run = terminal.Run()
 
     try:
         if not args.split_name and not args.just_do_it:
@@ -68,3 +46,30 @@ if __name__ == '__main__':
 
     app = BottleApplication(d)
     app.run_application(args.ip_address, args.port_number)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    groupB = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
+    groupB.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+
+    groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupC.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupC.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+
+    groupD = parser.add_argument_group('GENERAL CONVENIENCE', "From anvi'o developers to you.")
+    groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

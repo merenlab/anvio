@@ -8,12 +8,12 @@ import sys
 
 import anvio
 import anvio.utils as utils
-import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsSuperclass
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.bamops import ReadsMappingToARange
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,11 +30,23 @@ __description__ = ("Recover short reads from BAM files that were mapped to genes
                    "BAM file, or from many of them")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     c = ContigsSuperclass(args)
 
     if args.gene_caller_id and args.genes_of_interest:
@@ -88,7 +100,7 @@ def main(args):
     progress.end()
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -107,13 +119,8 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OUTPUT', "How should results be stored.")
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

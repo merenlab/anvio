@@ -25,16 +25,22 @@ __description__ = ("FAST profiling of BAM files to get contig- or gene-level cov
                    "anvi'o contigs database")
 
 
-pp = terminal.pretty_print
-
-
 @terminal.time_program
-def main(args):
-    p = BAMProfilerQuick(args)
-    p.process()
+def main():
+    args = get_args()
+
+    try:
+        p = BAMProfilerQuick(args)
+        p.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('bam_files', metavar = 'BAM_FILE(S)', nargs='+',
@@ -61,13 +67,9 @@ if __name__ == '__main__':
                         "can cut your processing time in half. See the help docs for example output files for contigs "
                         "and gene mode."}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
+

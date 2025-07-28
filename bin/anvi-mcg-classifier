@@ -5,11 +5,11 @@
 import sys
 
 import anvio
-import anvio.filesnpaths as filesnpaths
 import anvio.summarizer as summarizer
-from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -20,7 +20,20 @@ __authors__ = ['ShaiberAlon']
 __description__ = "A program to classify genes according to coverage across multiple metagenomes"
 
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def run_program():
+    args = get_args()
+
     mcg = MetagenomeCentricGeneClassifier(args)
 
     if args.output_file_prefix:
@@ -65,8 +78,7 @@ def main(args):
             mcg.save_samples_information()
 
 
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
     group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply a merged profile db (along with a matching contigs db)")
@@ -96,13 +108,8 @@ if __name__ == '__main__':
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
     groupC.add_argument(*anvio.A('outliers-threshold'), **anvio.K('outliers-threshold'))
     groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

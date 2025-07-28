@@ -5,6 +5,7 @@ import sys
 
 import anvio
 import anvio.trnaseq as trnaseq
+import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -26,7 +27,22 @@ __description__ = ("This program processes one or more anvi'o tRNA-seq databases
                    "This program finalizes predicted nucleotide modification sites using tunable substitution rate parameters")
 
 
-if __name__ == '__main__':
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        converter = trnaseq.DatabaseMerger(args)
+        converter.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY')
@@ -51,13 +67,8 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('distance'), **anvio.K('distance'))
     groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
-    args = parser.get_args(parser)
-    try:
-        converter = trnaseq.DatabaseMerger(args)
-        converter.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

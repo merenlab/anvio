@@ -22,7 +22,20 @@ __provides__ = ['profile-db', 'misc-data-items-order']
 __description__ = "Merge multiple anvio profiles"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        merger.MultipleRuns(args).merge()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('input', metavar = 'SINGLE_PROFILE(S)', nargs='+',
@@ -43,13 +56,8 @@ if __name__ == '__main__':
                        is %s.' % constants.linkage_method_default}))
     parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        merger.MultipleRuns(args).merge()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

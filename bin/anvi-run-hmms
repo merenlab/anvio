@@ -30,13 +30,24 @@ __description__ = ("This program deals with populating tables that store HMM hit
                    "anvi'o contigs database")
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
-run = terminal.Run()
-progress = terminal.Progress()
-P = terminal.pluralize
-
 
 @time_program
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    P = terminal.pluralize
+
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir and args.installed_hmm_profile:
@@ -94,7 +105,7 @@ def main(args):
         tables_for_trna_hits.populate_search_tables(args.contigs_db)
 
 
-if __name__ == '__main__':
+def get_args():
     available_hmm_sources_pretty = '; '.join([f"'{s}' (type: {hmm_data.sources[s]['kind']})" for s in available_hmm_sources])
 
     from anvio.argparse import ArgumentParser
@@ -130,13 +141,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('add-to-functions-table'), **anvio.K('add-to-functions-table'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

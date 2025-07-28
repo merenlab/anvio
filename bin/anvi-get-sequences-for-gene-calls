@@ -25,8 +25,36 @@ __description__ = "A script to get back sequences for gene calls"
 __resources__ = [("A tutorial on getting gene-level taxonomy for a contigs-db", "http://merenlab.org/2016/06/18/importing-taxonomy/")]
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    args = get_args()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    genomes_storage_db_path = A('genomes_storage')
+    output_file_path = A('output_file')
+
+    try:
+        if not contigs_db_path and not genomes_storage_db_path:
+            raise ConfigError("You must give this program either a contigs or a genomes storage database so it can like "
+                              "export sequences for your genes? :/")
+
+        if contigs_db_path and genomes_storage_db_path:
+            raise ConfigError("You can either ask for sequences in a contigs database, or a genomes storage. But not both "
+                              "(obviously).")
+
+        if contigs_db_path:
+            export_from_contigs(args)
+        elif genomes_storage_db_path:
+            export_from_genomes_storage(genomes_storage_db_path, output_file_path)
+        else:
+            raise ConfigError("o_O")
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def export_from_contigs(args):
@@ -81,29 +109,7 @@ def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
     g.gen_combined_aa_sequences_FASTA(output_file_path, report_with_genome_name=True)
 
 
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    contigs_db_path = A('contigs_db')
-    genomes_storage_db_path = A('genomes_storage')
-    output_file_path = A('output_file')
-
-    if not contigs_db_path and not genomes_storage_db_path:
-        raise ConfigError("You must give this program either a contigs or a genomes storage database so it can like "
-                          "export sequences for your genes? :/")
-
-    if contigs_db_path and genomes_storage_db_path:
-        raise ConfigError("You can either ask for sequences in a contigs database, or a genomes storage. But not both "
-                          "(obviously).")
-
-    if contigs_db_path:
-        export_from_contigs(args)
-    elif genomes_storage_db_path:
-        export_from_genomes_storage(genomes_storage_db_path, output_file_path)
-    else:
-        raise ConfigError("o_O")
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -139,13 +145,8 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
     groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -28,15 +28,21 @@ __description__ = ("Report the distribution of template lengths from a BAM file.
                    "read recruitment experiment.")
 
 
-pp = terminal.pretty_print
-
-
 @terminal.time_program
-def main(args):
-    bamops.PairedEndTemplateDist(args).process()
+def main():
+    args = get_args()
+
+    try:
+        bamops.PairedEndTemplateDist(args).process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('bam_file', metavar = 'BAM_FILE', help = "An indexed BAM file")
@@ -65,11 +71,6 @@ if __name__ == '__main__':
 
     args = parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

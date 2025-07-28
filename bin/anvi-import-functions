@@ -25,8 +25,37 @@ __provides__ = ['functions',]
 __description__ = "Parse and store functional annotation of genes"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
+    drop_previous_annotations = args.drop_previous_annotations
+
+    try:
+        if args.parser:
+            functions_dict = get_functions_dict(args)
+        else:
+            if len(args.input_files) != 1:
+                raise ConfigError("When you are using a simple gene calls matrix file to import functions, you can't use more than "
+                                   "one file as an input.")
+
+            input_matrix = args.input_files[0]
+            functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix,
+                                                                        expected_fields = ['gene_callers_id', 'source', 'accession', 'function', 'e_value'],
+                                                                        column_mapping  = [int, str, str, str, float],
+                                                                        only_expected_fields = True,
+                                                                        indexing_field = -1)
+
+        gene_function_calls_table = TableForGeneFunctions(args.contigs_db, run, progress)
+        gene_function_calls_table.create(functions_dict, drop_previous_annotations_first = drop_previous_annotations)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_functions_dict(args):
@@ -52,28 +81,7 @@ def get_functions_dict(args):
     return genes_dict
 
 
-def main(args):
-    drop_previous_annotations = args.drop_previous_annotations
-
-    if args.parser:
-        functions_dict = get_functions_dict(args)
-    else:
-        if len(args.input_files) != 1:
-            raise ConfigError("When you are using a simple gene calls matrix file to import functions, you can't use more than "
-                               "one file as an input.")
-
-        input_matrix = args.input_files[0]
-        functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix,
-                                                                    expected_fields = ['gene_callers_id', 'source', 'accession', 'function', 'e_value'],
-                                                                    column_mapping  = [int, str, str, str, float],
-                                                                    only_expected_fields = True,
-                                                                    indexing_field = -1)
-
-    gene_function_calls_table = TableForGeneFunctions(args.contigs_db, run, progress)
-    gene_function_calls_table.create(functions_dict, drop_previous_annotations_first = drop_previous_annotations)
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -93,13 +101,9 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('drop-previous-annotations'), **anvio.K('drop-previous-annotations'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
+

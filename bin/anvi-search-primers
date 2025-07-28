@@ -22,7 +22,22 @@ __description__ = ("You provide this program with FASTQ files for one or more sa
                    "diversity of seuqences visually, manually, or using established strategies such as oligotyping.")
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        s = PrimerSearch(args)
+        s.process()
+        s.print_summary()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -58,15 +73,8 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('OUTPUT', "Tell anvi'o where to put your thingies")
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        s = PrimerSearch(args)
-        s.process()
-        s.print_summary()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

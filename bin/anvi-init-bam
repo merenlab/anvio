@@ -24,15 +24,31 @@ __description__ = "Sort/Index BAM files"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
-progress = terminal.Progress()
-run = terminal.Run()
-pp = terminal.pretty_print 
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def init_bam_file(input_file_path, output_file_path = None, num_threads = 1):
+def run_program():
     """sort and index a BAM file"""
+    args = get_args()
 
-    input_file_path = os.path.abspath(input_file_path)
+    input_file_path = os.path.abspath(args.input_file)
+    output_file_path = args.output_file
+    num_threads = args.num_threads or 1
+
+    progress = terminal.Progress()
+    run = terminal.Run()
+
+    if args.num_threads < 1:
+        raise ConfigError("--num-threads should be at least 1.")
 
     if output_file_path:
         output_file_path = os.path.abspath(output_file_path)
@@ -62,7 +78,7 @@ def init_bam_file(input_file_path, output_file_path = None, num_threads = 1):
     run.info('BAM File Index', output_file_path + '.bai', mc='green')
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -70,17 +86,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    if args.num_threads < 1:
-        raise ConfigError("--num-threads should be at least 1.")
 
-    try:
-        init_bam_file(args.input_file, args.output_file, args.num_threads)
-        sys.exit()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+if __name__ == '__main__':
+    main()

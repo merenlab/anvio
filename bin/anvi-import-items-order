@@ -18,15 +18,28 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'misc-data-items-order-txt', 'dendrogram', 'phylogeny',]
+__requires__ = ['pan-db', 'profile-db', 'misc-data-items-order-txt', 'dendrogram', 'phylogeny']
 __provides__ = ['misc-data-items-order',]
 __description__ = "Import a new items order into an anvi'o database"
 
-run = terminal.Run()
-progress = terminal.Progress()
+
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     input_file_path = A('input_order')
     db_path = A('db_path')
@@ -81,7 +94,7 @@ def main(args):
                                     dont_overwrite=True, make_default=make_default, check_names_consistency=check_names_consistency)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -105,13 +118,8 @@ if __name__ == '__main__':
                                 it will not work because the default items order in the state file overwrites the one that comes\
                                 from the database. So not that big of a responsibility.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

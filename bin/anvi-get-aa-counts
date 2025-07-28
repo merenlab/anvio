@@ -22,16 +22,21 @@ __description__ = ("Fetches the number of times each amino acid occurs from a co
                    "given bin, set of contigs, or set of genes")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    try:
+        args = get_args()
+        aa_counts = AA_counts(args)
+        aa_counts.report()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
-    aa_counts = AA_counts(args)
-    aa_counts.report()
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -57,13 +62,8 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OPTIONAL PARAMS FOR GENE CALLS')
     groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

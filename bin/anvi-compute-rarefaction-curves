@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
 from anvio.panops import RarefactionAnalysis
@@ -20,6 +21,21 @@ __tags__ = ["pangenomics"]
 __requires__ = ['pan-db']
 __provides__ = ['rarefaction-curves']
 __description__ = ("A program that computes rarefaction curves and Heaps' Law fit for a given pangenome")
+
+
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        analysis = RarefactionAnalysis(args)
+        k, alpha = analysis.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
@@ -39,19 +55,6 @@ def get_args():
 
     return parser.get_args(parser)
 
-
-def main():
-    args = get_args()
-
-    try:
-        analysis = RarefactionAnalysis(args)
-        k, alpha = analysis.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
 
 if __name__ == '__main__':
     main()

@@ -31,11 +31,24 @@ __description__ = ("Calculate the rates of non-synonymous and synonymous polymor
                    "using the output of anvi-gen-variability-profile.")
 
 
-progress = terminal.Progress()
-run = terminal.Run()
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        calculate_pN_pS_ratio(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(1)
 
 
 def load_variability(args, contigs_db):
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     progress.new('Loading SCVs')
     progress.update('...')
 
@@ -69,6 +82,8 @@ def load_contigs_db(args):
 
 
 def report(args, pNpS, pN, pS, num_SCVs, potentials):
+    run = terminal.Run()
+
     # write it to folder
     pNpS.to_csv(os.path.join(args.output_dir, "pNpS.txt"), sep="\t", index = True)
     pN.to_csv(os.path.join(args.output_dir, "pN.txt"), sep="\t", index = True)
@@ -147,8 +162,7 @@ def calculate_pN_pS_ratio(args):
     report(args, pNpS, pN, pS, SCVs_per_group, potentials)
 
 
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupV = parser.add_argument_group('VARIABILITY', 'Provide a SCV table that can be generated with anvi-gen-variability-profile.')
@@ -195,11 +209,8 @@ if __name__ == '__main__':
 
     args.columns_to_load = list(set(args.columns_to_load))
 
-    try:
-        calculate_pN_pS_ratio(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(1)
+    return args
+
+
+if __name__ == '__main__':
+    main()

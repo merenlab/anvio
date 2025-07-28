@@ -27,7 +27,29 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    if not args.gene_clusters_txt:
+        run.warning('If you publish results from this workflow, please do not forget to cite DIAMOND '
+                    '(doi:10.1038/nmeth.3176), unless you use it with --use-ncbi-blast flag, and MCL '
+                    '(http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
+
+    try:
+        pan = panops.Pangenome(args, run, progress)
+        pan.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except HDF5Error as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     # some footwork to help with the help menus:
     if panops.additional_param_sets_for_sequence_search['diamond']:
         DIAMOND = f"the following parameters: \"{panops.additional_param_sets_for_sequence_search['diamond']}\""
@@ -146,23 +168,8 @@ if __name__ == '__main__':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
-    if not args.gene_clusters_txt:
-        run.warning('If you publish results from this workflow, please do not forget to cite DIAMOND '
-                    '(doi:10.1038/nmeth.3176), unless you use it with --use-ncbi-blast flag, and MCL '
-                    '(http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
-
-    try:
-        pan = panops.Pangenome(args, run, progress)
-        pan.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except HDF5Error as e:
-        print(e)
-        sys.exit(-2)
+if __name__ == '__main__':
+    main()

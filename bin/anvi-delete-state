@@ -23,19 +23,7 @@ __description__ = "Delete an anvi'o state from a pan or profile database"
 run = terminal.Run()
 
 
-def get_args():
-    from anvio.argparse import ArgumentParser
-
-    parser = ArgumentParser(description=__description__)
-
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument('-s', '--state', metavar="STATE_NAME", default = None,
-                        help = "The state name to ... delete :(")
-    parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
-
-    return parser.get_args(parser)
-
-
+@terminal.time_program
 def main():
     args = get_args()
 
@@ -70,6 +58,19 @@ def main():
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument('-s', '--state', metavar="STATE_NAME", default = None,
+                        help = "The state name to ... delete :(")
+    parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
+
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

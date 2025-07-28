@@ -23,28 +23,38 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    constructor = Constructor(kegg_dir=args.kegg_dir, modelseed_dir=args.modelseed_dir)
-    if args.contigs_db:
-        constructor.make_network(
-            contigs_db=args.contigs_db,
-            overwrite_existing_network=args.overwrite_existing_network,
-            stats_file=args.stats_file
-        )
-    elif args.pan_db or args.genomes_storage:
-        constructor.make_network(
-            pan_db=args.pan_db,
-            genomes_storage_db=args.genomes_storage,
-            overwrite_existing_network=args.overwrite_existing_network,
-            consensus_threshold=args.consensus_threshold,
-            discard_ties=args.discard_ties,
-            stats_file=args.stats_file
-        )
-    else:
-        raise ConfigError(
-            "Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes "
-            "storage database (`--genomes-storage`) must be provided to make a (meta)genomic or "
-            "pangenomic reaction network, respectively."
-        )
+
+    try:
+        constructor = Constructor(kegg_dir=args.kegg_dir, modelseed_dir=args.modelseed_dir)
+
+        if args.contigs_db:
+            constructor.make_network(
+                contigs_db=args.contigs_db,
+                overwrite_existing_network=args.overwrite_existing_network,
+                stats_file=args.stats_file
+            )
+        elif args.pan_db or args.genomes_storage:
+            constructor.make_network(
+                pan_db=args.pan_db,
+                genomes_storage_db=args.genomes_storage,
+                overwrite_existing_network=args.overwrite_existing_network,
+                consensus_threshold=args.consensus_threshold,
+                discard_ties=args.discard_ties,
+                stats_file=args.stats_file
+            )
+        else:
+            raise ConfigError(
+                "Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes "
+                "storage database (`--genomes-storage`) must be provided to make a (meta)genomic or "
+                "pangenomic reaction network, respectively."
+            )
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=__description__)
@@ -109,11 +119,4 @@ def get_args() -> Namespace:
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+    main()

@@ -6,6 +6,7 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomesimilarity import Dereplicate
@@ -18,6 +19,23 @@ __authors__ = ['ekiefl', 'mahmoudyousef98']
 __requires__ = ['external-genomes', 'internal-genomes', 'fasta', 'genome-similarity']
 __provides__ = ['fasta']
 __description__ = ("Identify redundant (highly similar) genomes")
+
+
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        derep = Dereplicate(args)
+        derep.process()
+        derep.report()
+        derep.clean()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
 def get_args():
@@ -112,21 +130,6 @@ def get_args():
 
     return parser.get_args(parser)
 
-
-def main():
-    args = get_args()
-
-    try:
-        derep = Dereplicate(args)
-        derep.process()
-        derep.report()
-        derep.clean()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
 
 if __name__ == '__main__':
     main()

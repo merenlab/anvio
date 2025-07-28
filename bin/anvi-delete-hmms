@@ -21,18 +21,7 @@ __requires__ = ["contigs-db", "hmm-source", "hmm-hits"]
 __description__ = "Remove HMM hits from an anvi'o contigs database"
 
 
-def get_args():
-    from anvio.argparse import ArgumentParser
-    parser = ArgumentParser(description=__description__)
-
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
-    parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    return parser.get_args(parser)
-
-
+@terminal.time_program
 def main():
     args = get_args()
     run = terminal.Run()
@@ -81,6 +70,18 @@ def main():
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
+    parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

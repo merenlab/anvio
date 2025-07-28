@@ -19,10 +19,20 @@ __description__ = "Run KOfam HMMs on an anvi'o contigs database"
 
 @time_program
 def main(args):
-    p = kegg.RunKOfams(args)
-    p.process_kofam_hmms()
+    args = get_args()
 
-if __name__ == '__main__':
+    try:
+        p = kegg.RunKOfams(args)
+        p.process_kofam_hmms()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -54,13 +64,8 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('heuristic-bitscore-fraction'), **anvio.K('heuristic-bitscore-fraction'))
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

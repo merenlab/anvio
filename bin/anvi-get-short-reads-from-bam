@@ -8,9 +8,10 @@
 import sys
 
 import anvio
+import anvio.terminal as terminal
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.bamops import GetReadsFromBAM
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -24,7 +25,22 @@ __description__ = ("Get short reads back from a BAM file with options for compre
                    "forward and reverse reads, etc")
 
 
-if __name__ == '__main__':
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        r = GetReadsFromBAM(args)
+        r.store_short_reads()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -57,14 +73,8 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('gzip-output'), **anvio.K('gzip-output'))
     groupD.add_argument(*anvio.A('split-R1-and-R2'), **anvio.K('split-R1-and-R2'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        r = GetReadsFromBAM(args)
-        r.store_short_reads()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -28,6 +28,38 @@ __resources__ = [("See this program in action on the pangenomics tutorial", "htt
 __description__ = "Start an anvi'o server to display a pan-genome"
 
 
+def main():
+    args = get_args()
+    run = terminal.Run()
+
+    try:
+        utils.is_all_npm_packages_installed()
+
+        args.mode = 'pan'
+        d = interactive.Interactive(args)
+
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+    except HDF5Error as e:
+        print(e)
+        sys.exit(-4)
+
+    if args.dry_run:
+        run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
+        sys.exit()
+
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
+
+
 def get_args():
     parser = ArgumentParser(description=__description__)
 
@@ -68,38 +100,6 @@ def get_args():
     groupF.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
     return parser.get_args(parser, auto_fill_anvio_dbs=True)
-
-
-def main():
-    args = get_args()
-    run = terminal.Run()
-
-    try:
-        utils.is_all_npm_packages_installed()
-
-        args.mode = 'pan'
-        d = interactive.Interactive(args)
-
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except DictIOError as e:
-        print(e)
-        sys.exit(-3)
-    except HDF5Error as e:
-        print(e)
-        sys.exit(-4)
-
-    if args.dry_run:
-        run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
-        sys.exit()
-
-    app = BottleApplication(d)
-    app.run_application(args.ip_address, args.port_number)
 
 
 if __name__ == '__main__':

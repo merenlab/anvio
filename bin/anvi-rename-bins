@@ -27,12 +27,22 @@ __requires__ = ["collection", "bin", "profile-db", "contigs-db"]
 __description__ = "Rename all bins in a given collection (so they have pretty names)"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     profile_db_path = A('profile_db')
     contigs_db_path = A('contigs_db')
@@ -255,7 +265,7 @@ def main(args):
                     nl_after=1, mc="green")
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -312,11 +322,6 @@ if __name__ == '__main__':
 
     args = parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

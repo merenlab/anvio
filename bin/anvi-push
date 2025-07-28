@@ -21,7 +21,19 @@ __authors__ = ['ozcan']
 __description__ = "Push stuff to an anvi'server"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        server = AnviServerAPI(args)
+        server.login()
+        server.push()
+    except AnviServerError as e:
+        print(e)
+        sys.exit(1)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('SERVER DETAILS', "Details of how to access to an anvi'server instance.")
@@ -51,11 +63,8 @@ if __name__ == '__main__':
 
     args.password = getpass.getpass('Enter your password for the server: ')
 
+    return args
 
-    try:
-        server = AnviServerAPI(args)
-        server.login()
-        server.push()
-    except AnviServerError as e:
-        print(e)
-        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

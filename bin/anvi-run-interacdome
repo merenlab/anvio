@@ -19,12 +19,20 @@ __description__ = "Run InteracDome on a contigs database"
 __resources__ = [("Estimating per-residue binding frequencies with InteracDome", "http://merenlab.org/2020/07/22/interacdome/")]
 
 @time_program
-def main(args):
-    p = interacdome.InteracDomeSuper(args)
-    p.process()
+def main():
+    args = get_args()
+    try:
+        p = interacdome.InteracDomeSuper(args)
+        p.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -39,13 +47,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'default': 'INTERACDOME'}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

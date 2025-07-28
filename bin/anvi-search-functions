@@ -28,9 +28,6 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
                    "you might need to know for each hit and serach term")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
 class SearchResultReporter(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -44,6 +41,8 @@ class SearchResultReporter(object):
         self.verbose = A('verbose')
         self.args = args
         self.search_mode = None
+
+        self.run = terminal.Run()
 
         self.contigs_db = A('contigs_db')
         self.genomes_storage = A('genomes_storage')
@@ -78,12 +77,12 @@ class SearchResultReporter(object):
 
         if self.contigs_db:
             self.search_mode = 'contigs'
-            run.info("Searching in Contigs Database", self.contigs_db)
+            self.run.info("Searching in Contigs Database", self.contigs_db)
             return ContigsSuperclass(self.args)
 
         elif self.genomes_storage and self.pan_db:
             self.search_mode = 'gene_clusters'
-            run.info("Searching in Genomes Storage", self.genomes_storage)
+            self.run.info("Searching in Genomes Storage", self.genomes_storage)
             pan_database = PanSuperclass(self.args)
             pan_database.init_gene_clusters()
             return pan_database
@@ -113,7 +112,7 @@ class SearchResultReporter(object):
                     results_dict[item_name][search_term + '_hits'] = search_term
 
         utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
-        run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
+        self.run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
 
 
     def write_full_report(self):
@@ -155,10 +154,23 @@ class SearchResultReporter(object):
             report.write('\t'.join(content) + '\n')
         report.close()
 
-        run.info('Full report', self.full_report_path)
+        self.run.info('Full report', self.full_report_path)
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        SearchResultReporter(args).process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -187,14 +199,8 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('include-sequences'), **anvio.K('include-sequences'))
     groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
+    return parser.get_args(parser)
 
-    args = parser.get_args(parser)
 
-    try:
-        SearchResultReporter(args).process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+if __name__ == '__main__':
+    main()

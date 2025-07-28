@@ -6,6 +6,7 @@ import sys
 
 import anvio
 import anvio.kegg as kegg
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,6 +22,23 @@ __tags__ = ["metabolism"]
 __requires__ = ['kegg-metabolism', 'user-metabolism', 'groups-txt', 'external-genomes', 'internal-genomes', 'functions']
 __provides__ = ['functional-enrichment-txt']
 __description__ = ("A program that computes metabolic enrichment across groups of genomes and metagenomes")
+
+
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        filesnpaths.is_output_file_writable(args.output_file)
+
+        e = kegg.KeggModuleEnrichment(args)
+        e.run_enrichment_stats()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
@@ -53,22 +71,6 @@ def get_args():
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)
-
-
-def main():
-    args = get_args()
-
-    try:
-        filesnpaths.is_output_file_writable(args.output_file)
-
-        e = kegg.KeggModuleEnrichment(args)
-        e.run_enrichment_stats()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
 
 
 if __name__ == '__main__':

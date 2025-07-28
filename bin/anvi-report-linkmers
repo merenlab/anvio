@@ -23,7 +23,22 @@ __provides__ = ['linkmers-txt',]
 __description__ = "Reports sequences stored in one or more BAM files that cover one of more specific nucleotide positions in a reference"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        r = LinkMers(args)
+        r.process()
+        r.report(args.output_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -39,13 +54,6 @@ if __name__ == '__main__':
 
     args = parser.get_args(parser)
 
-    try:
-        r = LinkMers(args)
-        r.process()
-        r.report(args.output_file)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

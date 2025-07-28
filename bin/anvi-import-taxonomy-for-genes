@@ -22,14 +22,21 @@ __provides__ = ['gene-taxonomy',]
 __description__ = "Import gene-level taxonomy into an anvi'o contigs database"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
-    # make sure we have the parser
-    if not args.parser:
-        raise ConfigError("You really need to specify a parser.")
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
 
     if not args.input_files:
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
@@ -53,7 +60,7 @@ def main(args):
     tables_for_taxonomy.create(genes_taxonomy_dict, taxon_names_dict, args.parser)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     taxonomy_gene_parsers = parsers.get_parser_names('taxonomy_genes')
@@ -75,13 +82,8 @@ if __name__ == '__main__':
                                 process that you generate before running anvio. Please see the documentation for details.')
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

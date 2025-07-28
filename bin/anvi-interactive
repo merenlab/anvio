@@ -32,11 +32,37 @@ __provides__ = ['collection', 'bin', 'interactive', 'svg', 'contig-inspection']
 __description__ = "Start an anvi'o server for the interactive interface"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    args = get_args()
+    run = terminal.Run()
 
-if __name__ == '__main__':
-    # setup the command line user interface
+    try:
+        utils.is_all_npm_packages_installed()
+        d = interactive.Interactive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except GenesDBError as e:
+        print(e)
+        sys.exit(-3)
+
+    if args.dry_run:
+        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
+        sys.exit()
+
+    try:
+        app = BottleApplication(d)
+        app.run_application(args.ip_address, args.port_number)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-4)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with and without\
@@ -115,29 +141,8 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = parser.get_args(parser, auto_fill_anvio_dbs=True)
+    return parser.get_args(parser, auto_fill_anvio_dbs=True)
 
-    try:
-        utils.is_all_npm_packages_installed()
-        d = interactive.Interactive(args)
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except GenesDBError as e:
-        print(e)
-        sys.exit(-3)
 
-    if args.dry_run:
-        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
-        sys.exit()
-
-    try:
-        app = BottleApplication(d)
-        app.run_application(args.ip_address, args.port_number)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-4)
+if __name__ == '__main__':
+    main()

@@ -26,10 +26,21 @@ __resources__ = [("An application of the oligotyping workflow in metagenomics", 
 __description__ = "Takes an anvi'o linkmers report, generates an oligotyping output"
 
 
-run = terminal.Run()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+
     filesnpaths.is_file_tab_delimited(args.input_file)
     filesnpaths.is_output_dir_writable(args.output_dir)
 
@@ -83,7 +94,7 @@ def main(args):
         run.info('Output', output_file_path)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -92,14 +103,8 @@ if __name__ == '__main__':
                         help = 'Output file of `anvi-report-linkmers`.')
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-  
+
+if __name__ == '__main__':
+    main()

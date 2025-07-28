@@ -32,8 +32,6 @@ __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 
 
-
-
 def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, cluster_type):
 
     if cluster_type == 'contig':
@@ -127,6 +125,20 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
                                            splits_mode=False)
 
     return input_files
+
+
+@terminal.time_program
+def main():
+    args, unknown, subparsers, modules = get_args()
+
+    try:
+        cluster_contigs(args, unknown, subparsers, modules)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 def get_args():
@@ -278,22 +290,6 @@ def cluster_contigs(args, unknown, subparsers, modules):
 
     run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
-
-
-
-
-@terminal.time_program
-def main():
-    args, unknown, subparsers, modules = get_args()
-
-    try:
-        cluster_contigs(args, unknown, subparsers, modules)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
 
 
 if __name__ == '__main__':

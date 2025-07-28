@@ -27,14 +27,21 @@ __description__ = ("Import layers-level taxonomy into an anvi'o additional layer
                    "anvi'o single-profile database")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
-    # make sure we have the parser
-    if not args.parser:
-        raise ConfigError("You really need to specify a parser.")
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
 
     if not args.input_files:
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
@@ -92,8 +99,8 @@ def main(args):
                         "from this import due to the min abundance criterion of %.1f%% for inclusion." % \
                                 (len(taxa_excluded), taxa_excluded_count * 100 / total_count, args.min_abundance))
 
-if __name__ == '__main__':
 
+def get_args():
     parser_names = parsers.get_parser_names('taxonomy_layers')
 
     parser = ArgumentParser(description=__description__)
@@ -110,13 +117,8 @@ if __name__ == '__main__':
                               percentage cutoff of 0.1%% to eliminate any taxon that occurs less than that in a given input\
                               file.')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

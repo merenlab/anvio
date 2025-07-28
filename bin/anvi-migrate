@@ -24,10 +24,6 @@ __requires__ = ["contigs-db", "profile-db", "pan-db", "genes-db", "genomes-stora
 __provides__ = []
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 class Migrater(object):
     def __init__(self, args):
         self.args = args
@@ -36,17 +32,20 @@ class Migrater(object):
         self.artifact_version = None
         self.target_version = None
 
+        self.run = terminal.Run()
+        self.progress = terminal.Progress()
+
         filesnpaths.is_file_exists(self.artifact_path)
 
-        if not args.migrate_safely and not args.migrate_quickly:
+        if not self.args.migrate_safely and not self.args.migrate_quickly:
             raise ConfigError("You must choose either `--migrate-safely` or `--migrate-quickly`. Anvi'o would "
                               "have chosen one for you, but our lawyers suggested that it may put our life savings in "
                               "jeopardy.")
 
-        if args.migrate_safely and args.migrate_quickly:
+        if self.args.migrate_safely and self.args.migrate_quickly:
             raise ConfigError("Please don't ask anvi'o to migrate your files both safely and quickly :/")
 
-        self.safe_mode = args.migrate_safely
+        self.safe_mode = self.args.migrate_safely
 
         try:
             self.sqlite_version = utils.get_command_output_from_shell("sqlite3 --version")[0].decode("utf-8").split(' ')[0].split('.')
@@ -54,7 +53,7 @@ class Migrater(object):
             self.sqlite_version = None
 
         if not (int(self.sqlite_version[0]) >= 3 and int(self.sqlite_version[1]) >= 30):
-            if not args.just_do_it:
+            if not self.args.just_do_it:
                 raise ConfigError("Anvi'o migration tool requires the installed SQLite version to be at least "
                                   "v3.30.0. Yours seem to be %s (if this doesn't make any sense, you can take "
                                   "a look at the output of the command 'sqlite3 --version' on your terminal). "
@@ -63,36 +62,36 @@ class Migrater(object):
                                   "flag since it will be likely for you to lose your file if something goes "
                                   "wrong downstream." % '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/')
             else:
-                run.warning("Anvi'o is skipping the version number check for SQLite. Brace yourself for impact?")
+                self.run.warning("Anvi'o is skipping the version number check for SQLite. Brace yourself for impact?")
 
 
     def print_info(self):
-        run.info('Input file path', self.artifact_path)
-        run.info('Input file type', self.artifact_type)
-        run.info('Current Version', self.artifact_version)
-        run.info('Target Version', self.target_version)
+        self.run.info('Input file path', self.artifact_path)
+        self.run.info('Input file type', self.artifact_type)
+        self.run.info('Current Version', self.artifact_version)
+        self.run.info('Target Version', self.target_version)
 
-        if args.migrate_safely:
-           run.info('Migration mode', "Safe", mc="green")
+        if self.args.migrate_safely:
+           self.run.info('Migration mode', "Safe", mc="green")
         else:
-           run.info('Migration mode', "Adventurous", mc="red")
+           self.run.info('Migration mode', "Adventurous", mc="red")
 
-        run.info('SQLite Version', '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/', nl_after=1, nl_before=1)
+        self.run.info('SQLite Version', '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/', nl_after=1, nl_before=1)
 
 
     def is_good_to_go(self):
         """Basic checks to make sure file types and so on looks correct"""
         # let's start with very basics
         if os.path.isdir(self.artifact_path):
-            run.info('Input file path', self.artifact_path, mc='red')
-            run.warning("This is a directory, and yet the training of the members of the migration headquarters "
+            self.run.info('Input file path', self.artifact_path, mc='red')
+            self.run.warning("This is a directory, and yet the training of the members of the migration headquarters "
                         "of anvi'o only covers files. MOVING ON.", header='NOPE: LA DIRECTORY', lc='yellow')
 
         # check file extensions to make sure we're clear with this.
-        if not args.just_do_it and self.artifact_path.split('.')[-1] not in ['db', 'h5', 'json']:
-            run.info('Input file path', self.artifact_path)
-            run.info('Input file type', self.artifact_type)
-            run.warning(f"This program only works with files that end with `.db` or `.json` extensions. "
+        if not self.args.just_do_it and self.artifact_path.split('.')[-1] not in ['db', 'h5', 'json']:
+            self.run.info('Input file path', self.artifact_path)
+            self.run.info('Input file type', self.artifact_type)
+            self.run.warning(f"This program only works with files that end with `.db` or `.json` extensions. "
                         f"But if you are sure that your input file at `{self.artifact_path}` is indeed an anvi'o "
                         f"database or config file you can use the flag `--just-do-it` at your own risk.",
                         header="NOPE: LA FILE EXTENSION", lc='yellow')
@@ -113,10 +112,10 @@ class Migrater(object):
             with open(self.artifact_path) as json_file:
                 json_content = json.load(json_file)
                 if 'workflow_name' not in json_content:
-                    run.info('Input file path', self.artifact_path)
-                    run.info('Input file type', self.artifact_type, mc='red')
+                    self.run.info('Input file path', self.artifact_path)
+                    self.run.info('Input file type', self.artifact_type, mc='red')
 
-                    run.info_single("Your input file is a proper JSON file, but it doesn't look like an anvi'o workflow "
+                    self.run.info_single("Your input file is a proper JSON file, but it doesn't look like an anvi'o workflow "
                                     "since nowhere in it there is a variable called `workflow_name`. So, there is nothing "
                                     "anvi'o can do with this.", nl_before=1)
 
@@ -129,13 +128,13 @@ class Migrater(object):
         if not self.is_good_to_go():
             return
 
-        if not args.just_do_it and self.artifact_path.split('.')[-1] not in ['db', 'h5', 'json']:
+        if not self.args.just_do_it and self.artifact_path.split('.')[-1] not in ['db', 'h5', 'json']:
             raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
                               "But if you sure that, this is in fact an anvi'o database or config file "
                               "you can use --just-do-it flag at your own risk.")
 
         file_is_config = False
-        if args.just_do_it:
+        if self.args.just_do_it:
             # check if this a config file by checking if it is a JSON formatted file
             try:
                 filesnpaths.is_file_json_formatted(self.artifact_path)
@@ -182,8 +181,8 @@ class Migrater(object):
         else:
             raise ConfigError(f"Anvi'o does not have any version information about the type '{self.artifact_type}'.")
 
-        if args.target_version:
-            target = int(args.target_version)
+        if self.args.target_version:
+            target = int(self.args.target_version)
 
             if target <= self.artifact_version:
                 raise ConfigError("Target version ('%s') can not be lower than the artifact version ('%s')." % (target, self.artifact_version))
@@ -206,10 +205,10 @@ class Migrater(object):
                                   "should have never made it here.")
 
         if self.target_version == self.artifact_version:
-            run.info('Input file path', self.artifact_path)
-            run.info('Input file type', self.artifact_type)
+            self.run.info('Input file path', self.artifact_path)
+            self.run.info('Input file type', self.artifact_type)
 
-            run.info_single(f"Your {self.artifact_type} looks good and needs no updatin' ☘️", nl_before=1, mc="green")
+            self.run.info_single(f"Your {self.artifact_type} looks good and needs no updatin' ☘️", nl_before=1, mc="green")
 
             return False
 
@@ -217,7 +216,7 @@ class Migrater(object):
 
 
     def process(self):
-        run.warning(None, header="NEW MIGRATION TASK", lc='cyan')
+        self.run.warning(None, header="NEW MIGRATION TASK", lc='cyan')
         if not self.is_good_to_go():
             return
 
@@ -232,12 +231,12 @@ class Migrater(object):
 
         # if we are in safe mode, we will first copy the artifact file
         if self.safe_mode:
-            progress.new("Migration preparation")
-            progress.update("Copying the original file for safety ...")
+            self.progress.new("Migration preparation")
+            self.progress.update("Copying the original file for safety ...")
             artifact_file_name = os.path.basename(self.artifact_path)
             temp_file_path = filesnpaths.get_temp_file_path() + artifact_file_name
             shutil.copy(self.artifact_path, temp_file_path)
-            progress.end()
+            self.progress.end()
         else:
             temp_file_path = None
 
@@ -258,14 +257,14 @@ class Migrater(object):
                     shutil.copy(temp_file_path, self.artifact_path)
                     os.remove(temp_file_path)
 
-                    progress.reset()
+                    self.progress.reset()
                     raise ConfigError("Something went wrong during the migration of your file :( But anvi'o was able to restore your "
                                       "original artifact, and stored the unfinished upgrade in the same directory with the '.broken' "
                                       "in case you may need it for debugging purposes. Please feel free to get in touch with the "
                                       "developers, who may ask you to make available the original file to reproduce the problem. This "
                                       "was the original error message that caused this: '%s'." % e)
                 else:
-                    progress.reset()
+                    self.progress.reset()
 
                     shutil.move(self.artifact_path, self.artifact_path + '.broken')
 
@@ -284,32 +283,16 @@ class Migrater(object):
                 self.artifact_path = self.artifact_path[:-3] + '.db'
 
         if self.safe_mode:
-            progress.new("Post migration")
-            progress.update("Removing the backup file ...")
+            self.progress.new("Post migration")
+            self.progress.update("Removing the backup file ...")
             os.remove(temp_file_path)
-            progress.end()
+            self.progress.end()
         else:
             temp_file_path = None
 
 
-if __name__ == '__main__':
-    parser = ArgumentParser(description=__description__)
-
-    groupA = parser.add_argument_group('INPUTS', "You will literally give us anything.")
-    groupA.add_argument('input', metavar = 'FILE(S)', nargs='+', help = "One or more files to migrate. If you unleash the program on "
-                        "many files by running something like `anvi-migrate *.db *.json`, anvi'o will try to migrate "
-                        "all of the files that match to your filters.")
-
-    groupB = parser.add_argument_group('SAFETY', "It is up to you. Safe things take much longer and boring. Unsafe things "
-                                                 "are fast, fun, and .. well, don't come to us if your computer loses power "
-                                                 "or something.")
-    groupB.add_argument(*anvio.A('migrate-safely'), **anvio.K('migrate-safely'))
-    groupB.add_argument(*anvio.A('migrate-quickly'), **anvio.K('migrate-quickly'))
-
-    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "This is how anvi'o spoils you.")
-    groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupC.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
-    args, unknown = parser.parse_known_args()
+def main():
+    args, unknown = get_args()
 
     try:
         if len(args.input) > 1 and args.target_version:
@@ -328,3 +311,28 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUTS', "You will literally give us anything.")
+    groupA.add_argument('input', metavar = 'FILE(S)', nargs='+', help = "One or more files to migrate. If you unleash the program on "
+                        "many files by running something like `anvi-migrate *.db *.json`, anvi'o will try to migrate "
+                        "all of the files that match to your filters.")
+
+    groupB = parser.add_argument_group('SAFETY', "It is up to you. Safe things take much longer and boring. Unsafe things "
+                                                 "are fast, fun, and .. well, don't come to us if your computer loses power "
+                                                 "or something.")
+    groupB.add_argument(*anvio.A('migrate-safely'), **anvio.K('migrate-safely'))
+    groupB.add_argument(*anvio.A('migrate-quickly'), **anvio.K('migrate-quickly'))
+
+    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "This is how anvi'o spoils you.")
+    groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupC.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
+
+    return parser.parse_known_args()
+
+
+if __name__ == '__main__':
+    main()

@@ -26,6 +26,32 @@ __resources__ = [("The overview page from the release", "http://merenlab.org/sof
 __description__ = "Interactively visualize sequence variants on protein structures"
 
 
+def main():
+    args = get_args()
+    run = terminal.Run()
+
+    try:
+        utils.is_all_npm_packages_installed()
+
+        args.mode = 'structure'
+
+        d = interactive.StructureInteractive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+
+        app = BottleApplication(d)
+        app.run_application(args.ip_address, args.port_number)
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+
+
 def get_args():
     parser = ArgumentParser(description=__description__)
 
@@ -82,32 +108,6 @@ def get_args():
     groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
     return parser.get_args(parser)
-
-
-def main():
-    args = get_args()
-    run = terminal.Run()
-
-    try:
-        utils.is_all_npm_packages_installed()
-
-        args.mode = 'structure'
-
-        d = interactive.StructureInteractive(args)
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-
-        app = BottleApplication(d)
-        app.run_application(args.ip_address, args.port_number)
-
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except DictIOError as e:
-        print(e)
-        sys.exit(-3)
 
 
 if __name__ == '__main__':

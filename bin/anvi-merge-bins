@@ -27,7 +27,20 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+
+
+def run_program():
+    args = get_args():
+
     utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
     c = ccollections.Collections(r = run, p = progress)
@@ -65,13 +78,11 @@ def main(args):
 
     c.merge_bins(args.collection_name, args.new_bin_name, bin_names_list)
 
-
-
     if not len(bin_names_list):
         raise ConfigError("Your bin names list variable looks empty. Something is wrong..")
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("DB AND COLLECTION", "Simple enough. This guy needs a pan or profile database\
@@ -91,13 +102,8 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupC.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(2)
+
+if __name__ == '__main__':
+    main()

@@ -31,42 +31,48 @@ def main() -> None:
 
     input_table = pd.read_csv(args.protein_profile_table, sep='\t', header=0)
     column_names = ['source', 'accession', 'sample', 'abundance']
-    if sorted(input_table.columns) != sorted(column_names):
-        raise ConfigError(
-            "The protein profile table did not have the required header with the following column "
-            f"names: {', '.join(column_names)}."
+
+    try:
+        if sorted(input_table.columns) != sorted(column_names):
+            raise ConfigError(
+                "The protein profile table did not have the required header with the following column "
+                f"names: {', '.join(column_names)}."
+            )
+        input_table = input_table.rename(
+            {
+                'source': 'reference_source',
+                'accession': 'reference_id',
+                'sample': 'sample_name',
+                'abundance': 'abundance_value'
+            },
+            axis=1
         )
-    input_table = input_table.rename(
-        {
-            'source': 'reference_source',
-            'accession': 'reference_id',
-            'sample': 'sample_name',
-            'abundance': 'abundance_value'
-        },
-        axis=1
-    )
 
-    # Assign unique protein IDs.
-    protein_id = 0
-    protein_id_table = []
-    for source, accession in set(zip(input_table['reference_source'], input_table['reference_id'])):
-        protein_id_table.append([protein_id, source, accession])
-        protein_id += 1
-    input_table = input_table.merge(
-        pd.DataFrame(protein_id_table, columns=['protein_id', 'reference_source', 'reference_id']),
-        on=['reference_source', 'reference_id'],
-        how='left'
-    )
-    input_table = input_table[tables.protein_abundances_table_structure]
+        # Assign unique protein IDs.
+        protein_id = 0
+        protein_id_table = []
+        for source, accession in set(zip(input_table['reference_source'], input_table['reference_id'])):
+            protein_id_table.append([protein_id, source, accession])
+            protein_id += 1
+        input_table = input_table.merge(
+            pd.DataFrame(protein_id_table, columns=['protein_id', 'reference_source', 'reference_id']),
+            on=['reference_source', 'reference_id'],
+            how='left'
+        )
+        input_table = input_table[tables.protein_abundances_table_structure]
 
-    pdb = ProfileDatabase(args.profile_db)
-    pdb.db._exec(f'''DELETE from {tables.protein_abundances_table_name}''')
-    pdb.db._exec_many(
-        f'''INSERT INTO {tables.protein_abundances_table_name} VALUES
-        ({','.join('?' * len(tables.protein_abundances_table_structure))})''',
-        input_table.values
-    )
-    pdb.disconnect()
+        pdb = ProfileDatabase(args.profile_db)
+        pdb.db._exec(f'''DELETE from {tables.protein_abundances_table_name}''')
+        pdb.db._exec_many(
+            f'''INSERT INTO {tables.protein_abundances_table_name} VALUES
+            ({','.join('?' * len(tables.protein_abundances_table_structure))})''',
+            input_table.values
+        )
+        pdb.disconnect()
+    except ConfigError as e:
+        print(e)
+        exit(-1)
+
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
@@ -90,9 +96,6 @@ def get_args() -> Namespace:
     args = parser.get_args(parser)
     return args
 
+
 if __name__ == '__main__':
-    try:
-        main()
-    except ConfigError as e:
-        print(e)
-        exit(-1)
+    main()

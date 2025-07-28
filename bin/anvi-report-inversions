@@ -20,11 +20,21 @@ __description__ = "Reports inversions"
 run = Run()
 
 @time_program
-def main(args):
-    I = inversions.Inversions(args)
-    I.process()
+def main():
+    args = get_args()
 
-if __name__ == '__main__':
+    try:
+        I = inversions.Inversions(args)
+        I.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -139,7 +149,7 @@ if __name__ == '__main__':
                     "report whatever it can.", metavar="INT")
     groupG.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls "
                     "from."}))
-    
+
     groupM = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 06: FINDING MOTIFS IN INVERTED REPEATS',
                     "Site-specific inversions are carried out by site-specific recombinases which recognize "
                     "imperfect palindromic sequences on each end of an inversion. They appear as a single pair "
@@ -164,14 +174,8 @@ if __name__ == '__main__':
     groupH = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupH.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+if __name__ == '__main__':
+    main()

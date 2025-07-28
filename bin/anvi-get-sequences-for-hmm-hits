@@ -63,12 +63,24 @@ __resources__ = [("A tutorial on anvi'o phylogenomics workflow", "http://merenla
                  ("A detailed application of phylogenomics to place a new genome on a tree", "http://merenlab.org/data/parcubacterium-in-hbcfdna/")]
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-P = terminal.pluralize
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    progress = terminal.Progress()
+    run = terminal.Run()
+    P = terminal.pluralize
+
     if args.external_genomes and (args.contigs_db or args.profile_db):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or "
                           "profile db prameters.")
@@ -88,7 +100,7 @@ def main(args):
 
         run.info_single("%s" % defline_format, level=0, nl_after=1, cut_after=0)
         sys.exit()
- 
+
     if args.list_hmm_sources or args.list_available_gene_names:
         if args.contigs_db:
             if args.list_hmm_sources:
@@ -304,7 +316,7 @@ def main(args):
     run.info('Output', args.output_file)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
@@ -368,13 +380,8 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
     groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

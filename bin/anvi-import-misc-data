@@ -26,26 +26,36 @@ __description__ = ("Populate additional data or order tables in pan or profile d
 
 
 @terminal.time_program
-def main(args):
+def main():
     # - you're ugly.
     # - no u :(
 
+    args = get_args()
+
     d = args.__dict__
-    if not d['contigs_db'] and not d['pan_or_profile_db']:
-        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
-                          "database (--pan-or-profile-db)")
 
-    if d['contigs_db'] and d['pan_or_profile_db']:
-        if d['contigs_mode']:
-            pass
-        else:
-            raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan db (--pan-or-profile-db). "
-                              "Please provide only one.")
+    try:
+        if not d['contigs_db'] and not d['pan_or_profile_db']:
+            raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                              "database (--pan-or-profile-db)")
 
-    MiscDataTableFactory(args).populate_from_file(args.data_file)
+        if d['contigs_db'] and d['pan_or_profile_db']:
+            if d['contigs_mode']:
+                pass
+            else:
+                raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan db (--pan-or-profile-db). "
+                                  "Please provide only one.")
+
+        MiscDataTableFactory(args).populate_from_file(args.data_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
@@ -77,13 +87,9 @@ if __name__ == '__main__':
                         "is only relevant if you are adding `items` data.")
     group4.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
+

@@ -27,8 +27,103 @@ __resources__ = [("In action in the Anvi'o pangenomics tutorial", "http://merenl
 __description__ = "Do cool stuff with gene clusters in anvi'o pan genomes"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
+    sanity_check(args)
+
+    gene_cluster_ids = set([])
+
+    if args.collection_name or args.list_collections or args.list_bins:
+        progress.new('Initializing')
+        progress.update('...')
+        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        progress.end()
+
+        if not args.bin_id:
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you "
+                              "want? Use the flag `--list-bins`.")
+
+        pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
+        collection_dict = pan.collections.get_collection_dict(args.collection_name)
+        gene_cluster_ids = set(collection_dict[args.bin_id])
+
+        run.info('Mode', 'Working with gene clusters in collection %s and bin %s.' % (args.collection_name, args.bin_id))
+    elif (args.gene_cluster_id or args.gene_cluster_ids_file):
+        if args.gene_cluster_id:
+            gene_cluster_ids = set([args.gene_cluster_id])
+            run.info('Mode', 'Working with a single gene cluster.')
+        else:
+            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
+            if len(columns) != 1:
+                raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
+
+            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'r').readlines()])
+            run.info('Mode', 'Reporting alignments for a list of gene clusters from an input file.')
+    else:
+        run.info('Mode', 'Working with all gene clusters.')
+
+    pan = dbops.PanSuperclass(args, r=terminal.Run(verbose=False))
+    pan.init_gene_clusters(gene_cluster_ids)
+    pan.run = run
+
+    # this will simply return pan.gene_clusters if there are no filters requested
+    filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
+
+    num_gene_clusters = len(filtered_gene_clusters_dict)
+    num_genes = sum([len(gc.keys()) for gc in filtered_gene_clusters_dict.values()])
+    run.warning("Your filters resulted in %d gene clusters that contain a total of %d genes. "
+                "for downstream analyses. Just so you know." % (num_gene_clusters, num_genes), header="INFO", lc="green")
+
+    if args.dry_run:
+        run.info_single("Dry run, eh? Well. Your dry run is done!")
+        sys.exit(0)
+
+    if args.output_file:
+        if args.concatenate_gene_clusters:
+            pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                                   output_file_path=args.output_file,
+                                                                   report_DNA_sequences=args.report_DNA_sequences,
+                                                                   align_with=args.align_with,
+                                                                   separator=args.separator,
+                                                                   partition_file_path=args.partition_file)
+        else:
+            pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                         output_file_path=args.output_file,
+                                                         report_DNA_sequences=args.report_DNA_sequences)
+    elif args.split_output_per_gene_cluster:
+        if args.concatenate_gene_clusters:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                                       output_file_path=output_file_path,
+                                                                       report_DNA_sequences=args.report_DNA_sequences,
+                                                                       align_with=args.align_with,
+                                                                       separator=args.separator,
+                                                                       partition_file_path=args.partition_file)
+        else:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                             output_file_path=output_file_path,
+                                                             report_DNA_sequences=args.report_DNA_sequences)
 
 
 def sanity_check(args):
@@ -89,86 +184,7 @@ def sanity_check(args):
     return args
 
 
-def main(args):
-    gene_cluster_ids = set([])
-
-    if args.collection_name or args.list_collections or args.list_bins:
-        progress.new('Initializing')
-        progress.update('...')
-        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-        progress.end()
-
-        if not args.bin_id:
-            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you "
-                              "want? Use the flag `--list-bins`.")
-
-        pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
-        collection_dict = pan.collections.get_collection_dict(args.collection_name)
-        gene_cluster_ids = set(collection_dict[args.bin_id])
-
-        run.info('Mode', 'Working with gene clusters in collection %s and bin %s.' % (args.collection_name, args.bin_id))
-    elif (args.gene_cluster_id or args.gene_cluster_ids_file):
-        if args.gene_cluster_id:
-            gene_cluster_ids = set([args.gene_cluster_id])
-            run.info('Mode', 'Working with a single gene cluster.')
-        else:
-            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
-            if len(columns) != 1:
-                raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
-
-            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'r').readlines()])
-            run.info('Mode', 'Reporting alignments for a list of gene clusters from an input file.')
-    else:
-        run.info('Mode', 'Working with all gene clusters.')
-
-    pan = dbops.PanSuperclass(args, r=terminal.Run(verbose=False))
-    pan.init_gene_clusters(gene_cluster_ids)
-    pan.run = run
-
-    # this will simply return pan.gene_clusters if there are no filters requested
-    filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
-
-    num_gene_clusters = len(filtered_gene_clusters_dict)
-    num_genes = sum([len(gc.keys()) for gc in filtered_gene_clusters_dict.values()])
-    run.warning("Your filters resulted in %d gene clusters that contain a total of %d genes. "
-                "for downstream analyses. Just so you know." % (num_gene_clusters, num_genes), header="INFO", lc="green")
-
-    if args.dry_run:
-        run.info_single("Dry run, eh? Well. Your dry run is done!")
-        sys.exit(0)
-
-
-    if args.output_file:
-        if args.concatenate_gene_clusters:
-            pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                                   output_file_path=args.output_file,
-                                                                   report_DNA_sequences=args.report_DNA_sequences,
-                                                                   align_with=args.align_with,
-                                                                   separator=args.separator,
-                                                                   partition_file_path=args.partition_file)
-        else:
-            pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                         output_file_path=args.output_file,
-                                                         report_DNA_sequences=args.report_DNA_sequences)
-    elif args.split_output_per_gene_cluster:
-        if args.concatenate_gene_clusters:
-            for gene_cluster_name in filtered_gene_clusters_dict:
-                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
-                pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
-                                                                       output_file_path=output_file_path,
-                                                                       report_DNA_sequences=args.report_DNA_sequences,
-                                                                       align_with=args.align_with,
-                                                                       separator=args.separator,
-                                                                       partition_file_path=args.partition_file)
-        else:
-            for gene_cluster_name in filtered_gene_clusters_dict:
-                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
-                pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
-                                                             output_file_path=output_file_path,
-                                                             report_DNA_sequences=args.report_DNA_sequences)
-
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
@@ -228,16 +244,8 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(sanity_check(args))
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except DictIOError as e:
-        print(e)
-        sys.exit(-3)
+
+if __name__ == '__main__':
+    main()

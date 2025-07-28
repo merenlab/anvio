@@ -26,18 +26,23 @@ __description__ = ("This program runs NCBI's COGs to associate genes in an anvi'
                    "sequenced genomes on the basis of the orthology concept.")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
 @time_program
-def main(args):
-    cogs = COGs(args)
-    aa_file = args.fasta_file or None
-    cogs.process(aa_sequences_file_path=aa_file)
+def main():
+    args = get_args()
+
+    try:
+        cogs = COGs(args)
+        aa_file = args.fasta_file or None
+        cogs.process(aa_sequences_file_path=aa_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     try:
         cogs = COGs(Namespace())
         available_search_methods = cogs.available_search_methods
@@ -70,13 +75,8 @@ if __name__ == '__main__':
                                         % {'serach_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

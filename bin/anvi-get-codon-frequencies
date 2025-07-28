@@ -31,11 +31,23 @@ __description__ = (
     "Get codon or amino acid frequency statistics from genomes, genes, and functions")
 
 
-run = terminal.Run()
+@terminal.time_program
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
-
-def main(args):
+def run_program():
     """Prepare arguments to get codon frequencies."""
+
+    args = get_args()
+    run = terminal.Run()
+
     if (bool(args.output_file) +
         bool(args.gene_table_output) +
         bool(args.function_table_output)) != 1:
@@ -226,7 +238,7 @@ def parse_select_functions_table(args, from_function_sources):
     return from_function_sources
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group(
@@ -415,13 +427,8 @@ if __name__ == '__main__':
              "\"remaining\" so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
              "on genes that passed the first length filter.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
