@@ -1626,8 +1626,8 @@ class SyntenyGeneCluster():
             Z = linkage(condensed_X, 'ward')
 
             # Maye the Z.tolist is not the best way to estimate the steps
-            for t in sorted(set(sum(Z.tolist(), [])), reverse=True):
-                clusters = fcluster(Z, t, criterion='distance')
+            for threshold in sorted(set(sum(Z.tolist(), [])), reverse=True):
+                clusters = fcluster(Z, threshold, criterion='distance')
                 valid = True
                 for c in set(clusters.tolist()):
                     pos = np.where(clusters == c)[0]
