@@ -46,6 +46,8 @@ M = SRADownloadWorkflow(argparse.Namespace(config=config))
 M.init()
 
 dirs_dict = M.dirs_dict
+remove_tmp = M.get_param_value_from_config(['Remove_unzipped_SRA_files'])
+
 
 rule SRA_DOWNLOAD_WORKFLOW_target_rule:
     """The rule creates all target files for the Snakefile"""
@@ -76,7 +78,8 @@ rule prefetch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
     output:
-        SRA_TMP = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")),
+        SRA_TMP = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")) if remove_tmp
+                  else os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra"),
         prefetch_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done"))
     params:
         SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),

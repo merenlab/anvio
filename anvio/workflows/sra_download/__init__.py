@@ -50,6 +50,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
                            'pigz'])
 
         self.general_params.extend(['SRA_accession_list']) # user needs provide a tsv of SRA accessions
+        self.general_params.extend(['Remove_unzipped_SRA_files']) # user needs provide a tsv of SRA accessions
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
@@ -62,6 +63,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # Set default values for accessible rules and order of rules in config.json file
         self.default_config.update({
             'SRA_accession_list': 'SRA_accession_list.txt',
+            'Remove_unzipped_SRA_files': True,
             'prefetch': {'--max-size': "40g", 'threads': 2},
             'fasterq_dump': {'threads': 6},
             'pigz': {'threads': 8}})
