@@ -2792,8 +2792,8 @@ class DirectedForce():
                 self.run.info_single("Solving complex graph.")
                 changed_edges = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
                 # return(changed_edges, removed_nodes, removed_edges)
-            except Exception as error:
-                self.run.info_single("An error occured, we will try to continue anyway.")
+            except Exception as e:
+                self.run.info_single(f"An error occured somewhere, we will try to continue anyway, but here is the error for posterity: '{e}'")
 
             return(changed_edges)
 
@@ -2844,8 +2844,8 @@ class DirectedForce():
                         # removed_nodes = removed_nodes_remp
                         # removed_edges = removed_edges_temp
 
-                except Exception as error:
-                    self.run.info_single("An error occured, we will try to continue anyway.")
+                except Exception as e:
+                    self.run.info_single(f"An error occured somewhere, we will try to continue anyway, but here is the error for posterity: '{e}'")
 
                 iteration += 1
 
