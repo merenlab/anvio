@@ -1666,7 +1666,7 @@ class SyntenyGeneCluster():
 
             fig = plt.figure(figsize=(25, 10))
             ax = plt.gca()
-            dn = dendrogram(Z, ax=ax, labels=labels, orientation='right')
+            _ = dendrogram(Z, ax=ax, labels=labels, orientation='right')
 
             new_labels = []
             y_tick_labels = ax.get_ymajorticklabels()
@@ -1693,13 +1693,11 @@ class SyntenyGeneCluster():
     def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, n, alpha, beta, gamma):
 
         genome_a, contig_a, position_a, gene_caller_id_a, gene_cluster_kmer_a = gene_cluster_k_mer_contig_position_a
-        contig_identifier_a = str(int(contig_a.split('_')[-1]))
         gene_cluster_order_a = gene_cluster_contig_order[(genome_a, contig_a)]
         gene_cluster_k_mer_left_context_a = set([gene_cluster_order_a[l] for l in range(position_a - n, position_a) if l >= 0 and l < len(gene_cluster_order_a)])
         gene_cluster_k_mer_right_context_a = set([gene_cluster_order_a[l] for l in range(position_a - 1, position_a + n + 1) if l >= 0 and l < len(gene_cluster_order_a)])
 
         genome_b, contig_b, position_b, gene_caller_id_b, gene_cluster_kmer_b = gene_cluster_k_mer_contig_position_b
-        contig_identifier_b = str(int(contig_b.split('_')[-1]))
         gene_cluster_order_b = gene_cluster_contig_order[(genome_b, contig_b)]
         gene_cluster_k_mer_left_context_b = set([gene_cluster_order_b[l] for l in range(position_b - n, position_b) if l >= 0 and l < len(gene_cluster_order_b)])
         gene_cluster_k_mer_right_context_b = set([gene_cluster_order_b[l] for l in range(position_b - 1, position_b + n + 1) if l >= 0 and l < len(gene_cluster_order_b)])
@@ -2197,8 +2195,6 @@ class PangenomeGraph():
 
                 region_x_positions_min = min(region_x_positions)
                 region_x_positions_max = max(region_x_positions)
-                region_y_positions_min = min(region_y_positions)
-                region_y_positions_max = max(region_y_positions)
 
                 length = region_x_positions_max - region_x_positions_min + 1
                 quantity = len(values_list)
@@ -2328,7 +2324,6 @@ class PangenomeGraph():
                         node = starting_points[0]
                         starting_points.remove(node)
                         node_position_x, node_position_y = nodes_position_dict[node]
-                        direction = ''
                         mode = 'break'
                     else:
                         break
@@ -2641,7 +2636,6 @@ class PangenomeGraph():
 
 
     def set_edge_positions(self, edge_positions):
-        long_edges = []
         for edge_i, edge_j in self.graph.edges():
             bended = edge_positions[(edge_i, edge_j)]
             self.graph[edge_i][edge_j]['bended'] = bended
@@ -2667,8 +2661,6 @@ class PangenomeGraph():
     def calculate_graph_distance(self, output_dir=''):
         self.run.warning(None, header="Calculate synteny distance dendrogram", lc="green")
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
-        nodes_all = len(self.graph.nodes())
-        edges_all = len(self.graph.edges())
 
         X = np.zeros([len(genome_names), len(genome_names)])
         for genome_i, genome_j in it.combinations(genome_names, 2):
@@ -2692,7 +2684,6 @@ class PangenomeGraph():
 
             elements_similar = nodes_similar + edges_similar
             elements_unsimilar = nodes_unsimilar + edges_unsimilar
-            elements_all = nodes_all + edges_all
 
             X[i][j] = elements_unsimilar / (elements_similar + elements_unsimilar)
             X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
@@ -2705,7 +2696,7 @@ class PangenomeGraph():
         if output_dir:
             fig = plt.figure(figsize=(25, 10))
             ax = plt.axes()
-            dn = dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
+            _ = dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
             plt.tight_layout()
             fig.savefig(output_dir + '/synteny_distance_dendrogram.svg')
             plt.close(fig)
@@ -3242,7 +3233,6 @@ class TopologicalLayout():
         edges = {}
         grouping = {}
         offset = {}
-        global_x_offset = 0
 
         add_start = set()
         add_stop = set()
@@ -3269,7 +3259,6 @@ class TopologicalLayout():
         layout_graph_nodes = list(L.nodes())
         layout_graph_successors = {layout_graph_node: list(L.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
-        n_removed = 0
         ghost = 0
         for x in range(global_x-1, 0, -1):
             for node in x_list[x]:
