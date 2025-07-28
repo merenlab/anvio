@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.migrations import migration_scripts
-from anvio.versions import versions_for_db_types
+from anvio.version import versions_for_db_types
 from anvio.errors import ConfigError, FilesNPathsError
 
 
