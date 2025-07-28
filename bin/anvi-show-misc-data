@@ -23,7 +23,7 @@ __description__ = "Show all misc data keys in all misc data tables"
 
 def main():
     try:
-        run_program())
+        run_program()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

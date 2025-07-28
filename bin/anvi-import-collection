@@ -239,7 +239,7 @@ def run_program():
     collections.append(args.collection_name, data, bins_info_dict)
 
 
-def get_args()
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 

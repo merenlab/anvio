@@ -25,7 +25,7 @@ __resources__ = [("Working with anvi'o additional data tables", "http://merenlab
 
 
 @terminal.time_program
-def main(args):
+def main():
     args = get_args()
 
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None

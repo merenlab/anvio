@@ -18,7 +18,7 @@ __provides__ = ["kegg-functions", "functions"]
 __description__ = "Run KOfam HMMs on an anvi'o contigs database"
 
 @time_program
-def main(args):
+def main():
     args = get_args()
 
     try:

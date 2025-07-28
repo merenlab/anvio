@@ -22,7 +22,7 @@ __description__ = "Generate a new anvi'o contigs database"
 
 
 @terminal.time_program
-def main(args):
+def main():
     args = get_args()
     run = terminal.Run()
     progress = terminal.Progress()

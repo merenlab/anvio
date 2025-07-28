@@ -39,7 +39,7 @@ def main():
 
 
 def run_program():
-    args = get_args():
+    args = get_args()
 
     utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
