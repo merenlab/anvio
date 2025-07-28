@@ -91,6 +91,9 @@ Contact = "https://anvio.org/people"
 packages = ["anvio"]
 include-package-data = true
 
+[project.scripts]
+"anvi-profile" = "anvio.commands.profile:main"
+
 [tool.setuptools.package-data]
 anvio = [
     "data/**/*",

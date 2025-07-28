@@ -33,12 +33,7 @@ __description__ = ("The flagship anvi'o program to profile a BAM file. Running t
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
-@time_program
-def main(args):
-    profiler.BAMProfiler(args)._run()
-
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(__description__)
 
     #############################################################################################################################
@@ -124,13 +119,21 @@ if __name__ == '__main__':
                         help="This is not useful to non-developers. It forces the multi-process "
                              "routine even when 1 thread is chosen.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+@time_program
+def main():
+    args = get_args()
 
     try:
-        main(args)
+        profiler.BAMProfiler(args)._run()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
