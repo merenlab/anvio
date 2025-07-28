@@ -9,13 +9,13 @@ import shutil
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
+from anvio.versions import versions_for_db_types
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
@@ -177,8 +177,8 @@ class Migrater(object):
 
 
     def get_target_version(self):
-        if self.artifact_type in t.versions_for_db_types:
-            version = int(t.versions_for_db_types[self.artifact_type])
+        if self.artifact_type in versions_for_db_types:
+            version = int(versions_for_db_types[self.artifact_type])
         else:
             raise ConfigError(f"Anvi'o does not have any version information about the type '{self.artifact_type}'.")
 
