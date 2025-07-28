@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anvio"
+description = "An interactive analysis and visualization platform for 'omics data"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [
+    {name = "The Anvi'o Development Team"}
+]
+maintainers = [
+    {name = "A. Murat Eren", email = "a.murat.eren@gmail.com"},
+    {name = "Iva Veseli", email = "iva.veseli@gmail.com"},
+    {name = "Sam Miller", email = "samuelmiller10@gmail.com"},
+    {name = "Florian Trigodet", email = "trigodet.florian@gmail.com"}
+]
+keywords = [
+    "genomics",
+    "metagenomics",
+    "metatranscriptomics",
+    "pangenomics",
+    "phylogenomics",
+    "population genetics",
+    "science",
+    "microbiology",
+    "microbial ecology",
+    "multi-omics",
+    "integrated omics",
+    "visualization"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
+requires-python = "==3.10.*"
+dynamic = ["version"]
+
+dependencies = [
+    "numpy==1.24.1",
+    "scipy",
+    "bottle",
+    "pysam",
+    "ete3",
+    "scikit-learn==1.2.2",
+    "django",
+    "requests",
+    "mistune",
+    "six",
+    "matplotlib==3.5.1",
+    "statsmodels",
+    "colored",
+    "illumina-utils",
+    "tabulate",
+    "rich-argparse",
+    "numba",
+    "paste",
+    "pyani",
+    "psutil",
+    "pandas==1.4.4",
+    "snakemake",
+    "multiprocess",
+    "plotext",
+    "networkx",
+    "pyrodigal_gv",
+    "pulp==2.7.0",
+    "biopython",
+    "reportlab",
+    "pymupdf"
+]
+
+[project.urls]
+Homepage = "https://anvio.org"
+Documentation = "https://anvio.org/help"
+Repository = "https://github.com/merenlab/anvio"
+"Bug Tracker" = "https://github.com/merenlab/anvio/issues"
+"Discord Channel" = "https://discord.gg/C6He6mSNY4"
+"Development Team" = "https://anvio.org/people"
+Contact = "https://anvio.org/people"
+
+[tool.setuptools]
+packages = ["anvio"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+anvio = [
+    "data/**/*",
+    "tests/sandbox/**/*",
+    "docs/**/*",
+    "*.txt",
+    "*.md"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "anvio.version.anvio_version"}
