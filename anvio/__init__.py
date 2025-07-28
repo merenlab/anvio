@@ -3,11 +3,7 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-anvio_version = '8-dev'
-anvio_codename = 'marie' # after Marie Tharp -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v8
-
-major_python_version_required = 3
-minor_python_version_required = 10
+from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
 
 import sys
 import platform
@@ -3752,27 +3748,18 @@ def K(param_id, params_dict={}):
 
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
-
-import anvio.tables as t
-from anvio.terminal import Run
-
-
-run = Run()
-
-
-def set_version():
-    return anvio_version, \
-           anvio_codename, \
-           t.contigs_db_version, \
-           t.pan_db_version, \
-           t.profile_db_version, \
-           t.genes_db_version, \
-           t.auxiliary_data_version, \
-           t.genomes_storage_vesion, \
-           t.structure_db_version, \
-           t.metabolic_modules_db_version, \
-           t.trnaseq_db_version
-
+(__version__,
+ __codename__,
+ __contigs__version__,
+ __profile__version__, \
+ __genes__version__, \
+ __pan__version__, \
+ __auxiliary_data_version__, \
+ __structure__version__, \
+ __genomes_storage_version__ , \
+ __trnaseq__version__, \
+ __workflow_config_version__,
+ __kegg_modules_version__) = get_versions()
 
 def get_version_tuples():
     return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
@@ -3788,30 +3775,20 @@ def get_version_tuples():
 
 
 def print_version():
+    from anvio.terminal import Run
+    run = Run()
     run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
     run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
     run.info("Genome data storage", __genomes_storage_version__)
-    run.info("Auxiliary data storage", __auxiliary_data_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)
-    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
-
-
-__version__, \
-__codename__, \
-__contigs__version__, \
-__pan__version__, \
-__profile__version__, \
-__genes__version__, \
-__auxiliary_data_version__, \
-__genomes_storage_version__ , \
-__structure__version__, \
-__kegg_modules_version__, \
-__trnaseq__version__ = set_version()
-
+    run.info("tRNA-seq database", __trnaseq__version__)
+    run.info("Genes database", __genes__version__)
+    run.info("Auxiliary data storage", __auxiliary_data_version__)
+    run.info("Workflow configurations", __workflow_config_version__, nl_after=1)
 
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()

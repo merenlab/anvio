@@ -20,7 +20,7 @@ import anvio
 from anvio.db import DB
 from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress
-from anvio.tables import versions_for_db_types
+from anvio.version import versions_for_db_types
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
