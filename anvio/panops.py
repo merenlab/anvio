@@ -18,7 +18,6 @@ import networkx as nx
 import numpy as np
 import itertools as it
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 # from scipy.stats import entropy
 from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
 from scipy.spatial.distance import squareform
