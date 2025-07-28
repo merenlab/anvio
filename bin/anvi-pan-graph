@@ -40,19 +40,15 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
     groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json', {'required': False}))
     groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-json', {'required': False}))
-    groupA.add_argument(*anvio.A('summarize-table'), **anvio.K('summarize-table', {'required': False}))
-
+    
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
                                 "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    # groupB.add_argument('--output-pangenome-graph-summary', default=False, action="store_true", help="Description.")
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
-    # groupB.add_argument('--output-synteny-distance-dendrogram', default=False, action="store_true", help="Description.")
-    groupB.add_argument('--output-hybrid-genome', default=False, action="store_true", help="Description.")
-
+    
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
     
@@ -60,12 +56,9 @@ if __name__ == '__main__':
     groupC.add_argument('--just-do-it', default=False, action="store_true", help = "Description.")
     groupC.add_argument('--project-name', default='pangenome_graph', type=str, help = "Description.")
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
-    # groupC.add_argument('--ungrouping-open', default='', type=str, help = "Description.")
-    # groupC.add_argument('--ungrouping-close', default='', type=str, help = "Description.")
     groupC.add_argument('--import-values', default='start,stop,partial,call_type,length', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
     groupC.add_argument('--min-contig-chain', default=10, type=int, help = "Description.")
-    groupC.add_argument('--max-contig-num', default=1, type=int, help = "Description.")
     groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
     groupC.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Description.")
     groupC.add_argument('--grouping-compression', default=1.0, type=float, help = "Description.")
@@ -76,7 +69,6 @@ if __name__ == '__main__':
     groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
     groupC.add_argument('--gamma', default=0.25, type=float, help = "Description.")
     groupC.add_argument('--delta', default=0.75, type=float, help = "Description.")
-    groupC.add_argument('--min-k', default=1, type=int, help = "Description.")
     groupC.add_argument('--inversion-aware', default=False, type=bool, help = "Description.")
 
     args = parser.get_args(parser)
