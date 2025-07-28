@@ -52,9 +52,9 @@ Step 1. Extract amino acid sequences from your %(contigs-db)s
 anvi-get-sequences-for-gene-calls -c %(contigs-db)s --get-aa-sequences -o genes.faa
 {{ codestop }}
 
-Step 2. Run dbCAN3 via [run_dbcan](https://dbcan.readthedocs.io/en/latest/) to annotate those amino acid sequences
+Step 2. Run dbCAN3 via [run_dbcan](https://dbcan.readthedocs.io/en/latest/) to annotate those amino acid sequences.
 
-Step 3. Create a functions-txt with CAZyme functions
+Step 3. Create a %(functions-txt)s with CAZyme functions.
 
 The program [run_dbcan](https://dbcan.readthedocs.io/en/latest/) has multiple [output files](https://dbcan.readthedocs.io/en/latest/user_guide/quick_start.html#understanding-the-output) which can be parsed into a %(functions-txt)s, for example, the [overview.txt](https://dbcan.readthedocs.io/en/latest/user_guide/quick_start.html#understanding-the-output). 
 
