@@ -130,7 +130,7 @@ def run_program():
 
     pan = dbops.PanSuperclass(args)
     pan.init_gene_clusters(gene_cluster_ids)
-    d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_ids, args.num_threads)
+    d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_ids, num_threads=args.num_threads)
 
     if d is None:
         raise ConfigError('The homogeneity index algorithm has probably alerted you that an error has occured. Please '
