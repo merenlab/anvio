@@ -18,7 +18,21 @@ __description__ = "Setup InteracDome data"
 __resources__ = [("The setup step in the InteracDome technical blogpost", "http://merenlab.org/2020/07/22/interacdome/#anvi-setup-interacdome")]
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        setup = interacdome.InteracDomeSetup(args)
+        setup.setup()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -27,13 +41,6 @@ if __name__ == '__main__':
 
     args = parser.get_args(parser)
 
-    try:
-        setup = interacdome.InteracDomeSetup(args)
-        setup.setup()
 
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+if __name__ == '__main__':
+    main()

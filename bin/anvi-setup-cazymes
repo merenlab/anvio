@@ -17,7 +17,21 @@ __provides__ = ['cazyme-data']
 __description__ = "Download and setup Pfam data from the EBI"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        setup = cazymes.CAZymeSetup(args)
+        setup.download()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -33,15 +47,8 @@ if __name__ == '__main__':
                         If you have specific tastes for a different version, you can provide it here. For example, `V10`. Here are\
                         all possible versions: https://bcb.unl.edu/dbCAN2/download/Databases/")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        setup = cazymes.CAZymeSetup(args)
-        setup.download()
 
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+if __name__ == '__main__':
+    main()
