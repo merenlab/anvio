@@ -1347,8 +1347,6 @@ class SyntenyGeneCluster():
         else:
             self.yaml_file = {}
 
-        self.genome_reverse = []
-
         if A('genome_names'):
             self.genome_names = A('genome_names').split(',')
         elif self.external_genomes:
@@ -1366,7 +1364,6 @@ class SyntenyGeneCluster():
         self.contig_identifiers = {}
 
         self.just_do_it = A('just_do_it')
-        self.max_contig_num = A('max_contig_num')
 
 
     def get_num_contigs_and_genome_length(self, file_path):
@@ -1380,114 +1377,6 @@ class SyntenyGeneCluster():
             length += len(fasta.seq)
 
         return(num_contigs, length)
-
-
-    def reorient_contigs(self, prioritize='genome_size', reference_fasta = None):
-
-        self.run.warning(None, header="Reorient contigs data", lc="green")
-
-        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
-        external_genomes.set_index("name", inplace=True)
-
-        # if not self.genome_names:
-        #     self.genome_names = [genome for genome, contigs_db_path in external_genomes.iterrows()]
-
-        input_fasta_files = []
-        for genome, contigs_db_path in external_genomes.iterrows():
-            if genome in self.genome_names:
-                fasta_file = os.path.join(self.output_dir, genome + '.fa')
-                utils.export_sequences_from_contigs_db(contigs_db_path.item(), fasta_file)
-
-                num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
-
-                if self.max_contig_num and num_contigs > self.max_contig_num:
-                    self.run.info_single(f"Removed {genome} due to contig number filter.")
-                    self.genome_names.remove(genome)
-                else:
-                    input_fasta_files += [fasta_file]
-
-        genome_properties = {}
-
-        best_length = 0
-        best_num_contigs = sys.maxsize
-
-        for fasta_file in input_fasta_files:
-            num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
-
-            genome_properties[fasta_file] = {'num_contigs': num_contigs, 'length': length}
-
-            self.run.info_single(f"{os.path.basename(fasta_file)} ({('contig', num_contigs)}; {('nt', length)})")
-
-            if prioritize == 'genome_size' and length > best_length:
-                reference_fasta = fasta_file
-                best_length = length
-            elif prioritize == 'number_of_contigs' and num_contigs < best_num_contigs:
-                reference_fasta = fasta_file
-                best_num_contigs = num_contigs
-            elif prioritize == 'number_of_contigs' and num_contigs == best_num_contigs:
-                if length > best_length:
-                    reference_fasta = fasta_file
-                    best_length = length
-            else:
-                # wtf case
-                pass
-
-        self.run.info_single(f"Method to select reference {'Minimum number of contigs' if prioritize == 'number_of_contigs' else 'Maximum length'}")
-        self.run.info_single(f"Reference FASTA is {reference_fasta}")
-
-        if genome_properties[reference_fasta]['num_contigs'] != 1:
-            if prioritize == 'genome_size':
-                raise ConfigError("Sadly, the reference genome anvi'o chose for you based on geonome size priority seems to have multiple contigs, "
-                                  "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
-                                  "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
-                                  "flag if you have a complete genome.")
-            elif prioritize == 'number_of_contigs':
-                raise ConfigError("The genome in your collection with the smallest number of contigs is still not a complete genome :( There is nothing "
-                                  "this program can do for you at this point. Sorry!")
-            else:
-                # wtf case
-                pass
-
-
-        for fasta_file in input_fasta_files:
-            blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
-            num_contigs, length = self.get_num_contigs_and_genome_length(fasta_file)
-
-            if fasta_file != reference_fasta:
-                cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
-                subprocess.run(cmd_line, text=True, capture_output=True)
-
-                qresult = SearchIO.read(blast_result_file, 'blast-xml')
-                fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
-
-                hits = 0
-                reverse = 0
-                for contig in qresult:
-
-                    original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
-
-                    original_record_sequence = original_record.seq
-                    reversed_record_sequence = original_record.seq.reverse_complement()
-
-                    reoriented_record_hit = contig[0].hit.seq.replace("-", "")
-                    reoriented_record_sequence = ""
-
-                    if reoriented_record_hit in original_record_sequence:
-                        reoriented_record_sequence = original_record_sequence
-                        hits += 1
-                    elif reoriented_record_hit in reversed_record_sequence:
-                        reoriented_record_sequence = reversed_record_sequence
-                        self.genome_reverse += [contig.id]
-                        hits += 1
-                        reverse += 1
-                    else:
-                        pass
-
-                self.run.info_single(f"Found {hits} / Reversed {reverse} out of {num_contigs} contigs for fasta {fasta_file}")
-                if hits != num_contigs:
-                    self.run.info_single("Warning one or more contigs in the file might be created from contamination.")
-
-        self.run.info_single("Done.")
 
 
     def yaml_mining(self):
@@ -1533,8 +1422,6 @@ class SyntenyGeneCluster():
             Dataframe containing gene call informations present in the anvi'o dbs.
         """
 
-        self.reorient_contigs()
-
         self.run.warning(None, header="Loading data from database", lc="green")
 
         filesnpaths.is_file_tab_delimited(self.external_genomes)
@@ -1553,9 +1440,6 @@ class SyntenyGeneCluster():
 
         external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
         external_genomes.set_index("name", inplace=True)
-
-        # if not self.genome_names:
-        #     self.genome_names = [genome for genome, contigs_db_path in external_genomes.iterrows()]
 
         # TODO trna and rrna gene cluster update also include more types and split trna and rrna in individual sets. Instead of GC_00000000 add the two at the end.
         # TODO Should the reversed once also have reversed gene call orientation?
@@ -1595,11 +1479,8 @@ class SyntenyGeneCluster():
                 joined_contigs_df.reset_index(drop=False, inplace=True)
 
                 for contig, group in joined_contigs_df.groupby(["contig"]):
-
-                    if contig in self.genome_reverse:
-                        group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, False, False], ignore_index=True, inplace=True)
-                    else:
-                        group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, True, True], ignore_index=True, inplace=True)
+                    
+                    group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, True, True], ignore_index=True, inplace=True)
 
                     group.rename_axis("position", inplace=True)
                     group.reset_index(drop=False, inplace=True)
@@ -1611,7 +1492,7 @@ class SyntenyGeneCluster():
 
         db_mining_df = pd.concat(db_mining_list)
         self.run.info_single("Done.")
-        return(db_mining_df, self.genome_names)
+        return(db_mining_df)
 
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
@@ -3404,7 +3285,6 @@ class PangenomeGraphMaster():
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
         self.pan_graph_yaml = A('pan_graph_yaml')
-        self.summarize_table = A('summarize_table')
         self.project_name = A('project_name')
 
         if self.pan_graph_yaml:
@@ -3413,19 +3293,14 @@ class PangenomeGraphMaster():
         else:
             self.yaml_file = {}
 
-        #if A('genome_reverse'):
-        #   self.genome_reverse = A('genome_reverse').split(',')
-        # else:
-        # self.genome_reverse = []
-
-        # if A('genome_names'):
-        #     self.genome_names = A('genome_names').split(',')
-        # elif self.external_genomes_txt:
-        #     self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
-        # elif self.pan_graph_yaml:
-        #     self.genome_names = list(self.yaml_file.keys())
-        # else:
-        self.genome_names = []
+        if A('genome_names'):
+            self.genome_names = A('genome_names').split(',')
+        elif self.external_genomes_txt:
+            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+        elif self.pan_graph_yaml:
+            self.genome_names = list(self.yaml_file.keys())
+        else:
+            self.genome_names = []
 
         # ANVI'O OUTPUTS
         self.output_dir = A('output_dir')
@@ -3439,7 +3314,6 @@ class PangenomeGraphMaster():
         self.start_gene = A('start_gene')
         self.start_column = A('start_column')
         self.min_contig_chain = A('min_contig_chain')
-        self.max_contig_num = A('max_contig_num')
 
         self.n = A('n')
         self.alpha = A('alpha')
@@ -3500,18 +3374,6 @@ class PangenomeGraphMaster():
             file.write(str(complexity_value))
 
         self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
-
-        if self.summarize_table:
-
-            for table in self.summarize_table:
-                df = pd.read_csv(table, index_col='key', sep='\t')
-                shared_value = np.triu(df[self.genome_names].loc[self.genome_names], 1).sum() / len(list(it.combinations(self.genome_names, 2)))
-                name = os.path.splitext(os.path.basename(table))[0]
-                with open(os.path.join(self.output_dir, 'shared_' + name + '.txt'), 'w') as file:
-                    file.write(str(shared_value))
-
-                self.run.info_single(f"Shared value of {os.path.basename(table)} is {round(shared_value, 3)}.")
-
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
         self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
         self.run.info_single(f"Exported nodes table to {os.path.join(self.output_dir, 'nodes_df.tsv')}.")
@@ -3525,8 +3387,6 @@ class PangenomeGraphMaster():
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
             groupcompress=self.groupcompress,
-            # ungroup_open=self.ungroup_open,
-            # ungroup_close=self.ungroup_close
         )
 
         x_max = max([x for x,y in node_positions.values()])
@@ -3600,8 +3460,7 @@ class PangenomeGraphMaster():
                 db_mining_df = SynGC.yaml_mining()
                 self.genome_names = list(self.yaml_file.keys())
             else:
-                db_mining_df, genome_names = SynGC.db_mining()
-                self.genome_names = genome_names
+                db_mining_df = SynGC.db_mining()
 
             self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.output_dir, self.n, self.alpha, self.beta, self.gamma, self.delta, self.inversion_aware, self.min_k, self.output_synteny_gene_cluster_dendrogram)
 
@@ -3640,14 +3499,9 @@ class PangenomeGraphMaster():
         self.export_pangenome_graph()
 
 
-    # TODO this function is currently empty...
+    # TODO needs more sanity checks!
     def sanity_check(self):
         filesnpaths.is_output_dir_writable(self.output_dir)
-
-
-    # TODO this is empty to...
-    def add_custom_layers(self):
-        pass
 
 
     def export_pangenome_graph(self):
@@ -3790,12 +3644,6 @@ class PangenomeGraphMaster():
         self.gene_cluster_grouping_threshold = self.states[self.load_state]['condtr'] if not self.gene_cluster_grouping_threshold else self.gene_cluster_grouping_threshold
         self.states[self.load_state]['condtr'] = self.gene_cluster_grouping_threshold
         self.states[self.load_state]['flexcondtr'] = True if self.gene_cluster_grouping_threshold != -1 else False
-
-        # self.ungroup_open = self.states[self.load_state]['ungroupfrom'] if not self.ungroup_open else self.ungroup_open
-        # self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
-
-        # self.ungroup_close = self.states[self.load_state]['ungroupto'] if not self.ungroup_close else self.ungroup_close
-        # self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
 
         for node in jsondata["nodes"]:
             data = {
