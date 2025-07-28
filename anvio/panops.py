@@ -20,15 +20,14 @@ import itertools as it
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 # from scipy.stats import entropy
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree, set_link_color_palette
-from scipy.spatial.distance import cdist, squareform
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
+from scipy.spatial.distance import squareform
 import random
 
 import sys
 import subprocess
 import anvio.fastalib as f
 from Bio import SeqIO, SearchIO
-from Bio.SeqRecord import SeqRecord
 from itertools import chain
 from scipy.optimize import curve_fit
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
