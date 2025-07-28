@@ -5,7 +5,6 @@ import sys
 
 import anvio
 import anvio.utils as utils
-import anvio.terminal as terminal
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,35 +20,7 @@ __requires__ = ["contigs-db", "functions"]
 __description__ = "Remove functional annotation sources from an anvi'o contigs database"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    contigs_db_path = A('contigs_db')
-    annotation_sources = A('annotation_sources')
-    list_annotation_sources = A('list_annotation_sources')
-
-    utils.is_contigs_db(contigs_db_path)
-
-    if list_annotation_sources:
-        ContigsDatabase(contigs_db_path).list_function_sources()
-        sys.exit()
-
-    if not annotation_sources:
-        raise ConfigError("You must provide this program with some functional annotation sources to drop :/")
-
-    sources_to_drop = [s.strip() for s in annotation_sources.split(',')]
-
-    functions_table = TableForGeneFunctions(contigs_db_path)
-
-    contigs_db = ContigsDatabase(contigs_db_path)
-    functions_table.drop_functions(database=contigs_db.db, sources_to_drop=sources_to_drop)
-    contigs_db.disconnect()
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -59,13 +30,40 @@ if __name__ == '__main__':
                                         "without a space. For example: 'SOURCE_1,SOURCE_2,SOURCE_3'."}))
     parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+def main():
+    args = get_args()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    annotation_sources = A('annotation_sources')
+    list_annotation_sources = A('list_annotation_sources')
 
     try:
-        main(args)
+        utils.is_contigs_db(contigs_db_path)
+
+        if list_annotation_sources:
+            ContigsDatabase(contigs_db_path).list_function_sources()
+            sys.exit()
+
+        if not annotation_sources:
+            raise ConfigError("You must provide this program with some functional annotation sources to drop :/")
+
+        sources_to_drop = [s.strip() for s in annotation_sources.split(',')]
+
+        functions_table = TableForGeneFunctions(contigs_db_path)
+
+        contigs_db = ContigsDatabase(contigs_db_path)
+        functions_table.drop_functions(database=contigs_db.db, sources_to_drop=sources_to_drop)
+        contigs_db.disconnect()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
+

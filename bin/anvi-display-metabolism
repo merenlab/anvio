@@ -22,10 +22,8 @@ __requires__ = ['contigs-db', "kegg-data", "kegg-functions", "profile-db", "coll
 __provides__ = ['interactive']
 __description__ = "Start the anvi'o interactive interactive for viewing KEGG metabolism data"
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
     groupI = parser.add_argument_group('INPUT', "The minimum you must provide this program is a contigs database. In which case "
                                                 "anvi'o will attempt to estimate and display metabolism for all contigs in it, assuming that "
@@ -55,8 +53,12 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-    args = parser.get_args(parser)
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
 
     try:
         utils.is_all_npm_packages_installed()
@@ -76,3 +78,7 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
+
+
+if __name__ == '__main__':
+    main()

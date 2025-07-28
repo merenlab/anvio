@@ -22,10 +22,6 @@ __requires__ = ['contigs-db']
 __provides__ = ['gene-calls-txt']
 __description__ = "Export gene calls from an anvi'o contigs database"
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
 
 def get_aa_seq_dict(contigs_db, gene_caller_ids):
     aa_seq_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=gene_caller_ids, include_aa_sequences=True)[1]
@@ -33,62 +29,72 @@ def get_aa_seq_dict(contigs_db, gene_caller_ids):
     return {k: v['aa_sequence'] for k, v in aa_seq_dict.items()}
 
 
-def main(args):
-    utils.is_contigs_db(args.contigs_db)
+def main():
+    args = get_args()
+    run = terminal.Run()
 
-    if args.list_gene_callers:
-        dbops.ContigsDatabase(args.contigs_db).list_gene_caller_sources()
-        sys.exit()
+    try:
+        utils.is_contigs_db(args.contigs_db)
 
-    if not args.output_file:
-        raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly "
-                           "name :/")
+        if args.list_gene_callers:
+            dbops.ContigsDatabase(args.contigs_db).list_gene_caller_sources()
+            sys.exit()
 
-    if not args.gene_caller:
-        raise ConfigError("You must provide a source for your gene calls. You can always use the flag "
-                          "`--list-gene-callers` to see what is available in your contigs-db.")
+        if not args.output_file:
+            raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly "
+                               "name :/")
 
-    filesnpaths.is_output_file_writable(args.output_file)
+        if not args.gene_caller:
+            raise ConfigError("You must provide a source for your gene calls. You can always use the flag "
+                              "`--list-gene-callers` to see what is available in your contigs-db.")
 
-    contigs_db = dbops.ContigsSuperclass(args)
+        filesnpaths.is_output_file_writable(args.output_file)
 
-    if not contigs_db.genes_in_contigs_dict:
-        raise ConfigError("Something weird happened. The contigs database does not seem to have any gene calls :/")
+        contigs_db = dbops.ContigsSuperclass(args)
 
-    # convert gene calls initialized in ContigsSuperclass to dataframe
-    gene_calls = pd.DataFrame(contigs_db.genes_in_contigs_dict).T
-    available_sources = gene_calls['source'].unique()
+        if not contigs_db.genes_in_contigs_dict:
+            raise ConfigError("Something weird happened. The contigs database does not seem to have any gene calls :/")
 
-    if not args.gene_caller:
-        raise ConfigError("Please provide one or more comma-separated gene callers (--gene-caller). Use "
-                          "--list-gene-callers to see your options")
+        # convert gene calls initialized in ContigsSuperclass to dataframe
+        gene_calls = pd.DataFrame(contigs_db.genes_in_contigs_dict).T
+        available_sources = gene_calls['source'].unique()
 
-    requested_sources = args.gene_caller.split(',')
-    for requested_source in requested_sources:
-        if requested_source not in available_sources:
-            raise ConfigError("%s is not a gene caller in the contigs database. Here is a list of available "
-                             "gene callers: %s." % (requested_source, ','.join(available_sources)))
+        if not args.gene_caller:
+            raise ConfigError("Please provide one or more comma-separated gene callers (--gene-caller). Use "
+                              "--list-gene-callers to see your options")
 
-    run.info('Gene callers that will be used', ', '.join(requested_sources))
+        requested_sources = args.gene_caller.split(',')
+        for requested_source in requested_sources:
+            if requested_source not in available_sources:
+                raise ConfigError("%s is not a gene caller in the contigs database. Here is a list of available "
+                                 "gene callers: %s." % (requested_source, ','.join(available_sources)))
 
-    # filter to only include requested gene callers
-    gene_calls = gene_calls[gene_calls['source'].isin(requested_sources)]
+        run.info('Gene callers that will be used', ', '.join(requested_sources))
 
-    for available_source, count in gene_calls['source'].value_counts().to_dict().items():
-        run.info('Num gene calls with %s' % available_source, count)
-    run.info('Num gene calls total', gene_calls.shape[0])
+        # filter to only include requested gene callers
+        gene_calls = gene_calls[gene_calls['source'].isin(requested_sources)]
 
-    # also append amino acid sequences
-    if not args.skip_sequence_reporting:
-        gene_caller_ids_of_interest = list(gene_calls.index.values)
-        gene_calls['aa_sequence'] = gene_calls.index.map(get_aa_seq_dict(contigs_db, gene_caller_ids_of_interest))
+        for available_source, count in gene_calls['source'].value_counts().to_dict().items():
+            run.info('Num gene calls with %s' % available_source, count)
+        run.info('Num gene calls total', gene_calls.shape[0])
 
-    utils.store_dataframe_as_TAB_delimited_file(gene_calls, args.output_file, include_index=True, index_label='gene_callers_id')
+        # also append amino acid sequences
+        if not args.skip_sequence_reporting:
+            gene_caller_ids_of_interest = list(gene_calls.index.values)
+            gene_calls['aa_sequence'] = gene_calls.index.map(get_aa_seq_dict(contigs_db, gene_caller_ids_of_interest))
 
-    run.info('Output', args.output_file)
+        utils.store_dataframe_as_TAB_delimited_file(gene_calls, args.output_file, include_index=True, index_label='gene_callers_id')
+
+        run.info('Output', args.output_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -107,13 +113,8 @@ if __name__ == '__main__':
     groupC.add_argument('--skip-sequence-reporting', action = 'store_true', help = "By default, exported gene "
                 "calls have an amino acid sequences column in the output. Turn this behavior off with this flag")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

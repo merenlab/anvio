@@ -26,25 +26,7 @@ __description__ = ("Export sequences from sequence sources and compute a similar
 __resources__ = [("In action in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too")]
 
 
-run = terminal.Run()
-
-@time_program
-def main(args):
-    d = genomesimilarity.program_class_dictionary[args.program](args)
-    d.process()
-
-    if anvio.DEBUG:
-        import json
-        for report in d.results:
-            run.warning(None, header=report)
-            print(json.dumps(d.results[report], indent=2))
-
-    d.cluster()
-    d.report()
-    d.add_to_pan_db()
-
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     group_INPUT = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
@@ -114,13 +96,33 @@ if __name__ == '__main__':
     group_OTHER.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     group_OTHER.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+@time_program
+def main():
+    args = get_args()
+    run = terminal.Run()
 
     try:
-        main(args)
+        d = genomesimilarity.program_class_dictionary[args.program](args)
+        d.process()
+
+        if anvio.DEBUG:
+            import json
+            for report in d.results:
+                run.warning(None, header=report)
+                print(json.dumps(d.results[report], indent=2))
+
+        d.cluster()
+        d.report()
+        d.add_to_pan_db()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

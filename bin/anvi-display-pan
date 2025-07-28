@@ -27,11 +27,8 @@ __provides__ = ['collection', 'bin', 'interactive', 'svg', 'gene-cluster-inspect
 __resources__ = [("See this program in action on the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#displaying-the-pan-genome")]
 __description__ = "Start an anvi'o server to display a pan-genome"
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-if __name__ == '__main__':
-    # setup the command line user interface
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
@@ -70,7 +67,12 @@ if __name__ == '__main__':
     groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupF.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = parser.get_args(parser, auto_fill_anvio_dbs=True)
+    return parser.get_args(parser, auto_fill_anvio_dbs=True)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
 
     try:
         utils.is_all_npm_packages_installed()
@@ -98,3 +100,7 @@ if __name__ == '__main__':
 
     app = BottleApplication(d)
     app.run_application(args.ip_address, args.port_number)
+
+
+if __name__ == '__main__':
+    main()

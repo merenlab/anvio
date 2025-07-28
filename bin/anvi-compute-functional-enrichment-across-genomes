@@ -22,26 +22,8 @@ __requires__ = [ 'groups-txt', 'genomes-storage-db', 'external-genomes', 'intern
 __provides__ = ['functional-enrichment-txt']
 __description__ = ("A program that computes functional enrichment across groups of genomes.")
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-def main(args):
-    # make sure the output files is not going to overwrite anything
-    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
-        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
-                          f"Please remove the exiting file first, or give a different output file name to this program.")
-
-    # make sure we can write to the output file
-    filesnpaths.is_output_file_writable(args.output_file)
-
-    if not args.groups_txt:
-        raise ConfigError("You must have a groups file for this to work. Please see the help menu.")
-
-    # how disturbingly simple is this? :(
-    AggregateFunctions(args, r=run, p=progress)
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -71,13 +53,35 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
+
+def main():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
+    # make sure the output files is not going to overwrite anything
+    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+        raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
+                          f"Please remove the exiting file first, or give a different output file name to this program.")
+
+    # make sure we can write to the output file
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    if not args.groups_txt:
+        raise ConfigError("You must have a groups file for this to work. Please see the help menu.")
+
+    # how disturbingly simple is this? :(
     try:
-        main(args)
+        AggregateFunctions(args, r=run, p=progress)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+if __name__ == '__main__':
+    main()

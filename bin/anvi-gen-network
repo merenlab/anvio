@@ -21,18 +21,16 @@ __authors__ = ['meren']
 __description__ = "Generate a Gephi network for functions based on non-normalized gene coverage values"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 class NetworkDescriptonSamples:
     def __init__(self, args, skip_auto_init=False):
         self.args = args
+        self.run = terminal.Run()
+        self.progress = terminal.Progress()
 
-        run.warning("This is not a mature anvi'o program. Please don't use it for anything serious without "
-                    "making sure you are on top of its limitations. If your current research question requires "
-                    "you to generate network descriptions for your data, please let us know so maybe we can "
-                    "work together to develop this tool towards a meaningful direction.")
+        self.run.warning("This is not a mature anvi'o program. Please don't use it for anything serious without "
+                         "making sure you are on top of its limitations. If your current research question requires "
+                         "you to generate network descriptions for your data, please let us know so maybe we can "
+                         "work together to develop this tool towards a meaningful direction.")
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -85,14 +83,14 @@ class NetworkDescriptonSamples:
 
     def generate_functions_network(self):
         genes_with_functions = sorted(self.functions['labels'].keys())
-        progress.new('Processing')
-        progress.update('Generating network description for %d genes w/functions across %d samples ... ' % (len(genes_with_functions), len(self.samples_dict)))
+        self.progress.new('Processing')
+        self.progress.update('Generating network description for %d genes w/functions across %d samples ... ' % (len(genes_with_functions), len(self.samples_dict)))
 
         network_desc_output_path = self.P('SAMPLE-FUNCTION-NETWORK.gexf')
         gen_gexf_network_file(genes_with_functions, self.samples_dict,
                               network_desc_output_path, unit_mapping_dict = self.functions)
-        progress.end()
-        run.info('Network for gene functions', network_desc_output_path)
+        self.progress.end()
+        self.run.info('Network for gene functions', network_desc_output_path)
 
 
     def get_samples_dict(self, attribute='mean_coverage'):
@@ -108,17 +106,8 @@ class NetworkDescriptonSamples:
         return samples_dict
 
 
-if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
-
-    parser = ArgumentParser(description=__description__)
-
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
-    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
-
-    args = parser.get_args(parser)
+def main():
+    args = get_args()
 
     try:
         network = NetworkDescriptonSamples(args)
@@ -129,3 +118,20 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
+    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

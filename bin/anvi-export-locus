@@ -15,7 +15,7 @@
                     --hmm-sources Bacteria_71 \
                     --search-term "Exonuc_VII_L" \
                     -n 500,500 \
-                    -O P_marinus_CCMP1375 
+                    -O P_marinus_CCMP1375
   ```
 """
 
@@ -23,7 +23,6 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.splitter import LocusSplitter
 from anvio.errors import ConfigError, FilesNPathsError
@@ -48,11 +47,21 @@ __description__ = ("This program helps you cut a 'locus' from a larger genetic c
                    "database provided. Enjoy your mini contigs databases!")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    args = get_args()
+
+    try:
+        locus_splitter = LocusSplitter(args)
+        locus_splitter.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     # Essential input
@@ -88,14 +97,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
     groupE.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        locus_splitter = LocusSplitter(args)
-        locus_splitter.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

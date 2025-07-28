@@ -23,11 +23,8 @@ __requires__ = ['functions', 'genomes-storage-db', 'internal-genomes', 'external
 __provides__ = ['interactive', 'functional-enrichment-txt']
 __description__ = "Start an anvi'o interactive display to see functions across genomes"
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-if __name__ == '__main__':
-    # setup the command line user interface
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('GENOMES', "Tell anvi'o where your genomes are.")
@@ -86,13 +83,17 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupH.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
 
     try:
         utils.is_all_npm_packages_installed()
         args.mode = 'functional'
         d = interactive.Interactive(args)
-
         args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
     except ConfigError as e:
         print(e)
@@ -110,3 +111,7 @@ if __name__ == '__main__':
 
     app = BottleApplication(d)
     app.run_application(args.ip_address, args.port_number)
+
+
+if __name__ == '__main__':
+    main()

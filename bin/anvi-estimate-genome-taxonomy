@@ -10,11 +10,11 @@ __description__ = ("This program has been superseded by `anvi-estimate-scg-taxon
 
 
 def main():
-    raise ConfigError(__description__)
-
-if __name__ == '__main__':
     try:
-        main()
+        raise ConfigError(__description__)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

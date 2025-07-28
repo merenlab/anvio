@@ -17,7 +17,6 @@ See anvio/docs/programs/anvi-analyze-synteny.md for more information and how to 
 import sys
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.synteny import NGram
 from anvio.argparse import ArgumentParser
@@ -33,11 +32,8 @@ __requires__ = ['genomes-storage-db', 'functions', 'pan-db']
 __provides__ = ['ngrams']
 __description__ = ("Extract ngrams, as in 'co-occurring genes in synteny', from genomes")
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     # Essential input
@@ -67,7 +63,11 @@ if __name__ == '__main__':
                              "In some cases, anvio reports more than one annotation when there are multiple good hits to the gene. "
                              "When this happens, all annotations will be reported in order of alignment score and delimited by '!!!' e.g. 'COG123!!!COG456!!!COG789'. "
                              "This flag will report 'COG123!!!COG456!!!COG789' as 'COG123'.")
-    args = parser.get_args(parser)
+
+    return parser.get_args(parser)
+
+def main():
+    args = get_args()
 
     try:
         ngram = NGram(args)
@@ -78,3 +78,6 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

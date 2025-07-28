@@ -25,10 +25,44 @@ __resources__ = [("The role of gene cluster homogeneity described in the Anvi'o 
 __description__ = "Compute homogeneity for gene clusters"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def get_args():
+    parser = ArgumentParser(description=__description__)
 
-def main(args):
+    groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('REPORTING', "How do you want results to be reported? Anvi'o can produce a TAB-delimited output file for\
+                                                     you (for which you would have to provide an output file name). Or the results can be stored\
+                                                     in the pan database directly, for which you would have to explicitly ask for it. You can get\
+                                                     both as well in case you are a fan of redundancy and poor data analysis practices. Anvi'o\
+                                                     does not judge.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupB.add_argument(*anvio.A('store-in-db'), **anvio.K('store-in-db'))
+
+    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
+                                       or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
+                                       of interest.")
+    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupD = parser.add_argument_group('OPTIONAL',"Optional stuff available for you to use")
+    groupD.add_argument('--quick-homogeneity', default=False, action='store_true', help="By default, anvi'o will use a homogeneity\
+                        algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
+                        flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.")
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    return parser.get_args(parser)
+
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     if args.gene_cluster_id and args.gene_cluster_ids_file:
         raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
 
@@ -111,43 +145,15 @@ def main(args):
         run.info("Output file", args.output_file, mc="green")
 
 
-if __name__ == '__main__':
-    parser = ArgumentParser(description=__description__)
-
-    groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
-
-    groupB = parser.add_argument_group('REPORTING', "How do you want results to be reported? Anvi'o can produce a TAB-delimited output file for\
-                                                     you (for which you would have to provide an output file name). Or the results can be stored\
-                                                     in the pan database directly, for which you would have to explicitly ask for it. You can get\
-                                                     both as well in case you are a fan of redundancy and poor data analysis practices. Anvi'o\
-                                                     does not judge.")
-    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupB.add_argument(*anvio.A('store-in-db'), **anvio.K('store-in-db'))
-
-    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
-                                       or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
-                                       of interest.")
-    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
-    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
-    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-
-    groupD = parser.add_argument_group('OPTIONAL',"Optional stuff available for you to use")
-    groupD.add_argument('--quick-homogeneity', default=False, action='store_true', help="By default, anvi'o will use a homogeneity\
-                        algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
-                        flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.")
-    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    args = parser.get_args(parser)
-
+def main():
     try:
-        main(args)
+        run_program()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

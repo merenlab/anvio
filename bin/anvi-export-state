@@ -22,43 +22,49 @@ __provides__ = ['state-json',]
 __description__ = "Export an anvi'o state into a profile database"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 def main(args):
-    utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+    args = get_args()
+    run = terminal.Run()
 
-    states_access = TablesForStates(args.pan_or_profile_db)
-    states = states_access.states
+    try:
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
 
-    if not len(states):
-        raise ConfigError("But there are no states in this %s database :/" % utils.get_db_type(args.pan_or_profile_db))
+        states_access = TablesForStates(args.pan_or_profile_db)
+        states = states_access.states
 
-    if args.list_states:
-        states_access.list_states()
-        sys.exit()
+        if not len(states):
+            raise ConfigError("But there are no states in this %s database :/" % utils.get_db_type(args.pan_or_profile_db))
 
-    if not args.output_file:
-        raise ConfigError("You should provide an output file name (and in fact a state name, too, in case "
-                           "you haven't. You can see all available state names using '--list-states' flag).")
+        if args.list_states:
+            states_access.list_states()
+            sys.exit()
 
-    filesnpaths.is_output_file_writable(args.output_file)
+        if not args.output_file:
+            raise ConfigError("You should provide an output file name (and in fact a state name, too, in case "
+                               "you haven't. You can see all available state names using '--list-states' flag).")
 
-    if not args.state:
-        raise ConfigError("Sorry! you need to provide state name. Yes. You don't know what states ara available? "
-                           "did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for "
-                           "maybe.")
+        filesnpaths.is_output_file_writable(args.output_file)
 
-    if not args.state in states:
-        raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
-                           "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
+        if not args.state:
+            raise ConfigError("Sorry! you need to provide state name. Yes. You don't know what states ara available? "
+                               "did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for "
+                               "maybe.")
 
-    open(args.output_file, 'w').write(states[args.state]['content'])
-    run.info('Output', args.output_file)
+        if not args.state in states:
+            raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
+                               "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
+
+        open(args.output_file, 'w').write(states[args.state]['content'])
+        run.info('Output', args.output_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -69,13 +75,8 @@ if __name__ == '__main__':
                         help = "The state name to export.")
     parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

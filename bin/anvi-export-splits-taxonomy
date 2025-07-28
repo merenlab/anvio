@@ -21,24 +21,28 @@ __provides__ = ["splits-taxonomy-txt"]
 __description__ = "Export taxonomy for splits found in an anvi'o contigs database"
 
 
-def main(args):
-    c = dbops.ContigsSuperclass(args)
-    c.gen_TAB_delimited_file_for_split_taxonomies(args.output_file)
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser(description=__description__)
-
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-
-    args = parser.get_args(parser)
+def main():
+    args = get_args()
 
     try:
-        main(args)
+        c = dbops.ContigsSuperclass(args)
+        c.gen_TAB_delimited_file_for_split_taxonomies(args.output_file)
     except ConfigError as e:
         print(e)
         sys.exit(1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(2)
+
+
+def get_args():
+    parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

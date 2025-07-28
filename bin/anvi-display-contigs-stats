@@ -23,10 +23,9 @@ __requires__ = ['contigs-db']
 __provides__ = ['contigs-stats', 'interactive', 'svg']
 __description__ = "Start the anvi'o interactive interface for viewing or comparing contigs statistics."
 
-run = terminal.Run()
-progress = terminal.Progress()
 
 def write_stats_to_file(tables, output_file):
+    run = terminal.Run()
     filesnpaths.is_output_file_writable(output_file)
     output_table = [['contigs_db'] + tables['header']] + tables['basic_stats'] + tables['hmm'] + tables['scg']
 
@@ -46,7 +45,7 @@ def write_stats_to_file(tables, output_file):
     run.info(f"{'Output file (as markdown)' if anvio.AS_MARKDOWN else 'Output file'}", output_file)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
     parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
                         help = "Anvio'o Contig databases to display statistics, \
@@ -62,7 +61,13 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
@@ -96,3 +101,7 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
+
+
+if __name__ == '__main__':
+    main()

@@ -22,12 +22,7 @@ __provides__ = ['rarefaction-curves']
 __description__ = ("A program that computes rarefaction curves and Heaps' Law fit for a given pangenome")
 
 
-def main(args):
-    analysis = RarefactionAnalysis(args)
-    k, alpha = analysis.process()
-
-if __name__ == '__main__':
-
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('PAN DATABASE')
@@ -42,13 +37,21 @@ if __name__ == '__main__':
     groupE.add_argument('--iterations', default=100, type=int, help="How many subsampling iterations you wish to be performed? The default is %(default)d. Don't go below 10 :)")
     groupE.add_argument('--skip-output-files', default=False, action="store_true", help="Do not bother generating any output files, just report Heaps' fit values.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
 
     try:
-        main(args)
+        analysis = RarefactionAnalysis(args)
+        k, alpha = analysis.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

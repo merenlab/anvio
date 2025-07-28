@@ -23,54 +23,59 @@ __resources__ = []
 __description__ = ("Estimates taxonomy at genome and metagenome level using tRNA sequences.")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 @terminal.time_program
-def main(args):
-    if args.metagenomes:
-        raise ConfigError("This program can't do this yet.")
+def main():
+    args = get_args()
 
-    if args.dna_sequence:
-        if args.anticodon_for_metagenome_mode:
-            anticodon = args.anticodon_for_metagenome_mode
-            genomic_sequence = args.dna_sequence
+    try:
+        if args.metagenomes:
+            raise ConfigError("This program can't do this yet.")
+
+        if args.dna_sequence:
+            if args.anticodon_for_metagenome_mode:
+                anticodon = args.anticodon_for_metagenome_mode
+                genomic_sequence = args.dna_sequence
+            else:
+                # learn about the anticodon
+                import anvio.trnaidentifier as trnaidentifier
+                profiler = trnaidentifier.Profiler()
+
+                sequence_profile = profiler.profile_gene(args.dna_sequence)
+                if not sequence_profile.predicted_profile:
+                    raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
+
+                # Allow for args.dna_sequence to be a tRNA transcript: remove the 3'-CCA acceptor
+                # regardless of whether it is encoded in the gene or added post-transcriptionally.
+                genomic_sequence = args.dna_sequence[: -3] if sequence_profile.has_encoded_acceptor else args.dna_sequence
+            anticodon = sequence_profile.predicted_profile.anticodon_seq
+
+            if not anticodon:
+                raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps it is not a proper tRNA sequence?")
+
+            # setup search
+            fasta_formatted_sequence = f'>{anticodon}\n{genomic_sequence}'
+
+            # go
+            log_file_path = filesnpaths.get_temp_file_path(just_the_path=True)
+            trnataxonomyops.PopulateContigsDatabaseWithTRNATaxonomy(args).get_gene_estimation_output(anticodon,
+                                                                                                     fasta_formatted_sequence,
+                                                                                                     log_file_path=log_file_path,
+                                                                                                     show_all_hits=True)
+
+            if not anvio.DEBUG:
+                os.remove(log_file_path)
         else:
-            # learn about the anticodon
-            import anvio.trnaidentifier as trnaidentifier
-            profiler = trnaidentifier.Profiler()
-
-            sequence_profile = profiler.profile_gene(args.dna_sequence)
-            if not sequence_profile.predicted_profile:
-                raise ConfigError("As far as anvi'o knows, this sequence does not look like a tRNA sequence :/")
-
-            # Allow for args.dna_sequence to be a tRNA transcript: remove the 3'-CCA acceptor
-            # regardless of whether it is encoded in the gene or added post-transcriptionally.
-            genomic_sequence = args.dna_sequence[: -3] if sequence_profile.has_encoded_acceptor else args.dna_sequence
-        anticodon = sequence_profile.predicted_profile.anticodon_seq
-
-        if not anticodon:
-            raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps it is not a proper tRNA sequence?")
-
-        # setup search
-        fasta_formatted_sequence = f'>{anticodon}\n{genomic_sequence}'
-
-        # go
-        log_file_path = filesnpaths.get_temp_file_path(just_the_path=True)
-        trnataxonomyops.PopulateContigsDatabaseWithTRNATaxonomy(args).get_gene_estimation_output(anticodon,
-                                                                                                 fasta_formatted_sequence,
-                                                                                                 log_file_path=log_file_path,
-                                                                                                 show_all_hits=True)
-
-        if not anvio.DEBUG:
-            os.remove(log_file_path)
-    else:
-        t = trnataxonomyops.TRNATaxonomyEstimatorSingle(args)
-        t.estimate()
+            t = trnataxonomyops.TRNATaxonomyEstimatorSingle(args)
+            t.estimate()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -134,13 +139,8 @@ if __name__ == '__main__':
     groupH = parser.add_argument_group('BORING', "Options that you will likely never need.")
     groupH.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

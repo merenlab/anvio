@@ -23,7 +23,31 @@ __resources__ = [("An applicatio of this program in the  Infant Gut Tutorial", "
 __description__ = ("Generate a network description from an anvi'o variability profile.")
 
 
-if __name__ == '__main__':
+def main():
+    args, VN = get_args()
+
+    if args.list_competing_NT_calculators:
+        run = terminal.Run()
+
+        run.warning("Following are the available options for competing NT calculations:",
+                    header="COMPETING NT CALCULATORS", lc="green")
+        for calculator_option in VN.competing_NT_calculators:
+            run.info(f"'{calculator_option}'", VN.competing_NT_calculators[calculator_option]['description'], nl_after=1)
+
+        sys.exit()
+
+    try:
+        variable_nt_positions = VariabilityNetwork(args)
+        variable_nt_positions.generate()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     import argparse
@@ -57,24 +81,8 @@ if __name__ == '__main__':
     groupC.add_argument('--list-competing-NT-calculators', default=False, action="store_true",
                         help ="List options and their descriptions that can be used with `--include-competing-NTs`.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser), VN
 
-    if args.list_competing_NT_calculators:
-        run = terminal.Run()
 
-        run.warning("Following are the available options for competing NT calculations:",
-                    header="COMPETING NT CALCULATORS", lc="green")
-        for calculator_option in VN.competing_NT_calculators:
-            run.info(f"'{calculator_option}'", VN.competing_NT_calculators[calculator_option]['description'], nl_after=1)
-
-        sys.exit()
-
-    try:
-        variable_nt_positions = VariabilityNetwork(args)
-        variable_nt_positions.generate()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+if __name__ == '__main__':
+    main()

@@ -3,9 +3,9 @@
 """Collapses variation for a given list of gene caller ids"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
+from anvio.argparse import ArgumentParser
 import anvio.variabilityops as variabilityops
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,7 +21,22 @@ __provides__ = ["genes-fasta"]
 __description__ = "Collapse variability for a set of genes across samples"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        c = variabilityops.ConsensusSequences(args)
+        c.process(exit_if_data_empty=False)
+        c.report()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
@@ -54,22 +69,15 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode', {'help': "Use this flag to output consensus \
                                                                                     sequences for cases even where there is\
                                                                                     no variability"}))
-    
+
     parser.add_argument('--compress-samples', action='store_true', required=False,
                         help="Normally all samples with variation will have their own consensus sequence. If this flag\
                               is provided, the coverages from each sample of interest will be summed and only a single\
                               consenus sequence for each gene/contig will be output.")
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        c = variabilityops.ConsensusSequences(args)
-        c.process(exit_if_data_empty=False)
-        c.report()
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(2)
+
+if __name__ == '__main__':
+    main()

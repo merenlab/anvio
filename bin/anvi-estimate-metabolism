@@ -21,23 +21,32 @@ __description__ = "Reconstructs metabolic pathways and estimates pathway complet
 
 
 @time_program
-def main(args):
+def main():
+    args = get_args()
 
-    if args.metagenomes or args.external_genomes or args.internal_genomes:
-        m = kegg.KeggMetabolismEstimatorMulti(args)
-    else:
-        m = kegg.KeggMetabolismEstimator(args)
+    try:
+        if args.metagenomes or args.external_genomes or args.internal_genomes:
+            m = kegg.KeggMetabolismEstimatorMulti(args)
+        else:
+            m = kegg.KeggMetabolismEstimator(args)
 
-    if args.list_available_modes:
-        m.list_output_modes()
-        sys.exit()
-    elif args.list_available_output_headers:
-        m.list_output_headers()
-        sys.exit()
-    else:
-        m.estimate_metabolism()
+        if args.list_available_modes:
+            m.list_output_modes()
+            sys.exit()
+        elif args.list_available_output_headers:
+            m.list_output_headers()
+            sys.exit()
+        else:
+            m.estimate_metabolism()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
-if __name__ == '__main__':
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -142,13 +151,8 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

@@ -32,10 +32,10 @@ __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 
 
-run = terminal.Run()
 
 
 def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, cluster_type):
+
     if cluster_type == 'contig':
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
         splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name, string_the_key = True)
@@ -129,8 +129,56 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
     return input_files
 
 
-@terminal.time_program
-def main(args, unknown):
+def get_args():
+    parent_parser = argparse.ArgumentParser(description=__description__)
+    parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
+    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver',
+        {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
+    parent_parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    parent_parser.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+    parent_parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
+
+    if show_help:
+        parent_parser.print_help()
+
+    modules = driver_modules['binning']
+    subparsers = {}
+    for name, module in modules.items():
+        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
+
+        try:
+            # test if __init__() will raise ConfigError with is_program_exists
+            module()
+
+            subparser._optionals.title = " \n%s\n%s" % (c(name.upper(), "green"), ':' * 79)
+            for arg_name, definiton in module.arguments.items():
+                subparser.add_argument(*definiton[0], **definiton[1])
+
+            if show_help:
+                subparser.print_help()
+        except ConfigError:
+            if show_help:
+                print("\n%s %s" % (c(name.upper(), "green"), c("[NOT FOUND]", "red")))
+
+            continue
+        finally:
+            subparsers[name] = subparser
+
+    if show_help:
+        sys.exit()
+
+    args, unknown = parent_parser.parse_known_args()
+
+    return (args, unknown, subparsers, modules)
+
+
+def cluster_contigs(args, unknown, subparsers, modules):
+    run = terminal.Run()
+
     if not args.just_do_it:
         raise ConfigError("This is an experimental module and is not yet fully tested. Alternatively you could "
                           "use external binning algorithms with raw data or data exported from anvi'o (i.e., see program "
@@ -187,6 +235,7 @@ def main(args, unknown):
 
     working_dir = filesnpaths.get_temp_directory_path()
 
+
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
     run.info("Binning module", binning_module_name)
@@ -231,55 +280,21 @@ def main(args, unknown):
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
 
 
-if __name__ == '__main__':
-    parent_parser = argparse.ArgumentParser(description=__description__)
-    parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver',
-        {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
-    parent_parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    parent_parser.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
-    parent_parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
 
-    if show_help:
-        parent_parser.print_help()
-
-    modules = driver_modules['binning']
-    subparsers = {}
-    for name, module in modules.items():
-        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
-
-        try:
-            # test if __init__() will raise ConfigError with is_program_exists
-            module()
-
-            subparser._optionals.title = " \n%s\n%s" % (c(name.upper(), "green"), ':' * 79)
-            for arg_name, definiton in module.arguments.items():
-                subparser.add_argument(*definiton[0], **definiton[1])
-
-            if show_help:
-                subparser.print_help()
-        except ConfigError:
-            if show_help:
-                print("\n%s %s" % (c(name.upper(), "green"), c("[NOT FOUND]", "red")))
-
-            continue
-        finally:
-            subparsers[name] = subparser
-
-    if show_help:
-        sys.exit()
-
-    args, unknown = parent_parser.parse_known_args()
+@terminal.time_program
+def main():
+    args, unknown, subparsers, modules = get_args()
 
     try:
-        main(args, unknown)
+        cluster_contigs(args, unknown, subparsers, modules)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+if __name__ == '__main__':
+    main()

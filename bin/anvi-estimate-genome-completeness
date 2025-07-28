@@ -97,7 +97,7 @@ def print_improper(args, collection, completeness, run, progress):
         run.info('Results also stored in an output file', output_file_path, nl_after=1, nl_before=2)
 
 
-def print_for_internal_or_external_genomes():
+def print_for_internal_or_external_genomes(args):
     run = terminal.Run(verbose=False if args.concise else True)
 
     g = genomedescriptions.GenomeDescriptions(args, run=terminal.Run(verbose=False))
@@ -157,7 +157,7 @@ def print_for_internal_or_external_genomes():
         run.info('Results also stored in an output file', output_file_path, nl_after=1)
 
 
-def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collection_name=None, list_collections=False):
+def print_for_a_single_contigs_db(args, contigs_db_path, profile_db_path=None, collection_name=None, list_collections=False):
     run = terminal.Run(verbose=False if args.concise else True)
     progress = terminal.Progress(verbose=False if args.concise else True)
 
@@ -201,52 +201,7 @@ def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collect
         print_proper(args, collection, completeness, run, progress)
 
 
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    contigs_db_path = A('contigs_db')
-    profile_db_path = A('profile_db')
-    collection_name = A('collection_name')
-    list_collections = A('list_collections')
-    output_file_path = A('output_file')
-    external_genomes = A('external_genomes')
-    internal_genomes = A('internal_genomes')
-
-    if contigs_db_path:
-        if external_genomes or internal_genomes:
-            raise ConfigError("You can't work with a single contigs database and a set of external genomes "
-                              "at the same time.")
-
-        if not profile_db_path and list_collections:
-            raise ConfigError("When there is no profile database involved in your analysis, there is no "
-                              "collections to list really :/")
-
-        if profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
-
-    if external_genomes or internal_genomes:
-        if profile_db_path:
-            raise ConfigError("If you want to work with a set of external genomes, there is no use of "
-                              "declaring a profile database :/")
-        if collection_name:
-            raise ConfigError("When working with external genomes, collection names are automatically "
-                              "determined from the name column of the external genomes file.")
-
-        if list_collections:
-            raise ConfigError("You are working with external genomes, there are no collections to list :/")
-
-
-    if output_file_path:
-        filesnpaths.is_output_file_writable(output_file_path)
-
-    if contigs_db_path:
-        print_for_a_single_contigs_db(contigs_db_path, profile_db_path, collection_name, list_collections)
-    elif internal_genomes or external_genomes:
-        print_for_internal_or_external_genomes()
-    else:
-        raise ConfigError("We're lost :(")
-
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -273,13 +228,64 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+
+def main():
+    args = get_args()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    profile_db_path = A('profile_db')
+    collection_name = A('collection_name')
+    list_collections = A('list_collections')
+    output_file_path = A('output_file')
+    external_genomes = A('external_genomes')
+    internal_genomes = A('internal_genomes')
 
     try:
-        main(args)
+        if contigs_db_path:
+            if external_genomes or internal_genomes:
+                raise ConfigError("You can't work with a single contigs database and a set of external genomes "
+                                  "at the same time.")
+
+            if not profile_db_path and list_collections:
+                raise ConfigError("When there is no profile database involved in your analysis, there is no "
+                                  "collections to list really :/")
+
+            if profile_db_path:
+                utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+
+        if external_genomes or internal_genomes:
+            if profile_db_path:
+                raise ConfigError("If you want to work with a set of external genomes, there is no use of "
+                                  "declaring a profile database :/")
+            if collection_name:
+                raise ConfigError("When working with external genomes, collection names are automatically "
+                                  "determined from the name column of the external genomes file.")
+
+            if list_collections:
+                raise ConfigError("You are working with external genomes, there are no collections to list :/")
+
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        if contigs_db_path:
+            print_for_a_single_contigs_db(args, contigs_db_path, profile_db_path, collection_name, list_collections)
+        elif internal_genomes or external_genomes:
+            print_for_internal_or_external_genomes(args)
+        else:
+            raise ConfigError("We're lost :(")
+
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+
+if __name__ == '__main__':
+    main()

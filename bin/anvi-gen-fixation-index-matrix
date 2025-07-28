@@ -3,12 +3,12 @@
 """Fetches information from the variable positions table"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.argparse import ArgumentParser
 from anvio.variabilityops import variability_engines
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import VariabilityFixationIndex
 
 
@@ -19,17 +19,31 @@ __version__ = anvio.__version__
 __authors__ = ['ekiefl']
 __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt', 'splits-txt']
 __provides__ = ['fixation-index-matrix']
-__resources__ = [
-    (
-        "Utilizing fixation index to study SAR11 population structure",
-        "http://merenlab.org/data/sar11-saavs/#generating-distance-matrices-from-fixation-index-for-saavs-and-snvs-data"
-    ),
-    ("Measuring Distances Between Genomes in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst")
-]
+__resources__ = [("Utilizing fixation index to study SAR11 population structure", "http://merenlab.org/data/sar11-saavs/#generating-distance-matrices-from-fixation-index-for-saavs-and-snvs-data"),
+                 ("Measuring Distances Between Genomes in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst")]
 __description__ = "Generate a pairwise matrix of a fixation indices between samples"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        if args.engine not in variability_engines:
+            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
+
+        FST = VariabilityFixationIndex(args)
+        FST.process()
+        FST.report()
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
@@ -75,19 +89,8 @@ if __name__ == '__main__':
                                 0 so the results are reflective of a standard distance metric. \
                                 Provide this flag if you would prefer otherwise.')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        if args.engine not in variability_engines:
-            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
-        FST = VariabilityFixationIndex(args)
-        FST.process()
-        FST.report()
-
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(2)
+if __name__ == '__main__':
+    main()

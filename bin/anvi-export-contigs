@@ -23,28 +23,37 @@ __requires__ = ['contigs-db']
 __provides__ = ['contigs-fasta']
 __description__ = "Export contigs (or splits) from an anvi'o contigs database"
 
-run = terminal.Run()
 
-def main(args):
-    if args.contigs_of_interest:
-        filesnpaths.is_file_tab_delimited(args.contigs_of_interest, expected_number_of_fields=1)
-        seq_names_to_export = [line.strip() for line in open(args.contigs_of_interest).readlines()]
-    else:
-        seq_names_to_export = None
+def main():
+    args = get_args()
+    run = terminal.Run()
 
-    utils.export_sequences_from_contigs_db(args.contigs_db,
-                                           args.output_file,
-                                           seq_names_to_export=seq_names_to_export,
-                                           splits_mode=args.splits_mode,
-                                           just_do_it=args.just_do_it,
-                                           truncate=(not args.no_wrap),
-                                           run=run)
+    try:
+        if args.contigs_of_interest:
+            filesnpaths.is_file_tab_delimited(args.contigs_of_interest, expected_number_of_fields=1)
+            seq_names_to_export = [line.strip() for line in open(args.contigs_of_interest).readlines()]
+        else:
+            seq_names_to_export = None
 
-    run.info('Export mode', 'splits' if args.splits_mode else 'contigs')
-    run.info('Output FASTA', args.output_file)
+        utils.export_sequences_from_contigs_db(args.contigs_db,
+                                               args.output_file,
+                                               seq_names_to_export=seq_names_to_export,
+                                               splits_mode=args.splits_mode,
+                                               just_do_it=args.just_do_it,
+                                               truncate=(not args.no_wrap),
+                                               run=run)
+
+        run.info('Export mode', 'splits' if args.splits_mode else 'contigs')
+        run.info('Output FASTA', args.output_file)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -55,13 +64,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

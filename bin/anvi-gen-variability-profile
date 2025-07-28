@@ -25,16 +25,25 @@ __description__ = ("Generate a table that comprehensively summarizes the variabi
                    "single codon variants (SCVs), and single amino acid variants (SAAVs), respectively")
 
 @time_program
-def main(args):
-    if args.engine not in variability_engines:
-        raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
+def main():
+    args = get_args()
 
-    variability_engine = variability_engines[args.engine](args)
-    variability_engine.process()
-    variability_engine.report()
+    try:
+        if args.engine not in variability_engines:
+            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
+
+        variability_engine = variability_engines[args.engine](args)
+        variability_engine.process()
+        variability_engine.report()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
@@ -85,13 +94,8 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('include-site-pnps'), **anvio.K('include-site-pnps'))
     groupH.add_argument(*anvio.A('compute-gene-coverage-stats'), **anvio.K('compute-gene-coverage-stats'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(2)
+
+if __name__ == '__main__':
+    main()

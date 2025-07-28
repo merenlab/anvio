@@ -23,11 +23,10 @@ __requires__ = ["contigs-db", "splits-txt", "hmm-source"]
 __description__ = "A script to generate completeness info for a given list of _splits_"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 def compute_completeness(args):
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     utils.is_contigs_db(args.contigs_db)
 
     completeness = Completeness(args.contigs_db, args.completeness_source)
@@ -70,16 +69,22 @@ def compute_completeness(args):
     print()
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
+
     parser.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('min-e-value'), **anvio.K('min-e-value'))
     parser.add_argument(*anvio.A('list-completeness-sources'), **anvio.K('list-completeness-sources'))
     parser.add_argument(*anvio.A('completeness-source'), **anvio.K('completeness-source'))
 
+    return parser.get_args(parser)
+
+
+def main()
+    args = get_args()
+
     try:
-        args = parser.get_args(parser)
         compute_completeness(args)
     except ConfigError as e:
         print(e)
@@ -87,3 +92,7 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+if __name__ == '__main__':
+    main()

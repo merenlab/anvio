@@ -26,10 +26,7 @@ __resources__ = [("The overview page from the release", "http://merenlab.org/sof
 __description__ = "Interactively visualize sequence variants on protein structures"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupS = parser.add_argument_group("STRUCTURE", "Information related to the structure database, which can be \
@@ -84,10 +81,16 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
+
     try:
         utils.is_all_npm_packages_installed()
 
-        args = parser.get_args(parser)
         args.mode = 'structure'
 
         d = interactive.StructureInteractive(args)
@@ -105,3 +108,7 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
+
+
+if __name__ == '__main__':
+    main()

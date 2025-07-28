@@ -29,58 +29,6 @@ __provides__ = ["kegg-pathway-map"]
 __description__ = DESCRIPTION
 
 
-def main() -> None:
-    args = get_args()
-    check_package_dependencies()
-    check_kegg_data(args)
-    consolidate_contigs_dbs(args)
-
-    if (
-        (args.groups_txt is None and args.group_threshold is not None) or
-        (args.groups_txt is not None and args.group_threshold is None)
-    ):
-        raise ConfigError(
-            "For groups to be used, arguments to both '--groups-txt' and '--group-threshold' must "
-            "be provided."
-        )
-
-    mapper = Mapper(
-        kegg_dir=args.kegg_dir,
-        overwrite_output=args.overwrite_output_destinations,
-        name_files=args.name_files,
-        categorize_files=args.categorize_files
-    )
-    performed = False
-
-    if (
-        args.contigs_dbs is not None and
-        len(args.contigs_dbs) == 1 and
-        args.colormap is None and
-        args.ko is True
-    ):
-        map_single_contigs_db_ko_data(args, mapper)
-        performed = True
-    elif (
-        args.contigs_dbs is not None and
-        args.ko is True
-    ):
-        map_multiple_contigs_dbs_ko_data(args, mapper)
-        performed = True
-
-    if (
-        args.pan_db is not None and
-        args.genomes_storage is not None and
-        args.ko is True
-    ):
-        map_pan_db_ko_data(args, mapper)
-        performed = True
-
-    if not performed:
-        raise ConfigError(
-            "No task was performed! The minimum requirements are a database source, such as "
-            "`--contigs-dbs`, and a data type to draw, such as `--ko`."
-        )
-
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
@@ -323,6 +271,7 @@ def get_args() -> Namespace:
 
     args = parser.get_args(parser)
     return args
+
 
 def check_package_dependencies():
     missing_packages = []
@@ -590,9 +539,59 @@ def map_pan_db_ko_data(args: Namespace, mapper: Mapper) -> None:
         draw_maps_lacking_kos=args.draw_bare_maps
     )
 
-if __name__ == '__main__':
+
+def main() -> None:
+    args = get_args()
+
     try:
-        main()
+        check_package_dependencies()
+        check_kegg_data(args)
+        consolidate_contigs_dbs(args)
+
+        if (
+            (args.groups_txt is None and args.group_threshold is not None) or
+            (args.groups_txt is not None and args.group_threshold is None)
+        ):
+            raise ConfigError(
+                "For groups to be used, arguments to both '--groups-txt' and '--group-threshold' must "
+                "be provided."
+            )
+
+        mapper = Mapper(kegg_dir=args.kegg_dir,
+                        overwrite_output=args.overwrite_output_destinations,
+                        name_files=args.name_files,
+                        categorize_files=args.categorize_files)
+        performed = False
+
+        if (
+            args.contigs_dbs is not None and
+            len(args.contigs_dbs) == 1 and
+            args.colormap is None and
+            args.ko is True
+        ):
+            map_single_contigs_db_ko_data(args, mapper)
+            performed = True
+        elif (
+            args.contigs_dbs is not None and
+            args.ko is True
+        ):
+            map_multiple_contigs_dbs_ko_data(args, mapper)
+            performed = True
+
+        if (
+            args.pan_db is not None and
+            args.genomes_storage is not None and
+            args.ko is True
+        ):
+            map_pan_db_ko_data(args, mapper)
+            performed = True
+
+        if not performed:
+            raise ConfigError(
+                "No task was performed! The minimum requirements are a database source, such as "
+                "`--contigs-dbs`, and a data type to draw, such as `--ko`."
+            )
+
     except ConfigError as e:
         e_str = re.sub(r'\s+', ' ', str(e))
         if (
@@ -613,3 +612,6 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

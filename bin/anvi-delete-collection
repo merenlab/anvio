@@ -20,37 +20,7 @@ __requires__ = ["profile-db", "collection"]
 __description__ = "Remove a collection from a given profile database"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    profile_db_path = A('profile_db')
-    list_collections = A('list_collections')
-    collection_name = A('collection_name')
-
-    collections = ccollections.Collections()
-    collections.populate_collections_dict(profile_db_path)
-
-    if list_collections:
-        collections.list_collections()
-        sys.exit()
-
-    if not collection_name:
-        raise ConfigError("So you are asking anvi'o to delete a collection from the profile database "
-                           "without actually providing a collection name. Very cute. You are free to "
-                           "go ahead and try again.")
-
-    if collection_name not in collections.collections_dict:
-        raise ConfigError("The collection name '%s' is not in this database :/" % collection_name)
-
-    collections_table = TablesForCollections(profile_db_path)
-    collections_table.delete(collection_name)
-    run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -59,13 +29,44 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+def main():
+    args = get_args()
+    run = terminal.Run()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    profile_db_path = A('profile_db')
+    list_collections = A('list_collections')
+    collection_name = A('collection_name')
 
     try:
-        main(args)
+        collections = ccollections.Collections()
+        collections.populate_collections_dict(profile_db_path)
+
+        if list_collections:
+            collections.list_collections()
+            sys.exit()
+
+        if not collection_name:
+            raise ConfigError("So you are asking anvi'o to delete a collection from the profile database "
+                               "without actually providing a collection name. Very cute. You are free to "
+                               "go ahead and try again.")
+
+        if collection_name not in collections.collections_dict:
+            raise ConfigError("The collection name '%s' is not in this database :/" % collection_name)
+
+        collections_table = TablesForCollections(profile_db_path)
+        collections_table.delete(collection_name)
+        run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-1)
+
+
+if __name__ == '__main__':
+    main()

@@ -6,7 +6,6 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
@@ -24,32 +23,7 @@ __description__ = ("Remove stuff from 'additional data' or 'order' tables for ei
 __resources__ = [("Working with anvi'o additional data tables", "http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology")]
 
 
-run = terminal.Run()
-
-
-def main(args):
-    d = args.__dict__
-    if not d['contigs_db'] and not d['pan_or_profile_db']:
-        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
-                          "database (--pan-or-profile-db)")
-
-    if d['contigs_db'] and d['pan_or_profile_db']:
-        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
-                          "db (--pan-or-profile-db). Please provide only one.")
-
-    table_for_additional_data = MiscDataTableFactory(args)
-
-    if args.list_available_keys:
-        table_for_additional_data.list_data_keys()
-        sys.exit(0)
-
-    keys_to_remove = [k for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
-    groups_to_remove = [k for k in args.groups_to_remove.split(',')] if args.groups_to_remove else []
-
-    table_for_additional_data.remove(data_keys_list=keys_to_remove, data_groups_list=groups_to_remove)
-
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('Database input', "Provide 1 of these")
@@ -71,13 +45,40 @@ if __name__ == '__main__':
                                                   the target data table and quit without doing anything else.")
     group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
+
+
+def main(args):
+    args = get_args()
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
-        main(args)
+        if not A('contigs_db') and not A('pan_or_profile_db'):
+            raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                              "database (--pan-or-profile-db)")
+
+        if A('contigs_db') and A('pan_or_profile_db'):
+            raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                              "db (--pan-or-profile-db). Please provide only one.")
+
+        table_for_additional_data = MiscDataTableFactory(args)
+
+        if args.list_available_keys:
+            table_for_additional_data.list_data_keys()
+            sys.exit(0)
+
+        keys_to_remove = [k for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
+        groups_to_remove = [k for k in args.groups_to_remove.split(',')] if args.groups_to_remove else []
+
+        table_for_additional_data.remove(data_keys_list=keys_to_remove, data_groups_list=groups_to_remove)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+if __name__ == '__main__':
+    main()

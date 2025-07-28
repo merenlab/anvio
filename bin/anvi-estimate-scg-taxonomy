@@ -24,21 +24,26 @@ __description__ = ("Estimates taxonomy at genome and metagenome level. This prog
                    "gene sequences and the GTDB database")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 @terminal.time_program
-def main(args):
-    if args.metagenomes or args.external_genomes:
-        t = scgtaxonomyops.SCGTaxonomyEstimatorMulti(args)
-    else:
-        t = scgtaxonomyops.SCGTaxonomyEstimatorSingle(args)
+def main():
+    args = get_args()
 
-    t.estimate()
+    try:
+        if args.metagenomes or args.external_genomes:
+            t = scgtaxonomyops.SCGTaxonomyEstimatorMulti(args)
+        else:
+            t = scgtaxonomyops.SCGTaxonomyEstimatorSingle(args)
+
+        t.estimate()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -99,13 +104,8 @@ if __name__ == '__main__':
     groupG = parser.add_argument_group('BORING', "Options that you will likely never need.")
     groupG.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
