@@ -1475,7 +1475,8 @@ class SyntenyGeneCluster():
             else:
                 self.run.info_single(f"Reversed 0 out of {num_contigs} contigs for reference fasta {fasta_file}")
             
-        self.run.info_single(f"Done.")
+
+        self.run.info_single("Done.")
 
 
     def yaml_mining(self):
@@ -1504,7 +1505,7 @@ class SyntenyGeneCluster():
 
         
         db_mining_df = pd.DataFrame.from_dict(db_mining_dict, orient='index').set_index(["genome", "gene_caller_id"])
-        self.run.info_single(f"Done.")
+        self.run.info_single("Done.")
         return(db_mining_df)
 
 
@@ -1598,7 +1599,8 @@ class SyntenyGeneCluster():
                 self.run.info_single(f"Skipped genome {genome} on users request.")
 
         db_mining_df = pd.concat(db_mining_list)
-        self.run.info_single(f"Done.")
+        self.run.info_single("Done.")
+
         return(db_mining_df)
 
 
@@ -2053,10 +2055,10 @@ class PangenomeGraph():
 
             connectivity = nx.is_connected(self.graph.to_undirected())
             if connectivity == True:
-                self.run.info_single(f"The pangenome graph is now a connected cyclic graph.")
+                self.run.info_single("The pangenome graph is now a connected cyclic graph.")
             else:
-                raise ConfigError(f"Looks like the graph is still fragmented, please check the data"
-                                  f"for at least some level of consistency.")
+                raise ConfigError("Looks like the graph is still fragmented, please check the data"
+                                  "for at least some level of consistency.")
 
         self.run.info_single("Done.")
 
@@ -2108,7 +2110,7 @@ class PangenomeGraph():
         genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
 
         if not nx.is_directed_acyclic_graph(self.graph):
-            raise ConfigError(f"Cyclic graphs, are not implemented.")
+            raise ConfigError("Cyclic graphs, are not implemented.")
 
         all_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True)]))
         all_positions_min = min(all_positions)
@@ -2266,7 +2268,7 @@ class PangenomeGraph():
         # self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
 
         if not nx.is_directed_acyclic_graph(self.graph):
-            raise ConfigError(f"Cyclic graphs, are not implemented.")
+            raise ConfigError("Cyclic graphs, are not implemented.")
 
         genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
         x_values = set([d[0] for node, d in self.graph.nodes(data='position')])
@@ -2957,9 +2959,9 @@ class DirectedForce():
                 self.run.info_single(f'{len(removed_nodes)} nodes and {len(removed_edges)} edges removed to capture strongest signal.')
                 G = nx.DiGraph(G.subgraph(M_sub_components))
             else:
-                raise ConfigError(f"I'm very sorry to inform you that your data is not solvable by the current version of"
-                                  f"maximum flow. The fallback mode tried to solve your dataset by sacrificing some"
-                                  f"of the included information, but at this scale it will not lead to a acceptable result :(")
+                raise ConfigError("I'm very sorry to inform you that your data is not solvable by the current version of"
+                                  "maximum flow. The fallback mode tried to solve your dataset by sacrificing some"
+                                  "of the included information, but at this scale it will not lead to a acceptable result :(")
         # else:
         #     removed_nodes = []
         #     removed_edges = []
@@ -3021,7 +3023,7 @@ class DirectedForce():
         M_predecessors = {M_node: list(M.predecessors(M_node))[0] for M_node in M_nodes if M_node != 'START'}
         M_successors = {M_node: list(M.successors(M_node)) for M_node in M_nodes}
         G_successors = {G_node: list(G.successors(G_node)) for G_node in G_nodes}
-        
+
         self.progress.new("Calculating initial distances")
         M_distances = {}
         for z, M_node in enumerate(M_nodes):
@@ -3170,10 +3172,10 @@ class DirectedForce():
                 visited_nodes.add(current_node)
 
                 if not nx.is_directed_acyclic_graph(M):
-                    raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
-                                    f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
-                                    f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
-                                    f"checks in the next version. Sorry :/")
+                    raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                                      "therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                                      "sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                                      "checks in the next version. Sorry :/")
 
         self.progress.end()
 
@@ -3192,10 +3194,10 @@ class DirectedForce():
             M_successors[stop] += ['STOP']
 
         if not nx.is_directed_acyclic_graph(M):
-            raise ConfigError(f"Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
-                            f"therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
-                            f"sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
-                            f"checks in the next version. Sorry :/")
+            raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
+                              "therefore the reattachement algorithm itself included a loop to the graph. We had multiple"
+                              "sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
+                              "checks in the next version. Sorry :/")
 
         for i,j in M.edges():
             del M[i][j]['direction']
@@ -3233,7 +3235,7 @@ class TopologicalLayout():
         nx.set_node_attributes(L, {k: {'genomes': list(d.keys())} for k, d in L.nodes(data='gene_calls')})
 
         if not nx.is_directed_acyclic_graph(L):
-            raise ConfigError(f"Cyclic graphs, are not implemented, sorry.")
+            raise ConfigError("Cyclic graphs, are not implemented, sorry.")
 
         x_list = {}
         positions = {}
@@ -3507,8 +3509,8 @@ class TopologicalLayout():
                 stack.remove(current)
 
         if len(set(positions.values())) != len(positions.values()):
-            raise ConfigError(f"No no no no. Something went very wrong here. Some nodes overlap in the UI."
-                              f"We don't want this, we definitely don't want this...")
+            raise ConfigError("No no no no. Something went very wrong here. Some nodes overlap in the UI."
+                              "We don't want this, we definitely don't want this...")
 
         edge_positions = {}
         for edge_i, edge_j in edges.keys():
@@ -3871,7 +3873,7 @@ class PangenomeGraphMaster():
         self.import_values = self.meta['layers']
 
         if self.meta['version'] != self.version:
-            raise ConfigError(f"Versions do not match sorry.")
+            raise ConfigError("Versions do not match sorry.")
 
         self.max_edge_length_filter = self.states[self.load_state]['maxlength'] if not self.max_edge_length_filter else self.max_edge_length_filter
         self.states[self.load_state]['maxlength'] = self.max_edge_length_filter
@@ -4050,7 +4052,7 @@ class PangenomeGraphMaster():
 
         if num_syn_cluster != num_graph_nodes:
             self.run.info_single(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
-                              f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
+                                 f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
 
         # 3. step: Check connectivity of the graph
         self.pangenome_graph.run_connectivity_check()
