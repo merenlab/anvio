@@ -76,12 +76,12 @@ def main(args):
             continue
 
         try:
-            acc = get_attribute_from_hmm_file(file_path, "NAME") if acc is None else acc
+            acc = utils.get_attribute_from_hmm_file(hmm_path, "NAME") if acc is None else acc
             ga = utils.get_attribute_from_hmm_file(hmm_path, 'GA ')
             name = utils.get_attribute_from_hmm_file(hmm_path, 'NAME')
 
         except ValueError:
-            raise ConfigError(f"In the HMM file {file_path} we did not find the attribute {none_variable}. "
+            raise ConfigError(f"In the HMM file {hmm_path} we did not find one of the attributes we expected to find. "
                               f"You should report this issue on the Defense-Finder-Models GitHub.")
 
         data_dict[hmm_name] = {}
