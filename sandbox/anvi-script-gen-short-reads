@@ -39,7 +39,7 @@ class Configuration:
 
         for section in [s for s in config.sections() if s != 'general']:
             location = int(section)
-            ratio = float(user_config.get(section, 'ratio'))
+            ratio = float(config.get(section, 'ratio'))
 
             if ratio > 1:
                 raise ConfigError('Ratio cannot be more than 1 (error for SNV location %d)' % location)
