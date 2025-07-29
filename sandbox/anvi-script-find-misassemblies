@@ -201,58 +201,8 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    groupI = parser.add_argument_group(
-        'REQUIRED',
-        'Declare your BAM file here'
-    )
-    groupI.add_argument(
-        '-b',
-        '--bam-file',
-        required = True,
-        help = "Sorted and indexed BAM file to analyze."
-    )
-
-    groupO = parser.add_argument_group(
-        'OUTPUT-PREFIX',
-        ("Choose a prefix for the two output files")
-    )
-    groupO.add_argument(
-        '-o',
-        '--output-prefix',
-        required=True,
-        help = ("Output prefix for the two tab-delimited files. Will overwrite existing files.")
-    )
-
-    group1 = parser.add_argument_group(
-        'OTHER PARAMETERS',
-        ("Various paramaters that you can change")
-    )
-    group1.add_argument(
-        '-m',
-        '--min-dist-to-end',
-        default=100,
-        type=int,
-        help = ("Sequence length on each side of a contigs that will be ignored in the clipping outut. "
-                "This is to prevent aftifactual results that typically occurs at the ends of contigs.")
-    )
-    group1.add_argument(
-        '-r',
-        '--clipping-ratio',
-        default=0.8,
-        type=float,
-        help = ("Minimum ratio of 'coverage-of-clipped-reads / total-coverage' that will be reported "
-                "in the output file. Default is 0.8")
-    )
-    group1.add_argument(
-        *anvio.A('num-threads'),
-        **anvio.K('num-threads'),
-    )
-    group1.add_argument(
-        *anvio.A('just-do-it'),
-        **anvio.K('just-do-it'),
-    )
-
-    args = parser.get_args(parser)
+    groupA = parser.add_argument_group('REQUIRED', 'Declare your BAM file here')
+    groupA.add_argument('-b', '--bam-file', required = True, help = "Sorted and indexed BAM file to analyze.")
 
     try:
         main(args)
@@ -262,3 +212,16 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+    groupB = parser.add_argument_group('OUTPUT-PREFIX', "Choose a prefix for the two output files")
+    groupB.add_argument( '-o', '--output-prefix', required=True, help = ("Output prefix for the two tab-"
+            "delimited files. Will overwrite existing files."))
+
+    groupC = parser.add_argument_group('OTHER PARAMETERS', "Various paramaters that you can change")
+    groupC.add_argument('-m', '--min-dist-to-end', default=100, type=int, help = ("Sequence length on "
+            "each side of a contigs that will be ignored in the clipping outut. "
+            "This is to prevent aftifactual results that typically occurs at the ends of contigs."))
+    groupC.add_argument( '-r', '--clipping-ratio', default=0.8, type=float,  help = ("Minimum ratio of "
+            "'coverage-of-clipped-reads / total-coverage' that will be reported "
+            "in the output file. Default is 0.8"))
+    groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
