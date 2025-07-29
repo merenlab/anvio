@@ -3439,7 +3439,6 @@ class PangenomeGraphMaster():
             self.run.info_single(f"Graph starting gene: {self.start_gene}.")
             self.run.info_single(f"Functional annotation source for starting gene: {self.start_column}.")
             self.run.info_single(f"Minimum number of synteny clusters in contig: {self.min_contig_chain}.")
-            self.run.info_single(f"Maximum number of contigs in fasta: {self.max_contig_num}.")
             self.run.info_single(f"Global context comparison window size: {self.n}.")
             self.run.info_single(f"Global context comparison treshold value alpha: {self.alpha}.")
             self.run.info_single(f"Local context comparison gap to gene value beta: {self.beta}.")
