@@ -30,10 +30,21 @@ __provides__ = ['genome-similarity']
 __description__ = "Run ANI between contigs in a single FASTA file"
 
 
-run = terminal.Run()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+
     program = pyani.PyANI(args)
 
     filesnpaths.is_file_fasta_formatted(args.fasta_file)
@@ -85,7 +96,7 @@ def main(args):
         shutil.rmtree(temp_dir)
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': True}))
@@ -106,13 +117,8 @@ if __name__ == '__main__':
                          clustering. The default is "%(default)s".'}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

@@ -24,10 +24,6 @@ __requires__ = ["contigs-db"]
 __provides__ = ["metabolic-independence-score"]
 __description__ = "Takes a genome as a contigs-db, and tells you whether it can be considered as an organism of high metabolic independence, or not"
 
-run = terminal.Run()
-P = terminal.pluralize
-pp = terminal.pretty_print
-
 # list of metablic modules general completion of which suggests high metabolic independence
 # please see docs/programs/anvi-script-classify-hmi-genomes.md for more information. Also,
 # ANY CHANGE HERE must be reflected in that help doc, too:
@@ -36,6 +32,18 @@ HMI_mods = ['M00049', 'M00050', 'M00007', 'M00140', 'M00005', 'M00083', 'M00120'
             'M00157', 'M00026', 'M00526', 'M00015', 'M00019', 'M00432', 'M00018', 'M00570',
             'M00126', 'M00115', 'M00028', 'M00924', 'M00122', 'M00125', 'M00023', 'M00631',
             'M00061' ]
+
+
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
 
 def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, threshold, strategy='pathwise'):
     """Adds up the pathwise completeness scores of each module in the HMI list. Returns the class, and the score."""
@@ -61,7 +69,12 @@ def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, thres
         return ('Low', genome_score)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    P = terminal.pluralize
+    pp = terminal.pretty_print
+
     # learn about the contigs-db and make sure it has KOfams
     dbi(args.contigs_db, expecting='contigs')
     contigs_db = ContigsDatabase(args.contigs_db)
@@ -144,8 +157,7 @@ def main(args):
     run.info('Completeness metric used', f"{strategy}")
 
 
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -174,13 +186,8 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

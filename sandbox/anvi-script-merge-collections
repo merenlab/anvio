@@ -11,10 +11,6 @@ import anvio.utils as u
 import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
-
-run = terminal.Run()
-
-
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
@@ -24,7 +20,18 @@ __requires__ = ["contigs-db", "collection-txt"]
 __description__ = "Generate an additional data file from multiple collections"
 
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+
     input_dicts = {}
     for input_file in args.input_files:
         if len(u.get_columns_of_TAB_delim_file(input_file)) != 1:
@@ -66,7 +73,7 @@ def main(args):
     run.info('Output', args.output_file)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -79,10 +86,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE', default = None, required = True,
                         help = 'Output file name.')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

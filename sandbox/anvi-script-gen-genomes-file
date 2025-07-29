@@ -16,9 +16,6 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
 
-run = terminal.Run()
-progress = terminal.Progress()
-
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
@@ -28,7 +25,19 @@ __requires__ = ["contigs-db", "profile-db", "collection"]
 __description__ = "Generate an external genomes or internal genomes file"
 
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     if not (args.input_dir or args.profile_db):
         raise ConfigError("You must provide either an input directory (for an external genomes file) or a "
                           "profile db/contigs db/collection name set (for an internal genomes file). Also, "
@@ -125,7 +134,7 @@ def main(args):
         run.info("External genomes file", args.output_file)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -145,10 +154,8 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group("OUTPUT", "Path for your internal or external genomes file")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

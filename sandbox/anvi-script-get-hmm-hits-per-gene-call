@@ -24,11 +24,21 @@ __description__ = ("A simple script to generate a TAB-delimited file gene caller
                    "HMM hits for a given HMM source")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args, unknown = get_args()
+    run = terminal.Run()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     hmm_source = A('hmm_source')
     contigs_db_path = A('contigs_db')
@@ -57,7 +67,7 @@ def main(args):
     run.info('Output', output_file_path)
 
 
-if __name__ == "__main__":
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupB = parser.add_argument_group("INPUT: ANVI'O CONTIGS DB")
@@ -69,13 +79,8 @@ if __name__ == "__main__":
     groupD = parser.add_argument_group('OUTPUTTAH')
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
 
-    args, unknown = parser.parse_known_args()
+    return parser.parse_known_args()
 
-    try:
-        sys.exit(main(args))
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == "__main__":
+    main()

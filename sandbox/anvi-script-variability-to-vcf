@@ -34,11 +34,21 @@ __description__ = ("A script to convert SNV output obtained from anvi-gen-variab
                    "to the standard VCF format")
 
 
-progress = terminal.Progress()
-run = terminal.Run()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    progress = terminal.Progress()
+    run = terminal.Run()
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     input_file_path = A('input')
     output_file_path = A('output_file') or '%s.vcf' % (str(input_file_path))
@@ -143,20 +153,15 @@ def main(args):
     progress.end()
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input', metavar='FILE_PATH', help='Filepath to the SNV table. This is the output from the \
                                 anvi-gen-variability-profile program with the nucleotide engine (which is the default engine).')
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

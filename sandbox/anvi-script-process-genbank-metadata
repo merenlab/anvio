@@ -25,7 +25,21 @@ __description__ = ("This script takes the 'metadata' output of the program `ncbi
                    "like that")
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        genbank_to_anvio = GenbankToAnvioWrapper(args)
+        genbank_to_anvio.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -49,14 +63,8 @@ if __name__ == '__main__':
                         not be included in your fasta.txt file. By doing so you will *gurantee* that when you use\
                         this file from within a workflow, anvi'o wil use its default gene caller to identify genes.", action='store_true')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        genbank_to_anvio = GenbankToAnvioWrapper(args)
-        genbank_to_anvio.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

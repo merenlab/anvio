@@ -25,8 +25,17 @@ __description__ =  ("A script that takes a FASTQ file that is not paired-end (i.
                     "for you, and Evan, who battled similar battles and ended up implementing this "
                     "solution wholeheartedly sympathizes")
 
-run = terminal.Run()
-progress = terminal.Progress()
+
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
 
 
 class FastqParse(object):
@@ -64,7 +73,11 @@ class FastqParse(object):
         self.f.close()
 
 
-def gen_paired_end_reads_from_fastq(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     r1_out_path = args.output_file_prefix + '_1.fastq'
     r2_out_path = args.output_file_prefix + '_2.fastq'
 
@@ -112,7 +125,7 @@ def gen_paired_end_reads_from_fastq(args):
     run.info_single("Done!")
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -121,13 +134,8 @@ if __name__ == '__main__':
                         'If you want final FASTQs with the format myfastq_1.fastq and myfastq_2.fastq, '
                         'then this parameter should be set to myfastq'}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        gen_paired_end_reads_from_fastq(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -22,11 +22,15 @@ __provides__ = ['short-reads-fasta']
 __description__ = "Generate short reads from contigs. Useful to reconstruct mock data sets from already assembled contigs"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-bases = ['A', 'T', 'C', 'G']
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
 class Configuration:
@@ -52,15 +56,22 @@ class Configuration:
             self.SNVs.append((location, ratio),)
 
 
-def main(config):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+    pp = terminal.pretty_print
+
+    bases = ['A', 'T', 'C', 'G']
+
     if not args.output_file_path:
         raise ConfigError("You must define an output file path.")
 
-    run = terminal.Run(width = 15)
-    progress = terminal.Progress()
-
     sequences = {}
 
+    user_config = configparser.ConfigParser()
+    user_config.read(args.configuration)
+    config = Configuration(user_config)
     x = config.short_read_length
     c = config.coverage
 
@@ -103,20 +114,18 @@ def main(config):
             sequences[entry_id]['sequence'] = sequences[entry_id]['sequence'][:position_in_sequence_to_replace] + new_base + sequences[entry_id]['sequence'][position_in_sequence_to_replace + 1:]
             sequences[entry_id]['num_SNVs'] += 1
 
-    output = open(args.output_file_path, 'w')
-    for entry_id in sequences:
-        s = sequences[entry_id]
-        output.write('>%s\n' % '|'.join(['%d' % entry_id, 'start:%d' % s['start'], 'stop:%d' % s['stop'], 'num_SNVs:%d' % s['num_SNVs']]))
-        output.write('%s\n' % s['sequence'])
-    output.close()
+    with open(args.output_file_path, 'w') as output:
+        for entry_id in sequences:
+            s = sequences[entry_id]
+            output.write('>%s\n' % '|'.join(['%d' % entry_id, 'start:%d' % s['start'], 'stop:%d' % s['stop'], 'num_SNVs:%d' % s['num_SNVs']]))
+            output.write('%s\n' % s['sequence'])
 
     progress.end()
 
+    run.info('Fasta output', args.output_file_path)
 
-    run.info('Fasta output', args.output_file_path) 
 
-
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
     parser.add_argument('configuration', metavar = 'CONFIG_FILE',
                                         help = 'Configuration file')
@@ -125,17 +134,8 @@ if __name__ == '__main__':
 
 
 
-    args = parser.get_args(parser)
-    user_config = configparser.ConfigParser()
-    user_config.read(args.configuration)
+    return parser.get_args(parser)
 
 
-    try:
-        config = Configuration(user_config)
-        main(config)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+if __name__ == '__main__':
+    main()

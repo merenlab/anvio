@@ -27,12 +27,12 @@ __description__ = ("Get nucleotide-level, contig-level, or bin-level coverage va
 
 class ComputeCoverage(object):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
         self.run = run
         self.progress = progress
 
         self.progress.new('Initializing')
 
-        self.args = args
         self.sanity_check()
         self.f = self.init_output()
 
@@ -261,22 +261,21 @@ class ComputeCoverage(object):
 
 
 @terminal.time_program
-def main(args):
-    c = ComputeCoverage(args, terminal.Run(), terminal.Progress())
-    c.process()
-
-
-if __name__ == '__main__':
-    args = parser.get_args(parser)
+def main():
+    args = get_args()
 
     try:
-        main(args)
+        c = ComputeCoverage(args, terminal.Run(), terminal.Progress())
+        c.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('REQUIRED', 'Declare your BAM file here')
@@ -307,3 +306,8 @@ if __name__ == '__main__':
         "contigs of interest file has correct names can take a really long time if you have a large enough number of "
         "contigs. Use this flag to forego checking, and find out the hard way.")
 
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

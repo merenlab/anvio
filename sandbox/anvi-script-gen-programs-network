@@ -5,7 +5,6 @@ import sys
 
 import anvio
 import anvio.programs as programs
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -16,18 +15,9 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __description__ = "Generate a network of anvi'o programs"
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
-    parser = ArgumentParser(description=__description__)
-
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'NETWORK.json'}))
-    parser.add_argument('-p', '--program-names-to-focus', default=None, help="Comma-spearated list of program names to focus\
-                         Mostly for debugging purposes.")
-
-    args = parser.get_args(parser)
+def main():
+    args = get_args()
 
     try:
         network = programs.ProgramsNetwork(args)
@@ -38,3 +28,18 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+
+
+def get_args():
+    from anvio.argparse import ArgumentParser
+    parser = ArgumentParser(description=__description__)
+
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'NETWORK.json'}))
+    parser.add_argument('-p', '--program-names-to-focus', default=None, help="Comma-spearated list of program names to focus\
+                         Mostly for debugging purposes.")
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()

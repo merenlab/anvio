@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.contigops import GenbankToAnvio
 from anvio.errors import ConfigError, FilesNPathsError
@@ -23,11 +22,21 @@ __description__ = ("This script takes a GenBank file, and outputs a FASTA file, 
                    "and `anvi-import-functions`")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    args = get_args()
+
+    try:
+        genbank_to_anvio = GenbankToAnvio(args)
+        genbank_to_anvio.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -61,14 +70,8 @@ if __name__ == '__main__':
                             "the user can trace back a given gene call to the original locus tag number in the GenBank file.")
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        genbank_to_anvio = GenbankToAnvio(args)
-        genbank_to_anvio.process()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -12,9 +12,8 @@ import sys
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.kegg as kegg
-import anvio.terminal as terminal
+import anvio.utils as utils
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -28,10 +27,21 @@ __provides__ = ["user-modules-data"]
 __requires__ = ["enzymes-list-for-module"]
 __description__ = ("This script generates a user-defined module file from a tab-delimited file of enzymes and other input parameters.")
 
-run = terminal.Run()
-progress = terminal.Progress()
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def run_program():
+    args = get_args()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     enzyme_txt_path = A('enzymes_list_for_module')
     entry = A('module_entry')
@@ -122,7 +132,7 @@ def main(args):
         f.write("\n".join(all_lines))
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupR = parser.add_argument_group('REQUIRED INPUT', "Everything you NEED to make a module definition.")
@@ -144,13 +154,8 @@ if __name__ == '__main__':
                                                                "tell her where to find any non-default KEGG data. ")
     groupK.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

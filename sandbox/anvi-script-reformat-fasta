@@ -26,13 +26,23 @@ __description__ =  ("Reformat FASTA file (remove contigs based on length, or bas
                     "deflines, and/or generate an output with simpler names)")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-P = terminal.pluralize
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def reformat_FASTA(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    pp = terminal.pretty_print
+    P = terminal.pluralize
+
     if args.keep_ids and args.exclude_ids:
         raise ConfigError("You can't use`--exclude-ids and --keep-ids together :/")
 
@@ -249,7 +259,7 @@ def reformat_FASTA(args):
                         "the flag `--overwrite-input`.", nl_before=1, nl_after=1)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -315,13 +325,8 @@ if __name__ == '__main__':
                         help=("If your FASTA file contains entries with no sequences, you will either have to ask anvi'o "
                               "to ignore them, or go back to your file and figure out why it is the case (because you will "
                               "certainly get an error somewhere during the process)."))
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        reformat_FASTA(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

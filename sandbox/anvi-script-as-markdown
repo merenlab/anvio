@@ -17,7 +17,17 @@ __provides__ = ['markdown-txt']
 __description__ = ("Markdownizides TAB-delmited data with headers in terminal.")
 
 
-def main(args):
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def run_program():
+    args = get_args()
+
     line_counter = 0
     num_fields = None
     field_indices_to_include = []
@@ -76,8 +86,7 @@ def main(args):
             return
 
 
-
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
     parser.add_argument('--max-num-lines-to-show', type=int, default=None, help="Maximum number of lines to show.")
@@ -85,10 +94,8 @@ if __name__ == '__main__':
     parser.add_argument('--code-columns', type=str, default=None, help="Comma-separated list of column names to be wrapped with '`' characters. "
                 "If you pass 'ALL-COLUMNS' as a parameter rather than individual ones, all columns will be wrapped with '`' characters because "
                 "you're welcome.")
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

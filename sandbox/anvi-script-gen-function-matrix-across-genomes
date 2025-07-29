@@ -24,24 +24,34 @@ __provides__ = ['functional-enrichment-txt', 'functions-across-genomes-txt']
 __description__ = "A program to generate reports for the distribution of functions across genomes"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+@terminal.time_program
+def main():
+    args = get_args()
+
+    try:
+        output_directory_for_output_files = os.path.dirname(os.path.abspath(args.output_file_prefix))
+
+        # just a few quick checks before passing everything to AggregateFunctions:
+        filesnpaths.is_output_dir_writable(output_directory_for_output_files)
+
+        if args.groups_txt:
+            output_file_path_for_functional_enrichment = f"{os.path.abspath(args.output_file_prefix)}-FUNCTIONAL-ENRICHMENT.txt"
+            args.output_file = output_file_path_for_functional_enrichment
+
+        facc = AggregateFunctions(args)
+        facc.report_functions_across_genomes(args.output_file_prefix, with_function_accession_ids=args.also_report_accession_ids)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
 
 
-def main(args):
-    # just a quick check before passing everything to AggregateFunctions:
-    output_directory_for_output_files = os.path.dirname(os.path.abspath(args.output_file_prefix))
-    filesnpaths.is_output_dir_writable(output_directory_for_output_files)
-
-    if args.groups_txt:
-        output_file_path_for_functional_enrichment = f"{os.path.abspath(args.output_file_prefix)}-FUNCTIONAL-ENRICHMENT.txt"
-        args.output_file = output_file_path_for_functional_enrichment
-
-    facc = AggregateFunctions(args, r=run, p=progress)
-    facc.report_functions_across_genomes(args.output_file_prefix, with_function_accession_ids=args.also_report_accession_ids)
-
-
-if __name__ == '__main__':
+def get_args():
     # setup the command line user interface
     parser = ArgumentParser(description=__description__)
 
@@ -83,18 +93,8 @@ if __name__ == '__main__':
                                 "will generate for you.")
     groupG.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
 
+    return parser.get_args(parser)
 
 
-    args = parser.get_args(parser)
-
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
-    except DictIOError as e:
-        print(e)
-        sys.exit(-3)
+if __name__ == '__main__':
+    main()

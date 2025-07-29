@@ -6,7 +6,6 @@ import random
 
 import anvio
 import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,11 +20,20 @@ __authors__ = ['meren']
 __description__ = "Train a classifier for CPR prediction"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+
     filesnpaths.is_file_tab_delimited(args.matrix)
     filesnpaths.is_output_file_writable(args.output)
 
@@ -61,7 +69,7 @@ def main(args):
     rf.train(features, data, labels)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -72,13 +80,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default = "cpr-scg.classifier", help = "Output file name for the classifier.",
                         metavar='CLASSIFIER_FILE')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

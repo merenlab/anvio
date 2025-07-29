@@ -26,7 +26,23 @@ __description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or p
                    "have something very specific in mind.")
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        TablesForCollections(args.pan_or_profile_db).add_default_collection_to_db(contigs_db_path=args.contigs_db,
+                                                                                  collection_name=args.collection_name,
+                                                                                  bin_name=args.bin_id,
+                                                                                  bin_each_item_separately=args.bin_each_item_separately)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASE INPUTS', "Provide a profile-, gene-, or pan-db, and if relevant, "
@@ -47,16 +63,8 @@ if __name__ == '__main__':
     groupC.add_argument('--bin-each-item-separately', default=False, action="store_true", help="If you declare this flag "
                 "every item in your database will have its own bin (which is crazy, but may be necessary).")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        TablesForCollections(args.pan_or_profile_db).add_default_collection_to_db(contigs_db_path=args.contigs_db,
-                                                                                  collection_name=args.collection_name,
-                                                                                  bin_name=args.bin_id,
-                                                                                  bin_each_item_separately=args.bin_each_item_separately)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

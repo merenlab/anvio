@@ -26,12 +26,24 @@ __authors__ = ['meren']
 __description__ = "Screen for genomes to find likely members of CPR"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+    pp = terminal.pretty_print
+
     utils.is_contigs_db(args.contigs_db)
 
     collections = ccollections.Collections()
@@ -123,7 +135,7 @@ def main(args):
                 with open(args.output_file, "a") as f: f.write(result + '\n')
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -147,13 +159,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

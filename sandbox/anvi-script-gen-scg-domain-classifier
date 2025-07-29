@@ -22,7 +22,21 @@ __authors__ = ['meren']
 __description__ = "Train a classifier for SCG domain prediction"
 
 
-if __name__ == '__main__':
+def main():
+    args = get_args()
+
+    try:
+        c = Train(args)
+        c.train()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -36,14 +50,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default = "domain.classifier", help = "Output file name for the classifier.",
                         metavar='PATH')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        c = Train(args)
-        c.train()
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

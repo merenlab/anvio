@@ -4,7 +4,6 @@
 import sys
 
 import anvio
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -31,12 +30,23 @@ __description__ = ("This script generates a FASTA file of tRNA-seq seeds "
                    "to validate nucleotides at modified positions and find the most similar sequences.")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+    pp = terminal.pretty_print
+
     contigs_db_path = args.contigs_db
     profile_db_path = args.specific_profile_db
     fasta_path = args.contigs_fasta
@@ -156,7 +166,7 @@ def remove_orig_contig(permut_contigs_info, contig_seq):
     return True
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser()
 
     parser.add_argument_group('MANDATORY')
@@ -177,13 +187,8 @@ if __name__ == '__main__':
                         help="The maximum number of modified positions that can be permuted at once in a contig.")
     parser.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

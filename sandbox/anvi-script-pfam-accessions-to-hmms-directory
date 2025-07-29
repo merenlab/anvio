@@ -22,12 +22,22 @@ __description__ = ("You give this program one or more PFAM accession ids, and it
                    "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     pfam_accessions_list = A('pfam_accessions_list')
     pfam_accessions_file = A('pfam_accessions_file')
@@ -148,7 +158,7 @@ def main(args):
                     f"to your new directory using the `--hmm-profile-dir` parameter).", nl_before=1, nl_after=1)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
@@ -165,13 +175,8 @@ if __name__ == '__main__':
                 "We suggest you use a name that does not include any of those millenial characters "
                 "(like space, question mark, comma, and such, you know).")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()

@@ -23,12 +23,23 @@ __description__ = ("Quantify the detection of genes in genomes in metagenomes to
                    "environmental core. This is a helper script for anvi'o metapangenomic workflow")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
     fraction_of_median_coverage = float(args.fraction_of_median_coverage)
     min_detection = float(args.min_detection)
 
@@ -109,7 +120,7 @@ def main(args):
     progress.end()
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -130,13 +141,8 @@ if __name__ == '__main__':
                         samples will be assumed not a part of the 'environmental core'.")
 
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

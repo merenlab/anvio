@@ -5,7 +5,6 @@ import sys
 import shutil
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers.emapper import EggNOGMapper
@@ -19,12 +18,20 @@ __authors__ = ['meren']
 __description__ = "Run eggnog-mapper on a contigs database, and store results"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-def main(args):
+def run_program():
+    args = get_args()
+
     if args.annotation:
         if not args.use_version:
             raise ConfigError("If you would like to use a pre-existing annotation file to import from,\
@@ -50,7 +57,7 @@ def main(args):
             shutil.rmtree(output_dir)
 
 
-if __name__ == '__main__':
+def get_args():
     # quickly learn available parser versions
     from argparse import Namespace
     known_versions = EggNOGMapper(args=Namespace()).available_parsers.keys()
@@ -73,13 +80,8 @@ if __name__ == '__main__':
                         help=f'The version of eggnog-mapper that generated the annotation file. Known versions \
                                of emapper include the following: {", ".join(known_versions)}')
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()

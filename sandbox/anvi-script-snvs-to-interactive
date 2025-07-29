@@ -25,11 +25,23 @@ __resources__ = [("Use in the Infant Gut Tutorial", "http://merenlab.org/tutoria
 __description__ = "Take the output of anvi-gen-variability-profile, prepare an output for interactive interface"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
-def main(args):
+
+def run_program():
+    args = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+    pp = terminal.pretty_print
+
     filesnpaths.check_output_directory(args.output_dir)
 
     progress.new('Reading in your giant file')
@@ -150,7 +162,7 @@ def main(args):
     g.generate()
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -180,13 +192,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
