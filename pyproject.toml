@@ -88,6 +88,17 @@ Repository = "https://github.com/merenlab/anvio"
 Contact = "https://anvio.org/people"
 
 [project.scripts]
+# Anvi'o main programs (followed by anvi'o scripts below). There is no clear boundary between
+# what is a 'script' and what is a 'program'. But a right-hand rule is the following: anvi'o
+# programs typically (1) produce or modify key anvi'o artifacts and (2) their functionality
+# is well capture by classes in the codebase. Scripts, on the other hand, address relatively
+# ad hoc needs, and their routines are implemented within the file itself. for instance, you
+# can compare anvi-profile and anvi-script-gen-short-reads to have a sense of the difference.
+# but it is true that not all programs look like prograsm, and not all scripts will look like
+# scripts based on this differnce. See anvi-cluster-contigs for a bad example of a program
+# (because it is so poorly organized), and  and see anvi-script-process-genbank as a bad
+# example of a script (because it is so well written). At the end, this is a suggestive
+# boundary, and at the discretion of the developer
 "anvi-analyze-synteny"                              = "anvio.cli.analyze_synteny:main"
 "anvi-cluster-contigs"                              = "anvio.cli.cluster_contigs:main"
 "anvi-compute-ani"                                  = "anvio.cli.compute_ani:main"
@@ -219,7 +230,7 @@ Contact = "https://anvio.org/people"
 "anvi-trnaseq"                                      = "anvio.cli.trnaseq:main"
 "anvi-update-db-description"                        = "anvio.cli.update_db_description:main"
 "anvi-update-structure-database"                    = "anvio.cli.update_structure_database:main"
-
+# Anvi'o scripts
 "anvi-script-add-default-collection"                     = "anvio.cli.add_default_collection:main"
 "anvi-script-as-markdown"                                = "anvio.cli.as_markdown:main"
 "anvi-script-augustus-output-to-external-gene-calls"     = "anvio.cli.augustus_output_to_external_gene_calls:main"
