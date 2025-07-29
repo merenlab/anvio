@@ -201,8 +201,8 @@ class ComputeCoverage(object):
 
     def setup_contigs_of_interest(self):
         """Check contigs of interest file and then return list of contigs"""
-        filesnpaths.is_file_exists(args.contigs_of_interest)
-        contigs_of_interest = [x.strip() for x in open(args.contigs_of_interest).readlines()]
+        filesnpaths.is_file_exists(self.args.contigs_of_interest)
+        contigs_of_interest = [x.strip() for x in open(self.args.contigs_of_interest).readlines()]
 
         if not self.args.skip_contigs_check:
             self.is_contigs_in_bam(contigs_of_interest)
@@ -251,8 +251,8 @@ class ComputeCoverage(object):
 
 
     def setup_collection_txt(self):
-        filesnpaths.is_file_exists(args.collection_txt)
-        collection = pd.read_csv(args.collection_txt, sep='\t', names=('contig_name', 'bin'))
+        filesnpaths.is_file_exists(self.args.collection_txt)
+        collection = pd.read_csv(self.args.collection_txt, sep='\t', names=('contig_name', 'bin'))
 
         if not self.args.skip_contigs_check:
             self.is_contigs_in_bam(collection['contig_name'])
