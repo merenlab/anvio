@@ -25,12 +25,32 @@ __description__ = ("This program generates an anvi'o compatible HMM directory to
                    "from the MDMParis Defense Finder Models.")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
 
 
-def download_latest_defense_finder_release():
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+
+def run_program():
+    _ = get_args()
+    run = terminal.Run()
+    progress = terminal.Progress()
+
+    # Check output
+    output_directory_path = "DefenseFinder_HMM"
+    filesnpaths.check_output_directory(output_directory_path)
+
+    # Download Defense Finder Models
+    source_folder = "defense-finder-models"
+    source_profile_folder = os.path.join(source_folder, "profiles")
+
     progress.new("Downloading", progress_total_items=0)
     progress.update('...')
 
@@ -46,18 +66,6 @@ def download_latest_defense_finder_release():
 
     progress.end()
 
-
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-
-    # Check output
-    output_directory_path = "DefenseFinder_HMM"
-    filesnpaths.check_output_directory(output_directory_path)
-
-    # Download Defense Finder Models
-    source_folder = "defense-finder-models"
-    source_profile_folder = os.path.join(source_folder, "profiles")
-    download_latest_defense_finder_release()
     filesnpaths.is_file_exists("defense-finder-models/metadata.yml")
 
     # Parse all the HMM files
@@ -135,17 +143,12 @@ def main(args):
                     "to your new directory using the `--hmm-profile-dir` parameter).", nl_before=1, nl_after=1)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
+
+if __name__ == '__main__':
+    main()
