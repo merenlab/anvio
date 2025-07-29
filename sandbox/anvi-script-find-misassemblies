@@ -3,7 +3,6 @@
 
 import sys
 import anvio
-import argparse
 
 import anvio.bamops as bamops
 import anvio.terminal as terminal
@@ -23,6 +22,18 @@ __requires__ = ["bam-file"]
 __description__ = ("This script report errors in long read assembly using read-recruitment information. "
                    "The input file should be a BAM file of long reads mapped to an assembly made from "
                    "these reads.")
+
+
+def main():
+    try:
+        run_program()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
 
 def process_contig(args, available_index_queue, output_queue, contigs_size):
     bam = bamops.BAMFileObject(args.bam_file, 'rb')
@@ -69,7 +80,10 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
         except Exception as e:
             output_queue.put(e)
 
-def main(args):
+
+def run_program():
+    args = get_args()
+
     if not args.just_do_it:
         raise ConfigError("This script ONLY makes sense if you are using a BAM file that was made from "
                           "mapping long read onto an assembly made with the SAME long reads. "
@@ -198,20 +212,12 @@ def main(args):
     progress.end()
 
 
-if __name__ == '__main__':
+def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('REQUIRED', 'Declare your BAM file here')
     groupA.add_argument('-b', '--bam-file', required = True, help = "Sorted and indexed BAM file to analyze.")
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-2)
     groupB = parser.add_argument_group('OUTPUT-PREFIX', "Choose a prefix for the two output files")
     groupB.add_argument( '-o', '--output-prefix', required=True, help = ("Output prefix for the two tab-"
             "delimited files. Will overwrite existing files."))
@@ -225,3 +231,9 @@ if __name__ == '__main__':
             "in the output file. Default is 0.8"))
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupC.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    return parser.get_args(parser)
+
+
+if __name__ == '__main__':
+    main()
