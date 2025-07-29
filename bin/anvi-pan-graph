@@ -70,6 +70,7 @@ if __name__ == '__main__':
     groupC.add_argument('--gamma', default=0.25, type=float, help = "Description.")
     groupC.add_argument('--delta', default=0.75, type=float, help = "Description.")
     groupC.add_argument('--inversion-aware', default=False, type=bool, help = "Description.")
+    groupC.add_argument('--min-k', default=1, type=int, help = "Description.")
 
     args = parser.get_args(parser)
 
