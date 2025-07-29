@@ -87,10 +87,6 @@ Repository = "https://github.com/merenlab/anvio"
 "Development Team" = "https://anvio.org/people"
 Contact = "https://anvio.org/people"
 
-[tool.setuptools]
-packages = ["anvio"]
-include-package-data = true
-
 [project.scripts]
 "anvi-analyze-synteny"                              = "anvio.cli.analyze_synteny:main"
 "anvi-cluster-contigs"                              = "anvio.cli.cluster_contigs:main"
@@ -267,6 +263,16 @@ include-package-data = true
 "anvi-script-tabulate"                                   = "anvio.cli.tabulate:main"
 "anvi-script-transpose-matrix"                           = "anvio.cli.transpose_matrix:main"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
+
+[tool.setuptools]
+packages = ["anvio"]
+include-package-data = true
+
+# Non-python programs in anvi'o
+script-files = [
+    "anvio/scripts/anvi-script-visualize-split-coverages",
+    "anvio/scripts/anvi-script-enrichment-stats",
+]
 
 [tool.setuptools.package-data]
 anvio = [
