@@ -129,10 +129,10 @@ def main(args):
     shutil.rmtree(source_folder)
     progress.end()
 
-    run.info_single(f"Congratulations. Your anvi'o formatted HMM directory for "
-                    f"the MDMParis/Defense-Finder-Models is ready "
-                    f"to be used with `anvi-run-hmms` (all you need to do is to provide the path "
-                    f"to your new directory using the `--hmm-profile-dir` parameter).", nl_before=1, nl_after=1)
+    run.info_single("Congratulations. Your anvi'o formatted HMM directory for "
+                    "the MDMParis/Defense-Finder-Models is ready at 'DefenseFinder_HMM' "
+                    "to be used with `anvi-run-hmms` (all you need to do is to provide the path "
+                    "to your new directory using the `--hmm-profile-dir` parameter).", nl_before=1, nl_after=1)
 
 
 if __name__ == '__main__':
