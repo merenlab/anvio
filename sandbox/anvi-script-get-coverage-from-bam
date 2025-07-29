@@ -267,97 +267,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description=__description__)
-
-    groupI = parser.add_argument_group(
-        'REQUIRED',
-        'Declare your BAM file here'
-    )
-    groupI.add_argument(
-        '-b',
-        '--bam-file',
-        required = True,
-        help = "Sorted and indexed BAM file to analyze."
-    )
-
-
-    group1 = parser.add_argument_group(
-        'OPTION #1',
-        "This is the first and simplest option. Provide a contig name"
-    )
-    group1.add_argument(
-        '-c',
-        '--contig-name',
-        default = None,
-        help = "The name of a single contig"
-    )
-
-
-    group2 = parser.add_argument_group(
-        'OPTION #2',
-        ("Use this to characterize coverage for a list of contigs")
-    )
-    group2.add_argument(
-        '-l',
-        '--contigs-of-interest',
-        default = None,
-        help = "Provide here a file where each line is a contig name."
-    )
-
-
-    group3 = parser.add_argument_group(
-        'OPTION #3',
-        ("Use this to characterize coverage for a collection of contig sets (bins)")
-    )
-    group3.add_argument(
-        '-C',
-        '--collection-txt',
-        default = None,
-        help = ("Provide a collection text file. The first column should be "
-                "contig names and the second column should be the bin to which "
-                "the contig belongs. If you have a collection from a profile "
-                "database, you can export it in this format with anvi-export-collection.")
-    )
-
-    groupM = parser.add_argument_group(
-        'METHOD',
-        ("Do you want to report coverage at a nucleotide level? Contig averages? "
-         "Bin averages? Pick the method here.")
-    )
-    groupM.add_argument(
-        '-m',
-        '--method',
-        choices=('pos','contig','bin'),
-        required=True,
-        help = ("If pos, each nucleotide position will be reported (valid for "
-                "OPTION #1, #2, #3). If contig, report contains contig averages "
-                "(valid for OPTION #2, #3). If bin, report contains bin averages "
-                "(valid for OPTION #3).")
-    )
-
-    groupO = parser.add_argument_group(
-        'OUTPUT',
-        ("Your output file is decided here. Keep in mind if you use --method pos, this "
-         "file will contain as many lines as there are nucleotides defined by your input option")
-    )
-    groupO.add_argument(
-        '-o',
-        '--output',
-        required=True,
-        help = ("Output tab-delimited file path. Will overwrite existing files.")
-    )
-
-    groupE = parser.add_argument_group(
-        'EXTRAS',
-        ("All the misfits")
-    )
-    groupE.add_argument(
-        '--skip-contigs-check',
-        action='store_true',
-        help = ("Checking to see that your collection text or contigs of interest file has correct "
-                "names can take a really long time if you have a large enough number of contigs. Use "
-                "this flag to forego checking, and find out the hard way.")
-    )
     args = parser.get_args(parser)
 
     try:
@@ -368,3 +277,33 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
+    parser = ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('REQUIRED', 'Declare your BAM file here')
+    groupA.add_argument('-b', '--bam-file', required=True, help="Sorted and indexed BAM file to analyze.")
+
+    groupB = parser.add_argument_group('OPTION #1', "This is the first and simplest option. Provide a contig name")
+    groupB.add_argument('-c', '--contig-name', default=None, help="The name of a single contig")
+
+    groupC = parser.add_argument_group('OPTION #2', "Use this to characterize coverage for a list of contigs")
+    groupC.add_argument('-l', '--contigs-of-interest', default=None, help="Provide here a file where each line is a contig name.")
+
+    groupD = parser.add_argument_group('OPTION #3', "Use this to characterize coverage for a collection of contig sets (bins)")
+    groupD.add_argument('-C', '--collection-txt', default=None, help="Provide a collection text file. The first "
+        "column should be contig names and the second column should be the bin to which the contig belongs. If "
+        "you have a collection from a profile database, you can export it in this format with anvi-export-collection.")
+
+    groupE = parser.add_argument_group('METHOD',  "Do you want to report coverage at a nucleotide level? Contig averages? Bin averages? Pick the method here.")
+    groupE.add_argument('-m', '--method', choices=('pos','contig','bin'), required=True, help="If pos, each nucleotide position "
+        "will be reported (valid for OPTION #1, #2, #3). If contig, report contains contig averages (valid for OPTION #2, #3). "
+        "If bin, report contains bin averages (valid for OPTION #3).")
+
+    groupF = parser.add_argument_group('OUTPUT',  "Your output file is decided here. Keep in mind if you use --method pos, "
+        "this file will contain as many lines as there are nucleotides defined by your input option")
+    groupF.add_argument('-o', '--output', required=True, help="Output tab-delimited file path. Will overwrite existing files.")
+
+    groupG = parser.add_argument_group('EXTRAS', "All the misfits")
+    groupG.add_argument('--skip-contigs-check', action='store_true', help="Checking to see that your collection text or "
+        "contigs of interest file has correct names can take a really long time if you have a large enough number of "
+        "contigs. Use this flag to forego checking, and find out the hard way.")
+
