@@ -183,7 +183,17 @@ class AnvioPrograms(AnvioAuthors):
 
 
     def sanity_check(self):
-        """Check whether known programs and available programs make sense"""
+        """Check whether known programs and available programs make sense.
+
+        You can simply run the following to see it in action:
+
+            >>> python -c "import anvio.programs as p; p.AnvioPrograms().sanity_check()"
+
+        Adding this as a git post-checkout hook is a good practice to figure out if the anvi'o
+        environment is consistent:
+
+            >>> echo -e '#!/bin/bash\n[ "$3" = "1" ] && python -c "import anvio.programs as p; p.AnvioPrograms().sanity_check()"' > .git/hooks/post-checkout && chmod +x .git/hooks/post-checkout
+        """
         available_programs_according_to_python_environment = utils.get_available_program_names_in_active_environment(prefix='anvi-')
         available_programs_according_to_anvio = set(list(self.program_names_and_paths.keys()))
 
@@ -197,7 +207,7 @@ class AnvioPrograms(AnvioAuthors):
                                      "in the `pyproject.toml`), and the anvi'o programs your Python environment "
                                      "knows about (through the list of programs accessible via $PATH).",
                                      header="FRIENDLY WARNING: ANVIO ENVIRONMENT IS CONFUSE", overwrite_verbose=True, lc='yellow')
-        
+
                     if programs_only_environment_knows_about:
                         self.run.info_single("There are some anvi'o programs that are accessible in your Python environment, "
                                              "but your active codebase does not know about them. Here is a list of such "
@@ -214,7 +224,7 @@ class AnvioPrograms(AnvioAuthors):
                                              f"in your terminal right now, you would not get a 'command not found' error from your "
                                              f"shell, but a 'ModuleNotFoundError' error from Python.",
                                              overwrite_verbose=True, nl_after=1, level=0, nl_before=1)
-        
+
                     if programs_only_anvio_knows_about:
                         self.run.info_single("There are some anvi'o programs that are known to your active anvi'o codebase, "
                                              "but they are not accessible to you in your Python environment. Here is a "
@@ -229,7 +239,7 @@ class AnvioPrograms(AnvioAuthors):
                                              f"in your terminal right now, you would get a 'command not found' error from your shell "
                                              f"(rather than a 'ModuleNotFoundError' error from Python).",
                                              overwrite_verbose=True, nl_before=1, nl_after=1, level=0)
-        
+
                     self.run.info_single("The universal solution here is to run the following command right now in your anvi'o "
                                          "source code directory:", overwrite_verbose=True, nl_after=1, level=0)
                     self.run.info_single("    pip install -e . --force-reinstall --upgrade",
@@ -266,8 +276,11 @@ class AnvioPrograms(AnvioAuthors):
         with open(pyproject_path, 'rb') as f:
             pyproject_data = tomllib.load(f)
 
+        ########################################
         # figure out entry points in the file
+        ########################################
         entry_points = pyproject_data.get('project', {}).get('scripts', {})
+
         if not entry_points:
             raise ConfigError("The pyproject.toml is there, but it does not seem to contain any entry points. This "
                               "function needs an adult to figure this out :(")
@@ -285,6 +298,17 @@ class AnvioPrograms(AnvioAuthors):
                                   f"program path for `{program_name}` as there was nothing at `{program_path}` :/ "
                                   f"This should have never happened, but must be solved before this program can "
                                   f"continue doing its job.")
+
+            program_names_and_paths[program_name] = program_path
+
+        ########################################
+        # figure out non-python scripts
+        ########################################
+        non_python_scripts = pyproject_data.get('tool', {}).get('setuptools', {})['script-files']
+
+        for non_python_script in non_python_scripts:
+            program_name = os.path.basename(non_python_script)
+            program_path = os.path.abspath(os.path.join(anvio_dir, '..', non_python_script))
 
             program_names_and_paths[program_name] = program_path
 
