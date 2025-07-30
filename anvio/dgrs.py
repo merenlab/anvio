@@ -2897,7 +2897,8 @@ class DGR_Finder:
             csv_writer = csv.writer(csvfile)
             headers = ["Parameter", "Value"]
             csv_writer.writerow(headers)
-
+            #TODO:MAKE SURE THIS LIST IS COMPLETE AND IN THE RIGHT ORDER
+            ##############
             parameters = [
                 ("Contig.db", self.contigs_db_path if self.contigs_db_path else None),
                 ("Profile.db", self.profile_db_path if self.profile_db_path else None),
