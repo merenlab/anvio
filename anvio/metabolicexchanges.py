@@ -711,23 +711,16 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 """
 
                 for compound_id, map_dict in compound_reaction_chains.items():
-                    #print(f"{compound_id}:")
                     for map_id, genome_dict in map_dict.items():
-                        #print(f"\t{map_id}:")
                         for genome, type_dict in genome_dict.items():
-                            #print(f"\t\t{genome}:")
                             for walk_type, chain_list in type_dict.items():
-                                #print(f"\t\t\t{walk_type}:")
                                 type_rxn_list = []
                                 type_eq_list = []
                                 for chain in chain_list:
-                                    #print(f"\t\t\t\t{chain}\n")
                                     for kegg_rxn in chain.kgml_reactions:
-                                        #print(f"\t\t\t\tKEGG Reaction {kegg_rxn.name}\n")
                                         # we need r[0] because r is actually a tuple (first element is the ModelSEEDReaction object, second is empty)
                                         # and we need kegg_rxn.name[3:] because the string looks like "rn:R00331" but the KEGG ID part is only after the 'rn:'
                                         modelseed_rxns = {r[0].modelseed_id: r[0] for r in chain.aliased_modelseed_reactions if r and kegg_rxn.name[3:] in r[0].kegg_aliases}
-                                        #print(f"\t\t\t\tCorresponding ModelSEED Reactions {','.join(modelseed_rxns.keys())}\n")
                                         for rxn_id, rxn_object in modelseed_rxns.items():
                                             kegg_rxn_ids = rxn_object.kegg_aliases
                                             coeffs = rxn_object.coefficients
