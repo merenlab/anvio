@@ -616,6 +616,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         if longest_with_max_overlap:
             longest_producer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
                                             "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
+        elif longest_producer_chains: # if there is no overlap, we arbitrarily report the first 'longest' producer chain
+            longest_producer_chain_strings = {"reactions": [r.name for r in longest_producer_chains[0].kgml_reactions], "compounds": [c.name[4:] for c in longest_producer_chains[0].kgml_compound_entries]}
         else:
             longest_producer_chain_strings = {"reactions": [], "compounds": []}
 
@@ -625,6 +627,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         if longest_with_max_overlap:
             longest_consumer_chain_strings = {"reactions": [r.name for r in longest_with_max_overlap.kgml_reactions],
                                             "compounds": [c.name[4:] for c in longest_with_max_overlap.kgml_compound_entries]}
+        elif longest_consumer_chains: # if there is no overlap, we arbitrarily report the first 'longest' consumer chain
+            longest_consumer_chain_strings = {"reactions": [r.name for r in longest_consumer_chains[0].kgml_reactions], "compounds": [c.name[4:] for c in longest_consumer_chains[0].kgml_compound_entries]}
         else:
             longest_consumer_chain_strings = {"reactions": [], "compounds": []}
 
