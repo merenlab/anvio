@@ -26,8 +26,6 @@ __maintainer__ = "Iva Veseli"
 __email__ = "iva.veseli@gmail.com"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 P = terminal.pluralize
@@ -158,7 +156,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         All the arguments supplied by user to anvi-predict-metabolic-exchanges
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -997,7 +995,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         All the arguments supplied by user to anvi-predict-metabolic-exchanges
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
