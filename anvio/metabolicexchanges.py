@@ -394,6 +394,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         processed_count = 0
         self.progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
         for pm in self.all_pathway_maps:
+            self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
             try:
                 for g in self.genomes_to_compare: 
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
@@ -431,7 +432,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             f"We are therefore skipping this Pathway Map, but please take a look at the error text and make "
                             f"sure skipping is the right action here: {e}")
             processed_count += 1
-            self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps")
             self.progress.increment(increment_to=processed_count)
         self.progress.end()
         self.run.info("Number of Pathway Maps processed", len(self.all_pathway_maps))
