@@ -15,6 +15,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.version import versions_for_db_types
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,7 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
-workflow_config_version = anvio.tables.versions_for_db_types['config']
+workflow_config_version = versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
