@@ -92,14 +92,11 @@ if __name__ == '__main__':
     groupX.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
 
-    groupA = parser.add_argument_group('INPUT DATA', "Three options with varying outputs. 1. fasta file nothing else. 2. Contigs.db. 3. Contigs.db AND Profile.db. "
-                                        "option 1 and 2 Search for DGRs in whatever you have given it. Option 3. Searches based on areas of high SNV")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False})) #ADD THAT HAS TO BE MERGED_DB, unless have
-    groupA.add_argument("-i", "--input-file", required=False, help=("Genome sequence file, with multiple or singular sequence/s, or really any fasta file with sequences."))
+    groupA = parser.add_argument_group('INPUT DATA', "Contigs.db AND a Profile.db preferably a merged profile.db. The tool searches for DGRs based on areas of high SNV density")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': True})) #ADD THAT HAS TO BE MERGED_DB, unless have
 
-    groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for initial Template and Variable Region search")
-    groupB.add_argument("--step", help="Length of base pairs you would like to cut your genome/sequence into. Default = 100", type=int, default=100, metavar="INT")
+    groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for potential Template and Variable Region search")
     groupB.add_argument("--word-size", help="BLASTn word size parameter. Default = 8", type=str, default=8, metavar="INT")
 
     groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this program's location of variable regions'")
