@@ -88,6 +88,8 @@ class DGR_Finder:
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
+        self.snv_matching_proportion = A('snv_matching_proportion') or None
+        self.snv_codon_position = A('snv_codon_position') or 0.33 #default is 33% of SNVs in the third codon position
 
 
         # performance
@@ -125,6 +127,8 @@ class DGR_Finder:
             self.run.info('Minimum length of SNV window', self.min_range_size)
             self.run.info('Variable buffer length', self.variable_buffer_length)
             self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
+            if self.snv_matching_proportion:
+                self.run.info('SNV matching proportion', self.snv_matching_proportion)
         if self.contigs_db_path:
             self.run.info('HMM(s) Provided', ", ".join(self.hmm))
         if not self.skip_recovering_genomic_context:
@@ -917,7 +921,7 @@ class DGR_Finder:
                             # divided by the sequence length
                             for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
                                 coverage = (len(atr.motif)*atr.repeat) / len(seq)
-                                if coverage > self.repeat_motif_coverage:
+                                if str(coverage) > self.repeat_motif_coverage:
                                     has_repeat = True
 
 
@@ -1286,12 +1290,17 @@ class DGR_Finder:
                             percent_3 = count_3 / total * 100
 
                             # Apply threshold of 66% because we want less than a third of snvs to be at the third codon position
-                            is_3_over_a_third = percent_3 > 33
+                            is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
                             if is_3_over_a_third:
                                 self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}")
                                 snv_at_3_codon_over_a_third = True
+                                self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
+                                                "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
+                                                f"from the third codon base position which is unexpected behaviour. This percentage of SNVs comes from the third codon position: "
+                                                f"{percent_3} are in the third codon position of the VR. The percentage cut off for third codon position SNVs is 33% due to the "
+                                                "likelihood of a third of the SNVs in an ORF coming from the third base position. If you would like to change this use the '--snv-codon-position' parameter "
+                                                "to give it another value.", header="WARNING: DGR REMOVED", lc='yellow')
                             else:
-                                self.run.info_single(f"3rd codon position is the minority of the SNVs")
                                 snv_at_3_codon_over_a_third = False
 
                             #look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
@@ -1316,37 +1325,33 @@ class DGR_Finder:
                             numb_of_snv_in_matches_not_mutagen_base = len(set(snv_in_matches_not_mutagen_base['pos_in_contig']))
                             numb_of_mismatches = len(position)
                             numb_of_SNVs = len(snv_VR_positions)
-                            #TODO:
-                            #report proportion
-                            #Need to have over 5 SNVs as the number of SNVs to be considered a DGR
-                            #minimum 2 SNVs not at the mutagenesis base/mismatch base if over SNVs total  12 have threshold of <25% of bad SNVs
-                            #if over 30 SNVs then have a higher threshold of 30%?
-                            #delete third codon pos SNVs
 
                             # Report proportion of non-mutagenesis SNVs vs all SNVs
                             if numb_of_SNVs > 0:
-                                prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base / numb_of_SNVs
-                            else:
-                                prop_non_mutagen_snv = 0
+                                prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base/numb_of_SNVs
 
                             # Flag to store final DGR-like decision based on SNVs
                             DGR_looks_snv_false = False
 
                             # Apply filters based on SNV count and thresholds
-                            if numb_of_SNVs >= 5:
+                            if self.snv_matching_proportion:
+                                max_allowed_bad_snv_fraction = self.snv_matching_proportion
+                            else:
                                 if numb_of_SNVs >= 30:
                                     max_allowed_bad_snv_fraction = 0.30  # 30%
-                                elif numb_of_SNVs >= 12:
+                                elif numb_of_SNVs < 30:
                                     max_allowed_bad_snv_fraction = 0.25  # 25%
-                                else:
-                                    max_allowed_bad_snv_fraction = 1.0  # allow anything if just over 5
 
                                 # Evaluate
                                 if prop_non_mutagen_snv >= max_allowed_bad_snv_fraction:
                                     DGR_looks_snv_false = True
-                                    self.run.info_single(f"DGR-like SNV pattern: {numb_of_SNVs} SNVs, {numb_of_snv_in_matches_not_mutagen_base} good ones ({prop_non_mutagen_snv:.2%})")
-                                else:
-                                    self.run.info_single(f"Rejected: SNV pattern does not meet threshold - {numb_of_snv_in_matches_not_mutagen_base} good SNVs out of {numb_of_SNVs} ({prop_non_mutagen_snv:.2%})")
+                                    self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
+                                                "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
+                                                f"from the non mismatching or mutagenesis bases which is where the SNVs are expoected to be. There are this many SNVs total: {numb_of_SNVs} of which "
+                                                f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
+                                                "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30% SNVs in matching positions are allowed, "
+                                                "if less than 30 SNVs than 25% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
+                                                "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
 
                             #if there is a SNV in a matching none mutagenesis base then record it
                             #HERE ADD THRESHOLD - 30.04.2025
@@ -1398,7 +1403,6 @@ class DGR_Finder:
                         # Here we dont add VR candidates based on SNV parameters.
                         # Skip DGR if flagged due to SNV-based filters
                         if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
-                            self.run.info_single("Skipping candidate DGR due to SNV filters (3rd codon bias or SNVs in VR match)")
                             continue
 
                         #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
