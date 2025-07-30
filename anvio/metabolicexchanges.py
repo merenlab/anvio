@@ -77,6 +77,7 @@ class ExchangePredictorArgs():
             self.databases = None
             self.external_genomes_file = None
             self.internal_genomes_file = None
+            self.num_threads = 1
 
     def sanity_check_args(self):
         """Here we sanity check all the common arguments to make sure they are sensibly set."""
