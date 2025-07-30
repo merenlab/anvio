@@ -183,7 +183,17 @@ class AnvioPrograms(AnvioAuthors):
 
 
     def sanity_check(self):
-        """Check whether known programs and available programs make sense"""
+        """Check whether known programs and available programs make sense.
+
+        You can simply run the following to see it in action:
+
+            >>> python -c "import anvio.programs as p; p.AnvioPrograms().sanity_check()"
+
+        Adding this as a git post-checkout hook is a good practice to figure out if the anvi'o
+        environment is consistent:
+
+            >>> echo -e '#!/bin/bash\n[ "$3" = "1" ] && python -c "import anvio.programs as p; p.AnvioPrograms().sanity_check()"' > .git/hooks/post-checkout && chmod +x .git/hooks/post-checkout
+        """
         available_programs_according_to_python_environment = utils.get_available_program_names_in_active_environment(prefix='anvi-')
         available_programs_according_to_anvio = set(list(self.program_names_and_paths.keys()))
 
