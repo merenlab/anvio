@@ -660,30 +660,6 @@ class DGR_Finder:
 
 
 
-    def check_overlap(window1, window2):
-        #NOTE: An old function that is here just in case she is ever needed again.
-        """
-        This function checks if the sections of sequences overlap based on the start and end positions.
-        Parameters
-        ==========
-        start1, end1, n_start, n_end : integer
-            Start and end of windows containing SNVs with 20 bp buffer on either side.
-
-        Returns
-        =======
-        A boolean indicating whether the ranges overlap.
-        """
-        contig_name_1, start_position_1, end_position_1 = window1[0][1], window1[1][1], window1[2][1]
-        contig_name_2, start_position_2, end_position_2 = window2[0][1], window2[1][1], window2[2][1]
-
-        return (
-            contig_name_1 == contig_name_2
-            and start_position_1 <= end_position_2
-            and end_position_1 >= start_position_2
-        )
-
-
-
     def get_snvs(self):
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
