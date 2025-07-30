@@ -197,7 +197,7 @@ class AnvioPrograms(AnvioAuthors):
                                      "in the `pyproject.toml`), and the anvi'o programs your Python environment "
                                      "knows about (through the list of programs accessible via $PATH).",
                                      header="FRIENDLY WARNING: ANVIO ENVIRONMENT IS CONFUSE", overwrite_verbose=True, lc='yellow')
-        
+
                     if programs_only_environment_knows_about:
                         self.run.info_single("There are some anvi'o programs that are accessible in your Python environment, "
                                              "but your active codebase does not know about them. Here is a list of such "
@@ -214,7 +214,7 @@ class AnvioPrograms(AnvioAuthors):
                                              f"in your terminal right now, you would not get a 'command not found' error from your "
                                              f"shell, but a 'ModuleNotFoundError' error from Python.",
                                              overwrite_verbose=True, nl_after=1, level=0, nl_before=1)
-        
+
                     if programs_only_anvio_knows_about:
                         self.run.info_single("There are some anvi'o programs that are known to your active anvi'o codebase, "
                                              "but they are not accessible to you in your Python environment. Here is a "
@@ -229,7 +229,7 @@ class AnvioPrograms(AnvioAuthors):
                                              f"in your terminal right now, you would get a 'command not found' error from your shell "
                                              f"(rather than a 'ModuleNotFoundError' error from Python).",
                                              overwrite_verbose=True, nl_before=1, nl_after=1, level=0)
-        
+
                     self.run.info_single("The universal solution here is to run the following command right now in your anvi'o "
                                          "source code directory:", overwrite_verbose=True, nl_after=1, level=0)
                     self.run.info_single("    pip install -e . --force-reinstall --upgrade",
