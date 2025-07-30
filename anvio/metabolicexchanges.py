@@ -122,8 +122,10 @@ class ExchangePredictorArgs():
 
         output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
         if self.add_reactions_to_output:
-            output_header += [f"production_rxn_ids_{g}" for g in db_names] + [f"consumption_rxn_ids_{g}" for g in db_names] + \
-            [f"production_rxn_eqs_{g}" for g in db_names] + [f"consumption_rxn_eqs_{g}" for g in db_names]
+            output_header += [f"production_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
+                             [f"consumption_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
+                             [f"production_rxn_eqs_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
+                             [f"consumption_rxn_eqs_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare]
         exchange_header = deepcopy(output_header)
         if not self.no_pathway_walk:
             exchange_header += ['max_reaction_chain_length', 
@@ -874,14 +876,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             def add_reactions_to_dict_for_compound(compound_dict):
                 """Modifies the compound dictionary in place to add production and consumption reaction output"""
                 for g in self.genomes_to_compare:
+                    genome_name = self.genomes_to_compare[g]['name']
                     prod_rxn_ids = sorted(production_reactions[g].keys())
                     cons_rxn_ids = sorted(consumption_reactions[g].keys())
                     prod_rxn_eqs = [production_reactions[g][rid] for rid in prod_rxn_ids]
                     cons_rxn_eqs = [consumption_reactions[g][rid] for rid in cons_rxn_ids]
-                    compound_dict[f"production_rxn_ids_{g}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
-                    compound_dict[f"consumption_rxn_ids_{g}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
-                    compound_dict[f"production_rxn_eqs_{g}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
-                    compound_dict[f"consumption_rxn_eqs_{g}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
+                    compound_dict[f"production_rxn_ids_{genome_name}"] = " / ".join(prod_rxn_ids) if len(prod_rxn_ids) else None
+                    compound_dict[f"consumption_rxn_ids_{genome_name}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
+                    compound_dict[f"production_rxn_eqs_{genome_name}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
+                    compound_dict[f"consumption_rxn_eqs_{genome_name}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
             
             producer,consumer = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
             if producer or consumer:
