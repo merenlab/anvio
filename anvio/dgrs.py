@@ -89,7 +89,6 @@ class DGR_Finder:
         self.snv_matching_proportion = A('snv_matching_proportion') or None
         self.snv_codon_position = A('snv_codon_position') or 0.33 #default is 33% of SNVs in the third codon position
 
-
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
@@ -1309,17 +1308,6 @@ class DGR_Finder:
                                                 "if less than 30 SNVs than 25% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
                                                 "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
 
-                            #if there is a SNV in a matching none mutagenesis base then record it
-                            #HERE ADD THRESHOLD - 30.04.2025
-                            #if numb_of_snv_in_matches_not_mutagen_base > 2:
-                                #print(f"More than 2 SNVs are at VR match not at mutagenesis base")
-                                #DGR_looks_snv_false = True
-                            #else:
-                                #NO SNV in matching none mutagenesis base
-                                #DGR_looks_snv_false = False
-                                #print(f"NO more than 2 SNVS at match of VR not at mutagenesis base")
-
-
                         #to test for VR diversity of base types in the protein sequence
                         for letter, count in query_mismatch_counts.items():
                             non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
@@ -1507,7 +1495,6 @@ class DGR_Finder:
                                     f"direction:{gene_call['direction']}",
                                     f"rev_compd:{rev_compd}",
                                     f"length:{gene_call['length']}"])
-                        #gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
@@ -2137,8 +2124,6 @@ class DGR_Finder:
             # setup the args object
             args = argparse.Namespace(samples_dict= samples_dict_for_sample,
                                     primers_dict= primers_dict,
-                                    #min_remainder_length= self.primer_remainder_lengths,
-                                    #min_frequency=min_frequency,
                                     output_dir=output_directory_path,
                                     only_report_primer_matches = True
                                     )
@@ -2393,9 +2378,6 @@ class DGR_Finder:
         if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
             return
 
-        #if self.collections_mode:
-            #dgrs_dict = self.dgrs_in_collections
-        #else:
         dgrs_dict = self.DGRs_found_dict
 
         if not len(dgrs_dict):
@@ -2718,9 +2700,6 @@ class DGR_Finder:
         self.summary['files'] = {'Putative_DGRs': 'Putative-DGRs.txt'}
         self.summary['dgrs'] = {}
 
-        #if self.collections_mode:
-            #dgrs_dict = self.dgrs_in_collections
-        #else:
         dgrs_dict = self.DGRs_found_dict
 
         for dgr_key, dgr_data in dgrs_dict.items():
