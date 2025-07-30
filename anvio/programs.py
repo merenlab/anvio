@@ -4,7 +4,6 @@
 
 import os
 import sys
-import glob
 import json
 import copy
 import argparse
@@ -32,11 +31,7 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-G = lambda d: [p for p in glob.glob(os.path.join(d, 'anvi-*')) if utils.is_program_exists(p, dont_raise=True)]
-M = lambda m: [x for x in G(os.path.dirname(utils.is_program_exists(m)))]
-S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
 J = lambda x: '\n'.join(x) if x else ''
-
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -151,16 +146,19 @@ def parse_help_output(output):
 
 
 class AnvioPrograms(AnvioAuthors):
-    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, args=None, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
         self.run = r
         self.progress = p
+
+        if not self.args:
+             args = type('Args', (), {})()
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.program_names_to_focus = A("program_names_to_focus")
 
         # initiate `self.authors`
-        AnvioAuthors.__init__(self, r=self.run, p=self.progress)
+        AnvioAuthors.__init__(self, r=terminal.Run(verbose=False), p=self.progress)
 
         self.program_names_and_paths = self.get_anvio_program_names_and_their_paths()
 
@@ -182,6 +180,65 @@ class AnvioPrograms(AnvioAuthors):
                                   "Probably there is a typo or something :/")
 
             self.run.info(" - Final number of programs kept", len(self.program_names_to_focus), mc="red")
+
+
+    def sanity_check(self):
+        """Check whether known programs and available programs make sense"""
+        available_programs_according_to_python_environment = utils.get_available_program_names_in_active_environment(prefix='anvi-')
+        available_programs_according_to_anvio = set(list(self.program_names_and_paths.keys()))
+
+        programs_only_environment_knows_about = available_programs_according_to_python_environment - available_programs_according_to_anvio
+        programs_only_anvio_knows_about = available_programs_according_to_anvio - available_programs_according_to_python_environment
+
+        if programs_only_environment_knows_about or programs_only_anvio_knows_about:
+                    self.run.warning("Please read the following lines carefully, since you may need to act on "
+                                     "this information. There is a mismatch between the anvi'o programs the "
+                                     "active anvi'o codebase knows about (through the entry points described "
+                                     "in the `pyproject.toml`), and the anvi'o programs your Python environment "
+                                     "knows about (through the list of programs accessible via $PATH).",
+                                     header="FRIENDLY WARNING: ANVIO ENVIRONMENT IS CONFUSE", overwrite_verbose=True, lc='yellow')
+        
+                    if programs_only_environment_knows_about:
+                        self.run.info_single("There are some anvi'o programs that are accessible in your Python environment, "
+                                             "but your active codebase does not know about them. Here is a list of such "
+                                             "programs:", overwrite_verbose=True, nl_after=1, level=0)
+
+                        for program_name in programs_only_environment_knows_about:
+                            self.run.info_single(program_name, overwrite_verbose=True, mc='red')
+
+                        self.run.info_single(f"This can happen if you at some point had switched to an anvi'o branch where "
+                                             f"these programs are described in the `pyproject.toml`, and ran `pip install -e .` "
+                                             f"to install them to your environment, and then you switched to another branch with "
+                                             f"a version of `pyproject.toml` that does not include these program names. This means, "
+                                             f"if you were to run, let's say, '{list(programs_only_environment_knows_about)[0]}' "
+                                             f"in your terminal right now, you would not get a 'command not found' error from your "
+                                             f"shell, but a 'ModuleNotFoundError' error from Python.",
+                                             overwrite_verbose=True, nl_after=1, level=0, nl_before=1)
+        
+                    if programs_only_anvio_knows_about:
+                        self.run.info_single("There are some anvi'o programs that are known to your active anvi'o codebase, "
+                                             "but they are not accessible to you in your Python environment. Here is a "
+                                             "list of such programs:", overwrite_verbose=True, nl_after=1, level=0)
+
+                        for program_name in programs_only_anvio_knows_about:
+                            self.run.info_single(program_name, overwrite_verbose=True, mc='red')
+
+                        self.run.info_single(f"This happens when you switch to a branch where there are new anvi'o programs described "
+                                             f"in the `pyproject.toml` file, but they are not yet installed in the Python environment. "
+                                             f"Which means, if you were to run, let's say, '{list(programs_only_anvio_knows_about)[0]}' "
+                                             f"in your terminal right now, you would get a 'command not found' error from your shell "
+                                             f"(rather than a 'ModuleNotFoundError' error from Python).",
+                                             overwrite_verbose=True, nl_before=1, nl_after=1, level=0)
+        
+                    self.run.info_single("The universal solution here is to run the following command right now in your anvi'o "
+                                         "source code directory:", overwrite_verbose=True, nl_after=1, level=0)
+                    self.run.info_single("    pip install -e . --force-reinstall --upgrade",
+                                         overwrite_verbose=True, nl_after=1, level=0, pretty_indentation=False)
+                    self.run.info_single("This will synchronize your anvi'o codebase with its installed version in your active "
+                                         "Python environment. This is indeed very annoying, since you will likely have to do it "
+                                         "again when you go back to another branch, but this is how it goes. It is also a "
+                                         "viable alternative to ignore this message, if you think this mismatch is not a concern "
+                                         "for you at this stage.", overwrite_verbose=True, level=0)
 
 
     def get_anvio_program_names_and_their_paths(self):

@@ -329,6 +329,64 @@ def is_port_in_use(port, ip='0.0.0.0'):
     return in_use
 
 
+def get_available_program_names_in_active_environment(prefix=None, contains=None, postfix=None):
+    """Find all executable programs in the current environment that match the given criteria.
+    
+    Parameters
+    ==========
+    prefix : str, optional
+        The prefix to search for (e.g., 'anvi-')
+    contains : str, optional
+        String that must be contained in the program name (e.g., 'graph')
+    postfix : str, optional
+        The postfix/suffix to search for (e.g., '.py', '-dev')
+    
+    Returns
+    =======
+    program_names : set
+        A set of program names that match all specified criteria
+    """
+    program_names = set()
+    
+    # Get all directories in PATH
+    path_dirs = os.environ.get('PATH', '').split(os.pathsep)
+    
+    for path_dir in path_dirs:
+        if not path_dir or not os.path.isdir(path_dir):
+            continue
+            
+        try:
+            # List all files in the directory
+            for item in os.listdir(path_dir):
+                item_path = os.path.join(path_dir, item)
+                
+                # Check if it's a file and executable
+                if os.path.isfile(item_path) and os.access(item_path, os.X_OK):
+                    # Check all specified criteria
+                    matches = True
+                    
+                    if prefix is not None:
+                        if not item.lower().startswith(prefix.lower()):
+                            matches = False
+                    
+                    if contains is not None and matches:
+                        if contains.lower() not in item.lower():
+                            matches = False
+                    
+                    if postfix is not None and matches:
+                        if not item.lower().endswith(postfix.lower()):
+                            matches = False
+                    
+                    if matches:
+                        program_names.add(item)
+                        
+        except (PermissionError, OSError):
+            # Skip directories we can't read
+            continue
+    
+    return program_names
+
+
 def is_program_exists(program, dont_raise=False):
     IsExe = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
 
