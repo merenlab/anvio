@@ -1093,7 +1093,11 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         if anvio.DEBUG:
             pairs_strs = [f"{a} vs {b}" for (a,b) in self.genome_pairs]
             self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}", 
-                                header='DEBUG OUTPUT', lc='yellow')
+                                header='DEBUG OUTPUT', lc='yellow', nl_after=2)
+            self.run.warning("If you see code tracebacks related to `self.sanity_check()` in `kgmlnetworkops.py` "
+                             "below, don't panic. It is happening because the KGML Pathway Walker is finding KEGG "
+                             "Pathway Maps without an appropriate reaction-type (RN) KGML file, and when it fails "
+                             "this sanity check, it is simply skipping those maps.", header='DEBUG OUTPUT', lc='yellow')
 
         # ensure we don't have more threads than genome pairs
         if self.num_threads > len(self.genome_pairs):
