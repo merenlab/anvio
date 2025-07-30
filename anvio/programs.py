@@ -4,7 +4,6 @@
 
 import os
 import sys
-import glob
 import json
 import copy
 import argparse
