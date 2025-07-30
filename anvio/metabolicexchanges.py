@@ -1154,3 +1154,8 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         for proc in processes:
             proc.terminate()
         self.progress.end()
+
+        # close the output files
+        for typ, file_object in self.output_file_dict.items():
+            self.run.info(f"Output with {typ}", file_object.path)
+            file_object.close() 
