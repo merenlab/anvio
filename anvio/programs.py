@@ -32,11 +32,7 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-G = lambda d: [p for p in glob.glob(os.path.join(d, 'anvi-*')) if utils.is_program_exists(p, dont_raise=True)]
-M = lambda m: [x for x in G(os.path.dirname(utils.is_program_exists(m)))]
-S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
 J = lambda x: '\n'.join(x) if x else ''
-
 
 run = terminal.Run()
 progress = terminal.Progress()
