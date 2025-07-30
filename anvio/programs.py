@@ -266,8 +266,11 @@ class AnvioPrograms(AnvioAuthors):
         with open(pyproject_path, 'rb') as f:
             pyproject_data = tomllib.load(f)
 
+        ########################################
         # figure out entry points in the file
+        ########################################
         entry_points = pyproject_data.get('project', {}).get('scripts', {})
+
         if not entry_points:
             raise ConfigError("The pyproject.toml is there, but it does not seem to contain any entry points. This "
                               "function needs an adult to figure this out :(")
@@ -285,6 +288,17 @@ class AnvioPrograms(AnvioAuthors):
                                   f"program path for `{program_name}` as there was nothing at `{program_path}` :/ "
                                   f"This should have never happened, but must be solved before this program can "
                                   f"continue doing its job.")
+
+            program_names_and_paths[program_name] = program_path
+
+        ########################################
+        # figure out non-python scripts
+        ########################################
+        non_python_scripts = pyproject_data.get('tool', {}).get('setuptools', {})['script-files']
+
+        for non_python_script in non_python_scripts:
+            program_name = os.path.basename(non_python_script)
+            program_path = os.path.abspath(os.path.join(anvio_dir, '..', non_python_script))
 
             program_names_and_paths[program_name] = program_path
 
