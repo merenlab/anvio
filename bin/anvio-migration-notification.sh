@@ -10,7 +10,7 @@ echo "and you will not need to read the rest of this message unless you are real
 echo "interested in understanding what is going on:"
 echo ""
 echo "    cd ~/github/anvio"
-echo "    pip install -e ."
+echo "    pip install -e . --force-reinstall --upgrade"
 echo '    tempfile=$(mktemp)'
 echo "    sed '/^export/d' \${CONDA_PREFIX}/etc/conda/activate.d/anvio.sh > \$tempfile"
 echo '    mv "$tempfile" ${CONDA_PREFIX}/etc/conda/activate.d/anvio.sh'
