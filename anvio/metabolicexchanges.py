@@ -1134,10 +1134,10 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                 A_vs_B_data_dicts = pair[2]
                 if anvio.DEBUG:
                     self.progress.reset()
-                    self.run.info_single(f"Finished {pair[0]} vs {pair[1]} comparison")
+                    self.run.info_single(f"Finished {genome_A} vs {genome_B} comparison")
 
                 # write the output from one comparison to the output file
-                self.append_output_from_dicts(pair[2])
+                self.append_output_from_dicts(A_vs_B_data_dicts)
 
                 if mem_tracker.measure():
                     mem_usage = mem_tracker.get_last()
