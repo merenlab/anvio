@@ -146,16 +146,19 @@ def parse_help_output(output):
 
 
 class AnvioPrograms(AnvioAuthors):
-    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, args=None, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
         self.run = r
         self.progress = p
+
+        if not self.args:
+             args = type('Args', (), {})()
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.program_names_to_focus = A("program_names_to_focus")
 
         # initiate `self.authors`
-        AnvioAuthors.__init__(self, r=self.run, p=self.progress)
+        AnvioAuthors.__init__(self, r=terminal.Run(verbose=False), p=self.progress)
 
         self.program_names_and_paths = self.get_anvio_program_names_and_their_paths()
 
