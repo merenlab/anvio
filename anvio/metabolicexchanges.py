@@ -1053,6 +1053,25 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         data_dicts_for_one_pair = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
+
+        return data_dicts_for_one_pair
+
+    @staticmethod
+    def metabolic_exchanges_process_worker(self, genome_pairs_queue, output_queue):
+        """This multiprocessing target function loops over genome pairs until there are no more to compare."""
+
+        while True:
+            try:
+                genome_A, genome_B = genome_pairs_queue.get(True)
+                db_A, db_B = self.databases[genome_A]['contigs_db_path'], self.databases[genome_B]['contigs_db_path']
+                pair_data_dicts = self.one_pair_worker(db_A, db_B)
+                output_queue.put((genome_A, genome_B, pair_data_dicts)) # we put the pair back in the queue after successful processing
+
+            except Exception as e:
+                # send the error back to the main thread
+                output_queue.put(e)
+        # this function will be killed by the parent process eventually
+
     def predict_exchanges(self):
         """This is the driver function to predict metabolic exchanges between multiple pairs of genomes."""
         
