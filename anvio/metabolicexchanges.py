@@ -1114,6 +1114,43 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         mem_usage, mem_diff = mem_tracker.start()
         processed_count = 1
 
+        while received_pairs < total_pairs:
+            try:
+                pair = output_queue.get()
+                
+                if isinstance(pair, Exception):
+                    # If thread returns an exception, we raise it and kill the main thread.
+                    raise pair
+
+                received_pairs += 1
+                genome_A = pair[0]
+                genome_B = pair[1]
+                A_vs_B_data_dicts = pair[2]
+                if anvio.DEBUG:
+                    self.progress.reset()
+                    self.run.info_single(f"Finished {pair[0]} vs {pair[1]} comparison")
+
+                # write the output from one comparison to the output file
+                self.append_output_from_dicts(pair[2])
+
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
+
+                self.progress.increment(received_pairs)
+                self.progress.update(f"{received_pairs}/{total_pairs} genome pairs | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
+
+            except KeyboardInterrupt:
+                self.run.info_single("Received SIGINT, terminating all processes...", nl_before=2)
+                break
+
+            except Exception as worker_error:
+                # An exception was thrown in one of the profile workers. We kill all processes in this case
+                self.progress.end()
+                for proc in processes:
+                    proc.terminate()
+                raise worker_error
+
         for proc in processes:
             proc.terminate()
         self.progress.end()
