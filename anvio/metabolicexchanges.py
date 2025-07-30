@@ -181,10 +181,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         ==========
         output_files_dictionary : dictionary of output type (str), AppendableFile object pairs
             contains an initialized AppendableFile object to append output to for each output type
-            (used in multi-mode to direct all output from several estimators to the same files)
+            (used in multi-mode to direct all output from several estimators to the same files). 
+            If provided, we don't setup the self.output_file_dict
         return_data_dicts : boolean
             If True, this function will return the prediction result dictionaries instead of 
-            appending them to the output files
+            appending them to the output files. Note that we don't setup the self.output_file_dict in this case
         """
 
         # LOAD DATA
@@ -196,7 +197,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.run.info("Custom equivalent compounds file", self.custom_equivalent_compounds_file)
             self.eq_compounds = self.load_equivalent_compounds()
 
-        if output_files_dictionary:
+        if return_data_dicts or output_files_dictionary:
             self.output_file_dict = output_files_dictionary
         else:
             self.output_file_dict = self.setup_output_for_appending()
