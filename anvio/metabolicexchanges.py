@@ -704,6 +704,59 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     compound_reaction_chains[eq_comp] = self.compound_to_pathway_walk_chains[eq_comp]
                 self.processed_compound_ids.add(eq_comp)
             
+            def add_reactions_to_dict_for_compound_pathway_walk(compound_dict):
+                """Modifies the compound dictionary in place to add production and consumption reaction output.
+                Walks through the Pathway Walk chains in the compound_reaction_chains dictionary to find the reaction(s)
+                matching our compound of interest. If the chain is a production chain, we automatically consider the reaction
+                a production reaction and if the chain is a consumption chain, we consider the reaction a consumption reaction
+                regardless of the reaction directionality stored in ModelSEED.
+                """
+
+                for compound_id, map_dict in compound_reaction_chains.items():
+                    #print(f"{compound_id}:")
+                    for map_id, genome_dict in map_dict.items():
+                        #print(f"\t{map_id}:")
+                        for genome, type_dict in genome_dict.items():
+                            #print(f"\t\t{genome}:")
+                            for walk_type, chain_list in type_dict.items():
+                                #print(f"\t\t\t{walk_type}:")
+                                type_rxn_list = []
+                                type_eq_list = []
+                                for chain in chain_list:
+                                    #print(f"\t\t\t\t{chain}\n")
+                                    for kegg_rxn in chain.kgml_reactions:
+                                        #print(f"\t\t\t\tKEGG Reaction {kegg_rxn.name}\n")
+                                        # we need r[0] because r is actually a tuple (first element is the ModelSEEDReaction object, second is empty)
+                                        # and we need kegg_rxn.name[3:] because the string looks like "rn:R00331" but the KEGG ID part is only after the 'rn:'
+                                        modelseed_rxns = {r[0].modelseed_id: r[0] for r in chain.aliased_modelseed_reactions if r and kegg_rxn.name[3:] in r[0].kegg_aliases}
+                                        #print(f"\t\t\t\tCorresponding ModelSEED Reactions {','.join(modelseed_rxns.keys())}\n")
+                                        for rxn_id, rxn_object in modelseed_rxns.items():
+                                            kegg_rxn_ids = rxn_object.kegg_aliases
+                                            coeffs = rxn_object.coefficients
+                                            rxn_compounds = rxn_object.compound_ids
+                                            if compound_id in rxn_compounds:
+                                                idx = rxn_compounds.index(compound_id)
+                                                reaction_copy = deepcopy(rxn_object)
+                                                # we reverse the modelseed reaction if the direction doesn't match the walk type 
+                                                if (coeffs[idx] > 0 and walk_type == 'consume') or (coeffs[idx] < 0 and walk_type == 'produce'): 
+                                                    reaction_copy.coefficients = [c*-1 for c in coeffs]
+                                                type_rxn_list.append(f"{rxn_id} ({','.join(kegg_rxn_ids)})")
+                                                type_eq_list.append(self.get_reaction_equation(reaction_copy))
+                                            
+                                genome_name = self.genomes_to_compare[genome]['name']
+                                type_name = 'production' if walk_type == 'produce' else 'consumption'
+                                compound_dict[f"{type_name}_rxn_ids_{genome_name}"] = " / ".join(type_rxn_list) if len(type_rxn_list) else None
+                                compound_dict[f"{type_name}_rxn_eqs_{genome_name}"] = " / ".join(type_eq_list) if len(type_eq_list) else None
+                # if we failed to add anything to the compound dictionary at this point, we simply add None values
+                for g in self.genomes_to_compare:
+                    genome_name = self.genomes_to_compare[g]['name']
+                    for type_name in ['production', 'consumption']:
+                        id_key = f"{type_name}_rxn_ids_{genome_name}"
+                        eq_key = f"{type_name}_rxn_eqs_{genome_name}"
+                        if id_key not in compound_dict:
+                            compound_dict[id_key] = None
+                            compound_dict[eq_key] = None
+                                
             producer,consumer = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
             if producer or consumer:
                 compound_name = self.merged.metabolites[compound_id].modelseed_name
@@ -716,6 +769,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Pathway_Map_Walk',
                                                     }
+                    add_reactions_to_dict_for_compound_pathway_walk(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
                                                                     'genomes': ",".join([producer_name,consumer_name]),
@@ -723,7 +777,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                     'consumed_by': consumer_name,
                                                                     'prediction_method': 'Pathway_Map_Walk',
                                                                     }
-
+                    add_reactions_to_dict_for_compound_pathway_walk(potentially_exchanged_compounds[compound_id])
                     per_map_evidence_for_compound = self.get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
                     # set up some variables to find the longest chain of reactions to use as the summary evidence for an exchange
                     # if there are multiple 'longest chains', we'll report the one with not-None or smallest overlap
@@ -877,7 +931,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             genomes_consume.add(g)
                             consumption_reactions[g][rid] = self.get_reaction_equation(reaction)
 
-            def add_reactions_to_dict_for_compound(compound_dict):
+            def add_reactions_to_dict_for_compound_reaction_network(compound_dict):
                 """Modifies the compound dictionary in place to add production and consumption reaction output"""
                 for g in self.genomes_to_compare:
                     genome_name = self.genomes_to_compare[g]['name']
@@ -901,7 +955,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Reaction_Network_Subset',
                                                     }
-                    add_reactions_to_dict_for_compound(unique_compounds[compound_id])
+                    add_reactions_to_dict_for_compound_reaction_network(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
                                                                     'genomes': ",".join([producer_name,consumer_name]),
@@ -909,7 +963,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                     'consumed_by': consumer_name,
                                                                     'prediction_method': 'Reaction_Network_Subset',
                                                                     }
-                    add_reactions_to_dict_for_compound(potentially_exchanged_compounds[compound_id])
+                    add_reactions_to_dict_for_compound_reaction_network(potentially_exchanged_compounds[compound_id])
 
                     # fill these in with blanks to avoid issues later
                     potentially_exchanged_compounds[compound_id]['max_reaction_chain_length'] = None
