@@ -40,8 +40,9 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbinfo import DBInfo as dbi
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
+from anvio.version import versions_for_db_types
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
 
 # psutil is causing lots of problems for lots of people :/
@@ -4246,11 +4247,11 @@ def get_db_variant(db_path):
 def get_required_version_for_db(db_path):
     db_type = get_db_type(db_path)
 
-    if db_type not in t.versions_for_db_types:
+    if db_type not in versions_for_db_types:
         raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed "
                            "because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
 
-    return t.versions_for_db_types[db_type]
+    return versions_for_db_types[db_type]
 
 
 def get_all_sample_names_from_the_database(db_path):

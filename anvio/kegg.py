@@ -21,16 +21,17 @@ from typing import Dict, List, Tuple, Union
 
 import anvio
 import anvio.db as db
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.tables as t
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.drivers.muscle import Muscle
 from anvio.parsers import parser_modules
+from anvio.version import versions_for_db_types
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
@@ -821,7 +822,7 @@ class KeggSetup(KeggContext):
         db_conn.disconnect()
 
         # if modules.db is out of date, give warning
-        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        target_version = int(versions_for_db_types['modules'])
         if current_db_version != target_version:
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
                              f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
@@ -8369,7 +8370,7 @@ class ModulesDatabase(KeggContext):
             self.db.set_meta_value('total_brite_entries', None)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
-        self.db.set_meta_value('version', t.metabolic_modules_db_version)
+        self.db.set_meta_value('version', anvio.__kegg_modules_version__)
 
         self.db.disconnect()
 
