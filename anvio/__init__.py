@@ -48,10 +48,6 @@ import copy
 
 from tabulate import tabulate
 
-# yes, this library is imported but never used, but don't remove it
-# unless you want to explode `bottle`:
-import pkg_resources
-
 # very important variable to determine which help docs are relevant for
 # this particlar anvi'o environment
 anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version

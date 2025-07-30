@@ -61,4 +61,4 @@ You can also speed up the process by using multiple threads with the flag `-T`:
 
 {{ codestart }}
 anvi-script-find-misassemblies -b sample01.bam -o result -T 8
-{{ codestart }}
+{{ codestop }}
