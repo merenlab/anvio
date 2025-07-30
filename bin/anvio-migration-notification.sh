@@ -1,7 +1,7 @@
 #!/bin/bash
 echo ""
 echo "==============================================================================="
-echo "       🚨 SORRY: YOU NEED TO REDO YOUR ANVI'O DEVELOPMENT ENVIRONMENT 🚨"
+echo "      🚨 THE ANVIO-DEV ENVIRONMENT ON THIS SYSTEM NEEDS YOUR ATTENTION 🚨"
 echo "==============================================================================="
 echo "TL;DR: If you (1) run the following commands on your terminal one after"
 echo "another, (2) close your terminal window after running all five commands, and"
