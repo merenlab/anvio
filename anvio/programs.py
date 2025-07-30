@@ -162,37 +162,82 @@ class AnvioPrograms(AnvioAuthors):
         # initiate `self.authors`
         AnvioAuthors.__init__(self, r=self.run, p=self.progress)
 
-        try:
-            self.main_program_filepaths = M('anvi-interactive')
-            self.script_filepaths = S('anvi-script-gen-programs-vignette')
+        self.program_names_and_paths = self.get_anvio_program_names_and_their_paths()
 
-            self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
-            self.all_program_names = [os.path.basename(p) for p in self.all_program_filepaths]
-        except:
-            raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of "
-                              "the fundamental programs, or your configuration is broken :/")
-
-        if not len(self.main_program_filepaths) or not len(self.script_filepaths):
-            raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
-
-        self.run.info("Main anvi'o programs found", len(self.main_program_filepaths))
-        self.run.info("Anvi'o ad hoc scripts found", len(self.script_filepaths))
+        self.run.info("Anvi'o programs found and located", len(self.program_names_and_paths))
 
         if self.program_names_to_focus:
             self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
-            self.run.info("Program names to focus", len(self.program_names_to_focus))
 
-            self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
+            self.run.info(" - Program names to focus", len(self.program_names_to_focus))
 
-            if not len(self.all_program_filepaths):
+            # figure out what do we not want
+            program_names_to_exclude = [p for p in self.program_names_and_paths if p not in self.program_names_to_focus]
+
+            # remove them from the main dictionary
+            [self.program_names_and_paths.pop(p) for p in program_names_to_exclude]
+
+            if not len(self.program_names_and_paths):
                 raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names. "
                                   "Probably there is a typo or something :/")
+
+            self.run.info(" - Final number of programs kept", len(self.program_names_to_focus), mc="red")
+
+
+    def get_anvio_program_names_and_their_paths(self):
+        """Parses the package pyproject.toml file and returns a dictionary that links program names to
+           program Python files under `anvio/cli`
+        """
+
+        program_names_and_paths = {}
+
+        try:
+            import tomli as tomllib
+        except ImportError:
+            raise ConfigError("The AnvioPrograms class needs `tomli` to be available in this Python environment. You can "
+                              "simply install it by running `pip install tomli` (and hope for the best).")
+
+        anvio_dir = os.path.dirname(anvio.__file__)
+        pyproject_path = os.path.join(os.path.dirname(anvio_dir), 'pyproject.toml')
+
+        if not os.path.exists(pyproject_path):
+            raise ConfigError("The pyproject.toml for the anvi'o package does not seem to be where it is expected :/ "
+                              "Without that file, this class cannot associate anvi'o program names to the actual "
+                              "Python files that implement them :(")
+
+        # read the contensts of the pyproject.toml
+        with open(pyproject_path, 'rb') as f:
+            pyproject_data = tomllib.load(f)
+
+        # figure out entry points in the file
+        entry_points = pyproject_data.get('project', {}).get('scripts', {})
+        if not entry_points:
+            raise ConfigError("The pyproject.toml is there, but it does not seem to contain any entry points. This "
+                              "function needs an adult to figure this out :(")
+
+        # turn entry point entries into program name / absolute path pairs
+        for entry_point in entry_points:
+            program_name = entry_point
+            program_path = entry_points[entry_point]
+
+            program_relative_path = program_path.split(':')[0].replace('.', '/') + '.py'
+            program_path = os.path.abspath(os.path.join(anvio_dir, '..', program_relative_path))
+
+            if not os.path.exists(program_path):
+                raise ConfigError(f"Parsing the entry points in the pyproject.toml file did not lead to an actual "
+                                  f"program path for `{program_name}` as there was nothing at `{program_path}` :/ "
+                                  f"This should have never happened, but must be solved before this program can "
+                                  f"continue doing its job.")
+
+            program_names_and_paths[program_name] = program_path
+
+        return program_names_and_paths
 
 
     def init_programs(self, okay_if_no_meta=False, always_include_those_with_docs=True, quiet=False):
         """Initializes the `self.programs` dictionary."""
 
-        num_all_programs = len(self.all_program_filepaths)
+        num_all_programs = len(self.program_names_and_paths)
 
         self.programs = {}
         self.progress.new('Characterizing program', progress_total_items=num_all_programs)
@@ -202,10 +247,11 @@ class AnvioPrograms(AnvioAuthors):
         programs_with_provides_requires_info = set([])
         programs_without_provides_requires_info = set([])
 
-        for program_filepath in self.all_program_filepaths:
-            self.progress.update(os.path.basename(program_filepath), increment=True)
+        for program_name in self.program_names_and_paths:
+            program_filepath = self.program_names_and_paths[program_name]
+            self.progress.update(os.path.basename(program_name), increment=True)
 
-            program = Program(program_filepath, r=self.run, p=self.progress)
+            program = Program(program_name, program_filepath, r=self.run, p=self.progress)
 
             program_usage_information_path = os.path.join(anvio.DOCS_PATH, 'programs/%s.md' % (program.name))
 
@@ -278,7 +324,7 @@ class AnvioPrograms(AnvioAuthors):
                              "statements :/ This may be normal for some programs, but here is the "
                              "complete list of those that are missing __provides__ and __requires__ "
                              "tags in their code in case you see something you can complete: '%s'." % \
-                                        (len(self.all_program_filepaths),
+                                        (len(self.program_names_and_paths),
                                          len(programs_without_provides_requires_info),
                                          ', '.join(programs_without_provides_requires_info)),
                              nl_after=1, nl_before=1)
@@ -289,7 +335,7 @@ class AnvioPrograms(AnvioAuthors):
                              "formatted files under the directory '%s'. Please see examples in anvi'o "
                              "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
                              "Here is a complete list of programs that are missing usage statements: %s " % \
-                                        (len(self.all_program_filepaths),
+                                        (len(self.program_names_and_paths),
                                          len(programs_without_provides_requires_info),
                                          anvio.DOCS_PATH,
                                          ', '.join(programs_without_provides_requires_info)),
@@ -297,12 +343,12 @@ class AnvioPrograms(AnvioAuthors):
 
 
 class Program:
-    def __init__(self, program_path, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, program_name, program_path, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
+        self.name = program_name
         self.program_path = program_path
-        self.name = os.path.basename(program_path)
         self.usage = None
 
         self.meta_info = {
@@ -722,7 +768,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
 
     def init_anvio_markdown_variables_conversion_dict(self):
-        for program_name in self.all_program_names:
+        for program_name in self.program_names_and_paths:
             self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-p">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
 
         for artifact_name in ANVIO_ARTIFACTS:
