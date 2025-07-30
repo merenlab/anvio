@@ -3073,7 +3073,7 @@ class PangraphInteractive(PanSuperclass):
         # make sure the JSON data we have access is compatible with the codebase
         # we are running.
         version_we_have = str(json_data['meta']['version']) if 'version' in json_data['meta'] else None
-        version_we_want = str(t.pangraph_json_version)
+        version_we_want = str(anvio.__pangraph__version__)
 
         if version_we_have == None:
             raise ConfigError("Bad news: the pan-graph data you have is outdated :/ You will have to re-run "
