@@ -608,12 +608,14 @@ class DGR_Finder:
         return
 
 
+
     def split_sequence_at_given_pos(self, sequence):
         sections = []
         for start, end in self.positions:
             section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
             sections.append(section_sequence)
         return sections
+
 
 
     def combine_ranges(self, entries):
@@ -642,6 +644,7 @@ class DGR_Finder:
         return (combined_start, combined_end)
 
 
+
     def range_overlapping(self, start1, end1, n_start, n_end):
         """
         This function checks if the sections of sequences overlap based on the start and end positions.
@@ -655,6 +658,7 @@ class DGR_Finder:
         A boolean indicating whether the ranges overlap.
         """
         return (n_start >= start1 and n_start <= end1) or (n_end >= start1 and n_end <= end1) or (start1 >= n_start and start1 <= n_end and end1 >= n_start and end1 <= n_end)
+
 
 
     def check_overlap(window1, window2):
@@ -678,6 +682,7 @@ class DGR_Finder:
             and start_position_1 <= end_position_2
             and end_position_1 >= start_position_2
         )
+
 
 
     def get_snvs(self):
@@ -875,7 +880,6 @@ class DGR_Finder:
                                 coverage = (len(atr.motif)*atr.repeat) / len(seq)
                                 if str(coverage) > self.repeat_motif_coverage:
                                     has_repeat = True
-
 
                             #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
                             # divided by the sequence length
@@ -1509,7 +1513,7 @@ class DGR_Finder:
                         break
 
         #TODO: MAKE into WRITE DGR_genes_found write function
-        #define output path
+        # define output path
         output_directory_path = self.output_directory
         output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.csv")
 
@@ -2077,6 +2081,7 @@ class DGR_Finder:
 
                     self.run.info(f'Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
                     self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
+
 
 
     # Function to get the consensus base
@@ -2896,6 +2901,8 @@ class DGR_Finder:
 
         return
 
+
+
     def parameter_output_sheet(self):
         """
         This function creates a csv tabular format of all the parameters the user input in the current run.
@@ -2938,6 +2945,7 @@ class DGR_Finder:
 
             csv_writer.writerows(parameters)
         return
+
 
 
     def process(self,args):
