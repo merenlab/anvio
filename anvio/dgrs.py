@@ -54,8 +54,6 @@ class DGR_Finder:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path= A('profile_db')
-        self.fasta_file_path = A('input_file')
-        self.step = A('step')
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
@@ -114,23 +112,15 @@ class DGR_Finder:
             self.run.info('Collection(s) Provided', (self.collections_given))
         self.run.info('Output Directory', self.output_directory)
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
-        if self.fasta_file_path:
-            self.run.info('Input FASTA file', self.fasta_file_path)
-        if self.contigs_db_path:
-            self.run.info('Contigs.db', self.contigs_db_path)
-        if self.profile_db_path:
-            self.run.info('Profile.db', self.profile_db_path)
-        if self.fasta_file_path or self.contigs_db_path and not self.profile_db_path:
-            self.run.info('Step size', self.step)
-        if self.profile_db_path and self.contigs_db_path:
-            self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
-            self.run.info('Minimum length of SNV window', self.min_range_size)
-            self.run.info('Variable buffer length', self.variable_buffer_length)
-            self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
-            if self.snv_matching_proportion:
-                self.run.info('SNV matching proportion', self.snv_matching_proportion)
-        if self.contigs_db_path:
-            self.run.info('HMM(s) Provided', ", ".join(self.hmm))
+        self.run.info('Contigs.db', self.contigs_db_path)
+        self.run.info('Profile.db', self.profile_db_path)
+        self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
+        self.run.info('Minimum length of SNV window', self.min_range_size)
+        self.run.info('Variable buffer length', self.variable_buffer_length)
+        self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
+        if self.snv_matching_proportion:
+            self.run.info('SNV matching proportion', self.snv_matching_proportion)
+        self.run.info('HMM(s) Provided', ", ".join(self.hmm))
         if not self.skip_recovering_genomic_context:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
         #computing variability profiling for every VR in every DGR by searching through raw reads?
@@ -147,8 +137,7 @@ class DGR_Finder:
 
         #First check the contigs.db and profile.db exists
         utils.is_contigs_db(self.contigs_db_path)
-        if self.profile_db_path:
-            utils.is_profile_db(self.profile_db_path)
+        utils.is_profile_db(self.profile_db_path)
 
         try:
             output_dir = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False or self.just_do_it)
@@ -160,11 +149,7 @@ class DGR_Finder:
                             "you here. You have three options if you want to continue: rename your directory, delete your existing directory, "
                             "or rerun with the flag `--just-do-it` (which will overwrite your directory. You have been warned).")
 
-        if self.contigs_db_path and self.fasta_file_path:
-            raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
-                            "class, not multiple :/")
-
-        if ((self.contigs_db_path and self.profile_db_path) or (self.contigs_db_path)) and not self.hmm:
+        if (self.contigs_db_path and self.profile_db_path) and not self.hmm:
             raise ConfigError("Just so you know in order to report a DGR you need to have Reverse Transcriptases "
                             "annotated or else you are not finding DGRs. If you would like to do this please run "
                             "your 'contigs.db' with `anvi-run-hmms -I Reverse_Transcriptase` (type: 6 clades of DGR "
@@ -172,12 +157,8 @@ class DGR_Finder:
                             "transcriptases). Then re-run `anvi-report-dgrs` with the `--hmm-usage` flag. This is "
                             "one option, but you can use other HMM profiles if you like.")
 
-        if self.fasta_file_path:
-            # check fasta input
-            filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
-
-        if int(self.step) < 0 or int(self.word_size) < 0:
-            raise ConfigError('The step value and/or word size value you are trying to input should be positive integer.')
+        if int(self.word_size) < 0:
+            raise ConfigError('The word size value you are trying to input should be positive integer.')
 
         if self.variable_buffer_length < 0:
             raise ConfigError('The variable buffer length value you are trying to input should be positive integer.')
@@ -275,244 +256,58 @@ class DGR_Finder:
         self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
-        if self.fasta_file_path or (self.contigs_db_path and not self.profile_db_path):
-            shredded_sequence_file = os.path.join(tmp_directory_path,f"shredded_sequences_step_{self.step}_wordsize_{self.word_size}.fasta")
-            self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
-            if self.fasta_file_path:
-                os.system(f"cp {self.fasta_file_path} {self.target_file_path}")
-            elif self.contigs_db_path:
-                utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
-            # Start at half the step size of the output file
-            overlap_start = self.step // 2
-            first_sequences = self.split_sequences()
-            second_sequences = self.split_sequences(overlap_start)
+        if self.collections_mode:
+            self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.")
+            #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here fore the rest of the code to function as normal
+            #TODO: Need to see if this works or if I need to change the rest of the code to work with splits
+            #TODO: add warning if a contig is over multiple splits. Because you blast the splits gaianst contigs.
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            contigs_db.disconnect()
 
-            all_sequences = first_sequences + second_sequences
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            #check that the collections provided are in the collections available in the profile.
+            where_clause = f'''collection_name == "{self.collections_given}"'''
+            self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
+                error_if_no_data=True)
+            profile_db.disconnect()
 
-            # Write combined sequences to output file
-            with open(shredded_sequence_file, "w") as output_handle:
-                SeqIO.write(all_sequences, output_handle, "fasta")
+            # Dictionary to store splits by bin_name
+            bin_splits_dict = {}
 
-            # Reading and printing the contents of the file
-            with open(shredded_sequence_file, "r") as handle:
-                fasta_content = handle.read()
-                print("Contents of input_original.fasta:")
-                print(fasta_content)
+            # Iterate through the entries in self.split_collections_dict
+            for key, value in self.split_collections_dict.items():
+                bin_name = value['bin_name']
+                split = value['split']
 
-            blast = BLAST(shredded_sequence_file, target_fasta = self.target_file_path, search_program = 'blastn', output_file = self.blast_output, additional_params = '-dust no')
-            blast.evalue = 10 #set Evalue to be same as blastn default
-            blast.makedb(dbtype = 'nucl')
-            blast.blast(outputfmt = '5', word_size = self.word_size)
+                # Initialize the list for the bin if it doesn't exist yet
+                if bin_name not in bin_splits_dict:
+                    bin_splits_dict[bin_name] = []
 
-        elif self.contigs_db_path and self.profile_db_path:
-            if self.collections_mode:
-                self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.")
-                #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here fore the rest of the code to function as normal
-                #TODO: Need to see if this works or if I need to change the rest of the code to work with splits
-                #TODO: add warning if a contig is over multiple splits. Because you blast the splits gaianst contigs.
-                contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-                self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-                contigs_db.disconnect()
+                # Append the split to the corresponding bin's list
+                bin_splits_dict[bin_name].append(split)
+            self.bin_names_list = list(bin_splits_dict.keys())
 
-                profile_db = dbops.ProfileDatabase(self.profile_db_path)
-                #check that the collections provided are in the collections available in the profile.
-                where_clause = f'''collection_name == "{self.collections_given}"'''
-                self.split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(t.collections_splits_table_name, where_clause=where_clause,
-                    error_if_no_data=True)
-                profile_db.disconnect()
+            # Now process each bin and create subsets based on the splits list
+            for bin_name, bin_splits_list in bin_splits_dict.items():
 
-                # Dictionary to store splits by bin_name
-                bin_splits_dict = {}
+                # Extract the contig names from split names
+                bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
 
-                # Iterate through the entries in self.split_collections_dict
-                for key, value in self.split_collections_dict.items():
-                    bin_name = value['bin_name']
-                    split = value['split']
+                # Subset self.contig_sequences using the extracted contig names
+                bin_contig_sequences = {contig: self.contig_sequences[contig] for contig in bin_contigs if contig in self.contig_sequences}
 
-                    # Initialize the list for the bin if it doesn't exist yet
-                    if bin_name not in bin_splits_dict:
-                        bin_splits_dict[bin_name] = []
-
-                    # Append the split to the corresponding bin's list
-                    bin_splits_dict[bin_name].append(split)
-                self.bin_names_list = list(bin_splits_dict.keys())
-
-                # Now process each bin and create subsets based on the splits list
-                for bin_name, bin_splits_list in bin_splits_dict.items():
-
-                    # Extract the contig names from split names
-                    bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-
-                    # Subset self.contig_sequences using the extracted contig names
-                    bin_contig_sequences = {contig: self.contig_sequences[contig] for contig in bin_contigs if contig in self.contig_sequences}
-
-                    profile_db = dbops.ProfileDatabase(self.profile_db_path)
-                    #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-                    self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                    self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
-
-                    self.split_names_unique = bin_splits_list
-
-                    profile_db.disconnect()
-
-                    # Filter snv_panda by the list of splits associated with this bin
-                    self.snv_panda = self.snv_panda_bin[self.snv_panda_bin['split_name'].isin(bin_splits_list)]
-
-                    sample_id_list = list(set(self.snv_panda.sample_id.unique()))
-
-                    self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
-                    # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
-                    #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
-                    #                                           ....}
-                    # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
-
-                    # filter snv_panda for min departure from ref and codon position
-                    if self.discovery_mode:
-                        self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
-                        self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
-                    else:
-                        self.snv_panda = self.snv_panda.query(
-                            "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
-                        )
-
-                    # First, group the DataFrame by 'split_name' and 'sample_id' upfront
-                    grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
-
-                    # Now iterate over the grouped data
-                    for (split, sample), group in grouped:
-                        # Only process groups that match the desired split and sample
-                        if split in self.split_names_unique and sample in sample_id_list:
-                            if group.shape[0] == 0:
-                                continue
-
-                            # Extract the contig name and positions for the group
-                            contig_name = group.contig_name.unique()[0]
-                            pos_list = group.pos_in_contig.to_list()
-
-                            if contig_name not in self.all_possible_windows:
-                                # If not, initialize it with an empty dictionary
-                                self.all_possible_windows[contig_name] = []
-                                # subset pandas df with split name
-
-                            #get list of pos within that split
-                            for i in range(len(pos_list) - 1):
-                                current_pos = pos_list[i]
-                                next_pos = pos_list[i + 1]
-                                distance = next_pos - current_pos
-                                range_start = current_pos
-                                range_end = current_pos
-
-                                while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
-                                    i += 1
-                                    current_pos = pos_list[i]
-                                    if i + 1 < len(pos_list):
-                                        next_pos = pos_list[i + 1]
-                                        distance = next_pos - current_pos
-                                        range_end = current_pos
-                                if distance <= self.min_dist_bw_snvs:
-                                    range_end = next_pos
-
-                                if (range_end - range_start) < self.min_range_size:
-                                    continue
-                                else:
-                                    window_start = range_start - self.variable_buffer_length
-                                    window_end = range_end + self.variable_buffer_length
-
-                                contig_len = len(bin_contig_sequences[contig_name]['sequence'])
-
-                                if window_start <0:
-                                    window_start = 0
-                                if window_end > contig_len:
-                                    window_end = contig_len
-
-                                # Add the window to the contig's list
-                                self.all_possible_windows[contig_name].append((window_start, window_end))
-
-                    all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
-                    # loop to merge overlaps within a given contig
-                    for contig_name, window_list in self.all_possible_windows.items():
-                        # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
-                        sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
-                        # at this point, sorted_windows_in_contig contains (start, stop) tuples in order of 'start'
-
-                        merged_windows_in_contig = []
-                        while 1:
-                            if not len(sorted_windows_in_contig):
-                                break
-
-                            entry = sorted_windows_in_contig.pop(0)
-                            overlapping_entries = [entry]
-                            start, end = entry
-                            matching_entries_indices = []
-
-                            for i in range(0, len(sorted_windows_in_contig)):
-                                n_start, n_end = sorted_windows_in_contig[i]
-                                if self.range_overlapping(start, end, n_start, n_end):
-                                    matching_entries_indices.append(i)
-                                    start = min(start, n_start)
-                                    end = max(end, n_end)
-
-                            # remove each overlapping window from the list and simultaneously add to list of overlapping entries
-                            # we do this in backwards order so that pop() doesn't change the indices we need to remove
-                            for i in sorted(matching_entries_indices, reverse=True):
-                                overlapping_entries.append(sorted_windows_in_contig.pop(i))
-
-                            merged_ranges = self.combine_ranges(overlapping_entries)
-                            merged_windows_in_contig.append(merged_ranges)
-
-                        all_merged_snv_windows[contig_name] = merged_windows_in_contig
-
-                    #export contigs_db to fasta file
-                    utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path, seq_names_to_export=sorted(list(bin_contig_sequences.keys())))
-
-                    #get short sequences from all_merged_snv_window and create new fasta from self.target_file_path
-                    contig_records = []
-                    for record in SeqIO.parse(self.target_file_path, "fasta"):
-                        contig_name = record.id
-                        if contig_name in all_merged_snv_windows:
-                            self.positions= all_merged_snv_windows[contig_name]
-                            for i, (start, end) in enumerate(self.positions):
-                                section_sequence = record.seq[start:end]
-                                section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                                contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
-
-                    if len(contig_records) == 0:
-                        self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
-                                        f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
-                                        , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
-                        raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
-                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
-                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
-
-
-                    # Save the subset sequences to a temporary FASTA file
-                    output_fasta_path = os.path.join(self.temp_dir, f"bin_{bin_name}_subsequences.fasta")
-                    with open(output_fasta_path, "w") as output_handle:
-                        SeqIO.write(contig_records, output_handle, "fasta")
-
-                    self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
-
-                    self.blast_output = os.path.join(tmp_directory_path,f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml")
-                    blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
-                                output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
-                    blast.evalue = 10 #set Evalue to be same as blastn default
-                    blast.makedb(dbtype = 'nucl')
-                    blast.blast(outputfmt = '5', word_size = self.word_size)
-
-                profile_db.disconnect()
-            else:
-                contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-                self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-                contigs_db.disconnect()
-
-                #open merged profile-db and get the variable nucleotide table as a dictionary then access the split names as a list to use in get_snvs
                 profile_db = dbops.ProfileDatabase(self.profile_db_path)
                 #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-                self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
-                self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
+                self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+                self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
+
+                self.split_names_unique = bin_splits_list
 
                 profile_db.disconnect()
+
+                # Filter snv_panda by the list of splits associated with this bin
+                self.snv_panda = self.snv_panda_bin[self.snv_panda_bin['split_name'].isin(bin_splits_list)]
 
                 sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
@@ -531,58 +326,58 @@ class DGR_Finder:
                         "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
                     )
 
-                    # First, group the DataFrame by 'split_name' and 'sample_id' upfront
-                    grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+                # First, group the DataFrame by 'split_name' and 'sample_id' upfront
+                grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
 
-                    # Now iterate over the grouped data
-                    for (split, sample), group in grouped:
-                        # Only process groups that match the desired split and sample
-                        if split in self.split_names_unique and sample in sample_id_list:
-                            if group.shape[0] == 0:
-                                continue
+                # Now iterate over the grouped data
+                for (split, sample), group in grouped:
+                    # Only process groups that match the desired split and sample
+                    if split in self.split_names_unique and sample in sample_id_list:
+                        if group.shape[0] == 0:
+                            continue
 
-                            # Extract the contig name and positions for the group
-                            contig_name = group.contig_name.unique()[0]
-                            pos_list = group.pos_in_contig.to_list()
+                        # Extract the contig name and positions for the group
+                        contig_name = group.contig_name.unique()[0]
+                        pos_list = group.pos_in_contig.to_list()
 
-                            if contig_name not in self.all_possible_windows:
-                                # If not, initialize it with an empty dictionary
-                                self.all_possible_windows[contig_name] = []
-                                # subset pandas df with split name
+                        if contig_name not in self.all_possible_windows:
+                            # If not, initialize it with an empty dictionary
+                            self.all_possible_windows[contig_name] = []
+                            # subset pandas df with split name
 
-                            #get list of pos within that split
-                            for i in range(len(pos_list) - 1):
+                        #get list of pos within that split
+                        for i in range(len(pos_list) - 1):
+                            current_pos = pos_list[i]
+                            next_pos = pos_list[i + 1]
+                            distance = next_pos - current_pos
+                            range_start = current_pos
+                            range_end = current_pos
+
+                            while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
+                                i += 1
                                 current_pos = pos_list[i]
-                                next_pos = pos_list[i + 1]
-                                distance = next_pos - current_pos
-                                range_start = current_pos
-                                range_end = current_pos
+                                if i + 1 < len(pos_list):
+                                    next_pos = pos_list[i + 1]
+                                    distance = next_pos - current_pos
+                                    range_end = current_pos
+                            if distance <= self.min_dist_bw_snvs:
+                                range_end = next_pos
 
-                                while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
-                                    i += 1
-                                    current_pos = pos_list[i]
-                                    if i + 1 < len(pos_list):
-                                        next_pos = pos_list[i + 1]
-                                        distance = next_pos - current_pos
-                                        range_end = current_pos
-                                if distance <= self.min_dist_bw_snvs:
-                                    range_end = next_pos
+                            if (range_end - range_start) < self.min_range_size:
+                                continue
+                            else:
+                                window_start = range_start - self.variable_buffer_length
+                                window_end = range_end + self.variable_buffer_length
 
-                                if (range_end - range_start) < self.min_range_size:
-                                    continue
-                                else:
-                                    window_start = range_start - self.variable_buffer_length
-                                    window_end = range_end + self.variable_buffer_length
+                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
 
-                                contig_len = len(self.contig_sequences[contig_name]['sequence'])
+                            if window_start <0:
+                                window_start = 0
+                            if window_end > contig_len:
+                                window_end = contig_len
 
-                                if window_start <0:
-                                    window_start = 0
-                                if window_end > contig_len:
-                                    window_end = contig_len
-
-                                # Add the window to the contig's list
-                                self.all_possible_windows[contig_name].append((window_start, window_end))
+                            # Add the window to the contig's list
+                            self.all_possible_windows[contig_name].append((window_start, window_end))
 
                 all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
                 # loop to merge overlaps within a given contig
@@ -619,7 +414,7 @@ class DGR_Finder:
                     all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
                 #export contigs_db to fasta file
-                utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
+                utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path, seq_names_to_export=sorted(list(bin_contig_sequences.keys())))
 
                 #get short sequences from all_merged_snv_window and create new fasta from self.target_file_path
                 contig_records = []
@@ -637,22 +432,179 @@ class DGR_Finder:
                                     f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
                                     , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
                     raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
-                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
-                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+                                    "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                    "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
-                # Write SeqRecord objects to a new FASTA file
-                output_fasta_path = os.path.join(self.temp_dir,"output.fasta")
+
+                # Save the subset sequences to a temporary FASTA file
+                output_fasta_path = os.path.join(self.temp_dir, f"bin_{bin_name}_subsequences.fasta")
                 with open(output_fasta_path, "w") as output_handle:
                     SeqIO.write(contig_records, output_handle, "fasta")
 
                 self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
 
-                self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
+                self.blast_output = os.path.join(tmp_directory_path,f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml")
                 blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
                             output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
                 blast.evalue = 10 #set Evalue to be same as blastn default
                 blast.makedb(dbtype = 'nucl')
                 blast.blast(outputfmt = '5', word_size = self.word_size)
+
+            profile_db.disconnect()
+        #else not in collections mode
+        else:
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            contigs_db.disconnect()
+
+            #open merged profile-db and get the variable nucleotide table as a dictionary then access the split names as a list to use in get_snvs
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
+            self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+            self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
+            self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
+
+            profile_db.disconnect()
+
+            sample_id_list = list(set(self.snv_panda.sample_id.unique()))
+
+            self.all_possible_windows = {} # we will keep this as a dictionary that matches contig name to list of window tuples within that contig
+            # structure of self.all_possible_windows: {'contig_0' : [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
+            #                                           'contig_1': [(start0, stop0), (start1, stop1), (start2, stop2), ....... ],
+            #                                           ....}
+            # the windows will not necessarily be sorted within each inner list (yet) because we add windows from one sample at a time
+
+            # filter snv_panda for min departure from ref and codon position
+            if self.discovery_mode:
+                self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+                self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+            else:
+                self.snv_panda = self.snv_panda.query(
+                    "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
+                )
+
+                # First, group the DataFrame by 'split_name' and 'sample_id' upfront
+                grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+
+                # Now iterate over the grouped data
+                for (split, sample), group in grouped:
+                    # Only process groups that match the desired split and sample
+                    if split in self.split_names_unique and sample in sample_id_list:
+                        if group.shape[0] == 0:
+                            continue
+
+                        # Extract the contig name and positions for the group
+                        contig_name = group.contig_name.unique()[0]
+                        pos_list = group.pos_in_contig.to_list()
+
+                        if contig_name not in self.all_possible_windows:
+                            # If not, initialize it with an empty dictionary
+                            self.all_possible_windows[contig_name] = []
+                            # subset pandas df with split name
+
+                        #get list of pos within that split
+                        for i in range(len(pos_list) - 1):
+                            current_pos = pos_list[i]
+                            next_pos = pos_list[i + 1]
+                            distance = next_pos - current_pos
+                            range_start = current_pos
+                            range_end = current_pos
+
+                            while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
+                                i += 1
+                                current_pos = pos_list[i]
+                                if i + 1 < len(pos_list):
+                                    next_pos = pos_list[i + 1]
+                                    distance = next_pos - current_pos
+                                    range_end = current_pos
+                            if distance <= self.min_dist_bw_snvs:
+                                range_end = next_pos
+
+                            if (range_end - range_start) < self.min_range_size:
+                                continue
+                            else:
+                                window_start = range_start - self.variable_buffer_length
+                                window_end = range_end + self.variable_buffer_length
+
+                            contig_len = len(self.contig_sequences[contig_name]['sequence'])
+
+                            if window_start <0:
+                                window_start = 0
+                            if window_end > contig_len:
+                                window_end = contig_len
+
+                            # Add the window to the contig's list
+                            self.all_possible_windows[contig_name].append((window_start, window_end))
+
+            all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
+            # loop to merge overlaps within a given contig
+            for contig_name, window_list in self.all_possible_windows.items():
+                # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
+                sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
+                # at this point, sorted_windows_in_contig contains (start, stop) tuples in order of 'start'
+
+                merged_windows_in_contig = []
+                while 1:
+                    if not len(sorted_windows_in_contig):
+                        break
+
+                    entry = sorted_windows_in_contig.pop(0)
+                    overlapping_entries = [entry]
+                    start, end = entry
+                    matching_entries_indices = []
+
+                    for i in range(0, len(sorted_windows_in_contig)):
+                        n_start, n_end = sorted_windows_in_contig[i]
+                        if self.range_overlapping(start, end, n_start, n_end):
+                            matching_entries_indices.append(i)
+                            start = min(start, n_start)
+                            end = max(end, n_end)
+
+                    # remove each overlapping window from the list and simultaneously add to list of overlapping entries
+                    # we do this in backwards order so that pop() doesn't change the indices we need to remove
+                    for i in sorted(matching_entries_indices, reverse=True):
+                        overlapping_entries.append(sorted_windows_in_contig.pop(i))
+
+                    merged_ranges = self.combine_ranges(overlapping_entries)
+                    merged_windows_in_contig.append(merged_ranges)
+
+                all_merged_snv_windows[contig_name] = merged_windows_in_contig
+
+            #export contigs_db to fasta file
+            utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path)
+
+            #get short sequences from all_merged_snv_window and create new fasta from self.target_file_path
+            contig_records = []
+            for record in SeqIO.parse(self.target_file_path, "fasta"):
+                contig_name = record.id
+                if contig_name in all_merged_snv_windows:
+                    self.positions= all_merged_snv_windows[contig_name]
+                    for i, (start, end) in enumerate(self.positions):
+                        section_sequence = record.seq[start:end]
+                        section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                        contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+
+            if len(contig_records) == 0:
+                self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
+                                f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
+                                , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
+                raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
+                                    "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                    "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+
+            # Write SeqRecord objects to a new FASTA file
+            output_fasta_path = os.path.join(self.temp_dir,"output.fasta")
+            with open(output_fasta_path, "w") as output_handle:
+                SeqIO.write(contig_records, output_handle, "fasta")
+
+            self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
+
+            self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
+            blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
+                        output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
+            blast.evalue = 10 #set Evalue to be same as blastn default
+            blast.makedb(dbtype = 'nucl')
+            blast.blast(outputfmt = '5', word_size = self.word_size)
         return
 
 
@@ -2998,16 +2950,11 @@ class DGR_Finder:
             self.run.info_single("Writing to Parameters used file.")
             print('\n')
             self.parameter_output_sheet()
-
-        if self.fasta_file_path:
-            return
-
-        else:
-            self.get_gene_info()
-            self.get_hmm_info()
-            self.recover_genomic_context_surrounding_dgrs()
-            self.report_genomic_context_surrounding_dgrs()
-            self.create_found_tr_vr_csv()
-            self.compute_dgr_variability_profiling() # add if statement to this for the metagenomics mode DGRs
-            self.process_dgr_data_for_HTML_summary()
+        self.get_gene_info()
+        self.get_hmm_info()
+        self.recover_genomic_context_surrounding_dgrs()
+        self.report_genomic_context_surrounding_dgrs()
+        self.create_found_tr_vr_csv()
+        self.compute_dgr_variability_profiling() # add if statement to this for the metagenomics mode DGRs
+        self.process_dgr_data_for_HTML_summary()
         return
