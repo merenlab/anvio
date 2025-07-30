@@ -3,6 +3,7 @@
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
 import os
+import multiprocessing
 from copy import deepcopy
 from argparse import Namespace
 from collections import defaultdict
@@ -1074,12 +1075,26 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
             self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}", 
                                 header='DEBUG OUTPUT', lc='yellow')
 
-        self.progress.new("Predicting for genome pairs", progress_total_items=total_pairs)
-        processed_count = 1
+        manager = multiprocessing.Manager()
+        genome_pairs_queue = manager.Queue()
+        output_queue = manager.Queue()
+
         for genome_A, genome_B in self.genome_pairs:
-            self.progress.update(f"[{processed_count} of {total_pairs}] {genome_A} vs {genome_B}")
-            self.one_pair_worker(self.databases[genome_A]['contigs_db_path'], self.databases[genome_B]['contigs_db_path'])
-            processed_count += 1
-            self.progress.increment(increment_to=processed_count)
+            genome_pairs_queue.put((genome_A, genome_B))
+
+        processes = []
+        for i in range(0, self.num_threads):
+            processes.append(multiprocessing.Process(target=ExchangePredictorMulti.metabolic_exchanges_process_worker, args=(self, genome_pairs_queue, output_queue)))
+
+        for proc in processes:
+            proc.start()
+        received_pairs = 0
+        self.progress.new(f"Predicting for genome pairs in {self.num_threads} thread(s)", progress_total_items=total_pairs)
+        # memory tracking is done just as in the profiler class 
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+        processed_count = 1
+
+        for proc in processes:
+            proc.terminate()
         self.progress.end()
-            
