@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
+import sys
+
 import anvio
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.argparse import ArgumentParser
