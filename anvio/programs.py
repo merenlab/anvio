@@ -230,8 +230,8 @@ class AnvioPrograms(AnvioAuthors):
                                              f"(rather than a 'ModuleNotFoundError' error from Python).",
                                              overwrite_verbose=True, nl_before=1, nl_after=1, level=0)
         
-                    self.run.info_single("The universal solution here is to run the following command right now:",
-                                         overwrite_verbose=True, nl_after=1, level=0)
+                    self.run.info_single("The universal solution here is to run the following command right now in your anvi'o "
+                                         "source code directory:", overwrite_verbose=True, nl_after=1, level=0)
                     self.run.info_single("    pip install -e . --force-reinstall --upgrade",
                                          overwrite_verbose=True, nl_after=1, level=0, pretty_indentation=False)
                     self.run.info_single("This will synchronize your anvi'o codebase with its installed version in your active "
