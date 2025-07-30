@@ -1107,12 +1107,29 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         for genome_A, genome_B in self.genome_pairs:
             genome_pairs_queue.put((genome_A, genome_B))
 
+        # VERY DUMB! self.progress is not pickleable due to its self.LEN lambda function, and 
+        # self.output_file_dict is not pickleable due to its file handles. This causes issues
+        # when passing self to the multiprocessing Process objects (since everything that is 
+        # passed has to be pickleable). So here we trick the Process objects by making the 
+        # problematic attributes null, and restoring them later.
+        # I am not sure why the same multiprocessing code works in `profiler.py` (which also 
+        # uses Progress object) and not here, but after days of debugging, I have given up
+        # trying to understand. SO HERE IS THE UGLY WORKAROUND INSTEAD BYEEEEE
+        saved_output_file_dict = self.output_file_dict
+        saved_progress = self.progress
+        self.output_file_dict = None
+        self.progress = None
+        
         processes = []
         for i in range(0, self.num_threads):
             processes.append(multiprocessing.Process(target=ExchangePredictorMulti.metabolic_exchanges_process_worker, args=(self, genome_pairs_queue, output_queue)))
 
         for proc in processes:
             proc.start()
+        
+        self.output_file_dict = saved_output_file_dict
+        self.progress = saved_progress
+        
         received_pairs = 0
         self.progress.new(f"Predicting for genome pairs in {self.num_threads} thread(s)", progress_total_items=total_pairs)
         # memory tracking is done just as in the profiler class 
