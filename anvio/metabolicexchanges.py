@@ -1094,6 +1094,12 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
             self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}", 
                                 header='DEBUG OUTPUT', lc='yellow')
 
+        # ensure we don't have more threads than genome pairs
+        if self.num_threads > len(self.genome_pairs):
+            self.run.warning(f"You requested {self.num_threads} threads but there are only {len(self.genome_pairs)} "
+                             f"genome pairs to process, so we are setting the number of threads to {len(self.genome_pairs)}.")
+            self.num_threads = len(self.genome_pairs)
+
         manager = multiprocessing.Manager()
         genome_pairs_queue = manager.Queue()
         output_queue = manager.Queue()
