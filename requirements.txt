@@ -22,7 +22,7 @@ pandas==1.4.4
 snakemake
 multiprocess
 plotext
-networkx==3.1
+networkx
 pyrodigal_gv
 pulp==2.7.0
 biopython
