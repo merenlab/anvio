@@ -28,8 +28,8 @@ def main():
             predictor = me.ExchangePredictorSingle(args)
         elif args.genome_pairs_txt:
             raise ConfigError("If you provide a `--genome-pairs-txt` file, you must ALSO provide "
-                              "an external genomes file and/or an internal genomes file describing the "
-                              "paths to the contigs database of each genome you want to analyze.")
+                              "an external genomes file describing the paths to the contigs database "
+                              "of each genome you want to analyze.")
         else:
             raise ConfigError("None of the input options were provided to the program.")
 
