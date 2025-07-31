@@ -998,7 +998,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.external_genomes_file = A('external_genomes')
-        self.internal_genomes_file = A('internal_genomes')
+        self.genome_pairs_txt = A('genome_pairs_txt')
         self.genome_pairs = []  # will be a list of tuples describing the pairs of genomes to compare
         
         # INIT BASE CLASS to format common arguments
@@ -1025,6 +1025,57 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                               f"databases. Here is the list of offenders: {', '.join(bad_genomes_txt)}.")
         
         self.databases = deepcopy(g.genomes)
+
+    def get_genome_pairs_from_txt(self, genome_pairs_file_path):
+        """Reads genome names from the provided file and returns the list of pairs.
+        
+        If the --genome-pairs-txt parameter ever becomes relevant to other parts of the anvi'o codebase, this function
+        should be moved to the utils module to be with its more sophisticated contemporaries in the file-reading business.
+        """
+
+        filesnpaths.is_file_tab_delimited(genome_pairs_file_path)
+        columns_found = utils.get_columns_of_TAB_delim_file(genome_pairs_file_path, include_first_column=True)
+        if 'genome_1' not in columns_found or 'genome_2' not in columns_found:
+            raise ConfigError(f"We did not find some of the expected columns ('genome_1', 'genome_2') "
+                              f"in the provided genome-pairs-txt file at {genome_pairs_file_path}. These "
+                              f"were the columns we DID find: {', '.join(columns_found)}")
+        genome_1_index = columns_found.index('genome_1')
+        genome_2_index = columns_found.index('genome_2')
+
+        pairs = []
+        with open(genome_pairs_file_path, 'r') as f:
+            lines = [x.strip() for x in f.readlines()]
+            for l in lines[1:]:
+                fields = l.split("\t")
+                if len(fields) <= genome_1_index or len(fields) <= genome_2_index:
+                    raise ConfigError(f"One of the lines in the provided genome-pairs-txt file ({genome_pairs_file_path}) "
+                                      f"has too few tab-delimited fields. Please check your file for empty lines or "
+                                      f"lines with missing data.")
+                if not fields[genome_1_index] or not fields[genome_2_index]:
+                    raise ConfigError(f"There is missing data in the `genome_1` (column {genome_1_index}) and/or "
+                                      f"`genome_2` (column {genome_2_index}) fields in a line of the provided "
+                                      f"genome-pairs-txt file at {genome_pairs_file_path}. Here is the line text "
+                                      f"in case it helps you identify the problem (though if you see nothing, it "
+                                      f"likely means you have completely empty lines in the file): '{l}'")
+                # sanity check for equal-but-opposite pairings
+                if (fields[genome_2_index], fields[genome_1_index]) in pairs:
+                    self.run.warning(f"Just FYI, we found the equal-but-opposite genome pairs ('{fields[genome_2_index]}', '{fields[genome_1_index]}')"
+                                     f"and ('{fields[genome_1_index]}', '{fields[genome_2_index]}') in your genome-pairs-txt file, and wanted to let you "
+                                     f"know that there is no point in keeping both of those around since the output will be the same "
+                                     f"regardless of genome order in the pair. Anvi'o will graciously keep only the first of these "
+                                     f"equivalent pairings around, and get ignore the second one. we got u fam.")
+                elif fields[genome_1_index] == fields[genome_2_index]:
+                    self.run.warning(f"Just FYI, we found a genome pair that consists of the same genome name twice "
+                                     f"(specifically, genome '{fields[genome_1_index]}') in your genome-pairs-txt file. "
+                                     f"There is no point to comparing a genome to itself in this context, so we're just going "
+                                     f"to ignore this pair.")
+                else:
+                    pairs.append((fields[genome_1_index], fields[genome_2_index]))
+
+            if not pairs:
+                raise ConfigError(f"Something has gone rather wrong, since no genome pairs were identified from "
+                                  f"the genome-pairs-txt file at {genome_pairs_file_path}. Is your file empty or somethin?")
+        return pairs
 
     def get_all_vs_all_genome_pairs(self):
         """Returns a list of all-vs-all genome comparisons for all genomes in self.databases.
@@ -1078,6 +1129,9 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         
         self.run.info("External genomes file", self.external_genomes_file)
         self.init_external_internal_genomes()
+        if self.genome_pairs_txt:
+            self.genome_pairs = self.get_genome_pairs_from_txt(self.genome_pairs_txt)
+        else:
             self.genome_pairs = self.get_all_vs_all_genome_pairs()
 
         total_pairs = len(self.genome_pairs)

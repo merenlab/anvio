@@ -26,6 +26,10 @@ def main():
             predictor = me.ExchangePredictorMulti(args)
         elif args.contigs_db_1 or args.contigs_db_2:
             predictor = me.ExchangePredictorSingle(args)
+        elif args.genome_pairs_txt:
+            raise ConfigError("If you provide a `--genome-pairs-txt` file, you must ALSO provide "
+                              "an external genomes file and/or an internal genomes file describing the "
+                              "paths to the contigs database of each genome you want to analyze.")
         else:
             raise ConfigError("None of the input options were provided to the program.")
 
@@ -50,10 +54,12 @@ def get_args():
 
     groupM = parser.add_argument_group('INPUT - MULTIPLE PAIRS OF GENOMES', "If you have multiple contigs databases to work with, you can put them all into a file. "
                                                    "Then anvi'o will predict exchanges between each pair of genomes. If you want to run an 'all-vs-all' "
-                                                   "comparison, then provide an external or internal genomes file. If you want to run comparisons only "
-                                                   "between specific pairs of genomes, then provide a genome pairs file.")
+                                                   "comparison, then provide just an external genomes file. If you want to run comparisons only "
+                                                   "between specific pairs of genomes, then you should also provide a genome pairs file. Have internal genomes (bins) "
+                                                   "instead? Well, then you should use `anvi-split` to get separate contigs databases for each bin so that you can "
+                                                   "use --external-genomes for them.")
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-    groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupM.add_argument(*anvio.A('genome-pairs-txt'), **anvio.K('genome-pairs-txt'))
 
     groupB = parser.add_argument_group('OUTPUT', "How do you want to see the results?")
     groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))

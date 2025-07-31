@@ -3394,6 +3394,15 @@ D = {
                      "reaction network alone -- these predictions are less confident anyway. The downside is that "
                      "you'll miss any predictions for compounds not in Pathway Maps."}
                 ),
+    'genome-pairs-txt': (
+            ['--genome-pairs-txt'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists specific pairs of genomes to be compared. "
+                     "The header of the first column should be 'genome_1', and the header of the second column should "
+                     "be 'genome_2'. Each non-header line of the file should describe two genome names, where the names "
+                     "match one of the external or internal genomes provided to this program via the `--external-genomes` "
+                     "or `--internal-genomes` parameters."}
+                ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
