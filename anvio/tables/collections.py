@@ -232,7 +232,7 @@ class TablesForCollections(Table):
                                   "which case things will likely work.")
             else:
                 utils.is_profile_db_and_contigs_db_compatible(self.db_path, contigs_db_path)
-                contigs_db = db.DB(contigs_db_path, t.contigs_db_version)
+                contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
                 all_items = contigs_db.get_single_column_from_table(t.splits_info_table_name, 'split')
                 contigs_db.disconnect()
         else:
