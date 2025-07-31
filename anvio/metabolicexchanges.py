@@ -1131,6 +1131,20 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.init_external_internal_genomes()
         if self.genome_pairs_txt:
             self.genome_pairs = self.get_genome_pairs_from_txt(self.genome_pairs_txt)
+            for genome_1, genome_2 in self.genome_pairs:
+                missing = set([])
+                if genome_1 not in self.databases:
+                    missing.add(genome_1)
+                if genome_2 not in self.databases:
+                    missing.add(genome_2)
+            
+            if missing:
+                raise ConfigError(f"We found genome(s) in the provided genome-pairs-txt file ({self.genome_pairs_txt}) "
+                                  f"that were not present in the provided external genomes file ({self.external_genomes_file}). "
+                                  f"Well, we cannot do anything if we don't know the paths to the genome contigs databases, "
+                                  f"so we are gonna have to stop right here and ask you to make sure that all genome names match "
+                                  f"between the two files. Here are the genome names missing from the external genomes file: "
+                                  f"{', '.join(missing)}")
         else:
             self.genome_pairs = self.get_all_vs_all_genome_pairs()
 
