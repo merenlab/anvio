@@ -18,18 +18,27 @@ __description__ = "Predicts metabolic exchanges between microbes based on the re
 
 
 @time_program
-def main(args):
+def main():
+    args = get_args()
 
-    if args.external_genomes or args.internal_genomes:
-        predictor = me.ExchangePredictorMulti(args)
-    elif args.contigs_db_1 or args.contigs_db_2:
-        predictor = me.ExchangePredictorSingle(args)
-    else:
-        raise ConfigError("None of the input options were provided to the program.")
+    try:
+        if args.external_genomes or args.internal_genomes:
+            predictor = me.ExchangePredictorMulti(args)
+        elif args.contigs_db_1 or args.contigs_db_2:
+            predictor = me.ExchangePredictorSingle(args)
+        else:
+            raise ConfigError("None of the input options were provided to the program.")
 
-    predictor.predict_exchanges()
+        predictor.predict_exchanges()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
-if __name__ == '__main__':
+
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -64,13 +73,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('no-pathway-walk'), **anvio.K('no-pathway-walk'))
     groupE.add_argument(*anvio.A('pathway-walk-only'), **anvio.K('pathway-walk-only'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
