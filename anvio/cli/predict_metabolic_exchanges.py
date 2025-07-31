@@ -22,7 +22,7 @@ def main():
     args = get_args()
 
     try:
-        if args.external_genomes or args.internal_genomes:
+        if args.external_genomes:
             predictor = me.ExchangePredictorMulti(args)
         elif args.contigs_db_1 or args.contigs_db_2:
             predictor = me.ExchangePredictorSingle(args)

@@ -1076,14 +1076,8 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
     def predict_exchanges(self):
         """This is the driver function to predict metabolic exchanges between multiple pairs of genomes."""
         
-        if self.external_genomes_file or self.internal_genomes_file:
-            if self.external_genomes_file:
-                self.run.info("External genomes file", self.external_genomes_file)
-            if self.internal_genomes_file:
-                self.run.info("Internal genomes files", self.internal_genomes_file)
-                raise ConfigError("Handling internal genomes hasn't been implemented yet. Sorry :/")
-            self.init_external_internal_genomes()
-
+        self.run.info("External genomes file", self.external_genomes_file)
+        self.init_external_internal_genomes()
             self.genome_pairs = self.get_all_vs_all_genome_pairs()
 
         total_pairs = len(self.genome_pairs)
