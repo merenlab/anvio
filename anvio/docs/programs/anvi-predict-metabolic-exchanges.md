@@ -42,6 +42,33 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
 
 The %{metabolite-exchange-predictions}s output file names will start using the prefix you provided.
 
+### MULTI-MODE: Running on multiple pairs of genomes
+
+There are two ways for running this program in 'multi-mode' so that it predicts exchanges between multiple pairs of genomes. Both of them involve using an %(external-genomes)s file to point the program towards each contigs database. You will get one set of output files containing the predictions from all pairs.
+
+If possible for your computer setup, we recommend increasing the number of threads using the `--num-threads` or `-T` parameter so that multiple pairs of genomes can be processed in parallel.
+
+**All-vs-all comparisons**
+
+If you provide only an %(external-genomes)s file, the program will determine all possible pairs of genomes and predict exchanges between all of them.
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -e %(external-genomes)s \
+                                 -O ANY_PREFIX \
+                                 --num-threads 1
+{{ codestop }}
+
+**Specific pairwise comparisons**
+
+If you only want to predict exchanges between specific pairs of genomes, then you can enumerate those pairs in a %{genome-pairs}s file and provide that to the program (in addition to the %(external-genomes)s file).
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -e %(external-genomes)s \
+                                 --genome-pairs-txt %{genome-pairs}s \
+                                 -O ANY_PREFIX \
+                                 --num-threads 1
+{{ codestop }}
+
 ## Adjustable Parameters
 
 ### Setting some compound IDs as equivalent
