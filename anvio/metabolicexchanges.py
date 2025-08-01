@@ -337,7 +337,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         self.genomes_to_compare = {'A': {'contigs_db_path': self.contigs_db_1},
                        'B': {'contigs_db_path': self.contigs_db_2}}
-        constructor = rn.Constructor(kegg_dir=self.kegg_data_dir, modelseed_dir=self.modelseed_data_dir, self.run, progress=self.progress)
+        constructor = rn.Constructor(kegg_dir=self.kegg_data_dir, modelseed_dir=self.modelseed_data_dir, run=self.run, progress=self.progress)
         for g in self.genomes_to_compare:
             self.run.info("Loading reaction network from database", self.genomes_to_compare[g]['contigs_db_path'])
             self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
