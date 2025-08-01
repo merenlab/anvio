@@ -376,6 +376,10 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
         bin_pan_db.db.update_meta_value('items_ordered', None)
         bin_pan_db.db.update_meta_value('num_gene_clusters', self.num_gene_clusters)
         bin_pan_db.db.update_meta_value('num_genes_in_gene_clusters', self.num_genes_in_gene_clusters)
+        # reaction network tables are not populated after splitting, so we clear the corresponding self values
+        bin_pan_db.db.update_meta_value('reaction_network_ko_annotations_hash', None)
+        bin_pan_db.db.update_meta_value('reaction_network_kegg_database_release', None)
+        bin_pan_db.db.update_meta_value('reaction_network_modelseed_database_sha', None)
 
         bin_pan_db.disconnect()
 
@@ -510,6 +514,10 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
         bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
         bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
+        # reaction network tables are not populated after splitting, so we clear the corresponding self values
+        bin_contigs_db.db.update_meta_value('reaction_network_ko_annotations_hash', None)
+        bin_contigs_db.db.update_meta_value('reaction_network_kegg_database_release', None)
+        bin_contigs_db.db.update_meta_value('reaction_network_modelseed_database_sha', None)
 
         # the empty contigs db is ready
         bin_contigs_db.disconnect()
