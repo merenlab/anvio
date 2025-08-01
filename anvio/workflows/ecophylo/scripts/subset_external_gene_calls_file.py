@@ -1,11 +1,11 @@
 import pandas as pd
 
-# This script reformats the names from the external_gene_calls.txt file (which comes from anvi-get-sequences-for-gene-calls) with 
+# This script reformats the names from the external_gene_calls.txt file (which comes from anvi-get-sequences-for-gene-calls) with
 # the names of sequences from anvi-estimate-scg-taxonomy
 
 # Import tables
 #--------------
-external_gene_calls_all = pd.read_csv(snakemake.input.external_gene_calls_all, \
+external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all, \
                                       delim_whitespace=True, \
                                       index_col=False)
 
@@ -20,7 +20,7 @@ external_gene_calls_subset = external_gene_calls_all[external_gene_calls_all['co
 
 # Make new gene-callers-ids starting from 1:x
 #--------------------------------------------
-external_gene_calls_subset['gene_callers_id'] = external_gene_calls_subset.index 
+external_gene_calls_subset['gene_callers_id'] = external_gene_calls_subset.index
 
 # Write file
 #-------------
