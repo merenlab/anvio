@@ -52,8 +52,8 @@ class ExchangePredictorArgs():
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_prefix = A('output_file_prefix')
-        self.modelseed_data_dir = A('modelseed_data_dir')
-        self.kegg_data_dir = A('kegg_data_dir')
+        self.modelseed_data_dir = A('modelseed_data_dir') # note that if the data_dir attributes are None, they will be
+        self.kegg_data_dir = A('kegg_data_dir') # passed as None to the reaction network Constructor, which will use the defaults
         self.num_threads = A('num_threads')
         self.use_equivalent_amino_acids = A('use_equivalent_amino_acids')
         self.custom_equivalent_compounds_file = A('custom_equivalent_compounds_file')
@@ -337,7 +337,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         self.genomes_to_compare = {'A': {'contigs_db_path': self.contigs_db_1},
                        'B': {'contigs_db_path': self.contigs_db_2}}
-        constructor = rn.Constructor(run=self.run, progress=self.progress)
+        constructor = rn.Constructor(kegg_dir=self.kegg_data_dir, modelseed_dir=self.modelseed_data_dir, self.run, progress=self.progress)
         for g in self.genomes_to_compare:
             self.run.info("Loading reaction network from database", self.genomes_to_compare[g]['contigs_db_path'])
             self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
