@@ -52,7 +52,7 @@ def get_args():
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     parser.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':
