@@ -69,6 +69,12 @@ anvi-predict-metabolic-exchanges -e %(external-genomes)s \
                                  --num-threads 1
 {{ codestop }}
 
+**Additional steps to run this program on internal genomes (bins)**
+
+If you have a %(collection)s of %(bin)s in a metagenome assembly, commonly described in an %(internal-genomes)s file, then you have to first run the program %(anvi-split)s to extract those bins into their own individual contigs databases. You will then need to run %(anvi-reaction-network)s on each bin's individual contigs database, because running %(anvi-split)s does not split any reaction network made for the entire metagenome into subnetworks for each bin (at least, it did not do so at the time of writing this documentation).
+
+Once you have a %(reaction-network)s in each bin's %(contigs-db)s, you can create an %(external-genomes)s to use as input for %(anvi-predict-metabolic-exchanges)s as described above.
+
 ## Adjustable Parameters
 
 ### Setting some compound IDs as equivalent
