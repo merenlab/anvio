@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':
