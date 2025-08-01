@@ -19,12 +19,21 @@ __description__ = "Run dbCAN CAZymes on contigs-db"
 
 
 @time_program
-def main(args):
-    p = cazymes.CAZyme(args)
-    p.process()
+def main():
+    args = get_args()
+
+    try:
+        p = cazymes.CAZyme(args)
+        p.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
 
 
-if __name__ == '__main__':
+def get_args():
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -40,11 +49,6 @@ if __name__ == '__main__':
 
     args = parser.get_args(parser)
 
-    try:
-        main(args)
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-    except FilesNPathsError as e:
-        print(e)
-        sys.exit(-1)
+
+if __name__ == '__main__':
+    main()
