@@ -108,3 +108,5 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
                                  --kegg-data-dir /path/to/directory/KEGG \
                                  --modelseed-data-dir /path/to/directory/MODELSEED
 {{ codestop }}
+
+The data directories are relevant for loading the %(reaction-network)s in the contigs database, so it is best to use the same data directories that were utilized when running %(anvi-reaction-network)s.
