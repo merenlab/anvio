@@ -12,23 +12,22 @@ import json
 import math
 import copy
 import yaml
+import random
 import argparse
+import numpy as np
 import pandas as pd
 import networkx as nx
-import numpy as np
 import itertools as it
 import matplotlib.pyplot as plt
-# from scipy.stats import entropy
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
-from scipy.spatial.distance import squareform
-import random
 
-import sys
-import subprocess
-import anvio.fastalib as f
-from Bio import SeqIO, SearchIO
+from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
 from itertools import chain
 from scipy.optimize import curve_fit
+
+from warnings import simplefilter
+simplefilter("ignore", category=pd.errors.PerformanceWarning)
+
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -39,6 +38,7 @@ import multiprocess as multiprocessing
 
 import anvio
 import anvio.tables as t
+import anvio.fastalib as f
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -48,18 +48,16 @@ import anvio.filesnpaths as filesnpaths
 import anvio.tables.miscdata as miscdata
 
 from anvio.dbinfo import DBInfo
-from anvio.drivers.blast import BLAST
-from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
+from anvio.drivers.blast import BLAST
+from anvio.drivers.diamond import Diamond
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.geneclusters import TableForGeneClusters
 
-from warnings import simplefilter
-simplefilter("ignore", category=pd.errors.PerformanceWarning)
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
