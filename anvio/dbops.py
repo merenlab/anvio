@@ -4587,6 +4587,91 @@ class PanDatabase:
         self.db.disconnect()
 
 
+class PanGraphDatabase:
+    """To create an empty pan graph database, and/or access to one."""
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
+        self.db = None
+        self.db_path = db_path
+        self.db_type = 'pan-graph'
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+        if not os.path.exists(self.db_path):
+            return
+
+        self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
+        # FIXME: Identify all the integer values in the self table to explicitly
+        # cast them to int here:
+        for key in []:
+            try:
+                self.meta[key] = int(self.meta[key])
+            except:
+                pass
+
+        # FIXME: same as above, but for floating points
+        for key in []:
+            try:
+                self.meta[key] = float(self.meta[key])
+            except:
+                pass
+
+        # open the database
+        self.db = db.DB(self.db_path, anvio.__pangraph__version__)
+
+        self.run.info('Pan Graph database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+        #self.run.info('Genomes', '%d found' % len(self.genomes), quiet=self.quiet)
+
+
+    def touch(self):
+        # FIXME
+        is_db_ok_to_create(self.db_path, self.db_type)
+
+        self.db = db.DB(self.db_path, anvio.__pangraph__version__, new_database=True)
+
+        # creating empy standard db tables for pan graph dbs
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
+
+        # creating empty default tables for pan graph specific operations:
+        self.db.create_table(t.pan_graph_nodes_table_name, t.pan_graph_nodes_table_structure, t.pan_graph_nodes_table_types)
+        self.db.create_table(t.pan_graph_edges_table_name, t.pan_graph_edges_table_structure, t.pan_graph_edges_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+
+        # know thyself
+        self.db.set_meta_value('db_type', self.db_type)
+
+        self.disconnect()
+
+        self.run.info('Pan Graph database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
 
