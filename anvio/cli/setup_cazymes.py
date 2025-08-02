@@ -23,6 +23,7 @@ def main():
     try:
         setup = cazymes.CAZymeSetup(args)
         setup.download()
+
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -43,7 +44,7 @@ def get_args():
     parser.add_argument('--reset', default=False, action="store_true", help="This program by default attempts to use previously\
                         downloaded files in your Pfam data directory if there are any. If something is wrong for some reason you\
                         can use this to tell anvi'o to remove everything, and start over.")
-    parser.add_argument('--cazyme-version', default=None, help="By default, the most current version available (V11) will be downloaded.\
+    parser.add_argument('--cazyme-version', default=None, help="By default, the most current version available (V13) will be downloaded.\
                         If you have specific tastes for a different version, you can provide it here. For example, `V10`. Here are\
                         all possible versions: https://bcb.unl.edu/dbCAN2/download/Databases/")
 
