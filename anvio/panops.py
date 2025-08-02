@@ -1414,6 +1414,10 @@ class SyntenyGeneCluster():
         pangenome_data_df = pd.DataFrame.from_dict(pangenome_data_dict, orient='index').set_index(["genome", "gene_caller_id"])
         self.run.info_single("Done.")
 
+        if contextualize_paralogs:
+            return self.run_contextualize_paralogs_algorithm(pangenome_data_df)
+        else:
+            pangenome_data_df
 
 
     def get_data_from_pan_db(self, contextualize_paralogs=True):
@@ -1498,6 +1502,11 @@ class SyntenyGeneCluster():
 
         pangenome_data_df = pd.concat(pangenome_data_list)
         self.run.info_single("Done.")
+
+        if contextualize_paralogs:
+            return self.run_contextualize_paralogs_algorithm(pangenome_data_df)
+        else:
+            return pangenome_data_df
 
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
@@ -3384,13 +3393,10 @@ class PangenomeGraph():
         self.run.info_single("Done.")
 
 
-    def process(self):
-        """Main processing method for pangenome graph analysis and creation"""
-
+    def print_settings(self):
+        """Print settings"""
         if self.pan_graph_json:
-            self.run.warning(None, header="Load anvi'o pangenome graph from json file", lc="green")
-            self.import_pangenome_graph()
-            self.run.info_single("Done.")
+            pass
         else:
             self.run.warning(None, header="Loading settings to create anvi'o pangenome graph from scratch", lc="green")
             self.run.info_single(f"Circularize genomes: {self.circularize}.")
@@ -3408,55 +3414,70 @@ class PangenomeGraph():
             self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
             self.run.info_single("Done.")
 
-            # make sure the output directory is there
-            filesnpaths.gen_output_directory(self.output_dir)
 
-            # a round of sanity check
-            self.sanity_check()
+    def get_pangenome_graph_from_scratch(self):
+        """Populates `self.pangenome_graph` from a pan-db (or a YAML file)"""
 
-            # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
-            SynGC = SyntenyGeneCluster(self.args)
+        SynGC = SyntenyGeneCluster(self.args)
 
-            if self.pan_graph_yaml:
-                db_mining_df = SynGC.yaml_mining()
-                self.genome_names = list(self.yaml_file.keys())
+        self.pangenome_data_df = SynGC.get_data_from_YAML() if self.pan_graph_yaml else SynGC.get_data_from_pan_db()
+
+        if self.start_gene and self.start_column:
+            if self.start_column in self.pangenome_data_df.columns:
+                start_syn_cluster = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
+                start_syn_type = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
+                self.start_node += set(start_syn_cluster)
+
+                if len(set(start_syn_cluster)) > 1:
+                    self.run.info_single("There is more than one occurance of your start gene of preference, I really hope you know what you are doing.")
+
+                if len(start_syn_cluster) != len(self.genome_names):
+                    self.run.info_single("The number of genomes in the dataset does not equal the number of occurances of the start gene. Weird.")
+
+                if any(node != 'core' for node in start_syn_type):
+                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.")
             else:
-                db_mining_df = SynGC.db_mining()
+                self.run.info_single("The column were we should search for your start gene does not exist...")
 
-            self.db_mining_df = SynGC.run_contextualize_paralogs_algorithm(db_mining_df, self.output_dir, self.n, self.alpha, self.beta, self.gamma, self.delta, self.inversion_aware, self.min_k, self.output_synteny_gene_cluster_dendrogram)
+        self.create_pangenome_graph()
 
-            if self.start_gene and self.start_column:
 
-                if self.start_column in self.db_mining_df.columns:
-                    start_syn_cluster = self.db_mining_df[self.db_mining_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
-                    start_syn_type = self.db_mining_df[self.db_mining_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
-                    self.start_node += set(start_syn_cluster)
+    def process(self):
+        """Main processing method for pangenome graph analysis and creation"""
 
-                    if len(set(start_syn_cluster)) > 1:
-                        self.run.info_single("There is more than one occurance of your start gene of preference, I really hope you know what you are doing.")
+        # make sure the output directory is there
+        filesnpaths.gen_output_directory(self.output_dir)
 
-                    if len(start_syn_cluster) != len(self.genome_names):
-                        self.run.info_single("The number of genomes in the dataset does not equal the number of occurances of the start gene. Weird.")
+        # a round of sanity check
+        self.sanity_check()
 
-                    if any(node != 'core' for node in start_syn_type):
-                        self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.")
+        # display some settings if applicable
+        self.print_settings()
 
-                else:
-                    self.run.info_single("The column were we should search for your start gene does not exist...")
+        # figure out if we will get the pangenome graph from
+        # a user-provided JSON file, or from sctratch
+        if self.pan_graph_json:
+            self.get_pangenome_graph_from_JSON()
+        else:
+            self.get_pangenome_graph_from_scratch()
 
-            self.create_pangenome_graph()
+        # generate flat text file summaries for downstream
+        # analyses
+        self.summarize_pangenome_graph()
 
-        if len(self.db_mining_df) != 0:
-            self.summarize_pangenome_graph()
-
+        # calculate the display
         self.layout_pangenome_graph()
 
+        # if the user has not provided a tree file,
+        # calculate one from the graph properties
         if not self.newick:
             self.newick = self.pangenome_graph.calculate_graph_distance(self.output_dir)
 
+        # FIXME: not currently engaged
         if self.output_hybrid_genome:
             self.pangenome_graph.generate_hybrid_genome(self.output_dir)
 
+        # generate the output
         self.export_pangenome_graph()
 
 
