@@ -1368,7 +1368,7 @@ class SyntenyGeneCluster():
             self.functional_annotation_sources_available = []
         else:
             self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources()
-        # self.db_mining_df = pd.DataFrame()
+        # self.pangenome_data_df = pd.DataFrame()
         self.contig_identifiers = {}
 
         self.just_do_it = A('just_do_it')
@@ -1387,19 +1387,19 @@ class SyntenyGeneCluster():
         return(num_contigs, length)
 
 
-    def yaml_mining(self):
-
+    def get_data_from_YAML(self, contextualize_paralogs=True):
+        """Create a data tale form the YAML file"""
         i = 0
-        db_mining_dict = {}
+        pangenome_data_dict = {}
         for genome in self.genome_names:
             current_pos = 0
             for contig_num, contig in enumerate(self.yaml_file[genome]):
                 for gene_call, gene_cluster in enumerate(contig):
-
                     direction = 'l' if gene_cluster.endswith('!') else 'r'
                     gene_cluster = gene_cluster.replace('!', '')
 
-                    db_mining_dict[i] = {
+                    pangenome_data_dict[i] = {
+                        'position': gene_call,
                         'genome': genome,
                         'gene_cluster': gene_cluster,
                         'gene_caller_id': gene_call,
@@ -1411,13 +1411,12 @@ class SyntenyGeneCluster():
                     current_pos += 500
                     i += 1
 
-
-        db_mining_df = pd.DataFrame.from_dict(db_mining_dict, orient='index').set_index(["genome", "gene_caller_id"])
+        pangenome_data_df = pd.DataFrame.from_dict(pangenome_data_dict, orient='index').set_index(["genome", "gene_caller_id"])
         self.run.info_single("Done.")
-        return(db_mining_df)
 
 
-    def db_mining(self):
+
+    def get_data_from_pan_db(self, contextualize_paralogs=True):
         """Major mining function. Can be used outside of the purpose of creating anvi'o
         pangenome graphs.
 
@@ -1426,7 +1425,7 @@ class SyntenyGeneCluster():
 
         Returns
         =======
-        db_mining_df: ps.DataFrame
+        pangenome_data_df: ps.DataFrame
             Dataframe containing gene call informations present in the anvi'o dbs.
         """
 
@@ -1451,7 +1450,7 @@ class SyntenyGeneCluster():
 
         # TODO trna and rrna gene cluster update also include more types and split trna and rrna in individual sets. Instead of GC_00000000 add the two at the end.
         # TODO Should the reversed once also have reversed gene call orientation?
-        db_mining_list = []
+        pangenome_data_list = []
         for genome, contigs_db_path in external_genomes.iterrows():
             if genome in self.genome_names:
                 args = argparse.Namespace(contigs_db=contigs_db_path.item())
@@ -1487,20 +1486,18 @@ class SyntenyGeneCluster():
                 joined_contigs_df.reset_index(drop=False, inplace=True)
 
                 for contig, group in joined_contigs_df.groupby(["contig"]):
-                    
                     group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, True, True], ignore_index=True, inplace=True)
 
                     group.rename_axis("position", inplace=True)
                     group.reset_index(drop=False, inplace=True)
 
-                    db_mining_list += [group]
+                    pangenome_data_list += [group]
                 self.run.info_single(f"Successfully mined data from genome {genome}.")
             else:
                 self.run.info_single(f"Skipped genome {genome} on users request.")
 
-        db_mining_df = pd.concat(db_mining_list)
+        pangenome_data_df = pd.concat(pangenome_data_list)
         self.run.info_single("Done.")
-        return(db_mining_df)
 
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
@@ -1712,7 +1709,7 @@ class SyntenyGeneCluster():
 
     def run_contextualize_paralogs_algorithm(self, pangenome_data_df):
         """A function that resolves the graph context of paralogs based on gene synteny
-        information across genomes and adds this information to the db_mining_df dataframe
+        information across genomes and adds this information to the pangenome_data_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
         containing at most one gene call per genome.
 
@@ -1777,12 +1774,10 @@ class SyntenyGeneCluster():
 
         Returns
         =======
-        db_mining_df: ps.DataFrame
+        pangenome_data_df: ps.DataFrame
             Dataframe containing gene call informations present in the anvi'o dbs
             plus the additional column of unipque syn clusters.
         """
-
-        # db_mining_df.to_csv(os.path.join(output_dir, db_mining_df.tsv'), sep='\t')
 
         self.run.warning(None, header="Select paralog context", lc="green")
 
@@ -1790,7 +1785,7 @@ class SyntenyGeneCluster():
         gene_cluster_contig_order = {}
         gene_cluster_id_contig_positions = {}
 
-        groups = db_mining_df.groupby(["genome", "contig"])
+        groups = pangenome_data_df.groupby(["genome", "contig"])
         ident = 0
         for name, group in groups:
             genome, contig = name
@@ -1870,22 +1865,22 @@ class SyntenyGeneCluster():
 
         self.progress.end()
         gene_cluster_id_contig_positions_df = pd.DataFrame.from_dict(gene_cluster_id_contig_positions, orient='index')
-        db_mining_df = db_mining_df.merge(gene_cluster_id_contig_positions_df, on=['genome', 'contig', 'gene_caller_id'], how='inner')
+        pangenome_data_df = pangenome_data_df.merge(gene_cluster_id_contig_positions_df, on=['genome', 'contig', 'gene_caller_id'], how='inner')
 
-        self.run.info_single(f'{len(db_mining_df)} gene caller entries.')
-        self.run.info_single(f'{len(db_mining_df["gene_cluster"].unique())} gene cluster entries.')
+        self.run.info_single(f'{len(pangenome_data_df)} gene caller entries.')
+        self.run.info_single(f'{len(pangenome_data_df["gene_cluster"].unique())} gene cluster entries.')
 
-        value_counts = db_mining_df["syn_cluster_type"].value_counts()
+        value_counts = pangenome_data_df["syn_cluster_type"].value_counts()
         self.run.info_single(f'{value_counts.get("core", 0)} core synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("duplication", 0)} paralog synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("rna", 0)} rna synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("rearrangement", 0)} rearranged synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
-        self.run.info_single(f'{len(db_mining_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
+        self.run.info_single(f'{len(pangenome_data_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
         self.run.info_single("Done.")
 
-        if len(db_mining_df["syn_cluster"].unique()) > 2 * len(db_mining_df["gene_cluster"].unique()):
+        if len(pangenome_data_df["syn_cluster"].unique()) > 2 * len(pangenome_data_df["gene_cluster"].unique()):
             if self.just_do_it:
                 self.run.info_single("We wanted to inform you, that the number of gene to syn clusters doesn't really line up but you choosed just-do-it so either you hate us, yourself, or you are very sure about what you are doint. GOOD LUCK")
             else:
@@ -1895,7 +1890,7 @@ class SyntenyGeneCluster():
         self.run.info_single(f"Exported mining table to {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
         self.run.info_single("Done.")
 
-        return(db_mining_df)
+        return(pangenome_data_df)
 
 
 # ANCHOR - PangenomeGraphManager
@@ -3330,7 +3325,7 @@ class PangenomeGraph():
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
         self.seed = None
         self.pangenome_graph = PangenomeGraphManager()
-        self.db_mining_df = pd.DataFrame()
+        self.pangenome_data_df = pd.DataFrame()
 
         self.newick = ''
         self.meta = {}
@@ -3610,7 +3605,9 @@ class PangenomeGraph():
         self.run.info_single("Done")
 
 
-    def import_pangenome_graph(self):
+    def get_pangenome_graph_from_JSON(self):
+        """Populates `self.pangenome_graph from user-provided JSON file`"""
+
         self.run.warning(None, header="Import pangenome graph from json file", lc="green")
 
         filesnpaths.is_file_json_formatted(self.pan_graph_json)
@@ -3697,12 +3694,12 @@ class PangenomeGraph():
 
         add_layers = False
         if self.import_values:
-            if set(self.import_values).issubset(self.db_mining_df.columns) and set(self.db_mining_df[self.import_values].dtypes.astype(str).values.tolist()).issubset(['int64', 'float64']):
+            if set(self.import_values).issubset(self.pangenome_data_df.columns) and set(self.pangenome_data_df[self.import_values].dtypes.astype(str).values.tolist()).issubset(['int64', 'float64']):
                 self.run.info_single(f"Entries {', '.join(self.import_values)} will be added as optional layers.")
                 add_layers = True
 
         number_gene_calls = {}
-        for genome, genome_group in self.db_mining_df.groupby(["genome"]):
+        for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
             extra_connections = []
 
             for contig, group in genome_group.groupby(["contig"]):
@@ -3794,7 +3791,7 @@ class PangenomeGraph():
         for genome in number_gene_calls:
             self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")
 
-        num_syn_cluster = len(self.db_mining_df['syn_cluster'].unique())
+        num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
         num_graph_nodes = len(self.pangenome_graph.graph.nodes())
 
         self.run.info_single(f"Added {num_graph_nodes} nodes and {len(self.pangenome_graph.graph.edges())} edges to pangenome graph.")
@@ -3825,7 +3822,7 @@ class PangenomeGraph():
         # self.pangenome_graph.graph.remove_edges_from(removed_edges)
         # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
 
-        # self.db_mining_df.drop(self.db_mining_df.loc[self.db_mining_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
+        # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
         # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
         if len(changed_edges) == 0:
             self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
