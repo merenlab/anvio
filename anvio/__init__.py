@@ -46,8 +46,6 @@ import os
 import json
 import copy
 
-from tabulate import tabulate
-
 # very important variable to determine which help docs are relevant for
 # this particlar anvi'o environment
 anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
@@ -103,6 +101,8 @@ def P(d, dont_exit=False):
 
 def TABULATE(table, header, numalign="right", max_width=0):
     """Encoding-safe `tabulate`"""
+
+    from tabulate import tabulate
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
     table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
