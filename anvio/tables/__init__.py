@@ -41,6 +41,20 @@ pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  
 
 ####################################################################################################
 #
+#     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN GRAP DB
+#
+####################################################################################################
+
+pan_graph_nodes_table_name           = 'pan_graph_nodes'
+pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'gene_cluster_id', 'gene_calls_json']
+pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,       'str'      ,       'str'      ]
+
+pan_graph_edges_table_name           = 'pan_graph_edges'
+pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'directions', 'route']
+pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'   ,  'str' ]
+
+####################################################################################################
+#
 #     TABLE DESCRIPTIONS FOR THE CONTIGS DATABASE
 #
 ####################################################################################################
@@ -388,6 +402,8 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  'pan_graph_nodes': False,
+                                  'pan_graph_edges': False,
                                   'gene_cluster_function_reactions': False, # renamed to 'pan_reaction_network_reactions'
                                   pan_reaction_network_reactions_table_name: False,
                                   'gene_cluster_function_metabolites': False, # renamed to 'pan_reaction_network_metabolites'
