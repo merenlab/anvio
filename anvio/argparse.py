@@ -7,7 +7,7 @@ import sys
 import argparse
 import textwrap
 
-from colored import fg, bg, attr
+from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
