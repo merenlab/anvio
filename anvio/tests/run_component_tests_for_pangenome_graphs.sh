@@ -11,7 +11,11 @@ cp $files/mock_data_for_pangenomics/*.db                      $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/
 cp $files/example_description.md                              $output_dir/
 cp $files/example-pangenome-graph.yaml                        $output_dir/
+cp $files/example-pangenome-graph.json.gz                     $output_dir/
 cd $output_dir/
+
+# uncompress the JSON file
+gzip -d example-pangenome-graph.json.gz
 
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-quickly
@@ -41,18 +45,22 @@ anvi-compute-genome-similarity -e external-genomes.txt \
 
 INFO "Generating a pangenome graph from a YAML file"
 anvi-pan-genome-graph --pan-graph-yaml example-pangenome-graph.yaml \
-                      -o GRAPH-YAML
+                      -o FROM-YAML
+
+INFO "Generating a pangenome graph from a JSON file"
+anvi-pan-genome-graph -i example-pangenome-graph.json \
+                      -o FROM-JSON
 
 INFO "Generating a pangenome graph from a pan-db"
 anvi-pan-genome-graph -p TEST/TEST-PAN.db \
                       -g TEST-GENOMES.db \
-                      -o PAN-GRAPH \
+                      -o FROM-PAN \
                       --project-name TEST \
                       -e external-genomes.txt \
                       $thread_controller
 
 INFO "Displaying pangenome graph"
-anvi-display-pan-graph -i PAN-GRAPH/TEST-JSON.json \
+anvi-display-pan-graph -i FROM-PAN/TEST-JSON.json \
                        -p TEST/TEST-PAN.db \
                        -g TEST-GENOMES.db \
                        $dry_run_controller
