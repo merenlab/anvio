@@ -3454,6 +3454,10 @@ class PangenomeGraph():
             self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
             self.run.info_single("Done.")
 
+            # make sure the output directory is there
+            filesnpaths.gen_output_directory(self.output_dir)
+
+            # a round of sanity check
             self.sanity_check()
 
             # ADD SANITY CHECK HERE INCLUDES PANDB, EXT, GENOME, VALUES (maybe set standard values)
@@ -3504,7 +3508,7 @@ class PangenomeGraph():
 
     # TODO needs more sanity checks!
     def sanity_check(self):
-        filesnpaths.is_output_dir_writable(self.output_dir)
+        pass
 
 
     def export_pangenome_graph(self):
