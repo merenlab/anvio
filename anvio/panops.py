@@ -1340,6 +1340,15 @@ class SyntenyGeneCluster():
         self.pan_graph_yaml = A('pan_graph_yaml')
         self.output_dir = A('output_dir')
 
+        self.n = A('n')
+        self.alpha = A('alpha')
+        self.beta = A('beta')
+        self.gamma = A('gamma')
+        self.delta = A('delta')
+        self.inversion_aware = A('inversion_aware')
+        self.min_k = A('min_k')
+        self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
+
         if self.pan_graph_yaml:
             with open(self.pan_graph_yaml) as file:
                 self.yaml_file = yaml.safe_load(file)
@@ -1495,8 +1504,7 @@ class SyntenyGeneCluster():
 
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
-    # def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram):
-    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram):
+    def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core):
 
         synteny_gene_cluster_type = ''
 
@@ -1512,8 +1520,7 @@ class SyntenyGeneCluster():
                 for j, gene_cluster_k_mer_contig_position_b in enumerate(gene_cluster_k_mer_contig_positions):
                     gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
                     gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
-                    # X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware)
-                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware)
+                    X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core)
 
             np.fill_diagonal(X, 0.0)
             condensed_X = squareform(X)
@@ -1555,7 +1562,7 @@ class SyntenyGeneCluster():
 
         num_cluster = len(set(clusters.tolist()))
         # if len(gene_cluster_k_mer_contig_positions) != 1:
-        if output_synteny_gene_cluster_dendrogram and num_cluster > 1:
+        if self.output_synteny_gene_cluster_dendrogram and num_cluster > 1:
         # if output_synteny_gene_cluster_dendrogram and len(gene_cluster_k_mer_contig_positions) != 1:
             # cmap = plt.cm.tab20(np.linspace(0, 1, num_cluster))
             # colors = [mcolors.rgb2hex(rgb) for rgb in cmap]
@@ -1578,16 +1585,16 @@ class SyntenyGeneCluster():
 
             # ax.set_yticklabels(new_labels)
             plt.tight_layout()
-            fig.savefig(os.path.join(output_dir, gene_cluster + '.svg'))
+            fig.savefig(os.path.join(self.output_dir, gene_cluster + '.svg'))
             plt.close(fig)
 
             labels_matrix = [re.search(r'\((.+)\)', label_matrix).group(0) for label_matrix in labels]
             synteny_gene_cluster_matrix = pd.DataFrame(X, index=labels_matrix, columns=labels_matrix)
-            synteny_gene_cluster_matrix.to_csv(os.path.join(output_dir, gene_cluster + '.tsv'), sep='\t')
+            synteny_gene_cluster_matrix.to_csv(os.path.join(self.output_dir, gene_cluster + '.tsv'), sep='\t')
 
         return(synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type)
 
-    def single_copy_core_context(self, gene_cluster_order, single_copy_core, position, n):
+    def single_copy_core_context(self, gene_cluster_order, single_copy_core, position):
 
         left_side_of_kmer = []
         l = 0
@@ -1597,7 +1604,7 @@ class SyntenyGeneCluster():
             else:
                 gene_cluster = gene_cluster_order[position - l]
 
-            if len(left_side_of_kmer) == n:
+            if len(left_side_of_kmer) == self.n:
                 break
             elif gene_cluster in single_copy_core:
 
@@ -1614,7 +1621,7 @@ class SyntenyGeneCluster():
             else:
                 gene_cluster = gene_cluster_order[position + r]
 
-            if len(right_side_of_kmer) == n:
+            if len(right_side_of_kmer) == self.n:
                 break
             elif gene_cluster in single_copy_core:
 
@@ -1626,30 +1633,16 @@ class SyntenyGeneCluster():
 
 
     # TODO was it a wise choice to remove reverse kmer comparison? I guess yes better to create more nodes then removing necessary ones
-    # def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware):
-    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware):
-
+    def k_mer_distance(self, gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core):
         genome_a, contig_a, position_a, gene_caller_id_a, gene_cluster_kmer_a = gene_cluster_k_mer_contig_position_a
-        #contig_identifier_a = str(int(contig_a.split('_')[-1]))
-        contig_identifier_a = self.contig_identifiers[contig_a]
         gene_cluster_order_a = gene_cluster_contig_order[(genome_a, contig_a)]
 
-        #gene_cluster_k_mer_left_context_a = set([gene_cluster_order_a[l] for l in range(position_a - n, position_a) if l >= 0 and l < len(gene_cluster_order_a)])
-        #gene_cluster_k_mer_right_context_a = set([gene_cluster_order_a[l] for l in range(position_a - 1, position_a + n + 1) if l >= 0 and l < len(gene_cluster_order_a)])
-
-        # gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.syn_package_context(gene_cluster_order_a, syn_packages_labels, position_a, n)
-        gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.single_copy_core_context(gene_cluster_order_a, single_copy_core, position_a, n)
+        gene_cluster_k_mer_left_context_a, gene_cluster_k_mer_right_context_a = self.single_copy_core_context(gene_cluster_order_a, single_copy_core, position_a)
 
         genome_b, contig_b, position_b, gene_caller_id_b, gene_cluster_kmer_b = gene_cluster_k_mer_contig_position_b
-        #contig_identifier_b = str(int(contig_b.split('_')[-1]))
-        contig_identifier_b = self.contig_identifiers[contig_b]
         gene_cluster_order_b = gene_cluster_contig_order[(genome_b, contig_b)]
 
-        # gene_cluster_k_mer_left_context_b = set([gene_cluster_order_b[l] for l in range(position_b - n, position_b) if l >= 0 and l < len(gene_cluster_order_b)])
-        # gene_cluster_k_mer_right_context_b = set([gene_cluster_order_b[l] for l in range(position_b - 1, position_b + n + 1) if l >= 0 and l < len(gene_cluster_order_b)])
-
-        # gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.syn_package_context(gene_cluster_order_b, syn_packages_labels, position_b, n)
-        gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.single_copy_core_context(gene_cluster_order_b, single_copy_core, position_b, n)
+        gene_cluster_k_mer_left_context_b, gene_cluster_k_mer_right_context_b = self.single_copy_core_context(gene_cluster_order_b, single_copy_core, position_b)
 
         gene_cluster_k_mer_left_context_min_length = min(len(gene_cluster_k_mer_left_context_a), len(gene_cluster_k_mer_left_context_b))
         gene_cluster_k_mer_right_context_min_length = min(len(gene_cluster_k_mer_right_context_a), len(gene_cluster_k_mer_right_context_b))
@@ -1671,7 +1664,7 @@ class SyntenyGeneCluster():
 
         if genome_a == genome_b:
             return(1.0)
-        elif n != 0 and gene_cluster_k_mer_left_context_score < alpha and gene_cluster_k_mer_right_context_score < alpha:
+        elif self.n != 0 and gene_cluster_k_mer_left_context_score < self.alpha and gene_cluster_k_mer_right_context_score < self.alpha:
             return(1.0)
         elif gene_cluster_kmer_a == gene_cluster_kmer_b:
             return(0.0)
@@ -1685,22 +1678,22 @@ class SyntenyGeneCluster():
                 if not i == int(len(gene_cluster_kmer_a) / 2):
                     if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                         # if n[1:] != m[1:]:
-                        r_val += beta
+                        r_val += self.beta
                     elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                        r_val += gamma
+                        r_val += self.gamma
                     elif n == m:
                         r_val += 1.0
                     else:
                         r_val += 0.0
 
-            if inversion_aware:
+            if self.inversion_aware:
                 for i, (n, m) in enumerate(zip(gene_cluster_kmer_a, gene_cluster_kmer_b[::-1])):
                     if not i == int(len(gene_cluster_kmer_a) / 2):
                         if (n[0] == '-' and m[0] == '-') or (n[0] == '+' and m[0] == '+'):
                             # if n[1:] != m[1:]:
-                            f_val += beta
+                            f_val += self.beta
                         elif n[0] == '-' or m[0] == '-' or n[0] == '+' or m[0] == '+':
-                            f_val += gamma
+                            f_val += self.gamma
                         elif n == m:
                             f_val += 1.0
                         else:
@@ -1714,10 +1707,10 @@ class SyntenyGeneCluster():
             else:
                 sim_value = 1.0 - r_val / div
 
-            return(sim_value if sim_value <= delta else 1.0)
+            return(sim_value if sim_value <= self.delta else 1.0)
 
 
-    def run_contextualize_paralogs_algorithm(self, db_mining_df, output_dir, n=100, alpha=0.5, beta=0.5, gamma=0.25, delta=0.5, inversion_aware=False, min_k=0, output_synteny_gene_cluster_dendrogram=False):
+    def run_contextualize_paralogs_algorithm(self, pangenome_data_df):
         """A function that resolves the graph context of paralogs based on gene synteny
         information across genomes and adds this information to the db_mining_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
@@ -1836,7 +1829,7 @@ class SyntenyGeneCluster():
         j = 0
         self.progress.new("Contextualize gene clusters")
         for z, (gene_cluster, genome_contig_gene_cluster_positions) in enumerate(gene_cluster_positions.items()):
-            k = min_k
+            k = self.min_k
             while True:
                 gene_cluster_k_mer_genome_frequency = {}
                 gene_cluster_k_mer_contig_positions = []
@@ -1867,8 +1860,7 @@ class SyntenyGeneCluster():
                         break
 
                 else:
-                    # synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, syn_packages_labels, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
-                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core, n, alpha, beta, gamma, delta, inversion_aware, output_dir, output_synteny_gene_cluster_dendrogram)
+                    synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type = self.k_mer_split(gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core)
 
                     for genome, contig, position, gene_caller_id, gene_cluster_id in synteny_gene_cluster_id_contig_positions:
                         gene_cluster_id_contig_positions[j] = {'genome': genome, 'contig': contig, 'gene_caller_id': gene_caller_id, 'syn_cluster': gene_cluster_id, 'syn_cluster_type': synteny_gene_cluster_type}
@@ -1899,8 +1891,8 @@ class SyntenyGeneCluster():
             else:
                 raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something might have gone wrong.")
 
-        db_mining_df.set_index('position').to_csv(os.path.join(output_dir, 'synteny_cluster.tsv'), sep='\t')
-        self.run.info_single(f"Exported mining table to {os.path.join(output_dir, 'synteny_cluster.tsv')}.")
+        pangenome_data_df.set_index('position').to_csv(os.path.join(self.output_dir, 'synteny_cluster.tsv'), sep='\t')
+        self.run.info_single(f"Exported mining table to {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
         self.run.info_single("Done.")
 
         return(db_mining_df)
