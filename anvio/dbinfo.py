@@ -373,6 +373,14 @@ class PanDBInfo(DBInfo):
         DBInfo.__init__(self, path)
 
 
+class PanGraphDBInfo(DBInfo):
+    """A class to keep track of pan graph databases"""
+    db_type = 'pan-graph'
+    hash_name = 'genomes_storage_hash'
+    def __init__(self, path, *args, **kwargs):
+        DBInfo.__init__(self, path)
+
+
 class TRNADBInfo(DBInfo):
     """A class to keep track of trnaseq databases"""
     db_type = 'trnaseq'
@@ -516,6 +524,7 @@ dbinfo_classes = {
     'structure': StructureDBInfo,
     'genomestorage': GenomeStorageDBInfo,
     'pan': PanDBInfo,
+    'pan-graph': PanGraphDBInfo,
     'trnaseq': TRNADBInfo,
     'modules': ModulesDBInfo,
 }
