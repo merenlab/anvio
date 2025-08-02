@@ -1908,10 +1908,12 @@ class SyntenyGeneCluster():
         return(db_mining_df)
 
 
-# ANCHOR - PangenomeGraph
-class PangenomeGraph():
-    """All in one pangenome graph object. The purpose of this class is to create a
-    nx.DiGraph object with a fixed set of attributes per node and edge that is still
+# ANCHOR - PangenomeGraphManager
+class PangenomeGraphManager():
+    """All in one pangenome graph object.
+
+    The purpose of this class is to create a nx.DiGraph object with a fixed set of
+    attributes per node and edge that is still
     useable with nx.DiGraph algorithms. This pangenome graph object inherits all
     functions from a nx.DiGraph object with an extra set of boundaries. Therefore it
     can be used with all existing networkx algorithms made for digraph objects. The
@@ -1923,7 +1925,7 @@ class PangenomeGraph():
     long edges over multiple positions. This whole class is created after the nx.DiGraph
     class in the networkx package.
 
-    Definition of PangenomeGraph object nodes:
+    Definition of PangenomeGraphManager object nodes:
     id: syn_cluster ----> 'GC1_1'
     attributes:
         gene_cluster: --> 'GC1'
@@ -1931,7 +1933,7 @@ class PangenomeGraph():
         gene_calls: ----> {G1: 0, G2: 5}
         group: ---------> 'GCG3'
 
-    Definition of PangenomeGraph object edges:
+    Definition of PangenomeGraphManager object edges:
     i: syn_cluster ----> 'GC1_1'
     j: syn_cluster ----> 'GC2_1'
     attributes:
@@ -3267,8 +3269,8 @@ class TopologicalLayout():
         return(node_positions, edge_positions, node_groups)
 
 
-# ANCHOR - PangenomeGraphManager
-class PangenomeGraphManager():
+# ANCHOR - PangenomeGraph
+class PangenomeGraph():
     """The major backend class to create, solve and layout pangenome graphs in anvi'o.
     Please read through individual steps for more in-depth explanaitions on algorithms
     and data structures.
@@ -3337,7 +3339,7 @@ class PangenomeGraphManager():
         self.version = anvio.__pangraph__version__
         self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
         self.seed = None
-        self.pangenome_graph = PangenomeGraph()
+        self.pangenome_graph = PangenomeGraphManager()
         self.db_mining_df = pd.DataFrame()
 
         self.newick = ''
@@ -3684,7 +3686,7 @@ class PangenomeGraphManager():
 
         Returns
         =======
-        self.pangenome_graph: PangenomeGraph Object
+        self.pangenome_graph: PangenomeGraphManager Object
         """
 
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
