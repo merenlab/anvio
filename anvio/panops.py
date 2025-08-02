@@ -1922,7 +1922,7 @@ class PangenomeGraphManager():
         weight: --------> 2
         active: --------> True
         directions: ----> {G1: 'R', G2: 'R'}
-        bended: --------> [(0,1), (0,2)]
+        route: --------> [(0,1), (0,2)]
     """
     def __init__(self, run=run, progress=progress):
 
@@ -1941,7 +1941,7 @@ class PangenomeGraphManager():
             'weight': 0.0,
             'active': True,
             'directions': {},
-            'bended': [],
+            'route': [],
             'length': 0
         }
         self.graph = nx.DiGraph()
@@ -2248,10 +2248,10 @@ class PangenomeGraphManager():
 
     def set_edge_positions(self, edge_positions):
         for edge_i, edge_j in self.graph.edges():
-            bended = edge_positions[(edge_i, edge_j)]
-            self.graph[edge_i][edge_j]['bended'] = bended
-            if bended:
-                length = bended[-1][0] - bended[0][0] + 1
+            route = edge_positions[(edge_i, edge_j)]
+            self.graph[edge_i][edge_j]['route'] = route
+            if route:
+                length = route[-1][0] - route[0][0] + 1
             else:
                 length = 0
             self.graph[edge_i][edge_j]['length'] = length
@@ -2268,6 +2268,7 @@ class PangenomeGraphManager():
                 self.graph[edge_i][edge_j]['active'] = True
 
         return(cutted_edges)
+
 
     def calculate_graph_distance(self, output_dir=''):
         self.run.warning(None, header="Calculate synteny distance dendrogram", lc="green")
@@ -3230,7 +3231,7 @@ class TopologicalLayout():
                     while x < offset[edge_j]:
                         edge_positions[(edge_i, edge_j)].append((x, y))
                         x += 1
-            # edge_positions[(edge_i, edge_j)] = data['bended']
+            # edge_positions[(edge_i, edge_j)] = data['route']
 
         node_groups = {}
         for label, nodes in grouping.items():
@@ -3657,7 +3658,7 @@ class PangenomeGraph():
                 "weight": jsondata["edges"][edge]["weight"],
                 "directions": dict(jsondata["edges"][edge]["directions"]),
                 "active": jsondata["edges"][edge]["active"],
-                "bended": [tuple(bend) for bend in jsondata["edges"][edge]["bended"]],
+                "route": [tuple(r) for r in jsondata["edges"][edge]["route"]],
                 "length": jsondata["edges"][edge]["length"],
             }
             self.pangenome_graph.graph.add_edge(edge_i, edge_j, **data)
