@@ -3261,6 +3261,16 @@ class PangenomeGraph():
         self.pan_graph_yaml = A('pan_graph_yaml')
         self.project_name = A('project_name')
 
+        # learn the project name from the pan-db if the user did not
+        # provide another
+        if not self.project_name:
+            if self.pan_db:
+                self.project_name = DBInfo(self.pan_db, expecting=['pan']).project_name
+            else:
+                raise ConfigError("You need to explicitly define a `--project-name` for this "
+                                  "run (anvi'o would have figured it out for you, but you don't "
+                                  "even have a pan-db).")
+
         if self.pan_graph_yaml:
             with open(self.pan_graph_yaml) as file:
                 self.yaml_file = yaml.safe_load(file)
