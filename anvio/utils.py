@@ -4467,6 +4467,11 @@ def is_pan_db(db_path):
     return True
 
 
+def is_pan_graph_db(db_path):
+    dbi(db_path, expecting='pan-graph')
+    return True
+
+
 def is_genome_storage(db_path):
     dbi(db_path, expecting='genomestorage')
     return True
