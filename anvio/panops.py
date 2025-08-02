@@ -1568,7 +1568,7 @@ class SyntenyGeneCluster():
 
             fig = plt.figure(figsize=(15+1+k*8, len(label_colors)))
             ax = plt.gca()
-            dn = dendrogram(Z, ax=ax, labels=labels, orientation='right')
+            dendrogram(Z, ax=ax, labels=labels, orientation='right')
 
             #new_labels = []
             y_tick_labels = ax.get_ymajorticklabels()
@@ -1646,18 +1646,6 @@ class SyntenyGeneCluster():
 
         gene_cluster_k_mer_left_context_score = len(gene_cluster_k_mer_left_context_a.intersection(gene_cluster_k_mer_left_context_b)) / gene_cluster_k_mer_left_context_min_length if gene_cluster_k_mer_left_context_min_length != 0 else 0.0
         gene_cluster_k_mer_right_context_score = len(gene_cluster_k_mer_right_context_a.intersection(gene_cluster_k_mer_right_context_b)) / gene_cluster_k_mer_right_context_min_length if gene_cluster_k_mer_right_context_min_length != 0 else 0.0
-
-        # if gene_cluster_kmer_a[int(len(gene_cluster_kmer_a) / 2)] == 'GC_00004289':
-        #     print(
-        #         gene_cluster_k_mer_left_context_a,
-        #         gene_cluster_k_mer_right_context_a,
-        #         gene_cluster_k_mer_left_context_b,
-        #         gene_cluster_k_mer_right_context_b,
-        #         gene_cluster_k_mer_left_context_min_length,
-        #         gene_cluster_k_mer_right_context_min_length,
-        #         gene_cluster_k_mer_left_context_score,
-        #         gene_cluster_k_mer_right_context_score
-        #     )
 
         if genome_a == genome_b:
             return(1.0)
@@ -2166,8 +2154,6 @@ class PangenomeGraphManager():
 
                 region_x_positions_min = min(region_x_positions)
                 region_x_positions_max = max(region_x_positions)
-                region_y_positions_min = min(region_y_positions)
-                region_y_positions_max = max(region_y_positions)
 
                 length = region_x_positions_max - region_x_positions_min + 1
                 quantity = len(values_list)
@@ -2252,7 +2238,6 @@ class PangenomeGraphManager():
 
 
     def set_edge_positions(self, edge_positions):
-        long_edges = []
         for edge_i, edge_j in self.graph.edges():
             bended = edge_positions[(edge_i, edge_j)]
             self.graph[edge_i][edge_j]['bended'] = bended
@@ -2278,8 +2263,6 @@ class PangenomeGraphManager():
     def calculate_graph_distance(self, output_dir=''):
         self.run.warning(None, header="Calculate synteny distance dendrogram", lc="green")
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
-        nodes_all = len(self.graph.nodes())
-        edges_all = len(self.graph.edges())
 
         X = np.zeros([len(genome_names), len(genome_names)])
         for genome_i, genome_j in it.combinations(genome_names, 2):
@@ -2303,7 +2286,6 @@ class PangenomeGraphManager():
 
             elements_similar = nodes_similar + edges_similar
             elements_unsimilar = nodes_unsimilar + edges_unsimilar
-            elements_all = nodes_all + edges_all
 
             X[i][j] = elements_unsimilar / (elements_similar + elements_unsimilar)
             X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
@@ -2316,7 +2298,7 @@ class PangenomeGraphManager():
         if output_dir:
             fig = plt.figure(figsize=(25, 10))
             ax = plt.axes()
-            dn = dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
+            dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
             plt.tight_layout()
             fig.savefig(os.path.join(output_dir, 'synteny_distance_dendrogram.svg'))
             plt.close(fig)
@@ -2622,8 +2604,6 @@ class DirectedForce():
         list
         """
 
-        T = G.copy()
-
         changed_edges = []
 
         M_edges = set(M.edges())
@@ -2898,7 +2878,6 @@ class TopologicalLayout():
         edges = {}
         grouping = {}
         offset = {}
-        global_x_offset = 0
 
         add_start = set()
         add_stop = set()
@@ -2925,7 +2904,6 @@ class TopologicalLayout():
         layout_graph_nodes = list(L.nodes())
         layout_graph_successors = {layout_graph_node: list(L.successors(layout_graph_node)) for layout_graph_node in layout_graph_nodes}
 
-        n_removed = 0
         ghost = 0
         for x in range(global_x-1, 0, -1):
             for node in x_list[x]:
@@ -2968,7 +2946,6 @@ class TopologicalLayout():
                             L.add_edges_from(map(tuple, zip(path_list, path_list[1:])), weight=-0.5)
 
         for i, j in L.edges():
-
             if positions[j][0] - positions[i][0] != 1 and i != 'START' and j != 'STOP' and (i,j) not in removed:
                 raise ConfigError(f"Hmmm. This situation would create a very weird looking connection."
                                   f"The ede {(i, j)} is longer than it should be. I don't know what created"
@@ -3316,8 +3293,6 @@ class PangenomeGraph():
         self.groupcompress = A('grouping_compression')
         self.priority_genome = A('priority_genome')
         self.load_state = A('load_state')
-        # self.ungroup_open = A('ungrouping_open').split(',') if A('ungrouping_open') else []
-        # self.ungroup_close = A('ungrouping_close').split(',') if A('ungrouping_close') else []
         self.import_values = A('import_values').split(',') if A('import_values') else []
 
         # STANDARD CLASS VARIABLES
@@ -3339,7 +3314,6 @@ class PangenomeGraph():
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
         self.pangenome_graph.set_node_positions(node_positions)
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
-        # nodes_db_mining_df = pd.merge(nodes_df, self.db_mining_df, how='left', on=['syn_cluster', 'genome'], copy=False)
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
         for index, line in additional_info.iterrows():
@@ -3349,13 +3323,8 @@ class PangenomeGraph():
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
 
-        # V = len(set(self.db_mining_df.query('syn_cluster_type == "core"')['syn_cluster'].tolist())) / len(set(self.db_mining_df['syn_cluster'].tolist()))
-        # W = len(set(self.db_mining_df.query('syn_cluster_type != "core"')['syn_cluster'].tolist())) / len(set(self.db_mining_df['syn_cluster'].tolist()))
         X = len(set(nodes_df.reset_index().query('region_id == -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
-        Y = len(set(nodes_df.reset_index().query('region_id != -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
         A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
-        B = len(set(nodes_df.reset_index().query('region_id != -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
-        # complexity_value = (X + A) / 2 - (Y + B) / 2
         complexity_value = 1 - (X + A) / 2
 
         with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
