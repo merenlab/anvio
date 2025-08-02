@@ -21,7 +21,6 @@ import getpass
 import argparse
 import datetime
 import importlib
-import networkx as nx
 
 from hashlib import md5
 from ete3 import Tree
@@ -1541,16 +1540,15 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
-            
+
         return json.dumps({'scale_bar_value': total_branch_length})
 
-    def get_pangraph_json_data(self):
 
+    def get_pangraph_json_data(self):
         return self.interactive.get_pangraph_json()
-    
+
 
     def get_pangraph_bin_summary(self):
-
         payload = request.json
         selection = payload['selection']
         result = {}
@@ -1562,15 +1560,15 @@ class BottleApplication(Bottle):
         all_functions = []
 
         for bin in list(payload.keys())[1:]:
-            
+
             bin_functions[bin] = []
             gene_cluster_list = payload[bin]
             for gene_cluster_name in gene_cluster_list:
                 function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
-                
+
                 bin_functions[bin].append(function)
                 all_functions.append(function)
-                
+
         for function in all_functions:
             result[function] = {}
             for bin in bin_functions.keys():
@@ -1581,8 +1579,8 @@ class BottleApplication(Bottle):
 
         return json.dumps(result)
 
-    def get_pangraph_settings(self):
 
+    def get_pangraph_settings(self):
         payload = request.json
         max_edge_length_filter = payload['maxlength']
         gene_cluster_grouping_threshold = payload['condtr']
@@ -1608,8 +1606,8 @@ class BottleApplication(Bottle):
 
         return({'status': 0})
 
-    def get_pangraph_gc_alignment(self):
 
+    def get_pangraph_gc_alignment(self):
         payload = request.json
         result = {}
 
@@ -1620,12 +1618,10 @@ class BottleApplication(Bottle):
 
             result[genome] = [genecall, sequence]
 
-        print(result)
-
         return(result)
-    
-    def get_pangraph_gc_function(self):
 
+
+    def get_pangraph_gc_function(self):
         payload = request.json
         result = {}
 
@@ -1637,9 +1633,8 @@ class BottleApplication(Bottle):
         for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
             result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
         return json.dumps(result)
-    
-    def get_pangraph_passed_gene_clusters(self):
 
+    def get_pangraph_passed_gene_clusters(self):
         payload = request.json
         result = {'gene_clusters': []}
 
