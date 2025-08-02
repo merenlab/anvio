@@ -39,12 +39,12 @@ anvi-compute-genome-similarity -e external-genomes.txt \
                                $thread_controller
 
 INFO "Generating a pangenome graph"
-anvi-pan-graph -p TEST/TEST-PAN.db \
-               -g TEST-GENOMES.db \
-               -o PAN-GRAPH \
-               --project-name TEST \
-               -e external-genomes.txt \
-               $thread_controller
+anvi-pan-genome-graph -p TEST/TEST-PAN.db \
+                      -g TEST-GENOMES.db \
+                      -o PAN-GRAPH \
+                      --project-name TEST \
+                      -e external-genomes.txt \
+                      $thread_controller
 
 INFO "Displaying pangenome graph"
 anvi-display-pan-graph -i PAN-GRAPH/TEST-JSON.json \
