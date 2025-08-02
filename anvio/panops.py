@@ -3267,8 +3267,8 @@ class TopologicalLayout():
         return(node_positions, edge_positions, node_groups)
 
 
-# ANCHOR - PangenomeGraphMaster
-class PangenomeGraphMaster():
+# ANCHOR - PangenomeGraphManager
+class PangenomeGraphManager():
     """The major backend class to create, solve and layout pangenome graphs in anvi'o.
     Please read through individual steps for more in-depth explanaitions on algorithms
     and data structures.
@@ -3428,7 +3428,8 @@ class PangenomeGraphMaster():
         self.run.info_single("Done.")
 
 
-    def process_pangenome_graph(self):
+    def process(self):
+        """Main processing method for pangenome graph analysis and creation"""
 
         if self.pan_graph_json:
             self.run.warning(None, header="Load anvi'o pangenome graph from json file", lc="green")
@@ -3448,7 +3449,7 @@ class PangenomeGraphMaster():
             self.run.info_single(f"Synteny gene cluster min k: {self.min_k}.")
             self.run.info_single(f"Higher inversion awareness: {self.inversion_aware}.")
             self.run.info_single(f"Priority genome: {self.priority_genome}.")
-            self.run.info_single(f"The remaining settings are not affecting the pangenome graph core creation.")
+            self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
             self.run.info_single("Done.")
 
             self.sanity_check()

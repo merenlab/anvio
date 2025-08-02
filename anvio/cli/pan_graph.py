@@ -29,8 +29,8 @@ def main():
     args = get_args()
 
     try:
-        graph = panops.PangenomeGraphMaster(args)
-        graph.process_pangenome_graph()
+        m = panops.PangenomeGraphManager(args)
+        m.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
