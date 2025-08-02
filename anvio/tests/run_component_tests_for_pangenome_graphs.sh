@@ -10,6 +10,7 @@ mkdir -p $output_dir/
 cp $files/mock_data_for_pangenomics/*.db                      $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/
 cp $files/example_description.md                              $output_dir/
+cp $files/example-pangenome-graph.yaml                        $output_dir/
 cd $output_dir/
 
 INFO "Migrating all databases"
@@ -38,7 +39,11 @@ anvi-compute-genome-similarity -e external-genomes.txt \
                                --no-progress \
                                $thread_controller
 
-INFO "Generating a pangenome graph"
+INFO "Generating a pangenome graph from a YAML file"
+anvi-pan-genome-graph --pan-graph-yaml example-pangenome-graph.yaml \
+                      -o GRAPH-YAML
+
+INFO "Generating a pangenome graph from a pan-db"
 anvi-pan-genome-graph -p TEST/TEST-PAN.db \
                       -g TEST-GENOMES.db \
                       -o PAN-GRAPH \
