@@ -55,8 +55,10 @@ from anvio.drivers.diamond import Diamond
 
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.views import TablesForViews
+from anvio.tables.states import TablesForStates
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.pangraphdata import TableForNodes, TableForEdges
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -3289,6 +3291,7 @@ class PangenomeGraph():
 
         # ANVI'O OUTPUTS
         self.output_dir = A('output_dir')
+        self.pan_graph_db_path = os.path.join(self.output_dir, self.project_name + '-PAN-GRAPH.db')
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
@@ -3488,8 +3491,8 @@ class PangenomeGraph():
         if self.output_hybrid_genome:
             self.pangenome_graph.generate_hybrid_genome(self.output_dir)
 
-        # generate the output
-        self.export_pangenome_graph()
+        # generate pan-graph-db and populate it with information
+        self.generate_pan_graph_db()
 
 
     # TODO needs more sanity checks!
@@ -3497,113 +3500,184 @@ class PangenomeGraph():
         pass
 
 
-    def export_pangenome_graph(self):
-        """Function to store final graph structure in a pan-db and/or JSON flat text output file"""
+    def get_default_state(self):
+        """Calculates a default state for the pangenome graph"""
 
-        self.run.warning(None, header="Exporting pangenome graph to JSON", lc="green")
+        x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
 
-        if not self.meta:
-            self.meta = {
-                'project_name': self.project_name,
-                'state': self.load_state,
-                'version': self.version,
-                'priority_genome': self.priority_genome,
-                'genome_names': self.genome_names,
-                'functions': self.functional_annotation_sources_available,
-                'layers': self.import_values,
-                'tree': self.newick
-            }
-        if not self.bins:
-            self.bins = {'default': {
-                'Bin_1': {
-                    'nodes': [],
-                    'color': '#000000'
-                }
-            }}
+        for i, j, data in self.pangenome_graph.graph.edges(data=True):
+            if data['route']:
+                for x, y in data['route']:
+                    y_max = y if y > y_max else y_max
 
-        if not self.states:
+        full_radius = int(180 * (45 * x_max) / (math.pi * 270))
 
-            x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
-            y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        tracks_radius = int((2 * full_radius / 3))
+        inner = int((1 * full_radius / 3))
 
-            for i, j, data in self.pangenome_graph.graph.edges(data=True):
-                if data['bended']:
-                    for x, y in data['bended']:
-                        y_max = y if y > y_max else y_max
+        tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
 
-            full_radius = int(180 * (45 * x_max) / (math.pi * 270))
+        inner_margin = int(tracks_layer / 2)
+        backbone = int(tracks_layer / 2)
+        arrow = int(tracks_layer / 2)
+        search = int(tracks_layer / 2)
 
-            tracks_radius = int((2 * full_radius / 3))
-            inner = int((1 * full_radius / 3))
+        label = int(arrow * 0.25)
+        disty = int(tracks_layer / y_max)
 
-            tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
-
-            inner_margin = int(tracks_layer / 2)
-            backbone = int(tracks_layer / 2)
-            arrow = int(tracks_layer / 2)
-            search = int(tracks_layer / 2)
-
-            label = int(arrow * 0.25)
-            disty = int(tracks_layer / y_max)
-
-            self.states = {'default':{
-                'rearranged_color': '#8FF0A4',
-                'accessory_color': '#DC8ADD',
-                'paralog_color': '#FFA348',
-                'singleton_color': '#99C1F1',
-                'core_color': '#BCBCBC',
-                'trna_color': '#F66151',
-                'layer_color': '#F5F5F5',
-                'non_back_color': '#F8E45C',
-                'back_color': '#3D70A0',
-                'flexsaturation': True,
-                'arrow': arrow,
-                'flexarrow': True,
-                'backbone': backbone,
-                'flexbackbone': True,
-                **{'flex' + layer: False for layer in self.import_values},
-                **{layer: 0 for layer in self.import_values},
-                **{'flex' + genome + 'layer': True for genome in self.genome_names},
-                **{genome + 'layer': tracks_layer for genome in self.genome_names},
-                'flextree': False,
-                'tree_length': 500,
-                'tree_offset': 100,
-                'tree_thickness': 3,
-                'distx': 45,
-                'disty': disty,
-                'size': 15,
-                'circ': 5,
-                'edge': 5,
-                'flexlinear': False,
-                'line': 5,
-                'label': label,
-                'search_hit': search,
-                'inner_margin': inner_margin,
-                'outer_margin': 0,
-                'inner': inner,
-                'angle' : 270,
-                'flexcondtr': True if self.gene_cluster_grouping_threshold != -1 else False,
-                'condtr': self.gene_cluster_grouping_threshold,
-                'flexmaxlength': True if self.max_edge_length_filter != -1 else False,
-                'maxlength': self.max_edge_length_filter,
-                'flexgroupcompress': True if self.groupcompress != 1.0 else False,
-                'groupcompress': self.groupcompress,
-                **{'flex' + genome: True for genome in self.genome_names},
-                **{genome: '#000000' for genome in self.genome_names}
-            }}
-
-        export_dict = {
-            'meta': self.meta,
-            'states': self.states,
-            'bins': self.bins,
-            'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
-            'edges': {'E_' + str(edge_id).zfill(8): {'source': edge_i, 'target': edge_j, **data} for edge_id, (edge_i, edge_j, data) in enumerate(self.pangenome_graph.graph.edges(data=True))}
+        state = {'rearranged_color': '#8FF0A4',
+                 'accessory_color': '#DC8ADD',
+                 'paralog_color': '#FFA348',
+                 'singleton_color': '#99C1F1',
+                 'core_color': '#BCBCBC',
+                 'trna_color': '#F66151',
+                 'layer_color': '#F5F5F5',
+                 'non_back_color': '#F8E45C',
+                 'back_color': '#3D70A0',
+                 'flexsaturation': True,
+                 'arrow': arrow,
+                 'flexarrow': True,
+                 'backbone': backbone,
+                 'flexbackbone': True,
+                 **{'flex' + layer: False for layer in self.import_values},
+                 **{layer: 0 for layer in self.import_values},
+                 **{'flex' + genome + 'layer': True for genome in self.genome_names},
+                 **{genome + 'layer': tracks_layer for genome in self.genome_names},
+                 'flextree': False,
+                 'tree_length': 500,
+                 'tree_offset': 100,
+                 'tree_thickness': 3,
+                 'distx': 45,
+                 'disty': disty,
+                 'size': 15,
+                 'circ': 5,
+                 'edge': 5,
+                 'flexlinear': False,
+                 'line': 5,
+                 'label': label,
+                 'search_hit': search,
+                 'inner_margin': inner_margin,
+                 'outer_margin': 0,
+                 'inner': inner,
+                 'angle' : 270,
+                 'flexcondtr': True if self.gene_cluster_grouping_threshold != -1 else False,
+                 'condtr': self.gene_cluster_grouping_threshold,
+                 'flexmaxlength': True if self.max_edge_length_filter != -1 else False,
+                 'maxlength': self.max_edge_length_filter,
+                 'flexgroupcompress': True if self.groupcompress != 1.0 else False,
+                 'groupcompress': self.groupcompress,
+                 **{'flex' + genome: True for genome in self.genome_names},
+                 **{genome: '#000000' for genome in self.genome_names}
         }
 
-        with open(os.path.join(self.output_dir, self.project_name + '-JSON.json'), 'w') as output:
-            output.write(json.dumps(export_dict, indent=2))
-        self.run.info_single(f"Exported JSON output file to {os.path.join(self.output_dir, self.project_name + '-JSON.json')}.")
-        self.run.info_single("Done")
+        return state
+
+
+    def generate_pan_graph_db(self):
+        """Generates an empty pan-graph-db and populates it with essential information"""
+
+        # generate an empty pan-graph-db
+        meta_values = {
+            'project_name': self.project_name,
+            'state': self.load_state,
+            'version': self.version,
+            'priority_genome': self.priority_genome,
+            'genome_names': ','.join(self.genome_names),
+            'gene_function_sources': ','.join(self.functional_annotation_sources_available),
+        }
+
+        dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=False).create(meta_values)
+
+        # add a default state
+        TablesForStates(self.pan_graph_db_path).store_state('default', json.dumps(self.get_default_state()))
+
+        # populate nodes in pan-graph-db
+        self.store_nodes_in_pan_graph_db()
+
+        # populate edges in pan-graph-db
+        self.store_edges_in_pan_graph_db()
+
+        # store items additional data
+        self.update_pan_graph_db_with_items_additional_data()
+
+        # store layer orders (the newick tree computed from the graph)
+        self.update_pan_graph_db_with_layer_orders()
+
+
+    def update_pan_graph_db_with_layer_orders(self):
+        """Adds the newick tree calculated from the graph into the pan-graph-db"""
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+        miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
+
+
+    def update_pan_graph_db_with_items_additional_data(self):
+        """Updates the pan-graph-db with additional node information"""
+
+        data = {}
+        keys = set([])
+
+        # let's start with backbone
+        nodes = dict(self.pangenome_graph.graph.nodes(data=True))
+        for node in nodes:
+            data[node] = nodes[node]['layer']
+            keys.update(nodes[node]['layer'].keys())
+
+        # (...)
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="items")
+        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(data, list(keys), skip_check_names=True)
+
+
+    def store_nodes_in_pan_graph_db(self):
+        nodes = dict(self.pangenome_graph.graph.nodes(data=True))
+
+        self.progress.new('Storing syn gene cluster nodes in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_nodes = TableForNodes(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for node in nodes:
+            node_entry = {'node_id': node,
+                          'node_type': nodes[node]['type'],
+                          'gene_cluster_id': nodes[node]['gene_cluster'],
+                          'gene_calls_json': json.dumps(nodes[node]['gene_calls'])}
+            table_for_nodes.add(node_entry)
+
+        self.progress.end()
+
+        table_for_nodes.store()
+
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
+        pan_graph_db.db.set_meta_value('num_nodes', len(nodes))
+        pan_graph_db.disconnect()
+
+
+    def store_edges_in_pan_graph_db(self):
+        """"""
+
+        edges = {'E_' + str(edge_id).zfill(8): {'source': edge_i, 'target': edge_j, **data} for edge_id, (edge_i, edge_j, data) in enumerate(self.pangenome_graph.graph.edges(data=True))}
+
+        self.progress.new('Storing syn gene cluster edges in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_edges = TableForEdges(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for edge in edges:
+            edge_entry = {'edge_id': edge,
+                          'source': edges[edge]['source'],
+                          'target': edges[edge]['target'],
+                          'weight': edges[edge]['weight'],
+                          'directions': json.dumps(edges[edge]['directions']),
+                          'route': json.dumps(edges[edge]['route'])}
+            table_for_edges.add(edge_entry)
+
+        self.progress.end()
+
+        table_for_edges.store()
+
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
+        pan_graph_db.db.set_meta_value('num_edges', len(edges))
+        pan_graph_db.disconnect()
 
 
     def get_pangenome_graph_from_JSON(self):
