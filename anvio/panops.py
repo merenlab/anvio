@@ -20,10 +20,10 @@ import networkx as nx
 import itertools as it
 import matplotlib.pyplot as plt
 
-from scipy.spatial.distance import squareform
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
 from itertools import chain
 from scipy.optimize import curve_fit
+from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
 
 from warnings import simplefilter
 simplefilter("ignore", category=pd.errors.PerformanceWarning)
