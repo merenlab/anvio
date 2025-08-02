@@ -3,47 +3,64 @@
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
-import os
-import sys
-import ssl
-import yaml
-import gzip
-import time
-import copy
-import socket
-import shutil
-import smtplib
-import tarfile
-import hashlib
-import textwrap
-import linecache
-import webbrowser
-import subprocess
-import tracemalloc
-import configparser
-import urllib.request, urllib.error, urllib.parse
+# The following try/except block is to make sure when git hooks are doing
+# their things in anvi'o development environments, we have a means to remind
+# developers that they may have not initialized their anvi'o environment
+# properly. This didn't have to be in utils.py, but since this module is
+# imported from so many other modules, it is kind of an appropriate place
+# for this
+try:
+    import os
+    import sys
+    import ssl
+    import yaml
+    import gzip
+    import time
+    import copy
+    import socket
+    import shutil
+    import smtplib
+    import tarfile
+    import hashlib
+    import textwrap
+    import linecache
+    import webbrowser
+    import subprocess
+    import tracemalloc
+    import configparser
+    import urllib.request, urllib.error, urllib.parse
 
-import numpy as np
-import pandas as pd
-import Bio.PDB as PDB
-import itertools as it
+    import numpy as np
+    import pandas as pd
+    import Bio.PDB as PDB
+    import itertools as it
 
-from numba import jit
-from collections import Counter
-from email.mime.text import MIMEText
+    from numba import jit
+    from collections import Counter
+    from email.mime.text import MIMEText
 
-import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.fastalib as u
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
+    import anvio
+    import anvio.db as db
+    import anvio.tables as t
+    import anvio.fastalib as u
+    import anvio.constants as constants
+    import anvio.filesnpaths as filesnpaths
 
-from anvio.dbinfo import DBInfo as dbi
-from anvio.sequence import Composition
-from anvio.version import versions_for_db_types
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+    from anvio.dbinfo import DBInfo as dbi
+    from anvio.sequence import Composition
+    from anvio.version import versions_for_db_types
+    from anvio.errors import ConfigError, FilesNPathsError
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+except ModuleNotFoundError as e:
+    # Extract just the module name from "No module named 'modulename'"
+    module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
+    print(f"\n\nWARNING\n"
+          f"\n===========================================================\n"
+          f"The anvi'o conda environment does not seem to have not been\n"
+          f"properly initialized since Python complains that it cannot\n"
+          f"import '{module_name}'. Are you sure you have initialized\n"
+          f"the anvi'o environment properly?\n\n")
+    sys.exit()
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -331,7 +348,7 @@ def is_port_in_use(port, ip='0.0.0.0'):
 
 def get_available_program_names_in_active_environment(prefix=None, contains=None, postfix=None):
     """Find all executable programs in the current environment that match the given criteria.
-    
+
     Parameters
     ==========
     prefix : str, optional
@@ -340,50 +357,50 @@ def get_available_program_names_in_active_environment(prefix=None, contains=None
         String that must be contained in the program name (e.g., 'graph')
     postfix : str, optional
         The postfix/suffix to search for (e.g., '.py', '-dev')
-    
+
     Returns
     =======
     program_names : set
         A set of program names that match all specified criteria
     """
     program_names = set()
-    
+
     # Get all directories in PATH
     path_dirs = os.environ.get('PATH', '').split(os.pathsep)
-    
+
     for path_dir in path_dirs:
         if not path_dir or not os.path.isdir(path_dir):
             continue
-            
+
         try:
             # List all files in the directory
             for item in os.listdir(path_dir):
                 item_path = os.path.join(path_dir, item)
-                
+
                 # Check if it's a file and executable
                 if os.path.isfile(item_path) and os.access(item_path, os.X_OK):
                     # Check all specified criteria
                     matches = True
-                    
+
                     if prefix is not None:
                         if not item.lower().startswith(prefix.lower()):
                             matches = False
-                    
+
                     if contains is not None and matches:
                         if contains.lower() not in item.lower():
                             matches = False
-                    
+
                     if postfix is not None and matches:
                         if not item.lower().endswith(postfix.lower()):
                             matches = False
-                    
+
                     if matches:
                         program_names.add(item)
-                        
+
         except (PermissionError, OSError):
             # Skip directories we can't read
             continue
-    
+
     return program_names
 
 
@@ -894,7 +911,7 @@ def is_all_columns_present_in_TAB_delim_file(columns, file_path, including_first
 def is_all_npm_packages_installed():
     """A function to test whether all npm packages are installed in the interactive directory.
 
-    This check is for ensuring that necessary npm packages are installed in the 
+    This check is for ensuring that necessary npm packages are installed in the
     anvio/data/interactive directory.
     """
 
@@ -1063,7 +1080,7 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     if return_number_of_sequences:
         return output_file_paths, length
-    
+
     else:
         return output_file_paths
 
@@ -3678,7 +3695,7 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
             raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
                               f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
                               f"fix this in your samples-txt file.")
-        
+
         for path in r1_sample_paths + r2_sample_paths:
             if not os.path.exists(path):
                 samples_with_missing_files.append(sample_name)
