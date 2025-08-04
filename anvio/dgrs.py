@@ -255,11 +255,12 @@ class DGR_Finder:
         self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
+
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.")
-            #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here fore the rest of the code to function as normal
+            #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here for the rest of the code to function as normal
             #TODO: Need to see if this works or if I need to change the rest of the code to work with splits
-            #TODO: add warning if a contig is over multiple splits. Because you blast the splits gaianst contigs.
+            #TODO: add warning if a contig is over multiple splits. Because you blast the splits against contigs.
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
             contigs_db.disconnect()
@@ -441,6 +442,7 @@ class DGR_Finder:
                     SeqIO.write(contig_records, output_handle, "fasta")
 
                 self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
+                print("\n")
 
                 self.blast_output = os.path.join(tmp_directory_path,f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml")
                 blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
@@ -961,7 +963,6 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
         self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
         self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
-        #self.DGRs_found_dict[DGR_key]['next_VR_id'] = 2  # next available VR index so we dont overwrite VR ids when we delete them if there are overlapping ones in update_existing_DGR
 
         # VR stuff
         self.DGRs_found_dict[DGR_key]['VRs'] = {'VR_001':{}}
@@ -1020,43 +1021,6 @@ class DGR_Finder:
         if existing_DGR_key not in self.DGRs_found_dict:
             raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
 
-        #keep a list of the VRs that are overlapping and therefore need deleting
-        #VRs_to_delete=[]
-        #check if the VR overlaps with another one present and only keep the longest one.
-        #for vr_key, existing_vr in list(self.DGRs_found_dict[existing_DGR_key]["VRs"].items()):
-            #print(f"{existing_vr}")
-            #existing_vr_start = existing_vr["VR_start_position"]
-            #existing_vr_end = existing_vr["VR_end_position"]
-
-
-            #if existing_vr['VR_contig'] == query_contig and self.range_overlapping(query_genome_start_position,
-                                                                                    #query_genome_end_position,
-                                                                                    #existing_vr["VR_start_position"],
-                                                                                    #existing_vr["VR_end_position"]):
-
-                #new_length = query_genome_end_position - query_genome_start_position
-                #existing_length = existing_vr_end - existing_vr_start
-
-                #if new_length > existing_length:
-                    #only add the longest VR and remove existing vr and add new one
-                    #VRs_to_delete.append(vr_key)
-                    #self.run.warning(f"Heads up. An existing VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
-                                    #f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
-                                    #"your read recruitment for this contig, which is always a good idea", header="Existing VR is being discarded because it is shorter")
-                #else:
-                    #self.run.warning(f"Heads up. The new VR is being discarded because it has a range that overlaps with another VR in the same DGR. The new VR is positioned here: {query_genome_start_position}:{query_genome_end_position} "
-                                    #f"the existing VR is here: {existing_vr_start}:{existing_vr_end} both on this contig: {existing_vr['VR_contig']}. This could mean that the DGR is less likely to be a true positive, or that it was found twice! Maybe go check "
-                                    #"your read recruitment for this contig, which is always a good idea", header="New VR is being discarded because it is shorter")
-                    #return skips adding the shorter vr.
-                    #return
-        # Now delete the old, overlapping VRs safely
-        #for vr_key in VRs_to_delete:
-            #del self.DGRs_found_dict[existing_DGR_key]['VRs'][vr_key]
-
-        # VR info
-        #vr_id = self.DGRs_found_dict[existing_DGR_key].get('next_VR_id', 2)
-        #new_VR_key = f'VR_{vr_id:03d}'
-        #self.DGRs_found_dict[existing_DGR_key]['next_VR_id'] = vr_id + 1
         num_VR = len(self.DGRs_found_dict[existing_DGR_key]['VRs']) + 1
         new_VR_key = f'VR_{num_VR:03d}'
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key] = {}
@@ -1149,7 +1113,7 @@ class DGR_Finder:
                 subject_sequence = Seq(hit_data['hit_seq'])
                 original_midline = hit_data['midline']
                 query_sequence = Seq(hit_data['query_seq'])
-                shredded_sequence_name = sequence_component
+                #shredded_sequence_name = sequence_component
                 query_genome_start_position = hit_data['query_genome_start_position']
                 query_genome_end_position = hit_data['query_genome_end_position']
                 query_frame = int(hit_data['query_frame'])
@@ -1166,7 +1130,7 @@ class DGR_Finder:
             else:
                 # Calculate the percentage identity of each alignment
                 for letter, count in subject_mismatch_counts.items():
-                    percentage_of_mismatches = (count / mismatch_length_bp)
+                    percentage_of_mismatches = (count/mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
 
                         # if the letter is T, then we assume that it is an A base and we reverse complement EVERYTHING
@@ -1187,7 +1151,7 @@ class DGR_Finder:
 
 
                         #### SNV logic based removal of DGRs.
-                        #first remove dgrs that have more than 34% of the SNVs in the VR range to be coming from the 3rd codon position
+                        # first remove dgrs that have more than 34% of the SNVs in the VR range to be coming from the 3rd codon position
                         # - because this is not very DGR like and means that there is more non-specific read mapping happening nothing biological
                         # Secondly, we want to check that the SNVs are coming from the sites of matches in the mutagenesis base (usually A), and
                         # all of the mismatching bases (remember we have already cut out those that have more than 20% of the mismatches coming
@@ -1543,7 +1507,7 @@ class DGR_Finder:
             return
 
         self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
-        self.run.info_single('\n')
+        print('\n')
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
@@ -2456,7 +2420,7 @@ class DGR_Finder:
 
             if sample_names_given == samples_missing_in_snv_table:
                 raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), but you have none of them in your profile.db. "
-                                "This is fatal; Anvi'o will now quit. Either recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
+                                "This is fatal; anvi'o will now quit. Either recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
                                 "or give 'anvi-report-dgrs' the correct samples.")
 
             # Iterate over the samples
@@ -2888,7 +2852,7 @@ class DGR_Finder:
                 ("Minimum Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in TR", self.min_base_types_tr if self.min_base_types_tr else "2"),
                 ("Temporary Directory", self.temp_dir if self.temp_dir else None),
-                ("Distance between SNVs", self.min_dist_bw_snvs if self.min_dist_bw_snvs else "5"),
+                ("Distance between SNVs", self.max_dist_bw_snvs if self.max_dist_bw_snvs else "5"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
                 ("Departure from Reference (Percentage)", self.departure_from_reference_percentage if self.departure_from_reference_percentage else "0.1"),
                 ("Minimum Range size of High Density SNVs", self.min_range_size if self.min_range_size else "5"),
