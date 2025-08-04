@@ -683,31 +683,6 @@ class DGR_Finder:
         return n.data
 
 
-    def split_sequences(self, start=0):
-        """
-        This function splits the sequence given into sections of the step value length.
-
-        Parameters
-        ==========
-        start : integer
-            Start index of the first split (Default: 0)
-
-        Returns
-        =======
-        section_sequences : list of strings
-            A list of the split sequences
-        """
-        section_sequences = []
-        for sequence in SeqIO.parse(self.target_file_path, "fasta"):
-            for i in range(start, len(sequence.seq) - self.step + 1, self.step):
-                section = sequence.seq[i:i + self.step]
-                section_record = SeqRecord(section, id=f"{sequence.id}_part{i//self.step}_start_bp{i}_end_bp{i + self.step}", description="")
-                section_sequences.append(section_record)
-                if i + self.step > len(sequence.seq):
-                    print(sequence.seq)
-        return section_sequences
-
-
 
     def process_blast_results(self, max_percent_identity=100):
         """
