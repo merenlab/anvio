@@ -1219,8 +1219,8 @@ class DGR_Finder:
                                                 "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
                                                 f"from the non mismatching or mutagenesis bases which is where the SNVs are expoected to be. There are this many SNVs total: {numb_of_SNVs} of which "
                                                 f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
-                                                "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30% SNVs in matching positions are allowed, "
-                                                "if less than 30 SNVs than 25% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
+                                                "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30%% SNVs in matching positions are allowed, "
+                                                "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
                                                 "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
 
                         #to test for VR diversity of base types in the protein sequence
