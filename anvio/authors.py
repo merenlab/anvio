@@ -5,10 +5,10 @@
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.files import get_yaml_as_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -53,7 +53,7 @@ class AnvioAuthors:
                               f"seem to be at {self.author_avatars_directory}. Not good.")
 
 
-        authors_yaml = utils.get_yaml_as_dict(self.authors_yaml_file_path)
+        authors_yaml = get_yaml_as_dict(self.authors_yaml_file_path)
 
         authors_missing_avatars_in_yaml = set([])
         authors_missing_avatars_on_disk = set([])
