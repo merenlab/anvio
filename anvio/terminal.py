@@ -23,6 +23,8 @@ import anvio.constants as constants
 
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
+from anvio.utils.algorithms import human_readable_file_size
+
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -995,7 +997,7 @@ class TrackMemory(object):
         if np.isnan(mem):
             return '??'
 
-        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        formatted = human_readable_file_size(abs(mem))
         return ('-' if mem < 0 else '') + formatted
 
 
@@ -1003,7 +1005,7 @@ class TrackMemory(object):
         if np.isnan(mem):
             return '+??'
 
-        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        formatted = human_readable_file_size(abs(mem))
         return ('-' if mem < 0 else '+') + formatted
 
 
