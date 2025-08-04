@@ -19,7 +19,6 @@ try:
     import copy
     import socket
     import shutil
-    import smtplib
     import tarfile
     import hashlib
     import textwrap
@@ -27,7 +26,6 @@ try:
     import webbrowser
     import subprocess
     import tracemalloc
-    import configparser
     import urllib.request, urllib.error, urllib.parse
 
     import numpy as np
@@ -37,7 +35,6 @@ try:
 
     from numba import jit
     from collections import Counter
-    from email.mime.text import MIMEText
 
     import anvio
     import anvio.db as db
