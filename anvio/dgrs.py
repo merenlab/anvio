@@ -2296,7 +2296,10 @@ class DGR_Finder:
         if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
             return
 
+        #define defaults
         dgrs_dict = self.DGRs_found_dict
+        use_sample_primers = False
+        sample_primers_dict = None
 
         if not len(dgrs_dict):
             self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
@@ -2380,6 +2383,10 @@ class DGR_Finder:
         primers_dict = self.generate_primers_for_vrs(dgrs_dict)
 
         if not self.skip_primer_variability:
+            #then define use_sample_primers as True
+            use_sample_primers = True
+
+            # create a sample_primers_dict to store the primers for each sample
             self.sample_primers_dict = {}
             sample_names = list(self.samples_txt_dict.keys())
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
@@ -2497,7 +2504,7 @@ class DGR_Finder:
                     vr_id = vr_key
                     primer_key = f'{dgr_id}_{vr_id}_Primer'
                     # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
-                    primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer']
+                    primers_dict[primer_key]['primer_sequence'] = (primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer'])
 
                     # Ensure the primer sequence does not exceed the desired length
                     if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
@@ -2506,18 +2513,38 @@ class DGR_Finder:
 
             if anvio.DEBUG:
                 self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}")
-            # Output the final primers dictionary
-            self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.csv' file.")
-            self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
 
-            if not self.skip_primer_variability:
-                self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.")
+        # always create primer_sequence key, regardless of skip_primer_variability setting
+        if self.skip_primer_variability:
+            # When skipping primer variability, we still need to create the primer_sequence key
+            # using the original sequences
+            for dgr_id, dgr_data in dgrs_dict.items():
+                for vr_key, vr_data in dgr_data['VRs'].items():
+                    vr_id = vr_key
+                    primer_key = f'{dgr_id}_{vr_id}_Primer'
+                    # Set the final primer sequence using initial + anchor sequences
+                    primers_dict[primer_key]['primer_sequence'] = (
+                        primers_dict[primer_key]['initial_primer_sequence'] +
+                        primers_dict[primer_key]['vr_anchor_primer'])
 
-                # Ensure `sample_primers_dict` is updated and passed during computation
-                use_sample_primers = True
-            else:
-                self.run.info_single("Skipping primer variability analysis. Using default primers.")
-                use_sample_primers = False
+                    # Ensure the primer sequence does not exceed the desired length
+                    if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
+                        print(f"The primer for {dgr_id} {vr_id} is above the desired length. Trimming to {self.whole_primer_length}.")
+                        primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.whole_primer_length]
+
+        if not self.skip_primer_variability:
+            self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.")
+
+            # Ensure `sample_primers_dict` is updated and passed during computation
+            use_sample_primers = True
+        if self.skip_primer_variability:
+            self.run.info_single("Skipping primer variability analysis. Using default primers.")
+            use_sample_primers = False
+
+        # Output the final primers dictionary
+        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.csv' file.")
+        self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
+
         ##################
         # MULTITHREADING #
         ##################
