@@ -8,7 +8,7 @@ import anvio
 from anvio.errors import ConfigError
 from anvio.terminal import Run, SuppressAllOutput
 
-from anvio.utils.files import human_readable_file_size
+from anvio.utils.algorithms import human_readable_file_size
 
 with SuppressAllOutput():
     try:
