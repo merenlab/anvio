@@ -65,7 +65,7 @@ class DGR_Finder:
         self.min_base_types_tr = A('min_base_types_tr') or 2
         self.only_a_bases =A('only_a_bases')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
-        self.min_dist_bw_snvs = A('distance_between_snv')
+        self.max_dist_bw_snvs = A('distance_between_snv')
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
@@ -113,7 +113,7 @@ class DGR_Finder:
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
         self.run.info('Contigs.db', self.contigs_db_path)
         self.run.info('Profile.db', self.profile_db_path)
-        self.run.info('Minimum distance between SNVs', self.min_dist_bw_snvs)
+        self.run.info('Maximum distance between SNVs', self.max_dist_bw_snvs)
         self.run.info('Minimum length of SNV window', self.min_range_size)
         self.run.info('Variable buffer length', self.variable_buffer_length)
         self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
@@ -352,14 +352,14 @@ class DGR_Finder:
                             range_start = current_pos
                             range_end = current_pos
 
-                            while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
+                            while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
                                 i += 1
                                 current_pos = pos_list[i]
                                 if i + 1 < len(pos_list):
                                     next_pos = pos_list[i + 1]
                                     distance = next_pos - current_pos
                                     range_end = current_pos
-                            if distance <= self.min_dist_bw_snvs:
+                            if distance <= self.max_dist_bw_snvs:
                                 range_end = next_pos
 
                             if (range_end - range_start) < self.min_range_size:
@@ -427,7 +427,7 @@ class DGR_Finder:
                             contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
 
                 if len(contig_records) == 0:
-                    self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
+                    self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.max_dist_bw_snvs} "
                                     f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
                                     , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
                     raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
@@ -509,17 +509,17 @@ class DGR_Finder:
                             range_start = current_pos
                             range_end = current_pos
 
-                            while i + 1 < len(pos_list) and distance <= self.min_dist_bw_snvs:
+                            while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
                                 i += 1
                                 current_pos = pos_list[i]
                                 if i + 1 < len(pos_list):
                                     next_pos = pos_list[i + 1]
                                     distance = next_pos - current_pos
                                     range_end = current_pos
-                            if distance <= self.min_dist_bw_snvs:
+                            if distance <= self.max_dist_bw_snvs:
                                 range_end = next_pos
 
-                            if (range_end - range_start) < self.min_range_size:
+                            if (range_end - range_start) <= self.min_range_size:
                                 continue
                             else:
                                 window_start = range_start - self.variable_buffer_length
@@ -584,7 +584,7 @@ class DGR_Finder:
                         contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
 
             if len(contig_records) == 0:
-                self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.min_dist_bw_snvs} "
+                self.run.warning(f"No sequences with SNVs were found with the parameters maximum distance between SNVs:{self.max_dist_bw_snvs} "
                                 f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
                                 , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
                 raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
