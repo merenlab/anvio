@@ -2220,27 +2220,30 @@ class DGR_Finder:
         output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
 
         if self.skip_primer_variability:
-            # Define the header for the CSV file
-            csv_header = ['Primer_ID', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
+            ## Define the header for the CSV file
+            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
 
             # Open the CSV file in write mode
             with open(output_path, mode='w', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow(csv_header)  # Write the header row
-                # Iterate through the dictionary and write each gene's information to the CSV file
-                for primer_name, primer_info in primers_dict.items():
-                        used_original_primer = primer_info['used_original_primer']
-                        initial_primer = primer_info['initial_primer_sequence']
-                        anchor_primer = primer_info['vr_anchor_primer']
-                        whole_primer = primer_info['primer_sequence']
 
-                        writer.writerow([
+                # Iterate through the dictionary and write each primer's information to the CSV file
+                for primer_name, primer_info in primers_dict.items():
+                    # For skip_primer_variability mode, there's no 'used_original_primer' key
+                    # so we set it to True since we're using original primers
+                    used_original_primer = True
+                    initial_primer = primer_info.get('initial_primer_sequence', '')
+                    anchor_primer = primer_info.get('vr_anchor_primer', '')
+                    whole_primer = primer_info.get('primer_sequence', '')
+
+                    writer.writerow([
                         primer_name,
                         used_original_primer,
                         initial_primer,
                         anchor_primer,
                         whole_primer
-                        ])
+                    ])
         else:
             primers_dict = self.sample_primers_dict
             # Define the header for the CSV file
