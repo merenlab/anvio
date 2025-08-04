@@ -830,7 +830,7 @@ class DGR_Finder:
                             # divided by the sequence length
                             for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
                                 coverage = (len(atr.motif)*atr.repeat) / len(seq)
-                                if str(coverage) > self.repeat_motif_coverage:
+                                if coverage > self.repeat_motif_coverage:
                                     has_repeat = True
 
                             #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
