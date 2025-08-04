@@ -21,6 +21,7 @@ import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
+import anvio.tables.miscdata as miscdata
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
@@ -32,17 +33,11 @@ from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
 from anvio.genomedescriptions import AggregateFunctions
+from anvio.tables.collections import TablesForCollections
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
 
-from anvio.tables.miscdata import (
-    TableForItemAdditionalData,
-    TableForLayerAdditionalData,
-    TableForLayerOrders,
-    TableForAminoAcidAdditionalData,
-)
-from anvio.tables.collections import TablesForCollections
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -160,9 +155,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
-            self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+            self.items_additional_data_keys, self.items_additional_data_dict = miscdata.TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            self.layers_additional_data_keys, self.layers_additional_data_dict = miscdata.TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+            self.layers_order_data_dict = miscdata.TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
             self.items_additional_data_keys, self.items_additional_data_dict = [], {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
@@ -173,7 +168,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                          bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
 
         for group_name in self.layers_additional_data_keys:
-            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
+            layer_orders = miscdata.TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
                 self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
             for order_name in layer_orders:
                 self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]
@@ -994,8 +989,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if num_genomes > 1:
                 layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
                 args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-                TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
-                self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+                miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+                self.layers_order_data_dict = miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
             TablesForViews(self.profile_db_path).create_new_view(
@@ -1009,16 +1004,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # here we will store a layer for function names in the additional data tables of the profile databse and
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
-        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
 
         # if we have functional enrichment analysis results for these genomes, let's add that into
         # the database as well!
         if facc.functional_enrichment_stats_dict:
-            TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
+            miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
 
         # here we will read the items additional data back so it is both in there for future `anvi-interactive` ops,
         # AND in here in the interactive class to visualize the information.
-        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+        self.items_additional_data_keys, self.items_additional_data_dict = miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
         # everything we need is in the database now. time to add a mini state (note that we
         # replace the function layer name template with the annotation source on the fly):
@@ -1995,7 +1990,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         # Init the amino acid additional data table object
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
-        self.amino_acid_additional_data = TableForAminoAcidAdditionalData(args)
+        self.amino_acid_additional_data = miscdata.TableForAminoAcidAdditionalData(args)
 
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
@@ -2153,7 +2148,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             profile_db_path = self.profile_db_path
 
         x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
-        additional_layers_table = TableForLayerAdditionalData(args=x)
+        additional_layers_table = miscdata.TableForLayerAdditionalData(args=x)
 
         layer_names, additional_layer_dict = additional_layers_table.get()
 
