@@ -124,7 +124,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
     groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 5 ", type=int, default=5, metavar="INT")
     groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window. Default = 5", type=int, default=5, metavar="INT")
-    groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 20", type=int, default=20)
+    groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 35", type=int, default=35)
     groupE.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
     groupE.add_argument("-I","--hmm-usage", required = True, help="The name of the HMM run with your Contigs.db, ideally the 'Reverse_Transcriptase' HMM, or your own HMM of reverse transcriptases "
                         "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
