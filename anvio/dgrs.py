@@ -444,7 +444,7 @@ class DGR_Finder:
                 self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
                 print("\n")
 
-                self.blast_output = os.path.join(tmp_directory_path,f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml")
+                self.blast_output = os.path.join(tmp_directory_path,f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml")
                 blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
                             output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
                 blast.evalue = 10 #set Evalue to be same as blastn default
@@ -600,7 +600,7 @@ class DGR_Finder:
 
             self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
 
-            self.blast_output = os.path.join(tmp_directory_path,f"blast_output_step_{self.step}_wordsize_{self.word_size}.xml")
+            self.blast_output = os.path.join(tmp_directory_path,f"blast_output_wordsize_{self.word_size}.xml")
             blast = BLAST(output_fasta_path, target_fasta = self.target_file_path, search_program = 'blastn',
                         output_file=self.blast_output, additional_params = '-dust no', num_threads=self.num_threads)
             blast.evalue = 10 #set Evalue to be same as blastn default
@@ -745,7 +745,7 @@ class DGR_Finder:
 
                 blast_file = os.path.join(
                     tmp_directory_path,
-                    f"blast_output_for_bin_{bin_name}_step_{self.step}_wordsize_{self.word_size}.xml"
+                    f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
                 )
 
                 if not os.path.exists(blast_file):
