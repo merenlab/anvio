@@ -1997,7 +1997,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(self, input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -2023,12 +2023,12 @@ class DGR_Finder:
         """
         while True:
             sample_name = input_queue.get(True)
-            self.run.info_single(f"(I am in compute per sample func) Processing sample: {sample_name}")
+            print(f"(I am in compute per sample func) Processing sample: {sample_name}")
             if sample_name is None:
-                self.run.warning('Sample {sample_name} is none, loop will be broken.')
+                print('Sample {sample_name} is none, loop will be broken.')
                 break
 
-            self.run.single_info(f"Processing sample: {sample_name}")
+            print(f"Processing sample: {sample_name}")
             #Extract sample-specific primers if the flag is set
             if use_sample_primers and sample_primers_dict:
                 primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
