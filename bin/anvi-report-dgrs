@@ -87,9 +87,10 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupX = parser.add_argument_group('GENERAL OPTIONS', "Here you will find generic options.")
+    groupX = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
     groupX.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupX.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupX.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
 
     groupA = parser.add_argument_group('INPUT DATA', "Contigs.db AND a Profile.db preferably a merged profile.db. The tool searches for DGRs based on areas of high SNV density")
