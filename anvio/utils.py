@@ -3434,6 +3434,13 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 
     filesnpaths.is_output_file_writable(output_file)
 
+    def RepresentsFloat(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
     output = open(output_file, 'w')
 
     samples = sorted(samples_dict.keys())
@@ -4840,14 +4847,6 @@ def check_h5py_module():
 def RepresentsInt(s):
     try:
         int(s)
-        return True
-    except ValueError:
-        return False
-
-
-def RepresentsFloat(s):
-    try:
-        float(s)
         return True
     except ValueError:
         return False
