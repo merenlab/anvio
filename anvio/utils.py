@@ -674,25 +674,6 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
-def multi_index_pivot(df, index = None, columns = None, values = None):
-    # https://github.com/pandas-dev/pandas/issues/23955
-    output_df = df.copy(deep = True)
-    if index is None:
-        names = list(output_df.index.names)
-        output_df = output_df.reset_index()
-    else:
-        names = index
-    output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
-    if isinstance(columns, list):
-        output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
-        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
-        output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
-    else:
-        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
-    output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
-    return output_df
-
-
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
     """ Stores a pandas DataFrame as a tab-delimited file.
 
