@@ -32,6 +32,7 @@ from anvio.drivers.hmmer import HMMer
 from anvio.drivers.muscle import Muscle
 from anvio.parsers import parser_modules
 from anvio.version import versions_for_db_types
+from anvio.utils.files import AppendableFile
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
@@ -3652,7 +3653,7 @@ class KeggEstimatorArgs():
                 raise ConfigError("It seems like output files with your requested prefix already exist, for "
                                   f"example: {output_path}. Please delete the existing files or provide a "
                                   "different output prefix.")
-            output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False)
+            output_file_for_mode = AppendableFile(output_path, append_type=dict, fail_if_file_exists=False)
             output_dict[mode] = output_file_for_mode
 
             self.run.info(f"Output file for {mode} mode", output_path)

@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.filesnpaths import AppendableFile
+from anvio.utils.files import AppendableFile
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
