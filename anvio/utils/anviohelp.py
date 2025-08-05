@@ -12,8 +12,8 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.utils.validation import is_contigs_db, is_pan_or_profile_db
 from anvio.utils.algorithms import get_list_of_outliers
+from anvio.dbinfo import is_contigs_db, is_pan_or_profile_db
 from anvio.utils.database import get_required_version_for_db
 
 # for full output

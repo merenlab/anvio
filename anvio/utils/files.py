@@ -11,7 +11,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress, pluralize
-from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
 
 from anvio.utils.validation import is_ascii_only
 from anvio.utils.validation import check_sample_id
@@ -672,9 +671,6 @@ def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok
         profiles_and_bams[sample_name].pop('contigs_db_path')
         if has_bam_file_column:
             filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
-
-        if has_profile_db_column:
-            is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
     # this file can optionally contain `r1` and `r2` for short reads
     for raw_reads in ['r1', 'r2']:

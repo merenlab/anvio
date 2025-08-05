@@ -8,7 +8,7 @@ from anvio.version import versions_for_db_types
 from anvio.errors import ConfigError
 
 from anvio.terminal import Run
-from anvio.utils.validation import is_blank_profile
+from anvio.dbinfo import is_blank_profile
 
 
 def get_db_type_and_variant(db_path, dont_raise=False):
