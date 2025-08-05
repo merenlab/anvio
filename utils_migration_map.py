@@ -163,6 +163,7 @@ FUNCTION_TO_MODULE = {
         'get_bin_name_from_item_name': 'anvio.utils.anviohelp',
         'get_contig_name_to_splits_dict': 'anvio.utils.anviohelp',
         'get_variability_table_engine_type': 'anvio.utils.anviohelp',
+        'CoverageStats': 'anvio.utils.anviohelp',
 
         'gen_gexf_network_file': 'anvio.utils.visualization',
         'run_selenium_and_export_svg': 'anvio.utils.visualization',
