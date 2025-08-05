@@ -49,8 +49,8 @@ def get_args():
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
-    groupA.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json', {'required': False}))
-    groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-json', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-yaml', {'required': False}))
 
     groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
                                 "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
