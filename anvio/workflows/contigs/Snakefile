@@ -139,8 +139,8 @@ rule reformat_external_gene_calls_table:
     resources: nodes = M.T('reformat_external_gene_calls_table')
     run:
         import pandas as pd
-        import anvio.utils as utils
         import anvio.fastalib as f
+        from anvio.utils.files as get_TAB_delimited_file_as_dictionary
 
         fa = f.ReadFasta(input.contigs[0])
         contigs = fa.ids
@@ -148,7 +148,7 @@ rule reformat_external_gene_calls_table:
         reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
                                       index_col=1, header=None)
         contig_dict = next(iter(reformat_report.to_dict().values()))
-        external_gene_calls = utils.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+        external_gene_calls = get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
         contigs_in_external_gene_calls_not_in_contigs_database = \
             [c for c in contig_dict.values() if c not in contigs]
         if contigs_in_external_gene_calls_not_in_contigs_database:
