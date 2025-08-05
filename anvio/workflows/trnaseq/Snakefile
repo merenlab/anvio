@@ -5,7 +5,7 @@ import os
 import pandas as pd
 
 import anvio
-import anvio.utils as u
+import anvio.utils as utils
 import anvio.workflows as w
 
 from anvio.workflows.trnaseq import TRNASeqWorkflow
@@ -120,7 +120,7 @@ rule gen_qc_report:
                                       "indicates an inconsistency in how files were processed by 'iu-merge-pairs'. "
                                       "These files, for example, have a difference between their headers: "
                                       "%s and %s" % (input[i], input[i - 1]))
-        u.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample'] + headers)
+        utils.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample'] + headers)
 
 
 def gunzip_fasta(fasta, log):

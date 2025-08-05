@@ -139,7 +139,7 @@ rule reformat_external_gene_calls_table:
     resources: nodes = M.T('reformat_external_gene_calls_table')
     run:
         import pandas as pd
-        import anvio.utils as u
+        import anvio.utils as utils
         import anvio.fastalib as f
 
         fa = f.ReadFasta(input.contigs[0])
@@ -148,7 +148,7 @@ rule reformat_external_gene_calls_table:
         reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
                                       index_col=1, header=None)
         contig_dict = next(iter(reformat_report.to_dict().values()))
-        external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+        external_gene_calls = utils.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
         contigs_in_external_gene_calls_not_in_contigs_database = \
             [c for c in contig_dict.values() if c not in contigs]
         if contigs_in_external_gene_calls_not_in_contigs_database:
@@ -174,7 +174,6 @@ rule reformat_external_gene_calls_table:
             if new_contig_name in contigs:
                 new_external_gene_calls[g] = external_gene_calls[g].copy()
                 new_external_gene_calls[g]['contig'] = new_contig_name
-#            u.store_dict_as_TAB_delimited_file(new_external_gene_calls, output[0], key_header='gene_callers_id')
         D = pd.DataFrame.from_dict(new_external_gene_calls, orient='index')
         D.to_csv(output[0], index_label='gene_callers_id', sep='\t')
 

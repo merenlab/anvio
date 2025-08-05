@@ -36,10 +36,10 @@ def display_top_memory_usage(snapshot, key_type='lineno', limit=10):
     Examples
     ========
     >>> import tracemalloc
-    >>> import anvio.utils as utils
+    >>> from anvio.utils.system import display_top_memory_usage
     >>> tracemalloc.start()
     >>> snap = tracemalloc.take_snapshot
-    >>> utils.display_top_memory_usage(snap)
+    >>> display_top_memory_usage(snap)
     Top 10 lines
     #1: anvio/bamops.py:160: 4671.3 KiB
         constants.cigar_consumption,

@@ -140,14 +140,14 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     Create an array with 5 manually created outliers:
 
     >>> import numpy as np
-    >>> import anvio.utils as utils
+    >>> from anvio.utils.algorithms as get_list_of_outliers
     >>> array = 10*np.ones(30) + np.random.rand(30)
     >>> array[5] = -10
     >>> array[9] = -10
     >>> array[12] = -10
     >>> array[15] = -10
     >>> array[23] = -10
-    >>> mask = utils.get_list_of_outliers(array, threshold=5)
+    >>> mask = get_list_of_outliers(array, threshold=5)
     >>> print(mask)
     [False False False False False  True False False False  True False False
      True False False  True False False False False False False False  True
@@ -380,11 +380,11 @@ def find_value_index(x, val, reverse_search=False):
     Examples
     ========
     >>> import numpy as np
-    >>> import anvio.utils as utils
+    >>> from anvio.utils.algorithms as find_value_index
     >>> x = np.arange(1000)
-    >>> %timeit utils.find_value_index(x, 999, rev=True)
+    >>> %timeit find_value_index(x, 999, rev=True)
     574 ns ± 15.8 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
-    >>> %timeit utils.find_value_index(x, 999)
+    >>> %timeit find_value_index(x, 999)
     2.21 µs ± 36.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
     >>> %timeit np.where(x == 999)[0][0]
     2.91 µs ± 563 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)

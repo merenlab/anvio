@@ -9,7 +9,7 @@ import copy
 import snakemake
 
 import anvio
-import anvio.utils as u
+import anvio.utils as utils
 import anvio.errors as errors
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -326,7 +326,7 @@ class WorkflowSuperClass:
             args.extend(['--dag'])
 
         log_file_path = filesnpaths.get_temp_file_path()
-        u.run_command(args, log_file_path)
+        utils.run_command(args, log_file_path)
         self.progress.end()
 
         # here we're getting the graph info from the log file like a dirty hacker
@@ -345,9 +345,9 @@ class WorkflowSuperClass:
 
             self.run.info('Workflow DOT file', workflow_graph_output_file_path_prefix + '.dot')
 
-            if u.is_program_exists('dot', dont_raise=True):
+            if utils.is_program_exists('dot', dont_raise=True):
                 dot_log_file = filesnpaths.get_temp_file_path()
-                u.run_command(['dot', '-Tpdf', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.pdf'], dot_log_file)
+                utils.run_command(['dot', '-Tpdf', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.pdf'], dot_log_file)
                 os.remove(dot_log_file)
                 self.run.info('Workflow PDF file', workflow_graph_output_file_path_prefix + '.pdf')
             else:
@@ -383,7 +383,7 @@ class WorkflowSuperClass:
 
         shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
 
-        shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s, dont_raise=dont_raise)]
+        shell_programs_missing = [s for s in shell_programs_needed if not utils.is_program_exists(s, dont_raise=dont_raise)]
 
         run.warning(None, 'Shell programs for the workflow')
         run.info('Needed', ', '.join(shell_programs_needed))

@@ -10,7 +10,7 @@ import os
 import anvio
 import argparse
 import pandas as pd
-import anvio.utils as u
+import anvio.utils as utils
 import anvio.workflows as w
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -355,7 +355,7 @@ rule gen_qc_report:
                         report_dict[sample][percent_header] = percent
                     else:
                         firstline = False
-        u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
+        utils.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
 
 def fastq_input_for_assembly(wildcards):

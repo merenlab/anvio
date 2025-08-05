@@ -49,7 +49,7 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     sequence is of length L, the nonsynonymous and synonymous potentials sum to L.
 
     list_of_codons_in_gene is a list of the codons as they appear in the gene sequence, e.g.
-    ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
+    ['ATG', ..., 'TAG'], which can be generated from the function get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
         raise ConfigError("The sequence `get_synonymous_and_non_synonymous_potential` received does "
@@ -176,8 +176,7 @@ def translate(sequence):
     Notes
     =====
     - Raises error if indivisible by 3
-    - Consider smarter functions: utils.get_translated_sequence_for_gene_call,
-      utils.get_most_likely_translation_frame
+    - Consider smarter functions: get_translated_sequence_for_gene_call, get_most_likely_translation_frame
     """
 
     N = len(sequence)
@@ -185,7 +184,7 @@ def translate(sequence):
     translated_sequence = []
 
     if N % 3:
-        raise ConfigError("utils.translate :: sequence is not divisible by 3: %s" % sequence)
+        raise ConfigError("translate :: sequence is not divisible by 3: %s" % sequence)
 
     for i in range(0, N, 3):
         aa = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]] or 'X'
@@ -237,7 +236,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
          # Save ourselves the effort
         return 0, translate(sequence)
     elif N < 3:
-        raise ConfigError("utils.get_most_likely_translation_frame :: sequence has a length less than 3 "
+        raise ConfigError("get_most_likely_translation_frame :: sequence has a length less than 3 "
                           "so there is nothing to translate.")
 
     if model is None:
@@ -324,7 +323,7 @@ def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
     """
 
     if gene_call['call_type'] != constants.gene_call_types['CODING']:
-        raise ConfigError("utils.get_codon_order_to_nt_positions_dict :: this simply will not work "
+        raise ConfigError("get_codon_order_to_nt_positions_dict :: this simply will not work "
                            "for noncoding gene calls, and gene caller id %d is noncoding." % gene_call['gene_callers_id'])
 
     start = gene_call['start'] - subtract_by
@@ -373,21 +372,21 @@ def nt_seq_to_nt_num_array(seq, is_ord=False):
     Init an environment
 
     >>> import anvio.constants as constants
-    >>> import anvio.utils as utils
+    >>> from anvio.utils.sequences as nt_seq_to_nt_num_array
     >>> seq_short = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
     >>> seq_long = ''.join(list(np.random.choice(constants.nucleotides, size=100_000_000)))
     >>> nt_to_num =  {'A': 0, 'C': 1, 'T': 2, 'G': 3, 'N': 4}
 
     Time short sequence:
 
-    >>> %timeit utils.nt_seq_to_nt_num_array(seq_short)
+    >>> %timeit nt_seq_to_nt_num_array(seq_short)
     2.36 µs ± 20.9 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
     >>> %timeit [nt_to_num[s] for s in seq_short]
     5.83 µs ± 20.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
     Time long sequence:
 
-    >>> %timeit utils.nt_seq_to_nt_num_array(seq_long)
+    >>> %timeit nt_seq_to_nt_num_array(seq_long)
     653 ms ± 1.02 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
     >>> %timeit [nt_to_num[s] for s in seq_long]
     5.27 s ± 13.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
