@@ -55,13 +55,13 @@ class ExchangePredictorArgs():
         self.add_reactions_to_output = A('add_reactions_to_output')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
-        self.pathway_maps_to_exclude = []
+        self.pathway_maps_to_exclude = set([])
         
         if A('exclude_pathway_maps'):
-            self.pathway_maps_to_exclude = A('exclude_pathway_maps').split(',')
+            self.pathway_maps_to_exclude = set(A('exclude_pathway_maps').split(','))
             n = len(self.pathway_maps_to_exclude)
             run.info_single(f"You told anvi'o to exclude the following {P('Pathway Map', n)} from the Pathway Map Walk "
-                            f"prediction strategy: {', '.join(self.pathway_maps_to_exclude)}. If these are real map IDs, "
+                            f"prediction strategy: {', '.join(list(self.pathway_maps_to_exclude))}. If these are real map IDs, "
                             f"the corresponding maps will not be processed.")
 
         self.sanity_check_args()
