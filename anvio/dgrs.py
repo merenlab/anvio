@@ -9,7 +9,6 @@ import os
 import shutil
 import argparse
 import copy
-import json
 import pytrf # type: ignore
 
 from Bio import SeqIO # type: ignore
