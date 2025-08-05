@@ -14,7 +14,7 @@ from anvio.terminal import Run, Progress, pluralize
 
 from anvio.utils.validation import is_ascii_only
 from anvio.utils.validation import check_sample_id
-from anvio.utils.validation import is_profile_db_and_contigs_db_compatible
+from anvio.utils.dbcheck import is_profile_db_and_contigs_db_compatible
 
 
 def gzip_compress_file(input_file_path, output_file_path=None, keep_original=False):
