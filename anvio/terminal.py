@@ -24,6 +24,7 @@ import anvio.constants as constants
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
 from anvio.utils.algorithms import human_readable_file_size
+from anvio.utils.system import get_total_memory_usage
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1010,7 +1011,7 @@ class TrackMemory(object):
 
 
     def _get_mem(self):
-        mem = anvio.utils.get_total_memory_usage(keep_raw=True)
+        mem = get_total_memory_usage(keep_raw=True)
 
         if mem is None:
             return np.nan
