@@ -6064,7 +6064,7 @@ class KODatabase:
         while True:
             # Break out of this loop upon confirming that the KEGG release didn't change in the
             # middle of downloading KO files.
-            progress.new(f"Downloading KEGG KO files")
+            progress.new("Downloading KEGG KO files")
             # Get the database version before download.
             progress.update("Database info")
             info_before_path = os.path.join(ko_dir, 'ko_info_before.txt')
@@ -6141,7 +6141,7 @@ class KODatabase:
                     f"'{release_before}' to '{release_after}' while anvi'o was downloading files "
                     "from the KO database. Anvi'o will now attempt to redownload all of the files."
                 )
-        run.info(f"Total number of KOs/entry files", total)
+        run.info("Total number of KOs/entry files", total)
         run.info("KEGG KO database version", release_after)
         run.info("KEGG KO list", list_path)
         run.info("KEGG KO info", info_path)
