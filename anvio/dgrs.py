@@ -477,65 +477,66 @@ class DGR_Finder:
 
             # filter snv_panda for min departure from ref and codon position
             if self.discovery_mode:
-                self.run.info("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+                self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
                 self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+
             else:
                 self.snv_panda = self.snv_panda.query(
                     "departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)"
                 )
 
-                # First, group the DataFrame by 'split_name' and 'sample_id' upfront
-                grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+            # First, group the DataFrame by 'split_name' and 'sample_id' upfront
+            grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
 
-                # Now iterate over the grouped data
-                for (split, sample), group in grouped:
-                    # Only process groups that match the desired split and sample
-                    if split in self.split_names_unique and sample in sample_id_list:
-                        if group.shape[0] == 0:
-                            continue
+            # Now iterate over the grouped data
+            for (split, sample), group in grouped:
+                # Only process groups that match the desired split and sample
+                if split in self.split_names_unique and sample in sample_id_list:
+                    if group.shape[0] == 0:
+                        continue
 
-                        # Extract the contig name and positions for the group
-                        contig_name = group.contig_name.unique()[0]
-                        pos_list = group.pos_in_contig.to_list()
+                    # Extract the contig name and positions for the group
+                    contig_name = group.contig_name.unique()[0]
+                    pos_list = group.pos_in_contig.to_list()
 
-                        if contig_name not in self.all_possible_windows:
-                            # If not, initialize it with an empty dictionary
-                            self.all_possible_windows[contig_name] = []
-                            # subset pandas df with split name
+                    if contig_name not in self.all_possible_windows:
+                        # If not, initialize it with an empty dictionary
+                        self.all_possible_windows[contig_name] = []
+                        # subset pandas df with split name
 
-                        #get list of pos within that split
-                        for i in range(len(pos_list) - 1):
+                    #get list of pos within that split
+                    for i in range(len(pos_list) - 1):
+                        current_pos = pos_list[i]
+                        next_pos = pos_list[i + 1]
+                        distance = next_pos - current_pos
+                        range_start = current_pos
+                        range_end = current_pos
+
+                        while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
+                            i += 1
                             current_pos = pos_list[i]
-                            next_pos = pos_list[i + 1]
-                            distance = next_pos - current_pos
-                            range_start = current_pos
-                            range_end = current_pos
+                            if i + 1 < len(pos_list):
+                                next_pos = pos_list[i + 1]
+                                distance = next_pos - current_pos
+                                range_end = current_pos
+                        if distance <= self.max_dist_bw_snvs:
+                            range_end = next_pos
 
-                            while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
-                                i += 1
-                                current_pos = pos_list[i]
-                                if i + 1 < len(pos_list):
-                                    next_pos = pos_list[i + 1]
-                                    distance = next_pos - current_pos
-                                    range_end = current_pos
-                            if distance <= self.max_dist_bw_snvs:
-                                range_end = next_pos
+                        if (range_end - range_start) <= self.min_range_size:
+                            continue
+                        else:
+                            window_start = range_start - self.variable_buffer_length
+                            window_end = range_end + self.variable_buffer_length
 
-                            if (range_end - range_start) <= self.min_range_size:
-                                continue
-                            else:
-                                window_start = range_start - self.variable_buffer_length
-                                window_end = range_end + self.variable_buffer_length
+                        contig_len = len(self.contig_sequences[contig_name]['sequence'])
 
-                            contig_len = len(self.contig_sequences[contig_name]['sequence'])
+                        if window_start <0:
+                            window_start = 0
+                        if window_end > contig_len:
+                            window_end = contig_len
 
-                            if window_start <0:
-                                window_start = 0
-                            if window_end > contig_len:
-                                window_end = contig_len
-
-                            # Add the window to the contig's list
-                            self.all_possible_windows[contig_name].append((window_start, window_end))
+                        # Add the window to the contig's list
+                        self.all_possible_windows[contig_name].append((window_start, window_end))
 
             all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
             # loop to merge overlaps within a given contig
