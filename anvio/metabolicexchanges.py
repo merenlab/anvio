@@ -1213,7 +1213,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         # memory tracking is done just as in the profiler class 
         mem_tracker = terminal.TrackMemory(at_most_every=5)
         mem_usage, mem_diff = mem_tracker.start()
-        processed_count = 1
+        killed_partway_through = False
 
         while received_pairs < total_pairs:
             try:
@@ -1255,6 +1255,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
             except KeyboardInterrupt:
                 self.run.info_single("Received SIGINT, terminating all processes...", nl_before=2)
+                killed_partway_through = True
                 break
 
             except Exception as worker_error:
@@ -1262,6 +1263,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                 self.progress.end()
                 for proc in processes:
                     proc.terminate()
+                killed_partway_through = True
                 raise worker_error
 
         for proc in processes:
@@ -1270,5 +1272,13 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
         # close the output files
         for typ, file_object in self.output_file_dict.items():
-            self.run.info(f"Output with {typ}", file_object.path)
-            file_object.close() 
+            if not killed_partway_through:
+                self.run.info(f"Output with {typ}", file_object.path)
+            file_object.close()
+
+        if killed_partway_through: # get rid of the partial output
+            for typ, file_object in self.output_file_dict.items():
+                output_path = self.output_file_prefix + "-" + typ + ".txt"
+                os.remove(output_path)
+            self.run.warning("There was an error while processing one of the genome pairs, so anvi'o deleted the partially-complete "
+                             "output files to avoid you having to deal with that mess.")
