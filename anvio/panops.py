@@ -3582,6 +3582,7 @@ class PangenomeGraph():
             'project_name': self.project_name,
             'state': self.load_state,
             'version': self.version,
+            'genome_storage_hash': self.genomes_storage.get_storage_hash(),
             'priority_genome': self.priority_genome,
             'genome_names': ','.join(self.genome_names),
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
