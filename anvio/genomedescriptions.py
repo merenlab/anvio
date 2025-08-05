@@ -19,13 +19,28 @@ from collections import Counter
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import (
+    is_blank_profile,
+    is_contigs_db,
+    is_profile_db,
+    is_profile_db_and_contigs_db_compatible,
+    is_profile_db_merged
+)
+from anvio.utils.files import (
+    get_TAB_delimited_file_as_dictionary,
+    get_column_data_from_TAB_delim_file,
+    get_columns_of_TAB_delim_file,
+    get_groups_txt_file_as_dict,
+    store_dict_as_TAB_delimited_file
+)
+from anvio.utils.statistics import run_functional_enrichment_stats
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -94,8 +109,8 @@ class GenomeDescriptions(object):
                 whether a given database is assumed to be a contigs or profile database
 
         """
-        db_types_factory = {'contigs': {'check': utils.is_contigs_db, 'variable': self.contigs_dbs_found},
-                            'profile': {'check': utils.is_profile_db, 'variable': self.profile_dbs_found}}
+        db_types_factory = {'contigs': {'check': is_contigs_db, 'variable': self.contigs_dbs_found},
+                            'profile': {'check': is_profile_db, 'variable': self.profile_dbs_found}}
 
         if db_type not in db_types_factory:
             raise ConfigError("is_proper_db :: wrong `db_type` :/ Pick either: %s" % ', '.join(db_types_factory))
@@ -128,8 +143,8 @@ class GenomeDescriptions(object):
         fields_for_internal_genomes_input = ['name', 'bin_id', 'collection_id', 'profile_db_path', 'contigs_db_path']
         fields_for_external_genomes_input = ['name', 'contigs_db_path']
 
-        self.internal_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if self.input_file_for_internal_genomes else {}
-        self.external_genomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if self.input_file_for_external_genomes else {}
+        self.internal_genomes_dict = get_TAB_delimited_file_as_dictionary(self.input_file_for_internal_genomes, expected_fields=fields_for_internal_genomes_input) if self.input_file_for_internal_genomes else {}
+        self.external_genomes_dict = get_TAB_delimited_file_as_dictionary(self.input_file_for_external_genomes, expected_fields=fields_for_external_genomes_input) if self.input_file_for_external_genomes else {}
 
 
     def list_HMM_info_and_quit(self):
@@ -554,7 +569,7 @@ class GenomeDescriptions(object):
                 c = self.genomes[genome_name]
                 c['external_genome'] = False
 
-                utils.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+                is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
@@ -609,7 +624,7 @@ class GenomeDescriptions(object):
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         self.progress.update("Checking genome names ..")
-        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
+        [is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
@@ -710,7 +725,7 @@ class MetagenomeDescriptions(object):
 
 
     def names_check(self):
-        names = utils.get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
+        names = get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
 
         if len(names) != len(set(names)):
             raise ConfigError("Each entry in your metagenomes file must be unique :/")
@@ -719,7 +734,7 @@ class MetagenomeDescriptions(object):
     def read_paths_from_input_file(self):
         """Reads metagenome files, populates self.metagenomes"""
 
-        columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes)
+        columns = get_columns_of_TAB_delim_file(self.input_file_for_metagenomes)
 
         if 'profile_db_path' in columns:
             fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
@@ -728,7 +743,7 @@ class MetagenomeDescriptions(object):
             fields_for_metagenomes_input = ['name', 'contigs_db_path']
             self.profile_dbs_available = False
 
-        self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
+        self.metagenomes_dict = get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
     def load_metagenome_descriptions(self, skip_functions=False, init=True, skip_sanity_check=False):
@@ -775,7 +790,7 @@ class MetagenomeDescriptions(object):
 
 
     def get_metagenome_hash(self, entry):
-        utils.is_contigs_db(entry['contigs_db_path'])
+        is_contigs_db(entry['contigs_db_path'])
         contigs_db_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
 
         return contigs_db_hash
@@ -785,8 +800,8 @@ class MetagenomeDescriptions(object):
         """Make sure self.metagenomes is good to go"""
 
         if self.profile_dbs_available and self.enforce_single_profiles:
-            non_single_profiles = [m for m in self.metagenomes if utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
-                                                                  and not utils.is_blank_profile(self.metagenomes[m]['profile_db_path'])]
+            non_single_profiles = [m for m in self.metagenomes if is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
+                                                                  and not is_blank_profile(self.metagenomes[m]['profile_db_path'])]
 
             if len(non_single_profiles):
                 raise ConfigError("All profile databases associated with your metagenomes must be single profiles :( Here "
@@ -804,7 +819,7 @@ class MetagenomeDescriptions(object):
                                'very fishy is going on :/')
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
-        [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
+        [is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
 
 
     def get_functions_and_sequences_dicts_from_contigs_db(self, metagenome_name, requested_source_list=None, return_only_functions=False):
@@ -1002,7 +1017,7 @@ class AggregateFunctions:
                                   "both :/")
 
             if self.layer_groups_input_file_path:
-                self.layer_name_to_group_name, self.layer_groups = utils.get_groups_txt_file_as_dict(self.layer_groups_input_file_path)
+                self.layer_name_to_group_name, self.layer_groups = get_groups_txt_file_as_dict(self.layer_groups_input_file_path)
             elif layer_groups:
                 self.layer_groups = layer_groups
 
@@ -1387,7 +1402,7 @@ class AggregateFunctions:
         self.report_functions_per_group_stats(self.functional_occurrence_table_output_path, quiet=True)
 
         # run the enrichment analysis
-        self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_input_file_path=self.functional_occurrence_table_output_path,
+        self.functional_enrichment_stats_dict = run_functional_enrichment_stats(functional_occurrence_stats_input_file_path=self.functional_occurrence_table_output_path,
                                                                                       enrichment_output_file_path=self.functional_enrichment_output_path,
                                                                                       run=self.run,
                                                                                       progress=self.progress)
@@ -1492,7 +1507,7 @@ class AggregateFunctions:
         dynamic_column_names = []
         [dynamic_column_names.extend([f'p_{g}', f'N_{g}']) for g in group_names]
 
-        utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
+        store_dict_as_TAB_delimited_file(d, output_file_path, headers=static_column_names+dynamic_column_names)
 
         if not quiet:
             self.run.info('Functions per group stats file', output_file_path)

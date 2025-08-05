@@ -6,11 +6,12 @@ import sys
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_blank_profile, is_pan_or_profile_db
+from anvio.utils.database import get_db_type
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -51,7 +52,7 @@ def run_program():
                           "input order and the target database :/")
 
     filesnpaths.is_file_plain_text(input_file_path)
-    utils.is_pan_or_profile_db(db_path, genes_db_is_also_accepted=True)
+    is_pan_or_profile_db(db_path, genes_db_is_also_accepted=True)
 
     order_data = [l.strip() for l in open(input_file_path).readlines() if len(l.strip())]
 
@@ -70,7 +71,7 @@ def run_program():
         order_data_type_newick = False
         order_data = ','.join(order_data)
 
-    db_type = utils.get_db_type(db_path)
+    db_type = get_db_type(db_path)
 
     run.info("Target database", db_path)
     run.info("Database type", db_type, nl_after=1)
@@ -80,7 +81,7 @@ def run_program():
 
     # for blank profile databases, we don't ask for for the consistency of names
     # to be checked.
-    if db_type == 'profile' and utils.is_blank_profile(db_path):
+    if db_type == 'profile' and is_blank_profile(db_path):
         check_names_consistency = False
     else:
         check_names_consistency = True

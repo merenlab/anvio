@@ -24,7 +24,6 @@ from Bio.PDB import DSSP, PDBParser
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as t
 import anvio.fastalib as u
@@ -35,6 +34,13 @@ import anvio.drivers.MODELLER as MODELLER
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.algorithms import human_readable_file_size
+from anvio.utils.commandline import run_command
+from anvio.utils.network import download_file, download_protein_structure
+from anvio.utils.sequences import convert_sequence_indexing
+from anvio.utils.system import is_program_exists
+from anvio.utils.validation import is_gene_sequence_clean
 
 J = lambda x, y: os.path.join(x, y)
 
@@ -356,7 +362,7 @@ class StructureSuperclass(object):
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.rerun_genes = A('rerun_genes', null)
 
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -917,7 +923,7 @@ class StructureSuperclass(object):
             sequence = fasta.seq
 
         try:
-            utils.is_gene_sequence_clean(sequence, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
+            is_gene_sequence_clean(sequence, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
             return False
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
@@ -1082,7 +1088,7 @@ class DSSPClass(object):
 
         if not self.skip_sanity_check:
             self.set_executable()
-            utils.is_program_exists(self.executable)
+            is_program_exists(self.executable)
             self.is_executable_a_working_DSSP_program()
 
 
@@ -1142,14 +1148,14 @@ class DSSPClass(object):
         """Determine which DSSP executables exist and should be used. Set to self.executable"""
 
         if self.executable:
-            utils.is_program_exists(self.executable, dont_raise=True)
+            is_program_exists(self.executable, dont_raise=True)
             return
 
         # Determine what DSSP program should be used. Tries mkdssp and then dssp, and raises
         # error if neither are found. mkdssp is newer and preferred
-        if utils.is_program_exists("mkdssp", dont_raise=True):
+        if is_program_exists("mkdssp", dont_raise=True):
             self.executable = "mkdssp"
-        elif utils.is_program_exists("dssp", dont_raise=True):
+        elif is_program_exists("dssp", dont_raise=True):
             self.executable = "dssp"
         else:
             raise ConfigError("'mkdssp' or 'dssp' must be installed on your system, but "
@@ -1244,7 +1250,7 @@ class DSSPClass(object):
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][self.fields.index('codon_order_in_gene')] = utils.convert_sequence_indexing(d[key][self.fields.index('codon_order_in_gene')], source='M1', destination='M0')
+            d[key][self.fields.index('codon_order_in_gene')] = convert_sequence_indexing(d[key][self.fields.index('codon_order_in_gene')], source='M1', destination='M0')
             d[key][self.fields.index('aa')] = one_to_three[d[key][self.fields.index('aa')]]
 
             if d[key][self.fields.index('sec_struct')] == '-':
@@ -1377,8 +1383,8 @@ class PDBDatabase(object):
             os.remove(dmnd_db)
 
         db_download_path = os.path.join(modeller_database_dir, "pdb_95.pir.gz")
-        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
-        utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
+        download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+        run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
 
         self.progress.end()
 
@@ -1499,7 +1505,7 @@ class PDBDatabase(object):
         four_letter_code = pdb_id[:4]
         chain_id = pdb_id[-1]
 
-        path = utils.download_protein_structure(four_letter_code, output_path=temp_path, chain=chain_id, raise_if_fail=False)
+        path = download_protein_structure(four_letter_code, output_path=temp_path, chain=chain_id, raise_if_fail=False)
 
         if path:
             with open(path, 'rb') as f:
@@ -1591,8 +1597,8 @@ class PDBDatabase(object):
             directory = filesnpaths.get_temp_directory_path()
 
         path = os.path.join(directory, "pdb_95.grp.gz")
-        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.grp.gz", path)
-        utils.run_command(['gzip', '-d', path], log_file_path=filesnpaths.get_temp_file_path())
+        download_file("https://salilab.org/modeller/downloads/pdb_95.grp.gz", path)
+        run_command(['gzip', '-d', path], log_file_path=filesnpaths.get_temp_file_path())
 
         return path.rstrip('.gz')
 
@@ -1715,7 +1721,7 @@ class PDBDatabase(object):
 
 
     def size_of_database(self):
-        return utils.human_readable_file_size(os.path.getsize(self.db_path))
+        return human_readable_file_size(os.path.getsize(self.db_path))
 
 
 class Structure(object):
@@ -1860,10 +1866,10 @@ class Structure(object):
 
             # logic that handles if user wants in terms of codon_order_in_gene or codon_number
             if c == 'order':
-                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
+                contacts = convert_sequence_indexing(contacts, source='M1', destination='M0')
                 index = codon_order_in_gene
             else:
-                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
+                index = convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
 
             # residues are not contacts with themselves
             contacts = contacts[contacts != index]
@@ -1937,7 +1943,7 @@ class ExternalStructuresFile(object):
         self.path = path
         self.contigs_db_path = contigs_db_path
 
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
         filesnpaths.is_file_tab_delimited(self.path)
 
         self.content = pd.read_csv(self.path, sep='\t')

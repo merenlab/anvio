@@ -5,10 +5,11 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_pan_db
+from anvio.utils.misc import get_predicted_type_of_items_in_a_dict
 
 
 run = terminal.Run()
@@ -105,7 +106,7 @@ class TableForItemAdditionalData(Table):
             if '!' in key:
                 predicted_key_type = "stackedbar"
             else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                type_class = get_predicted_type_of_items_in_a_dict(data_dict, key)
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type
@@ -134,7 +135,7 @@ def migrate(db_path):
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    utils.is_pan_db(db_path)
+    is_pan_db(db_path)
 
     # make sure the version is accurate
     pan_db = db.DB(db_path, None, ignore_version = True)

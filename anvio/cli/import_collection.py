@@ -8,12 +8,16 @@ from collections import Counter
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
+from anvio.dbinfo import is_blank_profile, is_contigs_db, is_pan_or_profile_db
+from anvio.utils.anviohelp import get_contig_name_to_splits_dict
+from anvio.utils.database import get_all_item_names_from_the_database, get_db_type
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.validation import check_collection_name
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -51,14 +55,14 @@ def run_program():
     if not args.pan_or_profile_db:
         raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
 
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    is_pan_or_profile_db(args.pan_or_profile_db)
 
     filesnpaths.is_output_file_writable(args.pan_or_profile_db)
 
     if args.contigs_db:
-        utils.is_contigs_db(args.contigs_db)
+        is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
+    if args.pan_or_profile_db and get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan "
                            "database")
 
@@ -67,7 +71,7 @@ def run_program():
                            "not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
+    if args.pan_or_profile_db and get_db_type(args.pan_or_profile_db) == 'profile':
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:
@@ -90,7 +94,7 @@ def run_program():
                     "databases that will be generated from this contigs database, things may go South, and anvi'o would "
                     "not even care.")
 
-    utils.check_collection_name(args.collection_name)
+    check_collection_name(args.collection_name)
 
     filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
     if args.bins_info:
@@ -108,17 +112,17 @@ def run_program():
 
     # initiate the contigs database if it is present
     if args.contigs_db:
-        contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(args.contigs_db)
+        contig_name_to_splits_dict = get_contig_name_to_splits_dict(args.contigs_db)
         contig_names_in_db = contig_name_to_splits_dict.keys()
 
     # read the input file with split/contig - bin ID associations
-    input_data_file_content = utils.get_TAB_delimited_file_as_dictionary(args.data, no_header = True, column_names = ['split_id', 'bin_name'])
+    input_data_file_content = get_TAB_delimited_file_as_dictionary(args.data, no_header = True, column_names = ['split_id', 'bin_name'])
 
     # populate bins_info_dict there is any information about bins
     bins_info_dict = {}
     if args.bins_info:
         try:
-            bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
+            bins_info_dict = get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
         except Exception as e:
             raise ConfigError("Someone was not happy with the TAB-delimited bins info file you provided. Here "
                               "is the complaint: %s" % e)
@@ -158,14 +162,14 @@ def run_program():
     # is no contigs database is associated with the profile database, so if there is none,
     # we cheat :
     if args.pan_or_profile_db:
-        if utils.get_db_type(args.pan_or_profile_db) == 'profile':
+        if get_db_type(args.pan_or_profile_db) == 'profile':
             associated_with_a_contigs_db = dbops.ProfileDatabase(args.pan_or_profile_db).meta['contigs_db_hash']
         else:
             associated_with_a_contigs_db = None
 
-        if utils.is_blank_profile(args.pan_or_profile_db):
+        if is_blank_profile(args.pan_or_profile_db):
             if associated_with_a_contigs_db:
-                db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
+                db_names = get_all_item_names_from_the_database(args.contigs_db)
             else:
                 db_names = input_names
 
@@ -174,14 +178,14 @@ def run_program():
                             "fine for now, but this requires you to be even extra careful with your downstream analyses in "
                             "case stuff hits the fan later.")
         else:
-            db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
+            db_names = get_all_item_names_from_the_database(args.pan_or_profile_db)
 
             if not len(db_names):
                 raise ConfigError("Anvi'o got an empty list of names for `items` from this databaes. But it is impossible :/")
 
-        run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
+        run.info('Items in %s database' % get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
     elif args.contigs_db:
-        db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
+        db_names = get_all_item_names_from_the_database(args.contigs_db)
         run.info('Items in contigs database', len(db_names), mc='green')
     else:
         db_names = input_names

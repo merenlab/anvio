@@ -12,12 +12,13 @@ from scipy.spatial import distance as scipy_distance
 from scipy.spatial.distance import pdist, squareform
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.files import get_vectors_from_TAB_delim_matrix
+from anvio.utils.phylogenetics import get_names_order_from_newick_tree
 with terminal.SuppressAllOutput():
     from ete3 import Tree
 
@@ -159,7 +160,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
     if items_order_file_path:
         filesnpaths.is_output_file_writable(items_order_file_path)
 
-    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose, pad_with_zeros=pad_with_zeros)
+    id_to_sample_dict, sample_to_id_dict, header, vectors = get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose, pad_with_zeros=pad_with_zeros)
 
     vectors = np.array(vectors)
 
@@ -175,7 +176,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
         open(output_file_path, 'w').write(newick.strip() + '\n')
 
     if items_order_file_path:
-        open(items_order_file_path, 'w').write('\n'.join(utils.get_names_order_from_newick_tree(newick)) + '\n')
+        open(items_order_file_path, 'w').write('\n'.join(get_names_order_from_newick_tree(newick)) + '\n')
 
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):

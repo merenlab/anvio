@@ -15,13 +15,15 @@ import os
 import abc
 import anvio
 
-from anvio import utils
 from anvio import fastalib
 from anvio import filesnpaths
 
 from anvio.errors import ConfigError, CommandError
 from collections import UserDict
 from threading import Thread
+from anvio.utils.commandline import run_command
+from anvio.utils.fasta import split_fasta
+from anvio.utils.files import concatenate_files
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -205,14 +207,14 @@ class ThreadedCommandRunner(abc.ABC):
         implementation for _run_commands for an example of how to do this properly.
         """
         try:
-            return_value = utils.run_command(command, log_file_path)
+            return_value = run_command(command, log_file_path)
         except ConfigError as e:
-            # utils.run_command can raise ConfigError.  So pass the message from that to a CommandError to keep it
+            # run_command can raise ConfigError.  So pass the message from that to a CommandError to keep it
             # consistent.
             return CommandError(e.e)
 
         if return_value < 0 or return_value > 0:
-            # Technically, utils.run_command will return ConfigError if the return code was < 0, but just do this
+            # Technically, run_command will return ConfigError if the return code was < 0, but just do this
             # sanity check here as well to be sure.
             return CommandError(f"Failed to run '{command}'.  Exit code: {return_value}")
         else:
@@ -262,7 +264,7 @@ class ThreadedCommandRunner(abc.ABC):
     def _run_commands(self):
         """Run commands built with `_make_commands` each in its own `AnviThread`.
 
-        Uses `utils.run_command` to run all the commands, each one in its own `AnviThread`.
+        Uses `run_command` to run all the commands, each one in its own `AnviThread`.
 
         Will block until all threads are finished.
 
@@ -290,7 +292,7 @@ class ThreadedCommandRunner(abc.ABC):
         self._check_threads_for_errors()
 
         # Todo pretty sure this will overwrite logfile.  Is this behavior what we really want?
-        anvio.utils.concatenate_files(self.log_file_path, intermediate_log_file_paths, remove_concatenated_files=True)
+        anvio.concatenate_files(self.log_file_path, intermediate_log_file_paths, remove_concatenated_files=True)
 
         return State(threads=self.threads)
 
@@ -398,7 +400,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
             raise ValueError(f'number_of_splits must be > 0.  Got {self.number_of_splits}')
 
         # Todo are there errors to catch here?
-        self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
+        self.input_file_splits = split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
 
         return State(input_file_splits=self.input_file_splits)
 
@@ -550,4 +552,4 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         assert self.collated_output_file_paths['gff_path']
 
         # This function also checks if the files exist.
-        utils.concatenate_files(self.collated_output_file_paths['gff_path'], gff_paths, remove_concatenated_files=True)
+        concatenate_files(self.collated_output_file_paths['gff_path'], gff_paths, remove_concatenated_files=True)

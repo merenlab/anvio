@@ -7,13 +7,13 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsSuperclass
 from anvio.bamops import ReadsMappingToARange
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_column_data_from_TAB_delim_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,7 +58,7 @@ def run_program():
                           "caller ids. You provided none of these. Well .. *starts quietly taking notes*.")
 
     if args.genes_of_interest:
-        genes_of_interest = set([int(g) for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
+        genes_of_interest = set([int(g) for g in get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
     else:
         genes_of_interest = set([int(args.gene_caller_id)])
 

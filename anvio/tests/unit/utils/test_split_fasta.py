@@ -10,8 +10,8 @@ import os
 
 import anvio
 from anvio.errors import FilesNPathsError
-from anvio.utils import split_fasta
 from anvio.fastalib import ReadFasta
+from anvio.utils.fasta import split_fasta
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

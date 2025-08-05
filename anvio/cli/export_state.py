@@ -4,12 +4,13 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.states import TablesForStates
+from anvio.dbinfo import is_pan_or_profile_db
+from anvio.utils.database import get_db_type
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -27,13 +28,13 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
 
         states_access = TablesForStates(args.pan_or_profile_db)
         states = states_access.states
 
         if not len(states):
-            raise ConfigError("But there are no states in this %s database :/" % utils.get_db_type(args.pan_or_profile_db))
+            raise ConfigError("But there are no states in this %s database :/" % get_db_type(args.pan_or_profile_db))
 
         if args.list_states:
             states_access.list_states()

@@ -8,12 +8,12 @@ import pandas as pd
 
 import anvio
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.validation import is_this_name_OK_for_database
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -100,7 +100,7 @@ def run_program():
     prefix = args.prefix if args.prefix else None
 
     if prefix:
-        utils.is_this_name_OK_for_database('contig name prefix', prefix)
+        is_this_name_OK_for_database('contig name prefix', prefix)
 
     if args.exclude_ids:
         filesnpaths.is_file_exists(args.exclude_ids)

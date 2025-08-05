@@ -25,7 +25,6 @@ import multiprocess as multiprocessing
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -42,6 +41,12 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
+from anvio.dbinfo import is_pan_db
+from anvio.utils.fasta import unique_FASTA_file
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_column_data_from_TAB_delim_file
+from anvio.utils.sequences import summarize_alignment
+from anvio.utils.system import is_program_exists
+from anvio.utils.validation import is_this_name_OK_for_database
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -94,7 +99,7 @@ class RarefactionAnalysis:
     def load_data(self):
         """Load gene cluster data from pan-db, setup essential variables, sanity check."""
 
-        utils.is_pan_db(self.pan_db_path)
+        is_pan_db(self.pan_db_path)
 
         # let's learn a few things form the pan-db.
         pan_db = dbops.PanDatabase(self.pan_db_path)
@@ -327,7 +332,7 @@ class Pangenome(object):
         # genome_name parameter can be a file or comma seperated genome names.
         if self.genome_names_to_focus:
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
-                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
+                self.genome_names_to_focus = get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
             else:
                 self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
 
@@ -387,11 +392,11 @@ class Pangenome(object):
 
     def check_programs(self):
         if self.use_ncbi_blast:
-            utils.is_program_exists('blastp')
+            is_program_exists('blastp')
         else:
-            utils.is_program_exists('diamond')
+            is_program_exists('diamond')
 
-        utils.is_program_exists('mcl')
+        is_program_exists('mcl')
 
 
     def check_project_name(self):
@@ -404,7 +409,7 @@ class Pangenome(object):
                               "projects in it and all of those projects can use the same intermediate files whenever "
                               "possible.")
 
-        utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
+        is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
 
 
     def check_params(self):
@@ -1137,7 +1142,7 @@ class Pangenome(object):
 
             output = {'name': gene_cluster_name, 'alignment_was_successful': alignment_was_successful, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
             for gene_entry in output['entry']:
-                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
+                gene_entry['alignment_summary'] = summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
 
             output_queue.put(output)
 
@@ -1153,7 +1158,7 @@ class Pangenome(object):
         # get unique amino acid sequences:
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
-        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
         self.progress.end()
         self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
@@ -1177,7 +1182,7 @@ class Pangenome(object):
         """Function to recover gene clusters from gene-clusters-txt"""
 
         gene_clusters_dict = {}
-        gene_clusters_txt = utils.get_TAB_delimited_file_as_dictionary(self.user_defined_gene_clusters, indexing_field=-1)
+        gene_clusters_txt = get_TAB_delimited_file_as_dictionary(self.user_defined_gene_clusters, indexing_field=-1)
 
         genomes_in_gene_clusters_txt = set()
 

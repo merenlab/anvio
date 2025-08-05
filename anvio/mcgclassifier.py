@@ -12,10 +12,11 @@ import anvio
 import numpy as np
 import pandas as pd
 import matplotlib
+from anvio.utils.algorithms import get_list_of_outliers
+from anvio.utils.statistics import get_values_of_gene_level_coverage_stats_as_dict
 # TODO: according to the warning, this call to set the back-hand is meaningless
 # I need to experiment to see what happens if I delete it.
 matplotlib.use('pdf')
-import anvio.utils as utils
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -187,11 +188,11 @@ class MetagenomeCentricGeneClassifier:
         self.gene_level_coverage_stats_dict_of_dataframes = {}
         for key in ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']:
             # Only include samples that the user want
-            gene_stat = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=True, samples_of_interest=self.samples)
+            gene_stat = get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=True, samples_of_interest=self.samples)
             self.gene_level_coverage_stats_dict_of_dataframes[key] = gene_stat
 
         for key in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
-            gene_stat = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=False, samples_of_interest=self.samples)
+            gene_stat = get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=False, samples_of_interest=self.samples)
             self.gene_level_coverage_stats_dict_of_dataframes[key] = gene_stat
 
 
@@ -604,7 +605,7 @@ def get_non_outliers_information(v, MAD_threshold=2.5, zeros_are_outliers=False)
     """ returns the non-outliers for the input pandas series using MAD"""
 
     d = pd.Series(index=columns_for_samples_coverage_stats_dict)
-    outliers = utils.get_list_of_outliers(v, threshold=MAD_threshold, zeros_are_outliers=zeros_are_outliers)
+    outliers = get_list_of_outliers(v, threshold=MAD_threshold, zeros_are_outliers=zeros_are_outliers)
     non_outliers = np.logical_not(outliers)
     non_outlier_indices = np.where(non_outliers)[0]
 

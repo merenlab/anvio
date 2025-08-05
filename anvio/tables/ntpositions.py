@@ -5,8 +5,8 @@ import numpy
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
+from anvio.utils.algorithms import convert_numpy_array_to_binary_blob
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -32,7 +32,7 @@ class TableForNtPositions(object):
 
 
     def append(self, contig_name, position_info_list):
-        position_info_blob = utils.convert_numpy_array_to_binary_blob(numpy.array(position_info_list, dtype=self.numpy_data_type))
+        position_info_blob = convert_numpy_array_to_binary_blob(numpy.array(position_info_list, dtype=self.numpy_data_type))
         self.db_entries.append((contig_name, position_info_blob, ))
 
 

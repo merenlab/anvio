@@ -8,11 +8,13 @@ import shutil
 import tarfile
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import concatenate_files, gzip_compress_file
+from anvio.utils.hmm import get_attribute_from_hmm_file
+from anvio.utils.network import download_file, get_remote_file_content
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -55,10 +57,10 @@ def run_program():
     progress.update('...')
 
     repo_url = "https://api.github.com/repos/mdmparis/defense-finder-models/releases/latest"
-    response = utils.get_remote_file_content(repo_url)
+    response = get_remote_file_content(repo_url)
     data = json.loads(response)
     download_url = [asset["browser_download_url"] for asset in data["assets"] if asset["name"].endswith(".tar.gz")][0]
-    response = utils.download_file(download_url, "latest_release.tar.gz")
+    response = download_file(download_url, "latest_release.tar.gz")
 
     with tarfile.open("latest_release.tar.gz", "r:gz") as tar:
         tar.extractall()
@@ -79,14 +81,14 @@ def run_program():
         progress.update(hmm_name + ' ...', increment=True)
 
         try:
-            acc = utils.get_attribute_from_hmm_file(hmm_path, 'ACC')
+            acc = get_attribute_from_hmm_file(hmm_path, 'ACC')
         except ValueError:
             continue
 
         try:
-            acc = utils.get_attribute_from_hmm_file(hmm_path, "NAME") if acc is None else acc
-            ga = utils.get_attribute_from_hmm_file(hmm_path, 'GA ')
-            name = utils.get_attribute_from_hmm_file(hmm_path, 'NAME')
+            acc = get_attribute_from_hmm_file(hmm_path, "NAME") if acc is None else acc
+            ga = get_attribute_from_hmm_file(hmm_path, 'GA ')
+            name = get_attribute_from_hmm_file(hmm_path, 'NAME')
 
         except ValueError:
             raise ConfigError(f"In the HMM file {hmm_path} we did not find one of the attributes we expected to find. "
@@ -118,8 +120,8 @@ def run_program():
     W = lambda p, c: open(J(p), 'w').write(f'{c}\n')
 
     # Concatenate and compress the genes.hmm
-    utils.concatenate_files(J('genes.hmm'), [data_dict[p]['hmm_fp'] for p in data_dict], remove_concatenated_files=True)
-    utils.gzip_compress_file(J('genes.hmm'))
+    concatenate_files(J('genes.hmm'), [data_dict[p]['hmm_fp'] for p in data_dict], remove_concatenated_files=True)
+    gzip_compress_file(J('genes.hmm'))
 
     # Generate genes output
     with open(J('genes.txt'), 'w') as genestxt:

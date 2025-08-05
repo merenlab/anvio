@@ -5,7 +5,6 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -13,6 +12,9 @@ import anvio.clustering as clustering
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.dbinfo import is_contigs_db, is_profile_db
+from anvio.utils.database import get_all_item_names_from_the_database
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -39,8 +41,8 @@ def main():
                                "profile database to be explicit about where to store the resulting tree.")
 
         if args.profile_db:
-            utils.is_profile_db(args.profile_db)
-        utils.is_contigs_db(args.contigs_db)
+            is_profile_db(args.profile_db)
+        is_contigs_db(args.contigs_db)
 
         if not args.skip_store_in_db and not args.name:
             raise ConfigError("Since you have not used the --skip-store-in-db flag, this program will attempt "
@@ -48,10 +50,10 @@ def main():
                                "this tree. Please use the --name flag to provide one.")
 
         if args.name:
-            utils.is_this_name_OK_for_database('--name parameter', args.name)
+            is_this_name_OK_for_database('--name parameter', args.name)
 
         if args.profile_db:
-            split_names = utils.get_all_item_names_from_the_database(args.profile_db)
+            split_names = get_all_item_names_from_the_database(args.profile_db)
 
         db_paths = {'CONTIGS.db': args.contigs_db}
         config = ClusteringConfiguration(args.config_file, args.input_directory, db_paths = db_paths, row_ids_of_interest = split_names)

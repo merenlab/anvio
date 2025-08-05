@@ -5,12 +5,13 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.database import get_all_item_names_from_the_database
+from anvio.utils.files import get_column_data_from_TAB_delim_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -35,7 +36,7 @@ def main():
                               "gene callers of interest. Not both")
 
         if args.genes_of_interest:
-            genes_of_interest = set([g.strip() for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
+            genes_of_interest = set([g.strip() for g in get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
         elif args.gene_caller_id:
             genes_of_interest = set([str(args.gene_caller_id).strip()])
         else:
@@ -61,7 +62,7 @@ def main():
             # now we have a list of split names of interest, but since not every split occurs in the
             # profile database, we need to make sure those that don't occur in the profile databae are
             # removed before the profile db is initialized.
-            split_names_in_profile_db = utils.get_all_item_names_from_the_database(args.profile_db)
+            split_names_in_profile_db = get_all_item_names_from_the_database(args.profile_db)
             splits_only_in_contigs_db = splits_of_interest.difference(split_names_in_profile_db)
 
             if splits_only_in_contigs_db:

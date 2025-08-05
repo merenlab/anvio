@@ -10,8 +10,9 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, StupidHMMError
 from anvio.constants import levels_of_taxonomy
-from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
-from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
+
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary as get_dict
+from anvio.utils.fasta import get_FASTA_file_as_dictionary as get_dict_f
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

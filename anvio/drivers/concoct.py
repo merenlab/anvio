@@ -4,10 +4,11 @@
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command, serialize_args
+from anvio.utils.system import is_program_exists
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -104,7 +105,7 @@ class CONCOCT:
         self.progress = progress
 
         self.program_name = 'concoct'
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
 
     def cluster(self, input_files, args, work_dir, threads=1, log_file_path=None):
@@ -118,11 +119,11 @@ class CONCOCT:
             '--composition_file', input_files.contigs_fasta,
             '--basename', work_dir,
             '--threads', threads,
-             *utils.serialize_args(args, use_underscore=True)]
+             *serialize_args(args, use_underscore=True)]
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
-        utils.run_command(cmd_line, log_file_path)
+        run_command(cmd_line, log_file_path)
         self.progress.end()
 
         clusters = {}

@@ -10,7 +10,6 @@ import argparse
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -18,6 +17,10 @@ from anvio.drivers import driver_modules
 from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
+from anvio.utils.fasta import export_sequences_from_contigs_db
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -110,17 +113,17 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
             contig_coverages_log_norm[c] = entry_log_norm
 
     # Write output files
-    utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
-    utils.store_dict_as_TAB_delimited_file(split_coverages_log_norm, input_files.split_coverages_log_norm, ['contig', *sample_names])
+    store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
+    store_dict_as_TAB_delimited_file(split_coverages_log_norm, input_files.split_coverages_log_norm, ['contig', *sample_names])
 
-    utils.store_dict_as_TAB_delimited_file(contig_coverages, input_files.contig_coverages, ['contig', *sample_names])
-    utils.store_dict_as_TAB_delimited_file(contig_coverages_log_norm, input_files.contig_coverages_log_norm, ['contig', *sample_names])
+    store_dict_as_TAB_delimited_file(contig_coverages, input_files.contig_coverages, ['contig', *sample_names])
+    store_dict_as_TAB_delimited_file(contig_coverages_log_norm, input_files.contig_coverages_log_norm, ['contig', *sample_names])
 
-    utils.export_sequences_from_contigs_db(contigs_db.db_path,
+    export_sequences_from_contigs_db(contigs_db.db_path,
                                            input_files.splits_fasta,
                                            splits_mode=True)
 
-    utils.export_sequences_from_contigs_db(contigs_db.db_path,
+    export_sequences_from_contigs_db(contigs_db.db_path,
                                            input_files.contigs_fasta,
                                            splits_mode=False)
 
@@ -206,7 +209,7 @@ def cluster_contigs(args, unknown, subparsers, modules):
     if not len(collection_name):
         raise ConfigError('Nice try. Collection name cannot be emtpy')
     try:
-        utils.check_sample_id(collection_name)
+        check_sample_id(collection_name)
     except:
         raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain '
                            'ANY characters but digits, ASCII letters and underscore character(s). There should not be '
@@ -215,7 +218,7 @@ def cluster_contigs(args, unknown, subparsers, modules):
     if args.log_file:
         filesnpaths.is_output_file_writable(args.log_file)
 
-    utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+    is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
     merged_profile_db = dbops.ProfileDatabase(args.profile_db)
 

@@ -5,11 +5,13 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import concatenate_files, gzip_compress_file, gzip_decompress_file
+from anvio.utils.hmm import get_attribute_from_hmm_file, sanity_check_pfam_accessions
+from anvio.utils.network import download_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -55,7 +57,7 @@ def run_program():
     else:
         raise ConfigError("You should provide *some* PFAM accession ids to this program :/")
 
-    utils.sanity_check_pfam_accessions(pfam_accession_ids)
+    sanity_check_pfam_accessions(pfam_accession_ids)
 
     output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
@@ -78,19 +80,19 @@ def run_program():
 
         try:
             # this downloads a gzipped model,
-            utils.download_file(f"https://www.ebi.ac.uk/interpro/wwwapi/entry/pfam/{pfam_accession}?annotation=hmm", fp + '.gz')
+            download_file(f"https://www.ebi.ac.uk/interpro/wwwapi/entry/pfam/{pfam_accession}?annotation=hmm", fp + '.gz')
 
             # which we need to decompress before moving on.
-            utils.gzip_decompress_file(fp + '.gz')
+            gzip_decompress_file(fp + '.gz')
         except:
             failed_accession_ids.add(pfam_accession)
             continue
 
         try:
             data_dict[pfam_accession] = {}
-            data_dict[pfam_accession]['ga'] = utils.get_attribute_from_hmm_file(fp, 'GA ')
-            data_dict[pfam_accession]['gene'] = utils.get_attribute_from_hmm_file(fp, 'NAME')
-            data_dict[pfam_accession]['accession'] = utils.get_attribute_from_hmm_file(fp, 'ACC')
+            data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
+            data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
+            data_dict[pfam_accession]['accession'] = get_attribute_from_hmm_file(fp, 'ACC')
             data_dict[pfam_accession]['temp_file_path'] = fp
 
         except ValueError:
@@ -135,8 +137,8 @@ def run_program():
     W = lambda p, c: open(J(p), 'w').write(f'{c}\n')
 
     # concatenate and compress the genes.hmm
-    utils.concatenate_files(J('genes.hmm'), [data_dict[p]['temp_file_path'] for p in data_dict], remove_concatenated_files=True)
-    utils.gzip_compress_file(J('genes.hmm'))
+    concatenate_files(J('genes.hmm'), [data_dict[p]['temp_file_path'] for p in data_dict], remove_concatenated_files=True)
+    gzip_compress_file(J('genes.hmm'))
 
     # generate genes output
     with open(J('genes.txt'), 'w') as genestxt:

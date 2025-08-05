@@ -8,10 +8,10 @@ import os
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.anviohelp import get_contig_name_to_splits_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -73,7 +73,7 @@ class Table(object):
         database.disconnect()
 
         if not simple and self.db_type == 'contigs':
-            self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.db_path)
+            self.contig_name_to_splits = get_contig_name_to_splits_dict(self.db_path)
 
 
     def next_id(self, table):

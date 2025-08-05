@@ -5,8 +5,8 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
+from anvio.utils.hmm import get_HMM_sources_dictionary
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -56,7 +56,7 @@ def run_program():
     elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
-        sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
+        sources = get_HMM_sources_dictionary([args.hmm_profile_dir])
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\

@@ -7,11 +7,11 @@ import time
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.system import check_h5py_module
 
 
 current_version = '4'
@@ -44,7 +44,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.check_h5py_module()
+    check_h5py_module()
     import h5py
 
     fp = h5py.File(db_path, 'r')

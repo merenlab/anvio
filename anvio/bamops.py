@@ -15,7 +15,6 @@ from collections import Counter
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -23,6 +22,11 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
+from anvio.utils.algorithms import get_constant_value_blocks, get_list_of_outliers
+from anvio.utils.anviohelp import CoverageStats, get_contigs_splits_dict
+from anvio.utils.files import gzip_compress_file, store_dict_as_TAB_delimited_file
+from anvio.utils.sequences import rev_comp
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -153,7 +157,7 @@ class PairedEndTemplateDist:
                 # the following class was designed for coverage stats, but it does a large part
                 # of what we need to learn for these np arrays, so why not:
                 arr = np.array(self.template_lengths[contig_name])
-                C = utils.CoverageStats(arr, skip_outliers=True)
+                C = CoverageStats(arr, skip_outliers=True)
 
                 stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
                                       'num_reads_considered': len(arr),
@@ -176,7 +180,7 @@ class PairedEndTemplateDist:
         self.progress.end()
 
         headers = ['contig', 'length', 'num_reads_considered', 'mean', 'mean_Q2Q3', 'median', 'min', 'max', 'std']
-        utils.store_dict_as_TAB_delimited_file(stats, self.output_file_path, headers=headers)
+        store_dict_as_TAB_delimited_file(stats, self.output_file_path, headers=headers)
 
         self.run.info('Output file', self.output_file_path, nl_after=1)
 
@@ -451,7 +455,7 @@ class Read:
         if array is None:
             array = self.v
 
-        for start, stop in utils.get_constant_value_blocks(array[:, 2], mapping_type):
+        for start, stop in get_constant_value_blocks(array[:, 2], mapping_type):
             yield array[start:stop, :]
 
 
@@ -781,7 +785,7 @@ class Coverage:
         self.std = np.std(c)
         self.detection = np.sum(c > 0) / len(c)
 
-        self.is_outlier = utils.get_list_of_outliers(c, median=self.median) # this is an array not a list
+        self.is_outlier = get_list_of_outliers(c, median=self.median) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
@@ -1064,7 +1068,7 @@ class GetReadsFromBAM:
                                   "to get from your BAM files, then you can't also provide a target contig "
                                   "name.")
 
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         elif self.target_contig:
             ##############################################################
             # the user has chosen the ad hoc inputs path
@@ -1191,9 +1195,9 @@ class GetReadsFromBAM:
                             # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
                                 short_reads_dict[mate_DIRECTION][counter] = D(unknown_mate_tracker_dict[defline]['seq'])
-                                short_reads_dict[read_DIRECTION][counter] = D(utils.rev_comp(read.query_sequence))
+                                short_reads_dict[read_DIRECTION][counter] = D(rev_comp(read.query_sequence))
                             else:
-                                short_reads_dict[mate_DIRECTION][counter] = D(utils.rev_comp(unknown_mate_tracker_dict[defline]['seq']))
+                                short_reads_dict[mate_DIRECTION][counter] = D(rev_comp(unknown_mate_tracker_dict[defline]['seq']))
                                 short_reads_dict[read_DIRECTION][counter] = D(read.query_sequence)
 
                             del unknown_mate_tracker_dict[defline]
@@ -1285,7 +1289,7 @@ class GetReadsFromBAM:
         contigs_db.disconnect()
 
         self.progress.update('Identifying contigs associated with splits ...')
-        contigs_involved = utils.get_contigs_splits_dict(self.split_names_of_interest, splits_basic_info)
+        contigs_involved = get_contigs_splits_dict(self.split_names_of_interest, splits_basic_info)
 
         # this variable will hold a list of (contig_id, start, stop) tuples
         # for each contig and the start and stop positions of sequential blocks
@@ -1344,7 +1348,7 @@ class GetReadsFromBAM:
                         output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
                 if self.gzip:
-                    utils.gzip_compress_file(output_file_path)
+                    gzip_compress_file(output_file_path)
                     output_file_path = output_file_path + ".gz"
 
                 self.run.info('Output file for %s' % read_type, output_file_path, progress=self.progress)
@@ -1361,7 +1365,7 @@ class GetReadsFromBAM:
                     output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
             if self.gzip:
-                utils.gzip_compress_file(output_file_path)
+                gzip_compress_file(output_file_path)
                 output_file_path = output_file_path + ".gz"
 
             self.progress.end()

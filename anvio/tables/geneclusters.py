@@ -6,10 +6,11 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables.tableops import Table
+from anvio.dbinfo import is_pan_db
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -40,7 +41,7 @@ class TableForGeneClusters(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        utils.is_pan_db(db_path)
+        is_pan_db(db_path)
 
         self.run = run
         self.progress = progress
@@ -59,7 +60,7 @@ class TableForGeneClusters(Table):
 
         db_entries = [tuple(entry) for entry in self.entries]
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
         database.disconnect()
 

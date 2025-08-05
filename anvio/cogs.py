@@ -12,7 +12,6 @@ import hashlib
 
 import anvio
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.dictio as dictio
 import anvio.terminal as terminal
@@ -22,6 +21,12 @@ from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.fasta import get_num_sequences_in_fasta
+from anvio.utils.files import get_BLAST_tabular_output_as_dict, get_TAB_delimited_file_as_dictionary, store_dict_as_TAB_delimited_file
+from anvio.utils.network import download_file
+from anvio.utils.system import is_program_exists
+from anvio.utils.validation import is_gene_sequence_clean
 
 # just to make sure things don't break too far when they do:
 COG_DATA_VERSION='2'
@@ -84,7 +89,7 @@ class COGs:
         self.default_search_method = 'diamond'
         self.search_methods_factory = {'diamond': self.search_with_diamond,
                                        'blastp': self.search_with_ncbi_blast}
-        self.available_search_methods = [p for p in self.search_methods_factory.keys() if utils.is_program_exists(p, dont_raise=True)]
+        self.available_search_methods = [p for p in self.search_methods_factory.keys() if is_program_exists(p, dont_raise=True)]
 
         if not len(self.available_search_methods):
             raise ConfigError("None of the search methods this class could use, which include '%s', seem to be "
@@ -200,7 +205,7 @@ class COGs:
             raise ConfigError("You can't provide both an AA sequences file and a contigs database. Choose one!")
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            is_contigs_db(self.contigs_db_path)
 
         if not aa_sequences_file_path and self.output_file_path:
             self.run.warning("You provided an output sequence, but the input was not an amino acid FASTA file. When the input is a contigs database, "
@@ -215,7 +220,7 @@ class COGs:
 
             self.progress.new("Sanity checking")
             self.progress.update("Figuring out the number of AA sequences in the file ...")
-            num_sequences = utils.get_num_sequences_in_fasta(aa_sequences_file_path)
+            num_sequences = get_num_sequences_in_fasta(aa_sequences_file_path)
             self.progress.end()
 
             self.progress.new("Sanity checking", progress_total_items=num_sequences)
@@ -224,7 +229,7 @@ class COGs:
                 self.progress.increment()
                 if self.progress.progress_current_item % 1000 == 0:
                     self.progress.update(f"Going through {pp(num_sequences)} AA sequences ..")
-                utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, must_start_with_met=False)
+                is_gene_sequence_clean(fasta.seq, amino_acid=True, must_start_with_met=False)
             fasta.close()
             self.progress.end()
 
@@ -259,9 +264,9 @@ class COGs:
 
         # convert the output to a hits dict
         if self.COG_version in ['COG14', 'arCOG14']:
-            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
+            self.hits = get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
         elif self.COG_version in ['COG20', 'COG24']:
-            self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
+            self.hits = get_BLAST_tabular_output_as_dict(search_results_tabular)
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                               "parsing of a new generation of COG files.")
@@ -382,7 +387,7 @@ class COGs:
             gene_function_calls_table.create(functions_dict)
 
         elif self.aa_sequence_file_input:
-            utils.store_dict_as_TAB_delimited_file(d=functions_dict, output_path=self.output_file_path, do_not_write_key_column=True)
+            store_dict_as_TAB_delimited_file(d=functions_dict, output_path=self.output_file_path, do_not_write_key_column=True)
 
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
@@ -485,16 +490,16 @@ class COGsData:
         self.progress.update('Reading COG functions ...')
 
         if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
-            self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
+            self.cogs = get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
         elif self.COG_version in ['COG20', 'COG24']:
-            self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
+            self.cogs = get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                               "parsing of a new generation of COG files.")
 
 
         self.progress.update('Reading COG categories ...')
-        self.categories = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
+        self.categories = get_TAB_delimited_file_as_dictionary(self.essential_files['CATEGORIES.txt'], no_header=True, column_names=['category', 'description'])
 
         self.progress.update('Reading missing COG IDs ...')
         self.missing_cogs = dictio.read_serialized_object(self.essential_files['MISSING_COG_IDs.cPickle'])
@@ -994,7 +999,7 @@ class COGsSetup:
 
         progress.end()
 
-        if utils.is_program_exists('diamond', dont_raise=True):
+        if is_program_exists('diamond', dont_raise=True):
             output_dir = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
@@ -1014,7 +1019,7 @@ class COGsSetup:
             self.run.warning("DIAMOND does not seem to be installed on this system, so anvi'o is not going to "
                              "generate a search database for it. Remember this when/if things go South.")
 
-        if utils.is_program_exists('makeblastdb', dont_raise=True) and utils.is_program_exists('blastp', dont_raise=True):
+        if is_program_exists('makeblastdb', dont_raise=True) and is_program_exists('blastp', dont_raise=True):
             output_dir = os.path.join(self.COG_data_dir, 'DB_BLAST')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
@@ -1048,7 +1053,7 @@ class COGsSetup:
 
             file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
             if not os.path.exists(file_path):
-                utils.download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
+                download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
 
 
     def setup_raw_data(self):

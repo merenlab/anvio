@@ -14,13 +14,16 @@ from numba import jit
 from numba.typed import List
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 import IlluminaUtils.lib.fastqlib as u
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.fasta import get_num_sequences_in_fasta
+from anvio.utils.files import get_primers_txt_file_as_dict, get_samples_txt_file_as_dict
+from anvio.utils.sequences import nt_seq_to_RC_nt_num_array, nt_seq_to_nt_num_array, rev_comp
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -69,14 +72,14 @@ class PrimerSearch:
                               "a primers dictionary through `primers_dict` parameter. See online help for more.")
 
         if self.samples_txt:
-            self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
+            self.samples_dict = get_samples_txt_file_as_dict(self.samples_txt, run=run)
         else:
             self.samples_dict = A('samples_dict')
             if not isinstance(self.samples_dict, dict):
                 raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
 
         if self.primers_file_path:
-            self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
+            self.primers_dict = get_primers_txt_file_as_dict(self.primers_file_path)
         else:
             self.primers_dict = A('primers_dict')
             if not isinstance(self.primers_dict, dict):
@@ -193,7 +196,7 @@ class PrimerSearch:
 
                     if not match:
                         # no match here. but how about the reverse complement of it?
-                        seq = utils.rev_comp(seq)
+                        seq = rev_comp(seq)
 
                         match = re.search(primer_sequence, seq)
 
@@ -529,7 +532,7 @@ class Palindromes:
             filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            is_contigs_db(self.contigs_db_path)
 
         if self.fasta_file_path:
             filesnpaths.is_file_fasta_formatted(self.fasta_file_path)
@@ -574,7 +577,7 @@ class Palindromes:
             self.progress.end()
 
         elif self.fasta_file_path:
-            num_sequences = utils.get_num_sequences_in_fasta(self.fasta_file_path)
+            num_sequences = get_num_sequences_in_fasta(self.fasta_file_path)
             fasta = anvio.fastalib.SequenceSource(self.fasta_file_path)
             self.progress.new('Searching', progress_total_items=num_sequences)
 
@@ -833,8 +836,8 @@ class Palindromes:
             4-length tuples are returned. Each tuple is (first_start, first_second, second_start, second_end).
             If no palindromes are found, an empty list is returned.
         """
-        sequence_array = utils.nt_seq_to_nt_num_array(sequence)
-        sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
+        sequence_array = nt_seq_to_nt_num_array(sequence)
+        sequence_array_RC = nt_seq_to_RC_nt_num_array(sequence)
 
         palindrome_coords = _find_palindromes(
             seq = sequence_array,
@@ -854,7 +857,7 @@ class Palindromes:
         palindromes = []
         for first_start, first_end, second_start, second_end in palindrome_coords:
             first_sequence = sequence[first_start:first_end]
-            second_sequence = utils.rev_comp(sequence[second_start:second_end])
+            second_sequence = rev_comp(sequence[second_start:second_end])
             num_mismatches = sum(1 for a, b in zip(first_sequence, second_sequence) if a != b)
             midline = ''.join('|' if a == b else 'x' for a, b in zip(first_sequence, second_sequence))
 

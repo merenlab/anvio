@@ -11,7 +11,6 @@ import pandas as pd
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -25,6 +24,12 @@ from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.algorithms import merge_stretches
+from anvio.utils.commandline import run_command
+from anvio.utils.database import get_required_version_for_db
+from anvio.utils.fasta import export_sequences_from_contigs_db, get_num_sequences_in_fasta
+from anvio.utils.hmm import anvio_hmm_target_term_to_alphabet_and_context, get_HMM_sources_dictionary, get_pruned_HMM_hits_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -52,10 +57,10 @@ class TablesForHMMHits(Table):
         self.hmmer_desired_output = ('table', 'domtable') if get_domain_table_output else 'table'
         self.add_to_functions_table = add_to_functions_table
 
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
         filesnpaths.is_program_exists(self.hmm_program)
 
-        self.contigs_db_hash = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('contigs_db_hash')
+        self.contigs_db_hash = db.DB(self.db_path, get_required_version_for_db(self.db_path)).get_meta_value('contigs_db_hash')
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
@@ -83,7 +88,7 @@ class TablesForHMMHits(Table):
     def check_sources(self, sources):
 
         if self.add_to_functions_table: # check that source is not already in gene_functions table
-            gene_function_sources_in_db = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('gene_function_sources')
+            gene_function_sources_in_db = db.DB(self.db_path, get_required_version_for_db(self.db_path)).get_meta_value('gene_function_sources')
             sources_in_db = set(gene_function_sources_in_db.split(',') if gene_function_sources_in_db else [])
             sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
 
@@ -134,7 +139,7 @@ class TablesForHMMHits(Table):
 
             log_file_path = log_file_path = os.path.join(tmp_dir, 'hmmpress.log')
             cmd_line = ['hmmpress', hmm_file_path]
-            ret_val = utils.run_command(cmd_line, log_file_path)
+            ret_val = run_command(cmd_line, log_file_path)
 
             hmmpressed_file_paths[source] = hmm_file_path
 
@@ -171,7 +176,7 @@ class TablesForHMMHits(Table):
         targets = set([s['target'] for s in list(sources.values())])
         have_hmm_sources_with_non_RNA_contig_context = False
         for target in targets:
-            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
+            alphabet, context = anvio_hmm_target_term_to_alphabet_and_context(target)
 
             if not self.genes_are_called and context != "CONTIG":
                 raise ConfigError(f"You are in trouble. The gene calling was skipped for this contigs database, yet anvi'o asked to run an "
@@ -207,7 +212,7 @@ class TablesForHMMHits(Table):
                 else:
                     target_file_path = os.path.join(tmp_directory_path, f'{alphabet}_contig_sequences.fa')
 
-                    utils.export_sequences_from_contigs_db(self.db_path,
+                    export_sequences_from_contigs_db(self.db_path,
                                                            target_file_path,
                                                            rna_alphabet=True if alphabet=='RNA' else False)
 
@@ -215,7 +220,7 @@ class TablesForHMMHits(Table):
 
         # now we know our sequences
         self.run.info('Target sequences determined',
-                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}" \
+                      '; '.join([f"{pp(get_num_sequences_in_fasta(file_path))} sequences for {target}" \
                                     for target, file_path in target_files_dict.items()]))
 
         if have_hmm_sources_with_non_RNA_contig_context:
@@ -236,7 +241,7 @@ class TablesForHMMHits(Table):
         commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use, program_to_use=self.hmm_program)
 
         for source in sources:
-            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
+            alphabet, context = anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
 
             if alphabet in ['DNA', 'RNA'] and 'domtable' in self.hmmer_desired_output:
                 raise ConfigError(f"Domain table output was requested (probably with the --get-domtable-output flag, "
@@ -301,7 +306,7 @@ class TablesForHMMHits(Table):
                 # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
                 # steps are going to be taken care of in the following function. magic.
                 num_hits_before = len(search_results_dict)
-                search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
+                search_results_dict = get_pruned_HMM_hits_dict(search_results_dict)
                 num_hits_after = len(search_results_dict)
 
                 if num_hits_before != num_hits_after:
@@ -341,7 +346,7 @@ class TablesForHMMHits(Table):
             return search_results_dict
 
         # we will first learn the next available id in the gene callers table
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         next_id = database.get_max_value_in_column('genes_in_contigs', 'gene_callers_id', value_if_empty=0) + 1
         database.disconnect()
 
@@ -419,7 +424,7 @@ class TablesForHMMHits(Table):
 
         # if there are any, remove them from tables with 'gene_callers_id' column
         if len(gene_caller_ids_to_remove):
-            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+            database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
             CLAUSE = "gene_callers_id in (%s)" % (','.join([str(x) for x in gene_caller_ids_to_remove]))
             for table in tables_with_gene_callers_id:
@@ -477,7 +482,7 @@ class TablesForHMMHits(Table):
                                                                      str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
@@ -577,7 +582,7 @@ class FilterHmmHitsTable(object):
             if not os.path.exists(args.hmm_profile_dir):
                 raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
         if self.hmm_profile_dir:
-            self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
+            self.sources = get_HMM_sources_dictionary([args.hmm_profile_dir])
         else:
             self.sources = anvio.data.hmm.sources
 
@@ -744,7 +749,7 @@ class FilterHmmHitsTable(object):
 
                     # merge each strech of the gene covered by the model into longer segments if they are
                     # closer to one another more than `self.merge_partial_hits_within_X_nts`
-                    merged_stretches = utils.merge_stretches(stretches, min_distance_between_independent_stretches=self.merge_partial_hits_within_X_nts)
+                    merged_stretches = merge_stretches(stretches, min_distance_between_independent_stretches=self.merge_partial_hits_within_X_nts)
 
 
                     # now the challenge is to turn these stretches wit hstart-stop positions into actual

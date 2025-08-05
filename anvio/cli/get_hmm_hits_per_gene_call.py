@@ -6,12 +6,14 @@ import sys
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.misc import get_filtered_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -44,7 +46,7 @@ def run_program():
     contigs_db_path = A('contigs_db')
     output_file_path = A('output_file')
 
-    utils.is_contigs_db(contigs_db_path)
+    is_contigs_db(contigs_db_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
     if not hmm_source:
@@ -54,7 +56,7 @@ def run_program():
         raise ConfigError("This will not work without an output file path.")
 
     contigs_db = dbops.ContigsDatabase(contigs_db_path)
-    hmm_results_dict = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_table_name), 'source', set([hmm_source]))
+    hmm_results_dict = get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_table_name), 'source', set([hmm_source]))
 
     if not len(hmm_results_dict):
         raise ConfigError("Your contigs database does not have any HMM hits for the HMM source %s :/" % hmm_source)
@@ -62,7 +64,7 @@ def run_program():
         run.info('Num HMM hits', len(hmm_results_dict))
 
     header = ['unique_entry_id', 'gene_callers_id', 'source', 'gene_name', 'gene_hmm_id']
-    utils.store_dict_as_TAB_delimited_file(hmm_results_dict, output_file_path, headers=header)
+    store_dict_as_TAB_delimited_file(hmm_results_dict, output_file_path, headers=header)
 
     run.info('Output', output_file_path)
 

@@ -10,13 +10,13 @@ import numpy as numpy
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForLayerAdditionalData, TableForItemAdditionalData
+from anvio.utils.statistics import get_values_of_gene_level_coverage_stats_as_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -220,7 +220,7 @@ class MetaPangenome(object):
                 split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[internal_genome_name])
 
                 genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-                gene_coverages_across_samples = utils.get_values_of_gene_level_coverage_stats_as_dict(genome_bin_summary.gene_level_coverage_stats_dict, "mean_coverage")
+                gene_coverages_across_samples = get_values_of_gene_level_coverage_stats_as_dict(genome_bin_summary.gene_level_coverage_stats_dict, "mean_coverage")
 
                 # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
                 # summarize the coverage of each gene in all samples:

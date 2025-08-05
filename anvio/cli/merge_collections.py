@@ -7,9 +7,11 @@ import os
 import sys
 
 import anvio
-import anvio.utils as u
 import anvio.terminal as terminal
+
 from anvio.errors import ConfigError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.anviohelp import get_contig_name_to_splits_dict
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -34,13 +36,13 @@ def run_program():
 
     input_dicts = {}
     for input_file in args.input_files:
-        if len(u.get_columns_of_TAB_delim_file(input_file)) != 1:
+        if len(get_columns_of_TAB_delim_file(input_file)) != 1:
             raise ConfigError("Are you sure %s is an anvi'o collections file? "
                                "Because it doesn't look like one :/" % input_file)
 
         source = '.'.join(os.path.basename(os.path.abspath(input_file)).split('.')[:-1])
 
-        input_dicts[source] = u.get_TAB_delimited_file_as_dictionary(input_file, no_header = True)
+        input_dicts[source] = get_TAB_delimited_file_as_dictionary(input_file, no_header = True)
 
         run.info('New Source', '%s, w/ %d contigs' % (source, len(input_dicts[source])))
 
@@ -52,7 +54,7 @@ def run_program():
 
     sources = sorted(input_dicts.keys())
 
-    contig_name_to_splits = u.get_contig_name_to_splits_dict(args.contigs_db)
+    contig_name_to_splits = get_contig_name_to_splits_dict(args.contigs_db)
 
     combined_dict = {}
     for contig_name in contig_names:
@@ -69,7 +71,7 @@ def run_program():
                     combined_dict[split_name][source] = input_dicts[source][contig_name]['column_00001']
 
 
-    u.store_dict_as_TAB_delimited_file(combined_dict, args.output_file, headers = ['contig'] + sources)
+    store_dict_as_TAB_delimited_file(combined_dict, args.output_file, headers = ['contig'] + sources)
     run.info('Output', args.output_file)
 
 

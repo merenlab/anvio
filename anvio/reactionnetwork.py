@@ -30,7 +30,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Union, Iterable
 
 import anvio.kegg as kegg
-import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.tables as tables
 import anvio.terminal as terminal
@@ -40,6 +39,13 @@ from anvio.db import DB
 from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
+from anvio.dbinfo import (
+    is_contigs_db,
+    is_genome_storage,
+    is_kegg_modules_db,
+    is_pan_db
+)
+from anvio.utils.network import download_file
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -5556,7 +5562,7 @@ class KEGGData:
                 f"{', '.join(missing_paths)}"
             )
 
-        utils.is_kegg_modules_db(self.kegg_context.kegg_modules_db_path)
+        is_kegg_modules_db(self.kegg_context.kegg_modules_db_path)
 
         self.modules_db = kegg.ModulesDatabase(
             self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
@@ -5941,7 +5947,7 @@ class KODatabase:
             # Get the database version before download.
             progress.update("Database info")
             info_before_path = os.path.join(ko_dir, 'ko_info_before.txt')
-            utils.download_file(f'{download_root}info/ko', info_before_path)
+            download_file(f'{download_root}info/ko', info_before_path)
             f = open(info_before_path)
             f.readline()
             release_before = ' '.join(f.readline().strip().split()[1:])
@@ -5950,7 +5956,7 @@ class KODatabase:
             # Get a list of all KO IDs.
             progress.update("KO list")
             list_path = os.path.join(ko_dir, 'ko_list.txt')
-            utils.download_file(f'{download_root}list/ko', list_path)
+            download_file(f'{download_root}list/ko', list_path)
             ko_ids = []
             f = open(list_path)
             for line in f:
@@ -5995,7 +6001,7 @@ class KODatabase:
             # Get the database version after download.
             progress.update("Database info (again)")
             info_after_path = os.path.join(ko_dir, 'ko_info.txt')
-            utils.download_file(f'{download_root}info/ko', info_after_path)
+            download_file(f'{download_root}info/ko', info_after_path)
             f = open(info_after_path)
             f.readline()
             release_after = ' '.join(f.readline().strip().split()[1:])
@@ -6260,7 +6266,7 @@ class ModelSEEDDatabase:
             num_tries = 0
             while True:
                 try:
-                    utils.download_file(url, path, progress=progress)
+                    download_file(url, path, progress=progress)
                     break
                 except ConnectionResetError:
                     num_tries += 1
@@ -6515,7 +6521,7 @@ class Constructor:
             filesnpaths.is_output_file_writable(stats_file)
 
         # Load the contigs database.
-        utils.is_contigs_db(contigs_db)
+        is_contigs_db(contigs_db)
         cdb = ContigsDatabase(contigs_db)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
@@ -7621,7 +7627,7 @@ class Constructor:
 
         # Load the contigs database.
         self.run.info("Contigs database", contigs_db)
-        utils.is_contigs_db(contigs_db)
+        is_contigs_db(contigs_db)
         cdb = ContigsDatabase(contigs_db)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
@@ -9681,7 +9687,7 @@ class Tester:
         self.run.info("Test directory", test_dir, nl_after=1)
 
         self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
-        utils.is_contigs_db(contigs_db)
+        is_contigs_db(contigs_db)
 
         if copy_db:
             # Operations are performed on a copy of the contigs database in the (provided or
@@ -9940,8 +9946,8 @@ class Tester:
         self.run.info("Test directory", test_dir, nl_after=1)
 
         self.run.info_single("NETWORK CONSTRUCTION:", mc='magenta', level=0)
-        utils.is_pan_db(pan_db)
-        utils.is_genome_storage(genomes_storage_db)
+        is_pan_db(pan_db)
+        is_genome_storage(genomes_storage_db)
 
         if copy_db:
             # Operations are performed on a copy of the pan database in the (provided or temporary)

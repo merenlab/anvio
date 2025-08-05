@@ -7,13 +7,15 @@ import time
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.commandline import get_command_output_from_shell, run_command
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -74,7 +76,7 @@ class EggNOGMapper:
             self.database = database
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            is_contigs_db(self.contigs_db_path)
 
         self.parser = None
         self.entry_id = 0
@@ -116,8 +118,8 @@ class EggNOGMapper:
             version_to_use = self.use_version
             pass
         else:
-            utils.is_program_exists(self.executable)
-            output, ret_code = utils.get_command_output_from_shell('%s --version' % self.executable)
+            is_program_exists(self.executable)
+            output, ret_code = get_command_output_from_shell('%s --version' % self.executable)
             version_to_use = output.split('\n')[0].split('-')[1]
 
         if version_to_use not in self.available_parsers:
@@ -436,7 +438,7 @@ class EggNOGMapper:
         cmd_line.extend(['--database', self.database])
 
         self.progress.update('Running eggnog-mapper on %d sequences. This may take a while ...' % num_aa_sequences)
-        utils.run_command(cmd_line, self.log_file_path)
+        run_command(cmd_line, self.log_file_path)
 
         if not os.path.exists(self.annotations_file_name):
             self.progress.end()

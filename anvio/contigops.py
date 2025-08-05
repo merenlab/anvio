@@ -16,13 +16,21 @@ from Bio import SeqIO
 from collections import OrderedDict
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
+from anvio.utils.algorithms import add_to_2D_numeric_array, find_value_index, get_constant_value_blocks
+from anvio.utils.fasta import store_dict_as_FASTA_file
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.sequences import (
+    get_list_of_codons_for_gene_call,
+    nt_seq_to_RC_codon_num_array,
+    nt_seq_to_codon_num_array,
+    nt_seq_to_nt_num_array
+)
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -280,11 +288,11 @@ class Auxiliary:
                     # which genes we include for SCV analysis, but the problem is that the
                     # vectorized data we use for gene information (nt_position_info) has these
                     # overlapping gene segments pre-baked in.
-                    gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
+                    gene_overlap_start, gene_overlap_stop = get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
-                    start_index = utils.find_value_index(read[:, 0], gene_overlap_start)
-                    stop_index = utils.find_value_index(read[:, 0], gene_overlap_stop)
+                    start_index = find_value_index(read[:, 0], gene_overlap_start)
+                    stop_index = find_value_index(read[:, 0], gene_overlap_stop)
                     segment_that_overlaps_gene = read[start_index:stop_index+1]
 
                 if gene_id not in gene_calls:
@@ -324,8 +332,8 @@ class Auxiliary:
                     # must determine by how many nts on each side we must trim
                     base_positions = self.split.per_position_info['base_pos_in_codon'][block_start_split:block_end_split]
 
-                    first_pos = utils.find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3))
-                    last_pos = utils.find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True)
+                    first_pos = find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3))
+                    last_pos = find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True)
 
                     if last_pos - first_pos < 3:
                         # the required trimming creates a sequence that is less than a codon long.
@@ -346,9 +354,9 @@ class Auxiliary:
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
                     codon_sequence_as_index = (
-                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 1], is_ord=True)
+                        nt_seq_to_codon_num_array(gapless_segment[:, 1], is_ord=True)
                         if gene_call['direction'] == 'f'
-                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], is_ord=True)
+                        else nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], is_ord=True)
                     )
 
                     start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split - 1]]
@@ -359,7 +367,7 @@ class Auxiliary:
                     codon_orders = codon_orders[codon_sequence_as_index <= 63]
                     codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index <= 63]
 
-                    gene_allele_counts[gene_id] = utils.add_to_2D_numeric_array(
+                    gene_allele_counts[gene_id] = add_to_2D_numeric_array(
                         codon_sequence_as_index,
                         codon_orders,
                         gene_allele_counts[gene_id]
@@ -417,7 +425,7 @@ class Auxiliary:
 
         seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
 
-        return utils.get_list_of_codons_for_gene_call(gene_call, seq_dict, subtract_by=self.split.start)
+        return get_list_of_codons_for_gene_call(gene_call, seq_dict, subtract_by=self.split.start)
 
 
     def init_allele_counts_array(self, gene_call):
@@ -491,10 +499,10 @@ class Auxiliary:
                 aligned_sequence_as_ord = aligned_sequence_as_ord[self.skip_edges:-self.skip_edges]
                 reference_positions = reference_positions[self.skip_edges:-self.skip_edges]
 
-            aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
+            aligned_sequence_as_index = nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
 
-            allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
+            allele_counts_array = add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
 
             if not self.skip_INDEL_profiling:
                 read.vectorize()
@@ -536,7 +544,7 @@ class Auxiliary:
         if anvio.DEBUG:
             self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
-        split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
+        split_as_index = nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
             allele_to_array_index=self.nt_to_array_index,
@@ -601,14 +609,14 @@ class GenbankToAnvioWrapper:
         self.run.info('Input metadata file', self.metadata_file_path)
         self.run.info('Output directory', self.output_directory_path)
 
-        columns = utils.get_columns_of_TAB_delim_file(self.metadata_file_path)
+        columns = get_columns_of_TAB_delim_file(self.metadata_file_path)
         if 'organism_name' not in columns or 'local_filename' not in columns:
             raise ConfigError("The metadata file you provided does not look like a metadata "
                               "file output from the program `ncbi-genome-download` :/ Why? "
                               "Because anvi'o expects that file to have at least the following "
                               "two columns in it: 'organism_name' and 'local_filename'.")
 
-        metadata = utils.get_TAB_delimited_file_as_dictionary(self.metadata_file_path)
+        metadata = get_TAB_delimited_file_as_dictionary(self.metadata_file_path)
 
         for entry in metadata:
             if not os.path.exists(metadata[entry]['local_filename']):
@@ -652,7 +660,7 @@ class GenbankToAnvioWrapper:
         if not self.exclude_gene_calls_from_fasta_txt:
             headers.extend(['external_gene_calls', 'gene_functional_annotation'])
 
-        utils.store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=headers)
+        store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=headers)
 
         self.run.info('Output FASTA descriptor', self.output_fasta_descriptor)
 
@@ -941,7 +949,7 @@ class GenbankToAnvio:
                              header="JUSTICE FOR PARTIAL GENES: NOT FOUND")
 
         # time to write these down:
-        utils.store_dict_as_FASTA_file(output_fasta,
+        store_dict_as_FASTA_file(output_fasta,
                                        self.output_fasta_path,
                                        wrap_from=None)
         self.run.info('FASTA file path', self.output_fasta_path)
@@ -953,7 +961,7 @@ class GenbankToAnvio:
             if aa_sequences_present:
                 header_for_external_gene_calls.append('aa_sequence')
 
-            utils.store_dict_as_TAB_delimited_file(output_gene_calls,
+            store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
                                                    headers=header_for_external_gene_calls)
 

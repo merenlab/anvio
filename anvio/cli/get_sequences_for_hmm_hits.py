@@ -38,7 +38,6 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -49,6 +48,7 @@ import anvio.genomedescriptions as genomedescriptions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -170,7 +170,7 @@ def run_program():
                                and vice versa, you also can't use a collection if you didn't provide a profile database. Yes. Because.")
 
         if args.profile_db:
-            utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+            is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
             splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
             run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
         else:

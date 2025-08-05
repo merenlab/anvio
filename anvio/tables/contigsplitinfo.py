@@ -4,8 +4,9 @@
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
+from anvio.utils.algorithms import get_split_start_stops
+from anvio.utils.sequences import get_GC_content_for_sequence
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -32,10 +33,10 @@ class TableForContigsInfo:
 
     def append(self, seq_id, sequence, gene_start_stops=None):
         sequence_length = len(sequence)
-        gc_content = utils.get_GC_content_for_sequence(sequence)
+        gc_content = get_GC_content_for_sequence(sequence)
 
         # how many splits will there be?
-        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
+        split_start_stops = get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
 
         self.total_nts += sequence_length
         self.total_contigs += 1
@@ -59,7 +60,7 @@ class TableForSplitsInfo:
     def append(self, seq_id, sequence, order, start, end, parent_gc_content, parent):
         self.total_splits += 1
         sequence_length = len(sequence)
-        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent_gc_content, parent])
+        db_entry = tuple([seq_id, order, start, end, sequence_length, get_GC_content_for_sequence(sequence), parent_gc_content, parent])
         self.db_entries.append(db_entry)
 
 

@@ -36,7 +36,6 @@ import pandas as pd
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
 import anvio.terminal as terminal
@@ -51,6 +50,12 @@ from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
+from anvio.utils.algorithms import get_N50
+from anvio.utils.anviohelp import get_contigs_splits_dict, get_default_gene_caller
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.misc import get_filtered_dict
+from anvio.utils.sequences import get_translated_sequence_for_gene_call, rev_comp
+from anvio.utils.statistics import get_enriched_groups, get_values_of_gene_level_coverage_stats_as_dict, run_functional_enrichment_stats
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -341,7 +346,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.functional_occurrence_stats()
 
         # run enrichment script. this uses the output saved from the previous step.
-        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
+        enrichment_stats = run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
 
         return enrichment_stats
 
@@ -484,7 +489,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
                 functional_occurrence_summary_dict[f]['N_' + c] = function_occurrence_table[c]['N']
-            enriched_groups_vector = utils.get_enriched_groups(function_occurrence_table_df['p'].values,
+            enriched_groups_vector = get_enriched_groups(function_occurrence_table_df['p'].values,
                                                                function_occurrence_table_df['N'].values)
             c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
             associated_groups = [c for c in categories if enriched_groups_vector[c_dict[c]]]
@@ -891,7 +896,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
 
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
+            store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
             self.report_misc_data_files(target_table='layers')
             self.report_misc_data_files(target_table='items')
@@ -903,7 +908,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                     d[bin_id] = self.collection_profile[bin_id][table_name]
 
                 output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='%s.txt' % table_name)
-                utils.store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.p_meta['samples']), file_obj=output_file_obj)
+                store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.p_meta['samples']), file_obj=output_file_obj)
 
             # merge and store matrices for hmm hits
             if self.non_single_copy_gene_hmm_data_available:
@@ -915,7 +920,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                         d[bin_id] = self.summary['collection'][bin_id]['hmms'][hmm_search_source]
 
                     output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='%s.txt' % hmm_search_source, within='hmms')
-                    utils.store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj=output_file_obj)
+                    store_dict_as_TAB_delimited_file(d, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items'][hmm_search_source]), file_obj=output_file_obj)
 
                 # this is to keep number of hmm hits per bin:
                 n = dict([(bin_id, {}) for bin_id in self.summary['meta']['bins']])
@@ -924,7 +929,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                         n[bin_id][hmm_search_source] = sum(self.summary['collection'][bin_id]['hmms'][hmm_search_source].values())
 
                 output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='hmm_hit_totals.txt')
-                utils.store_dict_as_TAB_delimited_file(n, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj=output_file_obj)
+                store_dict_as_TAB_delimited_file(n, None, headers=['bins'] + sorted(self.summary['meta']['hmm_items']), file_obj=output_file_obj)
 
             # store percent abundance of each bin
             if self.p_meta['blank']:
@@ -934,7 +939,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                 self.summary['bin_percent_recruitment'] = self.bin_percent_recruitment_per_sample
                 self.summary['bin_percent_abundance_items'] = sorted(list(self.bin_percent_recruitment_per_sample.values())[0].keys())
                 output_file_obj = self.get_output_file_handle(sub_directory='bins_across_samples', prefix='bins_percent_recruitment.txt')
-                utils.store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
+                store_dict_as_TAB_delimited_file(self.bin_percent_recruitment_per_sample,
                                                        None,
                                                        headers=['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
                                                        file_obj=output_file_obj)
@@ -977,7 +982,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
+            gene_caller_to_use = get_default_gene_caller(self.contigs_db_path)
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
@@ -1107,7 +1112,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """Returns a simple summary dict for a given contigs database"""
 
         if not gene_caller_to_use:
-            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
+            gene_caller_to_use = get_default_gene_caller(self.contigs_db_path)
 
         self.progress.new('Generating contigs db summary')
 
@@ -1350,7 +1355,7 @@ class Bin:
 
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
-            utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers=['bin'] + self.summary.p_meta['samples'], file_obj=output_file_obj)
+            store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers=['bin'] + self.summary.p_meta['samples'], file_obj=output_file_obj)
 
 
     def report_contig_name_conversion_dict(self):
@@ -1360,7 +1365,7 @@ class Bin:
         self.progress.update('Storing contig name conversion dict ...')
 
         output_file_obj = self.get_output_file_handle('contig-name-conversion-map.txt')
-        utils.store_dict_as_TAB_delimited_file(self.contig_name_conversion_dict, None, headers=['original_contig_name', 'reformatted_contig_name'], file_obj=output_file_obj)
+        store_dict_as_TAB_delimited_file(self.contig_name_conversion_dict, None, headers=['original_contig_name', 'reformatted_contig_name'], file_obj=output_file_obj)
 
 
     def summarize_hmm_hits(self):
@@ -1466,9 +1471,9 @@ class Bin:
             # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
             # inefficiency at most random places. SHUT UP.
 
-            d = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key)
+            d = get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key)
 
-            utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
+            store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
 
 
     def store_genes_basic_info(self):
@@ -1521,14 +1526,14 @@ class Bin:
 
             dna_sequence = self.summary.contig_sequences[contig]['sequence'][start:stop]
             if self.summary.genes_in_contigs_dict[gene_callers_id]['direction'] == 'r':
-                dna_sequence = utils.rev_comp(dna_sequence)
+                dna_sequence = rev_comp(dna_sequence)
 
             d[gene_callers_id]['dna_sequence'] = dna_sequence
 
             # if the user asked for it, report amino acid sequences as well
             if self.summary.report_aa_seqs_for_gene_calls:
                 try:
-                    d[gene_callers_id]['aa_sequence'] = utils.get_translated_sequence_for_gene_call(dna_sequence, gene_callers_id)
+                    d[gene_callers_id]['aa_sequence'] = get_translated_sequence_for_gene_call(dna_sequence, gene_callers_id)
                 except:
                     d[gene_callers_id]['aa_sequence'] = ''
 
@@ -1546,7 +1551,7 @@ class Bin:
                 d[gene_callers_id]['contig'] = reformatted_contig_name
 
         self.progress.update('Storing genes basic info ...')
-        utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
+        store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
         self.bin_info_dict['genes'] = {'num_genes_found': len(self.gene_caller_ids)}
 
@@ -1567,7 +1572,7 @@ class Bin:
         non_single_copy_gene_hmm_sources = self.summary.completeness.sources
 
         for hmm_search_source in single_copy_gene_hmm_sources + non_single_copy_gene_hmm_sources:
-            filtered_hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'source', set([hmm_search_source]))
+            filtered_hmm_sequences_dict = get_filtered_dict(hmm_sequences_dict, 'source', set([hmm_search_source]))
 
             output_file_obj = self.get_output_file_handle('%s-hmm-sequences.txt' % hmm_search_source, key=hmm_search_source)
 
@@ -1618,7 +1623,7 @@ class Bin:
         output = ""
 
         # this dict will keep all the contig ids found in this bin with split names ordered:
-        contigs_represented = utils.get_contigs_splits_dict(self.split_names, self.summary.splits_basic_info)
+        contigs_represented = get_contigs_splits_dict(self.split_names, self.summary.splits_basic_info)
 
         # now it is time to go through each contig found in contigs_represented to
         # figure out what fraction of the contig is in fact in this bin
@@ -1695,13 +1700,13 @@ class Bin:
 
         scg_taxonomy_output_headers = ['gene_callers_id', 'gene_name', 'percent_identity', 'supporting_consensus'] + constants.levels_of_taxonomy
         scg_taxonomy_output = self.get_output_file_handle('scg_taxonomy_details.txt', just_the_path=True)
-        utils.store_dict_as_TAB_delimited_file(scg_taxonomy_dict['scgs'], scg_taxonomy_output, headers=scg_taxonomy_output_headers)
+        store_dict_as_TAB_delimited_file(scg_taxonomy_dict['scgs'], scg_taxonomy_output, headers=scg_taxonomy_output_headers)
 
 
     def compute_basic_stats(self):
         self.progress.update('Computing basic stats ...')
 
-        self.bin_info_dict['N50'] = utils.get_N50(self.contig_lengths)
+        self.bin_info_dict['N50'] = get_N50(self.contig_lengths)
         self.bin_info_dict['GC_content'] = numpy.mean([self.summary.splits_basic_info[split_id]['gc_content'] for split_id in self.split_names]) * 100
 
         self.store_data_in_file('N50.txt', '%d' % self.bin_info_dict['N50'] if self.bin_info_dict['N50'] else 'NA')

@@ -7,10 +7,11 @@ import gzip
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.system import check_h5py_module
 
 current_version = "9"
 next_version = "10"
@@ -31,13 +32,13 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
 
 def migrate(db_path):
 
-    utils.check_h5py_module()
+    check_h5py_module()
     import h5py
 
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.is_contigs_db(db_path)
+    is_contigs_db(db_path)
 
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:

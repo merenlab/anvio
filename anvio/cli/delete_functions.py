@@ -4,12 +4,12 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -31,7 +31,7 @@ def main():
     list_annotation_sources = A('list_annotation_sources')
 
     try:
-        utils.is_contigs_db(contigs_db_path)
+        is_contigs_db(contigs_db_path)
 
         if list_annotation_sources:
             ContigsDatabase(contigs_db_path).list_function_sources()

@@ -8,11 +8,14 @@ from itertools import chain
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
+from anvio.dbinfo import is_blank_profile, is_pan_or_profile_db, is_profile_db_and_contigs_db_compatible
+from anvio.utils.database import get_all_item_names_from_the_database, get_db_type, get_required_version_for_db
+from anvio.utils.misc import get_random_colors_dict
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -34,14 +37,14 @@ class TablesForCollections(Table):
     """Populates the collections_* tables, where collections of bins of contigs and items are kept"""
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
-        self.version = utils.get_required_version_for_db(db_path)
+        self.version = get_required_version_for_db(db_path)
         self.run = run
 
         Table.__init__(self, self.db_path, self.version, run, progress)
 
 
     def delete(self, collection_name):
-        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
+        is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         # remove any pre-existing information for 'collection_name'
         self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
@@ -63,7 +66,7 @@ class TablesForCollections(Table):
 
     def refresh_collections_info_table(self, collection_name):
         """For a given collection, re-read most up-to-date information from the collection items table and update collections info table"""
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         collection_names_in_db = database.get_single_column_from_table(t.collections_splits_table_name, 'collection_name', unique=True)
 
@@ -83,16 +86,16 @@ class TablesForCollections(Table):
 
         db_entries = tuple([collection_name, num_splits_in_collection, len(bin_names_in_collection), ','.join(bin_names_in_collection)])
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
         database.disconnect()
 
 
     def append(self, collection_name, collection_dict, bins_info_dict={}, drop_collection=True):
-        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
+        is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         for bin_name in collection_dict:
-            utils.is_this_name_OK_for_database('bin name', bin_name, stringent=False)
+            is_this_name_OK_for_database('bin name', bin_name, stringent=False)
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
@@ -111,7 +114,7 @@ class TablesForCollections(Table):
                               f"split names or contig IDs appear more than once in your input for this collection. This part of "
                               f"the code is unable to predict how you may have ended up here, but check your input file maybe? :/")
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # how many clusters are defined in 'collection_dict'?
         bin_names = list(collection_dict.keys())
@@ -121,7 +124,7 @@ class TablesForCollections(Table):
             database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
 
         if not bins_info_dict:
-            colors = utils.get_random_colors_dict(bin_names)
+            colors = get_random_colors_dict(bin_names)
             for bin_name in bin_names:
                 bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': 'UNKNOWN'}
 
@@ -221,9 +224,9 @@ class TablesForCollections(Table):
                         "item in your database. This is likely a very bad idea, but anvi'o trusts that you know what you are "
                         "doing.")
 
-        utils.is_pan_or_profile_db(self.db_path)
+        is_pan_or_profile_db(self.db_path)
 
-        if utils.get_db_type(self.db_path) == 'profile' and utils.is_blank_profile(self.db_path):
+        if get_db_type(self.db_path) == 'profile' and is_blank_profile(self.db_path):
             if not contigs_db_path:
                 raise ConfigError("OK, so anvi'o actually can't add a 'default' collection into a 'blank profile database' such as "
                                   "yours). The main reason behind this is that a blank profile databases do not know about "
@@ -231,7 +234,7 @@ class TablesForCollections(Table):
                                   "recover from this by providing the contigs database your blank profile is associated with, in "
                                   "which case things will likely work.")
             else:
-                utils.is_profile_db_and_contigs_db_compatible(self.db_path, contigs_db_path)
+                is_profile_db_and_contigs_db_compatible(self.db_path, contigs_db_path)
                 contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
                 all_items = contigs_db.get_single_column_from_table(t.splits_info_table_name, 'split')
                 contigs_db.disconnect()
@@ -243,7 +246,7 @@ class TablesForCollections(Table):
                             "to ignore it for this once. Basically, the contigs database you provided will not be utilized for "
                             "anything.")
 
-            all_items = utils.get_all_item_names_from_the_database(self.db_path)
+            all_items = get_all_item_names_from_the_database(self.db_path)
 
         bins = {}
         if bin_each_item_separately:

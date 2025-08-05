@@ -4,10 +4,10 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables.tableops import Table
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,7 +30,7 @@ class TableForVariability(Table):
         self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = self.get_num_entries()
         self.db_entries = []
@@ -44,7 +44,7 @@ class TableForVariability(Table):
 
 
     def get_num_entries(self):
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         num_entries = database.get_row_counts_from_table(t.variable_nts_table_name)
         database.disconnect()
 
@@ -85,7 +85,7 @@ class TableForVariability(Table):
         if not len(self.db_entries):
             return
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
         database.disconnect()
 

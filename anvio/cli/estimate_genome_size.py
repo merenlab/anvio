@@ -4,10 +4,10 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_contigs_db
 
 SOME_GENOME_SIZE = 42
 
@@ -24,7 +24,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_contigs_db(args.contigs_db)
+        is_contigs_db(args.contigs_db)
 
         if args.verbose:
             run.info('Estimated genome size', '%d (Forty two)' % 42)

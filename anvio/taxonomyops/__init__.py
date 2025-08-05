@@ -25,7 +25,6 @@ from collections import OrderedDict, Counter
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -39,6 +38,9 @@ from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 from anvio.tables.trnataxonomy import TableForTRNATaxonomy
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.database import get_all_item_names_from_the_database
+from anvio.utils.misc import get_filtered_dict
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -206,7 +208,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         # this is important. before we begin, we need to filter out gene caller ids and splits from main dictionaries if
         # they shouldn't be there. read the warning below to see the utility of this step.
         if self.profile_db_path and self.compute_item_coverages:
-            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            split_names_in_profile_db = set(get_all_item_names_from_the_database(self.profile_db_path))
             split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
             splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
@@ -1096,7 +1098,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         TerminologyHelper.__init__(self)
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            is_contigs_db(self.contigs_db_path)
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
             contigs_db.disconnect()
@@ -1130,7 +1132,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             for entry in hmm_sequences_dict:
                 hmm_sequences_dict[entry]['gene_name'] = hmm_sequences_dict[entry]['gene_name'].split('_')[1]
 
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(default_items_for_taxonomy))
+        hmm_sequences_dict = get_filtered_dict(hmm_sequences_dict, 'gene_name', set(default_items_for_taxonomy))
 
         if not len(hmm_sequences_dict):
             return None

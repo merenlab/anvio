@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import pandas as pd
 
 import anvio
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
 
 

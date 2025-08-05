@@ -167,7 +167,6 @@ rule anvi_import_everything_tree:
     run:
         # Make place holder profileDB for tree
         import anvio
-        import anvio.utils as utils
         import anvio.filesnpaths as filesnpaths
         from anvio.dbops import ProfileSuperclass, ProfileDatabase
 

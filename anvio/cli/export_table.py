@@ -7,11 +7,11 @@ import sys
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import store_dataframe_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -94,7 +94,7 @@ def main():
             run.info('Index, columns, values were set', f"{args_index}, {args_columns}, {args_values}.", mc="green")
 
         if not args_matrix_format:
-            utils.store_dataframe_as_TAB_delimited_file(table_content, args_output_file)
+            store_dataframe_as_TAB_delimited_file(table_content, args_output_file)
         else:
             if len(table_columns) != 3 and not args_index:
                 raise ConfigError(f"The `--matrix-format` works automatically with tables that has three fields, but "
@@ -113,7 +113,7 @@ def main():
             else:
                 table_as_matrix = table_content.pivot(index=args_index, columns=args_columns, values=args_values)
 
-            utils.store_dataframe_as_TAB_delimited_file(table_as_matrix, args.output_file, include_index=True, index_label=table_columns[0])
+            store_dataframe_as_TAB_delimited_file(table_as_matrix, args.output_file, include_index=True, index_label=table_columns[0])
 
         run.info('Output', args.output_file)
     except ConfigError as e:

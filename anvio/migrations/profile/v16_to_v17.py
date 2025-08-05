@@ -6,10 +6,10 @@ import argparse
 
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal 
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_profile_db
 
 
 run = terminal.Run()
@@ -24,7 +24,7 @@ def migrate(db_path):
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    utils.is_profile_db(db_path)
+    is_profile_db(db_path)
 
     # make sure the version is accurate
     profile_db = db.DB(db_path, None, ignore_version = True)

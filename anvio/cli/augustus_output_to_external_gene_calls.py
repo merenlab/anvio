@@ -4,11 +4,11 @@
 import sys
 
 import anvio
-import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -136,7 +136,7 @@ def run_program():
                 continue
 
     progress.update("Storing the output ...")
-    u.store_dict_as_TAB_delimited_file(gene_calls, args.output_file, ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
+    store_dict_as_TAB_delimited_file(gene_calls, args.output_file, ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
     progress.end()
 
     run.info("Anvi'o external genes file output", args.output_file, mc='green')

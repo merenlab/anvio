@@ -14,12 +14,12 @@ import hashlib
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_genome_storage
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -56,7 +56,7 @@ class GenomeStorage(object):
         if create_new:
             self.check_storage_path_for_create_new()
         else:
-            utils.is_genome_storage(self.storage_path)
+            is_genome_storage(self.storage_path)
             self.check_storage_path_for_load()
 
         self.db = db.DB(self.storage_path, self.version, new_database=create_new)

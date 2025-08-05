@@ -4,11 +4,12 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -33,7 +34,7 @@ class TableForGeneFunctions(Table):
         self.run = run
         self.progress = progress
 
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
@@ -43,7 +44,7 @@ class TableForGeneFunctions(Table):
             raise ConfigError('The programmer who called this function forgot that gene_function_sources must be of '
                               'type %s. If this is not your falut, please contact an anvi\'o developer.' % set)
         # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         self.add_new_sources_to_functional_sources(gene_function_sources, database)
 
@@ -154,7 +155,7 @@ class TableForGeneFunctions(Table):
         self.sanity_check()
 
         # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # Add the new sources to existing sources
         gene_function_sources = set([v['source'] for v in list(functions_dict.values())])

@@ -8,11 +8,11 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_pan_or_profile_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -31,7 +31,7 @@ def main():
     progress = terminal.Progress()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db)
+        is_pan_or_profile_db(args.pan_or_profile_db)
 
         c = ccollections.Collections(r=run, p=progress)
         c.populate_collections_dict(args.pan_or_profile_db)

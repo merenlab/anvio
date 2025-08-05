@@ -5,11 +5,11 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass, PanSuperclass
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -111,7 +111,7 @@ class SearchResultReporter(object):
                 if item_name in self.matching_item_names_dict[search_term]:
                     results_dict[item_name][search_term + '_hits'] = search_term
 
-        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
         self.run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
 
 

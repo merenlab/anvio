@@ -4,9 +4,9 @@
 from subprocess import Popen, PIPE
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -28,7 +28,7 @@ class FastTree:
         self.progress = progress
         self.command = ['FastTree']
 
-        utils.is_program_exists('FastTree')
+        is_program_exists('FastTree')
 
     def run_command(self, input_file_path, output_file_path):
         input_file = open(input_file_path, 'rb')

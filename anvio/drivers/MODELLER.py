@@ -10,7 +10,6 @@ import argparse
 import subprocess
 
 import pandas as pd
-import anvio.utils as utils
 import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -18,6 +17,9 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers import diamond
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError, FilesNPathsError
+from anvio.utils.commandline import run_command
+from anvio.utils.network import download_file, download_protein_structure
+from anvio.utils.system import is_program_exists
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -248,7 +250,7 @@ class MODELLER:
                 # This chain doesn't exist in an external database, and internet access is assumed.
                 # We try and download the protein from the RCSB PDB server. If downloading fails,
                 # path is None
-                path = utils.download_protein_structure(code, chain=chain, output_path=requested_path, raise_if_fail=False)
+                path = download_protein_structure(code, chain=chain, output_path=requested_path, raise_if_fail=False)
                 source = 'RCSB PDB Server'
 
             else:
@@ -625,8 +627,8 @@ class MODELLER:
                                  "database".format(self.database_dir, self.modeller_database))
 
                 db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
-                utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
-                utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
+                download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+                run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
 
             # Binarize .pir (make .bin)
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower "
@@ -868,13 +870,13 @@ def check_MODELLER(executable=None):
                           "contains no scripts. Why you did dat?" % scripts_folder)
 
     try:
-        utils.is_program_exists(executable)
+        is_program_exists(executable)
     except ConfigError:
         *prefix, sub_version = up_to_date_modeller_exec.split('.')
         prefix, sub_version = ''.join(prefix), int(sub_version)
         for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
             alternate_program = prefix + '.' + str(alternate_version)
-            if utils.is_program_exists(alternate_program, dont_raise=True):
+            if is_program_exists(alternate_program, dont_raise=True):
                 executable = alternate_program
                 break
         else:

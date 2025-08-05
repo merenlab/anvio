@@ -8,12 +8,12 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.dbinfo as dbi
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -142,7 +142,7 @@ class DatabaseInfo:
                                   "anvi'o telling you what you can or cannot do, feel free to tell it to go fly a kite, "
                                   "and open an sqlite terminal to change anything the way you want.")
 
-            utils.check_sample_id(self.self_value)
+            check_sample_id(self.self_value)
 
             self.run.warning("You are trying to change a special key, `sample_id`. This is a special one,\
                               because changing it will require a bunch of other things to change as well\

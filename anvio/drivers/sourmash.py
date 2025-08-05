@@ -7,13 +7,15 @@ import pandas as pd
 import shutil
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from scipy.stats import entropy, skew, kurtosis
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -57,7 +59,7 @@ class Sourmash:
 
 
     def check_program(self):
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
 
     def process(self, input_path, fasta_files):
@@ -83,7 +85,7 @@ class Sourmash:
                            '-f', scale]
         compute_command.extend(fasta_files)
 
-        exit_code = utils.run_command(compute_command, self.log_file_path, remove_log_file_if_exists=False)
+        exit_code = run_command(compute_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors. "
@@ -97,14 +99,14 @@ class Sourmash:
         for f in fasta_files:
             compare_command.append(f + ".sig")
 
-        exit_code = utils.run_command(compare_command, self.log_file_path, remove_log_file_if_exists=False)
+        exit_code = run_command(compare_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors. "
                              "Please check the log file `%s` for details. Offending command: "
                              "`%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
-        self.results[report_name] = utils.get_TAB_delimited_file_as_dictionary(os.path.join('output', report_name + '.txt'),
+        self.results[report_name] = get_TAB_delimited_file_as_dictionary(os.path.join('output', report_name + '.txt'),
                                                                                indexing_field=-1,
                                                                                separator=',')
 

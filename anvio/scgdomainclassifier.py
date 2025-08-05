@@ -10,12 +10,12 @@ from collections import Counter
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.learning import RF
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_contigs_db
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -174,7 +174,7 @@ class Train(SCGDomainClassifier):
 
             self.progress.update("Making sure contigs dbs are contigs dbs")
             for contigs_db_path in self.contigs_dbs[domain]:
-                utils.is_contigs_db(contigs_db_path)
+                is_contigs_db(contigs_db_path)
 
         self.progress.end()
 

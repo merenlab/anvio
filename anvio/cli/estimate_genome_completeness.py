@@ -5,7 +5,6 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -14,6 +13,8 @@ import anvio.genomedescriptions as genomedescriptions
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
+from anvio.utils.files import store_array_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -53,7 +54,7 @@ def main():
                                   "collections to list really :/")
 
             if profile_db_path:
-                utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+                is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
         if external_genomes or internal_genomes:
             if profile_db_path:
@@ -112,7 +113,7 @@ def print_proper(args, collection, completeness, run, progress):
                     "line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
     if output_file_path:
-        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        store_array_as_TAB_delimited_file(table, output_file_path, header=header)
         run.info('Results also stored in an output file', output_file_path, nl_after=1)
 
 
@@ -149,7 +150,7 @@ def print_improper(args, collection, completeness, run, progress):
         anvio.TABULATE(bin_table, bin_header)
 
     if output_file_path:
-        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        store_array_as_TAB_delimited_file(table, output_file_path, header=header)
         run.info('Results also stored in an output file', output_file_path, nl_after=1, nl_before=2)
 
 
@@ -209,7 +210,7 @@ def print_for_internal_or_external_genomes(args):
                     "line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
     if output_file_path:
-        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        store_array_as_TAB_delimited_file(table, output_file_path, header=header)
         run.info('Results also stored in an output file', output_file_path, nl_after=1)
 
 

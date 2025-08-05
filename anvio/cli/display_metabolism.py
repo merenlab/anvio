@@ -5,12 +5,13 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.utils.debug import is_all_npm_packages_installed
+from anvio.utils.network import get_port_num
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -28,11 +29,11 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_all_npm_packages_installed()
+        is_all_npm_packages_installed()
 
         args.mode = 'metabolism'
         d = interactive.MetabolismInteractive(args)
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+        args.port_number = get_port_num(args.port_number, args.ip_address, run=run)
 
         app = BottleApplication(d)
         app.run_application(args.ip_address, args.port_number)

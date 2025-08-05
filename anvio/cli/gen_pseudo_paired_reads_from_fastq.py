@@ -4,11 +4,11 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.sequences import rev_comp
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -101,7 +101,7 @@ def run_program():
         read1_seq = read.seq[:read1_len]
         read1_qual = read.qual[:read1_len]
 
-        read2_seq = utils.rev_comp(read.seq[read1_len:])
+        read2_seq = rev_comp(read.seq[read1_len:])
         read2_qual = read.qual[read1_len:][::-1]
 
         r1_out.write('\n'.join([

@@ -8,11 +8,11 @@ import sys
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -44,7 +44,7 @@ def run_program():
     filesnpaths.is_file_tab_delimited(args.input_file)
     filesnpaths.is_output_dir_writable(args.output_dir)
 
-    report = utils.get_TAB_delimited_file_as_dictionary(args.input_file)
+    report = get_TAB_delimited_file_as_dictionary(args.input_file)
 
     # take care of unique hashes
     hash_to_oligotype = {}
@@ -90,7 +90,7 @@ def run_program():
 
     for request_id in request_ids:
         output_file_path = os.path.join(args.output_dir, 'oligotype-counts-%s.txt' % request_id)
-        utils.store_dict_as_TAB_delimited_file(d[request_id], output_file_path)
+        store_dict_as_TAB_delimited_file(d[request_id], output_file_path)
         run.info('Output', output_file_path)
 
 

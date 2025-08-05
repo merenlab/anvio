@@ -4,7 +4,6 @@
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -23,6 +22,15 @@ import glob
 
 from io import BytesIO
 from scipy.stats import entropy
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.commandline import run_command
+from anvio.utils.files import (
+    get_TAB_delimited_file_as_dictionary,
+    get_chunk,
+    get_file_md5,
+    gzip_decompress_file
+)
+from anvio.utils.network import download_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -138,7 +146,7 @@ class PfamSetup(object):
         for file_name in self.files:
             local_file = os.path.join(self.pfam_data_dir, file_name)
             if not os.path.exists(local_file):
-                utils.download_file(self.database_url + '/' + file_name,
+                download_file(self.database_url + '/' + file_name,
                     os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
             else:
                 self.run.info("found local file", file_name)
@@ -173,7 +181,7 @@ class PfamSetup(object):
                 raise ConfigError(f"Unfortunately, we failed to download the file {file_name}, please re-run setup "
                                   "with the --reset flag.")
 
-            hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
+            hash_on_disk = get_file_md5(os.path.join(self.pfam_data_dir, file_name))
             expected_hash = checksums[file_name]
 
             if not expected_hash == hash_on_disk:
@@ -199,7 +207,7 @@ class PfamSetup(object):
                 elif not os.path.exists(full_path):
                     raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running "
                                       "`anvi-setup-pfams` using the --reset flag." % (full_path))
-                utils.gzip_decompress_file(full_path)
+                gzip_decompress_file(full_path)
                 os.remove(full_path)
 
 
@@ -209,7 +217,7 @@ class PfamSetup(object):
         for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
             cmd_line = ['hmmpress', file_path]
             log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
-            ret_val = utils.run_command(cmd_line, log_file_path)
+            ret_val = run_command(cmd_line, log_file_path)
 
             if ret_val:
                 raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. "
@@ -236,7 +244,7 @@ class Pfam(object):
         self.function_catalog = {}
 
         filesnpaths.is_program_exists(self.hmm_program)
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
 
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
@@ -265,11 +273,11 @@ class Pfam(object):
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
             self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will now be unpacked before "
                              "running HMMs.")
-            utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'), keep_original=False)
+            gzip_decompress_file(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'), keep_original=False)
 
             cmd_line = ['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')]
             log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
-            ret_val = utils.run_command(cmd_line, log_file_path)
+            ret_val = run_command(cmd_line, log_file_path)
 
             if ret_val:
                 raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. "
@@ -297,7 +305,7 @@ class Pfam(object):
 
     def load_catalog(self):
         catalog_path = os.path.join(self.pfam_data_dir, 'Pfam-A.clans.tsv')
-        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(
+        self.function_catalog = get_TAB_delimited_file_as_dictionary(
             catalog_path,
             column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'],
             no_header=True
@@ -404,7 +412,7 @@ class HMMProfile(object):
         self.progress.update('Loading %s' % self.filepath)
 
         with open(self.filepath) as f:
-            for i, raw_profile in enumerate(utils.get_chunk(f, separator='//\n', read_size=32768)):
+            for i, raw_profile in enumerate(get_chunk(f, separator='//\n', read_size=32768)):
                 if not raw_profile.strip():
                     continue
 

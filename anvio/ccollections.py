@@ -17,12 +17,13 @@ import copy
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.tables.collections import TablesForCollections
+from anvio.utils.database import get_all_item_names_from_the_database, get_required_version_for_db
+from anvio.utils.misc import get_filtered_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -53,7 +54,7 @@ class Collections:
         filesnpaths.is_file_exists(db_path)
         self.db_path = db_path
 
-        database = db.DB(db_path, utils.get_required_version_for_db(db_path))
+        database = db.DB(db_path, get_required_version_for_db(db_path))
         self.db_type = database.get_meta_value('db_type')
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
@@ -74,7 +75,7 @@ class Collections:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
             self.collections_dict[collection_name]['read_only'] = read_only
             self.collections_dict[collection_name]['source_db_path'] = db_path
-            self.collections_dict[collection_name]['source_db_version'] = utils.get_required_version_for_db(db_path)
+            self.collections_dict[collection_name]['source_db_version'] = get_required_version_for_db(db_path)
 
 
     def sanity_check(self, collection_name):
@@ -169,7 +170,7 @@ class Collections:
         database.disconnect()
 
         # FIXME: this could be resolved with a WHERE clause in the SQL query:
-        collections_bins_info_table_filtered = utils.get_filtered_dict(collections_bins_info_table, 'collection_name', set([collection_name]))
+        collections_bins_info_table_filtered = get_filtered_dict(collections_bins_info_table, 'collection_name', set([collection_name]))
 
         bins_info_dict = {}
         for v in list(collections_bins_info_table_filtered.values()):
@@ -287,7 +288,7 @@ class Collections:
                 binned_items.add(item_name)
 
         if include_unbinned:
-            all_items = utils.get_all_item_names_from_the_database(self.db_path)
+            all_items = get_all_item_names_from_the_database(self.db_path)
 
             unbinned_items = all_items.difference(binned_items)
 

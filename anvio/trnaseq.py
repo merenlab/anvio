@@ -134,7 +134,6 @@ from collections import defaultdict, deque, OrderedDict
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.tables as tables
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
@@ -152,6 +151,10 @@ from anvio.drivers.vmatch import Vmatch
 from anvio.agglomeration import Agglomerator
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
+from anvio.dbinfo import is_trnaseq_db
+from anvio.utils.algorithms import convert_binary_blob_to_numpy_array
+from anvio.utils.fasta import check_fasta_id_formatting
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1750,7 +1753,7 @@ class TRNASeqDataset(object):
             self.progress.new("Checking input FASTA defline format")
             self.progress.update("...")
 
-            utils.check_fasta_id_formatting(self.input_fasta_path)
+            check_fasta_id_formatting(self.input_fasta_path)
 
             self.progress.end()
 
@@ -5324,7 +5327,7 @@ class DatabaseMerger(object):
     def sanity_check(self):
         """Check `anvi-merge-trnaseq` arguments."""
         for trnaseq_db_path in self.trnaseq_db_paths:
-            utils.is_trnaseq_db(trnaseq_db_path)
+            is_trnaseq_db(trnaseq_db_path)
         self.populate_trnaseq_dbs_info_dict()
         self.trnaseq_db_sample_ids = [trnaseq_db_info_dict['sample_id'] for trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.values()]
         if len(self.trnaseq_dbs_info_dict) != len(set(self.trnaseq_db_sample_ids)):
@@ -5353,7 +5356,7 @@ class DatabaseMerger(object):
 
         self.set_nonspecific_database_info()
 
-        utils.check_sample_id(self.project_name)
+        check_sample_id(self.project_name)
 
         if self.descrip_path:
             filesnpaths.is_file_plain_text(self.descrip_path)
@@ -7502,7 +7505,7 @@ class ResultTabulator(object):
 
         # Coverages are stored as bytes or as a single integer when coverage is zero for the sample.
         # Convert coverage entries back to numpy arrays accordingly.
-        convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
+        convert_binary_blob_to_numpy_array = partial(convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
         convert_int_to_numpy_array = lambda x: np.zeros(x, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
         def convert_coverage_entry_to_numpy_array(cov_entry):
             try:
