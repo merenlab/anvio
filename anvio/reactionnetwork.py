@@ -2507,7 +2507,7 @@ class ReactionNetwork:
         # then we track genomes of origin for each network element
         db_names = []
         for db in [self.contigs_db_source_path, network.contigs_db_source_path]:
-            contigs_db = ContigsDatabase(db)
+            contigs_db = ContigsDatabase(db, run=self.run)
             db_names.append(contigs_db.meta['project_name'])
             contigs_db.disconnect()
         # mark elements coming from the other network
@@ -6643,7 +6643,7 @@ class Constructor:
 
         # Load the contigs database.
         utils.is_contigs_db(contigs_db)
-        cdb = ContigsDatabase(contigs_db)
+        cdb = ContigsDatabase(contigs_db, run=self.run)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
         if not sources or not 'KOfam' in sources:
