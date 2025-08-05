@@ -5,13 +5,13 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass, ContigsDatabase
+from anvio.utils.commandline import get_gene_caller_ids_from_args
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -67,7 +67,7 @@ def export_from_contigs(args):
     output_file_path = args.output_file if args.output_file else 'sequences_for_gene_calls.txt'
     filesnpaths.is_output_file_writable(output_file_path)
 
-    gene_caller_ids = list(utils.get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter))
+    gene_caller_ids = list(get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter))
 
     func_kwargs = dict(
         gene_caller_ids_list=gene_caller_ids,

@@ -23,7 +23,6 @@ import anvio
 import anvio.tables as t
 import anvio.dbinfo as dbi
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -32,6 +31,13 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import Palindromes, PrimerSearch
+from anvio.utils.algorithms import merge_stretches
+from anvio.utils.anviohelp import get_default_gene_caller
+from anvio.utils.commandline import run_command
+from anvio.utils.database import get_all_item_names_from_the_database, get_bams_and_profiles_txt_as_data
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.sequences import rev_comp
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -94,9 +100,9 @@ class Inversions:
 
         # get these filled in immediately
         if self.pre_computed_inversions_path:
-            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path, no_profile_and_bam_column_is_ok=True)
+            self.contigs_db_path, self.profile_db_bam_file_pairs = get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path, no_profile_and_bam_column_is_ok=True)
         else:
-            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
+            self.contigs_db_path, self.profile_db_bam_file_pairs = get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
 
         self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values() if 'profile_db_path' in e]
         self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r1' in v) for v in self.profile_db_bam_file_pairs.values()])
@@ -141,7 +147,7 @@ class Inversions:
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.gene_caller_to_consider_in_context = A('gene_caller')
         if not self.gene_caller_to_consider_in_context:
-            self.gene_caller_to_consider_in_context = utils.get_default_gene_caller(self.contigs_db_path)
+            self.gene_caller_to_consider_in_context = get_default_gene_caller(self.contigs_db_path)
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
 
         # parameters for motif search
@@ -179,9 +185,9 @@ class Inversions:
         # we will generate our splits info, contigs to splits dicts, and check a few things to learn more about the
         # contigs db.
         if self.profile_db_paths:
-            split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
+            split_names = get_all_item_names_from_the_database(self.profile_db_paths[0])
         else:
-            split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
+            split_names = get_all_item_names_from_the_database(self.contigs_db_path)
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
@@ -319,7 +325,7 @@ class Inversions:
             #             --------   --------
             #           -----------------------
             # -----------------------------------------------
-            coverage_stretches_in_contigs[contig_name] = utils.merge_stretches(coverage_stretches_in_contigs[contig_name],
+            coverage_stretches_in_contigs[contig_name] = merge_stretches(coverage_stretches_in_contigs[contig_name],
                                                                                min_distance_between_independent_stretches=self.min_distance_between_independent_stretches)
             # extend start and stop positions of merged stretches to ENSURE we are not
             # missing important information because bioinformatics.
@@ -418,11 +424,11 @@ class Inversions:
                     region_D_end = inversion_candidate.second_end + 6
                     region_D = stretch_sequence[region_D_start:region_D_end]
 
-                    construct_v1_left = region_A + inversion_candidate.first_sequence + utils.rev_comp(region_C)
-                    construct_v1_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.second_sequence) + region_D
+                    construct_v1_left = region_A + inversion_candidate.first_sequence + rev_comp(region_C)
+                    construct_v1_right = rev_comp(region_B) + rev_comp(inversion_candidate.second_sequence) + region_D
 
-                    construct_v2_left = region_A + inversion_candidate.second_sequence + utils.rev_comp(region_C)
-                    construct_v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
+                    construct_v2_left = region_A + inversion_candidate.second_sequence + rev_comp(region_C)
+                    construct_v2_right = rev_comp(region_B) + rev_comp(inversion_candidate.first_sequence) + region_D
 
                     # update the palindrome instance with its constructs
                     inversion_candidate.v1_left = construct_v1_left
@@ -488,7 +494,7 @@ class Inversions:
                                          'contig_name': contig_name,
                                          'first_seq': inv.first_sequence,
                                          'midline': inv.midline,
-                                         'second_seq': utils.rev_comp(inv.second_sequence),
+                                         'second_seq': rev_comp(inv.second_sequence),
                                          'first_start': inv.first_start + start,
                                          'first_end': inv.first_end + start,
                                          'first_oligo_primer': inv.first_oligo_primer,
@@ -552,12 +558,12 @@ class Inversions:
 
             # here we first update the inversion object with primers
             inv.first_oligo_primer = first_genomic_region + first_with_mismatches
-            inv.second_oligo_primer = utils.rev_comp(second_genomic_region) + second_with_mismatches
+            inv.second_oligo_primer = rev_comp(second_genomic_region) + second_with_mismatches
 
             # and finally we update the inversion object with reference oligos
             # found in the original contig
             inv.first_oligo_reference = contig_sequence[first_genomic_region_end + inv.length:first_genomic_region_end + inv.length + self.oligo_length]
-            inv.second_oligo_reference = utils.rev_comp(contig_sequence[second_genomic_region_start - inv.length - self.oligo_length:second_genomic_region_start - inv.length])
+            inv.second_oligo_reference = rev_comp(contig_sequence[second_genomic_region_start - inv.length - self.oligo_length:second_genomic_region_start - inv.length])
 
         return
 
@@ -1067,7 +1073,7 @@ class Inversions:
                     gene_call['DNA_sequence'] = dna_sequence
                     rev_compd = False
                 else:
-                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                    gene_call['DNA_sequence'] = rev_comp(dna_sequence)
                     rev_compd = True
 
                 # add AA sequence
@@ -1213,7 +1219,7 @@ class Inversions:
                     '-brief', num_seq,
                     '-p', self.num_threads]
 
-        utils.run_command(cmd_line, log_file_path)
+        run_command(cmd_line, log_file_path)
 
 
     def search_for_motifs(self):
@@ -1247,9 +1253,9 @@ class Inversions:
 
             # get sequence of each IR and their reverse complement
             first_IR = contig_sequence[first_start:first_end]
-            first_IR_rc = utils.rev_comp(first_IR)
+            first_IR_rc = rev_comp(first_IR)
             second_IR = contig_sequence[second_start:second_end]
-            second_IR_rc = utils.rev_comp(second_IR)
+            second_IR_rc = rev_comp(second_IR)
 
             # create output dir and files
             output = os.path.join(self.output_directory, "PER_INV", inversion_id)
@@ -1446,7 +1452,7 @@ class Inversions:
     def populate_consensus_inversions_from_input_file(self):
         """Get the consensus inversions from a previously generated output file"""
 
-        inversions_dict = utils.get_TAB_delimited_file_as_dictionary(self.pre_computed_inversions_path)
+        inversions_dict = get_TAB_delimited_file_as_dictionary(self.pre_computed_inversions_path)
 
         self.consensus_inversions = []
 
@@ -1782,7 +1788,7 @@ class Inversions:
         if self.pre_computed_inversions_path:
             filesnpaths.is_file_tab_delimited(self.pre_computed_inversions_path)
 
-            columns = utils.get_columns_of_TAB_delim_file(self.pre_computed_inversions_path)
+            columns = get_columns_of_TAB_delim_file(self.pre_computed_inversions_path)
             if any([True for k in self.essential_keys_to_describe_inversions if k[0] not in columns]):
                 raise ConfigError("The pre-computed inversions file you have provided does not look like a pre-computed "
                                   "inversions file generated by `anvi-report-inversions`` :/")
@@ -1853,7 +1859,7 @@ class Inversions:
                               "HOW you should check yourself completely up to you as a mystery for you to solve.")
 
         if not self.skip_search_for_motifs:
-            if not utils.is_program_exists('meme'):
+            if not is_program_exists('meme'):
                 raise ConfigError("You asked anvi'o to search for conserved motifs. Great idea! "
                                   "But the software MEME is not installed in your environment :'(")
 
@@ -1889,7 +1895,7 @@ class Inversions:
         ################################################################################################
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
-        utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
+        store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
         self.run.info('Reporting file on all stretches considered', output_path, nl_before=1, nl_after=1)
 
         ################################################################################################

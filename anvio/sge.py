@@ -11,11 +11,12 @@ import subprocess
 
 import anvio
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.terminal import pretty_print as pp
+from anvio.utils.commandline import run_command
+from anvio.utils.files import concatenate_files
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -148,7 +149,7 @@ class SGE:
         if not files_to_concat:
             raise ConfigError("Wild card '%s' didn't return any files to concatenate." % self.wild_card_for_partial_results)
 
-        utils.concatenate_files(self.merged_results_file_path, files_to_concat)
+        concatenate_files(self.merged_results_file_path, files_to_concat)
 
 
     def check_sge_binaries(self):
@@ -199,7 +200,7 @@ class SGE:
                                                          'command': command})
 
             # submit script to cluster
-            utils.run_command('qsub %s' % shell_script)
+            run_command('qsub %s' % shell_script)
 
 
         while True:

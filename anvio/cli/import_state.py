@@ -4,12 +4,13 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.states import TablesForStates
+from anvio.dbinfo import is_pan_or_profile_db
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -27,9 +28,9 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
         filesnpaths.is_file_json_formatted(args.state)
-        utils.is_this_name_OK_for_database('--name parameter', args.name)
+        is_this_name_OK_for_database('--name parameter', args.name)
 
         TablesForStates(args.pan_or_profile_db).store_state(args.name, open(args.state).read())
 

@@ -6,12 +6,12 @@ from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.completeness import Completeness
+from anvio.dbinfo import is_contigs_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -27,7 +27,7 @@ def compute_completeness(args):
     run = terminal.Run()
     progress = terminal.Progress()
 
-    utils.is_contigs_db(args.contigs_db)
+    is_contigs_db(args.contigs_db)
 
     completeness = Completeness(args.contigs_db, args.completeness_source)
 

@@ -9,12 +9,12 @@ from anvio.argparse import ArgumentParser
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.utils.files import AppendableFile
+from anvio.dbinfo import is_blank_profile, is_profile_db_and_contigs_db_compatible, is_profile_db_merged
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,14 +58,14 @@ class RapidSummarizer:
     def sanity_check(self):
         self.progress.new('Sanity checks')
         self.progress.update('Are profile and contigs dbs compatible?')
-        [utils.is_profile_db_and_contigs_db_compatible(p, self.contigs_db_path) for p in self.profile_db_paths]
+        [is_profile_db_and_contigs_db_compatible(p, self.contigs_db_path) for p in self.profile_db_paths]
         self.progress.update('Are profile dbs single?')
-        if any([utils.is_profile_db_merged(p) for p in self.profile_db_paths]):
+        if any([is_profile_db_merged(p) for p in self.profile_db_paths]):
             raise ConfigError("At least one of the profile dbs you provided is a merged profile. Unfortunately, "
                               "this program only works for single profiles, so get rid of the merged ones (please and "
                               "thank you, says anvi'o).")
         self.progress.update('Are profile dbs blank?')
-        if any([utils.is_blank_profile(p) for p in self.profile_db_paths]):
+        if any([is_blank_profile(p) for p in self.profile_db_paths]):
             raise ConfigError("At least one of the profile dbs you provided is blank, so it has no data for us "
                               "to use. Please make sure to give this program only non-blank profiles.")
         self.progress.end()

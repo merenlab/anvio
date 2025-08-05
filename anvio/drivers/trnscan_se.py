@@ -2,11 +2,12 @@
 """An interface for tRNAScan-SE"""
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import get_command_output_from_shell, run_command
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -79,9 +80,9 @@ class tRNAScanSE:
 
 
     def check_programs(self, quiet=False):
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
-        output, ret_code = utils.get_command_output_from_shell('%s -h' % self.program_name)
+        output, ret_code = get_command_output_from_shell('%s -h' % self.program_name)
         try:
             version_found = output.split(b'\n')[1].split()[1].split(b':')[0].lower().decode("utf-8")
             if not quiet:
@@ -203,7 +204,7 @@ class tRNAScanSE:
         self.progress.new('Processing')
         self.progress.update('Running tRNAScan-SE scan in %d threads...' % self.num_threads)
 
-        exit_code = utils.run_command(command, self.log_file_path)
+        exit_code = run_command(command, self.log_file_path)
 
         self.progress.end()
 

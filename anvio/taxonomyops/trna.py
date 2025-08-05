@@ -11,7 +11,6 @@ import shutil
 import hashlib
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -23,6 +22,8 @@ from anvio.dbops import ContigsDatabase
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
+from anvio.dbinfo import is_contigs_db, is_profile_db_and_contigs_db_compatible
+from anvio.utils.files import gzip_decompress_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -202,7 +203,7 @@ class SanityCheck(object):
                     raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o tRNA "
                                       "taxonomy workflow :(")
 
-                utils.is_contigs_db(self.contigs_db_path)
+                is_contigs_db(self.contigs_db_path)
 
                 trna_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_was_run']
                 trna_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_database_version']
@@ -218,7 +219,7 @@ class SanityCheck(object):
                                      "on your database." % (self.ctx.trna_taxonomy_database_version, trna_taxonomy_database_version))
 
                 if self.profile_db_path:
-                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+                    is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
                 if self.collection_name and not self.profile_db_path:
                     raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide "
@@ -475,7 +476,7 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
                               "an anvi'o programmer working on this problem this very moment, please get in touch with one.")
 
         self.progress.update("Decompressing FASTA files in %s" % (temp_dir))
-        new_paths = dict([(anticodon, utils.gzip_decompress_file(new_paths[anticodon], keep_original=False)) for anticodon in new_paths])
+        new_paths = dict([(anticodon, gzip_decompress_file(new_paths[anticodon], keep_original=False)) for anticodon in new_paths])
 
         for anticodon in self.ctx.anticodons:
             self.progress.update("Working on %s in %d threads" % (anticodon, self.num_threads))

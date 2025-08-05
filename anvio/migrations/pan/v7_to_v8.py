@@ -8,10 +8,11 @@ import tempfile
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file
+from anvio.utils.misc import get_predicted_type_of_items_in_a_dict
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
@@ -182,8 +183,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
-        data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
-        data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+        data_keys = get_columns_of_TAB_delim_file(additional_data_file_path)
+        data_dict = get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s. "
@@ -238,7 +239,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             if '!' in key:
                 predicted_key_type = "stackedbar"
             else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                type_class = get_predicted_type_of_items_in_a_dict(data_dict, key)
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type

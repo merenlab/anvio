@@ -13,11 +13,15 @@ from scipy import stats
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.anviohelp import get_split_and_contig_names_of_interest
+from anvio.utils.misc import get_f_string_evaluated_by_dict, get_filtered_dict
+from anvio.utils.phylogenetics import gen_NEXUS_format_partition_file_for_phylogenomics
+from anvio.utils.sequences import rev_comp
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -65,7 +69,7 @@ class SequencesForHMMHits:
                                    "start:{start}|stop:{stop}|length:{length}")
 
         # an immediate check if the defline format is acceptable
-        utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
+        get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
 
         if contigs_db_path:
             self.init_dicts(contigs_db_path, split_names_of_interest)
@@ -84,7 +88,7 @@ class SequencesForHMMHits:
            not accessing a large fraction of a given contigs database.
         """
 
-        utils.is_contigs_db(contigs_db_path)
+        is_contigs_db(contigs_db_path)
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, run=self.run, progress=self.progress)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
 
@@ -205,7 +209,7 @@ class SequencesForHMMHits:
         where_clause_for_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids_of_interest])
 
         self.progress.update('Recovering split and contig names for %d genes' % (len(gene_caller_ids_of_interest)))
-        split_names_of_interest, contig_names_of_interest = utils.get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
+        split_names_of_interest, contig_names_of_interest = get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
 
         self.progress.update('Recovering contig seqs for %d genes' % (len(gene_caller_ids_of_interest)))
         where_clause_for_contigs = "contig in (%s)" % ', '.join(['"%s"' % s for s in contig_names_of_interest])
@@ -263,7 +267,7 @@ class SequencesForHMMHits:
         for s in list(splits_dict.values()):
             split_names.update(s)
 
-        hits_in_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'split', split_names)
+        hits_in_splits = get_filtered_dict(self.hmm_hits_splits, 'split', split_names)
 
         split_name_to_bin_id = {}
         for bin_id in splits_dict:
@@ -440,8 +444,8 @@ class SequencesForHMMHits:
 
         # trim hmm hits if sources
         if len(self.sources):
-            self.hmm_hits_splits = utils.get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
-            self.hmm_hits = utils.get_filtered_dict(self.hmm_hits, 'source', self.sources)
+            self.hmm_hits_splits = get_filtered_dict(self.hmm_hits_splits, 'source', self.sources)
+            self.hmm_hits = get_filtered_dict(self.hmm_hits, 'source', self.sources)
         else:
             self.sources = list(self.hmm_hits_info.keys())
 
@@ -475,7 +479,7 @@ class SequencesForHMMHits:
             else:
                 sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
                 if not forward:
-                    sequence = utils.rev_comp(sequence)
+                    sequence = rev_comp(sequence)
 
             hmm_sequences_dict_for_splits[hit_unique_id] = {'sequence': sequence,
                                                             'source': source,
@@ -717,7 +721,7 @@ class SequencesForHMMHits:
         self.run.info('Genes that are no more in the analysis (%d)' % (len(genes_to_remove)), ', '.join(genes_to_remove) if genes_to_remove else 'None.', nl_after=1, mc='red')
 
         if len(genes_to_remove):
-            return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
+            return (get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
         else:
             return (hmm_sequences_dict_for_splits, set([]))
 
@@ -736,7 +740,7 @@ class SequencesForHMMHits:
             bin_names_in_original_dict.add(entry['bin_id'])
 
         # filter out every gene hit except those in `gene_names`
-        hmm_sequences_dict_for_splits = utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', set(gene_names))
+        hmm_sequences_dict_for_splits = get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', set(gene_names))
 
         # gather remaining bin names in the dict
         bin_names_in_filtered_dict = set([])
@@ -798,7 +802,7 @@ class SequencesForHMMHits:
 
 
         if len(bins_to_remove):
-            return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'bin_id', bins_to_keep), bins_to_remove)
+            return (get_filtered_dict(hmm_sequences_dict_for_splits, 'bin_id', bins_to_keep), bins_to_remove)
         else:
             return (hmm_sequences_dict_for_splits, set([]))
 
@@ -817,7 +821,7 @@ class SequencesForHMMHits:
                                   'stop': e['stop'],
                                   'length': e['length']}
 
-        header = utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
+        header = get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
 
         return (header, sequence)
@@ -951,7 +955,7 @@ class SequencesForHMMHits:
         f.close()
 
         if partition_file_path:
-            utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
+            gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
 
 
     def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None):

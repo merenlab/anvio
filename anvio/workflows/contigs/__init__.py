@@ -7,13 +7,14 @@
 
 import os
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -105,7 +106,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
                 raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
 
-            self.contigs_information = utils.get_TAB_delimited_file_as_dictionary(self.fasta_txt_file)
+            self.contigs_information = get_TAB_delimited_file_as_dictionary(self.fasta_txt_file)
             self.fasta_information.update(self.contigs_information)
             self.group_names = list(self.contigs_information.keys())
             self.references_mode = True
@@ -309,7 +310,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             raise ConfigError('It looks the fasta_txt file you provided "%s" is empty.' % self.fasta_txt_file)
 
         for name in self.contigs_information.keys():
-            utils.is_this_name_OK_for_database('fasta.txt entry name', name, additional_chars_allowed='.')
+            is_this_name_OK_for_database('fasta.txt entry name', name, additional_chars_allowed='.')
 
         columns = next(iter(self.contigs_information.values()))
         bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]

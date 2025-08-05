@@ -13,10 +13,10 @@ import os
 
 import anvio
 import anvio.kegg as kegg
-import anvio.utils as utils
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -62,7 +62,7 @@ def run_program():
         raise ConfigError("You did not provide a valid CLASS string. It should be three sections separated by semi-colons.")
 
     # load enzymes txt
-    enzyme_dict = utils.get_TAB_delimited_file_as_dictionary(enzyme_txt_path, expected_fields=['enzyme','source','orthology'])
+    enzyme_dict = get_TAB_delimited_file_as_dictionary(enzyme_txt_path, expected_fields=['enzyme','source','orthology'])
 
     if def_str:
         #sanity check all enzymes from definition are in file
@@ -96,7 +96,7 @@ def run_program():
                               f"to fail now. You can fix this by either passing in a proper KEGG data directory, or filling in the "
                               f"empty 'orthology' fields in the enzymes-txt file yourself. (Just a reminder, we were looking for the "
                               f"KO file at this path: {ko_file_path})")
-        ko_dict = utils.get_TAB_delimited_file_as_dictionary(ko_file_path, expected_fields = ['definition'])
+        ko_dict = get_TAB_delimited_file_as_dictionary(ko_file_path, expected_fields = ['definition'])
 
     # WRITE MODULE FILE
     orthology_lines = []

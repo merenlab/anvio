@@ -6,12 +6,13 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.database import get_db_type
+from anvio.utils.debug import is_all_npm_packages_installed
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -51,10 +52,10 @@ def run_program():
     if A('output_dir'):
         filesnpaths.check_output_directory(A('output_dir'))
 
-    utils.is_all_npm_packages_installed()
+    is_all_npm_packages_installed()
 
     # k, gud. lets move on with business.
-    db_type = utils.get_db_type(args.pan_or_profile_db)
+    db_type = get_db_type(args.pan_or_profile_db)
 
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db

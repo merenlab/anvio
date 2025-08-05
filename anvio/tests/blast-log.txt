@@ -1,0 +1,3 @@
+# DATE: 05 Aug 25 11:57:05
+# CMD LINE: blastn -query /Users/meren/Downloads/MIn/single_contig_with_INDEL_errors.fa -db /Users/meren/Downloads/MIn/single_contig.fa -evalue 1e-05 -outfmt 5 -out blast_output.xml -num_threads 1 -max_target_seqs 1
+Warning: [blastn] Examining 5 or more matches is recommended

@@ -12,11 +12,11 @@ from collections import Counter
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.scgdomainclassifier as scgdomainclassifier
 
 from anvio.errors import ConfigError, remove_spaces
+from anvio.utils.misc import get_filtered_dict
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -59,7 +59,7 @@ class Completeness:
         self.hmm_hits_table = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
 
         # read search table (which holds hmmscan hits for splits).
-        self.hmm_hits_splits_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
+        self.hmm_hits_splits_table = get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', singlecopy_sources)
 
         # an example entry in self.hmm_hits_splits_table looks loke this:
         #
@@ -148,7 +148,7 @@ class Completeness:
             # filter out sources that are not requested
             self.sources = [source_requested]
             self.genes_in_db = {source_requested: self.genes_in_db[source_requested]}
-            self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source_requested]))
+            self.hmm_hits_splits_table = get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source_requested]))
 
         # these will be very useful later. trust me.
         self.unique_gene_id_to_gene_name = {}
@@ -334,7 +334,7 @@ class Completeness:
             domain_confidence = domain_probabilities[domain] if domain else 0.0
         """
 
-        hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
+        hmm_hits_splits_table = get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
 
         # FIXME: the design here is turning into a bad case of spaghetti code. we should reimplement
         # the SCG / completion stuff around the random forest domain predictor. the previous code is

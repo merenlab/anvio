@@ -15,11 +15,12 @@ import shutil
 import multiprocess as multiprocessing
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command
+from anvio.utils.fasta import split_fasta
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -64,7 +65,7 @@ class HMMer:
             self.tmp_dirs.append(tmp_dir)
             
             # create splitted fasta files inside tmp directory
-            split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
+            split_fastas, number_of_sequences = split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
                                                                output_dir=tmp_dir,
                                                                return_number_of_sequences=True)
@@ -381,7 +382,7 @@ class HMMer:
 
         try:
             # First we run the command
-            utils.run_command(cmd_line, log_file)
+            run_command(cmd_line, log_file)
 
             if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file) or \
                                  (domtable_output_file and not os.path.exists(domtable_output_file)):

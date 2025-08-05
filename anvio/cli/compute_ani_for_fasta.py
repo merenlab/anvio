@@ -8,7 +8,6 @@ import shutil
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.clustering as clustering
@@ -18,6 +17,8 @@ from anvio.drivers import pyani
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.validation import check_contig_names
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -55,7 +56,7 @@ def run_program():
     fasta = fastalib.SequenceSource(args.fasta_file)
     num_contigs = 0
     while next(fasta):
-        if not utils.check_contig_names(fasta.id, dont_raise=True):
+        if not check_contig_names(fasta.id, dont_raise=True):
             raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines' "
                               "requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take "
                               "care of this issue, or do it manually, but you must know that anvi'o is very upset for "
@@ -83,7 +84,7 @@ def run_program():
     for report_name in results:
         output_path_for_report = os.path.join(args.output_dir, args.method + '_' + report_name)
 
-        utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
+        store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
         with open(output_path_for_report + '.newick', 'w') as f:
             f.write(clusterings[report_name])
 

@@ -34,7 +34,6 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.contigops as contigops
@@ -56,6 +55,36 @@ from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
+from anvio.dbinfo import (
+    is_blank_profile,
+    is_pan_or_profile_db,
+    is_profile_db,
+    is_profile_db_and_contigs_db_compatible
+)
+from anvio.utils.algorithms import convert_binary_blob_to_numpy_array, get_list_of_outliers
+from anvio.utils.anviohelp import CoverageStats, get_consensus_and_departure_data, get_variabile_item_frequencies
+from anvio.utils.database import (
+    get_all_item_names_from_the_database,
+    get_db_type,
+    get_db_variant,
+    get_genes_database_path_for_bin
+)
+from anvio.utils.fasta import get_all_ids_from_fasta
+from anvio.utils.files import get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.misc import (
+    get_f_string_evaluated_by_dict,
+    get_filtered_dict,
+    get_hash_for_list,
+    get_time_to_date
+)
+from anvio.utils.phylogenetics import gen_NEXUS_format_partition_file_for_phylogenomics, get_names_order_from_newick_tree
+from anvio.utils.sequences import (
+    get_list_of_AAs_for_gene_call,
+    get_list_of_codons_for_gene_call,
+    restore_alignment,
+    rev_comp
+)
+from anvio.utils.validation import check_contig_names
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -82,7 +111,7 @@ class DBClassFactory:
                            'genes': GenesDatabase}
 
     def get_db_class(self, db_path):
-        db_type = utils.get_db_type(db_path)
+        db_type = get_db_type(db_path)
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type "
@@ -260,7 +289,7 @@ class ContigsSuperclass(object):
         self.a_meta = contigs_db.meta
 
         if 'creation_date' in self.a_meta:
-            self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date'])
+            self.a_meta['creation_date'] = get_time_to_date(self.a_meta['creation_date'])
         else:
             self.a_meta['creation_date'] = 'unknown'
 
@@ -379,10 +408,10 @@ class ContigsSuperclass(object):
         if contig_names_of_interest:
             where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
             for contig_name, nt_positions_info_data in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
-                nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
+                nt_positions_info[contig_name] = convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
         else:
             for contig_name, nt_positions_info_data in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
-                nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
+                nt_positions_info[contig_name] = convert_binary_blob_to_numpy_array(nt_positions_info_data, 'uint8')
 
         contigs_db.disconnect()
 
@@ -772,11 +801,11 @@ class ContigsSuperclass(object):
             non_singlecopy_gene_hmm_info_dict[source] = self.hmm_sources_info[source]
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
-        hmm_hits_table = utils.get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        non_singlecopy_gene_hmm_results_dict = get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
+        hmm_hits_table = get_filtered_dict(contigs_db.db.get_table_as_dict(t.hmm_hits_table_name), 'source', self.non_singlecopy_gene_hmm_sources)
 
         if split_names_of_interest:
-            non_singlecopy_gene_hmm_results_dict = utils.get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
+            non_singlecopy_gene_hmm_results_dict = get_filtered_dict(non_singlecopy_gene_hmm_results_dict, 'split', set(split_names_of_interest))
 
         sources_tmpl = {}
 
@@ -1204,9 +1233,9 @@ class ContigsSuperclass(object):
                 continue
 
             if return_codons_instead:
-                sequences.extend(utils.get_list_of_codons_for_gene_call(gene_call, self.contig_sequences))
+                sequences.extend(get_list_of_codons_for_gene_call(gene_call, self.contig_sequences))
             else:
-                sequences.extend(utils.get_list_of_AAs_for_gene_call(gene_call, self.contig_sequences))
+                sequences.extend(get_list_of_AAs_for_gene_call(gene_call, self.contig_sequences))
 
         counts_dict['counts'] = Counter(sequences)
         counts_dict['total'] = sum(Counter(sequences).values())
@@ -1501,7 +1530,7 @@ class ContigsSuperclass(object):
 
         # we will also check if the `defline_format` is composed of variables that are defined in
         # the  `defline_data_dict` which is filled later
-        utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+        get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
 
         ##################################################################################################
         #
@@ -1562,7 +1591,7 @@ class ContigsSuperclass(object):
             # variable is True. and we do it quietly.
             if not output_file_path_external_gene_calls:
                 if direction == 'r' and reverse_complement_if_necessary:
-                    sequence = utils.rev_comp(sequence)
+                    sequence = rev_comp(sequence)
                     rev_compd = "True"
                 else:
                     rev_compd = "False"
@@ -1620,7 +1649,7 @@ class ContigsSuperclass(object):
                     gene_call['start'] = 0
                     gene_call['stop'] = gene_call['length']
             else:
-                gene_call['header'] = utils.get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
+                gene_call['header'] = get_f_string_evaluated_by_dict(defline_format, defline_data_dict)
                 if not simple_headers:
                     gene_call['header'] += ' ' + ';'.join(['%s:%s' % (k, str(gene_call[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
@@ -1677,7 +1706,7 @@ class ContigsSuperclass(object):
 
         # Storing the external gene calls file for sequences stored as FASTA
         if output_file_path_external_gene_calls:
-            utils.store_dict_as_TAB_delimited_file(sequences_dict,
+            store_dict_as_TAB_delimited_file(sequences_dict,
                                                    output_file_path_external_gene_calls,
                                                    headers=['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
             self.run.info('Output external gene calls', output_file_path_external_gene_calls)
@@ -1867,7 +1896,7 @@ class PanSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = pan_db.meta
 
-        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+        self.p_meta['creation_date'] = get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['genome_names'] = sorted([s.strip() for s in self.p_meta['external_genome_names'].split(',') + self.p_meta['internal_genome_names'].split(',') if s])
         self.p_meta['num_genomes'] = len(self.p_meta['genome_names'])
         self.genome_names = self.p_meta['genome_names']
@@ -2003,7 +2032,7 @@ class PanSuperclass(object):
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
                         alignment_summary = self.gene_clusters_gene_alignments[genome_name][gene_callers_id]
-                        sequence = utils.restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_dna=report_DNA_sequences)
+                        sequence = restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_dna=report_DNA_sequences)
 
                     sequences[gene_cluster_name][genome_name][gene_callers_id] = sequence
 
@@ -2285,7 +2314,7 @@ class PanSuperclass(object):
 
         # see https://github.com/merenlab/anvio/issues/1333
         if partition_file_path:
-            utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path,
+            gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path,
                                                                     gene_cluster_representative_seq_lengths,
                                                                     separator,
                                                                     run=self.run,
@@ -3350,7 +3379,7 @@ class ProfileSuperclass(object):
                              "prematurely. Just so you know.")
             return
 
-        utils.is_profile_db(self.profile_db_path)
+        is_profile_db(self.profile_db_path)
 
         # NOTE for programmers. The next few lines are quite critical for the flexibility of ProfileSuper.
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
@@ -3414,7 +3443,7 @@ class ProfileSuperclass(object):
         if self.split_names_of_interest:
             self.run.warning("ProfileSuperClass is inherited with a set of split names of interest, which means it will be "
                              "initialized using only the %d split names specified" % (len(self.split_names_of_interest)))
-        elif self.collection_name and not utils.is_blank_profile(self.profile_db_path):
+        elif self.collection_name and not is_blank_profile(self.profile_db_path):
             self.run.warning("ProfileSuperClass found a collection focus, which means it will be initialized using only "
                              "the splits in the profile database that are affiliated with the collection %s and "
                              "%s it describes." % (self.collection_name, \
@@ -3424,15 +3453,15 @@ class ProfileSuperclass(object):
 
         # we have a contigs db? let's see if it's for real.
         if self.contigs_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.new('Initializing the profile database superclass')
 
         self.progress.update('Loading split names')
-        if utils.is_blank_profile(self.profile_db_path) and self.contigs_db_path:
-            self.split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
+        if is_blank_profile(self.profile_db_path) and self.contigs_db_path:
+            self.split_names = get_all_item_names_from_the_database(self.contigs_db_path)
         else:
-            self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
+            self.split_names = get_all_item_names_from_the_database(self.profile_db_path)
 
         split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
         if self.split_names_of_interest and len(split_names_missing):
@@ -3446,8 +3475,8 @@ class ProfileSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
-        self.p_meta['db_variant'] = str(utils.get_db_variant(self.profile_db_path))
-        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+        self.p_meta['db_variant'] = str(get_db_variant(self.profile_db_path))
+        self.p_meta['creation_date'] = get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
@@ -3509,7 +3538,7 @@ class ProfileSuperclass(object):
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
-            self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
+            self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
                                                                        self.collection_name,
                                                                        self.bin_names[0])
             if not os.path.exists(self.genes_db_path):
@@ -3542,7 +3571,7 @@ class ProfileSuperclass(object):
         if self.genes_db_available:
             raise ConfigError("You can't create a blank genes database when there is already one :/")
 
-        splits_hash = utils.get_hash_for_list(split_names)
+        splits_hash = get_hash_for_list(split_names)
 
         meta_values = {'anvio': __version__,
                        'contigs_db_hash': self.p_meta['contigs_db_hash'],
@@ -3784,7 +3813,7 @@ class ProfileSuperclass(object):
         detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
 
          # findout outlier positions, and get non-outliers
-        outliers_bool = utils.get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+        outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
         non_outlier_positions = numpy.invert(outliers_bool)
         non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
 
@@ -4053,8 +4082,8 @@ class ProfileSuperclass(object):
         d = self.get_blank_variability_dict()
 
         for e in split_variability_information:
-            frequencies = utils.get_variabile_item_frequencies(e, engine='NT')
-            e['n2n1ratio'], e['consensus'], e['departure_from_consensus'] = utils.get_consensus_and_departure_data(frequencies)
+            frequencies = get_variabile_item_frequencies(e, engine='NT')
+            e['n2n1ratio'], e['consensus'], e['departure_from_consensus'] = get_consensus_and_departure_data(frequencies)
 
             if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
@@ -4195,7 +4224,7 @@ class ProfileSuperclass(object):
                         nucleotide_level_coverage_values = numpy.array([])
                         for split_name in collection[bin_id]:
                             nucleotide_level_coverage_values = numpy.append(nucleotide_level_coverage_values, self.split_coverage_values.get(split_name)[sample_name])
-                        stats = utils.CoverageStats(nucleotide_level_coverage_values)
+                        stats = CoverageStats(nucleotide_level_coverage_values)
                         self.collection_profile[bin_id][table_name][sample_name] = stats.mean_Q2Q3
                 else:
                     # populate averages per bin
@@ -4299,7 +4328,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
@@ -4842,7 +4871,7 @@ class ContigsDatabase:
 
         # let's see if the user has provided extenral gene calls file with amino
         # acid sequences:
-        external_gene_calls_include_amino_acid_sequences = external_gene_calls_file_path and 'aa_sequence' in utils.get_columns_of_TAB_delim_file(external_gene_calls_file_path)
+        external_gene_calls_include_amino_acid_sequences = external_gene_calls_file_path and 'aa_sequence' in get_columns_of_TAB_delim_file(external_gene_calls_file_path)
 
         # let the user see what's up
         self.run.info('Input FASTA file', contigs_fasta)
@@ -4882,7 +4911,7 @@ class ContigsDatabase:
         character_regex = re.compile(r'^[ACGTNactgn]+$')
 
         while next(fasta):
-            if not utils.check_contig_names(fasta.id, dont_raise=True):
+            if not check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines' "
                                   "requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take "
@@ -4921,7 +4950,7 @@ class ContigsDatabase:
         fasta.close()
         self.progress.end()
 
-        all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
+        all_ids_in_FASTA = get_all_ids_from_fasta(contigs_fasta)
         total_number_of_contigs = len(all_ids_in_FASTA)
         if total_number_of_contigs != len(set(all_ids_in_FASTA)):
             raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
@@ -5417,8 +5446,8 @@ class AA_counts(ContigsSuperclass):
         else:
             bin_names_of_interest = bin_names_in_collection
 
-        collection_dict = utils.get_filtered_dict(collections_splits_table, 'collection_name', set([self.collection_name]))
-        collection_dict = utils.get_filtered_dict(collection_dict, 'bin_name', set(bin_names_of_interest))
+        collection_dict = get_filtered_dict(collections_splits_table, 'collection_name', set([self.collection_name]))
+        collection_dict = get_filtered_dict(collection_dict, 'bin_name', set(bin_names_of_interest))
 
         split_name_per_bin_dict = {}
         for bin_name in bin_names_of_interest:
@@ -5465,7 +5494,7 @@ class AA_counts(ContigsSuperclass):
     def report(self):
         if self.args.output_file:
             header = ['source'] + sorted(list(self.counts_dict.values())[0].keys())
-            utils.store_dict_as_TAB_delimited_file(self.counts_dict, self.args.output_file, header)
+            store_dict_as_TAB_delimited_file(self.counts_dict, self.args.output_file, header)
             self.run.info('Output', self.args.output_file)
 
         return self.counts_dict
@@ -5517,7 +5546,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
     if not isinstance(description, str):
         raise ConfigError("Description parameter must be of type `string`.")
 
-    db_type = utils.get_db_type(anvio_db_path)
+    db_type = get_db_type(anvio_db_path)
 
     anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
     anvio_db.remove_meta_key_value_pair('description')
@@ -5580,7 +5609,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
                           "clustering dendrogram. But your function call suggests you are not.")
 
     # let's learn who we are dealing with:
-    db_type = utils.get_db_type(anvio_db_path)
+    db_type = get_db_type(anvio_db_path)
 
     # replace clustering id with a text that contains distance and linkage information
     if order_data_type_newick:
@@ -5591,11 +5620,11 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     # check names consistency if the user asked for it
     if check_names_consistency:
         if order_data_type_newick:
-            names_in_data = sorted(utils.get_names_order_from_newick_tree(order_data))
+            names_in_data = sorted(get_names_order_from_newick_tree(order_data))
         else:
             names_in_data = sorted([n.strip() for n in order_data.split(',')])
 
-        names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+        names_in_db = sorted(get_all_item_names_from_the_database(anvio_db_path))
 
         if not len(names_in_db):
             raise ConfigError(f"Your {db_type} database does not have any item names stored, but whoever called this "
@@ -5672,7 +5701,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 def get_item_orders_from_db(anvio_db_path):
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
-    utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
+    is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
 
     if not anvio_db.meta['items_ordered']:
         return ([], {})
@@ -5695,7 +5724,7 @@ def get_item_orders_from_db(anvio_db_path):
             try:
                 item_orders_dict[item_order]['data'] = item_orders_dict[item_order]['data'].split(',')
             except:
-                raise ConfigError("Something is wrong with the basic order `%s` in this %s database :(" % (item_order, utils.get_db_type(anvio_db_path)))
+                raise ConfigError("Something is wrong with the basic order `%s` in this %s database :(" % (item_order, get_db_type(anvio_db_path)))
 
     return (available_item_orders, item_orders_dict)
 

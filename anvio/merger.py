@@ -10,7 +10,6 @@ import argparse
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
 import anvio.terminal as terminal
@@ -22,6 +21,10 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.views import TablesForViews
+from anvio.dbinfo import is_profile_db
+from anvio.utils.commandline import get_cmd_line
+from anvio.utils.database import get_all_item_names_from_the_database, get_required_version_for_db
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -89,7 +92,7 @@ class MultipleRuns:
         proper, improper = [], []
 
         for p in self.input_profile_db_paths:
-            utils.is_profile_db(p)
+            is_profile_db(p)
 
             profile_db = dbops.ProfileDatabase(p)
 
@@ -307,7 +310,7 @@ class MultipleRuns:
                                       "remember that this we advice against it.." % p)
 
         # get split names from one of the profile databases. split names must be identical across all
-        self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
+        self.split_names = sorted(list(get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in self.profile_dbs_info_dict.values()])
@@ -338,13 +341,13 @@ class MultipleRuns:
 
     def set_sample_id(self):
         if self.sample_id:
-            utils.check_sample_id(self.sample_id)
+            check_sample_id(self.sample_id)
         else:
             self.sample_id = os.path.basename(self.output_directory)
             self.sample_id = self.sample_id.replace('-', '_')
             if self.sample_id[0] in constants.digits:
                 self.sample_id = 's' + self.sample_id
-            utils.check_sample_id(self.sample_id)
+            check_sample_id(self.sample_id)
 
 
     def _concatenate_single_profile_tables(self, merged_db, table_name, is_auxiliary=False):
@@ -395,7 +398,7 @@ class MultipleRuns:
             raise ConfigError("MultipleRuns.merge_variant_tables :: table_name can only be one of "
                               "%s" % ','.join(["'"+x+"'" for x in accepted_input]))
 
-        database = db.DB(self.merged_profile_db_path, utils.get_required_version_for_db(self.merged_profile_db_path))
+        database = db.DB(self.merged_profile_db_path, get_required_version_for_db(self.merged_profile_db_path))
         self._concatenate_single_profile_tables(database, table_name, is_auxiliary=False)
         database.disconnect()
 
@@ -511,7 +514,7 @@ class MultipleRuns:
         self.run.info('min_percent_identity', sample_min_pct_identity_of_short_reads_list)
         self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
-        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
+        self.run.info('cmd_line', get_cmd_line(), align_long_values=False)
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
 
         self.merge_split_coverage_data()
@@ -618,7 +621,7 @@ class MultipleRuns:
                     sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
                     self.progress.update(f"Reading '{essential_field}' of '{target}' in '{sample_id}'")
 
-                    profile_db = db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
+                    profile_db = db.DB(input_profile_db_path, get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
                     view_data_for_sample = profile_db.get_all_rows_from_table(table_name_to_read_from)
                     profile_db.disconnect()
 

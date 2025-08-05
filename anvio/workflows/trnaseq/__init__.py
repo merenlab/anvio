@@ -8,13 +8,13 @@ import pandas as pd
 from snakemake.io import ancient
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -281,7 +281,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         """Check that the name of each tRNA-seq library is anvi'o-compliant."""
         for sample_name in self.sample_info['sample']:
             try:
-                utils.check_sample_id(sample_name)
+                check_sample_id(sample_name)
             except ConfigError as e:
                 raise ConfigError("While processing the samples_txt file, '%s', "
                                   "anvi'o ran into the following error: %s" % (self.samples_txt_file, e))
@@ -390,7 +390,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 raise ConfigError("Since you are running anvi-merge-trnaseq, "
                                   "please provide a project name for the sample(s) in the config file.")
             try:
-                utils.check_sample_id(project_name)
+                check_sample_id(project_name)
             except ConfigError as e:
                 raise ConfigError("While checking the project name, '%s', "
                                   "anvi'o ran into the following error: %s" % (project_name, e))

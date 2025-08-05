@@ -4,9 +4,9 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import transpose_tab_delimited_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -22,7 +22,7 @@ def main():
     args = get_args()
 
     try:
-        utils.transpose_tab_delimited_file(args.input_file, args.output_file)
+        transpose_tab_delimited_file(args.input_file, args.output_file)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

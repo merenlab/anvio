@@ -22,7 +22,6 @@ from typing import Dict, List, Tuple, Union
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -37,6 +36,27 @@ from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 from anvio.dbinfo import DBInfo
+from anvio.dbinfo import (
+    is_blank_profile,
+    is_contigs_db,
+    is_kegg_modules_db,
+    is_pan_db_and_genomes_storage_db_compatible,
+    is_profile_db_and_contigs_db_compatible
+)
+from anvio.utils.algorithms import split_by_delim_not_within_parens
+from anvio.utils.commandline import run_command, run_command_STDIN
+from anvio.utils.database import get_all_item_names_from_the_database
+from anvio.utils.files import (
+    concatenate_files,
+    get_TAB_delimited_file_as_dictionary,
+    get_groups_txt_file_as_dict,
+    get_yaml_as_dict,
+    gzip_decompress_file,
+    store_dict_as_TAB_delimited_file,
+    tar_extract_file
+)
+from anvio.utils.network import download_file
+from anvio.utils.statistics import get_enriched_groups, run_functional_enrichment_stats
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -411,7 +431,7 @@ class KeggContext(object):
             If this is true, we don't print the warning message about stray KOs
         """
 
-        self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
+        self.ko_dict = get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
 
         # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
@@ -425,7 +445,7 @@ class KeggContext(object):
                                   f"yet, but it needs to in order for the setup_ko_dict() function to work.")
             stray_ko_path = os.path.join(self.orphan_data_dir, "kofams_with_no_threshold.txt")
             stray_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
-            utils.store_dict_as_TAB_delimited_file(stray_ko_dict, stray_ko_path, key_header="knum", headers=stray_ko_headers)
+            store_dict_as_TAB_delimited_file(stray_ko_dict, stray_ko_path, key_header="knum", headers=stray_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         if exclude_threshold:
@@ -460,12 +480,12 @@ class KeggContext(object):
 
         if os.path.exists(self.stray_ko_thresholds_file):
             if add_entries_to_regular_ko_dict:
-                stray_kos = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+                stray_kos = get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
                 self.ko_dict.update(stray_kos)
                 # initialize it to None so that things don't break if we try to access this downstream
                 self.stray_ko_dict = None
             else:
-                self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
+                self.stray_ko_dict = get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
             raise ConfigError(f"You've requested to include stray KO models in your analysis, but we cannot find the "
                               f"estimated bit score thresholds for these models, which can be generated during "
@@ -635,7 +655,7 @@ class KeggSetup(KeggContext):
         # get KEGG snapshot info for default setup
         self.target_snapshot = self.kegg_snapshot or 'v2025-02-04'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+        self.snapshot_dict = get_yaml_as_dict(self.target_snapshot_yaml)
 
         if self.target_snapshot not in self.snapshot_dict.keys():
             self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
@@ -759,7 +779,7 @@ class KeggSetup(KeggContext):
             raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
                               "the wrong file to anvi'o?" % (self.kegg_archive_path))
         unpacked_archive_name = "KEGG_archive_unpacked"
-        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+        tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
 
         self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
@@ -932,7 +952,7 @@ class KeggSetup(KeggContext):
         if anvio.DEBUG:
             self.run.info("Downloading from: ", self.default_kegg_data_url)
             self.run.info("Downloading to: ", self.default_kegg_archive_file)
-        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+        download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
 
         # a hack so we can use the archive setup function
         self.kegg_archive_path = self.default_kegg_archive_file
@@ -1206,7 +1226,7 @@ class KeggSetup(KeggContext):
                                   f"KEGG data, though.")
 
         try:
-            utils.download_file(htext_url, path_to_download_to, progress=self.progress, run=self.run)
+            download_file(htext_url, path_to_download_to, progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
             raise ConfigError(f"Anvi'o failed to download the KEGG htext file for {h_accession} from {htext_url}.")
@@ -1233,7 +1253,7 @@ class KeggSetup(KeggContext):
                                   f"by using the 'reset' parameter. Make sure that won't erase your other "
                                   f"KEGG data, though.")
 
-        utils.download_file(self.kegg_rest_api_get + '/' + accession,
+        download_file(self.kegg_rest_api_get + '/' + accession,
             file_path, progress=self.progress, run=self.run)
         # verify entire file has been downloaded
         f = open(file_path, 'r')
@@ -1287,7 +1307,7 @@ class KeggSetup(KeggContext):
 
         # download the kegg pathway file, which lists all modules
         try:
-            utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+            download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
             raise ConfigError("Anvi'o failed to download the KEGG Pathway htext file from the KEGG website. Something "
@@ -1302,7 +1322,7 @@ class KeggSetup(KeggContext):
         # download all pathways
         for konum in self.pathway_dict.keys():
             file_path = os.path.join(self.pathway_data_dir, konum)
-            utils.download_file(self.kegg_rest_api_get + '/' + konum,
+            download_file(self.kegg_rest_api_get + '/' + konum,
                 file_path, progress=self.progress, run=self.run)
             # verify entire file has been downloaded
             f = open(file_path, 'r')
@@ -1481,7 +1501,7 @@ class KOfamDownload(KeggSetup):
 
         try:
             for file_name in self.kofam_files.keys():
-                utils.download_file(self.database_url + '/' + file_name,
+                download_file(self.database_url + '/' + file_name,
                     os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
@@ -1500,9 +1520,9 @@ class KOfamDownload(KeggSetup):
             full_path = os.path.join(self.kegg_data_dir, file_name)
 
             if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+                tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
             else:
-                utils.gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+                gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
 
             self.progress.update("File decompressed. Yay.")
         self.progress.end()
@@ -1562,14 +1582,14 @@ class KOfamDownload(KeggSetup):
 
         # now we concatenate the orphan and stray KO hmms into the orphan data directory
         if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
+            concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_kofam_file_list)} "
                              f"HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'.")
 
         if no_threshold_file_list:
-            utils.concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
+            concatenate_files(self.stray_ko_hmms_from_kegg, no_threshold_file_list, remove_concatenated_files=False)
             filesnpaths.gen_output_directory(os.path.join(self.orphan_data_dir, "profiles"), delete_if_exists=True)
             for k_path in no_threshold_file_list:
                 k = os.path.basename(k_path)
@@ -1584,7 +1604,7 @@ class KOfamDownload(KeggSetup):
                              f"data so that you can annotate these KOs downstream if you wish.")
 
         if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
+            concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_data_file_list)} "
                              f"HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
@@ -1598,7 +1618,7 @@ class KOfamDownload(KeggSetup):
         """
 
         cmd_line = ['hmmpress', hmm_file_path]
-        ret_val = utils.run_command(cmd_line, log_file_path)
+        ret_val = run_command(cmd_line, log_file_path)
 
         if ret_val:
             raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
@@ -1621,7 +1641,7 @@ class KOfamDownload(KeggSetup):
 
         self.progress.update('Concatenating HMM profiles into one file...')
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
-        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
+        concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
         self.progress.update('Running hmmpress on KOs...')
         self.exec_hmmpress_command_on_ko_file(self.kofam_hmm_file_path, os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt'))
@@ -1853,7 +1873,7 @@ class KOfamDownload(KeggSetup):
         clw_alignment = m.run_stdin(tuple_of_seqs, debug=anvio.DEBUG, clustalw_format=True)
 
         hmmbuild_cmd_line = ['hmmbuild', '-n', hmm_name, '--informat', 'clustallike', hmm_output_file, '-'] # sending '-' in place of an alignment file so it reads from stdin
-        utils.run_command_STDIN(hmmbuild_cmd_line, log_file_path, clw_alignment)
+        run_command_STDIN(hmmbuild_cmd_line, log_file_path, clw_alignment)
 
         if not os.path.exists(hmm_output_file):
             raise ConfigError(f"It seems that the `hmmbuild` command failed because there is no output model at {hmm_output_file}. "
@@ -2015,7 +2035,7 @@ class KOfamDownload(KeggSetup):
             ko_files_to_process = list(set(ko_files_to_process) - set(kos_with_one_gene))
 
         self.progress.new('Concatenating new Stray HMM files...')
-        utils.concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
+        concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
         self.progress.update('Running hmmpress on new Stray KO HMMs...')
         self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
         self.progress.end()
@@ -2202,7 +2222,7 @@ class ModulesDownload(KeggSetup):
 
         # download the kegg module file, which lists all modules
         try:
-            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+            download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
             raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
@@ -2420,7 +2440,7 @@ class ModulesDownload(KeggSetup):
         self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
 
         try:
-            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+            download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
             raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
@@ -2588,7 +2608,7 @@ class ModulesDownload(KeggSetup):
             url = f'{self.kegg_binary_relations_download_path}{file}'
             dest = os.path.join(self.binary_relation_data_dir, file)
             try:
-                utils.download_file(url, dest, progress=self.progress, run=self.run)
+                download_file(url, dest, progress=self.progress, run=self.run)
             except Exception as e:
                 print(e)
                 raise ConfigError(
@@ -2658,7 +2678,7 @@ class ModulesDownload(KeggSetup):
         """
         # Download a table from KEGG listing all available pathways.
         try:
-            utils.download_file(
+            download_file(
                 self.kegg_pathway_list_download_path,
                 self.kegg_pathway_list_file,
                 progress=self.progress,
@@ -2911,7 +2931,7 @@ class ModulesDownload(KeggSetup):
         self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
 
         try:
-            utils.download_file(
+            download_file(
                 self.kegg_brite_pathways_download_path,
                 self.kegg_brite_pathways_file,
                 progress=self.progress,
@@ -2970,7 +2990,7 @@ class RunKOfams(KeggContext):
                               f"you simply need to specify the location of the KEGG data using the flag `--kegg-data-dir`. Just for "
                               f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
         filesnpaths.is_output_file_writable(self.contigs_db_path)
 
         # reminder to be a good citizen
@@ -3540,7 +3560,7 @@ class RunKOfams(KeggContext):
             for key, entry in search_results_dict.items():
                 entry['gene_hmm_id'] = entry['gene_name']
                 entry['gene_name'] = self.get_annotation_from_ko_dict(entry['gene_hmm_id'], ok_if_missing_from_dict=True)
-            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, do_not_write_key_column=True)
+            anvio.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, do_not_write_key_column=True)
             self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         # mark contigs db with hash of modules.db content for version tracking
@@ -4121,15 +4141,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "anvi'o is judging you SO hard right now.")
 
         if self.profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.pan_db_path:
-            utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
+            is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
         if self.add_coverage:
             if not self.enzymes_txt:
                 if not self.profile_db_path:
                     raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-                if utils.is_blank_profile(self.profile_db_path):
+                if is_blank_profile(self.profile_db_path):
                     raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
                                       "values, so the --add-coverage flag will not work.")
 
@@ -4250,7 +4270,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
@@ -4440,20 +4460,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         self.progress.new("Loading split data from contigs DB")
-        split_names_in_contigs_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+        split_names_in_contigs_db = set(get_all_item_names_from_the_database(self.contigs_db_path))
         splits_to_use = split_names_in_contigs_db
 
         # first, resolve differences in splits between profile and contigs db
         if self.profile_db_path:
             self.progress.update("Loading split data from profile DB")
             # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
-            if utils.is_blank_profile(self.profile_db_path):
+            if is_blank_profile(self.profile_db_path):
                 self.progress.reset()
                 self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism "
                                  "for you. But we cannot load splits from the profile DB, so instead we are assuming that "
                                  "you are interested in ALL splits and we will load those from the contigs database.")
             else:
-                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+                split_names_in_profile_db = set(get_all_item_names_from_the_database(self.profile_db_path))
                 splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
                 if len(splits_missing_in_profile_db):
@@ -5715,7 +5735,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         step_string = self.remove_nonessential_enzymes_from_module_step(step_string)
 
         # sometimes a step will have commas outside parentheses. In this case, we need to split those first for proper order of operations
-        step_list = utils.split_by_delim_not_within_parens(step_string, ",")
+        step_list = split_by_delim_not_within_parens(step_string, ",")
         if len(step_list) > 1:
             added_step_count = 0
             # call recursively on each split
@@ -7134,7 +7154,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
-            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, headers=['key'] + header_list, do_not_write_key_column=True)
+            store_dict_as_TAB_delimited_file(output_dict, output_path, headers=['key'] + header_list, do_not_write_key_column=True)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
@@ -7793,7 +7813,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 if isinstance(mod_def, list):
                     mod_def = " ".join(mod_def)
                 kos_in_mod = self.get_enzymes_from_module_definition_in_order(mod_def)
-                mod_big_steps = utils.split_by_delim_not_within_parens(mod_def, " ")
+                mod_big_steps = split_by_delim_not_within_parens(mod_def, " ")
 
                 if not kos_in_mod:
                     mods_defined_by_mods.append(mod)
@@ -7908,7 +7928,7 @@ class ModulesDatabase(KeggContext):
         self.brite_table_types = t.brite_table_types
 
         if os.path.exists(self.db_path):
-            utils.is_kegg_modules_db(self.db_path)
+            is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
 
             if not self.quiet:
@@ -9593,7 +9613,7 @@ class ModulesDatabase(KeggContext):
         """
 
         def_string = self.get_kegg_module_definition(mnum)
-        return utils.split_by_delim_not_within_parens(def_string, " ")
+        return split_by_delim_not_within_parens(def_string, " ")
 
 
     def unroll_module_definition(self, mnum, def_lines = None):
@@ -9654,7 +9674,7 @@ class ModulesDatabase(KeggContext):
             all paths that the input step has been unrolled into
         """
 
-        split_steps = utils.split_by_delim_not_within_parens(step, " ")
+        split_steps = split_by_delim_not_within_parens(step, " ")
         paths_list = [[]]  # list to save all paths, with initial empty path list to extend from
         for s in split_steps:
             # base case: step is a ko, mnum, non-essential step, or '--'
@@ -9665,19 +9685,19 @@ class ModulesDatabase(KeggContext):
                 if s[0] == "(" and s[-1] == ")":
                     # here we try splitting to see if removing the outer parentheses will make the definition become unbalanced
                     # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
-                    comma_substeps = utils.split_by_delim_not_within_parens(s[1:-1], ",")
+                    comma_substeps = split_by_delim_not_within_parens(s[1:-1], ",")
                     if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
-                        comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = utils.split_by_delim_not_within_parens(s[1:-1], " ")
+                        comma_substeps = split_by_delim_not_within_parens(s, ",")
+                    space_substeps = split_by_delim_not_within_parens(s[1:-1], " ")
                     if not space_substeps:
-                        space_substeps = utils.split_by_delim_not_within_parens(s, " ")
+                        space_substeps = split_by_delim_not_within_parens(s, " ")
                 else:
-                    comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = utils.split_by_delim_not_within_parens(s, " ")
+                    comma_substeps = split_by_delim_not_within_parens(s, ",")
+                    space_substeps = split_by_delim_not_within_parens(s, " ")
 
                 # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
                 if len(comma_substeps) == 1 and len(space_substeps) == 1:
-                    complex_components, delimiters = utils.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
+                    complex_components, delimiters = split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
                     complex_strs = [""]
 
                     # reconstruct the complex (and any alternate possible complexes) while keeping the +/- structure the same
@@ -9733,11 +9753,11 @@ class ModulesDatabase(KeggContext):
         """
 
         if step[0] == "(" and step[-1] == ")":
-            substeps = utils.split_by_delim_not_within_parens(step[1:-1], ",")
+            substeps = split_by_delim_not_within_parens(step[1:-1], ",")
             if not substeps: # if it doesn't work, try without removing surrounding parentheses
-                substeps = utils.split_by_delim_not_within_parens(step, ",")
+                substeps = split_by_delim_not_within_parens(step, ",")
         else:
-            substeps = utils.split_by_delim_not_within_parens(step, ",")
+            substeps = split_by_delim_not_within_parens(step, ",")
 
         alt_path_list = []
         for s in substeps:
@@ -9946,7 +9966,7 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
+        samples_to_groups_dict, groups_to_samples_dict = get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
 
         # make sure the samples all have a group
         samples_with_none_group = []
@@ -10078,7 +10098,7 @@ class KeggModuleEnrichment(KeggContext):
                 N_vector = np.append(N_vector, N_values[c])
 
             # compute associated groups for functional enrichment
-            enriched_groups_vector = utils.get_enriched_groups(p_vector, N_vector)
+            enriched_groups_vector = get_enriched_groups(p_vector, N_vector)
 
             associated_groups = [c for i,c in enumerate(group_list) if enriched_groups_vector[i]]
             output_dict[mod_name]['associated_groups'] = ','.join(associated_groups)
@@ -10087,7 +10107,7 @@ class KeggModuleEnrichment(KeggContext):
                 output_dict[mod_name]["p_%s" % c] = p_values[c]/N_values[c]
                 output_dict[mod_name]["N_%s" % c] = N_values[c]
 
-        utils.store_dict_as_TAB_delimited_file(output_dict, output_file_path, key_header='accession', headers=header_list)
+        store_dict_as_TAB_delimited_file(output_dict, output_file_path, key_header='accession', headers=header_list)
 
 
     def run_enrichment_stats(self):
@@ -10107,7 +10127,7 @@ class KeggModuleEnrichment(KeggContext):
         self.progress.end()
 
         # run the enrichment analysis
-        enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
+        enrichment_stats = run_functional_enrichment_stats(enrichment_input_path,
                                                                  self.output_file_path,
                                                                  run=self.run,
                                                                  progress=self.progress)
@@ -10160,7 +10180,7 @@ def _download_worker(
         num_tries = 0
         while True:
             try:
-                utils.download_file(url, path)
+                download_file(url, path)
                 output = True
                 break
             except (ConfigError, ConnectionResetError):
@@ -10203,8 +10223,8 @@ def download_org_pathway_image_files(
     png_path = os.path.join(data_dir, 'png', '1x', 'org', f'{pathway_name}.png')
     kgml_path = os.path.join(data_dir, 'kgml', '1x', 'org', f'{pathway_name}.xml')
 
-    utils.download_file(png_url, png_path)
-    utils.download_file(kgml_url, kgml_path)
+    download_file(png_url, png_path)
+    download_file(kgml_url, kgml_path)
 
     return (png_path, kgml_path)
 
@@ -10317,7 +10337,7 @@ def _download_pathway_image_files_worker(
             num_tries = 0
             while True:
                 try:
-                    utils.download_file(kgml_url, kgml_path)
+                    download_file(kgml_url, kgml_path)
                     output[key][1] = 1
                     break
                 except ConnectionResetError:
@@ -10381,7 +10401,7 @@ def _download_pathway_image_files_worker(
             num_tries = 0
             while True:
                 try:
-                    utils.download_file(image_url, image_path)
+                    download_file(image_url, image_path)
                     output[key][1] = 1
                     break
                 except ConnectionResetError:

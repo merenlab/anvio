@@ -13,7 +13,6 @@ from functools import partial
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.ccollections as ccollections
@@ -21,6 +20,8 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
 from anvio.genomedescriptions import GenomeDescriptions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.sequences import get_list_of_codons_for_gene_call
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -125,7 +126,7 @@ class SingleGenomeCodonUsage(object):
 
     def _load_contigs_db_data(self):
         """Load gene data from the contigs database."""
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
 
         if self.profile_db_path or self.collection_name or self.bin_id:
             # Initialize the contigs superclass from the splits of the internal genome bin.
@@ -216,7 +217,7 @@ class SingleGenomeCodonUsage(object):
 
             coding_gene_caller_ids.append(gene_caller_id)
 
-            gene_codon_frequencies.append(Counter(utils.get_list_of_codons_for_gene_call(
+            gene_codon_frequencies.append(Counter(get_list_of_codons_for_gene_call(
                 gene_call, self.contig_sequences_dict)))
 
         gene_codon_frequency_df = pd.DataFrame.from_records(gene_codon_frequencies)

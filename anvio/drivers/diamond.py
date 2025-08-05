@@ -6,10 +6,12 @@ import pandas as pd
 import tempfile
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.anviohelp import ununique_BLAST_tabular_output
+from anvio.utils.commandline import get_command_output_from_shell, run_command, run_command_STDIN
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -33,7 +35,7 @@ class Diamond:
         self.num_threads = num_threads
         self.overwrite_output_destinations = overwrite_output_destinations
 
-        utils.is_program_exists('diamond')
+        is_program_exists('diamond')
 
         self.tmp_dir = tempfile.gettempdir()
         self.evalue = 1e-05
@@ -107,7 +109,7 @@ class Diamond:
                     '-d', output_file_path or self.target_fasta,
                     '-p', self.num_threads]
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
@@ -147,7 +149,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('Running blastp (using %d thread(s)) ...' % self.num_threads)
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
@@ -181,7 +183,7 @@ class Diamond:
 
 
         shell_cmd_line=' '.join(str(x) for x in cmd_line)
-        out_bytes, ret_code = utils.get_command_output_from_shell(shell_cmd_line)
+        out_bytes, ret_code = get_command_output_from_shell(shell_cmd_line)
 
         try:
             decode_out=out_bytes.decode("utf-8")
@@ -215,7 +217,7 @@ class Diamond:
 
         self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence,remove_log_file_if_exists=False)
+        output = run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence,remove_log_file_if_exists=False)
 
         self.progress.end()
 
@@ -251,7 +253,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence,remove_log_file_if_exists=False)
+        output = run_command_STDIN(cmd_line, self.run.log_file_path, multisequence,remove_log_file_if_exists=False)
 
         self.progress.end()
 
@@ -269,11 +271,11 @@ class Diamond:
                     '-d', output_file_path or self.target_fasta,
                     '-p', self.num_threads]
 
-        utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
+        run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
 
         self.progress.end()
 
-        expected_output = utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
+        expected_output = run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
 
         expected_output = (output_file_path or self.target_fasta) + '.dmnd'
         self.check_output(expected_output, 'makedb')
@@ -295,7 +297,7 @@ class Diamond:
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        run_command(cmd_line, self.run.log_file_path)
 
         self.check_output(self.tabular_output_path, 'view')
 
@@ -313,10 +315,10 @@ class Diamond:
                     self.progress.end()
                     raise ConfigError("drivers.diamond :: You can't supply a names_dict when running "
                                       "view(...) unless your outfmt starts with '6 qseqid sseqid'. Update "
-                                      "utils.ununique_BLAST_tabular_output to fix this problem. If you're a "
+                                      "ununique_BLAST_tabular_output to fix this problem. If you're a "
                                       "user, please report this on github.")
 
-            utils.ununique_BLAST_tabular_output(self.tabular_output_path, self.names_dict)
+            ununique_BLAST_tabular_output(self.tabular_output_path, self.names_dict)
 
         self.progress.end()
 

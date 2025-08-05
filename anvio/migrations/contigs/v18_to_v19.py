@@ -5,12 +5,12 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 
 
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_contigs_db
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
@@ -25,7 +25,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.is_contigs_db(db_path)
+    is_contigs_db(db_path)
 
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:

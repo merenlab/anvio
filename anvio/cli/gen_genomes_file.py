@@ -8,13 +8,14 @@ import sys
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
+from anvio.dbinfo import is_pan_or_profile_db, is_profile_db_and_contigs_db_compatible
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -54,9 +55,9 @@ def run_program():
             raise ConfigError("The internal genomes file path that you provided already exists, and anvi'o will not overwrite "
                               "it. Please either remove the existing file or provide a different file path.")
 
-        utils.is_pan_or_profile_db(args.profile_db)
+        is_pan_or_profile_db(args.profile_db)
 
-        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         progress.new('Accessing to the collections table')
         progress.update('...')
@@ -85,7 +86,7 @@ def run_program():
             int_genomes_dict[bin_name]['profile_db_path'] = profile_db_path
             int_genomes_dict[bin_name]['contigs_db_path'] = contig_db_path
 
-        utils.store_dict_as_TAB_delimited_file(int_genomes_dict, args.output_file, key_header='name')
+        store_dict_as_TAB_delimited_file(int_genomes_dict, args.output_file, key_header='name')
 
         run.info("Internal genomes file", args.output_file)
 
@@ -129,7 +130,7 @@ def run_program():
         for contigs_db in contigs_dbs:
             ext_genomes_dict[contigs_db.project_name] = {'contigs_db_path': os.path.abspath(contigs_db.path)}
 
-        utils.store_dict_as_TAB_delimited_file(ext_genomes_dict, args.output_file, key_header='name')
+        store_dict_as_TAB_delimited_file(ext_genomes_dict, args.output_file, key_header='name')
 
         run.info("External genomes file", args.output_file)
 

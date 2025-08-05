@@ -6,11 +6,12 @@ import shutil
 
 import anvio
 import anvio.fastalib as f
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command, run_command_STDIN
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -34,7 +35,7 @@ class Muscle:
 
         self.program_name = program_name
 
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
         self.citation = "Edgar, doi:10.1093/nar/gkh340"
         self.web = "http://www.drive5.com/muscle"
@@ -77,7 +78,7 @@ class Muscle:
         if additional_params:
             cmd_line += additional_params
 
-        output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
+        output = run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
         if not clustalw_format and not (len(output) and output[0] == '>'):
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
@@ -141,7 +142,7 @@ class Muscle:
         if additional_params:
             cmd_line += additional_params
 
-        output = utils.run_command(cmd_line, log_file_path)
+        output = run_command(cmd_line, log_file_path)
 
         if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))

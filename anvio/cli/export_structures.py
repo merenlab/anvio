@@ -5,11 +5,11 @@ import sys
 import anvio
 from anvio.argparse import ArgumentParser
 
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.structureops import StructureDatabase
+from anvio.dbinfo import is_structure_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -32,7 +32,7 @@ def main():
     output_dir = A('output_dir')
 
     try:
-        utils.is_structure_db(structure_db_path)
+        is_structure_db(structure_db_path)
         structure_db = StructureDatabase(structure_db_path, ignore_hash=True, create_new=False)
         filesnpaths.check_output_directory(output_dir)
 

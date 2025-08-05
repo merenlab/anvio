@@ -7,13 +7,13 @@ import sys
 from ete3 import Tree
 
 import anvio
-import anvio.utils as utils
 import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -95,7 +95,7 @@ def run_program():
     run.info('Output tree path', output_newick_path)
     run.info('Output view data path', output_view_data_path)
 
-    utils.store_dict_as_TAB_delimited_file(output_dict, output_view_data_path,
+    store_dict_as_TAB_delimited_file(output_dict, output_view_data_path,
         headers=['items'] + list(taxon_letter_to_name.values()))
 
     with open(output_newick_path, 'w') as f:

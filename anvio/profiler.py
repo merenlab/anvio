@@ -23,7 +23,6 @@ from collections import OrderedDict
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.contigops as contigops
@@ -38,6 +37,10 @@ from anvio.tables.indels import TableForIndels
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.variability import TableForVariability
 from anvio.tables.codonfrequencies import TableForCodonFrequencies
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.anviohelp import CoverageStats, get_default_gene_caller
+from anvio.utils.commandline import get_cmd_line
+from anvio.utils.validation import check_contig_names, check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -69,7 +72,7 @@ class BAMProfilerQuick:
         self.report_minimal = A('report_minimal')
 
         if not self.gene_caller:
-            self.gene_caller = utils.get_default_gene_caller(self.contigs_db_path)
+            self.gene_caller = get_default_gene_caller(self.contigs_db_path)
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -88,7 +91,7 @@ class BAMProfilerQuick:
         if not self.contigs_db_path:
             raise ConfigError("You need to provide an anvi'o contigs database for this to work :/")
 
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
 
         if not len(self.bam_file_paths):
             raise ConfigError("You need to provide at least one BAM file for this to work.")
@@ -242,7 +245,7 @@ class BAMProfilerQuick:
                                      f"{mean:.4}\n")
                     elif not self.report_minimal and not self.gene_level_stats:
                         # we are in contigs mode, but want an extended report
-                        C = utils.CoverageStats(c.c, skip_outliers=True)
+                        C = CoverageStats(c.c, skip_outliers=True)
                         output.write(f"{contig_name}\t"
                                      f"{bam_file_name}\t"
                                      f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -283,7 +286,7 @@ class BAMProfilerQuick:
                                     num_mapped_reads_to_gene += 1
 
                                 # get coverage stats:
-                                GC = utils.CoverageStats(gc, skip_outliers=True)
+                                GC = CoverageStats(gc, skip_outliers=True)
 
                                 # write everything out:
                                 output.write(f"{gene_callers_id}\t"
@@ -544,7 +547,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Profile DB path', self.profile_db_path, display_only=True)
         self.run.info('Contigs DB path', self.contigs_db_path)
         self.run.info('Contigs DB hash', self.a_meta['contigs_db_hash'])
-        self.run.info('Command line', utils.get_cmd_line(), align_long_values=False, nl_after=1)
+        self.run.info('Command line', get_cmd_line(), align_long_values=False, nl_after=1)
 
         self.run.info('Minimum percent identity of reads to be profiled', self.min_percent_identity, mc='green')
         self.run.info('Fetch filter engaged', self.fetch_filter, mc='green', nl_after=1)
@@ -680,7 +683,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def set_sample_id(self):
         if self.sample_id:
-            utils.check_sample_id(self.sample_id)
+            check_sample_id(self.sample_id)
         else:
             if self.input_file_path:
                 self.input_file_path = os.path.abspath(self.input_file_path)
@@ -693,7 +696,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 if self.fetch_filter:
                     self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper().replace('-', '_').replace('.', '_').replace(' ', '_')}"
 
-                utils.check_sample_id(self.sample_id)
+                check_sample_id(self.sample_id)
             if self.serialized_profile_path:
                 self.serialized_profile_path = os.path.abspath(self.serialized_profile_path)
                 self.sample_id = os.path.basename(os.path.dirname(self.serialized_profile_path))
@@ -732,7 +735,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names = self.bam.references
         self.contig_lengths = self.bam.lengths
 
-        utils.check_contig_names(self.contig_names)
+        check_contig_names(self.contig_names)
 
         for tpl in sorted(zip(self.contig_lengths, self.contig_names), reverse=True):
             print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
@@ -815,7 +818,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                   "this is required to use --min-percent-identity. "
                                   "Please remove this flag or redo your mapping.")
 
-        utils.check_contig_names(self.contig_names)
+        check_contig_names(self.contig_names)
 
         self.run.info('Input BAM', self.input_file_path)
         self.run.info('Output directory path', self.output_directory, display_only=True, nl_after=1)
@@ -872,7 +875,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_length = sum(self.contig_lengths)
         self.num_contigs = len(self.contig_names)
 
-        utils.check_contig_names(self.contig_names)
+        check_contig_names(self.contig_names)
 
         self.run.info('input_bam', None)
         self.run.info('output_dir', self.output_directory, display_only=True)

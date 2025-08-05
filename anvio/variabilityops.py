@@ -20,7 +20,6 @@ from scipy.stats import entropy
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -30,6 +29,23 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForAminoAcidAdditionalData
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible, is_structure_db_and_contigs_db_compatible
+from anvio.utils.algorithms import apply_and_concat
+from anvio.utils.anviohelp import convert_SSM_to_single_accession, get_variability_table_engine_type
+from anvio.utils.fasta import store_dict_as_FASTA_file
+from anvio.utils.files import (
+    get_TAB_delimited_file_as_dictionary,
+    store_dataframe_as_TAB_delimited_file,
+    store_dict_as_TAB_delimited_file,
+    transpose_tab_delimited_file
+)
+from anvio.utils.sequences import (
+    convert_sequence_indexing,
+    get_codon_order_to_nt_positions_dict,
+    get_list_of_codons_for_gene_call,
+    get_synonymous_and_non_synonymous_potential
+)
+from anvio.utils.visualization import gen_gexf_network_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1009,9 +1025,9 @@ class VariabilitySuper(VariabilityFilter, object):
             raise ConfigError('Currently, --include-additional-data is only implemented for --engine AA and --engine CDN')
 
         self.progress.update('Making sure our databases are compatible ..')
-        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.append_structure_residue_info:
-            utils.is_structure_db_and_contigs_db_compatible(self.structure_db_path, self.contigs_db_path)
+            is_structure_db_and_contigs_db_compatible(self.structure_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
@@ -1144,7 +1160,7 @@ class VariabilitySuper(VariabilityFilter, object):
             # FIXME this is in the NT variability table, and should bein the SCV table as well
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
-        self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
+        self.data["codon_number"] = convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
         self.data["codon_number"] = self.data["codon_number"].astype(int)
 
         # we're done here. bye.
@@ -1456,7 +1472,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # an entry from competing_items instead of having to pull from the first AND second most
         # common item, and then indexing a triple-nested dictionary.
         for m in self.substitution_scoring_matrices:
-            substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
+            substitution_scoring_matrix = convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
             self.data.loc[entry_ids, m] = self.data.loc[entry_ids, self.competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
         self.progress.end()
@@ -2003,7 +2019,7 @@ class VariabilitySuper(VariabilityFilter, object):
                             g[row.iloc[0]][row.iloc[1]]['non_outlier_coverage_std']) \
                             if row.iloc[0] in self.gene_lengths else (-1, -1, -1)
 
-        self.data = utils.apply_and_concat(df = self.data,
+        self.data = apply_and_concat(df = self.data,
                                            fields = ['corresponding_gene_call', 'sample_id'],
                                            func = J,
                                            column_names = gene_coverage_columns,
@@ -2067,7 +2083,7 @@ class VariabilitySuper(VariabilityFilter, object):
         data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-        utils.store_dataframe_as_TAB_delimited_file(data, self.output_file_path, columns=new_structure)
+        store_dataframe_as_TAB_delimited_file(data, self.output_file_path, columns=new_structure)
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(data.index)))
@@ -2340,7 +2356,7 @@ class WrapperForFancyEngines(object):
                     gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
 
                     # the following dict converts codon  orders into nt positions in contig for a geven gene call
-                    codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
+                    codon_order_to_nt_positions_in_contig = get_codon_order_to_nt_positions_dict(gene_call)
 
                     # so the nucleotide positions for this codon or amino acid in the contig is the following:
                     nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
@@ -2422,7 +2438,7 @@ class WrapperForFancyEngines(object):
         })
 
         samples_wanted = set(self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids)
-        get_gene_codons = lambda gene_callers_id: utils.get_list_of_codons_for_gene_call(self.genes_in_contigs_dict[gene_callers_id], self.contig_sequences)
+        get_gene_codons = lambda gene_callers_id: get_list_of_codons_for_gene_call(self.genes_in_contigs_dict[gene_callers_id], self.contig_sequences)
 
         next_entry_id = self.data['entry_id'].max() + 1
         next_unique_pos_identifier = self.data['unique_pos_identifier'].max() + 1
@@ -2619,7 +2635,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFancyEng
             syn_lookup[null_codon], nonsyn_lookup[null_codon] = 0, 0
 
         for codon in coding_codons:
-            syn_lookup[codon], nonsyn_lookup[codon], _ = utils.get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
+            syn_lookup[codon], nonsyn_lookup[codon], _ = get_synonymous_and_non_synonymous_potential([codon], just_do_it=True)
 
         potentials = np.zeros((len(self.data), 2))
         for i, comp in enumerate(self.data[comparison]):
@@ -2634,10 +2650,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFancyEng
         syn_lookup, nonsyn_lookup = {}, {}
         for corresponding_gene_call in self.data['corresponding_gene_call'].unique():
             gene_call = contigs_db.genes_in_contigs_dict[corresponding_gene_call]
-            codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
+            codon_list_for_gene = get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
 
             syn_lookup[corresponding_gene_call], nonsyn_lookup[corresponding_gene_call], _ = \
-                utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
+                get_synonymous_and_non_synonymous_potential(codon_list_for_gene, just_do_it=True)
 
         potentials = np.zeros((len(self.data), 2))
         for i, corresponding_gene_call in enumerate(self.data['corresponding_gene_call']):
@@ -2664,7 +2680,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFancyEng
             should be divided by to yield pN and pS. E.g. if `grouping` is 'gene', then each SCV
             belonging to gene X should be divided by the number of synonymous and non-synonymous
             sites that are present in gene X's sequence, i.e. the output of
-            `utils.get_synonymous_and_non_synonymous_potential`.  As another example, if `grouping`
+            `get_synonymous_and_non_synonymous_potential`.  As another example, if `grouping`
             is 'site' and the comparison codon at a site is CGA, then there are 1.33 synonymous
             sites and 1.66 non-synonymous sites. So each SCV's pN and pS should be calculated by
             taking fN and fS, and dividing them by 1.66 and 1.33 respectively. If `potentials` is
@@ -2903,9 +2919,9 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                     output_d[key] = d['sequence']
 
         if self.tab_delimited_output:
-            utils.store_dict_as_TAB_delimited_file(output_d, self.output_file_path, headers=['entry_id', 'sample_name', self.sequence_name_key, 'num_changes', 'in_pos_0', 'in_pos_1', 'in_pos_2', 'in_pos_3', 'sequence'])
+            store_dict_as_TAB_delimited_file(output_d, self.output_file_path, headers=['entry_id', 'sample_name', self.sequence_name_key, 'num_changes', 'in_pos_0', 'in_pos_1', 'in_pos_2', 'in_pos_3', 'sequence'])
         else:
-            utils.store_dict_as_FASTA_file(output_d, self.output_file_path)
+            store_dict_as_FASTA_file(output_d, self.output_file_path)
 
         self.progress.end()
 
@@ -2970,7 +2986,7 @@ class VariabilityNetwork:
 
         if self.samples_information_path:
             filesnpaths.is_file_tab_delimited(self.samples_information_path)
-            self.samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_path)
+            self.samples_information_dict = get_TAB_delimited_file_as_dictionary(self.samples_information_path)
             num_attributes = len(list(self.samples_information_dict.values())[0])
 
             self.run.info('samples_information', '%d attributes read for %d samples' % (num_attributes, len(self.samples_information_dict)))
@@ -2979,7 +2995,7 @@ class VariabilityNetwork:
             filesnpaths.is_file_tab_delimited(self.input_file_path)
             self.progress.new('Reading the input file')
             self.progress.update('...')
-            self.data = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
+            self.data = get_TAB_delimited_file_as_dictionary(self.input_file_path)
             self.progress.end()
 
             # while we are here, we can quickly check whether the `self.edge_variable` is actually
@@ -3088,10 +3104,10 @@ class VariabilityNetwork:
         unique_variable_nt_positions = sorted(list(self.unique_variable_nt_positions))
         if self.export_as_matrix:
             temp_file_path = filesnpaths.get_temp_file_path()
-            utils.store_dict_as_TAB_delimited_file(samples_dict, headers=['items'] + unique_variable_nt_positions, output_path=temp_file_path)
-            utils.transpose_tab_delimited_file(temp_file_path, output_file_path=self.output_file_path, remove_after=True)
+            store_dict_as_TAB_delimited_file(samples_dict, headers=['items'] + unique_variable_nt_positions, output_path=temp_file_path)
+            transpose_tab_delimited_file(temp_file_path, output_file_path=self.output_file_path, remove_after=True)
         else:
-            utils.gen_gexf_network_file(unique_variable_nt_positions, samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
+            gen_gexf_network_file(unique_variable_nt_positions, samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
 
         self.run.info('Output file', self.output_file_path)
@@ -3116,7 +3132,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             raise ConfigError("VariabilityData :: You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
-        inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
+        inferred_engine = get_variability_table_engine_type(self.variability_table_path)
         if self.engine and self.engine != inferred_engine:
             raise ConfigError("The engine you requested is {0}, but the engine inferred from {1} is {2}. "
                               "Explicitly declare the inferred engine type (--engine {2})".\
@@ -3287,7 +3303,7 @@ class VariabilityFixationIndex(object):
 
         self.progress.new('Saving output')
         self.progress.update('...')
-        utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, output_file_path, include_index=True, index_label='')
+        store_dataframe_as_TAB_delimited_file(self.fst_matrix, output_file_path, include_index=True, index_label='')
         self.run.info('Output', output_file_path, progress = self.progress)
         self.progress.end()
 

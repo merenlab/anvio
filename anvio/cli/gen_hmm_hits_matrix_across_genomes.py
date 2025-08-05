@@ -4,13 +4,13 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.hmmopswrapper as hmmopswrapper
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -80,7 +80,7 @@ def run_program():
         gene_name = hit['gene_name']
         d[genome_name][gene_name] += 1
 
-    utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['genome_or_bin'] + sorted(gene_names_in_source))
+    store_dict_as_TAB_delimited_file(d, output_file_path, headers=['genome_or_bin'] + sorted(gene_names_in_source))
 
     run.info('Output', output_file_path)
 

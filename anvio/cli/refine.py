@@ -10,12 +10,13 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.utils.anviohelp import get_bin_name_from_item_name
+from anvio.utils.network import get_port_num
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -52,7 +53,7 @@ def main():
                               "also specify a collection name.")
 
         if find_from_split_name:
-            rows = utils.get_bin_name_from_item_name(args.profile_db, find_from_split_name, collection_name=args.collection_name)
+            rows = get_bin_name_from_item_name(args.profile_db, find_from_split_name, collection_name=args.collection_name)
 
             if not rows:
                 raise ConfigError("The split name you requested was not found in collection %s :/" % collection_name)
@@ -73,7 +74,7 @@ def main():
 
         args.mode = 'refine'
         d = interactive.Interactive(args)
-        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+        args.port_number = get_port_num(args.port_number, args.ip_address, run=run)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

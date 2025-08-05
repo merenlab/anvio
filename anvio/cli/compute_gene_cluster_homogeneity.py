@@ -6,13 +6,13 @@ from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.tables.miscdata as miscdata
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -94,7 +94,7 @@ def run_program():
             gene_cluster_ids = set([args.gene_cluster_id])
             run.info('Mode', 'Reporting homogeneity for a single gene cluster.')
         else:
-            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
+            columns = get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
             if len(columns) != 1:
                 raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
 
@@ -120,7 +120,7 @@ def run_program():
         miscdata.TableForItemAdditionalData(args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
 
     if args.output_file:
-        utils.store_dict_as_TAB_delimited_file(d, args.output_file)
+        store_dict_as_TAB_delimited_file(d, args.output_file)
         run.info("Output file", args.output_file, mc="green")
 
 

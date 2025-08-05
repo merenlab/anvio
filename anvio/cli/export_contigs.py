@@ -6,12 +6,12 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
+from anvio.utils.fasta import export_sequences_from_contigs_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -35,7 +35,7 @@ def main():
         else:
             seq_names_to_export = None
 
-        utils.export_sequences_from_contigs_db(args.contigs_db,
+        export_sequences_from_contigs_db(args.contigs_db,
                                                args.output_file,
                                                seq_names_to_export=seq_names_to_export,
                                                splits_mode=args.splits_mode,

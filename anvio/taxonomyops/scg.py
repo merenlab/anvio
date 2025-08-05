@@ -12,7 +12,6 @@ import pandas as pd
 import scipy.sparse as sps
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -25,6 +24,8 @@ from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
+from anvio.dbinfo import is_contigs_db, is_profile_db_and_contigs_db_compatible
+from anvio.utils.files import gzip_decompress_file, store_dict_as_TAB_delimited_file, transpose_tab_delimited_file
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
@@ -205,7 +206,7 @@ class SanityCheck(object):
                     raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o SCG "
                                       "taxonomy workflow :(")
 
-                utils.is_contigs_db(self.contigs_db_path)
+                is_contigs_db(self.contigs_db_path)
 
                 scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_was_run']
                 scg_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_database_version']
@@ -220,7 +221,7 @@ class SanityCheck(object):
                                       "on your contigs-db." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
-                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+                    is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
                 if self.collection_name and not self.profile_db_path:
                     raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide "
@@ -904,7 +905,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 for i in range(0, len(matrix)):
                     output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
 
-            utils.transpose_tab_delimited_file(temp_file_path, output_file_path, remove_after=True)
+            transpose_tab_delimited_file(temp_file_path, output_file_path, remove_after=True)
 
             self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
@@ -935,7 +936,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
     def report_scg_frequencies_as_TAB_delimited_file(self):
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
 
-        utils.store_dict_as_TAB_delimited_file(scg_frequencies, self.report_scg_frequencies_path, headers=['genome'] + scgs_ordered_based_on_frequency, keys_order=contigs_dbs_ordered_based_on_num_scgs)
+        store_dict_as_TAB_delimited_file(scg_frequencies, self.report_scg_frequencies_path, headers=['genome'] + scgs_ordered_based_on_frequency, keys_order=contigs_dbs_ordered_based_on_num_scgs)
 
         self.run.info('SCG frequencies across contigs dbs', self.report_scg_frequencies_path)
 
@@ -1234,7 +1235,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                               "were deleted and can be restored. If not, please feel free to reach out to the developers for help.")
 
         self.progress.update("Decompressing FASTA files in %s" % (temp_dir))
-        new_paths = dict([(SCG, utils.gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
+        new_paths = dict([(SCG, gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
         for SCG in self.ctx.SCGs:

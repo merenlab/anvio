@@ -6,11 +6,11 @@ import sys
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.database import get_db_type
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -69,7 +69,7 @@ def main():
 
         order_data_type_newick = items_order_of_interest['type'] == 'newick'
         run.info("Database", db_path)
-        run.info("Database type", utils.get_db_type(db_path))
+        run.info("Database type", get_db_type(db_path))
         run.info("Order name", order_name)
         run.info("Order data type", 'newick' if order_data_type_newick else 'basic')
 

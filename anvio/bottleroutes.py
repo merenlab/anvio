@@ -38,7 +38,6 @@ import multiprocess as multiprocessing
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -51,6 +50,11 @@ from anvio.serverAPI import AnviServerAPI
 from anvio.errors import RefineError, ConfigError
 from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.collections import TablesForCollections
+from anvio.utils.files import store_array_as_TAB_delimited_file
+from anvio.utils.misc import get_filtered_dict
+from anvio.utils.network import open_url_in_browser
+from anvio.utils.phylogenetics import get_names_order_from_newick_tree
+from anvio.utils.visualization import run_selenium_and_export_svg
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -221,7 +225,7 @@ class BottleApplication(Bottle):
 
             if self.export_svg:
                 try:
-                    utils.run_selenium_and_export_svg("/".join([url, "app/index.html"]),
+                    run_selenium_and_export_svg("/".join([url, "app/index.html"]),
                                                       self.args.export_svg,
                                                       browser_path=self.browser_path,
                                                       run=run)
@@ -237,7 +241,7 @@ class BottleApplication(Bottle):
                 # I have added sleep below to delay web browser little bit.
                 time.sleep(1.5)
 
-                utils.open_url_in_browser(url=url, browser_path=self.browser_path, run=run)
+                open_url_in_browser(url=url, browser_path=self.browser_path, run=run)
 
                 run.info_single("The server is up and running 🎉", mc='green', nl_before = 1)
 
@@ -888,7 +892,7 @@ class BottleApplication(Bottle):
         items_order = None
         if items_order_entry['type'] == 'newick':
             names_with_only_digits_ok = self.interactive.mode == 'gene'
-            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'], names_with_only_digits_ok=names_with_only_digits_ok)
+            items_order = get_names_order_from_newick_tree(items_order_entry['data'], names_with_only_digits_ok=names_with_only_digits_ok)
         else:
             items_order = items_order_entry['data']
 
@@ -1134,7 +1138,7 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})
 
         hmm_sequences_dict = self.interactive.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(self.interactive.collection[bin_name])})
-        gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
+        gene_sequences = get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
 
         if not gene_sequences:
             return json.dumps({'error': "Sorry. It seems %s does not have a hit for %s." % (bin_name, gene_name)})
@@ -1288,7 +1292,7 @@ class BottleApplication(Bottle):
             view_name = request.forms.get('view')
             if view_name in self.interactive.views:
                 view_path = filesnpaths.get_temp_file_path()
-                utils.store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
+                store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
                 args.view_data = view_path
 
             item_order_name = request.forms.get('ordering')

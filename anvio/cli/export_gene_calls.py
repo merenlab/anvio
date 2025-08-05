@@ -6,11 +6,12 @@ import pandas as pd
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.files import store_dataframe_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -34,7 +35,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_contigs_db(args.contigs_db)
+        is_contigs_db(args.contigs_db)
 
         if args.list_gene_callers:
             dbops.ContigsDatabase(args.contigs_db).list_gene_caller_sources()
@@ -83,7 +84,7 @@ def main():
             gene_caller_ids_of_interest = list(gene_calls.index.values)
             gene_calls['aa_sequence'] = gene_calls.index.map(get_aa_seq_dict(contigs_db, gene_caller_ids_of_interest))
 
-        utils.store_dataframe_as_TAB_delimited_file(gene_calls, args.output_file, include_index=True, index_label='gene_callers_id')
+        store_dataframe_as_TAB_delimited_file(gene_calls, args.output_file, include_index=True, index_label='gene_callers_id')
 
         run.info('Output', args.output_file)
     except ConfigError as e:
