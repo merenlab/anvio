@@ -4,7 +4,6 @@ FUNCTION_TO_MODULE = {
         'get_available_program_names_in_active_environment': 'system',
         'is_program_exists': 'system',
         'check_h5py_module': 'system',
-        'is_all_npm_packages_installed': 'system',
 
         'rev_comp': 'sequences',
         'rev_comp_gene_calls_dict': 'sequences',
@@ -169,4 +168,5 @@ FUNCTION_TO_MODULE = {
         'run_selenium_and_export_svg': 'visualization',
 
         'compare_times': 'debug',
+        'is_all_npm_packages_installed': 'debug',
 }
