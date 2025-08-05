@@ -5,11 +5,11 @@
 import os
 import glob
 
-import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.constants as constants
 
 from anvio.errors import ConfigError
+from anvio.utils.files import get_column_data_from_TAB_delim_file, get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file
 
 run = terminal.Run()
 
@@ -27,8 +27,8 @@ def get(engine, run=run):
     for matrix_path in substitution_matrix_paths:
         matrix_id = os.path.basename(matrix_path).split('.txt')[0]
 
-        matrix_rows = u.get_column_data_from_TAB_delim_file(matrix_path, column_indices=[0])[0][1:]
-        matrix_columns = u.get_columns_of_TAB_delim_file(matrix_path, include_first_column=False)
+        matrix_rows = get_column_data_from_TAB_delim_file(matrix_path, column_indices=[0])[0][1:]
+        matrix_columns = get_columns_of_TAB_delim_file(matrix_path, include_first_column=False)
 
         if sorted(matrix_columns) != sorted(matrix_rows):
             raise ConfigError("Anvi'o found a substitution scoring matrix named '%s'. However, it doesn't look like "
@@ -51,7 +51,7 @@ def get(engine, run=run):
                                             (matrix_id, engine, len(expected_items), ', '.join(expected_items),
                                              matrix_id, ', '.join(unexpected_items_in_matrix)))
 
-        matrix_data = u.get_TAB_delimited_file_as_dictionary(matrix_path, column_mapping = [str] + [float] * len(expected_items))
+        matrix_data = get_TAB_delimited_file_as_dictionary(matrix_path, column_mapping = [str] + [float] * len(expected_items))
         data[matrix_id] = matrix_data
 
     if len(data):
