@@ -119,6 +119,20 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
 
 It is hopefully understandable that these two flags are incompatible with each other.
 
+### Skipping some Pathway Maps
+
+By default, this program will process all regular-type KEGG Pathway Maps (those with map IDs starting with prefix '00') which have Reaction ('RN') type KGML files available in the KEGG data directory. If there are some Pathway Maps that you _don't want_ used for prediction (because they are irrelevant to your system, or you think they lead to misleading results, whatever), you can use the `--exclude-pathway-maps` option to provide a comma-separated list of Pathway Map ID numbers (just the numbers, no string prefix of any kind).
+
+In the example below, we exclude two Pathway Maps: [map 00195 (Photosynthesis)](https://www.kegg.jp/dbget-bin/www_bget?map00195) and [map 00190 (Oxidative Phosphorylation)](https://www.kegg.jp/dbget-bin/www_bget?map00190). Both of these describe several enzyme complexes and do not explicitly contain any chemical reactions; hence, they do not have 'RN'-type KGML files and would be skipped by the program anyway. The only effect of using the flag in this case would be that you don't see any warnings on the terminal about those two Pathway Maps. However, if you use the flag to exclude a map that _does_ have an 'RN'-type KGML file, such as [map 00470 (D-amino acid biosynthesis)](https://www.kegg.jp/pathway/map00470), the effect would be to remove any predictions (and accompanying evidence) that come from that Pathway Map.
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
+                                 -O ANY_PREFIX \
+                                 --exclude-pathway-maps 00195,00190
+{{ codestop }}
+
+This option is only relevant if you allow the Pathway Map Walk prediction strategy (i.e., you didn't use `--no-pathway-walk`).
+
 ### Changing the number of allowed gaps in the Pathway Map walks
 
 The `--maximum-gaps` parameter applies to the first prediction step of walking over KEGG Pathway Maps, and allows a certain number of missing enzyme annotations in the reaction chains. By default, we don't allow any gaps, but if you think missing annotations in either genome might be throwing off your predictions, you can set this parameter to an integer greater than 0:
@@ -242,3 +256,9 @@ If a compound is found in multiple Pathway Maps, we aggregate the evidence from 
 Bottom Line: you should probably focus on predictions from the prediction method `Pathway_Map_Walk` whenever possible
 
 Provided you run `anvi-predict-metabolic-exchanges` _without_ the `--no-pathway-walk` flag, it will use the Pathway Map Walk approach _first_ to make predictions for any compound associated with at least one KEGG Pathway Map.
+
+#### Which Pathway Maps do we use?
+
+In order for the Pathway Map walk to work, we need the map to (1) include Kegg Orthologs (KOs) so that we can link up the reaction network information with the Pathway Map information, and (2) have a Reaction ('RN') type KGML file available in the KEGG data directory. This means we only process regular KEGG Pathway Maps categorized under 'Metabolism', whose map IDs start with the prefix '00' -- you can see a list of all Maps on [the KEGG PATHWAY webpage](https://www.kegg.jp/kegg/pathway.html) if you are curious what falls under this category. And out of those maps, we have to skip any map that doesn't have an 'RN'-type KGML file. The program detects and skips any non-'RN' maps automatically and warns the user on the terminal about them.
+
+If you want to exclude a subset of these KEGG Pathway Maps, you can do so with the `--exclude-pathway-maps` as described previously on this page.
