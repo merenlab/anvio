@@ -184,7 +184,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             (used in multi-mode to direct all output from several estimators to the same files). 
             If provided, we don't setup the self.output_file_dict
         return_data_dicts : boolean
-            If True, this function will return the prediction result dictionaries instead of 
+            If True, this function will return the prediction result dictionaries (and the list of Pathway Maps with failed walks) instead of 
             appending them to the output files. Note that we don't setup the self.output_file_dict in this case
         """
 
@@ -219,14 +219,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
         self.compound_to_pathway_walk_chains = {}
 
-        # dictionaries to store output
+        # variables to store output
         data_dicts = {t: {} for t in self.output_types}
         compounds_not_in_maps = set()
         self.processed_compound_ids = set() # this is how we'll make sure we don't process equivalent compounds twice
+        failed_maps = None # will store Pathway Maps with failed walks (if walk is performed)
 
         if not self.no_pathway_walk:
             # STEP 1: PATHWAY MAP WALKS (TODO multithread: split pathway maps between workers)
-            self.walk_all_pathway_maps()
+            failed_maps = self.walk_all_pathway_maps()
             compounds_not_in_maps = set(self.merged.metabolites.keys()).difference(set(self.compound_to_pathway_walk_chains.keys()))
 
             # STEP 2: PREDICT EXCHANGES using pathway walk evidence
@@ -263,7 +264,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         
         # STEP 4: OUTPUT or RETURN
         if return_data_dicts:
-            return data_dicts
+            return data_dicts, failed_maps
         else:
             self.append_output_from_dicts(data_dicts)
             for typ, file_object in self.output_file_dict.items():
@@ -389,10 +390,13 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         return walker_args
 
     def walk_all_pathway_maps(self):
-        """Loops over all KEGG Pathway Maps in the merged network and fills self.compound_to_pathway_walk_chains."""
+        """Loops over all KEGG Pathway Maps in the merged network and fills self.compound_to_pathway_walk_chains.
+        Returns list of Pathway Maps that yielded errors during the walk.
+        """
 
         num_pms_to_process = len(self.all_pathway_maps)
         processed_count = 0
+        maps_with_errors = []
         self.progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
         for pm in self.all_pathway_maps:
             self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
@@ -432,11 +436,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             f"error. This usually happens because the Map does not have a reaction (RN) type KGML file. "
                             f"We are therefore skipping this Pathway Map, but please take a look at the error text and make "
                             f"sure skipping is the right action here: {e}")
+                maps_with_errors.append(pm)
             processed_count += 1
             self.progress.increment(increment_to=processed_count)
         self.progress.end()
         self.run.info("Number of Pathway Maps processed", len(self.all_pathway_maps))
         self.run.info("Number of compounds processed from Pathway Maps", len(self.compound_to_pathway_walk_chains.keys()))
+
+        return maps_with_errors
 
     def producer_consumer_decision_tree(self, genomes_can_produce, genomes_can_consume):
         """Given two genomes, decides which genome is the predicted producer/consumer of the current compound.
@@ -1102,22 +1109,25 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         args_single = ExchangePredictorArgs(self.args, format_args_for_single_estimator=True)
         args_single.contigs_db_1 = contigs_db_A
         args_single.contigs_db_2 = contigs_db_B
-        data_dicts_for_one_pair = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
+        data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
 
-        return data_dicts_for_one_pair
+        return data_dicts_for_one_pair, failed_maps_list
 
     @staticmethod
     def metabolic_exchanges_process_worker(self, genome_pairs_queue, output_queue):
-        """This multiprocessing target function loops over genome pairs until there are no more to compare."""
+        """This multiprocessing target function loops over genome pairs until there are no more to compare.
+        It pulls genome pairs from the genome_pairs_queue and places the results on the output_queue. Results
+        include both the data dictionaries of predictions and the list of Pathway Maps with failed walks (if any)
+        """
 
         while True:
             try:
                 genome_A, genome_B = genome_pairs_queue.get(True)
                 db_A, db_B = self.databases[genome_A]['contigs_db_path'], self.databases[genome_B]['contigs_db_path']
-                pair_data_dicts = self.one_pair_worker(db_A, db_B)
-                output_queue.put((genome_A, genome_B, pair_data_dicts)) # we put the pair back in the queue after successful processing
+                pair_data_dicts, pair_failed_maps = self.one_pair_worker(db_A, db_B)
+                output_queue.put((genome_A, genome_B, pair_data_dicts, pair_failed_maps)) # we put the pair back in the queue after successful processing
 
             except Exception as e:
                 # send the error back to the main thread
@@ -1212,13 +1222,25 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                     # If thread returns an exception, we raise it and kill the main thread.
                     raise pair
 
+                # if we made it this far, then pair should be a tuple with 4 elements: (genome_A, genome_B, pair_data_dicts, pair_failed_maps)
                 received_pairs += 1
                 genome_A = pair[0]
                 genome_B = pair[1]
                 A_vs_B_data_dicts = pair[2]
+                A_vs_B_failed_maps = pair[3]
                 if anvio.DEBUG:
                     self.progress.reset()
                     self.run.info_single(f"Finished {genome_A} vs {genome_B} comparison")
+                if A_vs_B_failed_maps:
+                    self.progress.reset()
+                    n = len(A_vs_B_failed_maps)
+                    self.run.warning(f"While processing {genome_A} vs {genome_B}, there {P('was one Pathway Map', n, alt='were some Pathway Maps')} "
+                                    f"for which the Pathway Map {P('walk', n, alt='walks')} failed for some reason. At this point, anvi'o has "
+                                    f"zero clue why the {P('walk', n, alt='walks')} failed, but it is usually due to the lack of a Reaction (RN) type "
+                                    f"KGML file for the Pathway Map. If you are curious, you can try running this program again "
+                                    f"with the single pair of genomes ({genome_A} and {genome_B}) to see the explanation for any "
+                                    f"failed Pathway Maps in the terminal output. But for now, all we can tell you is that "
+                                    f"{P('this was the Pathway Map', n, alt='these were the Pathway Maps')} we could not process: {', '.join(A_vs_B_failed_maps)}")
 
                 # write the output from one comparison to the output file
                 self.append_output_from_dicts(A_vs_B_data_dicts)
