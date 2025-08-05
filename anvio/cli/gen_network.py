@@ -5,12 +5,12 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.utils import gen_gexf_network_file
+from anvio.utils.visualization import gen_gexf_network_file
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,7 +58,7 @@ class NetworkDescriptonSamples:
             self.init()
 
     def init(self):
-        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.profile_db = dbops.ProfileSuperclass(self.args)
         self.contigs_db = dbops.ContigsSuperclass(self.args)
