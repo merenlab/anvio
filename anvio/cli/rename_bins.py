@@ -320,7 +320,7 @@ def get_args():
                             "be a MAG, you can use this flag and all the 'bins' would then be excluded from "
                             "your new collection, leaving you with only the 'good' stuff.")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

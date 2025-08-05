@@ -276,8 +276,12 @@ Contact = "https://anvio.org/people"
 "anvi-script-transpose-matrix"                           = "anvio.cli.transpose_matrix:main"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["anvio*"]
+exclude = ["anvio.tests.test-output*"]
+
 [tool.setuptools]
-packages = ["anvio"]
 include-package-data = true
 
 # Non-python programs in anvi'o
@@ -288,11 +292,17 @@ script-files = [
 
 [tool.setuptools.package-data]
 anvio = [
+    "cli/**/*",
     "data/**/*",
-    "tests/sandbox/**/*",
     "docs/**/*",
-    "*.txt",
-    "*.md"
+    "drivers/**/*",
+    "migrations/**/*",
+    "parsers/**/*",
+    "scripts/**/*",
+    "tables/**/*",
+    "taxonomyops/**/*",
+    "tests/**/*",
+    "workflows/**/*"
 ]
 
 [tool.setuptools.dynamic]
