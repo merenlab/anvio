@@ -1066,11 +1066,11 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                                       f"likely means you have completely empty lines in the file): '{l}'")
                 # sanity check for equal-but-opposite pairings
                 if (fields[genome_2_index], fields[genome_1_index]) in pairs:
-                    self.run.warning(f"Just FYI, we found the equal-but-opposite genome pairs ('{fields[genome_2_index]}', '{fields[genome_1_index]}')"
+                    self.run.warning(f"Just FYI, we found the equal-but-opposite genome pairs ('{fields[genome_2_index]}', '{fields[genome_1_index]}') "
                                      f"and ('{fields[genome_1_index]}', '{fields[genome_2_index]}') in your genome-pairs-txt file, and wanted to let you "
                                      f"know that there is no point in keeping both of those around since the output will be the same "
                                      f"regardless of genome order in the pair. Anvi'o will graciously keep only the first of these "
-                                     f"equivalent pairings around, and get ignore the second one. we got u fam.")
+                                     f"equivalent pairings around, and ignore the second one. we got u fam.")
                 elif fields[genome_1_index] == fields[genome_2_index]:
                     self.run.warning(f"Just FYI, we found a genome pair that consists of the same genome name twice "
                                      f"(specifically, genome '{fields[genome_1_index]}') in your genome-pairs-txt file. "
@@ -1141,20 +1141,21 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.init_external_internal_genomes()
         if self.genome_pairs_txt:
             self.genome_pairs = self.get_genome_pairs_from_txt(self.genome_pairs_txt)
+            missing = set([])
             for genome_1, genome_2 in self.genome_pairs:
-                missing = set([])
                 if genome_1 not in self.databases:
                     missing.add(genome_1)
                 if genome_2 not in self.databases:
                     missing.add(genome_2)
             
             if missing:
-                raise ConfigError(f"We found genome(s) in the provided genome-pairs-txt file ({self.genome_pairs_txt}) "
+                n = len(missing)
+                raise ConfigError(f"We found {P('genome', n)} in the provided genome-pairs-txt file ({self.genome_pairs_txt}) "
                                   f"that were not present in the provided external genomes file ({self.external_genomes_file}). "
-                                  f"Well, we cannot do anything if we don't know the paths to the genome contigs databases, "
-                                  f"so we are gonna have to stop right here and ask you to make sure that all genome names match "
-                                  f"between the two files. Here are the genome names missing from the external genomes file: "
-                                  f"{', '.join(missing)}")
+                                  f"Well, we cannot do anything if we don't know the {P('path', n, alt='paths')} to the genome "
+                                  f"contigs {P('database', n, alt='databases')}, so we are gonna have to stop right here and ask "
+                                  f"you to make sure that all genome names match between the two files. Here {P('is', n, alt='are')} "
+                                  f"the {P('genome name', n)} missing from the external genomes file: {', '.join(missing)}")
         else:
             self.genome_pairs = self.get_all_vs_all_genome_pairs()
 
@@ -1237,7 +1238,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                     self.run.warning(f"While processing {genome_A} vs {genome_B}, there {P('was one Pathway Map', n, alt='were some Pathway Maps')} "
                                     f"for which the Pathway Map {P('walk', n, alt='walks')} failed for some reason. At this point, anvi'o has "
                                     f"zero clue why the {P('walk', n, alt='walks')} failed, but it is usually due to the lack of a Reaction (RN) type "
-                                    f"KGML file for the Pathway Map. If you are curious, you can try running this program again "
+                                    f"KGML file for {P('the', n, alt='each')} affected Pathway Map. If you are curious, you can try running this program again "
                                     f"with the single pair of genomes ({genome_A} and {genome_B}) to see the explanation for any "
                                     f"failed Pathway Maps in the terminal output. But for now, all we can tell you is that "
                                     f"{P('this was the Pathway Map', n, alt='these were the Pathway Maps')} we could not process: {', '.join(A_vs_B_failed_maps)}")
