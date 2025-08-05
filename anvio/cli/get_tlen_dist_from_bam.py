@@ -2,15 +2,10 @@
 # -*- coding: utf-8
 
 import sys
-import numpy as np
-import pandas as pd
 
 import anvio
-import anvio.dbops as dbops
 import anvio.bamops as bamops
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -69,7 +64,7 @@ def get_args():
                         "histogram for the template length distribution across ALL contigs in a given BAM "
                         "file")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':
