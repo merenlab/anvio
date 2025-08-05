@@ -3394,6 +3394,17 @@ D = {
                      "reaction network alone -- these predictions are less confident anyway. The downside is that "
                      "you'll miss any predictions for compounds not in Pathway Maps."}
                 ),
+    'exclude-pathway-maps': (
+            ['--exclude-pathway-maps'],
+            {'metavar': 'PATHWAY MAP ID[S]',
+             'default': None,
+             'help': "Exclude certain KEGG Pathway Maps from the Pathway Map Walk prediction strategy. You can specify "
+                     "one or more maps by providing their map IDs (just the number, no prefix, as in '00470') in a "
+                     "comma-separated list (e.g., '--exclude-pathway-maps 00470,00195,00542'). The default behavior is to "
+                     "process all regular (prefix '00') Pathway Maps that have a Reaction (RN) type KGML file available. "
+                     "Note that we don't do any sanity checks to ensure that the map IDs you provide are real map IDs, so you "
+                     "will need to double check them yourself (if you provide a fake ID, it will not lead to exclusion of anything)."}
+                ),
     'genome-pairs-txt': (
             ['--genome-pairs-txt'],
             {'metavar': 'FILE_PATH',
