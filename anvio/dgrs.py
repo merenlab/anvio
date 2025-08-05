@@ -93,6 +93,8 @@ class DGR_Finder:
 
         if self.num_threads:
             self.run.info('Threads Used', self.num_threads)
+        # be talkative or not
+        self.verbose = A('verbose')
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
@@ -819,12 +821,16 @@ class DGR_Finder:
                             for atr1 in pytrf.ATRFinder('name', seq):
                                 if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
                                     has_repeat = True
+                                    if anvio.DEBUG and self.verbose:
+                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found imperfect tandem repeat in the query sequence {seq} with repeat count {atr1.repeat} and motif {atr1.motif}")
 
                             #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
                             for ssr in pytrf.STRFinder('name', seq, mono=5, di=5):
                                 #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
                                 if ssr:
                                     has_repeat = True
+                                    if anvio.DEBUG and self.verbose:
+                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found tandem repeat in the query sequence {seq} with repeat count {ssr.repeat} and motif {ssr.motif}")
 
                             #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
                             # divided by the sequence length
@@ -832,6 +838,8 @@ class DGR_Finder:
                                 coverage = (len(atr.motif)*atr.repeat) / len(seq)
                                 if coverage > self.repeat_motif_coverage:
                                     has_repeat = True
+                                    if anvio.DEBUG and self.verbose:
+                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
 
                             #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
                             # divided by the sequence length
@@ -840,6 +848,8 @@ class DGR_Finder:
                                 coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
                                 if coverage > self.repeat_motif_coverage:
                                     has_repeat = True
+                                    if anvio.DEBUG and self.verbose:
+                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
 
                         if has_repeat == True:
                             #breakout of loop (don't add as dgr)
@@ -1164,7 +1174,8 @@ class DGR_Finder:
                             if is_3_over_a_third:
                                 self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}")
                                 snv_at_3_codon_over_a_third = True
-                                self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
+                                if anvio.debug:
+                                    self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
                                                 "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
                                                 f"from the third codon base position which is unexpected behaviour. This percentage of SNVs comes from the third codon position: "
                                                 f"{percent_3} are in the third codon position of the VR. The percentage cut off for third codon position SNVs is 33% due to the "
@@ -1268,7 +1279,7 @@ class DGR_Finder:
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
-                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}", header="NEW DGR", lc='yellow')
+                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
@@ -1289,7 +1300,7 @@ class DGR_Finder:
                                     break
                             if not was_added:
                                 # add new TR and its first VR
-                                self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}", header="NEW DGR", lc='yellow')
+                                self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                                 num_DGR += 1
                                 self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
