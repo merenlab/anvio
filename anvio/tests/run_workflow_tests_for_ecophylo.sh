@@ -16,6 +16,16 @@ cp $files/data/input_files/hmm_list.txt                                 $output_
 cp $files/data/input_files/hmm_list_external.txt                        $output_dir/workflow_test
 cd $output_dir/workflow_test
 
+# First check if gen-paired-end-reads exists and is executable
+INFO "Checking if reads-for-assembly is in place"
+if [ ! -x ~/github/reads-for-assembly/gen-paired-end-reads ]; then
+    echo "Error: gen-paired-end-reads not found or not executable at ~/github/reads-for-assembly/"
+    echo "see https://github.com/merenlab/reads-for-assembly and get a copy"
+    exit 1
+else
+    echo "All good"
+fi
+
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-quickly
 
@@ -29,7 +39,6 @@ sed 's|external-genomes.txt||' default-config.json | sed 's|samples\.txt||' > no
 sed 's|metagenomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-external-genomes-txt-config.json
 sed 's|"run_genomes_sanity_check": true|"run_genomes_sanity_check": false|' default-config.json > no-genomes-sanity-check-config.json
 
-
 INFO "Generating r1 and r2 short reads for samples"
 mkdir -p output
 samples="sampleB_thetaiotamicron_Ribosomal_L16 sample_IGD_SUBSET_Ribosomal_L16 sample_P_marinus_Ribosomal_L16"
@@ -41,7 +50,7 @@ done
 
 echo -e "sample\tr1\tr2" > samples.txt
 for reads in `ls output/*-R1.fastq`;
-do 
+do
     name=$(basename $reads -R1.fastq | sed 's|-|_|g')
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
 done
@@ -72,7 +81,7 @@ HMM="Ribosomal_L16"
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
 
-rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
 INFO "Saving a workflow graph - no samples.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-graph
@@ -99,7 +108,7 @@ anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
                  --manual
 
-rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
 INFO "Running ecophylo workflow - external HMM (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json
