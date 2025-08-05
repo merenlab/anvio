@@ -3,47 +3,61 @@
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
-import os
-import sys
-import ssl
-import yaml
-import gzip
-import time
-import copy
-import socket
-import shutil
-import smtplib
-import tarfile
-import hashlib
-import textwrap
-import linecache
-import webbrowser
-import subprocess
-import tracemalloc
-import configparser
-import urllib.request, urllib.error, urllib.parse
+# The following try/except block is to make sure when git hooks are doing
+# their things in anvi'o development environments, we have a means to remind
+# developers that they may have not initialized their anvi'o environment
+# properly. This didn't have to be in utils.py, but since this module is
+# imported from so many other modules, it is kind of an appropriate place
+# for this
+try:
+    import os
+    import sys
+    import ssl
+    import yaml
+    import gzip
+    import time
+    import copy
+    import socket
+    import shutil
+    import tarfile
+    import hashlib
+    import textwrap
+    import linecache
+    import webbrowser
+    import subprocess
+    import tracemalloc
+    import urllib.request, urllib.error, urllib.parse
 
-import numpy as np
-import pandas as pd
-import Bio.PDB as PDB
-import itertools as it
+    import numpy as np
+    import pandas as pd
+    import Bio.PDB as PDB
+    import itertools as it
 
-from numba import jit
-from collections import Counter
-from email.mime.text import MIMEText
+    from numba import jit
+    from collections import Counter
 
-import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.fastalib as u
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
+    import anvio
+    import anvio.db as db
+    import anvio.tables as t
+    import anvio.fastalib as u
+    import anvio.constants as constants
+    import anvio.filesnpaths as filesnpaths
 
-from anvio.dbinfo import DBInfo as dbi
-from anvio.sequence import Composition
-from anvio.version import versions_for_db_types
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+    from anvio.dbinfo import DBInfo as dbi
+    from anvio.sequence import Composition
+    from anvio.version import versions_for_db_types
+    from anvio.errors import ConfigError, FilesNPathsError
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+except ModuleNotFoundError as e:
+    # Extract just the module name from "No module named 'modulename'"
+    module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
+    print(f"\n\nWARNING\n"
+          f"\n===========================================================\n"
+          f"The anvi'o conda environment does not seem to have not been\n"
+          f"properly initialized since Python complains that it cannot\n"
+          f"import '{module_name}'. Are you sure you have initialized\n"
+          f"the anvi'o environment properly?\n\n")
+    sys.exit()
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -331,7 +345,7 @@ def is_port_in_use(port, ip='0.0.0.0'):
 
 def get_available_program_names_in_active_environment(prefix=None, contains=None, postfix=None):
     """Find all executable programs in the current environment that match the given criteria.
-    
+
     Parameters
     ==========
     prefix : str, optional
@@ -340,50 +354,50 @@ def get_available_program_names_in_active_environment(prefix=None, contains=None
         String that must be contained in the program name (e.g., 'graph')
     postfix : str, optional
         The postfix/suffix to search for (e.g., '.py', '-dev')
-    
+
     Returns
     =======
     program_names : set
         A set of program names that match all specified criteria
     """
     program_names = set()
-    
+
     # Get all directories in PATH
     path_dirs = os.environ.get('PATH', '').split(os.pathsep)
-    
+
     for path_dir in path_dirs:
         if not path_dir or not os.path.isdir(path_dir):
             continue
-            
+
         try:
             # List all files in the directory
             for item in os.listdir(path_dir):
                 item_path = os.path.join(path_dir, item)
-                
+
                 # Check if it's a file and executable
                 if os.path.isfile(item_path) and os.access(item_path, os.X_OK):
                     # Check all specified criteria
                     matches = True
-                    
+
                     if prefix is not None:
                         if not item.lower().startswith(prefix.lower()):
                             matches = False
-                    
+
                     if contains is not None and matches:
                         if contains.lower() not in item.lower():
                             matches = False
-                    
+
                     if postfix is not None and matches:
                         if not item.lower().endswith(postfix.lower()):
                             matches = False
-                    
+
                     if matches:
                         program_names.add(item)
-                        
+
         except (PermissionError, OSError):
             # Skip directories we can't read
             continue
-    
+
     return program_names
 
 
@@ -657,25 +671,6 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
-def multi_index_pivot(df, index = None, columns = None, values = None):
-    # https://github.com/pandas-dev/pandas/issues/23955
-    output_df = df.copy(deep = True)
-    if index is None:
-        names = list(output_df.index.names)
-        output_df = output_df.reset_index()
-    else:
-        names = index
-    output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
-    if isinstance(columns, list):
-        output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
-        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
-        output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
-    else:
-        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
-    output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
-    return output_df
-
-
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
     """ Stores a pandas DataFrame as a tab-delimited file.
 
@@ -894,7 +889,7 @@ def is_all_columns_present_in_TAB_delim_file(columns, file_path, including_first
 def is_all_npm_packages_installed():
     """A function to test whether all npm packages are installed in the interactive directory.
 
-    This check is for ensuring that necessary npm packages are installed in the 
+    This check is for ensuring that necessary npm packages are installed in the
     anvio/data/interactive directory.
     """
 
@@ -1063,7 +1058,7 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     if return_number_of_sequences:
         return output_file_paths, length
-    
+
     else:
         return output_file_paths
 
@@ -3436,6 +3431,13 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 
     filesnpaths.is_output_file_writable(output_file)
 
+    def RepresentsFloat(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
     output = open(output_file, 'w')
 
     samples = sorted(samples_dict.keys())
@@ -3678,7 +3680,7 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
             raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
                               f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
                               f"fix this in your samples-txt file.")
-        
+
         for path in r1_sample_paths + r2_sample_paths:
             if not os.path.exists(path):
                 samples_with_missing_files.append(sample_name)
@@ -4837,155 +4839,6 @@ def check_h5py_module():
                           "The reason why the standard anvi'o package does not include this module is both "
                           "complicated and really unimportant. Re-running the migration after `h5py` is installed "
                           "will make things go smoothly.")
-
-
-def RepresentsInt(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
-
-
-def RepresentsFloat(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
-
-class Mailer:
-    def __init__(self, from_address='admin@localhost', server_address='localhost', server_port=25,
-                 init_tls=False, username=None, password=None, run=Run(verbose=False),
-                 progress=Progress(verbose=False)):
-        self.from_address = from_address
-        self.server_address = server_address
-        self.server_port = server_port
-        self.init_tls = init_tls
-        self.username = username
-        self.password = password
-
-        self.server = None
-        self.config_ini_path = None
-
-        self.run = run
-        self.progress = progress
-
-        self.config_template = {
-                'SMTP': {
-                        'from_address': {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_address': {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_port': {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0, 'required': 'an integer'},
-                        'init_tls': {'mandatory': True, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-                        'username': {'mandatory': True, 'test': lambda x: str(x)},
-                        'password': {'mandatory': True, 'test': lambda x: str(x)},
-                    },
-            }
-
-
-    def init_from_config(self, config_ini_path):
-        def get_option(self, config, section, option, cast):
-            try:
-                return cast(config.get(section, option).strip())
-            except configparser.NoOptionError:
-                return None
-
-        filesnpaths.is_file_exists(config_ini_path)
-
-        self.config_ini_path = config_ini_path
-
-        config = configparser.ConfigParser()
-
-        try:
-            config.read(self.config_ini_path)
-        except Exception as e:
-            raise ConfigError("Well, the file '%s' does not seem to be a config file at all :/ Here "
-                               "is what the parser had to complain about it: %s" % (self.config_ini_path, e))
-
-        section = 'SMTP'
-
-        if section not in config.sections():
-            raise ConfigError("The config file '%s' does not seem to have an 'SMTP' section, which "
-                               "is essential for Mailer class to learn server and authentication "
-                               "settings. Please check the documentation to create a proper config "
-                               "file." % self.config_ini_path)
-
-
-        for option, value in config.items(section):
-            if option not in list(self.config_template[section].keys()):
-                raise ConfigError('Unknown option, "%s", under section "%s".' % (option, section))
-            if 'test' in self.config_template[section][option] and not self.config_template[section][option]['test'](value):
-                if 'required' in self.config_template[section][option]:
-                    r = self.config_template[section][option]['required']
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s". '
-                                       'What is expected is %s.' % (value, option, section, r))
-                else:
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
-
-        self.run.warning('', header="SMTP Configuration is read", lc='cyan')
-        for option, value in config.items(section):
-            self.run.info(option, value if option != 'password' else '*' * len(value))
-            setattr(self, option, value)
-
-
-    def test(self):
-        self.connect()
-        self.disconnect()
-
-
-    def connect(self):
-        if not self.server_address or not self.server_port:
-            raise ConfigError("SMTP server has not been configured to send e-mails :/")
-
-        try:
-           self.server = smtplib.SMTP(self.server_address, self.server_port)
-
-           if self.init_tls:
-               self.server.ehlo()
-               self.server.starttls()
-
-           if self.username:
-               self.server.login(self.username, self.password)
-
-        except Exception as e:
-            raise ConfigError("Something went wrong while connecting to the SMTP server :/ This is what we "
-                               "know about the problem: %s" % e)
-
-
-    def disconnect(self):
-        if self.server:
-            self.server.quit()
-
-        self.server = None
-
-
-    def send(self, to, subject, content):
-        self.progress.new('E-mail')
-        self.progress.update('Establishing a connection ..')
-        self.connect()
-
-        self.progress.update('Preparing the package ..')
-        msg = MIMEText(content)
-        msg['To'] = to
-        msg['Subject'] = subject
-        msg['From'] = self.from_address
-        msg['Reply-to'] = self.from_address
-
-        try:
-            self.progress.update('Sending the e-mail to "%s" ..' % to)
-            self.server.sendmail(self.from_address, [to], msg.as_string())
-        except Exception as e:
-            self.progress.end()
-            raise ConfigError("Something went wrong while trying to connet send your e-mail :( "
-                               "This is what we know about the problem: %s" % e)
-
-
-        self.progress.update('Disconnecting ..')
-        self.disconnect()
-        self.progress.end()
-
-        self.run.info('E-mail', 'Successfully sent to "%s"' % to)
 
 
 def split_by_delim_not_within_parens(d, delims, return_delims=False):

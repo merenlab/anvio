@@ -24,7 +24,7 @@ def main():
 
     try:
         p = cazymes.CAZyme(args)
-        main(args)
+        p.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -45,6 +45,7 @@ def get_args():
                         if you do not specify anything.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)
 
