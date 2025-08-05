@@ -31,12 +31,6 @@ run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 P = terminal.pluralize
 
-MAPS_TO_EXCLUDE = set(["00470", # D-amino acid biosynthesis. This map mostly connects other maps.
-                       "00195", # Photosynthesis. This map describes photosystems and complexes rather than reactions.
-                       "00190", # Oxidative Phosphorylation. This map describes enzyme complexes rather than reactions.
-                       "00543", # Exopolysaccharide biosynthesis. Does not have a RN-type KGML file.
-])
-
 class ExchangePredictorArgs():
     def __init__(self, args, format_args_for_single_estimator=False, run=run_quiet):
         """A base class to assign arguments to attributes for ExchangePredictor classes.
@@ -61,6 +55,14 @@ class ExchangePredictorArgs():
         self.add_reactions_to_output = A('add_reactions_to_output')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
+        self.pathway_maps_to_exclude = []
+        
+        if A('exclude_pathway_maps'):
+            self.pathway_maps_to_exclude = A('exclude_pathway_maps').split(',')
+            n = len(self.pathway_maps_to_exclude)
+            run.info_single(f"You told anvi'o to exclude the following {P('Pathway Map', n)} from the Pathway Map Walk "
+                            f"prediction strategy: {', '.join(self.pathway_maps_to_exclude)}. If these are real map IDs, "
+                            f"the corresponding maps will not be processed.")
 
         self.sanity_check_args()
 
@@ -214,7 +216,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         # SET UP DICTIONARIES
         self.map_kegg_ids_to_modelseed_ids()
         self.map_kegg_ids_to_compound_names()
-        self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=MAPS_TO_EXCLUDE, id_selection_prefix = "00")
+        self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=self.pathway_maps_to_exclude, id_selection_prefix = "00")
         # this will store the output of the KEGG Pathway Map walks
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
         self.compound_to_pathway_walk_chains = {}
