@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress, SuppressAllOutput
 
-from anvio.utils.files import human_readable_file_size
+from anvio.utils.algorithms import human_readable_file_size
 
 
 
