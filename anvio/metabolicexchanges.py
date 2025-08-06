@@ -521,7 +521,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 break
             
             self.progress.increment(increment_to=num_walks_completed)
-            self.progress.update(f"{num_walks_completed} / {num_total_walks} Walks (just-finished walk: Map {pm}, Genome {self.genomes_to_compare[g]['name']})")
+            self.progress.update(f"{num_walks_completed} / {num_total_walks} Walks")
             
         for proc in pw_processes:
             proc.terminate()
