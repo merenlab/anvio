@@ -89,6 +89,8 @@ class ExchangePredictorArgs():
             self.internal_genomes_file = None
             if self.num_parallel_processes == 1: # if the multi estimator was told to use just one process, then it will
                 self.num_threads = 1             # spawn --num-threads child Processes that should each use one thread
+            else:   # otherwise we remove one thread so that there is one reserved for the initial child process itself
+                self.num_threads -= 1
             self.num_parallel_processes = 1
 
     def sanity_check_args(self):
@@ -1277,7 +1279,9 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         args_single.contigs_db_1 = contigs_db_A
         args_single.contigs_db_2 = contigs_db_B
         if anvio.DEBUG:
-            self.run.info_single(f"Child process is starting prediction with an ExchangePredictorSingle class using {args_single.num_threads} threads.")
+            self.run.info_single(f"Child process is starting prediction with an ExchangePredictorSingle class using {args_single.num_threads} threads."
+                                 f"If this value is one less than the number provided to the --num-threads parameter, everything is fine. The child "
+                                 f"process itself is using 1 thread so we don't let it spawn more than N-1 additional processes.")
         data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
