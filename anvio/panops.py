@@ -3674,7 +3674,7 @@ class PangenomeGraph():
                     else:
                         alignment_summary = ''
                         node_alignment_summaries[genome_name] = alignment_summary
-                        
+
                         sequence = ''
                         alignment = ''
                         node_alignment_lengths += [0]
