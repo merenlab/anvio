@@ -46,8 +46,8 @@ pan_reaction_network_kegg_table_types            = [ 'text'  , 'text',  'text'  
 ####################################################################################################
 
 pan_graph_nodes_table_name           = 'pan_graph_nodes'
-pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'gene_cluster_id', 'gene_calls_json']
-pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,       'str'      ,       'str'      ]
+pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'gene_cluster_id', 'gene_calls_json', 'alignment_summary']
+pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,       'str'      ,       'str'      ,        'str'       ]
 
 pan_graph_edges_table_name           = 'pan_graph_edges'
 pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'directions', 'route']

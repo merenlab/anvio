@@ -3649,7 +3649,8 @@ class PangenomeGraph():
             node_entry = {'node_id': node,
                           'node_type': nodes[node]['type'],
                           'gene_cluster_id': nodes[node]['gene_cluster'],
-                          'gene_calls_json': json.dumps(nodes[node]['gene_calls'])}
+                          'gene_calls_json': json.dumps(nodes[node]['gene_calls']),
+                          'alignment_summary': ''}
             table_for_nodes.add(node_entry)
 
         self.progress.end()
