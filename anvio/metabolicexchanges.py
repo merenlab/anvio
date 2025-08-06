@@ -440,12 +440,31 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         for pm in self.all_pathway_maps:
             pw_map_queue.put(pm)
 
+        # ONCE AGAIN DUMB STUFF IS HAPPENING (for an explanation, see the multithreading code in ExchangePredictorMulti below)
+        saved_output_file_dict = self.output_file_dict
+        saved_progress = self.progress
+        saved_rn_progress = self.merged.progress
+        saved_net1_progress = self.genomes_to_compare['A']['network'].progress
+        saved_net2_progress = self.genomes_to_compare['B']['network'].progress
+        self.output_file_dict = None
+        self.progress = None
+        self.merged.progress = None
+        self.genomes_to_compare['A']['network'].progress = None
+        self.genomes_to_compare['B']['network'].progress = None
+
         pw_processes = []
         for i in range(0, self.num_threads):
             pw_processes.append(multiprocessing.Process(target=self.pathway_map_worker, args=(pw_map_queue, pw_output_queue)))
 
         for proc in pw_processes:
             proc.start()
+
+        # restore the progress and file objects
+        self.progress = saved_progress
+        self.output_file_dict = saved_output_file_dict
+        self.merged.progress = saved_rn_progress
+        self.genomes_to_compare['A']['network'].progress = saved_net1_progress
+        self.genomes_to_compare['B']['network'].progress = saved_net2_progress
         
         self.progress.new(f"Walking {num_pms_to_process} Pathway Maps in {self.num_threads} thread(s)", progress_total_items=num_total_walks)
         self.progress.update('...')
