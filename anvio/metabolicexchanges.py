@@ -50,6 +50,7 @@ class ExchangePredictorArgs():
         self.modelseed_data_dir = A('modelseed_data_dir') # note that if the data_dir attributes are None, they will be
         self.kegg_data_dir = A('kegg_data_dir') # passed as None to the reaction network Constructor, which will use the defaults
         self.num_threads = A('num_threads')
+        self.num_parallel_processes = A('num_parallel_processes')
         self.use_equivalent_amino_acids = A('use_equivalent_amino_acids')
         self.custom_equivalent_compounds_file = A('custom_equivalent_compounds_file')
         self.maximum_gaps = A('maximum_gaps')
@@ -86,7 +87,9 @@ class ExchangePredictorArgs():
             self.databases = None
             self.external_genomes_file = None
             self.internal_genomes_file = None
-            self.num_threads = 1
+            if self.num_parallel_processes == 1: # if the multi estimator was told to use just one process, then it will
+                self.num_threads = 1             # spawn --num-threads child Processes that should each use one thread
+            self.num_parallel_processes = 1
 
     def sanity_check_args(self):
         """Here we sanity check all the common arguments to make sure they are sensibly set."""
@@ -190,6 +193,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         # INPUT SANITY CHECKS (for anything that was not already checked by the base class)
         if not self.contigs_db_1 or not self.contigs_db_2:
             raise ConfigError("The ExchangePredictorSingle class needs two contigs databases to work with.")
+        if self.num_parallel_processes > 1:
+            self.run.warning(f"You set --num-parallel-processes to {self.num_parallel_processes}, but this parameter has no "
+                             f"effect for single-genome comparisons. Anvi'o will just pretend this never happened and set "
+                             f"--num-parallel-processes to 1 for you.")
+            self.num_parallel_processes = 1
 
     def predict_exchanges(self, output_files_dictionary=None, return_data_dicts=False):
         """This is the driver function to predict metabolic exchanges between two genomes.
