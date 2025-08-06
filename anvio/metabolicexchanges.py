@@ -489,15 +489,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     if compound not in self.kegg_id_to_modelseed_id:
                         raise ConfigError(f"The merged reaction network doesn't contain a modelseed compound associated with {compound} in pathway map {pm}")
                     modelseed_id = self.kegg_id_to_modelseed_id[compound]
-                    if modelseed_id in self.compound_to_pathway_walk_chains:
-                        if anvio.DEBUG:
-                            self.progress.reset()
-                            all_kegg_compounds_with_same_modelseed_id = [x for x in self.kegg_id_to_modelseed_id if self.kegg_id_to_modelseed_id[x] == modelseed_id]
-                            if len(all_kegg_compounds_with_same_modelseed_id) > 1:
-                                self.run.warning(f"While processing KEGG compound {compound} in Pathway Map {pm}, we found that the associated "
-                                                f"ModelSEED compound ID ({modelseed_id}) was already in the pathway walk dictionary. These are "
-                                                f"all the KEGG compounds with that same ModelSEED ID: {','.join(all_kegg_compounds_with_same_modelseed_id)}")
-                    else:
+                    if modelseed_id not in self.compound_to_pathway_walk_chains:
                         self.compound_to_pathway_walk_chains[modelseed_id] = {}
                     if pm not in self.compound_to_pathway_walk_chains[modelseed_id]:
                         self.compound_to_pathway_walk_chains[modelseed_id][pm] = {}
