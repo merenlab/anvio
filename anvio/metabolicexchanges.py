@@ -244,7 +244,17 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         if not self.no_pathway_walk:
             # STEP 1: PATHWAY MAP WALKS
-            failed_maps = self.walk_all_pathway_maps()
+            # why do we need two similar functions for the different threading options here? 
+            # well, if the user asks to use just one thread, we don't want to spin up another Process besides our main thread
+            # (the main thread keeps running while any child processes are doing things) and therefore require two threads. 
+            # More concerningly, ExchangePredictorMulti will spin up multiple Processes each working with one ExchangePredictorSingle. 
+            # If we allow those child processes to spin up their own child processes, we start using way more threads than the user asked for. 
+            # Hence, we strictly control the number of threads in use by having two functions for doing essentially the same thing.
+            # (BONUS: the single-threaded version has more precise terminal output since it knows exactly what is currently being processed)
+            if self.num_threads == 1:
+                failed_maps = self.walk_all_pathway_maps_singlethread()
+            else:
+                failed_maps = self.walk_all_pathway_maps_multithreaded()
             compounds_not_in_maps = set(self.merged.metabolites.keys()).difference(set(self.compound_to_pathway_walk_chains.keys()))
 
             # STEP 2: PREDICT EXCHANGES using pathway walk evidence
@@ -423,8 +433,75 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 output_queue.put((e, map_id, genome))
         # this function will be killed by the parent process eventually
 
-    def walk_all_pathway_maps(self):
-        """Driver function for walking over all KEGG Pathway Maps in the merged network. 
+    def walk_all_pathway_maps_singlethread(self):
+        """Loops over all KEGG Pathway Maps in the merged network (single thread) and fills self.compound_to_pathway_walk_chains.
+        Returns list of Pathway Maps that yielded errors during the walk.
+        """
+
+        num_pms_to_process = len(self.all_pathway_maps)
+        processed_count = 0
+        maps_with_errors = []
+        self.progress.new('Walking through KEGG Pathway Maps', progress_total_items=num_pms_to_process)
+
+        killed_partway_through = False
+        for pm in self.all_pathway_maps:
+            self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
+            try:
+                for g in self.genomes_to_compare: 
+                    wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
+                    walker = nw.KGMLNetworkWalker(wargs)
+                    production_chains = walker.get_chains()
+                    walker.compound_fate = 'consume'
+                    consumption_chains = walker.get_chains()
+                    all_compounds_in_map = list(set(production_chains.keys()).union(set(consumption_chains.keys())))
+                    for compound in all_compounds_in_map:
+                        if compound not in self.kegg_id_to_modelseed_id:
+                            raise ConfigError(f"The merged reaction network doesn't contain a modelseed compound associated with {compound} in pathway map {pm}")
+                        modelseed_id = self.kegg_id_to_modelseed_id[compound]
+                        if modelseed_id in self.compound_to_pathway_walk_chains:
+                            if anvio.DEBUG:
+                                self.progress.reset()
+                                all_kegg_compounds_with_same_modelseed_id = [x for x in self.kegg_id_to_modelseed_id if self.kegg_id_to_modelseed_id[x] == modelseed_id]
+                                if len(all_kegg_compounds_with_same_modelseed_id) > 1:
+                                    self.run.warning(f"While processing KEGG compound {compound} in Pathway Map {pm}, we found that the associated "
+                                                    f"ModelSEED compound ID ({modelseed_id}) was already in the pathway walk dictionary. These are "
+                                                    f"all the KEGG compounds with that same ModelSEED ID: {','.join(all_kegg_compounds_with_same_modelseed_id)}")
+                        else:
+                            self.compound_to_pathway_walk_chains[modelseed_id] = {}
+                        if pm not in self.compound_to_pathway_walk_chains[modelseed_id]:
+                            self.compound_to_pathway_walk_chains[modelseed_id][pm] = {}
+                        if g in self.compound_to_pathway_walk_chains[modelseed_id][pm]:
+                            self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['produce'] += production_chains[compound]
+                            self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['consume'] += consumption_chains[compound]
+                        else:
+                            self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                                                                                'consume': consumption_chains[compound] if compound in consumption_chains else None}
+            except ConfigError as e:
+                self.progress.reset()
+                self.run.warning(f"Just FYI, attempting to do a pathway walk for Pathway Map {pm} resulted in an "
+                            f"error. This usually happens because the Map does not have a reaction (RN) type KGML file. "
+                            f"We are therefore skipping this Pathway Map, but please take a look at the error text and make "
+                            f"sure skipping is the right action here: {e}")
+                maps_with_errors.append(pm)
+            except KeyboardInterrupt:
+                self.run.info_single("Received SIGINT, terminating all processes...", nl_before=2)
+                killed_partway_through = True
+                break
+
+            processed_count += 1
+            self.progress.increment(increment_to=processed_count)
+        self.progress.end()
+
+        if killed_partway_through:
+            self.remove_partial_output_files()
+            sys.exit() # we explicitly exit so the code doesn't move onto reaction network prediction
+        self.run.info("Number of Pathway Maps processed", len(self.all_pathway_maps))
+        self.run.info("Number of compounds processed from Pathway Maps", len(self.compound_to_pathway_walk_chains.keys()))
+
+        return maps_with_errors
+
+    def walk_all_pathway_maps_multithreaded(self):
+        """Driver function for walking over all KEGG Pathway Maps in the merged network with multiprocessing. 
         Fills self.compound_to_pathway_walk_chains. Returns list of Pathway Maps that yielded errors during the walk.
         """
 
