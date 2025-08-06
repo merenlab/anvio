@@ -155,6 +155,15 @@ class ExchangePredictorArgs():
                 file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
             else:
                 file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
+
+    def remove_partial_output_files(self):
+        """This function can be used to delete partial output files when things are interrupted."""
+
+        for typ, file_object in self.output_file_dict.items():
+                output_path = self.output_file_prefix + "-" + typ + ".txt"
+                os.remove(output_path)
+        self.run.warning("There was an error while processing one of the genome pairs, so anvi'o deleted the partially-complete "
+                         "output files to avoid you having to deal with that mess.")
         
 class ExchangePredictorSingle(ExchangePredictorArgs):
     """Class for predicting exchanges between a single pair of genomes.
@@ -1285,8 +1294,4 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
             file_object.close()
 
         if killed_partway_through: # get rid of the partial output
-            for typ, file_object in self.output_file_dict.items():
-                output_path = self.output_file_prefix + "-" + typ + ".txt"
-                os.remove(output_path)
-            self.run.warning("There was an error while processing one of the genome pairs, so anvi'o deleted the partially-complete "
-                             "output files to avoid you having to deal with that mess.")
+            self.remove_partial_output_files()
