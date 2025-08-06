@@ -75,7 +75,13 @@ dependencies = [
     "pulp==2.7.0",
     "biopython",
     "reportlab",
-    "pymupdf"
+    "pymupdf",
+    "jupyterlab",
+    "jupyter-resource-usage",
+    "jupyterlab-git",
+    "jupyter-collaboration",
+    "jupyterlab-lsp",
+    "python-lsp-server[all]"
 ]
 
 [project.urls]

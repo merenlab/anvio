@@ -1336,7 +1336,7 @@ class SyntenyGeneCluster():
         self.progress = p
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.pan_db = A('pan_db')
+        self.pan_db_path = A('pan_db')
         self.external_genomes = A('external_genomes')
         self.genomes_storage = A('genomes_storage')
         self.pan_graph_yaml = A('pan_graph_yaml')
@@ -3257,7 +3257,7 @@ class PangenomeGraph():
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # ANVI'O INPUTS
-        self.pan_db = A('pan_db')
+        self.pan_db_path = A('pan_db')
         self.genomes_storage = A('genomes_storage')
         self.external_genomes_txt = A('external_genomes')
         self.pan_graph_json = A('pan_graph_json')
@@ -3266,9 +3266,15 @@ class PangenomeGraph():
 
         # learn the project name from the pan-db if the user did not
         # provide another
+        if self.pan_db_path:
+            pan_db = dbops.PanDatabase(self.pan_db_path)
+            self.gene_alignments_computed = pan_db.meta['gene_alignments_computed']
+        else:
+            self.gene_alignments_computed = False
+
         if not self.project_name:
-            if self.pan_db:
-                self.project_name = DBInfo(self.pan_db, expecting=['pan']).project_name
+            if pan_db:
+                self.project_name = pan_db.meta['project_name']
             else:
                 raise ConfigError("You need to explicitly define a `--project-name` for this "
                                   "run (anvi'o would have figured it out for you, but you don't "
@@ -3585,6 +3591,7 @@ class PangenomeGraph():
             'genomes_storage_hash': GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash(),
             'priority_genome': self.priority_genome,
             'genome_names': ','.join(self.genome_names),
+            'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
         }
 
