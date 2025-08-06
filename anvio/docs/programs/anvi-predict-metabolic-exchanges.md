@@ -158,6 +158,58 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
 
 The data directories are relevant for loading the %(reaction-network)s in the contigs database, so it is best to use the same data directories that were utilized when running %(anvi-reaction-network)s.
 
+### Adjusting number of threads and processes
+
+If you have a lot of computational resources, you can make this program work faster by parallelizing some of the tasks. For instance:
+- when processing a single pair of genomes, multiple Pathway Map Walks can be done at once according to the number of threads set using the parameter `--num-threads`
+- when processing multiple pairs of genomes (i.e., 'MULTI-MODE'), multiple pairs of genomes can be processed at once according to the number of threads set using the `--num-threads` parameter. Each comparison, however, will internally utilize one thread, UNLESS...
+- since MULTI-MODE internally does multiple 'single pair' comparisons, you can increase the number of threads each comparison uses for Pathway Map walks by setting _both_ the `--num-parallel-processes` parameter _and_ the `--num-threads` parameter
+
+Confused? Let's see a few examples.
+
+**Multithreading 'single' mode**
+
+In this example, the program will predict exchanges between one pair of genomes, and it will be able to do Pathway Map walks for 4 Pathway Maps at once.
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
+                                 -O ANY_PREFIX \
+                                 --num-threads 4
+{{ codestop }}
+
+Resource requirement: Your computer (or the job you submitted to a high-performance computing cluster) must have **>4 threads** available to run this example. 
+
+{:.notice}
+Why >4 and not >=4? I'm glad you asked. You see, the program itself has to run on one thread and it will start 4 child processes to work on the Pathway Map walks, bringing the total usage up to n=5 threads. Why not spawn `n-1` child processes so that the _total_ thread usage of the program is exactly equal to the `--num-threads` number? Well, that is a good idea. But in practice, the program (parent process) is not doing very much while waiting for its child processes to send their data back. And it seemed less confusing this way to begin with. If you think that extra thread will cause issues, now you know and you can set `--num-threads` a bit lower accordingly. And if you are upset about this, you know who to complain to. 😇
+
+**Multithreading multi-mode (multiple single-threaded comparisons at once)**
+
+In this example, the program will predict exchanges between all possible pairs of genomes in the provided %(external-genomes)s file, and it will be able to process 4 genome pairs at once. Each genome pair comparison is single-threaded in this case, meaning that there is no parallel processing of Pathway Map walks.
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -e %(external-genomes)s \
+                                 -O ANY_PREFIX \
+                                 --num-threads 4
+{{ codestop }}
+
+Resource requirement: Your computer (or the job you submitted to a high-performance computing cluster) must have **>4 threads** available to run this example. 
+
+**Multiprocessing multi-mode (multiple multithreaded comparisons at once)**
+
+Finally, in this example, the program will process multiple pairs of genomes, but each genome pair comparison is multithreaded. Specifically, here we allow it to process 3 genome pairs in parallel, and each parallel process can in turn use 4 threads (so the Pathway Map Walk is multithreaded).
+
+{{ codestart }}
+anvi-predict-metabolic-exchanges -e %(external-genomes)s \
+                                 -O ANY_PREFIX \
+                                 --num-threads 4 \
+                                 --num-parallel-processes 3
+{{ codestop }}
+
+Resource requirement: Your computer (or the job you submitted to a high-performance computing cluster) must have **>12 threads** available to run this example.
+
+{:.notice}
+Why >12 threads? Well, 4 * 3 = 12, plus there is one additional thread on which the main program is running while waiting for its child processes for a total usage of n=13 threads (confused? read the yellow box under the first example). If you are paying _really_ close attention, you might realize that each child process needs to run on its own thread while spawning its own set of (grand)child processes. Good catch! We account for this by allowing each child process to create `t-1` threads (where `t` is the `--num-threads` value) so that the total per-process footprint is equal to `--num-threads`. So in this example, technically only 3 Pathway Map walks are done at once for each genome pair comparison even though we set `--num-threads` to 4. At large scales, we cannot necessarily afford to ignore an extra thread per child process like we do for the parent process.
+
 ## Technical Details
 
 This section describes how the predictions of metabolic exchanges are done, for a given pair of genomes.
